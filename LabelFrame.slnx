@@ -4,4 +4,7 @@
     <Project Path="src/LabelFrame.Server/LabelFrame.Server.csproj" />
     <Project Path="src/LabelFrame.WinHost/LabelFrame.WinHost.csproj" />
   </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/LabelFrame.Core.Tests/LabelFrame.Core.Tests.csproj" />
+  </Folder>
 </Solution>
