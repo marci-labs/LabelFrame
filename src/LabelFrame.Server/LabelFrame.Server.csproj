@@ -6,7 +6,15 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- NU1903：与 Core 相同，见 docs/DESIGN.md §5 -->
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.4" />
+    <PackageReference Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.6" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.6" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\LabelFrame.Core\LabelFrame.Core.csproj" />

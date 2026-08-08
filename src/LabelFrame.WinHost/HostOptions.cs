@@ -22,7 +22,7 @@ public enum TransportMode
 public sealed class HostOptions
 {
     /// <summary>默认监听地址（仅本机）。</summary>
-    public const string DefaultListenUrl = "http://127.0.0.1:53911";
+    public const string DefaultListenUrl = "http://127.0.0.1:53960";
 
     /// <summary>默认数据库目录（%LOCALAPPDATA%\LabelFrame）。</summary>
     public static string DefaultDatabasePath => Path.Combine(
@@ -44,6 +44,18 @@ public sealed class HostOptions
 
     /// <summary>Zebra USB 打印机名（为空时自动发现第一台）。</summary>
     public string ZebraUsbName { get; set; } = string.Empty;
+
+    /// <summary>Server 地址（如 http://127.0.0.1:53921）；为空则不启用路由。</summary>
+    public string? ServerUrl { get; set; }
+
+    /// <summary>注册到 Server 的设备标识。</summary>
+    public string DeviceId { get; set; } = Environment.MachineName;
+
+    /// <summary>注册到 Server 的设备展示名。</summary>
+    public string DeviceName { get; set; } = Environment.MachineName;
+
+    /// <summary>Server 轮询间隔（秒）。</summary>
+    public int PollIntervalSeconds { get; set; } = 5;
 
     /// <summary>TCP 打印机主机 / IP。</summary>
     public string TcpHost { get; set; } = "127.0.0.1";
@@ -104,6 +116,26 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_ZEBRA_USB") is { } zebraUsb)
         {
             ZebraUsbName = zebraUsb;
+        }
+
+        if (GetEnv("LABELFRAME_SERVER_URL") is { } serverUrl)
+        {
+            ServerUrl = serverUrl;
+        }
+
+        if (GetEnv("LABELFRAME_DEVICE_ID") is { } deviceId)
+        {
+            DeviceId = deviceId;
+        }
+
+        if (GetEnv("LABELFRAME_DEVICE_NAME") is { } deviceName)
+        {
+            DeviceName = deviceName;
+        }
+
+        if (GetEnv("LABELFRAME_POLL_INTERVAL") is { } poll && int.TryParse(poll, out var pollSeconds))
+        {
+            PollIntervalSeconds = pollSeconds;
         }
 
         if (GetEnv("LABELFRAME_DPI") is { } dpi && int.TryParse(dpi, out var dpiValue))

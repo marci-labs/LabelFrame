@@ -53,6 +53,21 @@ public static class Program
         builder.Services.AddSingleton<IPrintTransport>(CreateTransport(options));
         builder.Services.AddHostedService<JobPrintWorker>();
 
+        if (!string.IsNullOrWhiteSpace(options.ServerUrl))
+        {
+            builder.Services.AddSingleton(sp => new Routing.ServerJobPoller(
+                new HttpClient(),
+                options.ServerUrl!,
+                options.DeviceId,
+                options.DeviceName));
+            builder.Services.AddHostedService(sp => new Routing.ServerRoutingWorker(
+                sp.GetRequiredService<Routing.ServerJobPoller>(),
+                sp.GetRequiredService<JobSubmissionService>(),
+                queue,
+                TimeSpan.FromSeconds(Math.Max(1, options.PollIntervalSeconds)),
+                sp.GetRequiredService<ILogger<Routing.ServerRoutingWorker>>()));
+        }
+
         var app = builder.Build();
 
         app.MapGet("/healthz", () => Results.Ok(new { service = "LabelFrame.WinHost", status = "ok" }));
