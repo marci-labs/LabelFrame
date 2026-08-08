@@ -9,7 +9,7 @@
 |---|---|---|
 | 0 | 奠基：文档体系 + 解决方案骨架 | ✅ 已完成 |
 | 1 | 契约与 ZPL | ✅ 已完成 |
-| 2 | WinHost 打印闭环 | 📋 计划中 |
+| 2 | WinHost 打印闭环 | ✅ 已完成（真实设备验收待执行） |
 | 3 | Server 路由 | 📋 计划中 |
 | 4 | 模板管理 + 预览 | 📋 计划中 |
 | 5 | PDA 宿主 | 📋 计划中 |
@@ -69,7 +69,7 @@
 
 ---
 
-## 迭代 2：WinHost 打印闭环（计划中）
+## 迭代 2：WinHost 打印闭环（已完成，真实设备验收待执行）
 
 **目标**：Windows 上端到端打印闭环：作业队列 + 本地 HTTP API + 真实打印机。
 
@@ -82,9 +82,15 @@
 **不在范围**：Server 路由（迭代 3）、模板管理（迭代 4）、Android（迭代 5）。
 
 **验收**：
-- 真实 Zebra（USB / IP）打出库位码，条码可扫。
-- 批量 50 张连续打印；缺纸挂起、恢复续打；服务重启不丢作业。
-- 中文标签真实打印可读。
+- 真实 Zebra（USB / IP）打出库位码，条码可扫（待真实设备）。
+- 批量 50 张连续打印；缺纸挂起、恢复续打；服务重启不丢作业（队列语义已单测，真实设备验收待执行）。
+- 中文标签真实打印可读（GDI 栅格化已单测，真实设备验收待执行）。
+
+**完成记录**（2026-08-09）：
+- `LabelFrame.Core`：作业模型 + SQLite 持久化队列（requestId 幂等、逐张状态、挂起 / 恢复 / 取消、批内顺序、重启把 in-flight 作业置挂起并重置在途 Item）；`LabelBitmap`（1bpp）+ ZPL `^GF`；TCP 9100 传输；版式元素自定义 JSON 转换器（`type` 判别）。
+- `LabelFrame.WinHost`：本地 HTTP API（提交 / 查询 / 挂起 / 恢复 / 取消 / healthz，模板自包含）、打印 Worker、GDI 中文栅格化（内嵌 / 本地字体优先，回退微软雅黑）、传输 Log / TCP9100 / winspool raw / Zebra SDK（TCP / USB / 驱动）。
+- 全项目升级 .NET 10；WinHost 目标 `net10.0-windows10.0.26100` 以集成 Zebra 官方 SDK（3.0.3355，避开 5.x 的 MAUI 依赖）。
+- 测试 53 个全绿；端到端冒烟验证通过（提交 → 幂等 → Worker 打印 → 进度查询 → 校验 400）。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 2（WinHost 打印闭环）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 2 小节），对照上一迭代成果，严格按范围执行；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。
