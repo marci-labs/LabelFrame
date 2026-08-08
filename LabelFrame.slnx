@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LabelFrame.Core/LabelFrame.Core.csproj" />
+    <Project Path="src/LabelFrame.Server/LabelFrame.Server.csproj" />
+    <Project Path="src/LabelFrame.WinHost/LabelFrame.WinHost.csproj" />
+  </Folder>
+</Solution>
