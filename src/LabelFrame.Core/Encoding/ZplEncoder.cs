@@ -26,7 +26,7 @@ public sealed class ZplEncoder : IZplEncoder
         sb.AppendLine("^XA");
         foreach (var element in document.Layout.Elements)
         {
-            AppendElement(sb, element, document.Data, dpi);
+            AppendElement(sb, element, document.Data, document.Images, dpi);
         }
 
         sb.Append("^XZ");
@@ -37,6 +37,7 @@ public sealed class ZplEncoder : IZplEncoder
         StringBuilder sb,
         LabelElement element,
         IReadOnlyDictionary<string, string> data,
+        IReadOnlyDictionary<string, LabelBitmap> images,
         int dpi)
     {
         switch (element)
@@ -48,7 +49,15 @@ public sealed class ZplEncoder : IZplEncoder
                 AppendBarcode(sb, barcode, data, dpi);
                 break;
             case LabelImageElement image:
-                AppendImagePlaceholder(sb, image);
+                if (images.TryGetValue(image.SourceKey, out var bitmap))
+                {
+                    AppendImage(sb, image, bitmap, dpi);
+                }
+                else
+                {
+                    AppendImagePlaceholder(sb, image);
+                }
+
                 break;
             default:
                 throw new NotSupportedException(
@@ -107,8 +116,20 @@ public sealed class ZplEncoder : IZplEncoder
     }
 
     /// <summary>
-    /// 图片占位：迭代 1 输出 ^FX 注释（不打印），记录图片键、位置与尺寸；
-    /// 真实 ^GF 位图渲染在迭代 2 实现。
+    /// 图片位图编码：^GF 按 1bpp、行字节对齐、十六进制（ASCII）输出，
+    /// 每个像素对应 1 个打印点，位置取元素左上角。
+    /// </summary>
+    private static void AppendImage(StringBuilder sb, LabelImageElement image, LabelBitmap bitmap, int dpi)
+    {
+        var x = ToDots(image.XMm, dpi);
+        var y = ToDots(image.YMm, dpi);
+        var totalBytes = bitmap.RowBytes * bitmap.Height;
+        var hex = Convert.ToHexString(bitmap.Pixels);
+        sb.Append($"^FO{x},{y}^GFA,{totalBytes},{totalBytes},{bitmap.RowBytes},{hex}^FS").AppendLine();
+    }
+
+    /// <summary>
+    /// 图片占位：未提供位图数据时输出 ^FX 注释（不打印），记录图片键、位置与尺寸。
     /// </summary>
     private static void AppendImagePlaceholder(StringBuilder sb, LabelImageElement image)
     {

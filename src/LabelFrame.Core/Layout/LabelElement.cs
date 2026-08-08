@@ -1,6 +1,9 @@
 namespace LabelFrame.Core.Layout;
 
-/// <summary>版式元素的抽象基类，所有元素使用毫米坐标。</summary>
+/// <summary>
+/// 版式元素的抽象基类，所有元素使用毫米坐标。
+/// JSON 序列化统一由 <see cref="LabelElementJsonConverter"/> 按 "type" 判别子类型处理。
+/// </summary>
 public abstract class LabelElement
 {
     /// <summary>左上角 X 坐标（毫米）。</summary>

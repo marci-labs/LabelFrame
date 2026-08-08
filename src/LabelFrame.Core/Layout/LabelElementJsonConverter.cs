@@ -1,0 +1,87 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace LabelFrame.Core.Layout;
+
+/// <summary>
+/// 版式元素 JSON 转换器：按 "type" 判别子类型（text / barcode / qrcode / image / line），
+/// 然后委托具体类型的默认反序列化；不依赖 JsonPolymorphic 属性，
+/// 保证在 ASP.NET Core HttpJsonOptions 等环境中稳定反序列化。
+/// </summary>
+public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
+{
+    /// <inheritdoc />
+    public override LabelElement Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        using var document = JsonDocument.ParseValue(ref reader);
+        var root = document.RootElement;
+        var typeName = root.TryGetProperty("type", out var typeProperty)
+            ? typeProperty.GetString()
+            : null;
+        var json = root.GetRawText();
+
+        return typeName switch
+        {
+            "text" => JsonSerializer.Deserialize<LabelTextElement>(json, options)
+                ?? throw new JsonException("版式元素 text 解析结果为空。"),
+            "barcode" => JsonSerializer.Deserialize<LabelBarcodeElement>(json, options)
+                ?? throw new JsonException("版式元素 barcode 解析结果为空。"),
+            "qrcode" => JsonSerializer.Deserialize<LabelQrCodeElement>(json, options)
+                ?? throw new JsonException("版式元素 qrcode 解析结果为空。"),
+            "image" => JsonSerializer.Deserialize<LabelImageElement>(json, options)
+                ?? throw new JsonException("版式元素 image 解析结果为空。"),
+            "line" => JsonSerializer.Deserialize<LabelLineElement>(json, options)
+                ?? throw new JsonException("版式元素 line 解析结果为空。"),
+            _ => throw new JsonException($"未知版式元素类型：{typeName ?? "(空)"}。"),
+        };
+    }
+
+    /// <inheritdoc />
+    public override void Write(Utf8JsonWriter writer, LabelElement value, JsonSerializerOptions options)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("type", value switch
+        {
+            LabelTextElement => "text",
+            LabelBarcodeElement => "barcode",
+            LabelQrCodeElement => "qrcode",
+            LabelImageElement => "image",
+            LabelLineElement => "line",
+            _ => throw new JsonException($"未知版式元素类型：{value.GetType().Name}。"),
+        });
+
+        writer.WriteNumber("xMm", value.XMm);
+        writer.WriteNumber("yMm", value.YMm);
+
+        switch (value)
+        {
+            case LabelTextElement text:
+                writer.WriteString("sourceKey", text.SourceKey);
+                writer.WriteString("fontName", text.FontName);
+                writer.WriteNumber("fontHeightMm", text.FontHeightMm);
+                writer.WriteNumber("fontWidthMm", text.FontWidthMm);
+                break;
+            case LabelBarcodeElement barcode:
+                writer.WriteString("sourceKey", barcode.SourceKey);
+                writer.WriteNumber("heightMm", barcode.HeightMm);
+                writer.WriteNumber("moduleWidth", barcode.ModuleWidth);
+                break;
+            case LabelQrCodeElement qrCode:
+                writer.WriteString("sourceKey", qrCode.SourceKey);
+                writer.WriteNumber("sizeMm", qrCode.SizeMm);
+                break;
+            case LabelImageElement image:
+                writer.WriteString("sourceKey", image.SourceKey);
+                writer.WriteNumber("widthMm", image.WidthMm);
+                writer.WriteNumber("heightMm", image.HeightMm);
+                break;
+            case LabelLineElement line:
+                writer.WriteNumber("x2Mm", line.X2Mm);
+                writer.WriteNumber("y2Mm", line.Y2Mm);
+                writer.WriteNumber("thicknessMm", line.ThicknessMm);
+                break;
+        }
+
+        writer.WriteEndObject();
+    }
+}
