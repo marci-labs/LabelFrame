@@ -11,9 +11,9 @@
 | 1 | 契约与 ZPL | ✅ 已完成 |
 | 2 | WinHost 打印闭环 | ✅ 已完成（真实设备验收待执行） |
 | 3 | Server 路由 | ✅ 已完成（真实设备验收待执行） |
-| 4 | 模板管理 + 预览 | 📋 计划中 |
-| 5 | PDA 宿主 | 📋 计划中 |
-| 6 | P1 收尾 | 📋 计划中 |
+| 4 | 模板管理 + 预览 | ✅ 已完成（真实设备抽查待执行） |
+| 5 | PDA 宿主 | ⛔ 受阻（环境缺 Android workload） |
+| 6 | P1 收尾 | ✅ 已完成（蓝牙 / Android 项随迭代 5 受阻） |
 | 检查点 | 试点验收（成功衡量） | 待定 |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计） | 待定 |
 
@@ -124,7 +124,7 @@
 
 ---
 
-## 迭代 4：模板管理 + 预览（计划中）
+## 迭代 4：模板管理 + 预览（已完成，真实设备抽查待执行）
 
 **目标**：单机模板管理（增删改 + 导入 / 导出模板包）与设计期预览。
 
@@ -136,16 +136,21 @@
 **不在范围**：WMS 模板下发（P2）。
 
 **验收**：
-- 模板包可在两台电脑间导入导出。
-- 预览与真实打印效果一致（抽查）。
+- 模板包可在两台电脑间导入导出（zip：manifest.json + images/）。
+- 预览与真实打印效果一致（抽查，待真实设备）。
 - 模板按项目分组可用。
+
+**完成记录**（2026-08-09）：
+- `LabelFrame.Core.Templates`：模板包模型 + zip 序列化（导入导出）+ SQLite 模板存储（CRUD / 分组列表 / 图片资源）。
+- `LabelFrame.WinHost`：模板 API（POST/GET/DELETE、导出 zip、导入 multipart、预览 PNG）；预览渲染（GDI 文本/线 + ZXing 条码/二维码 + 图片）；ZXing.Net 0.16.11。
+- 测试 79 个全绿；冒烟验证：保存 → 预览 PNG → 导出 zip → 状态 → 测试页。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 4（模板管理 + 预览）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 4 小节），对照上一迭代成果，严格按范围执行；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 
-## 迭代 5：PDA 宿主（计划中）
+## 迭代 5：PDA 宿主（受阻：环境缺 Android workload）
 
 **目标**：Android / PDA 上跑通「网页 → Server → PDA 宿主 → IP 打印机」与本地直连。
 
@@ -158,23 +163,31 @@
 **不在范围**：蓝牙（迭代 6）。
 
 **验收**：
-- PDA 网页 → Server → PDA 宿主 → IP 打印机打出物料码。
-- 开机自启、前台服务常驻；失败回执明确。
+- PDA 网页 → Server → PDA 宿主 → IP 打印机打出物料码（待实施）。
+- 开机自启、前台服务常驻；失败回执明确（待实施）。
+
+**环境说明**（2026-08-09）：当前开发环境未安装 .NET Android workload（`dotnet workload list` 为空），无法编译 / 验证 Android 项目；架构设计已记入 DESIGN（本地 HTTP / JS 桥、TCP9100、注册轮询复用、蓝牙迭代 6）。安装 workload 后继续。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 5（PDA 宿主）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 5 小节），对照上一迭代成果，严格按范围执行；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 
-## 迭代 6：P1 收尾（计划中）
+## 迭代 6：P1 收尾（已完成，Android/蓝牙项随迭代 5 受阻）
 
 **目标**：补齐 P1 能力并完成试点验收准备。
 
 **范围**：
-- PDA 蓝牙传输。
-- 失败项单独重打。
-- 打印机测试页 / 在线状态。
-- 模板按项目分组（如迭代 4 未完成则在此补齐）。
+- PDA 蓝牙传输（随迭代 5 受阻，待 Android workload）。
+- 失败项单独重打（已完成）。
+- 打印机测试页 / 在线状态（已完成；~HS / Zebra 状态字段待真实设备联调）。
+- 模板按项目分组（迭代 4 已完成）。
+
+**完成记录**（2026-08-09）：
+- `LabelJobQueue.RetryItemAsync`：Failed Item → Pending（清错误），Failed 作业自动恢复 Pending。
+- `GET /api/printer/status` + `POST /api/printer/test`；TCP `~HS` 基础解析、Zebra 连接即在线、驱动模式不可读回、Log 模拟在线。
+- API `POST /api/jobs/{jobId}/items/{itemIndex}/retry`。
+- 测试 79 个全绿。
 
 **不在范围**：P2 项。
 

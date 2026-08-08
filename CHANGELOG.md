@@ -29,3 +29,18 @@
 - 设备离线语义：作业暂存 Pending，上线轮询即领取（不丢作业）。
 - 默认端口：WinHost 53960 / Server 53961。
 - 测试 65 个全绿；端到端冒烟：提交 → WinHost 领取打印 → 回报 Completed。
+## 迭代 4（模板管理 + 预览）— 2026-08-09
+
+- `LabelFrame.Core.Templates`：模板包模型 + zip 导入导出（manifest.json + images/）+ SQLite 模板存储（CRUD / 分组 / 图片资源）。
+- `LabelFrame.WinHost`：模板 API（保存 / 列表 / 详情 / 删除 / 导出 / 导入 / 预览）；预览 PNG（GDI 文本与线 + ZXing 条码 / 二维码 + 图片渲染）；ZXing.Net 0.16.11。
+- 测试 79 个全绿；冒烟验证：保存 → 预览 PNG → 导出 zip。
+
+## 迭代 5（PDA 宿主）— 受阻
+
+- 环境未安装 .NET Android workload，无法编译 / 验证 AndroidHost；架构设计已记入 DESIGN，待安装后继续。
+
+## 迭代 6（P1 收尾）— 2026-08-09
+
+- 失败项单独重打：`RetryItemAsync`（Failed → Pending，Failed 作业自动恢复）+ API `POST /api/jobs/{jobId}/items/{itemIndex}/retry`。
+- 打印机测试页 / 在线状态：`GET /api/printer/status`、`POST /api/printer/test`；TCP `~HS` 基础解析、Zebra 连接即在线、驱动模式不可读回、Log 模拟在线。
+- 蓝牙传输随迭代 5 受阻；真实设备字段联调待执行。
