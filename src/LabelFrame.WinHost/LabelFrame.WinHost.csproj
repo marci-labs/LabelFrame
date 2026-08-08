@@ -13,6 +13,7 @@
     <PackageReference Include="System.Drawing.Common" Version="10.0.7" />
     <!-- Zebra 官方 Link-OS SDK：USB / TCP / 驱动 / 蓝牙 统一连接与打印机状态 -->
     <PackageReference Include="Zebra.Printer.SDK" Version="3.0.3355" />
+    <PackageReference Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 
   <ItemGroup>

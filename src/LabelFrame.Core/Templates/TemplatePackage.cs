@@ -1,0 +1,26 @@
+using LabelFrame.Core.Contracts;
+using LabelFrame.Core.Layout;
+
+namespace LabelFrame.Core.Templates;
+
+/// <summary>
+/// 模板包：契约 + 版式 + 静态图片资源，可导入导出（zip）。
+/// 模板按项目 / 客户分组（Group）。
+/// </summary>
+public sealed class TemplatePackage
+{
+    /// <summary>模板名（唯一标识）。</summary>
+    public required string Name { get; init; }
+
+    /// <summary>分组（项目 / 客户）。</summary>
+    public required string Group { get; init; }
+
+    /// <summary>契约。</summary>
+    public required LabelContract Contract { get; init; }
+
+    /// <summary>版式。</summary>
+    public required LabelLayout Layout { get; init; }
+
+    /// <summary>图片资源（键 → 图片字节，PNG / JPEG）。</summary>
+    public IReadOnlyDictionary<string, byte[]> Images { get; init; } = new Dictionary<string, byte[]>();
+}

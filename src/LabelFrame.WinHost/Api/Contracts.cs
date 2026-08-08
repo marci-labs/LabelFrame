@@ -42,6 +42,12 @@ public sealed record SubmitJobResult(LabelJob? Job, bool Created, string? ErrorC
         => new(null, false, code, message, fieldKey);
 }
 
+/// <summary>模板提交 DTO（图片资源经导入/导出传输）。</summary>
+public sealed record TemplatePackageDto(string? Name, string? Group, LabelContract? Contract, LabelLayout? Layout);
+
+/// <summary>预览请求。</summary>
+public sealed record PreviewRequest(IReadOnlyDictionary<string, string>? Data);
+
 /// <summary>作业与视图映射。</summary>
 public static class JobViews
 {

@@ -36,6 +36,12 @@ public sealed class HostOptions
     /// <summary>SQLite 数据库文件路径。</summary>
     public string DatabasePath { get; set; } = DefaultDatabasePath;
 
+    /// <summary>模板库数据库路径（默认 %LOCALAPPDATA%\\LabelFrame\\templates.db）。</summary>
+    public string TemplatesDbPath { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "LabelFrame",
+        "templates.db");
+
     /// <summary>传输模式。</summary>
     public TransportMode Transport { get; set; } = TransportMode.Log;
 
@@ -86,6 +92,11 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_DB") is { } db)
         {
             DatabasePath = db;
+        }
+
+        if (GetEnv("LABELFRAME_TEMPLATES_DB") is { } templatesDb)
+        {
+            TemplatesDbPath = templatesDb;
         }
 
         if (GetEnv("LABELFRAME_TRANSPORT") is { } transport)
