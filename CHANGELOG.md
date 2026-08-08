@@ -22,3 +22,10 @@
 - `LabelFrame.WinHost`：本地 HTTP API（POST/GET /api/jobs、suspend/resume/cancel、healthz；模板自包含提交）；打印 Worker 串行打印；GDI 中文栅格化（内嵌 / 本地字体优先，回退微软雅黑）；传输：Log / TCP9100 / Windows 驱动（winspool raw）/ Zebra 官方 SDK（TCP / USB 自动发现 / 驱动）。
 - 配置：appsettings.json（WinHost 节）+ LABELFRAME_* 环境变量。
 - 测试 53 个全绿（队列 / ^GF / TCP / JSON / 栅格化 / raw / Zebra / 提交服务）；端到端冒烟验证通过。
+## 迭代 3（Server 路由）— 2026-08-09
+
+- `LabelFrame.Server`：设备注册 / 心跳 / 目录（在线状态）、作业定向投递（requestId 幂等，SQLite 持久化）、宿主轮询领取、结果回报、作业集中查询；测试入口页面；配置 appsettings（Server 节）+ LABELFRAME_SERVER_*。
+- `LabelFrame.WinHost`：Server 路由客户端 + 路由 Worker（领取 → 本地队列打印 → 终态回报）。
+- 设备离线语义：作业暂存 Pending，上线轮询即领取（不丢作业）。
+- 默认端口：WinHost 53960 / Server 53961。
+- 测试 65 个全绿；端到端冒烟：提交 → WinHost 领取打印 → 回报 Completed。

@@ -14,7 +14,8 @@
 
 - 迭代 0（奠基）：文档体系 + 解决方案骨架。
 - 迭代 1（契约与 ZPL）：契约 / 版式模型、数据校验、ZPL 编码器（文本 / Code128 / 图片占位）、日志传输，单元测试全绿。
-- 迭代 2（WinHost 打印闭环）：作业队列（SQLite 持久化 / 幂等 / 挂起恢复取消）、本地 HTTP API、打印 Worker、GDI 中文栅格化、TCP9100 / Windows 驱动 / Zebra SDK 传输，.NET 10（本迭代；真实设备验收待执行）。
+- 迭代 2（WinHost 打印闭环）：作业队列（SQLite 持久化 / 幂等 / 挂起恢复取消）、本地 HTTP API、打印 Worker、GDI 中文栅格化、TCP9100 / Windows 驱动 / Zebra SDK 传输，.NET 10。
+- 迭代 3（Server 路由）：设备注册 / 心跳 / 目录、作业定向投递（宿主轮询领取）、结果回报、集中查询、测试入口（本迭代；真实设备验收待执行）。
 
 详见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
@@ -48,7 +49,7 @@ $env:LABELFRAME_DB = "C:\LabelFrame\jobs.db"
 dotnet run --project src\LabelFrame.WinHost
 ```
 
-本地 API（默认 127.0.0.1:53911，演示脚本用 53999）：
+本地 API（默认 127.0.0.1:53960，演示脚本用 53999）：
 - `POST /api/jobs`：提交作业（requestId + 自包含模板 + labels[]），返回 jobId。
 - `GET /api/jobs/{jobId}`：进度与逐张状态。
 - `POST /api/jobs/{jobId}/suspend|resume|cancel`：挂起 / 恢复 / 取消。
