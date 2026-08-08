@@ -8,7 +8,7 @@ namespace LabelFrame.WinHost.Transport;
 /// Windows 驱动（USB / 已安装打印机）raw 传输：通过 winspool 以 RAW 数据类型
 /// 把 ZPL 指令直接发给打印机驱动，不经过打印预览。
 /// </summary>
-public sealed class RawPrinterTransport : IPrintTransport
+public sealed class RawPrinterTransport : IPrintTransport, IPrinterStatusProvider
 {
     private readonly string _printerName;
 
@@ -33,6 +33,11 @@ public sealed class RawPrinterTransport : IPrintTransport
         SendCore(command);
         return Task.CompletedTask;
     }
+
+    /// <inheritdoc />
+    /// <remarks>winspool raw 传输无法读回打印机状态，统一按在线处理。</remarks>
+    public Task<PrinterStatusInfo> GetStatusAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(new PrinterStatusInfo(true, IsPaperOut: false, IsPaused: false, "驱动模式无法读回打印机状态（默认在线）。"));
 
     private void SendCore(string command)
     {

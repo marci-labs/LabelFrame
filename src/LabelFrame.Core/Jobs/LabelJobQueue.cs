@@ -244,6 +244,49 @@ public sealed class LabelJobQueue
         }
     }
 
+    /// <summary>失败项单独重打：把指定序号的 Failed Item 重置为 Pending（迭代 6）。</summary>
+    public async Task<LabelJob> RetryItemAsync(string jobId, int itemIndex, CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var job = await _store.GetJobAsync(jobId, cancellationToken)
+                ?? throw new LabelJobException(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+            if (job.Status == LabelJobStatus.Completed || job.Status == LabelJobStatus.Cancelled)
+            {
+                throw new LabelJobException(JobErrorCodes.InvalidTransition, $"作业当前状态 {job.Status} 不允许重打。");
+            }
+
+            if (itemIndex < 0 || itemIndex >= job.Items.Count)
+            {
+                throw new LabelJobException(JobErrorCodes.InvalidTransition, $"作业没有第 {itemIndex} 张标签。");
+            }
+
+            var item = job.Items[itemIndex];
+            if (item.Status != LabelJobItemStatus.Failed)
+            {
+                throw new LabelJobException(JobErrorCodes.InvalidTransition, $"第 {itemIndex} 张状态为 {item.Status}，仅 Failed 可重打。");
+            }
+
+            await _store.SetItemStatusAsync(job.Id, item.Id, LabelJobItemStatus.Pending, null, null, cancellationToken);
+            if (job.Status == LabelJobStatus.Failed)
+            {
+                // 整批无待打且含失败项时作业为 Failed；重打后恢复可打
+                await _store.SetJobStatusAsync(job.Id, LabelJobStatus.Pending, cancellationToken);
+            }
+            else if (job.Status == LabelJobStatus.Suspended)
+            {
+                // 挂起作业重打后保持挂起，由调用方决定是否恢复；若其它 Item 已在打则无需改动
+            }
+
+            return (await _store.GetJobAsync(jobId, cancellationToken))!;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     /// <summary>
     /// 服务启动时调用：把 in-flight（Printing）作业置 Suspended，
     /// 并把在途（Printing）Item 重置为 Pending，恢复后续打优先保证不漏打。

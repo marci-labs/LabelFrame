@@ -4,7 +4,7 @@ namespace LabelFrame.Core.Transport;
 /// 日志传输（模拟打印机）：把收到的指令写入 <see cref="TextWriter"/>，
 /// 用于没有真实打印机时的联调验证。
 /// </summary>
-public sealed class LogPrintTransport : IPrintTransport
+public sealed class LogPrintTransport : IPrintTransport, IPrinterStatusProvider
 {
     private readonly TextWriter _writer;
 
@@ -26,4 +26,8 @@ public sealed class LogPrintTransport : IPrintTransport
         _writer.WriteLine("=== 输出结束 ===");
         return Task.CompletedTask;
     }
+
+    /// <inheritdoc />
+    public Task<PrinterStatusInfo> GetStatusAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(new PrinterStatusInfo(true, IsPaperOut: false, IsPaused: false, "日志模拟在线。"));
 }

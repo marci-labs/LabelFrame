@@ -186,6 +186,40 @@ public class LabelJobQueueTests
     }
 
     [Fact]
+    public async Task Retry_failed_item_should_set_pending_and_reprint()
+    {
+        using var db = new TempJobDb();
+        await db.Queue.SubmitAsync("req-retry", ["zpl-0", "zpl-1"]);
+        var (jobId, item0) = (await db.Queue.ClaimNextItemAsync())!.Value;
+        await db.Queue.CompleteItemAsync(jobId, item0.Id);
+        var (_, item1) = (await db.Queue.ClaimNextItemAsync())!.Value;
+        await db.Queue.FailItemAsync(jobId, item1.Id, JobErrorCodes.TransportSendFailed, "离线");
+
+        var retried = await db.Queue.RetryItemAsync(jobId, 1);
+
+        Assert.Equal(LabelJobStatus.Pending, retried.Status);
+        Assert.Equal(LabelJobItemStatus.Pending, retried.Items[1].Status);
+        Assert.Null(retried.Items[1].ErrorMessage);
+
+        var next = await db.Queue.ClaimNextItemAsync();
+        Assert.NotNull(next);
+        Assert.Equal(1, next!.Value.Item.Index);
+        await db.Queue.CompleteItemAsync(jobId, next.Value.Item.Id);
+        Assert.Equal(LabelJobStatus.Completed, (await db.Queue.GetAsync(jobId))!.Status);
+    }
+
+    [Fact]
+    public async Task Retry_non_failed_item_should_throw()
+    {
+        using var db = new TempJobDb();
+        await db.Queue.SubmitAsync("req-retry-bad", ["zpl-0"]);
+
+        var exception = await Assert.ThrowsAsync<LabelJobException>(async () => await db.Queue.RetryItemAsync((await db.Store.GetJobByRequestIdAsync("req-retry-bad"))!.Id, 0));
+
+        Assert.Equal(JobErrorCodes.InvalidTransition, exception.Code);
+    }
+
+    [Fact]
     public async Task Missing_job_should_throw_job_not_found()
     {
         using var db = new TempJobDb();

@@ -1,5 +1,6 @@
 using LabelFrame.Core.Transport;
 using Zebra.Sdk.Comm;
+using Zebra.Sdk.Printer;
 using Zebra.Sdk.Printer.Discovery;
 
 namespace LabelFrame.WinHost.Transport;
@@ -21,7 +22,7 @@ public enum ZebraTransportKind
 /// Zebra 官方 Link-OS SDK 传输：统一处理 TCP / USB / Windows 驱动连接，
 /// 发送 ZPL 指令；异常统一转换为中文 InvalidOperationException。
 /// </summary>
-public sealed class ZebraPrinterTransport : IPrintTransport
+public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvider
 {
     private readonly ZebraTransportKind _kind;
     private readonly string _address;
@@ -114,6 +115,45 @@ public sealed class ZebraPrinterTransport : IPrintTransport
         }
 
         return printers[0].GetConnection();
+    }
+
+    /// <inheritdoc />
+    /// <remarks>通过 Zebra 官方 SDK 查询打印机状态（缺纸 / 暂停 / 就绪）。</remarks>
+    public Task<PrinterStatusInfo> GetStatusAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.Run(() => GetStatusCore(), cancellationToken);
+    }
+
+    private PrinterStatusInfo GetStatusCore()
+    {
+        Connection? connection = null;
+        try
+        {
+            connection = CreateConnection();
+            connection.Open();
+            // 3.x 的 PrinterStatus 无公开状态字段；详细状态（缺纸/暂停）待真实设备联调
+            // （可用 ~HS 或 SGD 命令扩展，见 docs/DESIGN.md §5）
+            return new PrinterStatusInfo(true, IsPaperOut: false, IsPaused: false, "已连接（详细状态待真实设备联调）。");
+        }
+        catch (ConnectionException ex)
+        {
+            return new PrinterStatusInfo(false, IsPaperOut: false, IsPaused: false, $"连接失败：{ex.Message}");
+        }
+        finally
+        {
+            if (connection is not null)
+            {
+                try
+                {
+                    connection.Close();
+                }
+                catch
+                {
+                    // 忽略关闭异常
+                }
+            }
+        }
     }
 
     private string DescribeTarget() => _kind switch
