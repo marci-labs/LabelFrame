@@ -106,6 +106,7 @@ flowchart LR
 
 - Web 设计器原型 v2 已实现（`prototypes/web-designer/`）：视口自适应 + 内容缩放、条码 / 二维码实时渲染（JsBarcode / qrcode-generator）、智能参考线吸附、文本溢出三模式、边框修正、控件精简为文本 / 条码 / 二维码。
 - 业界参考：Figma（视口缩放 + 参考线）、BarTender Auto-Fit（文本适应多模式）、Cleverence Label（Shrink to fit + 最小字高）、Konva snapping 库（参考线吸附）。
+- 原型 v3（2026-08-09）：画布 = 输入尺寸 + 四周 10mm 留白，标尺以 mm 覆盖全画布并跟随画布；画布平移 clamp 不越界；「实际大小」= 1mm=8 点（203dpi 打印比例）；文本溢出新增「不限制高度」；修复 HTML5 拖入坐标（改用 clientX/Y 几何换算，不依赖 Konva 指针状态）。
 - 待用户本机验收后确定 UI 技术栈（Tauri 2 / Blazor Hybrid / 维持 WPF）；后端与公共契约不随 UI 选型变动。
 ## 6. Server API 契约（迭代 3）
 
