@@ -65,7 +65,8 @@ function createTransformer() {
 function fitScale() {
   const vw = $('viewport').clientWidth, vh = $('viewport').clientHeight;
   const cw = canvasW(), ch = canvasH();
-  return Math.max(0.05, Math.min((vw - 16) / cw, (vh - 16) / ch));
+  // 「适应窗口」= 画布略小于视口，便于预览全局
+  return Math.max(0.05, Math.min((vw - 32) / cw, (vh - 32) / ch));
 }
 function totalScale() {
   return (viewMode === 'actual' ? REAL_FACTOR : fitScale()) * contentZoom;
@@ -74,11 +75,13 @@ function totalScale() {
 function applyView() {
   const cw = canvasW(), ch = canvasH();
   const total = totalScale();
-  stage.width(cw); stage.height(ch);
+  // 比例尺（点/逻辑px 的缩放）：stage 尺寸 = 逻辑尺寸 * total，canvas 真实放大，内容完整可见
+  stage.width(cw * total);
+  stage.height(ch * total);
   stage.scale({ x: total, y: total });
   clampStage();
   const box = $('stageBox');
-  box.style.width = (cw * total) + 'px';
+  box.style.width = (cw * total + 20) + 'px';
   box.style.height = (ch * total + 20) + 'px';
   const vw = $('viewport').clientWidth, vh = $('viewport').clientHeight;
   box.style.left = Math.max(0, (vw - cw * total) / 2) + 'px';
@@ -154,13 +157,12 @@ function render() {
 function drawGrid() {
   if (!$('gridCheck').checked) return;
   const step = 5 * PX;
-  const ox = contentOX(), oy = contentOY();
-  const w = paperW * PX, h = paperH * PX;
+  const w = canvasW(), h = canvasH();
   for (let x = 0; x <= w; x += step) {
-    layer.add(new Konva.Line({ points: [ox + x, oy, ox + x, oy + h], stroke: (x / step) % 2 === 0 ? '#dde4ec' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
+    layer.add(new Konva.Line({ points: [x, 0, x, h], stroke: (x / step) % 2 === 0 ? '#e3e9f0' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
   }
   for (let y = 0; y <= h; y += step) {
-    layer.add(new Konva.Line({ points: [ox, oy + y, ox + w, oy + y], stroke: (y / step) % 2 === 0 ? '#dde4ec' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
+    layer.add(new Konva.Line({ points: [0, y, w, y], stroke: (y / step) % 2 === 0 ? '#e3e9f0' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
   }
 }
 
