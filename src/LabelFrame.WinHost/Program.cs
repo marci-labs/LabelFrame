@@ -79,7 +79,7 @@ public static class Program
 
         var app = builder.Build();
 
-        app.MapGet("/healthz", () => Results.Ok(new { service = "LabelFrame.WinHost", status = "ok" }));
+        app.MapGet("/healthz", () => Results.Ok(new { service = "LabelFrame.WinHost", status = "ok", transport = options.Transport.ToString() }));
 
         // ---- 模板管理（单机 CRUD + 导入导出 + 预览）----
         app.MapPost("/api/templates", async (Api.TemplatePackageDto? dto, TemplateStore templateStore, CancellationToken ct) =>

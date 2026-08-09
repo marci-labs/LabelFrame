@@ -1,0 +1,85 @@
+<Window x:Class="LabelFrame.Studio.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LabelFrame Studio - 模板工具（V1）"
+        Height="720" Width="1120"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <!-- 顶部：连接管理 -->
+        <Border DockPanel.Dock="Top" BorderBrush="#DDD" BorderThickness="0,0,0,1" Padding="8">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="WinHost 地址:" VerticalAlignment="Center"/>
+                    <TextBox x:Name="ServerUrlBox" Width="230" Margin="4,0"
+                             Text="{Binding ServerUrl, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Content="连接" Width="70" Click="Connect_Click"/>
+                    <Button Content="断开" Width="70" Margin="4,0" Click="Disconnect_Click"/>
+                    <Button Content="启动 WinHost" Width="110" Margin="4,0" Click="StartWinHost_Click"/>
+                    <Button Content="停止" Width="60" Margin="4,0" Click="StopWinHost_Click"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <TextBlock Text="WinHost 可执行文件:" VerticalAlignment="Center"/>
+                    <TextBox x:Name="WinHostExeBox" Width="430" Margin="4,0"
+                             Text="{Binding WinHostExe, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock x:Name="ConnectionText" Margin="12,0" VerticalAlignment="Center"
+                               Text="{Binding ConnectionText}"/>
+                    <TextBlock x:Name="TransportText" Margin="12,0" VerticalAlignment="Center"
+                               Text="{Binding TransportText}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 左侧：模板列表 -->
+        <Border DockPanel.Dock="Left" Width="300" BorderBrush="#DDD" BorderThickness="0,0,1,0" Padding="6">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top">
+                    <TextBlock Text="分组过滤：" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="GroupBox" Margin="0,2"
+                              ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}"/>
+                    <WrapPanel Margin="0,4">
+                        <Button Content="刷新" Width="70" Click="Refresh_Click"/>
+                        <Button Content="导入 .lfpkg…" Width="100" Margin="4,0" Click="Import_Click"/>
+                        <Button Content="导出…" Width="70" Click="Export_Click"/>
+                        <Button Content="删除" Width="60" Margin="4,0" Click="Delete_Click"/>
+                    </WrapPanel>
+                </StackPanel>
+                <ListBox x:Name="TemplateList" Margin="0,4"
+                         ItemsSource="{Binding Templates}" DisplayMemberPath="Name"
+                         SelectedItem="{Binding SelectedTemplate}"/>
+            </DockPanel>
+        </Border>
+
+        <!-- 右侧：详情 + 数据表单 + 预览 -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="10">
+                <TextBlock x:Name="DetailText" Text="{Binding DetailText}" TextWrapping="Wrap"
+                           FontFamily="Consolas" FontSize="12"/>
+                <GroupBox Header="测试数据（按契约字段生成）" Margin="0,8,0,0">
+                    <ItemsControl ItemsSource="{Binding Fields}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Margin="6,0,0,0"
+                                             Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </GroupBox>
+                <WrapPanel Margin="0,8">
+                    <Button Content="刷新预览" Width="90" Click="Preview_Click"/>
+                    <Button Content="打印测试" Width="90" Margin="4,0" Click="PrintTest_Click"/>
+                    <Button Content="打印机状态" Width="100" Click="Status_Click"/>
+                </WrapPanel>
+                <TextBlock x:Name="JobStatusText" Text="{Binding JobStatusText}" TextWrapping="Wrap" Margin="0,4"/>
+                <Image x:Name="PreviewImage" Source="{Binding PreviewImage}" Stretch="Uniform"
+                       MaxWidth="860" MaxHeight="420" Margin="0,8"/>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
