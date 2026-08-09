@@ -6,14 +6,35 @@
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <!-- 检测 .NET Desktop Runtime：缺失时提示引导下载 -->
+    <!-- 检测 .NET Desktop Runtime：缺失时弹窗提示（全 UI 显示带超链接的对话框；静默 / 基础 UI 由 LaunchCondition 拦截） -->
     <Property Id="DOTNET10_PRESENT" Secure="yes">
       <RegistrySearch Id="DotNet10Search" Root="HKLM"
                       Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
                       Type="raw" />
     </Property>
-    <Launch Condition="DOTNET10_PRESENT"
+    <Launch Condition="DOTNET10_PRESENT OR UILevel = 5 OR REMOVE"
       Message="本机未检测到 .NET Desktop Runtime，请先安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
+
+    <!-- 运行时缺失对话框：可点击官方下载链接（MSI Hyperlink 控件） -->
+    <UI Id="RuntimeCheckUI">
+      <Dialog Id="RuntimeMissingDlg" X="50" Y="50" Width="370" Height="180"
+              Title="LabelFrame 安装 - 缺少 .NET Desktop Runtime" NoMinimize="yes">
+        <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="30"
+                 Text="本机未检测到 .NET 10 Desktop Runtime，请先安装后再运行本安装程序。" />
+        <Control Id="HintText" Type="Text" X="15" Y="50" Width="340" Height="20"
+                 Text="点击下方链接打开微软官方下载页：" />
+        <Control Id="RuntimeLink" Type="Hyperlink" X="15" Y="75" Width="340" Height="25"
+                 Text="&lt;a href=&quot;https://dotnet.microsoft.com/download/dotnet/10.0&quot;&gt;https://dotnet.microsoft.com/download/dotnet/10.0&lt;/a&gt;" />
+        <Control Id="ExitButton" Type="PushButton" X="280" Y="140" Width="75" Height="25"
+                 Text="退出" Default="yes" Cancel="yes">
+          <Publish Event="EndDialog" Value="Exit" Condition="1" />
+        </Control>
+      </Dialog>
+    </UI>
+    <InstallUISequence>
+      <Show Dialog="RuntimeMissingDlg" Sequence="1250"
+            Condition="NOT DOTNET10_PRESENT AND NOT REMOVE" />
+    </InstallUISequence>
 
     <!-- 安装目录：Program Files\LabelFrame（64 位） -->
     <StandardDirectory Id="ProgramFiles64Folder">
