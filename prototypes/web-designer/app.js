@@ -127,7 +127,7 @@ function defaultElement(type) {
     case 'QrCode': return { id, type, x: 5, y: 20, w: 20, h: 20, mode: 'literal', key: '', text: 'ABC-123', border: 0, paddingH: 1, paddingV: 1, qrEcc: 'M', qrMargin: 2 };
     case 'Image':  return { id, type, x: 5, y: 20, w: 20, h: 20, key: '', border: 0 };
     case 'Line':   return { id, type, x: 5, y: 5, w: 60, h: 0, thickness: 0.5 };
-    case 'Rect':   return { id, type, x: 5, y: 5, w: 40, h: 20, border: 0.3, fill: '' };
+    case 'Rect':   return { id, type, x: 5, y: 5, w: 40, h: 20, border: 0.3 };
     case 'Region': return { id, type, x: 5, y: 5, w: 60, h: 30, border: 0.3, containerId: 'c' + Math.random().toString(36).slice(2, 8) };
   }
 }
@@ -153,6 +153,7 @@ function render() {
   drawRulersKonva();
   layer.draw();
   refreshFields();
+  renderLayerList();
   $('paperInfo').textContent = '纸张 ' + paperW + ' x ' + paperH + ' mm（四周留白 ' + PAD_MM + ' mm）';
 }
 
@@ -393,10 +394,11 @@ function nodeFor(e) {
       return line;
     }
     case 'Rect': {
+      // 矩形镂空（打印无背景色）：仅边框
       const rect = new Konva.Rect({
         x: 0, y: 0, width: w, height: h,
         stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW,
-        fill: e.fill || 'transparent', strokeScaleEnabled: false,
+        fill: 'transparent', strokeScaleEnabled: false,
       });
       g.add(rect);
       return g;
@@ -826,6 +828,62 @@ function alignSelected(align) {
 }
 
 // ---------- 字段自动推导 ----------
+function renderLayerList() {
+  const ul = $('layerList');
+  if (!ul) return;
+  ul.innerHTML = '';
+  elements.forEach((e, i) => {
+    const li = document.createElement('li');
+    li.textContent = (i + 1) + '. ' + typeLabel(e) + (e.key ? ' (' + e.key + ')' : '') + (e.type === 'Rect' ? '' : '');
+    li.style.cursor = 'pointer';
+    li.style.padding = '2px 4px';
+    li.style.borderRadius = '2px';
+    li.style.fontFamily = 'Consolas, Microsoft YaHei';
+    if (selected.includes(e.id)) {
+      li.style.background = '#e8f0fe';
+      li.style.color = '#1668dc';
+      li.style.fontWeight = 'bold';
+    }
+    li.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (ev.shiftKey || ev.ctrlKey) toggleSelect(e.id);
+      else selectOnly(e.id);
+    });
+    ul.appendChild(li);
+  });
+}
+
+// 图层层级调整（elements 顺序即渲染层级，后画的在上层）
+function moveLayer(delta) {
+  if (selected.length !== 1) { status('请先单选一个元素再调整层级。'); return; }
+  const idx = elements.findIndex((e) => e.id === selected[0]);
+  const ni = idx + delta;
+  if (idx < 0 || ni < 0 || ni >= elements.length) return;
+  const tmp = elements[idx];
+  elements[idx] = elements[ni];
+  elements[ni] = tmp;
+  commit();
+  renderLayerList();
+}
+function layerToTop() {
+  if (selected.length !== 1) { status('请先单选一个元素再调整层级。'); return; }
+  const e = elements.find((x) => x.id === selected[0]);
+  if (!e) return;
+  elements = elements.filter((x) => x.id !== selected[0]);
+  elements.push(e);
+  commit();
+  renderLayerList();
+}
+function layerToBottom() {
+  if (selected.length !== 1) { status('请先单选一个元素再调整层级。'); return; }
+  const e = elements.find((x) => x.id === selected[0]);
+  if (!e) return;
+  elements = elements.filter((x) => x.id !== selected[0]);
+  elements.unshift(e);
+  commit();
+  renderLayerList();
+}
+
 function refreshFields() {
   const keys = [];
   elements.forEach((e) => {
@@ -951,25 +1009,8 @@ function renderProps() {
   } else if (e.type === 'Rect') {
     const gRect = document.createElement('div');
     gRect.className = 'group';
-    gRect.innerHTML = '<h4>矩形</h4>';
+    gRect.innerHTML = '<h4>矩形（镂空，仅边框）</h4>';
     addNum(gRect, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
-    const fillWrap = document.createElement('label');
-    const span = document.createElement('span');
-    span.textContent = '填充色';
-    const colorInput = document.createElement('input');
-    colorInput.type = 'color';
-    colorInput.value = e.fill || '#ffffff';
-    colorInput.style.width = '40px';
-    colorInput.style.padding = '0';
-    colorInput.addEventListener('change', () => { e.fill = colorInput.value; commit(); });
-    const noneBtn = document.createElement('button');
-    noneBtn.textContent = '无填充';
-    noneBtn.style.marginLeft = '4px';
-    noneBtn.addEventListener('click', () => { e.fill = ''; commit(); });
-    fillWrap.appendChild(span);
-    fillWrap.appendChild(colorInput);
-    fillWrap.appendChild(noneBtn);
-    gRect.appendChild(fillWrap);
     box.appendChild(gRect);
   } else if (e.type === 'Line') {
     const gLine = document.createElement('div');
@@ -1278,6 +1319,10 @@ function init() {
   $('previewBtn').addEventListener('click', previewTemplate);
   $('exportBtn').addEventListener('click', exportDesign);
   $('importBtn').addEventListener('click', importDesign);
+  $('layerTop').addEventListener('click', layerToTop);
+  $('layerUp').addEventListener('click', () => moveLayer(-1));
+  $('layerDown').addEventListener('click', () => moveLayer(1));
+  $('layerBottom').addEventListener('click', layerToBottom);
   $('fitBtn').addEventListener('click', () => {
     $('fitBtn').classList.add('active');
     $('actualBtn').classList.remove('active');
