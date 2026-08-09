@@ -34,7 +34,7 @@ public static class TemplatePackageSerializer
         using var stream = new MemoryStream();
         using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
         {
-            var manifest = new ManifestDto(package.Name, package.Group, package.Contract, package.Layout);
+            var manifest = new ManifestDto(package.Name, package.Group, package.Contract, package.Layout, package.TestData);
             var manifestEntry = archive.CreateEntry(ManifestFileName, CompressionLevel.Optimal);
             using (var entryStream = manifestEntry.Open())
             {
@@ -96,6 +96,7 @@ public static class TemplatePackageSerializer
             Contract = manifest.Contract,
             Layout = manifest.Layout,
             Images = images,
+            TestData = manifest.TestData ?? new Dictionary<string, string>(),
         };
     }
 
@@ -105,5 +106,10 @@ public static class TemplatePackageSerializer
         return string.IsNullOrWhiteSpace(safe) ? "image" : safe;
     }
 
-    private sealed record ManifestDto(string? Name, string? Group, LabelContract? Contract, LabelLayout? Layout);
+    private sealed record ManifestDto(
+        string? Name,
+        string? Group,
+        LabelContract? Contract,
+        LabelLayout? Layout,
+        IReadOnlyDictionary<string, string>? TestData = null);
 }

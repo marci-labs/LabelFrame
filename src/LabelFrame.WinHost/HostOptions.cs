@@ -81,6 +81,15 @@ public sealed class HostOptions
     /// <summary>可选中文字体文件路径（内嵌 / 本地字体，为空时用系统字体）。</summary>
     public string? FontFilePath { get; set; }
 
+    /// <summary>Web UI 静态目录（前端构建产物，为空时自动探测 web/dist）。</summary>
+    public string? WebUiPath { get; set; }
+
+    /// <summary>设备日志库路径（默认 %LOCALAPPDATA%\LabelFrame\logs.db）。</summary>
+    public string LogsDbPath { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "LabelFrame",
+        "logs.db");
+
     /// <summary>应用 LABELFRAME_* 环境变量覆盖（优先级最高）。</summary>
     public void ApplyEnvironmentOverrides()
     {
@@ -162,6 +171,16 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_FONT_FILE") is { } fontFile)
         {
             FontFilePath = fontFile;
+        }
+
+        if (GetEnv("LABELFRAME_WEB_UI") is { } webUi)
+        {
+            WebUiPath = webUi;
+        }
+
+        if (GetEnv("LABELFRAME_LOGS_DB") is { } logsDb)
+        {
+            LogsDbPath = logsDb;
         }
     }
 

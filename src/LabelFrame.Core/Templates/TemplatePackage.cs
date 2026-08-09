@@ -23,4 +23,7 @@ public sealed class TemplatePackage
 
     /// <summary>图片资源（键 → 图片字节，PNG / JPEG）。</summary>
     public IReadOnlyDictionary<string, byte[]> Images { get; init; } = new Dictionary<string, byte[]>();
+
+    /// <summary>测试数据（键 → 值，PC / PDA 打印测试共用；可选，向后兼容）。</summary>
+    public IReadOnlyDictionary<string, string> TestData { get; init; } = new Dictionary<string, string>();
 }

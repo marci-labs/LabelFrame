@@ -17,6 +17,7 @@ public sealed class TemplateStore
             group_name    TEXT NOT NULL,
             contract_json TEXT NOT NULL,
             layout_json   TEXT NOT NULL,
+            test_data_json TEXT NOT NULL DEFAULT '{}',
             created_at    TEXT NOT NULL,
             updated_at    TEXT NOT NULL
         );
@@ -70,6 +71,18 @@ public sealed class TemplateStore
         await using var command = connection.CreateCommand();
         command.CommandText = CreateTablesSql;
         await command.ExecuteNonQueryAsync(cancellationToken);
+
+        // 旧库迁移：补充 test_data_json 列（已存在时忽略）
+        try
+        {
+            await using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE templates ADD COLUMN test_data_json TEXT NOT NULL DEFAULT '{}';";
+            await alter.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
+        {
+            // 列已存在，忽略
+        }
     }
 
     /// <summary>保存（upsert）模板。</summary>
@@ -89,12 +102,13 @@ public sealed class TemplateStore
         {
             command.Transaction = (Microsoft.Data.Sqlite.SqliteTransaction)transaction;
             command.CommandText = """
-                INSERT INTO templates (id, group_name, contract_json, layout_json, created_at, updated_at)
-                VALUES ($id, $group, $contractJson, $layoutJson, $now, $now)
+                INSERT INTO templates (id, group_name, contract_json, layout_json, test_data_json, created_at, updated_at)
+                VALUES ($id, $group, $contractJson, $layoutJson, $testDataJson, $now, $now)
                 ON CONFLICT(id) DO UPDATE SET
                     group_name = excluded.group_name,
                     contract_json = excluded.contract_json,
                     layout_json = excluded.layout_json,
+                    test_data_json = excluded.test_data_json,
                     updated_at = excluded.updated_at;
                 DELETE FROM template_images WHERE template_id = $id;
                 """;
@@ -102,6 +116,7 @@ public sealed class TemplateStore
             command.Parameters.AddWithValue("$group", package.Group);
             command.Parameters.AddWithValue("$contractJson", JsonSerializer.Serialize(package.Contract, JsonOptions));
             command.Parameters.AddWithValue("$layoutJson", JsonSerializer.Serialize(package.Layout, JsonOptions));
+            command.Parameters.AddWithValue("$testDataJson", JsonSerializer.Serialize(package.TestData, JsonOptions));
             command.Parameters.AddWithValue("$now", Format(now));
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -129,7 +144,7 @@ public sealed class TemplateStore
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT id, group_name, contract_json, layout_json
+            SELECT id, group_name, contract_json, layout_json, test_data_json
             FROM templates WHERE id = $id LIMIT 1;
             """;
         command.Parameters.AddWithValue("$id", name);
@@ -143,6 +158,10 @@ public sealed class TemplateStore
         var group = reader.GetString(1);
         var contract = JsonSerializer.Deserialize<LabelContract>(reader.GetString(2), JsonOptions)!;
         var layout = JsonSerializer.Deserialize<LabelLayout>(reader.GetString(3), JsonOptions)!;
+        var testData = reader.IsDBNull(4)
+            ? new Dictionary<string, string>()
+            : JsonSerializer.Deserialize<Dictionary<string, string>>(reader.GetString(4), JsonOptions)
+              ?? new Dictionary<string, string>();
 
         var images = new Dictionary<string, byte[]>();
         await using (var imageCommand = connection.CreateCommand())
@@ -163,6 +182,7 @@ public sealed class TemplateStore
             Contract = contract,
             Layout = layout,
             Images = images,
+            TestData = testData,
         };
     }
 

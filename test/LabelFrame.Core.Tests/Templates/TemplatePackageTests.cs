@@ -52,6 +52,33 @@ public class TemplatePackageTests
     }
 
     [Fact]
+    public void Export_import_should_preserve_test_data()
+    {
+        var package = CreatePackage();
+        package = new TemplatePackage
+        {
+            Name = package.Name,
+            Group = package.Group,
+            Contract = package.Contract,
+            Layout = package.Layout,
+            Images = package.Images,
+            TestData = new Dictionary<string, string> { ["locationCode"] = "A-01" },
+        };
+
+        var imported = TemplatePackageSerializer.Import(TemplatePackageSerializer.Export(package));
+
+        Assert.Equal("A-01", imported.TestData["locationCode"]);
+    }
+
+    [Fact]
+    public void Import_without_test_data_should_default_empty()
+    {
+        var imported = TemplatePackageSerializer.Import(TemplatePackageSerializer.Export(CreatePackage()));
+
+        Assert.Empty(imported.TestData);
+    }
+
+    [Fact]
     public void Import_without_manifest_should_fail()
     {
         Assert.Throws<InvalidDataException>(() => TemplatePackageSerializer.Import(new byte[] { 0x50, 0x4B, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }));

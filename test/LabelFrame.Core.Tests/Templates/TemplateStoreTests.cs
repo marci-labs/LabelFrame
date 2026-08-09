@@ -53,6 +53,61 @@ public class TemplateStoreTests
     }
 
     [Fact]
+    public async Task Save_get_should_preserve_test_data()
+    {
+        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lftpl-{Guid.NewGuid():N}.db");
+        try
+        {
+            var store = new TemplateStore(dbPath);
+            await store.InitializeAsync();
+            var package = CreatePackage("location-label", "项目A");
+            package = new TemplatePackage
+            {
+                Name = package.Name,
+                Group = package.Group,
+                Contract = package.Contract,
+                Layout = package.Layout,
+                Images = package.Images,
+                TestData = new Dictionary<string, string> { ["locationCode"] = "A-01-02-03", ["zone"] = "成品仓" },
+            };
+            await store.SaveAsync(package);
+
+            var loaded = await store.GetAsync("location-label");
+
+            Assert.NotNull(loaded);
+            Assert.Equal("A-01-02-03", loaded!.TestData["locationCode"]);
+            Assert.Equal("成品仓", loaded.TestData["zone"]);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath)) { File.Delete(dbPath); }
+        }
+    }
+
+    [Fact]
+    public async Task Save_get_should_default_test_data_empty()
+    {
+        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lftpl-{Guid.NewGuid():N}.db");
+        try
+        {
+            var store = new TemplateStore(dbPath);
+            await store.InitializeAsync();
+            await store.SaveAsync(CreatePackage("t1", "项目A"));
+
+            var loaded = await store.GetAsync("t1");
+
+            Assert.NotNull(loaded);
+            Assert.Empty(loaded!.TestData);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath)) { File.Delete(dbPath); }
+        }
+    }
+
+    [Fact]
     public async Task Save_should_upsert_and_replace_images()
     {
         var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lftpl-{Guid.NewGuid():N}.db");

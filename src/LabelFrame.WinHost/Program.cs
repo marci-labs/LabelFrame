@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LabelFrame.Core.Encoding;
@@ -8,6 +9,7 @@ using LabelFrame.Core.Templates;
 using LabelFrame.Core.Transport;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
+using LabelFrame.WinHost.Logs;
 using LabelFrame.Rendering;
 using LabelFrame.WinHost.Rendering;
 using LabelFrame.WinHost.Transport;
@@ -63,6 +65,10 @@ public static class Program
         builder.Services.AddSingleton(templateStore);
         builder.Services.AddSingleton<LabelPreviewRenderer>();
 
+        var logStore = new SqliteLogStore(options.LogsDbPath);
+        await logStore.InitializeAsync();
+        builder.Services.AddSingleton(logStore);
+
         if (!string.IsNullOrWhiteSpace(options.ServerUrl))
         {
             builder.Services.AddSingleton(sp => new Routing.ServerJobPoller(
@@ -96,6 +102,7 @@ public static class Program
                 Group = string.IsNullOrWhiteSpace(dto.Group) ? "默认" : dto.Group,
                 Contract = dto.Contract,
                 Layout = dto.Layout,
+                TestData = dto.TestData ?? new Dictionary<string, string>(),
             }, ct);
             return Results.Ok(new { name = dto.Name, group = string.IsNullOrWhiteSpace(dto.Group) ? "默认" : dto.Group });
         });
@@ -215,6 +222,48 @@ public static class Program
             }
         });
 
+        // ---- 设备日志（PDA 回传 / PC 查看）----
+        app.MapPost("/api/logs", async (Api.PushLogRequest? request, SqliteLogStore logStore, CancellationToken ct) =>
+        {
+            if (request is null || string.IsNullOrWhiteSpace(request.DeviceId) || request.Lines is null || request.Lines.Count == 0)
+            {
+                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "缺少 deviceId / lines。"));
+            }
+
+            await logStore.AppendAsync(request.DeviceId, request.Lines, ct);
+            return Results.Ok(new { received = request.Lines.Count });
+        });
+
+        app.MapGet("/api/logs", async (string? deviceId, DateTimeOffset? since, SqliteLogStore logStore, CancellationToken ct) =>
+        {
+            var entries = await logStore.QueryAsync(deviceId, since, ct);
+            return Results.Ok(entries.Select(e => new { e.DeviceId, Time = e.Time, e.Line }));
+        });
+
+        // ---- Excel 数据导入（解析表头 + 数据行，前端做列映射）----
+        app.MapPost("/api/import/excel", async (IFormFile file, CancellationToken ct) =>
+        {
+            if (file is null || file.Length == 0)
+            {
+                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "请上传 .xlsx 文件。"));
+            }
+
+            try
+            {
+                await using var stream = file.OpenReadStream();
+                var table = TemplateFrame.Excel.Simple.SimpleExcel.Read(stream);
+                var headers = (table.Headers ?? []).Select(h => h ?? string.Empty).ToList();
+                var rows = table.Rows
+                    .Select(row => row.Select(FormatExcelCell).ToList())
+                    .ToList();
+                return Results.Ok(new { headers, rows });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, $"Excel 解析失败：{ex.Message}"));
+            }
+        });
+
         // ---- 打印机测试页 / 在线状态 ----
         app.MapGet("/api/printer/status", async (IPrinterStatusProvider provider, CancellationToken ct) =>
             Results.Ok(await provider.GetStatusAsync(ct)));
@@ -228,7 +277,59 @@ public static class Program
             return Results.Ok(new { sent = true, bytes = System.Text.Encoding.UTF8.GetByteCount(testZpl) });
         });
 
+        // ---- Web UI 静态托管（前端构建产物 web/dist）----
+        var webUiPath = ResolveWebUiPath(options);
+        if (webUiPath is not null)
+        {
+            var fileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(webUiPath);
+            app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
+            app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider });
+            // SPA fallback：未匹配 /api 的路径返回 index.html
+            app.MapFallback(async context =>
+            {
+                var indexFile = Path.Combine(webUiPath, "index.html");
+                if (!File.Exists(indexFile))
+                {
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    return;
+                }
+
+                context.Response.ContentType = "text/html; charset=utf-8";
+                await context.Response.SendFileAsync(indexFile);
+            });
+            Console.WriteLine($"[LabelFrame] Web UI: {webUiPath}");
+        }
+        else
+        {
+            Console.WriteLine("[LabelFrame] 未找到 Web UI 构建产物（web/dist），仅提供 API。");
+        }
+
         await app.RunAsync();
+    }
+
+    private static string FormatExcelCell(object? value) => value switch
+    {
+        null => string.Empty,
+        DateTime dt => dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+        IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? string.Empty,
+    };
+
+    /// <summary>解析 Web UI 静态目录：配置优先，否则探测常见位置（含仓库开发路径）。</summary>
+    private static string? ResolveWebUiPath(HostOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.WebUiPath) && Directory.Exists(options.WebUiPath))
+        {
+            return options.WebUiPath;
+        }
+
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "web", "dist"),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "web", "dist")),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "web", "dist")),
+        };
+        return candidates.FirstOrDefault(Directory.Exists);
     }
 
     private static async Task<IResult> TransitionAsync(
