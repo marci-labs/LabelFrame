@@ -3,6 +3,7 @@ using Android.Content;
 using Android.Graphics;
 using Android.OS;
 using LabelFrame.AndroidHost.Api;
+using LabelFrame.AndroidHost.Pc;
 using LabelFrame.AndroidHost.Rendering;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Transport;
@@ -40,7 +41,10 @@ public sealed class PrintHostService : Service
         var submission = new SubmissionService(_queue, new AndroidTextRasterizer(), LabelHostConfig.Dpi);
 
         _cts = new CancellationTokenSource();
-        _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, _transport);
+        var pcClient = string.IsNullOrWhiteSpace(config.PcHostUrl)
+            ? null
+            : new PcTemplateClient(config.PcHostUrl, config.DeviceId);
+        _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, _transport, pcClient);
         _http.Start();
 
         _printLoop = Task.Run(() => PrintLoopAsync(_cts.Token));

@@ -26,6 +26,9 @@ public sealed class LabelHostConfig
     /// <summary>Server 地址（为空不启用路由）。</summary>
     public string? ServerUrl { get; set; }
 
+    /// <summary>PC 单机服务地址（PDA 测试模式：拉模板 / 回传日志，为空不启用）。</summary>
+    public string? PcHostUrl { get; set; }
+
     /// <summary>设备标识（注册到 Server）。</summary>
     public string DeviceId { get; set; } = "android-pda-1";
 
@@ -41,6 +44,7 @@ public sealed class LabelHostConfig
             DatabasePath = System.IO.Path.Combine(context.FilesDir!.AbsolutePath, "labelframe", "jobs.db"),
             TcpHost = prefs.GetString("tcp_host", DefaultTcpHost)!,
             ServerUrl = prefs.GetString("server_url", null),
+            PcHostUrl = prefs.GetString("pc_host", null),
             DeviceId = prefs.GetString("device_id", "android-pda-1")!,
         };
         return config;

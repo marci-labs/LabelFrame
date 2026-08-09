@@ -404,8 +404,15 @@
 - 单机：启动 WinHost（含静态 UI）→ 浏览器编辑模板 → 保存 → Excel 导入批量打印 → 作业进度/失败可见。
 - PDA：配置 PC 地址 → 模板列表 → 点模板测试打印（testData）→ PC 端可见 PDA 日志。
 
+**完成记录**（2026-08-09，后端部分）：
+- 契约扩展 #41：模板 `testData`（Core TemplatePackage / SQLite / 模板包 manifest / WinHost API 全链路，旧库自动迁移）。
+- WinHost 演进：Web UI 静态托管（web/dist 自动探测 + SPA fallback）、`POST /api/import/excel`（TemplateFrame.Excel.Simple）、PDA 日志 `POST/GET /api/logs`（SQLite，可配置路径）、宽松 CORS、`WebUiPath` / `LABELFRAME_*` 配置。
+- AndroidHost 演进（决策 #42）：`pc_host` 配置、`GET /api/pc/templates`、`POST /api/pc/templates/{name}/print-test`（testData 本地打印 + 终态日志回传）、内置 PDA 测试页（127.0.0.1:53970）、Manifest 明文 HTTP。
+- 前端规格 `docs/FRONTEND-SPEC.md` 定稿（含 hermes 两轮审阅结论），hermes 并行开发 `web/`（Vite + React + TS + Konva + pnpm + Vitest）。
+- 测试 118 个全绿；AndroidHost 编译通过（已知 SQLite 16KB 页警告）。
+
 **启动命令**：
-> 继续 LabelFrame 迭代 11（单机模式）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 11 小节）与 docs/FRONTEND-SPEC.md；后端按契约实现，前端按规格交付后联调；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。
+> 继续 LabelFrame 迭代 11（单机模式）。'先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 11 小节）与 docs/FRONTEND-SPEC.md；后端按契约实现，前端按规格交付后联调；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 ## 迭代 9：Excel 数据导入（已完成）
