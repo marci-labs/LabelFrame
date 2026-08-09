@@ -1,4 +1,4 @@
-# Web 设计器原型（技术选型评估）
+# Web 设计器原型（技术选型评估 · v2）
 
 用于评估「Studio UI 层改用 Web 技术」的拖拽设计器原型。后端（WinHost / Core / Rendering / Server / AndroidHost）完全复用，原型通过 WinHost HTTP API 加载 / 保存模板与生成预览。
 
@@ -8,27 +8,34 @@
    ```powershell
    dotnet run --project src\LabelFrame.WinHost
    ```
-2. 用浏览器打开本目录 `index.html`（直接双击即可，无需服务器）。
+2. 浏览器打开本目录 `index.html`（双击即可，无需服务器）。
 3. 顶部填 WinHost 地址（默认 `http://127.0.0.1:53960`）→「连接」→ 可「加载」已有模板、「保存」、「预览」。
 
-> 说明：`konva.min.js` 已本地化，原型离线可打开；未连接 WinHost 时仍可本地拖拽设计（保存 / 预览需连接）。
+> 依赖库（Konva / JsBarcode / qrcode-generator）均已本地化，原型离线可打开；未连接 WinHost 时仍可本地设计。
+
+## v2 改进（按用户反馈）
+
+1. **视口缩放模型**：画布容器自动铺满视口（随窗口自适应）；Ctrl+滚轮只缩放画布内容（看整体 / 局部），鼠标位置保持；「适应窗口」一键铺满，「实际大小」= 1mm≈4px（可滚动），设计态与真实尺寸预览分离。
+2. **条码 / 二维码实时渲染**：值（字段 Key 或固定值）变化立即在画布渲染真实条码 / 二维码（JsBarcode / qrcode-generator），可直接评估大小与位置；属性面板预留参数分组：条码（码制 / 底部文字 / 模块宽）、二维码（纠错级别 / 边距）。
+3. **智能参考线**：拖动元素时自动吸附画布边缘 / 中心、其它元素边缘 / 中心，并显示红色参考线，方便拖两个文本框对齐顶部等。
+4. **边框修正**：边框 = 矩形元素外框（描边），不再描文字（避免文字加粗）。
+5. **控件精简**：控件栏只保留文本 / 条码 / 二维码；图片 / 线 / 容器不再提供入口（已有模板仍可加载显示，逻辑后续重做）。
+6. **文本溢出模式**：每元素可配置「自动换行 / 超长截断 / 缩小字体」（缩小有最小字高，参考 BarTender Auto-Fit 与 Cleverence Label 的做法），避免内容溢出绘制范围。
 
 ## 功能对照（与 WPF 设计器 8D 对齐）
 
-- 控件栏：文本 / 条码 / 二维码 / 图片 / 线 / 容器（点击后在画布放置，或直接拖入）。
-- 画布：毫米标尺 + 网格；左键选中、8 手柄缩放（Konva Transformer）、Shift 多选、Delete 删除、中键平移、Ctrl+滚轮缩放（以鼠标为中心）。
-- 容器：元素拖入容器自动居中；拖出解除。
-- 属性面板：仅选中时显示；单选显示位置 / 尺寸 / 填充（字段 Key 或固定值）/ 字体 / 边框；多选显示对齐工具（左 / 水平居中 / 右 / 上 / 垂直居中 / 下）。
+- 画布：毫米标尺 + 网格；左键选中、8 手柄缩放、Shift 多选、Delete 删除、中键平移、Ctrl+滚轮缩放。
+- 属性面板：仅选中时显示；单选显示位置 / 尺寸 / 填充 / 字体 / 边框 / 文本溢出 / 条码二维码参数；多选显示对齐工具。
 - 契约字段：由元素填充 Key 自动推导（左侧只读列表）。
-- 保存：`POST /api/templates`（模板包契约与 WPF 设计器一致）；预览：`POST /api/templates/{name}/preview`（WinHost 渲染 PNG）。
+- 保存：`POST /api/templates`；预览：`POST /api/templates/{name}/preview`（WinHost 渲染 PNG，真实打印效果）。
 
 ## 文件
 
 | 文件 | 说明 |
 |---|---|
 | `index.html` | 页面布局与样式 |
-| `app.js` | 原型逻辑（Konva 画布 + WinHost API） |
-| `konva.min.js` | Konva 9.3.18 本地副本 |
+| `app.js` | 原型逻辑（Konva 画布 + 条码 / 二维码渲染 + WinHost API） |
+| `konva.min.js` / `jsbarcode.min.js` / `qrcode.min.js` | 本地化依赖（Konva 9.3.18 / JsBarcode 3.11.6 / qrcode-generator 1.4.4） |
 
 ## 评估结论记录
 

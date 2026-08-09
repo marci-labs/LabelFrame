@@ -2,19 +2,21 @@
 'use strict';
 
 // ---------- 常量与状态 ----------
-const PX = 4;                 // 1mm = 4px（100%）
-let zoom = 1;                 // 画布缩放
+const PX = 4;                    // 1mm = 4px（逻辑像素，100% = 实际大小）
+let contentZoom = 1;             // 内容缩放（Ctrl+滚轮，设计时看整体 / 局部）
+let viewMode = 'fit';            // 'fit' 视口自适应 | 'actual' 实际大小
 let paperW = 100, paperH = 60;
-let elements = [];            // 版式元素状态
-let selected = [];            // 选中的元素 id
-let pendingType = null;       // 控件栏待放置类型
+let elements = [];               // 版式元素状态
+let selected = [];               // 选中的元素 id
+let pendingType = null;          // 控件栏待放置类型
 let serverUrl = 'http://127.0.0.1:53960';
 let connected = false;
+let pendingQr = [];              // 二维码异步渲染队列
 
 const $ = (id) => document.getElementById(id);
 const uid = () => 'e' + Math.random().toString(36).slice(2, 10);
-const mm = (px) => px / PX / zoom;
-const pxv = (v) => v * PX * zoom;
+const mm = (px) => px / PX;
+const pxv = (v) => v * PX;
 const r2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
 
 // ---------- Konva ----------
@@ -33,42 +35,47 @@ function createTransformer() {
     borderDash: [4, 2],
   });
   t.on('transformend', () => {
-    t.nodes().forEach((node) => {
-      const e = elementById(node.id());
+    t.nodes().forEach((g) => {
+      const e = elementById(g.id());
       if (!e) return;
-      if (e.type === 'Line') {
-        const sX = node.scaleX(), sY = node.scaleY();
-        const pts = node.points().slice();
-        node.points(pts.map((p, i) => i % 2 === 0 ? p * sX : p * sY));
-        node.scaleX(1); node.scaleY(1);
-        const r = node.getClientRect();
-        e.w = mm(r.width); e.h = mm(r.height);
-        e.x = mm(node.x()); e.y = mm(node.y());
-        return;
-      }
-      const w = Math.max(2, node.width() * node.scaleX());
-      const h = Math.max(2, node.height() * node.scaleY());
-      node.width(w); node.height(h); node.scaleX(1); node.scaleY(1);
-      const wMm = mm(w), hMm = mm(h);
-      if (e.type === 'Text') {
-        e.w = wMm; e.h = hMm; e.fontH = hMm;
-      } else if (e.type === 'QrCode') {
-        const size = Math.max(wMm, hMm);
-        e.w = size; e.h = size;
-        node.width(pxv(size)); node.height(pxv(size));
-      } else if (e.type === 'Barcode') {
-        e.w = wMm; e.h = hMm; e.heightMm = hMm;
-      } else {
-        e.w = wMm; e.h = hMm;
-      }
-      e.x = mm(node.x());
-      e.y = mm(node.y());
+      const r = g.getClientRect();
+      e.x = mm(r.x); e.y = mm(r.y);
+      e.w = mm(r.width); e.h = mm(r.height);
+      if (e.type === 'QrCode') { e.w = e.h = Math.max(e.w, e.h); }
+      if (e.type === 'Text') { e.fontH = e.h; }
+      if (e.type === 'Barcode') { e.heightMm = e.h; }
     });
     render();
     renderProps();
   });
   return t;
 }
+
+// ---------- 视口模型（容器自适应 + 内容缩放） ----------
+function totalScale() {
+  const vw = $('viewport').clientWidth, vh = $('viewport').clientHeight;
+  const lw = paperW * PX, lh = paperH * PX;
+  const fit = Math.max(0.05, Math.min((vw - 40) / lw, (vh - 20) / lh));
+  return (viewMode === 'actual' ? 1 : fit) * contentZoom;
+}
+
+function applyView() {
+  const lw = paperW * PX, lh = paperH * PX;
+  const total = totalScale();
+  stage.width(lw); stage.height(lh);
+  stage.scale({ x: total, y: total });
+  const box = $('stageBox');
+  box.style.width = (lw * total) + 'px';
+  box.style.height = (lh * total + 20) + 'px';
+  const vw = $('viewport').clientWidth, vh = $('viewport').clientHeight;
+  box.style.left = Math.max(0, (vw - lw * total) / 2) + 'px';
+  box.style.top = Math.max(0, (vh - lh * total - 20) / 2) + 'px';
+  $('zoomLabel').textContent = Math.round(contentZoom * 100) + '%';
+  drawRulers();
+}
+
+function fitWindow() { viewMode = 'fit'; contentZoom = 1; applyView(); render(); }
+function actualSize() { viewMode = 'actual'; contentZoom = 1; applyView(); render(); }
 
 // ---------- 日志 ----------
 function log(msg) {
@@ -78,18 +85,15 @@ function log(msg) {
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
-function status(msg) {
-  $('statusText').textContent = msg;
-  log(msg);
-}
+function status(msg) { $('statusText').textContent = msg; log(msg); }
 
 // ---------- 元素创建 ----------
 function defaultElement(type) {
   const id = uid();
   switch (type) {
-    case 'Text':   return { id, type, x: 5, y: 5, w: 40, h: 5, fontH: 5, fontW: 5, mode: 'field', key: '', text: '', align: 'Left', padding: 0, border: 0 };
-    case 'Barcode':return { id, type, x: 5, y: 20, w: 50, h: 20, heightMm: 20, mode: 'field', key: '', text: '', border: 0 };
-    case 'QrCode': return { id, type, x: 5, y: 20, w: 20, h: 20, mode: 'field', key: '', text: '', border: 0 };
+    case 'Text':   return { id, type, x: 5, y: 5, w: 40, h: 5, fontH: 5, fontW: 5, mode: 'field', key: '', text: '', align: 'Left', padding: 1, border: 0, fitMode: 'wrap' };
+    case 'Barcode':return { id, type, x: 5, y: 20, w: 50, h: 20, mode: 'field', key: '', text: '', border: 0, barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1 };
+    case 'QrCode': return { id, type, x: 5, y: 20, w: 20, h: 20, mode: 'field', key: '', text: '', border: 0, qrEcc: 'M', qrMargin: 2 };
     case 'Image':  return { id, type, x: 5, y: 20, w: 20, h: 20, key: '', border: 0 };
     case 'Line':   return { id, type, x: 5, y: 5, w: 60, h: 0, thickness: 0.5 };
     case 'Region': return { id, type, x: 5, y: 5, w: 60, h: 30, border: 0.3, containerId: 'c' + Math.random().toString(36).slice(2, 8) };
@@ -98,16 +102,14 @@ function defaultElement(type) {
 
 // ---------- 渲染 ----------
 function render() {
-  stage.width(paperW * PX * zoom);
-  stage.height(paperH * PX * zoom);
+  pendingQr = [];
   layer.destroyChildren();
   tr = createTransformer();
   layer.add(tr);
   drawGrid();
   elements.forEach((e) => {
-    const nodes = nodeFor(e);
-    const list = Array.isArray(nodes) ? nodes : [nodes];
-    list.forEach((n) => layer.add(n));
+    const g = nodeFor(e);
+    if (g) layer.add(g);
   });
   const selNodes = selected.map((id) => layer.findOne('#' + id)).filter(Boolean);
   tr.nodes(selNodes);
@@ -119,23 +121,24 @@ function render() {
 
 function drawGrid() {
   if (!$('gridCheck').checked) return;
-  const step = pxv(5);
-  const w = paperW * PX * zoom, h = paperH * PX * zoom;
+  const step = 5 * PX;
+  const w = paperW * PX, h = paperH * PX;
   for (let x = 0; x <= w; x += step) {
-    layer.add(new Konva.Line({ points: [x, 0, x, h], stroke: (x / step) % 2 === 0 ? '#dde4ec' : '#eef1f5', strokeWidth: 1, listening: false }));
+    layer.add(new Konva.Line({ points: [x, 0, x, h], stroke: (x / step) % 2 === 0 ? '#dde4ec' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
   }
   for (let y = 0; y <= h; y += step) {
-    layer.add(new Konva.Line({ points: [0, y, w, y], stroke: (y / step) % 2 === 0 ? '#dde4ec' : '#eef1f5', strokeWidth: 1, listening: false }));
+    layer.add(new Konva.Line({ points: [0, y, w, y], stroke: (y / step) % 2 === 0 ? '#dde4ec' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
   }
 }
 
 function drawRulers() {
+  const total = totalScale();
   const hR = $('hRuler'), vR = $('vRuler');
   hR.innerHTML = ''; vR.innerHTML = '';
-  hR.style.width = (paperW * PX * zoom) + 'px';
-  vR.style.height = (paperH * PX * zoom) + 'px';
+  hR.style.width = (paperW * PX * total) + 'px';
+  vR.style.height = (paperH * PX * total) + 'px';
   for (let m = 0; m <= paperW; m++) {
-    const x = pxv(m);
+    const x = m * PX * total;
     if (m % 10 === 0) {
       const line = document.createElement('div');
       line.className = 'ruler-line';
@@ -154,7 +157,7 @@ function drawRulers() {
     }
   }
   for (let m = 0; m <= paperH; m++) {
-    const y = pxv(m);
+    const y = m * PX * total;
     if (m % 10 === 0) {
       const line = document.createElement('div');
       line.className = 'ruler-line';
@@ -180,86 +183,178 @@ function elementContent(e) {
   return e.key;
 }
 
+// ---------- 文本适应（自动换行 / 截断 / 缩小字体） ----------
+function applyTextFit(text, e, content) {
+  const wPx = Math.max(2, pxv(e.w) - 2 * pxv(e.padding || 0));
+  const hPx = Math.max(2, pxv(e.h));
+  text.width(wPx); text.height(hPx);
+  text.verticalAlign('middle');
+  text.wrap(e.fitMode === 'wrap' || e.fitMode === 'shrink' ? 'word' : 'none');
+  text.ellipsis(false);
+  if (e.fitMode === 'truncate') {
+    let t = content;
+    if (text.measureSize(t).width > wPx) {
+      let lo = 0, hi = t.length;
+      while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        const cand = t.slice(0, mid) + '…';
+        if (text.measureSize(cand).width <= wPx) lo = mid; else hi = mid - 1;
+      }
+      t = t.slice(0, lo) + (lo < content.length ? '…' : '');
+    }
+    text.text(t);
+  } else if (e.fitMode === 'shrink') {
+    let fs = Math.max(1, pxv(e.fontH));
+    const minFs = Math.max(1, pxv(1.5));
+    text.fontSize(fs);
+    let m = text.measureSize(content);
+    while ((m.width > wPx || m.height > hPx) && fs > minFs) {
+      fs = Math.max(minFs, fs - 0.5);
+      text.fontSize(fs);
+      m = text.measureSize(content);
+    }
+    text.text(content);
+  } else {
+    text.text(content);
+  }
+  text.clipFunc((ctx) => { ctx.beginPath(); ctx.rect(0, 0, wPx, hPx); });
+}
+
+// ---------- 条码 / 二维码实时渲染 ----------
+function makeBarcodeCanvas(e) {
+  const content = elementContent(e);
+  const c = document.createElement('canvas');
+  try {
+    JsBarcode(c, content === '（未绑定字段）' ? ' ' : content, {
+      format: e.barcodeFormat || 'CODE128',
+      displayValue: e.displayValue !== false,
+      width: Math.max(1, e.moduleWidth || 1),
+      height: Math.max(10, Math.min(80, pxv(e.h || 20) * 0.85)),
+      margin: 0,
+      background: 'transparent',
+    });
+  } catch (ex) {
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f0f1f3';
+    ctx.fillRect(0, 0, 10, 10);
+  }
+  return c;
+}
+
+function fitImageNode(node, wPx, hPx) {
+  const iw = node.image().width, ih = node.image().height;
+  if (!iw || !ih) { node.width(wPx); node.height(hPx); return; }
+  const fit = Math.min(wPx / iw, hPx / ih);
+  node.width(iw * fit); node.height(ih * fit);
+  node.x((wPx - iw * fit) / 2); node.y((hPx - ih * fit) / 2);
+}
+
+function queueQrRender(holder, e, wPx, hPx) {
+  const content = elementContent(e);
+  const qr = qrcode(0, e.qrEcc || 'M');
+  qr.addData(content === '（未绑定字段）' ? ' ' : content);
+  qr.make();
+  const dataUrl = qr.createDataURL(4, e.qrMargin == null ? 2 : e.qrMargin);
+  const im = new Image();
+  im.onload = () => {
+    if (holder.isDestroyed()) return;
+    const node = new Konva.Image({ image: im, listening: false });
+    fitImageNode(node, wPx, hPx);
+    holder.add(node);
+    layer.draw();
+  };
+  im.src = dataUrl;
+}
+
+// ---------- 元素节点（Group：边框 + 内容） ----------
 function nodeFor(e) {
   const x = pxv(e.x), y = pxv(e.y);
+  const w = Math.max(2, pxv(e.w)), h = Math.max(2, pxv(e.h));
+  const g = new Konva.Group({ id: e.id, name: 'element', x, y, draggable: true });
+  const borderW = Math.max(1, pxv(e.border || 0));
+
   switch (e.type) {
     case 'Text': {
-      const t = new Konva.Text({
-        id: e.id, name: 'element', x, y,
-        width: Math.max(8, pxv(e.w)), height: Math.max(8, pxv(e.h)),
-        text: elementContent(e), fontSize: Math.max(8, pxv(e.fontH)),
-        fontFamily: 'Microsoft YaHei',
+      const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW, strokeScaleEnabled: false });
+      const text = new Konva.Text({
+        x: pxv(e.padding || 0), y: 0, width: Math.max(2, w - 2 * pxv(e.padding || 0)), height: h,
+        fontSize: Math.max(1, pxv(e.fontH)), fontFamily: 'Microsoft YaHei',
         fill: e.mode === 'field' && !e.key ? '#999' : '#000',
-        draggable: true,
-        padding: pxv(e.padding || 0),
-        stroke: e.border > 0 ? '#000' : null,
-        strokeWidth: Math.max(1, pxv(e.border || 0)),
+        listening: false, strokeScaleEnabled: false,
       });
-      t.align(e.align === 'Center' ? 'center' : e.align === 'Right' ? 'right' : 'left');
-      return t;
+      text.align(e.align === 'Center' ? 'center' : e.align === 'Right' ? 'right' : 'left');
+      applyTextFit(text, e, elementContent(e));
+      g.add(rect); g.add(text);
+      return g;
     }
-    case 'Barcode':
-    case 'QrCode':
+    case 'Barcode': {
+      const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW, strokeScaleEnabled: false });
+      const canvas = makeBarcodeCanvas(e);
+      const img = new Konva.Image({ image: canvas, listening: false });
+      fitImageNode(img, w, h);
+      g.add(rect); g.add(img);
+      return g;
+    }
+    case 'QrCode': {
+      const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW, strokeScaleEnabled: false });
+      g.add(rect);
+      queueQrRender(g, e, w, h);
+      return g;
+    }
     case 'Image': {
-      const label = e.type === 'Barcode' ? '条码' : e.type === 'QrCode' ? '二维码' : '图片';
-      const rect = new Konva.Rect({
-        id: e.id, name: 'element', x, y,
-        width: Math.max(8, pxv(e.w)), height: Math.max(8, pxv(e.h)),
-        fill: '#f5f6f8', stroke: e.border > 0 ? '#000' : '#aab4c0',
-        strokeWidth: Math.max(1, pxv(e.border || 0)), dash: [4, 3], draggable: true,
-      });
-      const t = new Konva.Text({
-        x: x + 2, y: y + 2, text: label + ': ' + elementContent(e),
-        fontSize: Math.max(9, 11 * zoom), fontFamily: 'Microsoft YaHei', fill: '#6b7684', listening: false,
-      });
-      return [rect, t];
+      const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, fill: '#f5f6f8', stroke: e.border > 0 ? '#000' : '#aab4c0', strokeWidth: borderW, dash: [4, 3], strokeScaleEnabled: false });
+      const t = new Konva.Text({ x: 4, y: 4, text: '图片: ' + (e.key || ''), fontSize: 11, fontFamily: 'Microsoft YaHei', fill: '#6b7684', listening: false });
+      g.add(rect); g.add(t);
+      return g;
     }
     case 'Line': {
-      return new Konva.Line({
-        id: e.id, name: 'element', x, y,
-        points: [0, 0, pxv(e.w), pxv(e.h)],
-        stroke: '#000', strokeWidth: Math.max(1, pxv(e.thickness || 0.5)),
-        draggable: true,
-      });
+      const line = new Konva.Line({ x, y, points: [0, 0, pxv(e.w), pxv(e.h)], stroke: '#000', strokeWidth: Math.max(1, pxv(e.thickness || 0.5)), strokeScaleEnabled: false });
+      line.id(e.id); line.name('element');
+      line.draggable(true);
+      return line;
     }
     case 'Region': {
-      const rect = new Konva.Rect({
-        id: e.id, name: 'element', x, y,
-        width: Math.max(8, pxv(e.w)), height: Math.max(8, pxv(e.h)),
-        fill: 'rgba(0,128,255,0.06)', stroke: e.border > 0 ? '#000' : '#8a94a0',
-        strokeWidth: Math.max(1, pxv(e.border || 0)), dash: [6, 4], draggable: true,
-      });
-      const t = new Konva.Text({
-        x: x + 4, y: y + 2, text: '容器 ' + (e.containerId || ''),
-        fontSize: Math.max(9, 10 * zoom), fontFamily: 'Microsoft YaHei', fill: '#7a8490', listening: false,
-      });
-      return [rect, t];
+      const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, fill: 'rgba(0,128,255,0.06)', stroke: e.border > 0 ? '#000' : '#8a94a0', strokeWidth: borderW, dash: [6, 4], strokeScaleEnabled: false });
+      const t = new Konva.Text({ x: 4, y: 2, text: '容器 ' + (e.containerId || ''), fontSize: 10, fontFamily: 'Microsoft YaHei', fill: '#7a8490', listening: false });
+      g.add(rect); g.add(t);
+      return g;
     }
+    default:
+      return null;
   }
+}
+
+function isElementTarget(target) {
+  if (!target) return false;
+  if (target.hasName && target.hasName('element')) return true;
+  const p = target.getParent && target.getParent();
+  return !!(p && p.hasName && p.hasName('element'));
+}
+function elementFromTarget(target) {
+  if (target.hasName && target.hasName('element')) return target;
+  const p = target.getParent && target.getParent();
+  return p && p.hasName && p.hasName('element') ? p : null;
 }
 
 // ---------- 选择 ----------
 function selectOnly(id) {
   selected = [id];
-  render();
-  renderProps();
+  render(); renderProps();
 }
 function toggleSelect(id) {
   if (selected.includes(id)) selected = selected.filter((x) => x !== id);
   else selected.push(id);
-  render();
-  renderProps();
+  render(); renderProps();
 }
 function clearSelection() {
   selected = [];
-  render();
-  renderProps();
+  render(); renderProps();
 }
 
 // ---------- 画布交互 ----------
 stage.on('click', (ev) => {
-  const target = ev.target;
-  if (!target || !target.hasName('element')) {
+  const el = elementFromTarget(ev.target);
+  if (!el) {
     if (pendingType) {
       const ptr = stage.getPointerPosition();
       addElementAt(pendingType, ptr.x, ptr.y);
@@ -269,44 +364,113 @@ stage.on('click', (ev) => {
     clearSelection();
     return;
   }
-  if (ev.evt.shiftKey || ev.evt.ctrlKey) toggleSelect(target.id());
-  else selectOnly(target.id());
+  if (ev.evt.shiftKey || ev.evt.ctrlKey) toggleSelect(el.id());
+  else selectOnly(el.id());
 });
 
-stage.on('dragend', (ev) => {
-  const node = ev.target;
-  if (!node || !node.hasName('element')) return;
-  const e = elementById(node.id());
+// ---------- 智能参考线（拖动 / 缩放时辅助对齐） ----------
+let guideLines = [];
+function clearGuides() {
+  guideLines.forEach((n) => n.destroy());
+  guideLines = [];
+}
+function drawGuideV(x) {
+  const n = new Konva.Line({ points: [x, 0, x, paperH * PX], stroke: '#ff4d6d', strokeWidth: 1, dash: [5, 3], listening: false, strokeScaleEnabled: false });
+  guideLines.push(n);
+  layer.add(n);
+}
+function drawGuideH(y) {
+  const n = new Konva.Line({ points: [0, y, paperW * PX, y], stroke: '#ff4d6d', strokeWidth: 1, dash: [5, 3], listening: false, strokeScaleEnabled: false });
+  guideLines.push(n);
+  layer.add(n);
+}
+function snapNode(g) {
+  const e = elementById(g.id());
   if (!e) return;
-  e.x = mm(node.x());
-  e.y = mm(node.y());
-  const container = containerHit(e);
-  if (container) {
-    e.regionId = container.containerId;
-    e.x = container.x + (container.w - e.w) / 2;
-    e.y = container.y + (container.h - e.h) / 2;
-    status('元素已放入容器 ' + container.containerId + '（居中）。');
+  const r = g.getClientRect();
+  const TH = 6; // 吸附阈值（逻辑 px）
+  const xs = [r.x, r.x + r.width / 2, r.x + r.width];
+  const ys = [r.y, r.y + r.height / 2, r.y + r.height];
+  const cx = [0, (paperW * PX) / 2, paperW * PX];
+  const cy = [0, (paperH * PX) / 2, paperH * PX];
+  elements.forEach((o) => {
+    if (o.id === e.id) return;
+    const n = layer.findOne('#' + o.id);
+    if (!n) return;
+    const or = n.getClientRect();
+    cx.push(or.x, or.x + or.width / 2, or.x + or.width);
+    cy.push(or.y, or.y + or.height / 2, or.y + or.height);
+  });
+  let bestDx = null, bestDy = null;
+  xs.forEach((x) => { cx.forEach((c) => { const d = c - x; if (Math.abs(d) <= TH && (bestDx === null || Math.abs(d) < Math.abs(bestDx.d))) bestDx = { d, c }; }); });
+  ys.forEach((y) => { cy.forEach((c) => { const d = c - y; if (Math.abs(d) <= TH && (bestDy === null || Math.abs(d) < Math.abs(bestDy.d))) bestDy = { d, c }; }); });
+  clearGuides();
+  if (bestDx) { g.x(g.x() + bestDx.d); drawGuideV(bestDx.c); }
+  if (bestDy) { g.y(g.y() + bestDy.d); drawGuideH(bestDy.c); }
+}
+
+// 多选拖动：主节点拖动，其余节点跟随
+let multiDrag = null;
+stage.on('dragstart', (ev) => {
+  const el = elementFromTarget(ev.target);
+  if (el && selected.length > 1 && selected.includes(el.id())) {
+    multiDrag = { targetId: el.id(), lastX: el.x(), lastY: el.y() };
   } else {
-    delete e.regionId;
+    multiDrag = null;
   }
-  render();
+});
+stage.on('dragmove', (ev) => {
+  const el = elementFromTarget(ev.target);
+  if (!el) return;
+  if (multiDrag) {
+    const dx = el.x() - multiDrag.lastX;
+    const dy = el.y() - multiDrag.lastY;
+    multiDrag.lastX = el.x(); multiDrag.lastY = el.y();
+    selected.forEach((id) => {
+      if (id === multiDrag.targetId) return;
+      const n = layer.findOne('#' + id);
+      if (n) { n.x(n.x() + dx); n.y(n.y() + dy); }
+    });
+  }
+  snapNode(el);
+  layer.draw();
+});
+stage.on('dragend', (ev) => {
+  multiDrag = null;
+  clearGuides();
+  const el = elementFromTarget(ev.target);
+  if (!el) return;
+  const e = elementById(el.id());
+  if (!e) return;
+  const r = el.getClientRect();
+  e.x = mm(r.x); e.y = mm(r.y);
   renderProps();
+  // 兼容旧模板容器逻辑：元素中心落入容器则记录容器归属（保留后台能力）
+  const container = containerHit(e);
+  if (container) e.regionId = container.containerId; else delete e.regionId;
 });
 
-// Ctrl+滚轮缩放（以鼠标为中心）
+// 元素值 / 样式变化后重新渲染（不打断选中）
+function commit() { render(); renderProps(); }
+
+// Ctrl+滚轮：内容缩放（以鼠标为中心，视口自适应基准不变）
 stage.on('wheel', (ev) => {
   ev.evt.preventDefault();
   if (!ev.evt.ctrlKey) return;
-  const oldZoom = zoom;
-  zoom = Math.max(0.25, Math.min(4, zoom * (ev.evt.deltaY < 0 ? 1.1 : 1 / 1.1)));
-  const pointer = stage.getPointerPosition();
-  if (pointer) {
-    const rx = (pointer.x - stage.x()) / oldZoom;
-    const ry = (pointer.y - stage.y()) / oldZoom;
-    stage.x(pointer.x - rx * zoom);
-    stage.y(pointer.y - ry * zoom);
+  const oldZoom = contentZoom;
+  contentZoom = Math.max(0.1, Math.min(8, contentZoom * (ev.evt.deltaY < 0 ? 1.1 : 1 / 1.1)));
+  const base = viewMode === 'actual' ? 1 : (() => {
+    const vw = $('viewport').clientWidth, vh = $('viewport').clientHeight;
+    return Math.max(0.05, Math.min((vw - 40) / (paperW * PX), (vh - 20) / (paperH * PX)));
+  })();
+  const oldTotal = base * oldZoom;
+  const newTotal = base * contentZoom;
+  const ptr = stage.getPointerPosition();
+  if (ptr) {
+    stage.x(ptr.x - ((ptr.x - stage.x()) * newTotal / oldTotal));
+    stage.y(ptr.y - ((ptr.y - stage.y()) * newTotal / oldTotal));
   }
-  $('zoomLabel').textContent = Math.round(zoom * 100) + '%';
+  applyView();
   render();
 });
 
@@ -339,8 +503,7 @@ document.addEventListener('keydown', (ev) => {
       elements = elements.filter((e) => !selected.includes(e.id));
       selected = [];
       status('已删除 ' + count + ' 个元素。');
-      render();
-      renderProps();
+      commit();
     }
   }
 });
@@ -362,20 +525,22 @@ $('stageBox').addEventListener('drop', (ev) => {
   ev.preventDefault();
   const type = ev.dataTransfer.getData('text/plain');
   if (!type) return;
-  const rect = $('stage').getBoundingClientRect();
-  addElementAt(type, ev.clientX - rect.left, ev.clientY - rect.top);
+  const ptr = stage.getPointerPosition();
+  if (ptr) addElementAt(type, ptr.x, ptr.y);
+  else {
+    const rect = $('stage').getBoundingClientRect();
+    addElementAt(type, (ev.clientX - rect.left) / stage.scaleX(), (ev.clientY - rect.top) / stage.scaleY());
+  }
 });
 
-function addElementAt(type, viewX, viewY) {
+function addElementAt(type, logicX, logicY) {
   const e = defaultElement(type);
-  const world = { x: viewX - stage.x(), y: viewY - stage.y() };
-  e.x = Math.max(0, Math.min(paperW - 2, world.x / PX / zoom));
-  e.y = Math.max(0, Math.min(paperH - 2, world.y / PX / zoom));
+  e.x = Math.max(0, Math.min(paperW - 2, mm(logicX)));
+  e.y = Math.max(0, Math.min(paperH - 2, mm(logicY)));
   elements.push(e);
   selected = [e.id];
-  status('已添加「' + type + '」。');
-  render();
-  renderProps();
+  status('已添加「' + (e.type === 'Barcode' ? '条码' : e.type === 'QrCode' ? '二维码' : '文本') + '」。');
+  commit();
 }
 
 function containerHit(e) {
@@ -406,14 +571,14 @@ function alignSelected(align) {
     }
   });
   status('已对齐 ' + sel.length + ' 个元素。');
-  render();
+  commit();
 }
 
 // ---------- 字段自动推导 ----------
 function refreshFields() {
   const keys = [];
   elements.forEach((e) => {
-    if (e.type !== 'Region' && e.mode === 'field' && e.key && !keys.includes(e.key)) keys.push(e.key);
+    if (!['Image', 'Line', 'Region'].includes(e.type) && e.mode === 'field' && e.key && !keys.includes(e.key)) keys.push(e.key);
   });
   const ul = $('fieldList');
   ul.innerHTML = '';
@@ -465,8 +630,7 @@ function renderProps() {
       elements = elements.filter((e) => !selected.includes(e.id));
       selected = [];
       status('已删除选中元素。');
-      render();
-      renderProps();
+      commit();
     });
     box.appendChild(del);
     return;
@@ -475,7 +639,7 @@ function renderProps() {
   const e = sel[0];
   box.innerHTML = '';
   const title = document.createElement('p');
-  title.textContent = (e.type === 'Region' ? '容器 (' + e.containerId + ')' : e.type + (e.key ? ' (' + e.key + ')' : ''));
+  title.textContent = typeLabel(e) + (e.key ? ' (' + e.key + ')' : '');
   title.style.fontWeight = 'bold';
   box.appendChild(title);
 
@@ -486,51 +650,20 @@ function renderProps() {
   addNum(gPos, 'Y', e.y, (v) => { e.y = v; });
   if (e.type !== 'Line') {
     addNum(gPos, '宽', e.w, (v) => {
-      e.w = Math.max(0, v);
-      if (e.type === 'QrCode') { e.h = e.w; }
-      if (e.type === 'Text') { e.h = e.fontH; }
+      e.w = Math.max(1, v);
+      if (e.type === 'QrCode') e.h = e.w;
     });
     if (e.type !== 'Text') {
       addNum(gPos, '高', e.h, (v) => {
-        e.h = Math.max(0, v);
-        if (e.type === 'QrCode') { e.w = e.h; }
+        e.h = Math.max(1, v);
+        if (e.type === 'QrCode') e.w = e.h;
       });
     }
   }
   box.appendChild(gPos);
 
   if (e.type === 'Text' || e.type === 'Barcode' || e.type === 'QrCode') {
-    const gContent = document.createElement('div');
-    gContent.className = 'group';
-    gContent.innerHTML = '<h4>填充（内容来源）</h4>';
-    const modeSel = document.createElement('select');
-    [['字段填充', 'field'], ['固定值', 'literal']].forEach(([label, val]) => {
-      const o = document.createElement('option');
-      o.value = val; o.textContent = label;
-      if (e.mode === val) o.selected = true;
-      modeSel.appendChild(o);
-    });
-    modeSel.addEventListener('change', () => { e.mode = modeSel.value; commit(); });
-    gContent.appendChild(modeSel);
-    const keyInput = document.createElement('input');
-    keyInput.placeholder = '字段 Key';
-    keyInput.value = e.key || '';
-    keyInput.style.marginTop = '4px';
-    keyInput.addEventListener('change', () => { e.key = keyInput.value.trim(); refreshFields(); commit(); });
-    gContent.appendChild(keyInput);
-    const litInput = document.createElement('input');
-    litInput.placeholder = '固定值';
-    litInput.value = e.text || '';
-    litInput.style.marginTop = '4px';
-    litInput.addEventListener('change', () => { e.text = litInput.value; commit(); });
-    gContent.appendChild(litInput);
-    const updateMode = () => {
-      keyInput.style.display = modeSel.value === 'field' ? '' : 'none';
-      litInput.style.display = modeSel.value === 'literal' ? '' : 'none';
-    };
-    updateMode();
-    modeSel.addEventListener('change', updateMode);
-    box.appendChild(gContent);
+    box.appendChild(contentGroup(e));
   }
 
   if (e.type === 'Text') {
@@ -538,25 +671,32 @@ function renderProps() {
     gText.className = 'group';
     gText.innerHTML = '<h4>文本 / 字体</h4>';
     addNum(gText, '字高', e.fontH, (v) => { e.fontH = Math.max(1, v); e.h = e.fontH; });
-    const alignSel = document.createElement('select');
-    [['左对齐', 'Left'], ['居中', 'Center'], ['右对齐', 'Right']].forEach(([label, val]) => {
-      const o = document.createElement('option');
-      o.value = val; o.textContent = label;
-      if (e.align === val) o.selected = true;
-      alignSel.appendChild(o);
-    });
-    const row = document.createElement('label');
-    row.innerHTML = '<span>文字对齐</span>';
-    alignSel.addEventListener('change', () => { e.align = alignSel.value; commit(); });
-    row.appendChild(alignSel);
-    gText.appendChild(row);
+    addSelect(gText, '文字对齐', [['左对齐', 'Left'], ['居中', 'Center'], ['右对齐', 'Right']], e.align, (v) => { e.align = v; });
     addNum(gText, '内边距', e.padding || 0, (v) => { e.padding = Math.max(0, v); });
     addNum(gText, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
+    addSelect(gText, '文本溢出', [['自动换行', 'wrap'], ['超长截断', 'truncate'], ['缩小字体', 'shrink']], e.fitMode || 'wrap', (v) => { e.fitMode = v; });
     box.appendChild(gText);
+  } else if (e.type === 'Barcode') {
+    const gBar = document.createElement('div');
+    gBar.className = 'group';
+    gBar.innerHTML = '<h4>条码参数</h4>';
+    addSelect(gBar, '码制', [['Code128', 'CODE128'], ['EAN13', 'EAN13'], ['CODE39', 'CODE39'], ['UPC', 'UPC']], e.barcodeFormat || 'CODE128', (v) => { e.barcodeFormat = v; });
+    addCheck(gBar, '底部显示文字', e.displayValue !== false, (v) => { e.displayValue = v; });
+    addNum(gBar, '模块宽', e.moduleWidth || 1, (v) => { e.moduleWidth = Math.max(0.5, v); });
+    addNum(gBar, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
+    box.appendChild(gBar);
+  } else if (e.type === 'QrCode') {
+    const gQr = document.createElement('div');
+    gQr.className = 'group';
+    gQr.innerHTML = '<h4>二维码参数</h4>';
+    addSelect(gQr, '纠错级别', [['L(约7%)', 'L'], ['M(约15%)', 'M'], ['Q(约25%)', 'Q'], ['H(约30%)', 'H']], e.qrEcc || 'M', (v) => { e.qrEcc = v; });
+    addNum(gQr, '边距', e.qrMargin == null ? 2 : e.qrMargin, (v) => { e.qrMargin = Math.max(0, v); });
+    addNum(gQr, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
+    box.appendChild(gQr);
   } else if (e.type === 'Line') {
     const gLine = document.createElement('div');
     gLine.className = 'group';
-    gLine.innerHTML = '<h4>线</h4>';
+    gLine.innerHTML = '<h4>线（兼容显示）</h4>';
     addNum(gLine, '长度 X', e.w, (v) => { e.w = v; });
     addNum(gLine, '长度 Y', e.h, (v) => { e.h = v; });
     addNum(gLine, '线宽', e.thickness || 0.5, (v) => { e.thickness = Math.max(0.1, v); });
@@ -564,12 +704,13 @@ function renderProps() {
   } else if (e.type === 'Region') {
     const gR = document.createElement('div');
     gR.className = 'group';
-    gR.innerHTML = '<h4>容器</h4><p style="color:#777;font-size:11px">Id：' + e.containerId + '（只读）</p>';
+    gR.innerHTML = '<h4>容器（兼容显示）</h4><p style="color:#777;font-size:11px">Id：' + e.containerId + '（只读）</p>';
     addNum(gR, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
     box.appendChild(gR);
-  } else {
+  } else if (e.type === 'Image') {
     const gR = document.createElement('div');
     gR.className = 'group';
+    gR.innerHTML = '<h4>图片（兼容显示）</h4>';
     addNum(gR, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
     box.appendChild(gR);
   }
@@ -581,12 +722,55 @@ function renderProps() {
     elements = elements.filter((x) => x.id !== e.id);
     selected = [];
     status('已删除元素。');
-    render();
-    renderProps();
+    commit();
   });
   box.appendChild(del);
+}
 
-  function commit() { render(); renderProps(); }
+function typeLabel(e) {
+  switch (e.type) {
+    case 'Text': return '文本';
+    case 'Barcode': return '条码';
+    case 'QrCode': return '二维码';
+    case 'Image': return '图片';
+    case 'Line': return '线';
+    case 'Region': return '容器';
+  }
+  return e.type;
+}
+
+function contentGroup(e) {
+  const gContent = document.createElement('div');
+  gContent.className = 'group';
+  gContent.innerHTML = '<h4>填充（内容来源，值变化立即渲染）</h4>';
+  const modeSel = document.createElement('select');
+  [['字段填充', 'field'], ['固定值', 'literal']].forEach(([label, val]) => {
+    const o = document.createElement('option');
+    o.value = val; o.textContent = label;
+    if (e.mode === val) o.selected = true;
+    modeSel.appendChild(o);
+  });
+  modeSel.addEventListener('change', () => { e.mode = modeSel.value; commit(); });
+  gContent.appendChild(modeSel);
+  const keyInput = document.createElement('input');
+  keyInput.placeholder = '字段 Key（输入后自动建立字段）';
+  keyInput.value = e.key || '';
+  keyInput.style.marginTop = '4px';
+  keyInput.addEventListener('change', () => { e.key = keyInput.value.trim(); refreshFields(); commit(); });
+  gContent.appendChild(keyInput);
+  const litInput = document.createElement('input');
+  litInput.placeholder = '固定值';
+  litInput.value = e.text || '';
+  litInput.style.marginTop = '4px';
+  litInput.addEventListener('change', () => { e.text = litInput.value; commit(); });
+  gContent.appendChild(litInput);
+  const updateMode = () => {
+    keyInput.style.display = modeSel.value === 'field' ? '' : 'none';
+    litInput.style.display = modeSel.value === 'literal' ? '' : 'none';
+  };
+  updateMode();
+  modeSel.addEventListener('change', updateMode);
+  return gContent;
 }
 
 function addNum(parent, label, value, onSet) {
@@ -600,11 +784,41 @@ function addNum(parent, label, value, onSet) {
   input.addEventListener('change', () => {
     const v = parseFloat(input.value);
     if (!isNaN(v)) onSet(v);
-    render();
-    renderProps();
+    commit();
   });
   wrap.appendChild(span);
   wrap.appendChild(input);
+  parent.appendChild(wrap);
+}
+
+function addSelect(parent, label, options, value, onSet) {
+  const wrap = document.createElement('label');
+  const span = document.createElement('span');
+  span.textContent = label;
+  const sel = document.createElement('select');
+  options.forEach(([text, val]) => {
+    const o = document.createElement('option');
+    o.value = val; o.textContent = text;
+    if (value === val) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('change', () => onSet(sel.value));
+  wrap.appendChild(span);
+  wrap.appendChild(sel);
+  parent.appendChild(wrap);
+}
+
+function addCheck(parent, label, value, onSet) {
+  const wrap = document.createElement('label');
+  const span = document.createElement('span');
+  span.textContent = label;
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = !!value;
+  cb.style.width = 'auto';
+  cb.addEventListener('change', () => onSet(cb.checked));
+  wrap.appendChild(span);
+  wrap.appendChild(cb);
   parent.appendChild(wrap);
 }
 
@@ -662,6 +876,7 @@ async function loadTemplate() {
     $('nameInput').value = detail.name;
     elements = (detail.layout.elements || []).map(parseElement).filter(Boolean);
     selected = [];
+    applyView();
     render();
     renderProps();
     status('已加载模板：' + name + '（' + elements.length + ' 个元素）。');
@@ -674,11 +889,11 @@ function parseElement(j) {
   const base = { id: uid(), x: j.xMm || 0, y: j.yMm || 0, border: j.borderMm || 0 };
   switch (j.type) {
     case 'text':
-      return { ...base, type: 'Text', w: j.widthMm || 0, h: j.fontHeightMm, fontH: j.fontHeightMm, fontW: j.fontWidthMm || 5, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', align: j.textAlign || 'Left', padding: j.paddingMm || 0, regionId: j.regionId || null };
+      return { ...base, type: 'Text', w: j.widthMm || 0, h: j.fontHeightMm, fontH: j.fontHeightMm, fontW: j.fontWidthMm || 5, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', align: j.textAlign || 'Left', padding: j.paddingMm || 0, fitMode: 'wrap', regionId: j.regionId || null };
     case 'barcode':
-      return { ...base, type: 'Barcode', w: (j.heightMm || 20) * 2.5, h: j.heightMm || 20, heightMm: j.heightMm || 20, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', regionId: j.regionId || null };
+      return { ...base, type: 'Barcode', w: (j.heightMm || 20) * 2.5, h: j.heightMm || 20, heightMm: j.heightMm || 20, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1, regionId: j.regionId || null };
     case 'qrcode':
-      return { ...base, type: 'QrCode', w: j.sizeMm || 20, h: j.sizeMm || 20, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', regionId: j.regionId || null };
+      return { ...base, type: 'QrCode', w: j.sizeMm || 20, h: j.sizeMm || 20, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', qrEcc: 'M', qrMargin: 2, regionId: j.regionId || null };
     case 'image':
       return { ...base, type: 'Image', w: j.widthMm || 20, h: j.heightMm || 20, key: j.sourceKey || '', regionId: j.regionId || null };
     case 'line':
@@ -714,7 +929,7 @@ async function saveTemplate() {
   const name = $('nameInput').value.trim() || 'web-demo';
   const fieldKeys = [];
   elements.forEach((e) => {
-    if (e.type !== 'Region' && e.mode === 'field' && e.key && !fieldKeys.includes(e.key)) fieldKeys.push(e.key);
+    if (!['Image', 'Line', 'Region'].includes(e.type) && e.mode === 'field' && e.key && !fieldKeys.includes(e.key)) fieldKeys.push(e.key);
   });
   const payload = {
     name,
@@ -758,7 +973,7 @@ async function previewTemplate() {
     const url = URL.createObjectURL(blob);
     $('previewImg').src = url;
     $('previewPanel').style.display = 'block';
-    status('预览已生成（WinHost 渲染）。');
+    status('预览已生成（WinHost 渲染，真实打印效果）。');
   } catch (ex) {
     status('预览失败：' + ex.message);
   }
@@ -770,6 +985,16 @@ function init() {
   $('loadBtn').addEventListener('click', loadTemplate);
   $('saveBtn').addEventListener('click', saveTemplate);
   $('previewBtn').addEventListener('click', previewTemplate);
+  $('fitBtn').addEventListener('click', () => {
+    $('fitBtn').classList.add('active');
+    $('actualBtn').classList.remove('active');
+    fitWindow();
+  });
+  $('actualBtn').addEventListener('click', () => {
+    $('actualBtn').classList.add('active');
+    $('fitBtn').classList.remove('active');
+    actualSize();
+  });
   $('newBtn').addEventListener('click', () => {
     paperW = parseFloat($('widthInput').value) || 100;
     paperH = parseFloat($('heightInput').value) || 60;
@@ -777,16 +1002,19 @@ function init() {
     selected = [];
     pendingType = null;
     status('已新建空模板。');
+    applyView();
     render();
     renderProps();
   });
-  $('widthInput').addEventListener('change', () => { paperW = parseFloat($('widthInput').value) || 100; render(); });
-  $('heightInput').addEventListener('change', () => { paperH = parseFloat($('heightInput').value) || 60; render(); });
+  $('widthInput').addEventListener('change', () => { paperW = parseFloat($('widthInput').value) || 100; applyView(); render(); });
+  $('heightInput').addEventListener('change', () => { paperH = parseFloat($('heightInput').value) || 60; applyView(); render(); });
   $('gridCheck').addEventListener('change', render);
   $('clearLogBtn').addEventListener('click', () => { $('logBox').innerHTML = ''; });
   $('closePreviewBtn').addEventListener('click', () => { $('previewPanel').style.display = 'none'; });
+  window.addEventListener('resize', () => { applyView(); render(); });
+  applyView();
   render();
-  status('原型就绪：点击控件栏后在画布放置，或直接拖入；已连接时可加载 / 保存 / 预览。');
+  status('原型就绪：控件栏（文本 / 条码 / 二维码）→ 画布；拖动有智能参考线；条码 / 二维码输入值立即渲染。');
 }
 
 init();

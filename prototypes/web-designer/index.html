@@ -15,33 +15,32 @@
   button:hover { background: #eef3f9; }
   button.primary { background: #1668dc; color: #fff; border-color: #1668dc; }
   button.primary:hover { background: #0f57bd; }
+  button.active { background: #e8f0fe; border-color: #1668dc; color: #1668dc; font-weight: bold; }
   #connStatus { color: #888; }
   #connStatus.on { color: #0a7; font-weight: bold; }
   main { flex: 1; display: flex; min-height: 0; }
   aside { width: 210px; background: #fff; border-right: 1px solid #d8dee6; padding: 10px; overflow-y: auto; }
-  #right { border-right: none; border-left: 1px solid #d8dee6; width: 260px; }
+  #right { border-right: none; border-left: 1px solid #d8dee6; width: 270px; }
   aside h3 { font-size: 12px; color: #666; margin: 8px 0 6px; }
   .palette { display: flex; flex-wrap: wrap; gap: 6px; }
   .palette button { width: 62px; height: 30px; }
-  .palette button.region { background: #fff4e0; border-color: #d4a75b; }
   #fieldList { list-style: none; font-size: 12px; }
   #fieldList li { padding: 3px 0; border-bottom: 1px dashed #e3e8ee; font-family: Consolas, monospace; }
   #center { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  #canvasWrap { flex: 1; overflow: auto; padding: 8px; }
-  #stageBox { display: inline-block; background: #fff; border: 1px solid #9aa6b4; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-  #hRuler, #vRuler { background: #f7f8fa; border-color: #d8dee6; position: relative; overflow: hidden; }
+  #viewport { flex: 1; overflow: hidden; background: #e9edf2; position: relative; }
+  #stageBox { position: absolute; left: 50%; top: 50%; transform-origin: 0 0; background: #fff; border: 1px solid #9aa6b4; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  #hRuler, #vRuler { background: #f7f8fa; position: relative; overflow: hidden; }
   #hRuler { height: 20px; border-bottom: 1px solid #d8dee6; }
   #vRuler { width: 20px; border-right: 1px solid #d8dee6; }
   .ruler-line { position: absolute; background: #9aa6b4; }
   .ruler-text { position: absolute; font-size: 9px; color: #667; }
-  #stage { display: inline-block; }
-  #props label { display: block; margin: 6px 0; color: #444; }
-  #props label span { display: inline-block; width: 76px; }
-  #props input, #props select { width: 120px; }
+  #props label { display: block; margin: 5px 0; color: #444; }
+  #props label span { display: inline-block; width: 84px; }
+  #props input, #props select { width: 118px; }
   #props .group { border: 1px solid #e3e8ee; border-radius: 4px; padding: 6px 8px; margin: 8px 0; }
   #props .group h4 { font-size: 12px; color: #555; margin-bottom: 4px; }
   #emptyProps { color: #999; font-size: 12px; }
-  footer { background: #fff; border-top: 1px solid #d8dee6; padding: 6px 10px; height: 120px; display: flex; flex-direction: column; }
+  footer { background: #fff; border-top: 1px solid #d8dee6; padding: 6px 10px; height: 118px; display: flex; flex-direction: column; }
   #statusbar-top { display: flex; align-items: center; gap: 10px; }
   #statusText { font-weight: bold; color: #0a7; }
   #logBox { flex: 1; overflow-y: auto; font-family: Consolas, monospace; font-size: 11px; background: #fafbfc; border: 1px solid #e3e8ee; border-radius: 3px; margin-top: 4px; padding: 3px 6px; }
@@ -49,7 +48,7 @@
   #previewPanel { position: fixed; right: 24px; bottom: 140px; background: #fff; border: 1px solid #c4ccd6; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.15); padding: 8px; display: none; z-index: 10; }
   #previewPanel img { max-width: 380px; max-height: 420px; display: block; }
   #previewPanel button { margin-top: 6px; }
-  #tooltip { position: absolute; background: rgba(0,0,0,.75); color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px; pointer-events: none; display: none; z-index: 20; }
+  .hint { font-size: 11px; color: #777; line-height: 1.7; list-style: none; }
 </style>
 </head>
 <body>
@@ -63,6 +62,8 @@
   <input id="nameInput" placeholder="模板名" value="web-demo">
   <label>宽 <input id="widthInput" type="number" value="100"></label>
   <label>高 <input id="heightInput" type="number" value="60"></label>
+  <button id="fitBtn" class="active">适应窗口</button>
+  <button id="actualBtn">实际大小</button>
   <label>缩放 <span id="zoomLabel">100%</span></label>
   <label><input id="gridCheck" type="checkbox" checked> 网格</label>
   <button id="saveBtn" class="primary">保存</button>
@@ -70,30 +71,27 @@
 </header>
 <main>
   <aside id="left">
-    <h3>控件栏（点击后在画布点击放置 / 拖入画布）</h3>
+    <h3>控件栏（点击后在画布放置 / 拖入画布）</h3>
     <div class="palette">
       <button data-type="Text">文本</button>
       <button data-type="Barcode">条码</button>
       <button data-type="QrCode">二维码</button>
-      <button data-type="Image">图片</button>
-      <button data-type="Line">线</button>
-      <button data-type="Region" class="region">容器</button>
     </div>
     <h3>契约字段 <small>（自动推导）</small></h3>
     <ul id="fieldList"><li style="color:#999">暂无字段</li></ul>
     <h3>操作提示</h3>
-    <ul style="font-size:11px;color:#777;list-style:none;line-height:1.7">
-      <li>左键：选中 / 拖拽移动</li>
+    <ul class="hint">
+      <li>左键：选中 / 拖拽移动（智能参考线辅助对齐）</li>
       <li>手柄：拖角缩放</li>
-      <li>Shift+点击：多选</li>
-      <li>Delete：删除选中</li>
+      <li>Shift+点击：多选；Delete：删除</li>
       <li>中键拖拽：平移画布</li>
-      <li>Ctrl+滚轮：缩放画布</li>
-      <li>元素拖入容器自动居中</li>
+      <li>Ctrl+滚轮：内容缩放（看整体 / 局部）</li>
+      <li>「适应窗口」：画布铺满视口；「实际大小」：1mm≈4px</li>
+      <li>条码 / 二维码输入值后立即渲染</li>
     </ul>
   </aside>
   <section id="center">
-    <div id="canvasWrap">
+    <div id="viewport">
       <div id="stageBox">
         <div id="hRuler"></div>
         <div style="display:flex">
@@ -117,8 +115,9 @@
   <div id="logBox"></div>
 </footer>
 <div id="previewPanel"><img id="previewImg" alt="预览"><button id="closePreviewBtn">关闭预览</button></div>
-<div id="tooltip"></div>
 <script src="konva.min.js"></script>
+<script src="jsbarcode.min.js"></script>
+<script src="qrcode.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
