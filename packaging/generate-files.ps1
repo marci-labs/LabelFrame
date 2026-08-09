@@ -28,8 +28,11 @@ Get-ChildItem -Path $PublishDir -Recurse -File | ForEach-Object {
     $rel = $_.FullName.Substring($PublishDir.Length).TrimStart('\')
     $rel = $rel -replace '\\', '/'
     $guid = New-GuidFromPath $rel
+    $fileId = ''
+    if ($rel -eq 'LabelFrame.WinHost.exe') { $fileId = ' Id="WinHostExe"' }
+    else { $fileId = ' Id="ff' + $index + '"' }
     [void]$sb.AppendLine('      <Component Id="f' + $index + '" Guid="' + $guid + '">')
-    [void]$sb.AppendLine('        <File Source="$(var.PublishDir)/' + $rel + '" />')
+    [void]$sb.AppendLine('        <File' + $fileId + ' Source="$(var.PublishDir)/' + $rel + '" />')
     [void]$sb.AppendLine('      </Component>')
     $index++
 }

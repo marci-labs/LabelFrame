@@ -17,7 +17,7 @@
         <Component Id="StartMenuShortcut">
           <Shortcut Id="StartMenuShortcut" Name="LabelFrame 标签打印"
                     Description="启动 LabelFrame 并打开浏览器编辑模板"
-                    Target="[INSTALLFOLDER]LabelFrame.WinHost.exe"
+                    Target="[#WinHostExe]"
                     WorkingDirectory="INSTALLFOLDER" />
           <RemoveFolder Id="ApplicationProgramsRemove" Directory="ApplicationProgramsFolder" On="uninstall" />
           <RegistryValue Root="HKCU" Key="SoftwareLabelFrame" Name="startmenu" Type="integer" Value="1" KeyPath="yes" />
@@ -30,7 +30,7 @@
       <Component Id="DesktopShortcut">
         <Shortcut Id="DesktopShortcut" Name="LabelFrame 标签打印"
                   Description="启动 LabelFrame 并打开浏览器编辑模板"
-                  Target="[INSTALLFOLDER]LabelFrame.WinHost.exe"
+                  Target="[#WinHostExe]"
                   WorkingDirectory="INSTALLFOLDER" />
         <RemoveFolder Id="DesktopRemove" Directory="DesktopFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="SoftwareLabelFrame" Name="desktop" Type="integer" Value="1" KeyPath="yes" />

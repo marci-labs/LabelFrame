@@ -13,12 +13,12 @@ if (-not (Test-Path $wix)) { throw '未找到 WiX Toolset v7，请先安装。' 
 if (-not $?) { throw 'publish failed' }
 $publishDir = Join-Path $root "artifacts\$Runtime"
 
-# 2) 生成 WiX 文件清单
+# 2) 复制默认配置到发布目录（先于文件清单，确保 appsettings.json 被打包）
+Copy-Item (Join-Path $root 'packaging\appsettings.json') (Join-Path $publishDir 'appsettings.json') -Force
+
+# 3) 生成 WiX 文件清单
 $filesWxs = Join-Path $root 'packaging\files.wxs'
 & (Join-Path $root 'packaging\generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs
-
-# 3) 复制默认配置到发布目录（打包进 MSI）
-Copy-Item (Join-Path $root 'packaging\appsettings.json') (Join-Path $publishDir 'appsettings.json') -Force
 
 # 4) wix build
 $msi = Join-Path $root "artifacts\LabelFrame-$Version.msi"

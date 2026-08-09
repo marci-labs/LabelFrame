@@ -38,6 +38,22 @@ public static class Program
         options.ApplyEnvironmentOverrides();
         builder.WebHost.UseUrls(options.ListenUrl);
 
+        var hostLogWriter = OpenHostLogWriter(options);
+        void HostInfo(string message)
+        {
+            try
+            {
+                hostLogWriter.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}");
+                hostLogWriter.Flush();
+            }
+            catch
+            {
+                // 日志写入失败不影响启动
+            }
+        }
+
+        HostInfo($"LabelFrame 启动：监听 {options.ListenUrl}，传输 {options.Transport}，DPI {options.Dpi}，OpenBrowser={options.OpenBrowser}");
+
         var store = new SqliteLabelJobStore(options.DatabasePath);
         await store.InitializeAsync();
         var queue = new LabelJobQueue(store);
@@ -340,15 +356,37 @@ public static class Program
                         FileName = options.ListenUrl,
                         UseShellExecute = true,
                     });
+                    HostInfo($"已尝试打开浏览器：{options.ListenUrl}");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // 打开浏览器失败不影响服务
+                    HostInfo($"打开浏览器失败：{ex.Message}");
                 }
             });
         }
 
-        await app.RunAsync();
+        try
+        {
+            await app.RunAsync();
+        }
+        catch (Exception ex)
+        {
+            HostInfo($"LabelFrame 启动失败：{ex}");
+            try
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    $"LabelFrame 启动失败：{ex.Message}\n\n详见日志：{options.HostLogPath}",
+                    "LabelFrame",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
+            }
+            catch
+            {
+                // 无交互环境忽略提示
+            }
+
+            throw;
+        }
     }
 
     private static string FormatExcelCell(object? value) => value switch
