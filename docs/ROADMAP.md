@@ -266,6 +266,7 @@
 - 选择 `.xlsx`，列 → 契约字段映射（自动按列名匹配，可手工调整）。
 - 按行生成标签数据；批量预览（抽样）与「批量打印」。
 - 复用 WinHost `/api/jobs`（一次提交多张）。
+- xlsx 读取采用 `TemplateFrame.Excel.Simple`（`SimpleExcel.Read` → 表头 + 数据行，底层 DocumentFormat.OpenXml；见 DESIGN 决策 #32）。
 
 **不在范围**：Excel 模板导出、公式 / 样式保真。
 
