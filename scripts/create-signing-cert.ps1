@@ -20,10 +20,14 @@ if (-not $openssl) { throw '未找到 openssl，请安装 Git for Windows。' }
 $keyPem = Join-Path $certDir 'key.pem'
 $certPem = Join-Path $certDir 'cert.pem'
 $rawPfx = Join-Path $certDir 'raw.pfx'
+
+# openssl 会把 RSA 进度写到 stderr，PowerShell 5.1 在 ErrorActionPreference=Stop 下会中断；此处临时切 Continue
+$oldEAP = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 & $openssl req -x509 -newkey rsa:2048 -keyout $keyPem -out $certPem -days 1095 -nodes -subj '/CN=LabelFrame' -addext 'extendedKeyUsage=codeSigning' 2>$null | Out-Null
-if (-not $?) { throw '证书生成失败' }
 & $openssl pkcs12 -export -out $rawPfx -inkey $keyPem -in $certPem -passout pass:$Password 2>$null | Out-Null
-if (-not $?) { throw 'pfx 导出失败' }
+$ErrorActionPreference = $oldEAP
+if (-not (Test-Path $rawPfx)) { throw '证书生成失败：未生成 pfx。' }
 
 # .NET 重封装（保证 CryptoAPI / signtool 兼容）
 $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable
