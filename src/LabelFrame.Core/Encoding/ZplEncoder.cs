@@ -5,8 +5,8 @@ using LabelFrame.Core.Layout;
 namespace LabelFrame.Core.Encoding;
 
 /// <summary>
-/// ZPL 编码器：文本（^A）、Code128（^BC）、图片占位（^FX 注释）。
-/// 毫米 → 点按 DPI 换算；二维码 / 线元素在模型中定义，但迭代 1 明确报错（迭代 2 补全）。
+/// ZPL 编码器：文本（^A / ^FB 块对齐）、Code128（^BC）、二维码（^BQ）、图片（^GF）、
+/// 线（^GB L）、区域边框（^GB B）；毫米 → 点按 DPI 换算；区域锚定按 LabelLayoutResolver 计算位置。
 /// </summary>
 public sealed class ZplEncoder : IZplEncoder
 {
@@ -22,11 +22,12 @@ public sealed class ZplEncoder : IZplEncoder
             throw new ArgumentOutOfRangeException(nameof(dpi), "DPI 必须为正整数。");
         }
 
+        var regions = LabelLayoutResolver.IndexRegions(document.Layout);
         var sb = new StringBuilder();
         sb.AppendLine("^XA");
         foreach (var element in document.Layout.Elements)
         {
-            AppendElement(sb, element, document.Data, document.Images, dpi);
+            AppendElement(sb, element, document.Data, document.Images, regions, dpi);
         }
 
         sb.Append("^XZ");
@@ -38,20 +39,24 @@ public sealed class ZplEncoder : IZplEncoder
         LabelElement element,
         IReadOnlyDictionary<string, string> data,
         IReadOnlyDictionary<string, LabelBitmap> images,
+        IReadOnlyDictionary<string, LabelRegionElement> regions,
         int dpi)
     {
         switch (element)
         {
             case LabelTextElement text:
-                AppendText(sb, text, data, dpi);
+                AppendText(sb, text, data, regions, dpi);
                 break;
             case LabelBarcodeElement barcode:
-                AppendBarcode(sb, barcode, data, dpi);
+                AppendBarcode(sb, barcode, data, regions, dpi);
+                break;
+            case LabelQrCodeElement qrCode:
+                AppendQrCode(sb, qrCode, data, regions, dpi);
                 break;
             case LabelImageElement image:
                 if (images.TryGetValue(image.SourceKey, out var bitmap))
                 {
-                    AppendImage(sb, image, bitmap, dpi);
+                    AppendImage(sb, image, bitmap, regions, dpi);
                 }
                 else
                 {
@@ -59,9 +64,15 @@ public sealed class ZplEncoder : IZplEncoder
                 }
 
                 break;
+            case LabelLineElement line:
+                AppendLine(sb, line, dpi);
+                break;
+            case LabelRegionElement region:
+                AppendRegion(sb, region, dpi);
+                break;
             default:
                 throw new NotSupportedException(
-                    $"ZPL 编码器暂不支持 {element.Type} 元素（{element.GetType().Name}），计划在迭代 2 补全。");
+                    $"ZPL 编码器暂不支持 {element.Type} 元素（{element.GetType().Name}）。");
         }
     }
 
@@ -79,16 +90,43 @@ public sealed class ZplEncoder : IZplEncoder
         return value;
     }
 
-    private static void AppendText(StringBuilder sb, LabelTextElement text, IReadOnlyDictionary<string, string> data, int dpi)
+    private static void AppendText(
+        StringBuilder sb,
+        LabelTextElement text,
+        IReadOnlyDictionary<string, string> data,
+        IReadOnlyDictionary<string, LabelRegionElement> regions,
+        int dpi)
     {
         var value = GetData(data, text.SourceKey);
-        var x = ToDots(text.XMm, dpi);
-        var y = ToDots(text.YMm, dpi);
-        var height = ToDots(text.FontHeightMm, dpi);
-        var width = ToDots(text.FontWidthMm, dpi);
+        var bounds = LabelLayoutResolver.ResolveBounds(text, regions);
+        var x = ToDots(bounds.XMm, dpi);
+        var y = ToDots(bounds.YMm, dpi);
+        var boxWidth = ToDots(bounds.WidthMm, dpi);
+        var fontHeight = ToDots(text.FontHeightMm, dpi);
+        var fontWidth = ToDots(text.FontWidthMm, dpi);
+        var padding = ToDots(text.PaddingMm, dpi);
         var (escaped, needsFieldHex) = EscapeFieldData(value);
 
-        sb.Append($"^FO{x},{y}^A{text.FontName}N,{height},{width}");
+        if (text.BorderMm > 0 && boxWidth > 0)
+        {
+            AppendBox(sb, x, y, boxWidth + 2 * padding, fontHeight + 2 * padding, ToDots(text.BorderMm, dpi));
+        }
+
+        var textX = x + padding;
+        var textY = y + padding;
+        sb.Append($"^FO{textX},{textY}^A{text.FontName}N,{fontHeight},{fontWidth}");
+        if (boxWidth > 0)
+        {
+            var justify = text.TextAlign switch
+            {
+                LabelTextAlign.Left => 0,
+                LabelTextAlign.Center => 1,
+                LabelTextAlign.Right => 2,
+                _ => 0,
+            };
+            sb.Append($"^FB{boxWidth},1,0,{justify}");
+        }
+
         if (needsFieldHex)
         {
             sb.Append("^FH");
@@ -97,14 +135,26 @@ public sealed class ZplEncoder : IZplEncoder
         sb.Append($"^FD{escaped}^FS").AppendLine();
     }
 
-    private static void AppendBarcode(StringBuilder sb, LabelBarcodeElement barcode, IReadOnlyDictionary<string, string> data, int dpi)
+    private static void AppendBarcode(
+        StringBuilder sb,
+        LabelBarcodeElement barcode,
+        IReadOnlyDictionary<string, string> data,
+        IReadOnlyDictionary<string, LabelRegionElement> regions,
+        int dpi)
     {
         var value = GetData(data, barcode.SourceKey);
-        var x = ToDots(barcode.XMm, dpi);
-        var y = ToDots(barcode.YMm, dpi);
-        var height = ToDots(barcode.HeightMm, dpi);
+        var bounds = LabelLayoutResolver.ResolveBounds(barcode, regions);
+        var x = ToDots(bounds.XMm, dpi);
+        var y = ToDots(bounds.YMm, dpi);
+        var height = ToDots(bounds.HeightMm, dpi);
+        var width = ToDots(bounds.WidthMm, dpi);
         var module = Math.Clamp(barcode.ModuleWidth, 1, 10);
         var (escaped, needsFieldHex) = EscapeFieldData(value);
+
+        if (barcode.BorderMm > 0)
+        {
+            AppendBox(sb, x, y, width, height, ToDots(barcode.BorderMm, dpi));
+        }
 
         sb.Append($"^FO{x},{y}^BY{module},3^BCN,{height},Y,N,N");
         if (needsFieldHex)
@@ -115,17 +165,79 @@ public sealed class ZplEncoder : IZplEncoder
         sb.Append($"^FD{escaped}^FS").AppendLine();
     }
 
-    /// <summary>
-    /// 图片位图编码：^GF 按 1bpp、行字节对齐、十六进制（ASCII）输出，
-    /// 每个像素对应 1 个打印点，位置取元素左上角。
-    /// </summary>
-    private static void AppendImage(StringBuilder sb, LabelImageElement image, LabelBitmap bitmap, int dpi)
+    private static void AppendQrCode(
+        StringBuilder sb,
+        LabelQrCodeElement qrCode,
+        IReadOnlyDictionary<string, string> data,
+        IReadOnlyDictionary<string, LabelRegionElement> regions,
+        int dpi)
     {
-        var x = ToDots(image.XMm, dpi);
-        var y = ToDots(image.YMm, dpi);
+        var value = GetData(data, qrCode.SourceKey);
+        var bounds = LabelLayoutResolver.ResolveBounds(qrCode, regions);
+        var x = ToDots(bounds.XMm, dpi);
+        var y = ToDots(bounds.YMm, dpi);
+        var size = ToDots(bounds.WidthMm, dpi);
+        var magnification = Math.Clamp((int)Math.Round(size / 24.0, MidpointRounding.AwayFromZero), 1, 10);
+
+        if (qrCode.BorderMm > 0)
+        {
+            AppendBox(sb, x, y, size, size, ToDots(qrCode.BorderMm, dpi));
+        }
+
+        sb.Append($"^FO{x},{y}^BQN,2,{magnification}^FDQA,{value}^FS").AppendLine();
+    }
+
+    private static void AppendImage(
+        StringBuilder sb,
+        LabelImageElement image,
+        LabelBitmap bitmap,
+        IReadOnlyDictionary<string, LabelRegionElement> regions,
+        int dpi)
+    {
+        var bounds = LabelLayoutResolver.ResolveBounds(image, regions);
+        var x = ToDots(bounds.XMm, dpi);
+        var y = ToDots(bounds.YMm, dpi);
         var totalBytes = bitmap.RowBytes * bitmap.Height;
         var hex = Convert.ToHexString(bitmap.Pixels);
+
+        if (image.BorderMm > 0)
+        {
+            var width = ToDots(bounds.WidthMm, dpi);
+            var height = ToDots(bounds.HeightMm, dpi);
+            AppendBox(sb, x, y, width, height, ToDots(image.BorderMm, dpi));
+        }
+
         sb.Append($"^FO{x},{y}^GFA,{totalBytes},{totalBytes},{bitmap.RowBytes},{hex}^FS").AppendLine();
+    }
+
+    private static void AppendLine(StringBuilder sb, LabelLineElement line, int dpi)
+    {
+        var x1 = ToDots(line.XMm, dpi);
+        var y1 = ToDots(line.YMm, dpi);
+        var width = Math.Abs(ToDots(line.X2Mm, dpi) - x1);
+        var height = Math.Abs(ToDots(line.Y2Mm, dpi) - y1);
+        var thickness = Math.Max(1, ToDots(line.ThicknessMm, dpi));
+        sb.Append($"^FO{x1},{y1}^GB{width},{height},{thickness},L,0^FS").AppendLine();
+    }
+
+    private static void AppendRegion(StringBuilder sb, LabelRegionElement region, int dpi)
+    {
+        if (region.BorderMm <= 0)
+        {
+            return;
+        }
+
+        var x = ToDots(region.XMm, dpi);
+        var y = ToDots(region.YMm, dpi);
+        var width = ToDots(region.WidthMm, dpi);
+        var height = ToDots(region.HeightMm, dpi);
+        AppendBox(sb, x, y, width, height, ToDots(region.BorderMm, dpi));
+    }
+
+    private static void AppendBox(StringBuilder sb, int x, int y, int width, int height, int thickness)
+    {
+        sb.Append($"^FO{x},{y}^GB{Math.Max(1, width)},{Math.Max(1, height)},{Math.Max(1, thickness)},B,0^FS")
+            .AppendLine();
     }
 
     /// <summary>

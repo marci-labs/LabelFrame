@@ -111,22 +111,22 @@ public class JobSubmissionServiceTests
     }
 
     [Fact]
-    public async Task Unsupported_element_should_fail_with_encode_error()
+    public async Task Missing_data_key_should_fail_with_encode_error()
     {
         var (service, _) = CreateService();
         var layout = new LabelFrame.Core.Layout.LabelLayout
         {
-            Name = "qr",
+            Name = "missing-key",
             ContractName = "location-label",
             ContractVersion = "1.0",
             WidthMm = 100,
             HeightMm = 60,
             Elements =
             [
-                new LabelFrame.Core.Layout.LabelQrCodeElement { SourceKey = "locationCode", XMm = 5, YMm = 5, SizeMm = 20 },
+                new LabelFrame.Core.Layout.LabelTextElement { SourceKey = "notInData", XMm = 5, YMm = 5, FontHeightMm = 8, FontWidthMm = 8 },
             ],
         };
-        var request = new SubmitJobRequest("req-qr", new TemplateDto(LocationLabelSamples.Contract, layout), new List<LabelDto>
+        var request = new SubmitJobRequest("req-missing-key", new TemplateDto(LocationLabelSamples.Contract, layout), new List<LabelDto>
         {
             new(new Dictionary<string, string> { ["zone"] = "A-01", ["locationCode"] = "A-01-02-03" }),
         });

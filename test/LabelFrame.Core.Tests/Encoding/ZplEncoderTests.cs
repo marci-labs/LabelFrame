@@ -97,7 +97,7 @@ public class ZplEncoderTests
     }
 
     [Fact]
-    public void Qr_code_element_should_throw_not_supported()
+    public void Qr_code_element_should_encode_bq()
     {
         var document = new LabelDocument
         {
@@ -106,23 +106,24 @@ public class ZplEncoderTests
                 Name = "qr",
                 ContractName = "qr",
                 ContractVersion = "1.0",
-                WidthMm = 10,
-                HeightMm = 10,
+                WidthMm = 30,
+                HeightMm = 30,
                 Elements =
                 [
-                    new LabelQrCodeElement { SourceKey = "text", XMm = 0, YMm = 0, SizeMm = 5 },
+                    new LabelQrCodeElement { SourceKey = "text", XMm = 5, YMm = 5, SizeMm = 20 },
                 ],
             },
-            Data = new Dictionary<string, string> { ["text"] = "x" },
+            Data = new Dictionary<string, string> { ["text"] = "LABELFRAME-001" },
         };
 
-        var exception = Assert.Throws<NotSupportedException>(() => new ZplEncoder().Encode(document));
+        var zpl = new ZplEncoder().Encode(document);
 
-        Assert.Contains("迭代 2", exception.Message);
+        // 20mm @203dpi = 160 点；mag = 160/24 ≈ 7
+        Assert.Contains("^FO40,40^BQN,2,7^FDQA,LABELFRAME-001^FS", zpl);
     }
 
     [Fact]
-    public void Line_element_should_throw_not_supported()
+    public void Line_element_should_encode_gb_line()
     {
         var document = new LabelDocument
         {
@@ -131,17 +132,106 @@ public class ZplEncoderTests
                 Name = "line",
                 ContractName = "line",
                 ContractVersion = "1.0",
-                WidthMm = 10,
-                HeightMm = 10,
+                WidthMm = 20,
+                HeightMm = 20,
                 Elements =
                 [
-                    new LabelLineElement { XMm = 0, YMm = 0, X2Mm = 10, Y2Mm = 10, ThicknessMm = 0.5 },
+                    new LabelLineElement { XMm = 5, YMm = 5, X2Mm = 15, Y2Mm = 5, ThicknessMm = 0.5 },
                 ],
             },
             Data = new Dictionary<string, string>(),
         };
 
-        Assert.Throws<NotSupportedException>(() => new ZplEncoder().Encode(document));
+        var zpl = new ZplEncoder().Encode(document);
+
+        Assert.Contains("^FO40,40^GB80,0,4,L,0^FS", zpl);
+    }
+
+    [Fact]
+    public void Region_should_encode_border_and_center_children()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "region",
+                ContractName = "region",
+                ContractVersion = "1.0",
+                WidthMm = 100,
+                HeightMm = 60,
+                Elements =
+                [
+                    new LabelRegionElement { Id = "top", XMm = 5, YMm = 5, WidthMm = 90, HeightMm = 50, BorderMm = 0.5 },
+                    new LabelTextElement
+                    {
+                        SourceKey = "locationCode",
+                        XMm = 5,
+                        YMm = 5,
+                        FontHeightMm = 5,
+                        FontWidthMm = 5,
+                        TextAlign = LabelTextAlign.Center,
+                        RegionId = "top",
+                    },
+                    new LabelBarcodeElement
+                    {
+                        SourceKey = "locationCode",
+                        XMm = 5,
+                        YMm = 5,
+                        HeightMm = 20,
+                        ModuleWidth = 2,
+                        RegionId = "top",
+                    },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["locationCode"] = "A-01-02-03" },
+        };
+
+        var zpl = new ZplEncoder().Encode(document);
+
+        Assert.Contains("^FO40,40^GB719,400,4,B,0^FS", zpl);
+        // 文本：区域居中，块宽 = 区域宽 90mm = 720 点，justify=1（居中）
+        Assert.Contains("^FO40,220^A0N,40,40^FB719,1,0,1^FDA-01-02-03^FS", zpl);
+        // 条码：宽 = 20*2.5=50mm，水平居中 x=25mm=200；垂直居中 y=20mm=160
+        Assert.Contains("^FO200,160^BY2,3^BCN,160,Y,N,N^FDA-01-02-03^FS", zpl);
+    }
+
+    [Fact]
+    public void Text_with_width_align_border_and_padding_should_encode_fb_and_box()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "style",
+                ContractName = "style",
+                ContractVersion = "1.0",
+                WidthMm = 100,
+                HeightMm = 60,
+                Elements =
+                [
+                    new LabelTextElement
+                    {
+                        SourceKey = "zone",
+                        XMm = 5,
+                        YMm = 14,
+                        FontHeightMm = 8,
+                        FontWidthMm = 8,
+                        WidthMm = 40,
+                        TextAlign = LabelTextAlign.Center,
+                        PaddingMm = 1,
+                        BorderMm = 0.3,
+                    },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["zone"] = "A-01" },
+        };
+
+        var zpl = new ZplEncoder().Encode(document);
+
+        // 边框盒：x=40,y=112,宽 320+16=336,高 64+16=80,线宽 2 点
+        Assert.Contains("^FO40,112^GB336,80,2,B,0^FS", zpl);
+        // 文本：x+padding=48,y+padding=120，^FB 320 点 justify=1
+        Assert.Contains("^FO48,120^A0N,64,64^FB320,1,0,1^FDA-01^FS", zpl);
     }
 
     [Fact]

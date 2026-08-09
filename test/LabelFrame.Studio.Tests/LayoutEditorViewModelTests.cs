@@ -135,6 +135,60 @@ public class LayoutEditorViewModelTests
     }
 
     [Fact]
+    public void RenameField_should_update_element_source_keys()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(CreateTemplate());
+
+        vm.RenameField("locationCode", "code");
+
+        Assert.Equal("zone", vm.Elements[0].SourceKey);
+        Assert.Equal("code", vm.Elements[1].SourceKey);
+    }
+
+    [Fact]
+    public void AddElement_should_place_below_previous()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(CreateTemplate());
+        vm.HeightMm = 120; // 留足空间，避免触发“超界回顶”
+        var last = vm.Elements[^1]; // 条码：Y=26，H=22 → 底部 48
+
+        vm.AddElement(EditorElementType.QrCode);
+
+        var added = vm.Elements[^1];
+        Assert.Equal(last.YMm + last.HeightMm + 3, added.YMm);
+    }
+
+    [Fact]
+    public void Region_and_anchor_should_round_trip_through_build()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(CreateTemplate());
+
+        vm.AddElement(EditorElementType.Region);
+        var region = vm.Elements[^1];
+        region.Id = "top";
+        region.WidthMm = 90;
+        region.HeightMm = 50;
+
+        vm.AddElement(EditorElementType.QrCode);
+        var qr = vm.Elements[^1];
+        qr.RegionId = "top";
+        qr.RegionHAlign = "Center";
+        qr.RegionVAlign = "Center";
+
+        var layout = vm.BuildLayout();
+        var regionElement = Assert.IsType<LabelRegionElement>(layout.Elements.First(e => e is LabelRegionElement));
+        var anchored = Assert.IsType<LabelQrCodeElement>(layout.Elements.First(e => e is LabelQrCodeElement));
+
+        Assert.Equal("top", regionElement.Id);
+        Assert.Equal("top", anchored.RegionId);
+        Assert.Equal(LabelRegionAlign.Center, anchored.RegionHAlign);
+        Assert.Equal(LabelRegionAlign.Center, anchored.RegionVAlign);
+    }
+
+    [Fact]
     public void SaveAsync_without_client_should_throw()
     {
         var vm = new LayoutEditorViewModel();

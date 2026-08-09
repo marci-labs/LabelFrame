@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace LabelFrame.Core.Layout;
 
 /// <summary>
-/// 版式元素 JSON 转换器：按 "type" 判别子类型（text / barcode / qrcode / image / line），
+/// 版式元素 JSON 转换器：按 "type" 判别子类型（text / barcode / qrcode / image / line / region），
 /// 然后委托具体类型的默认反序列化；不依赖 JsonPolymorphic 属性，
 /// 保证在 ASP.NET Core HttpJsonOptions 等环境中稳定反序列化。
 /// </summary>
@@ -32,6 +32,8 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                 ?? throw new JsonException("版式元素 image 解析结果为空。"),
             "line" => JsonSerializer.Deserialize<LabelLineElement>(json, options)
                 ?? throw new JsonException("版式元素 line 解析结果为空。"),
+            "region" => JsonSerializer.Deserialize<LabelRegionElement>(json, options)
+                ?? throw new JsonException("版式元素 region 解析结果为空。"),
             _ => throw new JsonException($"未知版式元素类型：{typeName ?? "(空)"}。"),
         };
     }
@@ -47,11 +49,36 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
             LabelQrCodeElement => "qrcode",
             LabelImageElement => "image",
             LabelLineElement => "line",
+            LabelRegionElement => "region",
             _ => throw new JsonException($"未知版式元素类型：{value.GetType().Name}。"),
         });
 
         writer.WriteNumber("xMm", value.XMm);
         writer.WriteNumber("yMm", value.YMm);
+        if (value.PaddingMm > 0)
+        {
+            writer.WriteNumber("paddingMm", value.PaddingMm);
+        }
+
+        if (value.BorderMm > 0)
+        {
+            writer.WriteNumber("borderMm", value.BorderMm);
+        }
+
+        if (value.RegionId is not null)
+        {
+            writer.WriteString("regionId", value.RegionId);
+        }
+
+        if (value.RegionHAlign is not null)
+        {
+            writer.WriteString("regionHAlign", value.RegionHAlign.Value.ToString());
+        }
+
+        if (value.RegionVAlign is not null)
+        {
+            writer.WriteString("regionVAlign", value.RegionVAlign.Value.ToString());
+        }
 
         switch (value)
         {
@@ -60,6 +87,16 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                 writer.WriteString("fontName", text.FontName);
                 writer.WriteNumber("fontHeightMm", text.FontHeightMm);
                 writer.WriteNumber("fontWidthMm", text.FontWidthMm);
+                if (text.WidthMm > 0)
+                {
+                    writer.WriteNumber("widthMm", text.WidthMm);
+                }
+
+                if (text.TextAlign != LabelTextAlign.Left)
+                {
+                    writer.WriteString("textAlign", text.TextAlign.ToString());
+                }
+
                 break;
             case LabelBarcodeElement barcode:
                 writer.WriteString("sourceKey", barcode.SourceKey);
@@ -79,6 +116,11 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                 writer.WriteNumber("x2Mm", line.X2Mm);
                 writer.WriteNumber("y2Mm", line.Y2Mm);
                 writer.WriteNumber("thicknessMm", line.ThicknessMm);
+                break;
+            case LabelRegionElement region:
+                writer.WriteString("id", region.Id);
+                writer.WriteNumber("widthMm", region.WidthMm);
+                writer.WriteNumber("heightMm", region.HeightMm);
                 break;
         }
 

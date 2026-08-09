@@ -17,4 +17,10 @@ public sealed class LabelTextElement : LabelElement
 
     /// <summary>字宽（毫米），0 表示按比例自动。</summary>
     public double FontWidthMm { get; init; }
+
+    /// <summary>文本块宽度（毫米），0 = 不限制（无块对齐）；用于居中对齐与边框。</summary>
+    public double WidthMm { get; init; }
+
+    /// <summary>文本块内对齐方式（默认左对齐）。</summary>
+    public LabelTextAlign TextAlign { get; init; } = LabelTextAlign.Left;
 }

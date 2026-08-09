@@ -10,6 +10,7 @@ public enum EditorElementType
     QrCode,
     Image,
     Line,
+    Region,
 }
 
 /// <summary>可编辑的版式元素。</summary>
@@ -36,17 +37,21 @@ public sealed class LayoutElementViewModel : ObservableObject
             case EditorElementType.Line:
                 XMm = 5; YMm = 5; X2Mm = 60; Y2Mm = 5; ThicknessMm = 0.5;
                 break;
+            case EditorElementType.Region:
+                XMm = 5; YMm = 5; WidthMm = 60; HeightMm = 30; Id = "region1"; BorderMm = 0.3;
+                break;
         }
     }
 
     public EditorElementType Type { get; }
 
     public string DisplayName => $"{Type}";
-    public string DisplayLabel => $"{Type} ({SourceKey})";
+    public string DisplayLabel => Type == EditorElementType.Region ? $"区域 ({Id})" : $"{Type} ({SourceKey})";
 
     public bool IsText => Type == EditorElementType.Text;
     public bool IsRect => Type is EditorElementType.Barcode or EditorElementType.QrCode or EditorElementType.Image;
     public bool IsLine => Type == EditorElementType.Line;
+    public bool IsRegion => Type == EditorElementType.Region;
 
     private double _xMm;
     public double XMm { get => _xMm; set { if (SetProperty(ref _xMm, value)) OnPropertyChanged(nameof(DisplayLabel)); } }
@@ -81,6 +86,31 @@ public sealed class LayoutElementViewModel : ObservableObject
     private double _fontWidthMm = 5;
     public double FontWidthMm { get => _fontWidthMm; set => SetProperty(ref _fontWidthMm, value); }
 
+    private string _id = string.Empty;
+    public string Id { get => _id; set { if (SetProperty(ref _id, value)) OnPropertyChanged(nameof(DisplayLabel)); } }
+
+    private double _paddingMm;
+    public double PaddingMm { get => _paddingMm; set => SetProperty(ref _paddingMm, value); }
+
+    private double _borderMm;
+    public double BorderMm { get => _borderMm; set => SetProperty(ref _borderMm, value); }
+
+    private string? _regionId;
+    public string? RegionId { get => _regionId; set => SetProperty(ref _regionId, value); }
+
+    private string _regionHAlign = "Center";
+    public string RegionHAlign { get => _regionHAlign; set => SetProperty(ref _regionHAlign, value); }
+
+    private string _regionVAlign = "Center";
+    public string RegionVAlign { get => _regionVAlign; set => SetProperty(ref _regionVAlign, value); }
+
+    private string _textAlign = "Left";
+    public string TextAlign { get => _textAlign; set => SetProperty(ref _textAlign, value); }
+
+    public string[] TextAlignOptions { get; } = Enum.GetNames<LabelTextAlign>();
+
+    public string[] RegionAlignOptions { get; } = Enum.GetNames<LabelRegionAlign>();
+
     /// <summary>转换成 Core 版式元素。</summary>
     public LabelElement ToElement() => Type switch
     {
@@ -90,6 +120,13 @@ public sealed class LayoutElementViewModel : ObservableObject
             FontName = FontName,
             FontHeightMm = FontHeightMm,
             FontWidthMm = FontWidthMm,
+            WidthMm = WidthMm,
+            TextAlign = Enum.Parse<LabelTextAlign>(TextAlign),
+            PaddingMm = PaddingMm,
+            BorderMm = BorderMm,
+            RegionId = RegionId,
+            RegionHAlign = ParseRegionAlign(RegionHAlign),
+            RegionVAlign = ParseRegionAlign(RegionVAlign),
             XMm = XMm,
             YMm = YMm,
         },
@@ -98,6 +135,10 @@ public sealed class LayoutElementViewModel : ObservableObject
             SourceKey = SourceKey,
             HeightMm = HeightMm,
             ModuleWidth = 2,
+            BorderMm = BorderMm,
+            RegionId = RegionId,
+            RegionHAlign = ParseRegionAlign(RegionHAlign),
+            RegionVAlign = ParseRegionAlign(RegionVAlign),
             XMm = XMm,
             YMm = YMm,
         },
@@ -105,6 +146,10 @@ public sealed class LayoutElementViewModel : ObservableObject
         {
             SourceKey = SourceKey,
             SizeMm = Math.Max(WidthMm, HeightMm),
+            BorderMm = BorderMm,
+            RegionId = RegionId,
+            RegionHAlign = ParseRegionAlign(RegionHAlign),
+            RegionVAlign = ParseRegionAlign(RegionVAlign),
             XMm = XMm,
             YMm = YMm,
         },
@@ -113,6 +158,10 @@ public sealed class LayoutElementViewModel : ObservableObject
             SourceKey = SourceKey,
             WidthMm = WidthMm,
             HeightMm = HeightMm,
+            BorderMm = BorderMm,
+            RegionId = RegionId,
+            RegionHAlign = ParseRegionAlign(RegionHAlign),
+            RegionVAlign = ParseRegionAlign(RegionVAlign),
             XMm = XMm,
             YMm = YMm,
         },
@@ -123,6 +172,15 @@ public sealed class LayoutElementViewModel : ObservableObject
             X2Mm = X2Mm,
             Y2Mm = Y2Mm,
             ThicknessMm = ThicknessMm,
+        },
+        EditorElementType.Region => new LabelRegionElement
+        {
+            Id = Id,
+            WidthMm = WidthMm,
+            HeightMm = HeightMm,
+            BorderMm = BorderMm,
+            XMm = XMm,
+            YMm = YMm,
         },
         _ => throw new InvalidOperationException($"未知元素类型：{Type}。"),
     };
@@ -136,6 +194,13 @@ public sealed class LayoutElementViewModel : ObservableObject
             FontName = text.FontName,
             FontHeightMm = text.FontHeightMm,
             FontWidthMm = text.FontWidthMm,
+            WidthMm = text.WidthMm,
+            TextAlign = text.TextAlign.ToString(),
+            PaddingMm = text.PaddingMm,
+            BorderMm = text.BorderMm,
+            RegionId = text.RegionId,
+            RegionHAlign = (text.RegionHAlign ?? LabelRegionAlign.Center).ToString(),
+            RegionVAlign = (text.RegionVAlign ?? LabelRegionAlign.Center).ToString(),
             XMm = text.XMm,
             YMm = text.YMm,
         },
@@ -143,6 +208,10 @@ public sealed class LayoutElementViewModel : ObservableObject
         {
             SourceKey = barcode.SourceKey,
             HeightMm = barcode.HeightMm,
+            BorderMm = barcode.BorderMm,
+            RegionId = barcode.RegionId,
+            RegionHAlign = (barcode.RegionHAlign ?? LabelRegionAlign.Center).ToString(),
+            RegionVAlign = (barcode.RegionVAlign ?? LabelRegionAlign.Center).ToString(),
             XMm = barcode.XMm,
             YMm = barcode.YMm,
         },
@@ -151,6 +220,10 @@ public sealed class LayoutElementViewModel : ObservableObject
             SourceKey = qr.SourceKey,
             WidthMm = qr.SizeMm,
             HeightMm = qr.SizeMm,
+            BorderMm = qr.BorderMm,
+            RegionId = qr.RegionId,
+            RegionHAlign = (qr.RegionHAlign ?? LabelRegionAlign.Center).ToString(),
+            RegionVAlign = (qr.RegionVAlign ?? LabelRegionAlign.Center).ToString(),
             XMm = qr.XMm,
             YMm = qr.YMm,
         },
@@ -159,6 +232,10 @@ public sealed class LayoutElementViewModel : ObservableObject
             SourceKey = image.SourceKey,
             WidthMm = image.WidthMm,
             HeightMm = image.HeightMm,
+            BorderMm = image.BorderMm,
+            RegionId = image.RegionId,
+            RegionHAlign = (image.RegionHAlign ?? LabelRegionAlign.Center).ToString(),
+            RegionVAlign = (image.RegionVAlign ?? LabelRegionAlign.Center).ToString(),
             XMm = image.XMm,
             YMm = image.YMm,
         },
@@ -170,8 +247,20 @@ public sealed class LayoutElementViewModel : ObservableObject
             Y2Mm = line.Y2Mm,
             ThicknessMm = line.ThicknessMm,
         },
+        LabelRegionElement region => new LayoutElementViewModel(EditorElementType.Region)
+        {
+            Id = region.Id,
+            WidthMm = region.WidthMm,
+            HeightMm = region.HeightMm,
+            BorderMm = region.BorderMm,
+            XMm = region.XMm,
+            YMm = region.YMm,
+        },
         _ => throw new InvalidOperationException($"未知元素类型：{element.GetType().Name}。"),
     };
+
+    private static LabelRegionAlign? ParseRegionAlign(string value)
+        => Enum.TryParse<LabelRegionAlign>(value, out var align) ? align : null;
 }
 
 /// <summary>可编辑的契约字段。</summary>
@@ -195,5 +284,5 @@ public sealed class ContractFieldViewModel : ObservableObject
 
     public LabelFrame.Core.Contracts.LabelFieldType Type { get; set; }
 
-    public string[] AvailableTypes { get; } = Enum.GetNames<LabelFrame.Core.Contracts.LabelFieldType>();
+    public Array AvailableTypes { get; } = Enum.GetValues<LabelFrame.Core.Contracts.LabelFieldType>();
 }

@@ -49,35 +49,71 @@ public sealed class LabelPreviewRenderer
         IReadOnlyDictionary<string, byte[]>? templateImages,
         int dpi)
     {
+        var regions = LabelFrame.Core.Layout.LabelLayoutResolver.IndexRegions(document.Layout);
         switch (element)
         {
             case LabelTextElement text:
-                DrawText(graphics, text, document, dpi);
+                DrawText(graphics, text, document, regions, dpi);
                 break;
             case LabelBarcodeElement barcode:
-                DrawBarcode(graphics, barcode, document, dpi);
+                DrawBarcode(graphics, barcode, document, regions, dpi);
                 break;
             case LabelQrCodeElement qrCode:
-                DrawQrCode(graphics, qrCode, document, dpi);
+                DrawQrCode(graphics, qrCode, document, regions, dpi);
                 break;
             case LabelImageElement image:
-                DrawImage(graphics, image, document, templateImages, dpi);
+                DrawImage(graphics, image, document, templateImages, regions, dpi);
                 break;
             case LabelLineElement line:
                 DrawLine(graphics, line, dpi);
                 break;
+            case LabelFrame.Core.Layout.LabelRegionElement region:
+                DrawRegion(graphics, region, dpi);
+                break;
         }
     }
 
-    private static void DrawText(Graphics graphics, LabelTextElement text, LabelDocument document, int dpi)
+    private static void DrawText(
+        Graphics graphics,
+        LabelTextElement text,
+        LabelDocument document,
+        IReadOnlyDictionary<string, LabelFrame.Core.Layout.LabelRegionElement> regions,
+        int dpi)
     {
         var value = document.Data.TryGetValue(text.SourceKey, out var v) ? v : string.Empty;
+        var bounds = LabelFrame.Core.Layout.LabelLayoutResolver.ResolveBounds(text, regions);
+        var x = ToDots(bounds.XMm, dpi);
+        var y = ToDots(bounds.YMm, dpi);
+        var boxWidth = ToDots(bounds.WidthMm, dpi);
         var fontSize = Math.Max(1, ToDots(text.FontHeightMm, dpi));
+        var padding = ToDots(text.PaddingMm, dpi);
         using var font = new Font("Microsoft YaHei", fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
-        graphics.DrawString(value, font, Brushes.Black, ToDots(text.XMm, dpi), ToDots(text.YMm, dpi), StringFormat.GenericTypographic);
+
+        if (text.BorderMm > 0 && boxWidth > 0)
+        {
+            using var borderPen = new Pen(Color.Black, Math.Max(1, ToDots(text.BorderMm, dpi)));
+            graphics.DrawRectangle(borderPen, x, y, boxWidth + 2 * padding, fontSize + 2 * padding);
+        }
+
+        var format = new StringFormat(StringFormat.GenericTypographic);
+        format.Alignment = text.TextAlign switch
+        {
+            LabelFrame.Core.Layout.LabelTextAlign.Center => StringAlignment.Center,
+            LabelFrame.Core.Layout.LabelTextAlign.Right => StringAlignment.Far,
+            _ => StringAlignment.Near,
+        };
+        format.LineAlignment = StringAlignment.Near;
+        var rect = new RectangleF(x + padding, y + padding, Math.Max(1, boxWidth), Math.Max(1, fontSize));
+        graphics.DrawString(value, font, Brushes.Black, rect, format);
+        format.Dispose();
     }
 
-    private static void DrawBarcode(Graphics graphics, LabelBarcodeElement barcode, LabelDocument document, int dpi)
+    private static void DrawBarcode(
+        Graphics graphics,
+        LabelBarcodeElement barcode,
+        LabelDocument document,
+        IReadOnlyDictionary<string, LabelFrame.Core.Layout.LabelRegionElement> regions,
+        int dpi)
     {
         var value = document.Data.TryGetValue(barcode.SourceKey, out var v) ? v : string.Empty;
         if (string.IsNullOrWhiteSpace(value))
@@ -85,8 +121,16 @@ public sealed class LabelPreviewRenderer
             return;
         }
 
-        var height = Math.Max(1, ToDots(barcode.HeightMm, dpi));
-        var width = Math.Max(1, (int)(height * 2.5));
+        var bounds = LabelFrame.Core.Layout.LabelLayoutResolver.ResolveBounds(barcode, regions);
+        var x = ToDots(bounds.XMm, dpi);
+        var y = ToDots(bounds.YMm, dpi);
+        var height = Math.Max(1, ToDots(bounds.HeightMm, dpi));
+        var width = Math.Max(1, ToDots(bounds.WidthMm, dpi));
+        if (barcode.BorderMm > 0)
+        {
+            using var borderPen = new Pen(Color.Black, Math.Max(1, ToDots(barcode.BorderMm, dpi)));
+            graphics.DrawRectangle(borderPen, x, y, width, height);
+        }
         var writer = new BarcodeWriter<ZXing.Rendering.PixelData>
         {
             Format = BarcodeFormat.CODE_128,
@@ -94,10 +138,15 @@ public sealed class LabelPreviewRenderer
             Renderer = new ZXing.Rendering.PixelDataRenderer(),
         };
         using var barcodeBitmap = ToBitmap(writer.Write(value));
-        graphics.DrawImage(barcodeBitmap, ToDots(barcode.XMm, dpi), ToDots(barcode.YMm, dpi));
+        graphics.DrawImage(barcodeBitmap, x, y);
     }
 
-    private static void DrawQrCode(Graphics graphics, LabelQrCodeElement qrCode, LabelDocument document, int dpi)
+    private static void DrawQrCode(
+        Graphics graphics,
+        LabelQrCodeElement qrCode,
+        LabelDocument document,
+        IReadOnlyDictionary<string, LabelFrame.Core.Layout.LabelRegionElement> regions,
+        int dpi)
     {
         var value = document.Data.TryGetValue(qrCode.SourceKey, out var v) ? v : string.Empty;
         if (string.IsNullOrWhiteSpace(value))
@@ -105,7 +154,15 @@ public sealed class LabelPreviewRenderer
             return;
         }
 
-        var size = Math.Max(1, ToDots(qrCode.SizeMm, dpi));
+        var bounds = LabelFrame.Core.Layout.LabelLayoutResolver.ResolveBounds(qrCode, regions);
+        var x = ToDots(bounds.XMm, dpi);
+        var y = ToDots(bounds.YMm, dpi);
+        var size = Math.Max(1, ToDots(bounds.WidthMm, dpi));
+        if (qrCode.BorderMm > 0)
+        {
+            using var borderPen = new Pen(Color.Black, Math.Max(1, ToDots(qrCode.BorderMm, dpi)));
+            graphics.DrawRectangle(borderPen, x, y, size, size);
+        }
         var writer = new BarcodeWriter<ZXing.Rendering.PixelData>
         {
             Format = BarcodeFormat.QR_CODE,
@@ -113,7 +170,7 @@ public sealed class LabelPreviewRenderer
             Renderer = new ZXing.Rendering.PixelDataRenderer(),
         };
         using var qrBitmap = ToBitmap(writer.Write(value));
-        graphics.DrawImage(qrBitmap, ToDots(qrCode.XMm, dpi), ToDots(qrCode.YMm, dpi));
+        graphics.DrawImage(qrBitmap, x, y);
     }
 
     private static void DrawImage(
@@ -121,12 +178,19 @@ public sealed class LabelPreviewRenderer
         LabelImageElement image,
         LabelDocument document,
         IReadOnlyDictionary<string, byte[]>? templateImages,
+        IReadOnlyDictionary<string, LabelFrame.Core.Layout.LabelRegionElement> regions,
         int dpi)
     {
-        var x = ToDots(image.XMm, dpi);
-        var y = ToDots(image.YMm, dpi);
-        var width = Math.Max(1, ToDots(image.WidthMm, dpi));
-        var height = Math.Max(1, ToDots(image.HeightMm, dpi));
+        var bounds = LabelFrame.Core.Layout.LabelLayoutResolver.ResolveBounds(image, regions);
+        var x = ToDots(bounds.XMm, dpi);
+        var y = ToDots(bounds.YMm, dpi);
+        var width = Math.Max(1, ToDots(bounds.WidthMm, dpi));
+        var height = Math.Max(1, ToDots(bounds.HeightMm, dpi));
+        if (image.BorderMm > 0)
+        {
+            using var borderPen = new Pen(Color.Black, Math.Max(1, ToDots(image.BorderMm, dpi)));
+            graphics.DrawRectangle(borderPen, x, y, width, height);
+        }
 
         if (templateImages is not null && templateImages.TryGetValue(image.SourceKey, out var bytes))
         {
@@ -157,6 +221,21 @@ public sealed class LabelPreviewRenderer
         using var pen = new Pen(Color.Gray, 1);
         graphics.DrawRectangle(pen, x, y, width, height);
         graphics.DrawString(image.SourceKey, new Font("Microsoft YaHei", 8), Brushes.Gray, x + 2, y + 2);
+    }
+
+    private static void DrawRegion(Graphics graphics, LabelFrame.Core.Layout.LabelRegionElement region, int dpi)
+    {
+        if (region.BorderMm <= 0)
+        {
+            return;
+        }
+
+        var x = ToDots(region.XMm, dpi);
+        var y = ToDots(region.YMm, dpi);
+        var width = Math.Max(1, ToDots(region.WidthMm, dpi));
+        var height = Math.Max(1, ToDots(region.HeightMm, dpi));
+        using var pen = new Pen(Color.Black, Math.Max(1, ToDots(region.BorderMm, dpi)));
+        graphics.DrawRectangle(pen, x, y, width, height);
     }
 
     private static void DrawLine(Graphics graphics, LabelLineElement line, int dpi)

@@ -17,4 +17,7 @@ public enum LabelElementType
 
     /// <summary>线。</summary>
     Line,
+
+    /// <summary>区域（格子）容器。</summary>
+    Region,
 }

@@ -5,7 +5,7 @@ using LabelFrame.Studio.Services;
 
 namespace LabelFrame.Studio.ViewModels;
 
-/// <summary>版式编辑器视图模型（V2）：元素集合、缩放换算、字段编辑、保存。</summary>
+/// <summary>版式编辑器视图模型（V2/V2B）：元素集合、缩放换算、字段编辑、区域布局、保存。</summary>
 public sealed class LayoutEditorViewModel : ObservableObject
 {
     private readonly StudioClient? _client;
@@ -86,6 +86,13 @@ public sealed class LayoutEditorViewModel : ObservableObject
         set => SetProperty(ref _selectedElement, value);
     }
 
+    private ContractFieldViewModel? _selectedField;
+    public ContractFieldViewModel? SelectedField
+    {
+        get => _selectedField;
+        set => SetProperty(ref _selectedField, value);
+    }
+
     private string _statusText = string.Empty;
     public string StatusText
     {
@@ -94,6 +101,9 @@ public sealed class LayoutEditorViewModel : ObservableObject
     }
 
     public string[] ElementTypes { get; } = Enum.GetNames<EditorElementType>();
+
+    /// <summary>当前区域 Id 列表（属性面板 RegionId 下拉）。</summary>
+    public ObservableCollection<string> RegionIds { get; } = [];
 
     public void LoadFrom(TemplateSaveDto template)
     {
@@ -121,9 +131,11 @@ public sealed class LayoutEditorViewModel : ObservableObject
             Elements.Add(LayoutElementViewModel.From(element));
         }
 
+        RefreshRegionIds();
         SelectedElement = Elements.FirstOrDefault();
     }
 
+    /// <summary>添加元素：默认排在上一个元素下方（上下结构为主）。</summary>
     public void AddElement(EditorElementType type)
     {
         var element = new LayoutElementViewModel(type);
@@ -132,9 +144,40 @@ public sealed class LayoutEditorViewModel : ObservableObject
             element.SourceKey = Fields[0].Key;
         }
 
+        PlaceBelow(element);
+        if (type == EditorElementType.Region)
+        {
+            element.Id = NextRegionId();
+        }
+
         Elements.Add(element);
+        RefreshRegionIds();
         SelectedElement = element;
         StatusText = $"已添加 {type} 元素。";
+    }
+
+    /// <summary>把元素放到上一个元素下方（间距 3mm），超界则回到画布顶部。</summary>
+    private void PlaceBelow(LayoutElementViewModel element)
+    {
+        var last = Elements.LastOrDefault();
+        if (last is null)
+        {
+            return;
+        }
+
+        var lastHeight = last.Type switch
+        {
+            EditorElementType.Text => last.FontHeightMm,
+            EditorElementType.Line => last.Y2Mm - last.YMm,
+            _ => last.HeightMm,
+        };
+        var nextY = last.YMm + lastHeight + 3;
+        if (nextY + element.HeightMm > HeightMm && HeightMm > 0)
+        {
+            nextY = 5;
+        }
+
+        element.YMm = nextY;
     }
 
     public void RemoveElement(LayoutElementViewModel element)
@@ -144,18 +187,39 @@ public sealed class LayoutEditorViewModel : ObservableObject
         {
             SelectedElement = Elements.FirstOrDefault();
         }
+
+        RefreshRegionIds();
     }
 
     public void AddField()
     {
         var index = Fields.Count + 1;
         Fields.Add(new ContractFieldViewModel($"field{index}", $"字段{index}", isRequired: false, LabelFieldType.Text));
-        StatusText = "已添加字段。";
+        StatusText = "已添加字段，可在下方编辑键与显示名。";
     }
 
     public void RemoveField(ContractFieldViewModel field)
     {
         Fields.Remove(field);
+    }
+
+    /// <summary>重命名字段：同步更新引用该字段的元素 SourceKey。</summary>
+    public void RenameField(string oldKey, string newKey)
+    {
+        if (string.IsNullOrWhiteSpace(newKey) || oldKey == newKey)
+        {
+            return;
+        }
+
+        foreach (var element in Elements)
+        {
+            if (element.SourceKey == oldKey)
+            {
+                element.SourceKey = newKey;
+            }
+        }
+
+        StatusText = $"字段 {oldKey} 已重命名为 {newKey}，元素引用已同步。";
     }
 
     /// <summary>按像素位移移动元素（拖拽用）。</summary>
@@ -204,5 +268,25 @@ public sealed class LayoutEditorViewModel : ObservableObject
 
         await _client.SaveTemplateAsync(BuildSaveDto());
         StatusText = $"已保存：{Name} v{Version}";
+    }
+
+    private void RefreshRegionIds()
+    {
+        var ids = Elements.Where(e => e.Type == EditorElementType.Region && !string.IsNullOrWhiteSpace(e.Id))
+            .Select(e => e.Id!)
+            .Distinct()
+            .OrderBy(id => id)
+            .ToList();
+        RegionIds.Clear();
+        foreach (var id in ids)
+        {
+            RegionIds.Add(id);
+        }
+    }
+
+    private static string NextRegionId()
+    {
+        var random = Guid.NewGuid().ToString("N")[..8];
+        return $"region-{random}";
     }
 }

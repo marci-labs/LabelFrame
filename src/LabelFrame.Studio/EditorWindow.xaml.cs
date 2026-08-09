@@ -7,18 +7,20 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using LabelFrame.Core.Layout;
 using LabelFrame.Studio.Services;
 using LabelFrame.Studio.ViewModels;
 
 namespace LabelFrame.Studio;
 
-/// <summary>版式编辑窗口（V2）：画布拖拽 / 属性面板 / 字段编辑 / 保存 / 预览。</summary>
+/// <summary>版式编辑窗口（V2B）：画布拖拽 / 属性面板 / 字段编辑 / 区域布局 / 保存 / 预览。</summary>
 public partial class EditorWindow : Window
 {
     private readonly StudioClient _client;
     private readonly LayoutEditorViewModel _viewModel;
     private LayoutElementViewModel? _dragElement;
     private Point _dragStart;
+    private string? _fieldOldKey;
 
     public EditorWindow(StudioClient client, TemplateSaveDto template)
     {
@@ -52,9 +54,16 @@ public partial class EditorWindow : Window
         var pps = _viewModel.PixelsPerMm;
         var selected = _viewModel.SelectedElement;
 
-        foreach (var element in _viewModel.Elements)
+        // 用解析器统一计算区域锚定后的实际位置（与 ZPL / 预览一致）
+        var layout = _viewModel.BuildLayout();
+        var regions = LabelLayoutResolver.IndexRegions(layout);
+        var elementModels = layout.Elements.ToList();
+
+        for (var i = 0; i < _viewModel.Elements.Count; i++)
         {
-            var ui = CreateElementUi(element, pps, ReferenceEquals(element, selected));
+            var element = _viewModel.Elements[i];
+            var bounds = LabelLayoutResolver.ResolveBounds(elementModels[i], regions);
+            var ui = CreateElementUi(element, bounds, pps, ReferenceEquals(element, selected));
             if (ui is null)
             {
                 continue;
@@ -65,9 +74,15 @@ public partial class EditorWindow : Window
         }
     }
 
-    private static FrameworkElement? CreateElementUi(LayoutElementViewModel element, double pps, bool isSelected)
+    private static FrameworkElement? CreateElementUi(
+        LayoutElementViewModel element,
+        ElementBounds bounds,
+        double pps,
+        bool isSelected)
     {
         var highlight = isSelected ? Brushes.DodgerBlue : Brushes.Silver;
+        var x = bounds.XMm * pps;
+        var y = bounds.YMm * pps;
 
         switch (element.Type)
         {
@@ -84,8 +99,33 @@ public partial class EditorWindow : Window
                     MinHeight = 16,
                     VerticalAlignment = VerticalAlignment.Top,
                 };
-                Canvas.SetLeft(text, element.XMm * pps);
-                Canvas.SetTop(text, element.YMm * pps);
+                Canvas.SetLeft(text, x);
+                Canvas.SetTop(text, y);
+
+                if (bounds.WidthMm > 0)
+                {
+                    // 块宽：画边框 + 内部对齐
+                    var box = new Border
+                    {
+                        Width = Math.Max(1, bounds.WidthMm * pps),
+                        Height = Math.Max(1, bounds.HeightMm * pps),
+                        BorderBrush = element.BorderMm > 0 ? Brushes.Black : highlight,
+                        BorderThickness = new Thickness(Math.Max(1, element.BorderMm * pps)),
+                        Background = Brushes.Transparent,
+                        Padding = new Thickness(element.PaddingMm * pps),
+                    };
+                    text.HorizontalAlignment = element.TextAlign switch
+                    {
+                        "Center" => HorizontalAlignment.Center,
+                        "Right" => HorizontalAlignment.Right,
+                        _ => HorizontalAlignment.Left,
+                    };
+                    box.Child = text;
+                    Canvas.SetLeft(box, x);
+                    Canvas.SetTop(box, y);
+                    return box;
+                }
+
                 if (isSelected)
                 {
                     text.Foreground = Brushes.DodgerBlue;
@@ -95,39 +135,23 @@ public partial class EditorWindow : Window
                 return text;
             }
             case EditorElementType.Barcode:
-            {
-                var width = Math.Max(60, element.HeightMm * 2.5 * pps);
-                var height = Math.Max(20, element.HeightMm * pps);
-                var box = new Border
-                {
-                    Width = width,
-                    Height = height,
-                    BorderBrush = highlight,
-                    BorderThickness = new Thickness(isSelected ? 2 : 1),
-                    Background = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)),
-                    Child = new TextBlock
-                    {
-                        Text = $"条码: {element.SourceKey}",
-                        VerticalAlignment = VerticalAlignment.Center,
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                    },
-                };
-                Canvas.SetLeft(box, element.XMm * pps);
-                Canvas.SetTop(box, element.YMm * pps);
-                return box;
-            }
             case EditorElementType.QrCode:
             case EditorElementType.Image:
             {
-                var width = Math.Max(20, element.WidthMm * pps);
-                var height = Math.Max(20, element.HeightMm * pps);
-                var label = element.Type == EditorElementType.QrCode ? "二维码" : "图片";
+                var width = Math.Max(20, bounds.WidthMm * pps);
+                var height = Math.Max(20, bounds.HeightMm * pps);
+                var label = element.Type switch
+                {
+                    EditorElementType.Barcode => "条码",
+                    EditorElementType.QrCode => "二维码",
+                    _ => "图片",
+                };
                 var box = new Border
                 {
                     Width = width,
                     Height = height,
-                    BorderBrush = highlight,
-                    BorderThickness = new Thickness(isSelected ? 2 : 1),
+                    BorderBrush = element.BorderMm > 0 ? Brushes.Black : highlight,
+                    BorderThickness = new Thickness(Math.Max(1, element.BorderMm * pps)),
                     Background = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)),
                     Child = new TextBlock
                     {
@@ -137,8 +161,8 @@ public partial class EditorWindow : Window
                         TextWrapping = TextWrapping.Wrap,
                     },
                 };
-                Canvas.SetLeft(box, element.XMm * pps);
-                Canvas.SetTop(box, element.YMm * pps);
+                Canvas.SetLeft(box, x);
+                Canvas.SetTop(box, y);
                 return box;
             }
             case EditorElementType.Line:
@@ -155,6 +179,21 @@ public partial class EditorWindow : Window
                 Canvas.SetLeft(line, element.XMm * pps);
                 Canvas.SetTop(line, element.YMm * pps);
                 return line;
+            }
+            case EditorElementType.Region:
+            {
+                var rect = new Rectangle
+                {
+                    Width = Math.Max(20, bounds.WidthMm * pps),
+                    Height = Math.Max(20, bounds.HeightMm * pps),
+                    Stroke = element.BorderMm > 0 ? Brushes.Black : Brushes.Gray,
+                    StrokeThickness = Math.Max(1, element.BorderMm * pps),
+                    StrokeDashArray = new DoubleCollection { 4, 2 },
+                    Fill = new SolidColorBrush(Color.FromArgb(0x18, 0x00, 0x80, 0xFF)),
+                };
+                Canvas.SetLeft(rect, x);
+                Canvas.SetTop(rect, y);
+                return rect;
             }
             default:
                 return null;
@@ -260,6 +299,9 @@ public partial class EditorWindow : Window
         }
     }
 
+    private void AddRegion_Click(object sender, RoutedEventArgs e)
+        => _viewModel.AddElement(EditorElementType.Region);
+
     private void RemoveElement_Click(object sender, RoutedEventArgs e)
     {
         if (_viewModel.SelectedElement is { } element)
@@ -276,6 +318,18 @@ public partial class EditorWindow : Window
         if (FieldList.SelectedItem is ContractFieldViewModel field)
         {
             _viewModel.RemoveField(field);
+        }
+    }
+
+    private void FieldList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        => _fieldOldKey = (FieldList.SelectedItem as ContractFieldViewModel)?.Key;
+
+    private void FieldKey_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (FieldList.SelectedItem is ContractFieldViewModel field && _fieldOldKey is not null)
+        {
+            _viewModel.RenameField(_fieldOldKey, field.Key);
+            _fieldOldKey = field.Key;
         }
     }
 }
