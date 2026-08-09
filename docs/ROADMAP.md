@@ -12,7 +12,7 @@
 | 2 | WinHost 打印闭环 | ✅ 已完成（真实设备验收待执行） |
 | 3 | Server 路由 | ✅ 已完成（真实设备验收待执行） |
 | 4 | 模板管理 + 预览 | ✅ 已完成（真实设备抽查待执行） |
-| 5 | PDA 宿主 | ⛔ 受阻（环境缺 Android workload） |
+| 5 | PDA 宿主 | ✅ 已完成（真机验收待执行） |
 | 6 | P1 收尾 | ✅ 已完成（蓝牙 / Android 项随迭代 5 受阻） |
 | 检查点 | 试点验收（成功衡量） | 待定 |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计） | 待定 |
@@ -150,7 +150,7 @@
 
 ---
 
-## 迭代 5：PDA 宿主（受阻：环境缺 Android workload）
+## 迭代 5：PDA 宿主（已完成，真机验收待执行）
 
 **目标**：Android / PDA 上跑通「网页 → Server → PDA 宿主 → IP 打印机」与本地直连。
 
@@ -163,10 +163,14 @@
 **不在范围**：蓝牙（迭代 6）。
 
 **验收**：
-- PDA 网页 → Server → PDA 宿主 → IP 打印机打出物料码（待实施）。
-- 开机自启、前台服务常驻；失败回执明确（待实施）。
+- PDA 网页 → Server → PDA 宿主 → IP 打印机打出物料码（真机验收待执行）。
+- 开机自启、前台服务常驻；失败回执明确（真机验收待执行）。
 
-**环境说明**（2026-08-09）：当前开发环境未安装 .NET Android workload（`dotnet workload list` 为空），无法编译 / 验证 Android 项目；架构设计已记入 DESIGN（本地 HTTP / JS 桥、TCP9100、注册轮询复用、蓝牙迭代 6）。安装 workload 后继续。
+**完成记录**（2026-08-09）：
+- 用户更新 Visual Studio 后已安装 .NET Android workload（android 36.1.43），并补齐 JDK 17（Microsoft OpenJDK）与 Android SDK（platforms;android-36、build-tools 36.0.0）。
+- `LabelFrame.AndroidHost`（net10.0-android）：前台服务（ForegroundService.TypeDataSync）+ 开机广播（BOOT_COMPLETED / MY_PACKAGE_REPLACED）、本地 HTTP（127.0.0.1:53970，TcpListener 极简实现）、IP 9100 传输（复用 Core）、Server 注册 / 轮询领取 / 回报（ServerPoller）、Android.Graphics 中文栅格化（^GF）、SQLite 作业队列（lib.e_sqlite3.android）。
+- `dotnet build` 编译打包成功（com.labelframe.androidhost-Signed.apk，约 11MB）；`scripts/build-androidhost.ps1` 一键构建。
+- 真机验收（PDA 网页 → Server → 宿主 → IP 打印机、开机自启、厂商 ROM 保活）待执行。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 5（PDA 宿主）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 5 小节），对照上一迭代成果，严格按范围执行；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。

@@ -1,4 +1,4 @@
-# LabelFrame WinHost 快速演示（迭代 2）
+﻿# LabelFrame WinHost 快速演示（迭代 2）
 # 用法： powershell -ExecutionPolicy Bypass -File .\scripts\demo-winhost.ps1
 # 说明：以日志传输（模拟打印机）启动 WinHost，提交一个含中文的库位码作业，
 #       打印完成后展示生成的 ZPL，并给出接真实打印机的方法。

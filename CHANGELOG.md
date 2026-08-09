@@ -35,9 +35,11 @@
 - `LabelFrame.WinHost`：模板 API（保存 / 列表 / 详情 / 删除 / 导出 / 导入 / 预览）；预览 PNG（GDI 文本与线 + ZXing 条码 / 二维码 + 图片渲染）；ZXing.Net 0.16.11。
 - 测试 79 个全绿；冒烟验证：保存 → 预览 PNG → 导出 zip。
 
-## 迭代 5（PDA 宿主）— 受阻
+## 迭代 5（PDA 宿主）— 2026-08-09
 
-- 环境未安装 .NET Android workload，无法编译 / 验证 AndroidHost；架构设计已记入 DESIGN，待安装后继续。
+- `LabelFrame.AndroidHost`（net10.0-android）：前台服务 + 开机自启广播、本地 HTTP（127.0.0.1:53970）、IP 9100 传输、Server 注册 / 轮询 / 回报、Android.Graphics 中文栅格化（^GF）、SQLite 作业队列。
+- 编译打包成功（Signed APK 约 11MB）；`scripts/build-androidhost.ps1` 一键构建。
+- 真机验收（PDA 网页 → Server → 宿主 → IP 打印机、开机自启）待执行；蓝牙在迭代 6。
 
 ## 迭代 6（P1 收尾）— 2026-08-09
 
