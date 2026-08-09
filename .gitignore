@@ -14,3 +14,9 @@ Desktop.ini
 ## Build artifacts
 artifacts/
 packaging/files.wxs
+
+## WiX local extension cache
+.wix/
+
+## Visual Studio launch profiles
+**/Properties/launchSettings.json

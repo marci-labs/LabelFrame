@@ -157,3 +157,4 @@
 - 新增脚本：generate-icon / create-signing-cert（openssl 自签名 + .NET 重封装）/ cleanup-residue（管理员清理历史残留）。
 - 发布改 framework-dependent：MSI 56.5MB → 9.7MB（目标机需 .NET 10 Desktop Runtime）；系统托盘改原生 P/Invoke 实现（无 WinForms 依赖）。
 - 安装结构修复：web/dist 与 assets 子目录正确（解决白屏 / JS 404）；安装目录 Program Files\LabelFrame。
+- MSI 增加 .NET Desktop Runtime（x64）检测（RegistrySearch + LaunchCondition）：缺失时安装向导弹窗提示并给出官方下载链接；不自动安装（2026-08-10 用户确认放弃 Burn 自动引导方案）。

@@ -6,6 +6,15 @@
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
+    <!-- 检测 .NET Desktop Runtime：缺失时提示引导下载 -->
+    <Property Id="DOTNET10_PRESENT" Secure="yes">
+      <RegistrySearch Id="DotNet10Search" Root="HKLM"
+                      Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
+                      Type="raw" />
+    </Property>
+    <Launch Condition="DOTNET10_PRESENT"
+      Message="本机未检测到 .NET Desktop Runtime，请先安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
+
     <!-- 安装目录：Program Files\LabelFrame（64 位） -->
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="LabelFrame" />
