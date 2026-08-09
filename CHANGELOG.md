@@ -158,3 +158,4 @@
 - 发布改 framework-dependent：MSI 56.5MB → 9.7MB（目标机需 .NET 10 Desktop Runtime）；系统托盘改原生 P/Invoke 实现（无 WinForms 依赖）。
 - 安装结构修复：web/dist 与 assets 子目录正确（解决白屏 / JS 404）；安装目录 Program Files\LabelFrame。
 - MSI 增加 .NET Desktop Runtime（x64）检测：缺失时全 UI 安装显示带可点击官方下载链接的对话框（MSI Hyperlink 控件，点击直达下载页）；静默 / 基础 UI 由 LaunchCondition 拦截并提示链接；不自动安装（2026-08-10 用户确认放弃 Burn 自动引导方案）。
+- 修复运行时误报缺失（2026-08-10）：检测从注册表搜索改为 WiX NetFx 扩展 DotNetCompatibilityCheck（内置官方 NetCoreCheck 自检，检查 x64 Microsoft.WindowsDesktop.App >= 10.0.0、RollForward=latestMajor）。原注册表搜索读 sharedfx 键默认值，而运行时版本号是命名值，且 32 位 MSI 读 32 位视图，导致已装 Desktop Runtime 仍提示未安装；现改为实时自检，装完运行时**无需重启**即可识别。

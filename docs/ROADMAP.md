@@ -459,6 +459,7 @@
 - 产物 `artifacts\LabelFrame-0.11.0.msi`（约 9.7MB，framework-dependent）；MSI 数据库只读验证 443 文件 + 快捷方式正确；发布版 exe 冒烟通过（healthz / 静态页 / 优雅关闭 / 日志文件）。
 - 已知：本沙箱 Windows Installer 服务受限无法执行实际安装，真机安装验收待执行。
 - MSI 增加 .NET Desktop Runtime（x64）检测：缺失时全 UI 安装显示带可点击官方下载链接的对话框（MSI Hyperlink 控件）；静默 / 基础 UI 由 LaunchCondition 拦截；不自动安装（2026-08-10 用户确认放弃 Burn 自动引导方案）。
+- 修复运行时误报缺失（2026-08-10）：改用 WiX NetFx 扩展 DotNetCompatibilityCheck（官方 NetCoreCheck 自检，x64 Desktop >= 10.0.0、latestMajor），替换失效的注册表搜索（版本号为命名值 + 32 位视图导致已装仍误报）；装完运行时无需重启。产物已重建：rtifacts\LabelFrame-0.11.0.msi（约 10.3MB）。
 
 ---
 

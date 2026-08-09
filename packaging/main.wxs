@@ -1,18 +1,21 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
   <Package Name="LabelFrame" Manufacturer="LabelFrame" Version="0.11.0"
            UpgradeCode="8B1E4F2A-6C3D-4E5F-9A0B-1C2D3E4F5A6B">
     <SummaryInformation Description="LabelFrame 单机标签设计与打印工具" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <!-- 检测 .NET Desktop Runtime：缺失时弹窗提示（全 UI 显示带超链接的对话框；静默 / 基础 UI 由 LaunchCondition 拦截） -->
-    <Property Id="DOTNET10_PRESENT" Secure="yes">
-      <RegistrySearch Id="DotNet10Search" Root="HKLM"
-                      Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
-                      Type="raw" />
-    </Property>
-    <Launch Condition="DOTNET10_PRESENT OR UILevel = 5 OR REMOVE"
+    <!-- 检测 .NET Desktop Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
+    <!-- 之前的注册表搜索读不到运行时，因为版本号是命名值而非默认值，这里不再依赖注册表结构 -->
+    <netfx:DotNetCompatibilityCheck Id="DotNet10RuntimeCheck"
+                                    Property="DOTNET10_PRESENT"
+                                    Platform="x64"
+                                    RuntimeType="desktop"
+                                    Version="10.0.0"
+                                    RollForward="latestMajor" />
+    <Launch Condition="DOTNET10_PRESENT = &quot;0&quot; OR UILevel = 5 OR REMOVE"
       Message="本机未检测到 .NET Desktop Runtime，请先安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
 
     <!-- 运行时缺失对话框：可点击官方下载链接（MSI Hyperlink 控件） -->
@@ -33,7 +36,7 @@
     </UI>
     <InstallUISequence>
       <Show Dialog="RuntimeMissingDlg" Sequence="1250"
-            Condition="NOT DOTNET10_PRESENT AND NOT REMOVE" />
+            Condition="NOT DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
     </InstallUISequence>
 
     <!-- 安装目录：Program Files\LabelFrame（64 位） -->
