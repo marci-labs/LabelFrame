@@ -124,7 +124,8 @@ function toggleDpiPreview() {
     const dpi = parseInt($('dpiSelect').value, 10);
     const dotsPerMm = Math.round(dpi / 25.4);
     $('previewDpiBtn').textContent = '退出预览';
-    status('打印预览：' + dpi + ' dpi（1mm ≈ ' + dotsPerMm + ' 点，真实打印比例）；可中键平移 / Ctrl+滚轮缩放。');
+    selected = [];
+    status('打印预览：' + dpi + ' dpi（1mm ≈ ' + dotsPerMm + ' 点）；网格 / 标尺已隐藏，画布已锁定；可中键平移 / Ctrl+滚轮缩放。');
   }
   applyView();
   render();
@@ -159,23 +160,28 @@ function render() {
   layer.destroyChildren();
   tr = createTransformer();
   layer.add(tr);
-  drawGrid();
-  // 标签内容区边界（比网格深一些，提示真实纸张范围）
-  layer.add(new Konva.Rect({
-    x: contentOX(), y: contentOY(),
-    width: paperW * PX, height: paperH * PX,
-    stroke: '#b0b8c4', strokeWidth: 1, dash: [8, 4], listening: false, strokeScaleEnabled: false,
-  }));
+  const editable = viewMode !== 'preview';
+  if (editable) {
+    drawGrid();
+    // 标签内容区边界（比网格深一些，提示真实纸张范围）
+    layer.add(new Konva.Rect({
+      x: contentOX(), y: contentOY(),
+      width: paperW * PX, height: paperH * PX,
+      stroke: '#b0b8c4', strokeWidth: 1, dash: [8, 4], listening: false, strokeScaleEnabled: false,
+    }));
+  }
   elements.forEach((e) => {
-    const g = nodeFor(e);
+    const g = nodeFor(e, editable);
     if (g) layer.add(g);
   });
   const selNodes = selected.map((id) => layer.findOne('#' + id)).filter(Boolean);
-  tr.nodes(selNodes);
-  drawRulersKonva();
+  tr.nodes(editable ? selNodes : []);
+  if (editable) drawRulersKonva();
   layer.draw();
-  refreshFields();
-  renderLayerList();
+  if (editable) {
+    refreshFields();
+    renderLayerList();
+  }
   $('paperInfo').textContent = '纸张 ' + paperW + ' x ' + paperH + ' mm（四周留白 ' + PAD_MM + ' mm）';
 }
 
@@ -353,11 +359,11 @@ function makeQrCanvas(e, wPx, hPx) {
 }
 
 // ---------- 元素节点（Group：边框 + 内容；坐标 = padding 偏移 + 内容坐标） ----------
-function nodeFor(e) {
+function nodeFor(e, editable) {
   const x = contentOX() + pxv(e.x);
   const y = contentOY() + pxv(e.y);
   const w = Math.max(2, pxv(e.w)), h = Math.max(2, pxv(e.h));
-  const g = new Konva.Group({ id: e.id, name: 'element', x, y, draggable: true });
+  const g = new Konva.Group({ id: e.id, name: 'element', x, y, draggable: editable });
   const borderW = Math.max(1, pxv(e.border || 0));
 
   switch (e.type) {
@@ -412,7 +418,7 @@ function nodeFor(e) {
     case 'Line': {
       const line = new Konva.Line({ x, y, points: [0, 0, pxv(e.w), pxv(e.h)], stroke: '#000', strokeWidth: Math.max(1, pxv(e.thickness || 0.5)), strokeScaleEnabled: false });
       line.id(e.id); line.name('element');
-      line.draggable(true);
+      line.draggable(editable);
       return line;
     }
     case 'Rect': {
@@ -481,6 +487,7 @@ function viewToContentMm(viewX, viewY) {
 
 // ---------- 画布交互 ----------
 stage.on('click', (ev) => {
+  if (viewMode === 'preview') return; // 预览锁定：不可选中 / 放置
   const el = elementFromTarget(ev.target);
   if (!el) {
     if (pendingType) {
@@ -750,6 +757,7 @@ function pasteClipboard() {
 
 // 键盘：Ctrl+C/V 复制粘贴、Delete 删除
 document.addEventListener('keydown', (ev) => {
+  if (viewMode === 'preview') return; // 预览锁定：复制 / 粘贴 / 撤销 / 删除均不可用
   const tag = ev.target && ev.target.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
   const ctrl = ev.ctrlKey || ev.metaKey;
@@ -801,6 +809,7 @@ document.addEventListener('keydown', (ev) => {
 document.querySelectorAll('.palette button').forEach((btn) => {
   btn.draggable = true;
   btn.addEventListener('click', () => {
+    if (viewMode === 'preview') { status('预览中，请先退出预览再编辑。'); return; }
     pendingType = btn.dataset.type;
     status('点击画布放置「' + btn.textContent + '」，或直接拖到画布。');
   });
@@ -813,7 +822,7 @@ $('stageBox').addEventListener('dragover', (ev) => { ev.preventDefault(); ev.dat
 $('stageBox').addEventListener('drop', (ev) => {
   ev.preventDefault();
   const type = ev.dataTransfer.getData('text/plain');
-  if (!type) return;
+  if (!type || viewMode === 'preview') return; // 预览锁定：禁止拖入
   const stageRect = $('stage').getBoundingClientRect();
   const pos = viewToContentMm(ev.clientX - stageRect.left, ev.clientY - stageRect.top);
   addElementAt(type, pos.x, pos.y);
@@ -864,6 +873,10 @@ function alignSelected(align) {
 function renderLayerList() {
   const ul = $('layerList');
   if (!ul) return;
+  if (viewMode === 'preview') {
+    ul.innerHTML = '<li style="color:#999;padding:2px 4px">预览中（退出后可编辑）</li>';
+    return;
+  }
   ul.innerHTML = '';
   elements.forEach((e, i) => {
     const li = document.createElement('li');
@@ -888,6 +901,7 @@ function renderLayerList() {
 
 // 图层层级调整（elements 顺序即渲染层级，后画的在上层）
 function moveLayer(delta) {
+  if (viewMode === 'preview') { status('预览中，请先退出预览。'); return; }
   if (selected.length !== 1) { status('请先单选一个元素再调整层级。'); return; }
   const idx = elements.findIndex((e) => e.id === selected[0]);
   const ni = idx + delta;
@@ -899,6 +913,7 @@ function moveLayer(delta) {
   renderLayerList();
 }
 function layerToTop() {
+  if (viewMode === 'preview') { status('预览中，请先退出预览。'); return; }
   if (selected.length !== 1) { status('请先单选一个元素再调整层级。'); return; }
   const e = elements.find((x) => x.id === selected[0]);
   if (!e) return;
@@ -908,6 +923,7 @@ function layerToTop() {
   renderLayerList();
 }
 function layerToBottom() {
+  if (viewMode === 'preview') { status('预览中，请先退出预览。'); return; }
   if (selected.length !== 1) { status('请先单选一个元素再调整层级。'); return; }
   const e = elements.find((x) => x.id === selected[0]);
   if (!e) return;
@@ -941,6 +957,10 @@ function refreshFields() {
 // ---------- 属性面板 ----------
 function renderProps() {
   const box = $('props');
+  if (viewMode === 'preview') {
+    box.innerHTML = '<div id="emptyProps">预览中：画布已锁定（隐藏网格 / 标尺 / 参考线），退出预览后可编辑。</div>';
+    return;
+  }
   if (!selected.length) {
     box.innerHTML = '<div id="emptyProps">在画布上选中元素后显示属性。</div>';
     return;
