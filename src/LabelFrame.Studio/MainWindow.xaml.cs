@@ -6,7 +6,7 @@ using LabelFrame.Studio.ViewModels;
 
 namespace LabelFrame.Studio;
 
-/// <summary>主窗口。</summary>
+/// <summary>主窗口：作业工作台（模板列表 / 预览 / 数据表单 / 打印 / 状态日志）。</summary>
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel = new();
@@ -15,7 +15,6 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel;
-        _viewModel.WinHostExe = string.Empty;
     }
 
     private async void Connect_Click(object sender, RoutedEventArgs e)
@@ -26,14 +25,13 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            _viewModel.Log($"连接失败：{ex.Message}");
             MessageBox.Show(this, ex.Message, "连接失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
     private void Disconnect_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.Disconnect();
-    }
+        => _viewModel.Disconnect();
 
     private void StartWinHost_Click(object sender, RoutedEventArgs e)
     {
@@ -48,9 +46,7 @@ public partial class MainWindow : Window
     }
 
     private void StopWinHost_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.StopWinHost();
-    }
+        => _viewModel.StopWinHost();
 
     private async void Refresh_Click(object sender, RoutedEventArgs e)
     {
@@ -78,7 +74,8 @@ public partial class MainWindow : Window
 
         try
         {
-            await _viewModel.ImportAsync(dialog.FileName);
+            var name = await _viewModel.ImportTemplateAsync(dialog.FileName);
+            _viewModel.Log($"已导入模板包：{name}");
         }
         catch (Exception ex)
         {
@@ -109,6 +106,7 @@ public partial class MainWindow : Window
         {
             var bytes = await _viewModel.ExportAsync(_viewModel.SelectedTemplate.Name);
             await System.IO.File.WriteAllBytesAsync(dialog.FileName, bytes);
+            _viewModel.Log($"已导出模板包：{dialog.FileName}");
             MessageBox.Show(this, "导出成功。", "导出", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
@@ -139,6 +137,7 @@ public partial class MainWindow : Window
         try
         {
             await _viewModel.DeleteAsync(_viewModel.SelectedTemplate.Name);
+            _viewModel.Log($"已删除模板：{_viewModel.SelectedTemplate.Name}");
         }
         catch (Exception ex)
         {
@@ -146,89 +145,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private void NewTemplate_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.Client is null)
-        {
-            MessageBox.Show(this, "请先连接 WinHost。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        var dialog = new NewTemplateWindow { Owner = this };
-        if (dialog.ShowDialog() != true)
-        {
-            return;
-        }
-
-        var dto = new TemplateSaveDto(
-            dialog.TemplateName,
-            dialog.Group,
-            new LabelContract
-            {
-                Name = dialog.TemplateName,
-                Version = "1.0",
-                Fields = [],
-            },
-            new LabelLayout
-            {
-                Name = $"{dialog.TemplateName}-layout",
-                ContractName = dialog.TemplateName,
-                ContractVersion = "1.0",
-                WidthMm = dialog.WidthMm,
-                HeightMm = dialog.HeightMm,
-                Elements = [],
-            });
-
-        try
-        {
-            var editor = new EditorWindow(_viewModel.Client, dto) { Owner = this };
-            editor.ShowDialog();
-            _ = _viewModel.RefreshTemplatesAsync();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, ex.Message, "打开编辑器失败", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
-
-    private async void Edit_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.SelectedTemplate is null)
-        {
-            MessageBox.Show(this, "请先选择模板。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        try
-        {
-            var detail = await _viewModel.GetTemplateAsync(_viewModel.SelectedTemplate.Name);
-            if (detail?.Contract is null || detail.Layout is null)
-            {
-                MessageBox.Show(this, "模板详情读取失败。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var editor = new EditorWindow(_viewModel.Client!, detail) { Owner = this };
-            editor.ShowDialog();
-            await _viewModel.RefreshTemplatesAsync();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, ex.Message, "打开编辑器失败", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
-
-    private async void Preview_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            await _viewModel.PreviewAsync();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, ex.Message, "预览失败", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
+    private void Preview_Click(object sender, RoutedEventArgs e)
+        => _viewModel.PreviewAsync();
 
     private async void PrintTest_Click(object sender, RoutedEventArgs e)
     {
@@ -238,6 +156,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            _viewModel.Log($"打印失败：{ex.Message}");
             MessageBox.Show(this, ex.Message, "打印测试失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -247,10 +166,102 @@ public partial class MainWindow : Window
         try
         {
             await _viewModel.RefreshStatusAsync();
+            _viewModel.Log(_viewModel.TransportText ?? "打印机状态未知。");
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "状态查询失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void PrinterTest_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var result = await _viewModel.Client!.TestPrinterAsync();
+            _viewModel.Log($"打印机测试页已发送（{result.Bytes} 字节）。");
+        }
+        catch (Exception ex)
+        {
+            _viewModel.Log($"测试页发送失败：{ex.Message}");
+            MessageBox.Show(this, ex.Message, "测试页失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void ImportData_Click(object sender, RoutedEventArgs e)
+    {
+        MessageBox.Show(this, "Excel 数据导入将在后续迭代提供（迭代 9）。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void Exit_Click(object sender, RoutedEventArgs e)
+        => Close();
+
+    private void TemplateList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        => Edit_Click(sender, new RoutedEventArgs());
+
+    private void NewTemplate_Click(object sender, RoutedEventArgs e)
+        => OpenDesigner(newMode: true);
+
+    private void Edit_Click(object sender, RoutedEventArgs e)
+        => OpenDesigner(newMode: false);
+
+    private async void OpenDesigner(bool newMode)
+    {
+        if (_viewModel.Client is null)
+        {
+            MessageBox.Show(this, "请先连接 WinHost。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        TemplateSaveDto? template = null;
+        if (newMode)
+        {
+            var dialog = new NewTemplateWindow { Owner = this };
+            if (dialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            template = new TemplateSaveDto(
+                dialog.TemplateName,
+                dialog.Group,
+                new LabelContract { Name = dialog.TemplateName, Version = "1.0", Fields = [] },
+                new LabelLayout
+                {
+                    Name = $"{dialog.TemplateName}-layout",
+                    ContractName = dialog.TemplateName,
+                    ContractVersion = "1.0",
+                    WidthMm = dialog.WidthMm,
+                    HeightMm = dialog.HeightMm,
+                    Elements = [],
+                });
+        }
+        else
+        {
+            if (_viewModel.SelectedTemplate is null)
+            {
+                MessageBox.Show(this, "请先选择模板。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            template = await _viewModel.GetTemplateAsync(_viewModel.SelectedTemplate.Name);
+            if (template?.Contract is null || template.Layout is null)
+            {
+                MessageBox.Show(this, "模板详情读取失败。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+        }
+
+        try
+        {
+            var designer = new DesignerWindow(_viewModel.Client, template) { Owner = this };
+            designer.ShowDialog();
+            await _viewModel.RefreshTemplatesAsync();
+            _viewModel.PreviewAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "打开设计器失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }

@@ -7,7 +7,7 @@ using LabelFrame.Core.Layout;
 using ZXing;
 using ZXing.Common;
 
-namespace LabelFrame.WinHost.Rendering;
+namespace LabelFrame.Rendering;
 
 /// <summary>
 /// 设计期预览渲染：LabelDocument → PNG（PC）。
@@ -80,7 +80,7 @@ public sealed class LabelPreviewRenderer
         IReadOnlyDictionary<string, LabelFrame.Core.Layout.LabelRegionElement> regions,
         int dpi)
     {
-        var value = document.Data.TryGetValue(text.SourceKey, out var v) ? v : string.Empty;
+        LabelElementContent.TryGet(text, document.Data, out var value);
         var bounds = LabelFrame.Core.Layout.LabelLayoutResolver.ResolveBounds(text, regions);
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
@@ -115,7 +115,7 @@ public sealed class LabelPreviewRenderer
         IReadOnlyDictionary<string, LabelFrame.Core.Layout.LabelRegionElement> regions,
         int dpi)
     {
-        var value = document.Data.TryGetValue(barcode.SourceKey, out var v) ? v : string.Empty;
+        LabelElementContent.TryGet(barcode, document.Data, out var value);
         if (string.IsNullOrWhiteSpace(value))
         {
             return;
@@ -148,7 +148,7 @@ public sealed class LabelPreviewRenderer
         IReadOnlyDictionary<string, LabelFrame.Core.Layout.LabelRegionElement> regions,
         int dpi)
     {
-        var value = document.Data.TryGetValue(qrCode.SourceKey, out var v) ? v : string.Empty;
+        LabelElementContent.TryGet(qrCode, document.Data, out var value);
         if (string.IsNullOrWhiteSpace(value))
         {
             return;

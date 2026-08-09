@@ -189,6 +189,58 @@ public class LayoutEditorViewModelTests
     }
 
     [Fact]
+    public void Literal_content_mode_should_build_fixed_value_element()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(CreateTemplate());
+        vm.AddElement(EditorElementType.Text);
+        var element = vm.Elements[^1];
+        element.ContentMode = "固定值";
+        element.Literal = "库位标签";
+
+        var layout = vm.BuildLayout();
+        var text = Assert.IsType<LabelTextElement>(layout.Elements.Last());
+
+        Assert.Equal("库位标签", text.Literal);
+        Assert.Equal(string.Empty, text.SourceKey);
+    }
+
+    [Fact]
+    public void Field_content_mode_should_keep_source_key()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(CreateTemplate());
+        vm.AddElement(EditorElementType.Barcode);
+
+        var layout = vm.BuildLayout();
+        var barcode = Assert.IsType<LabelBarcodeElement>(layout.Elements.Last());
+
+        Assert.Null(barcode.Literal);
+        Assert.Equal("locationCode", barcode.SourceKey);
+    }
+
+    [Fact]
+    public void AddRegionAt_and_anchor_should_center_element()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(CreateTemplate());
+
+        var region = vm.AddRegionAt(10, 10, 80, 40);
+        vm.AddElement(EditorElementType.QrCode);
+        var qr = vm.Elements[^1];
+        vm.AnchorToRegion(qr, region.Id);
+
+        var layout = vm.BuildLayout();
+        var regionElement = Assert.IsType<LabelRegionElement>(layout.Elements.First(e => e is LabelRegionElement));
+        var anchored = Assert.IsType<LabelQrCodeElement>(layout.Elements.First(e => e is LabelQrCodeElement));
+
+        Assert.Equal(region.Id, regionElement.Id);
+        Assert.Equal(region.Id, anchored.RegionId);
+        Assert.Equal(LabelRegionAlign.Center, anchored.RegionHAlign);
+        Assert.Equal(LabelRegionAlign.Center, anchored.RegionVAlign);
+    }
+
+    [Fact]
     public void SaveAsync_without_client_should_throw()
     {
         var vm = new LayoutEditorViewModel();

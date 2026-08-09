@@ -109,6 +109,29 @@ public sealed class LayoutElementViewModel : ObservableObject
 
     public string[] TextAlignOptions { get; } = Enum.GetNames<LabelTextAlign>();
 
+    private string _contentMode = "字段填充";
+    public string ContentMode
+    {
+        get => _contentMode;
+        set
+        {
+            if (SetProperty(ref _contentMode, value))
+            {
+                OnPropertyChanged(nameof(IsLiteral));
+                OnPropertyChanged(nameof(IsField));
+            }
+        }
+    }
+
+    public bool IsLiteral => ContentMode == "固定值";
+
+    public bool IsField => ContentMode != "固定值";
+
+    public string[] ContentModeOptions { get; } = ["字段填充", "固定值"];
+
+    private string _literal = string.Empty;
+    public string Literal { get => _literal; set => SetProperty(ref _literal, value); }
+
     public string[] RegionAlignOptions { get; } = Enum.GetNames<LabelRegionAlign>();
 
     /// <summary>转换成 Core 版式元素。</summary>
@@ -116,7 +139,8 @@ public sealed class LayoutElementViewModel : ObservableObject
     {
         EditorElementType.Text => new LabelTextElement
         {
-            SourceKey = SourceKey,
+            SourceKey = ContentMode == "固定值" ? string.Empty : SourceKey,
+            Literal = ContentMode == "固定值" ? Literal : null,
             FontName = FontName,
             FontHeightMm = FontHeightMm,
             FontWidthMm = FontWidthMm,
@@ -132,7 +156,8 @@ public sealed class LayoutElementViewModel : ObservableObject
         },
         EditorElementType.Barcode => new LabelBarcodeElement
         {
-            SourceKey = SourceKey,
+            SourceKey = ContentMode == "固定值" ? string.Empty : SourceKey,
+            Literal = ContentMode == "固定值" ? Literal : null,
             HeightMm = HeightMm,
             ModuleWidth = 2,
             BorderMm = BorderMm,
@@ -144,7 +169,8 @@ public sealed class LayoutElementViewModel : ObservableObject
         },
         EditorElementType.QrCode => new LabelQrCodeElement
         {
-            SourceKey = SourceKey,
+            SourceKey = ContentMode == "固定值" ? string.Empty : SourceKey,
+            Literal = ContentMode == "固定值" ? Literal : null,
             SizeMm = Math.Max(WidthMm, HeightMm),
             BorderMm = BorderMm,
             RegionId = RegionId,
@@ -191,6 +217,8 @@ public sealed class LayoutElementViewModel : ObservableObject
         LabelTextElement text => new LayoutElementViewModel(EditorElementType.Text)
         {
             SourceKey = text.SourceKey,
+            ContentMode = text.Literal is not null ? "固定值" : "字段填充",
+            Literal = text.Literal ?? string.Empty,
             FontName = text.FontName,
             FontHeightMm = text.FontHeightMm,
             FontWidthMm = text.FontWidthMm,
@@ -207,6 +235,8 @@ public sealed class LayoutElementViewModel : ObservableObject
         LabelBarcodeElement barcode => new LayoutElementViewModel(EditorElementType.Barcode)
         {
             SourceKey = barcode.SourceKey,
+            ContentMode = barcode.Literal is not null ? "固定值" : "字段填充",
+            Literal = barcode.Literal ?? string.Empty,
             HeightMm = barcode.HeightMm,
             BorderMm = barcode.BorderMm,
             RegionId = barcode.RegionId,
@@ -218,6 +248,8 @@ public sealed class LayoutElementViewModel : ObservableObject
         LabelQrCodeElement qr => new LayoutElementViewModel(EditorElementType.QrCode)
         {
             SourceKey = qr.SourceKey,
+            ContentMode = qr.Literal is not null ? "固定值" : "字段填充",
+            Literal = qr.Literal ?? string.Empty,
             WidthMm = qr.SizeMm,
             HeightMm = qr.SizeMm,
             BorderMm = qr.BorderMm,
@@ -285,4 +317,23 @@ public sealed class ContractFieldViewModel : ObservableObject
     public LabelFrame.Core.Contracts.LabelFieldType Type { get; set; }
 
     public Array AvailableTypes { get; } = Enum.GetValues<LabelFrame.Core.Contracts.LabelFieldType>();
+}
+/// <summary>数据表单条目（按契约字段生成）。</summary>
+public sealed class FieldEntry : ObservableObject
+{
+    public required string Key { get; init; }
+
+    public required string DisplayName { get; init; }
+
+    public bool IsRequired { get; init; }
+
+    public required string Type { get; init; }
+
+    private string _value = string.Empty;
+
+    public string Value
+    {
+        get => _value;
+        set => SetProperty(ref _value, value);
+    }
 }

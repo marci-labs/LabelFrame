@@ -3,35 +3,28 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows.Media.Imaging;
 using LabelFrame.Core.Contracts;
+using LabelFrame.Core.Documents;
+using LabelFrame.Rendering;
 using LabelFrame.Studio.Services;
 
 namespace LabelFrame.Studio.ViewModels;
 
-/// <summary>数据表单条目（按契约字段生成）。</summary>
-public sealed class FieldEntry : ObservableObject
-{
-    public required string Key { get; init; }
-
-    public required string DisplayName { get; init; }
-
-    public bool IsRequired { get; init; }
-
-    public required string Type { get; init; }
-
-    private string _value = string.Empty;
-
-    public string Value
-    {
-        get => _value;
-        set => SetProperty(ref _value, value);
-    }
-}
 
 /// <summary>主窗口视图模型（V1：连接 / 模板管理 / 导入导出 / 预览 / 测试打印）。</summary>
 public sealed class MainViewModel : ObservableObject
 {
     private StudioClient? _client;
+    private readonly LabelPreviewRenderer _renderer = new();
     private Process? _winHostProcess;
+
+    /// <summary>日志（底部日志栏）。</summary>
+    public ObservableCollection<string> Logs { get; } = [];
+
+    /// <summary>追加日志。</summary>
+    public void Log(string message)
+    {
+        Logs.Add($"{DateTime.Now:HH:mm:ss}  {message}");
+    }
 
     private string _serverUrl = "http://127.0.0.1:53960";
     private string _connectionText = "未连接";
@@ -133,6 +126,7 @@ public sealed class MainViewModel : ObservableObject
             ConnectionText = $"已连接：{ServerUrl}";
             TransportText = $"传输模式：{health.Transport ?? "未知"}";
             OnPropertyChanged(nameof(IsConnected));
+            Log($"已连接 WinHost：{ServerUrl}（{health.Transport ?? "未知"}）");
             await RefreshTemplatesAsync();
         }
         catch (Exception ex)
@@ -209,13 +203,15 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    public async Task ImportAsync(string filePath)
+    /// <summary>导入模板包并刷新列表，返回模板名。</summary>
+    public async Task<string> ImportTemplateAsync(string filePath)
     {
         EnsureConnected();
         var bytes = await File.ReadAllBytesAsync(filePath);
         var name = await _client!.ImportTemplateAsync(bytes, Path.GetFileName(filePath));
         await RefreshTemplatesAsync();
         SelectedTemplate = Templates.FirstOrDefault(t => t.Name == name);
+        return name;
     }
 
     public async Task<byte[]> ExportAsync(string name)
@@ -239,11 +235,18 @@ public sealed class MainViewModel : ObservableObject
         await RefreshTemplatesAsync();
     }
 
-    public async Task PreviewAsync()
+    /// <summary>本地实时预览（共享渲染器，无需网络）。</summary>
+    public void PreviewAsync()
     {
-        EnsureConnected();
-        var (template, data) = RequireSelectedAndData();
-        var png = await _client!.PreviewAsync(template.Name!, data);
+        if (SelectedTemplate is null || _detail?.Layout is null)
+        {
+            PreviewImage = null;
+            return;
+        }
+
+        var data = Fields.ToDictionary(f => f.Key, f => f.Value ?? string.Empty);
+        var document = new LabelDocument { Layout = _detail.Layout, Data = data };
+        var png = _renderer.RenderPng(document, dpi: 203, null);
         var image = new BitmapImage();
         image.BeginInit();
         image.CacheOption = BitmapCacheOption.OnLoad;
@@ -266,6 +269,7 @@ public sealed class MainViewModel : ObservableObject
         var requestId = $"studio-{Guid.NewGuid():N}";
         var job = await _client!.SubmitJobAsync(requestId, template, [data]);
         JobStatusText = $"已提交 {job.JobId}：{job.Status}（{job.CompletedItems}/{job.TotalItems}）";
+        Log($"提交打印作业 {job.JobId}（{job.TotalItems} 张）。");
         _ = PollJobAsync(job.JobId);
     }
 
@@ -309,6 +313,7 @@ public sealed class MainViewModel : ObservableObject
         }
 
         DetailText = FormatDetail(detail);
+        PreviewAsync();
     }
 
     private async Task PollJobAsync(string jobId)
@@ -328,6 +333,7 @@ public sealed class MainViewModel : ObservableObject
 
                 if (job.Status is "Completed" or "Failed" or "Cancelled")
                 {
+                    Log($"作业 {job.JobId} 终态：{job.Status}（{job.CompletedItems}/{job.TotalItems}）。");
                     return;
                 }
             }

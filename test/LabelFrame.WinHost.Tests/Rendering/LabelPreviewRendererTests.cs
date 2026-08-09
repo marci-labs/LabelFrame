@@ -1,6 +1,6 @@
 using LabelFrame.Core.Documents;
 using LabelFrame.Core.Layout;
-using LabelFrame.WinHost.Rendering;
+using LabelFrame.Rendering;
 
 namespace LabelFrame.WinHost.Tests.Rendering;
 

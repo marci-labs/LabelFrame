@@ -84,6 +84,11 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
         {
             case LabelTextElement text:
                 writer.WriteString("sourceKey", text.SourceKey);
+                if (text.Literal is not null)
+                {
+                    writer.WriteString("literal", text.Literal);
+                }
+
                 writer.WriteString("fontName", text.FontName);
                 writer.WriteNumber("fontHeightMm", text.FontHeightMm);
                 writer.WriteNumber("fontWidthMm", text.FontWidthMm);
@@ -100,11 +105,21 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                 break;
             case LabelBarcodeElement barcode:
                 writer.WriteString("sourceKey", barcode.SourceKey);
+                if (barcode.Literal is not null)
+                {
+                    writer.WriteString("literal", barcode.Literal);
+                }
+
                 writer.WriteNumber("heightMm", barcode.HeightMm);
                 writer.WriteNumber("moduleWidth", barcode.ModuleWidth);
                 break;
             case LabelQrCodeElement qrCode:
                 writer.WriteString("sourceKey", qrCode.SourceKey);
+                if (qrCode.Literal is not null)
+                {
+                    writer.WriteString("literal", qrCode.Literal);
+                }
+
                 writer.WriteNumber("sizeMm", qrCode.SizeMm);
                 break;
             case LabelImageElement image:

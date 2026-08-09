@@ -80,15 +80,6 @@ public sealed class ZplEncoder : IZplEncoder
     private static int ToDots(double mm, int dpi)
         => (int)Math.Round(mm / 25.4 * dpi, MidpointRounding.AwayFromZero);
 
-    private static string GetData(IReadOnlyDictionary<string, string> data, string key)
-    {
-        if (!data.TryGetValue(key, out var value))
-        {
-            throw new ArgumentException($"标签文档缺少字段数据：{key}。", nameof(data));
-        }
-
-        return value;
-    }
 
     private static void AppendText(
         StringBuilder sb,
@@ -97,7 +88,7 @@ public sealed class ZplEncoder : IZplEncoder
         IReadOnlyDictionary<string, LabelRegionElement> regions,
         int dpi)
     {
-        var value = GetData(data, text.SourceKey);
+        var value = LabelElementContent.Get(text, data);
         var bounds = LabelLayoutResolver.ResolveBounds(text, regions);
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
@@ -142,7 +133,7 @@ public sealed class ZplEncoder : IZplEncoder
         IReadOnlyDictionary<string, LabelRegionElement> regions,
         int dpi)
     {
-        var value = GetData(data, barcode.SourceKey);
+        var value = LabelElementContent.Get(barcode, data);
         var bounds = LabelLayoutResolver.ResolveBounds(barcode, regions);
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
@@ -172,7 +163,7 @@ public sealed class ZplEncoder : IZplEncoder
         IReadOnlyDictionary<string, LabelRegionElement> regions,
         int dpi)
     {
-        var value = GetData(data, qrCode.SourceKey);
+        var value = LabelElementContent.Get(qrCode, data);
         var bounds = LabelLayoutResolver.ResolveBounds(qrCode, regions);
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);

@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Media;
 using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Layout;
 using LabelFrame.Studio.Services;
@@ -64,8 +66,44 @@ public sealed class LayoutEditorViewModel : ObservableObject
                 OnPropertyChanged(nameof(PixelsPerMm));
                 OnPropertyChanged(nameof(CanvasWidthPx));
                 OnPropertyChanged(nameof(CanvasHeightPx));
+                OnPropertyChanged(nameof(CanvasBackground));
             }
         }
+    }
+
+    private bool _showGrid = true;
+    public bool ShowGrid
+    {
+        get => _showGrid;
+        set
+        {
+            if (SetProperty(ref _showGrid, value))
+            {
+                OnPropertyChanged(nameof(CanvasBackground));
+            }
+        }
+    }
+
+    /// <summary>画布背景（毫米网格）。</summary>
+    public Brush CanvasBackground => _showGrid ? CreateGridBrush() : Brushes.White;
+
+    private Brush CreateGridBrush()
+    {
+        var cell = Math.Max(4, 5 * PixelsPerMm);
+        var drawing = new DrawingGroup();
+        drawing.Children.Add(new GeometryDrawing(Brushes.Transparent, null, new RectangleGeometry(new Rect(0, 0, cell, cell))));
+        var pen = new Pen(new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0)), 0.5);
+        drawing.Children.Add(new GeometryDrawing(null, pen, new LineGeometry(new Point(cell, 0), new Point(cell, cell))));
+        drawing.Children.Add(new GeometryDrawing(null, pen, new LineGeometry(new Point(0, cell), new Point(cell, cell))));
+        var brush = new DrawingBrush(drawing)
+        {
+            TileMode = TileMode.Tile,
+            Viewport = new Rect(0, 0, cell, cell),
+            ViewportUnits = BrushMappingMode.Absolute,
+            Stretch = Stretch.None,
+        };
+        brush.Freeze();
+        return brush;
     }
 
     /// <summary>每毫米像素数（100% = 4px/mm）。</summary>
@@ -78,6 +116,12 @@ public sealed class LayoutEditorViewModel : ObservableObject
     public ObservableCollection<LayoutElementViewModel> Elements { get; } = [];
 
     public ObservableCollection<ContractFieldViewModel> Fields { get; } = [];
+
+    /// <summary>设计器测试数据（按契约字段生成，用于打印预览 / 打印测试）。</summary>
+    public ObservableCollection<FieldEntry> TestFields { get; } = [];
+
+    /// <summary>日志（底部日志栏）。</summary>
+    public ObservableCollection<string> Logs { get; } = [];
 
     private LayoutElementViewModel? _selectedElement;
     public LayoutElementViewModel? SelectedElement
@@ -105,6 +149,13 @@ public sealed class LayoutEditorViewModel : ObservableObject
     /// <summary>当前区域 Id 列表（属性面板 RegionId 下拉）。</summary>
     public ObservableCollection<string> RegionIds { get; } = [];
 
+    /// <summary>追加日志。</summary>
+    public void Log(string message)
+    {
+        Logs.Add($"{DateTime.Now:HH:mm:ss}  {message}");
+        StatusText = message;
+    }
+
     public void LoadFrom(TemplateSaveDto template)
     {
         if (template.Contract is null || template.Layout is null)
@@ -124,6 +175,8 @@ public sealed class LayoutEditorViewModel : ObservableObject
         {
             Fields.Add(new ContractFieldViewModel(field.Key, field.DisplayName, field.IsRequired, field.Type));
         }
+
+        SyncTestFields();
 
         Elements.Clear();
         foreach (var element in template.Layout.Elements)
@@ -153,7 +206,7 @@ public sealed class LayoutEditorViewModel : ObservableObject
         Elements.Add(element);
         RefreshRegionIds();
         SelectedElement = element;
-        StatusText = $"已添加 {type} 元素。";
+        Log($"已添加 {type} 元素。");
     }
 
     /// <summary>把元素放到上一个元素下方（间距 3mm），超界则回到画布顶部。</summary>
@@ -195,12 +248,29 @@ public sealed class LayoutEditorViewModel : ObservableObject
     {
         var index = Fields.Count + 1;
         Fields.Add(new ContractFieldViewModel($"field{index}", $"字段{index}", isRequired: false, LabelFieldType.Text));
+        SyncTestFields();
         StatusText = "已添加字段，可在下方编辑键与显示名。";
     }
 
     public void RemoveField(ContractFieldViewModel field)
     {
         Fields.Remove(field);
+        SyncTestFields();
+    }
+
+    private void SyncTestFields()
+    {
+        TestFields.Clear();
+        foreach (var field in Fields)
+        {
+            TestFields.Add(new FieldEntry
+            {
+                Key = field.Key,
+                DisplayName = field.DisplayName,
+                IsRequired = field.IsRequired,
+                Type = field.Type.ToString(),
+            });
+        }
     }
 
     /// <summary>重命名字段：同步更新引用该字段的元素 SourceKey。</summary>
@@ -220,6 +290,31 @@ public sealed class LayoutEditorViewModel : ObservableObject
         }
 
         StatusText = $"字段 {oldKey} 已重命名为 {newKey}，元素引用已同步。";
+    }
+
+    /// <summary>在指定毫米位置创建区域（画布拖矩形）。</summary>
+    public LayoutElementViewModel AddRegionAt(double xMm, double yMm, double widthMm, double heightMm)
+    {
+        var element = new LayoutElementViewModel(EditorElementType.Region)
+        {
+            XMm = xMm,
+            YMm = yMm,
+            WidthMm = widthMm,
+            HeightMm = heightMm,
+            Id = $"region-{Guid.NewGuid():N}"[..14],
+        };
+        Elements.Add(element);
+        RefreshRegionIds();
+        SelectedElement = element;
+        return element;
+    }
+
+    /// <summary>把元素锚定到区域（默认居中），供“拖入格子自动居中”使用。</summary>
+    public void AnchorToRegion(LayoutElementViewModel element, string regionId)
+    {
+        element.RegionId = regionId;
+        element.RegionHAlign = "Center";
+        element.RegionVAlign = "Center";
     }
 
     /// <summary>按像素位移移动元素（拖拽用）。</summary>
@@ -267,7 +362,35 @@ public sealed class LayoutEditorViewModel : ObservableObject
         }
 
         await _client.SaveTemplateAsync(BuildSaveDto());
-        StatusText = $"已保存：{Name} v{Version}";
+        Log($"已保存：{Name} v{Version}");
+    }
+
+    /// <summary>打印测试：先保存，再用测试数据提交作业并轮询结果。</summary>
+    public async Task PrintTestAsync()
+    {
+        if (_client is null)
+        {
+            throw new InvalidOperationException("未连接 WinHost。");
+        }
+
+        await SaveAsync();
+        var data = TestFields.ToDictionary(f => f.Key, f => f.Value ?? string.Empty);
+        var job = await _client.SubmitJobAsync($"design-{Guid.NewGuid():N}", BuildSaveDto(), [data]);
+        Log($"已提交打印测试 {job.JobId}（{job.TotalItems} 张）。");
+
+        for (var i = 0; i < 60; i++)
+        {
+            await Task.Delay(500);
+            var current = await _client.GetJobAsync(job.JobId);
+            if (current.Status is "Completed" or "Failed" or "Cancelled")
+            {
+                var error = current.Items.FirstOrDefault(x => x.ErrorMessage is not null)?.ErrorMessage;
+                Log($"打印测试终态：{current.Status}（{current.CompletedItems}/{current.TotalItems}）{error ?? string.Empty}");
+                return;
+            }
+        }
+
+        Log("打印测试超时，请查看 WinHost 日志。");
     }
 
     private void RefreshRegionIds()

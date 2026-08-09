@@ -235,6 +235,56 @@ public class ZplEncoderTests
     }
 
     [Fact]
+    public void Text_with_literal_should_not_require_data_key()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "literal",
+                ContractName = "literal",
+                ContractVersion = "1.0",
+                WidthMm = 20,
+                HeightMm = 10,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = string.Empty, Literal = "库位标签", XMm = 5, YMm = 5, FontHeightMm = 5, FontWidthMm = 5 },
+                ],
+            },
+            Data = new Dictionary<string, string>(),
+        };
+
+        var zpl = new ZplEncoder().Encode(document);
+
+        Assert.Contains("^FO40,40^A0N,40,40^FD库位标签^FS", zpl);
+    }
+
+    [Fact]
+    public void Barcode_with_literal_should_not_require_data_key()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "literal-bc",
+                ContractName = "literal-bc",
+                ContractVersion = "1.0",
+                WidthMm = 50,
+                HeightMm = 30,
+                Elements =
+                [
+                    new LabelBarcodeElement { SourceKey = string.Empty, Literal = "FIXED-001", XMm = 5, YMm = 5, HeightMm = 20 },
+                ],
+            },
+            Data = new Dictionary<string, string>(),
+        };
+
+        var zpl = new ZplEncoder().Encode(document);
+
+        Assert.Contains("^FDFIXED-001^FS", zpl);
+    }
+
+    [Fact]
     public void Missing_data_key_should_throw()
     {
         var document = new LabelDocument

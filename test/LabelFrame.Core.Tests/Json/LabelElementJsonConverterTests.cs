@@ -81,6 +81,19 @@ public class LabelElementJsonConverterTests
     }
 
     [Fact]
+    public void Literal_should_round_trip()
+    {
+        var element = new LabelTextElement { SourceKey = string.Empty, Literal = "库位标签", XMm = 1, YMm = 2, FontHeightMm = 5, FontWidthMm = 5 };
+
+        var json = JsonSerializer.Serialize<LabelElement>(element, Options);
+        var roundTrip = JsonSerializer.Deserialize<LabelElement>(json, Options);
+
+        var text = Assert.IsType<LabelTextElement>(roundTrip);
+        Assert.Equal("库位标签", text.Literal);
+        Assert.Contains("literal", json);
+    }
+
+    [Fact]
     public void Unknown_type_should_throw_json_exception()
     {
         const string json = """{"type":"hexagon","xMm":0,"yMm":0}""";

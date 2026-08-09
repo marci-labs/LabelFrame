@@ -8,6 +8,7 @@ using LabelFrame.Core.Templates;
 using LabelFrame.Core.Transport;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
+using LabelFrame.Rendering;
 using LabelFrame.WinHost.Rendering;
 using LabelFrame.WinHost.Transport;
 
