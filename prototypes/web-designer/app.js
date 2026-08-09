@@ -542,14 +542,22 @@ stage.on('dragmove', (ev) => {
 });
 stage.on('dragend', (ev) => {
   multiDrag = null;
-  clearGuides();
   const el = elementFromTarget(ev.target);
-  if (!el) return;
+  if (!el) {
+    clearGuides();
+    return;
+  }
   const e = elementById(el.id());
-  if (!e) return;
+  if (!e) {
+    clearGuides();
+    return;
+  }
+  // Konva 拖拽会用指针位置覆盖 dragmove 里的吸附，松手时重新吸附一次，保证落点精确
+  snapNode(el);
   const r = el.getClientRect({ relativeTo: layer });
   e.x = mm(r.x - RULER) - PAD_MM;
   e.y = mm(r.y - RULER) - PAD_MM;
+  clearGuides();
   pushHistory();
   renderProps();
   const container = containerHit(e);
