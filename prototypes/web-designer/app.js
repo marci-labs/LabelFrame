@@ -53,8 +53,8 @@ function createTransformer() {
       e.w = mm(r.width);
       e.h = mm(r.height);
       if (e.type === 'QrCode') { e.w = e.h = Math.max(e.w, e.h); }
-      if (e.type === 'Text') { e.fontH = e.h; }
       if (e.type === 'Barcode') { e.heightMm = e.h; }
+      // 文本：只改遮罩区域，字高保持独立（不随框拉伸变大）
     });
     render();
     renderProps();
@@ -121,9 +121,9 @@ function status(msg) { $('statusText').textContent = msg; log(msg); }
 function defaultElement(type) {
   const id = uid();
   switch (type) {
-    case 'Text':   return { id, type, x: 5, y: 5, w: 40, h: 5, fontH: 5, fontW: 5, mode: 'field', key: '', text: '', align: 'Left', padding: 1, border: 0, fitMode: 'shrink' };
-    case 'Barcode':return { id, type, x: 5, y: 20, w: 50, h: 20, mode: 'field', key: '', text: '', border: 0, padding: 1, barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1 };
-    case 'QrCode': return { id, type, x: 5, y: 20, w: 20, h: 20, mode: 'field', key: '', text: '', border: 0, padding: 1, qrEcc: 'M', qrMargin: 2 };
+    case 'Text':   return { id, type, x: 5, y: 5, w: 40, h: 5, fontH: 5, fontW: 5, mode: 'literal', key: '', text: '文本', align: 'Left', paddingH: 1, paddingV: 1, border: 0, fitMode: 'shrink' };
+    case 'Barcode':return { id, type, x: 5, y: 20, w: 50, h: 20, mode: 'literal', key: '', text: 'ABC-123', border: 0, paddingH: 1, paddingV: 1, barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1 };
+    case 'QrCode': return { id, type, x: 5, y: 20, w: 20, h: 20, mode: 'literal', key: '', text: 'ABC-123', border: 0, paddingH: 1, paddingV: 1, qrEcc: 'M', qrMargin: 2 };
     case 'Image':  return { id, type, x: 5, y: 20, w: 20, h: 20, key: '', border: 0 };
     case 'Line':   return { id, type, x: 5, y: 5, w: 60, h: 0, thickness: 0.5 };
     case 'Region': return { id, type, x: 5, y: 5, w: 60, h: 30, border: 0.3, containerId: 'c' + Math.random().toString(36).slice(2, 8) };
@@ -199,6 +199,8 @@ function drawRulersKonva() {
 
 function elementContent(e) {
   if (e.mode === 'literal') return e.text || '（固定值）';
+  // 字段填充：填充值仅用于画布预览；实际打印由外界数据按键名提供
+  if (e.text) return e.text;
   if (!e.key) return '（未绑定字段）';
   return e.key;
 }
@@ -206,8 +208,8 @@ function elementContent(e) {
 // ---------- 文本适应（自动换行 / 截断 / 缩小字体 / 不限制高度） ----------
 // 文本绘制：文本框 = 遮罩区域；内容按设置 缩小适应(shrink) / 原样溢出(overflow，超出被遮罩裁剪)
 function applyTextFit(text, e, content) {
-  const wPx = Math.max(2, pxv(e.w) - 2 * pxv(e.padding || 0));
-  const hPx = Math.max(2, pxv(e.h));
+  const wPx = Math.max(2, pxv(e.w) - 2 * pxv(e.paddingH || 0));
+  const hPx = Math.max(2, pxv(e.h) - 2 * pxv(e.paddingV || 0));
   text.width(wPx);
   text.height(hPx);
   text.wrap('none');
@@ -336,8 +338,9 @@ function nodeFor(e) {
   switch (e.type) {
     case 'Text': {
       const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW, strokeScaleEnabled: false });
+      const padH = pxv(e.paddingH || 0), padV = pxv(e.paddingV || 0);
       const text = new Konva.Text({
-        x: pxv(e.padding || 0), y: 0, width: Math.max(2, w - 2 * pxv(e.padding || 0)),
+        x: 0, y: 0,
         fontSize: Math.max(1, pxv(e.fontH)), fontFamily: 'Microsoft YaHei',
         fill: e.mode === 'field' && !e.key ? '#999' : '#000',
         listening: false, strokeScaleEnabled: false,
@@ -345,37 +348,33 @@ function nodeFor(e) {
       text.align(e.align === 'Center' ? 'center' : e.align === 'Right' ? 'right' : 'left');
       const fit = applyTextFit(text, e, elementContent(e));
       g.add(rect);
-      if (fit.clip) {
-        // Konva 9 Text 无 clipFunc，用 Group 的 clip 属性裁剪
-        const clip = new Konva.Group({ x: 0, y: 0, clipX: 0, clipY: 0, clipWidth: fit.wPx, clipHeight: fit.hPx });
-        clip.add(text);
-        g.add(clip);
-      } else {
-        g.add(text);
-      }
+      // 文本框 = 遮罩：内容在 内边距 区域内绘制，超出按设置隐藏 / 缩小
+      const clip = new Konva.Group({ x: padH, y: padV, clipX: 0, clipY: 0, clipWidth: fit.wPx, clipHeight: fit.hPx });
+      clip.add(text);
+      g.add(clip);
       return g;
     }
     case 'Barcode': {
       const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW, strokeScaleEnabled: false });
-      const pad = pxv(e.padding || 0);
-      const innerW = Math.max(2, w - pad * 2), innerH = Math.max(2, h - pad * 2);
+      const padH = pxv(e.paddingH || 0), padV = pxv(e.paddingV || 0);
+      const innerW = Math.max(2, w - padH * 2), innerH = Math.max(2, h - padV * 2);
       const canvas = makeBarcodeCanvas(e);
       const img = new Konva.Image({ image: canvas, listening: false });
       fitImageNode(img, innerW, innerH);
-      img.x(img.x() + pad);
-      img.y(img.y() + pad);
+      img.x(img.x() + padH);
+      img.y(img.y() + padV);
       g.add(rect); g.add(img);
       return g;
     }
     case 'QrCode': {
       const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW, strokeScaleEnabled: false });
-      const pad = pxv(e.padding || 0);
-      const innerW = Math.max(2, w - pad * 2), innerH = Math.max(2, h - pad * 2);
+      const padH = pxv(e.paddingH || 0), padV = pxv(e.paddingV || 0);
+      const innerW = Math.max(2, w - padH * 2), innerH = Math.max(2, h - padV * 2);
       const canvas = makeQrCanvas(e, innerW, innerH);
       const img = new Konva.Image({ image: canvas, listening: false });
       fitImageNode(img, innerW, innerH);
-      img.x(img.x() + pad);
-      img.y(img.y() + pad);
+      img.x(img.x() + padH);
+      img.y(img.y() + padV);
       g.add(rect); g.add(img);
       return g;
     }
@@ -595,10 +594,41 @@ stageDom.addEventListener('mousedown', (ev) => {
 // 兜底：窗口失焦也复位
 window.addEventListener('blur', panEnd);
 
-// 键盘删除
+// 剪贴板（内部缓存）
+let clipboard = [];
+function pasteClipboard() {
+  const copies = clipboard.map((e) => {
+    const c = JSON.parse(JSON.stringify(e));
+    c.id = uid();
+    c.x = Math.max(0, Math.min(paperW - c.w - 1, c.x + 5));
+    c.y = Math.max(0, Math.min(paperH - c.h - 1, c.y + 5));
+    return c;
+  });
+  if (!copies.length) return;
+  elements.push(...copies);
+  selected = copies.map((c) => c.id);
+  status('已粘贴 ' + copies.length + ' 个元素（偏移 5mm）。');
+  commit();
+}
+
+// 键盘：Ctrl+C/V 复制粘贴、Delete 删除
 document.addEventListener('keydown', (ev) => {
   const tag = ev.target && ev.target.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+  const ctrl = ev.ctrlKey || ev.metaKey;
+  if (ctrl && ev.key.toLowerCase() === 'c') {
+    if (selected.length) {
+      clipboard = elements.filter((e) => selected.includes(e.id)).map((e) => JSON.parse(JSON.stringify(e)));
+      status('已复制 ' + clipboard.length + ' 个元素。');
+    }
+    ev.preventDefault();
+    return;
+  }
+  if (ctrl && ev.key.toLowerCase() === 'v') {
+    pasteClipboard();
+    ev.preventDefault();
+    return;
+  }
   if (ev.key === 'Delete' || ev.key === 'Backspace') {
     if (selected.length) {
       const count = selected.length;
@@ -766,7 +796,8 @@ function renderProps() {
     const gCommon = document.createElement('div');
     gCommon.className = 'group';
     gCommon.innerHTML = '<h4>边框 / 内边距（通用）</h4>';
-    addNum(gCommon, '内边距', e.padding || 0, (v) => { e.padding = Math.max(0, v); });
+    addNum(gCommon, '左右内边距', e.paddingH || 0, (v) => { e.paddingH = Math.max(0, v); });
+    addNum(gCommon, '上下内边距', e.paddingV || 0, (v) => { e.paddingV = Math.max(0, v); });
     addNum(gCommon, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
     box.appendChild(gCommon);
   }
@@ -777,7 +808,7 @@ function renderProps() {
     gText.innerHTML = '<h4>文本 / 字体</h4>';
     addNum(gText, '字高', e.fontH, (v) => { e.fontH = Math.max(1, v); e.h = e.fontH; });
     addSelect(gText, '文字对齐', [['左对齐', 'Left'], ['居中', 'Center'], ['右对齐', 'Right']], e.align, (v) => { e.align = v; });
-    addSelect(gText, '溢出处理', [['缩小适应', 'shrink'], ['溢出显示', 'overflow']], e.fitMode || 'shrink', (v) => { e.fitMode = v; });
+    addSelect(gText, '溢出处理', [['缩小适应', 'shrink'], ['隐藏', 'overflow']], e.fitMode || 'shrink', (v) => { e.fitMode = v; });
     box.appendChild(gText);
   } else if (e.type === 'Barcode') {
     const gBar = document.createElement('div');
@@ -843,9 +874,9 @@ function typeLabel(e) {
 function contentGroup(e) {
   const gContent = document.createElement('div');
   gContent.className = 'group';
-  gContent.innerHTML = '<h4>填充（内容来源，值变化立即渲染）</h4>';
+  gContent.innerHTML = '<h4>填充（默认固定值；字段填充 = 键名称 + 预览填充值）</h4>';
   const modeSel = document.createElement('select');
-  [['字段填充', 'field'], ['固定值', 'literal']].forEach(([label, val]) => {
+  [['固定值', 'literal'], ['字段填充', 'field']].forEach(([label, val]) => {
     const o = document.createElement('option');
     o.value = val; o.textContent = label;
     if (e.mode === val) o.selected = true;
@@ -853,21 +884,31 @@ function contentGroup(e) {
   });
   modeSel.addEventListener('change', () => { e.mode = modeSel.value; commit(); });
   gContent.appendChild(modeSel);
-  const keyInput = document.createElement('input');
-  keyInput.placeholder = '字段 Key（输入后自动建立字段）';
-  keyInput.value = e.key || '';
-  keyInput.style.marginTop = '4px';
-  keyInput.addEventListener('change', () => { e.key = keyInput.value.trim(); refreshFields(); commit(); });
-  gContent.appendChild(keyInput);
+
   const litInput = document.createElement('input');
-  litInput.placeholder = '固定值';
+  litInput.placeholder = '固定值（立即渲染）';
   litInput.value = e.text || '';
   litInput.style.marginTop = '4px';
   litInput.addEventListener('change', () => { e.text = litInput.value; commit(); });
   gContent.appendChild(litInput);
+
+  const keyInput = document.createElement('input');
+  keyInput.placeholder = '键名称（契约字段，自动建立）';
+  keyInput.value = e.key || '';
+  keyInput.style.marginTop = '4px';
+  keyInput.addEventListener('change', () => { e.key = keyInput.value.trim(); refreshFields(); commit(); });
+  gContent.appendChild(keyInput);
+  const valInput = document.createElement('input');
+  valInput.placeholder = '填充值（仅预览用）';
+  valInput.value = e.text || '';
+  valInput.style.marginTop = '4px';
+  valInput.addEventListener('change', () => { e.text = valInput.value; commit(); });
+  gContent.appendChild(valInput);
+
   const updateMode = () => {
-    keyInput.style.display = modeSel.value === 'field' ? '' : 'none';
     litInput.style.display = modeSel.value === 'literal' ? '' : 'none';
+    keyInput.style.display = modeSel.value === 'field' ? '' : 'none';
+    valInput.style.display = modeSel.value === 'field' ? '' : 'none';
   };
   updateMode();
   modeSel.addEventListener('change', updateMode);
@@ -990,7 +1031,7 @@ function parseElement(j) {
   const base = { id: uid(), x: j.xMm || 0, y: j.yMm || 0, border: j.borderMm || 0 };
   switch (j.type) {
     case 'text':
-      return { ...base, type: 'Text', w: j.widthMm || 0, h: j.fontHeightMm, fontH: j.fontHeightMm, fontW: j.fontWidthMm || 5, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', align: j.textAlign || 'Left', padding: j.paddingMm || 0, fitMode: 'shrink', regionId: j.regionId || null };
+      return { ...base, type: 'Text', w: j.widthMm || 0, h: j.fontHeightMm, fontH: j.fontHeightMm, fontW: j.fontWidthMm || 5, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', align: j.textAlign || 'Left', paddingH: j.paddingMm || 0, paddingV: j.paddingMm || 0, fitMode: 'shrink', regionId: j.regionId || null };
     case 'barcode':
       return { ...base, type: 'Barcode', w: (j.heightMm || 20) * 2.5, h: j.heightMm || 20, heightMm: j.heightMm || 20, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1, regionId: j.regionId || null };
     case 'qrcode':
@@ -1012,7 +1053,7 @@ function toElementJson(e) {
   const literal = () => ({ sourceKey: '', literal: e.text || '' });
   switch (e.type) {
     case 'Text':
-      return { type: 'text', ...base, ...(e.mode === 'literal' ? literal() : field()), fontHeightMm: r2(e.fontH), fontWidthMm: r2(e.fontW), widthMm: r2(e.w), textAlign: e.align || 'Left', paddingMm: r2(e.padding || 0), borderMm: r2(e.border || 0) };
+      return { type: 'text', ...base, ...(e.mode === 'literal' ? literal() : field()), fontHeightMm: r2(e.fontH), fontWidthMm: r2(e.fontW), widthMm: r2(e.w), textAlign: e.align || 'Left', paddingMm: r2(e.paddingH || 0), borderMm: r2(e.border || 0) };
     case 'Barcode':
       return { type: 'barcode', ...base, ...(e.mode === 'literal' ? literal() : field()), heightMm: r2(e.heightMm || e.h), moduleWidth: 2, borderMm: r2(e.border || 0) };
     case 'QrCode':
