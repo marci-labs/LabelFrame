@@ -5,9 +5,8 @@
 const PX = 4;                    // 1mm = 4px（设计逻辑像素）
 const PAD_MM = 10;               // 画布四周留白（mm）
 const RULER = 20;                // 标尺区（逻辑 px，画进 Konva 与内容同坐标系）
-const REAL_FACTOR = 2;           // 「实际大小」= 1mm 8 点 = 4px*2（203dpi 打印比例）
 let contentZoom = 1;             // 内容缩放（Ctrl+滚轮，设计时看整体 / 局部）
-let viewMode = 'fit';            // 'fit' 画布铺满视口 | 'actual' 真实比例（1mm=8点）
+let viewMode = 'fit';            // 'fit' 画布铺满视口 | 'preview' 按 DPI 真实打印比例
 let paperW = 100, paperH = 60;
 let elements = [];               // 版式元素状态（坐标 = 标签内容区，0..paperW）
 let selected = [];               // 选中的元素 id
@@ -70,8 +69,14 @@ function fitScale() {
   // 「适应窗口」= 画布略小于视口，便于预览全局
   return Math.max(0.05, Math.min((vw - 32) / cw, (vh - 32) / ch));
 }
+// 打印 DPI 预览比例：1mm 打印点数 = round(dpi/25.4)，相对设计点(4px/mm)的放大倍数
+function previewScale() {
+  const dpi = parseInt($('dpiSelect') ? $('dpiSelect').value : '203', 10);
+  const dotsPerMm = Math.round(dpi / 25.4);
+  return dotsPerMm / PX;
+}
 function totalScale() {
-  return (viewMode === 'actual' ? REAL_FACTOR : fitScale()) * contentZoom;
+  return (viewMode === 'preview' ? previewScale() : fitScale()) * contentZoom;
 }
 
 function applyView() {
@@ -105,8 +110,25 @@ function clampStage() {
   if (y !== stage.y()) stage.y(y);
 }
 
-function fitWindow() { viewMode = 'fit'; contentZoom = 1; stage.x(0); stage.y(0); applyView(); render(); }
-function actualSize() { viewMode = 'actual'; contentZoom = 1; stage.x(0); stage.y(0); applyView(); render(); }
+function toggleDpiPreview() {
+  if (viewMode === 'preview') {
+    viewMode = 'fit';
+    contentZoom = 1;
+    stage.x(0); stage.y(0);
+    $('previewDpiBtn').textContent = '预览打印效果';
+    status('已退出预览，画布适应窗口。');
+  } else {
+    viewMode = 'preview';
+    contentZoom = 1;
+    stage.x(0); stage.y(0);
+    const dpi = parseInt($('dpiSelect').value, 10);
+    const dotsPerMm = Math.round(dpi / 25.4);
+    $('previewDpiBtn').textContent = '退出预览';
+    status('打印预览：' + dpi + ' dpi（1mm ≈ ' + dotsPerMm + ' 点，真实打印比例）；可中键平移 / Ctrl+滚轮缩放。');
+  }
+  applyView();
+  render();
+}
 
 // ---------- 日志 ----------
 function log(msg) {
@@ -623,7 +645,7 @@ stage.on('wheel', (ev) => {
   if (!ev.evt.ctrlKey) return;
   const oldZoom = contentZoom;
   contentZoom = Math.max(0.1, Math.min(8, contentZoom * (ev.evt.deltaY < 0 ? 1.1 : 1 / 1.1)));
-  const base = viewMode === 'actual' ? REAL_FACTOR : fitScale();
+  const base = viewMode === 'preview' ? previewScale() : fitScale();
   const oldTotal = base * oldZoom;
   const newTotal = base * contentZoom;
   const ptr = stage.getPointerPosition();
@@ -1338,16 +1360,7 @@ function init() {
   $('layerUp').addEventListener('click', () => moveLayer(-1));
   $('layerDown').addEventListener('click', () => moveLayer(1));
   $('layerBottom').addEventListener('click', layerToBottom);
-  $('fitBtn').addEventListener('click', () => {
-    $('fitBtn').classList.add('active');
-    $('actualBtn').classList.remove('active');
-    fitWindow();
-  });
-  $('actualBtn').addEventListener('click', () => {
-    $('actualBtn').classList.add('active');
-    $('fitBtn').classList.remove('active');
-    actualSize();
-  });
+  $('previewDpiBtn').addEventListener('click', toggleDpiPreview);
   $('newBtn').addEventListener('click', () => {
     paperW = parseFloat($('widthInput').value) || 100;
     paperH = parseFloat($('heightInput').value) || 60;

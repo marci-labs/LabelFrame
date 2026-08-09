@@ -57,8 +57,11 @@
   <input id="nameInput" placeholder="模板名" value="web-demo">
   <label>宽 <input id="widthInput" type="number" value="100"></label>
   <label>高 <input id="heightInput" type="number" value="60"></label>
-  <button id="fitBtn" class="active">适应窗口</button>
-  <button id="actualBtn">实际大小</button>
+  <select id="dpiSelect" title="打印 DPI">
+    <option value="203">203 dpi</option>
+    <option value="300">300 dpi</option>
+  </select>
+  <button id="previewDpiBtn" title="按所选 DPI 以真实毫米比例显示">预览打印效果</button>
   <label>缩放 <span id="zoomLabel">100%</span></label>
   <label><input id="gridCheck" type="checkbox" checked> 网格</label>
   <button id="saveBtn" class="primary">保存</button>
