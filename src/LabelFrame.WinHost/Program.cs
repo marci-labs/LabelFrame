@@ -371,20 +371,9 @@ public static class Program
         }
         catch (Exception ex)
         {
+            // WinExe 无窗口：失败信息写入 host.log（%LOCALAPPDATA%\LabelFrame\host.log）
             HostInfo($"LabelFrame 启动失败：{ex}");
-            try
-            {
-                System.Windows.Forms.MessageBox.Show(
-                    $"LabelFrame 启动失败：{ex.Message}\n\n详见日志：{options.HostLogPath}",
-                    "LabelFrame",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Error);
-            }
-            catch
-            {
-                // 无交互环境忽略提示
-            }
-
+            HostInfo("如端口被占用，可修改 appsettings.json 的 ListenUrl 或结束占用进程后重试。");
             throw;
         }
     }
