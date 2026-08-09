@@ -11,8 +11,6 @@ let paperW = 100, paperH = 60;
 let elements = [];               // 版式元素状态（坐标 = 标签内容区，0..paperW）
 let selected = [];               // 选中的元素 id
 let pendingType = null;
-let serverUrl = 'http://127.0.0.1:53960';
-let connected = false;
 
 const $ = (id) => document.getElementById(id);
 const uid = () => 'e' + Math.random().toString(36).slice(2, 10);
@@ -1254,198 +1252,22 @@ function addCheck(parent, label, value, onSet) {
   parent.appendChild(wrap);
 }
 
-// ---------- WinHost API ----------
-async function api(path, options) {
-  const res = await fetch(serverUrl + path, options);
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(res.status + ' ' + body.slice(0, 200));
-  }
-  return res;
-}
-
-async function connect() {
-  serverUrl = $('serverUrl').value.trim().replace(/\/+$/, '');
-  try {
-    const res = await fetch(serverUrl + '/healthz');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const health = await res.json();
-    connected = true;
-    $('connStatus').textContent = '已连接（' + (health.transport || '未知') + '）';
-    $('connStatus').classList.add('on');
-    status('已连接 WinHost：' + serverUrl);
-    await refreshTemplateList();
-  } catch (ex) {
-    connected = false;
-    $('connStatus').textContent = '未连接';
-    $('connStatus').classList.remove('on');
-    status('连接失败：' + ex.message);
-  }
-}
-
-async function refreshTemplateList() {
-  const list = $('templateList');
-  list.innerHTML = '';
-  const templates = await (await api('/api/templates')).json();
-  templates.forEach((t) => {
-    const o = document.createElement('option');
-    o.value = t.name;
-    o.textContent = t.name + (t.group ? '（' + t.group + '）' : '');
-    list.appendChild(o);
-  });
-  if (templates.length) list.selectedIndex = 0;
-}
-
-async function loadTemplate() {
-  const name = $('templateList').value;
-  if (!name) return;
-  try {
-    const detail = await (await api('/api/templates/' + encodeURIComponent(name))).json();
-    paperW = detail.layout.widthMm;
-    paperH = detail.layout.heightMm;
-    $('widthInput').value = paperW;
-    $('heightInput').value = paperH;
-    $('nameInput').value = detail.name;
-    elements = (detail.layout.elements || []).map(parseElement).filter(Boolean);
-    selected = [];
-    applyView();
-    render();
-    renderProps();
-    status('已加载模板：' + name + '（' + elements.length + ' 个元素）。');
-  } catch (ex) {
-    status('加载失败：' + ex.message);
-  }
-}
-
-function parseElement(j) {
-  const base = { id: uid(), x: j.xMm || 0, y: j.yMm || 0, border: j.borderMm || 0 };
-  switch (j.type) {
-    case 'text':
-      return { ...base, type: 'Text', w: j.widthMm || 0, h: j.fontHeightMm, fontH: j.fontHeightMm, fontW: j.fontWidthMm || 5, fontFamily: 'Microsoft YaHei', wrap: false, lineHeight: 1.2, valign: 'middle', mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', align: j.textAlign || 'Left', paddingH: j.paddingMm || 0, paddingV: j.paddingMm || 0, fitMode: 'shrink', regionId: j.regionId || null };
-    case 'barcode':
-      return { ...base, type: 'Barcode', w: (j.heightMm || 20) * 2.5, h: j.heightMm || 20, heightMm: j.heightMm || 20, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1, regionId: j.regionId || null };
-    case 'qrcode':
-      return { ...base, type: 'QrCode', w: j.sizeMm || 20, h: j.sizeMm || 20, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', qrEcc: 'M', qrMargin: 2, regionId: j.regionId || null };
-    case 'image':
-      return { ...base, type: 'Image', w: j.widthMm || 20, h: j.heightMm || 20, key: j.sourceKey || '', regionId: j.regionId || null };
-    case 'line':
-      return { ...base, type: 'Line', x: j.xMm, y: j.yMm, w: (j.x2Mm || 0) - j.xMm, h: (j.y2Mm || 0) - j.yMm, thickness: j.thicknessMm || 0.5 };
-    case 'region':
-      return { ...base, type: 'Rect', w: j.widthMm || 60, h: j.heightMm || 30, containerId: j.id || 'c1', fill: '' };
-    default:
-      return null;
-  }
-}
-
-function toElementJson(e) {
-  const base = { xMm: r2(e.x), yMm: r2(e.y), borderMm: r2(e.border || 0) };
-  const field = () => ({ sourceKey: e.key || '', literal: null });
-  const literal = () => ({ sourceKey: '', literal: e.text || '' });
-  switch (e.type) {
-    case 'Text':
-      return { type: 'text', ...base, ...(e.mode === 'literal' ? literal() : field()), fontHeightMm: r2(e.fontH), fontWidthMm: r2(e.fontW), widthMm: r2(e.w), textAlign: e.align || 'Left', paddingMm: r2(e.paddingH || 0), borderMm: r2(e.border || 0) };
-    case 'Barcode':
-      return { type: 'barcode', ...base, ...(e.mode === 'literal' ? literal() : field()), heightMm: r2(e.heightMm || e.h), moduleWidth: 2, borderMm: r2(e.border || 0) };
-    case 'QrCode':
-      return { type: 'qrcode', ...base, ...(e.mode === 'literal' ? literal() : field()), sizeMm: r2(e.w), borderMm: r2(e.border || 0) };
-    case 'Image':
-      return { type: 'image', ...base, sourceKey: e.key || '', widthMm: r2(e.w), heightMm: r2(e.h), borderMm: r2(e.border || 0) };
-    case 'Line':
-      return { type: 'line', xMm: r2(e.x), yMm: r2(e.y), x2Mm: r2(e.x + e.w), y2Mm: r2(e.y + e.h), thicknessMm: r2(e.thickness || 0.5) };
-    case 'Rect':
-      return { type: 'region', xMm: r2(e.x), yMm: r2(e.y), id: e.containerId || ('c' + Math.random().toString(36).slice(2, 8)), widthMm: r2(e.w), heightMm: r2(e.h), borderMm: r2(e.border || 0.3) };
-    case 'Region':
-      return { type: 'region', xMm: r2(e.x), yMm: r2(e.y), id: e.containerId, widthMm: r2(e.w), heightMm: r2(e.h), borderMm: r2(e.border || 0.3) };
-  }
-}
-
-async function saveTemplate() {
-  const name = $('nameInput').value.trim() || 'web-demo';
-  const fieldKeys = [];
-  elements.forEach((e) => {
-    if (!['Image', 'Line', 'Region'].includes(e.type) && e.mode === 'field' && e.key && !fieldKeys.includes(e.key)) fieldKeys.push(e.key);
-  });
-  const payload = {
-    name,
-    group: '原型',
-    contract: {
-      name,
-      version: '1.0',
-      fields: fieldKeys.map((k) => ({ key: k, displayName: k, isRequired: false, type: 'Text' })),
-    },
-    layout: {
-      name: name + '-layout',
-      contractName: name,
-      contractVersion: '1.0',
-      widthMm: paperW,
-      heightMm: paperH,
-      elements: elements.map(toElementJson),
-    },
-  };
-  try {
-    await api('/api/templates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    status('已保存模板：' + name);
-    await refreshTemplateList();
-  } catch (ex) {
-    status('保存失败：' + ex.message);
-  }
-}
-
-async function previewTemplate() {
-  const name = $('nameInput').value.trim() || 'web-demo';
-  try {
-    const res = await api('/api/templates/' + encodeURIComponent(name) + '/preview', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: {} }),
-    });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    $('previewImg').src = url;
-    $('previewPanel').style.display = 'block';
-    status('预览已生成（WinHost 渲染，真实打印效果）。');
-  } catch (ex) {
-    status('预览失败：' + ex.message);
-  }
-}
-
 // ---------- 初始化 ----------
 function init() {
-  $('connectBtn').addEventListener('click', connect);
-  $('loadBtn').addEventListener('click', loadTemplate);
-  $('saveBtn').addEventListener('click', saveTemplate);
-  $('previewBtn').addEventListener('click', previewTemplate);
-  $('exportBtn').addEventListener('click', exportDesign);
-  $('importBtn').addEventListener('click', importDesign);
+  // 纯前端编辑器：无后端按钮，导出 / 导入设计走快捷键 Ctrl+Shift+C / Ctrl+Shift+V
   $('layerTop').addEventListener('click', layerToTop);
   $('layerUp').addEventListener('click', () => moveLayer(-1));
   $('layerDown').addEventListener('click', () => moveLayer(1));
   $('layerBottom').addEventListener('click', layerToBottom);
   $('previewDpiBtn').addEventListener('click', toggleDpiPreview);
-  $('newBtn').addEventListener('click', () => {
-    paperW = parseFloat($('widthInput').value) || 100;
-    paperH = parseFloat($('heightInput').value) || 60;
-    elements = [];
-    selected = [];
-    pendingType = null;
-    status('已新建空模板。');
-    applyView();
-    render();
-    renderProps();
-  });
   $('widthInput').addEventListener('change', () => { paperW = parseFloat($('widthInput').value) || 100; applyView(); render(); });
   $('heightInput').addEventListener('change', () => { paperH = parseFloat($('heightInput').value) || 60; applyView(); render(); });
   $('gridCheck').addEventListener('change', render);
   $('clearLogBtn').addEventListener('click', () => { $('logBox').innerHTML = ''; });
-  $('closePreviewBtn').addEventListener('click', () => { $('previewPanel').style.display = 'none'; });
   window.addEventListener('resize', () => { applyView(); render(); });
   applyView();
   render();
-  status('原型就绪：画布四周留白 10mm，标尺覆盖全画布；拖入控件到画布定位；1mm=8 点查看真实比例。');
+  status('纯前端编辑器就绪：控件栏添加元素；Ctrl+Shift+C 导出设计 / Ctrl+Shift+V 导入设计；DPI 预览查看真实打印效果。');
 }
 
 init();

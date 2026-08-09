@@ -48,26 +48,15 @@
 </head>
 <body>
 <header>
-  <input id="serverUrl" value="http://127.0.0.1:53960" title="WinHost 地址">
-  <button id="connectBtn">连接</button>
-  <span id="connStatus">未连接</span>
-  <select id="templateList" title="已有模板"></select>
-  <button id="loadBtn">加载</button>
-  <button id="newBtn">新建</button>
-  <input id="nameInput" placeholder="模板名" value="web-demo">
   <label>宽 <input id="widthInput" type="number" value="100"></label>
   <label>高 <input id="heightInput" type="number" value="60"></label>
   <select id="dpiSelect" title="打印 DPI">
     <option value="203">203 dpi</option>
     <option value="300">300 dpi</option>
   </select>
-  <button id="previewDpiBtn" title="按所选 DPI 以真实毫米比例显示">预览打印效果</button>
+  <button id="previewDpiBtn" title="按所选 DPI 以真实打印比例显示">预览打印效果</button>
   <label>缩放 <span id="zoomLabel">100%</span></label>
   <label><input id="gridCheck" type="checkbox" checked> 网格</label>
-  <button id="saveBtn" class="primary">保存</button>
-  <button id="previewBtn">预览</button>
-  <button id="exportBtn" title="复制设计代码到剪贴板（Ctrl+Shift+C）">导出设计</button>
-  <button id="importBtn" title="从剪贴板导入设计代码（Ctrl+Shift+V）">导入设计</button>
 </header>
 <main>
   <aside id="left">
@@ -90,13 +79,13 @@
     </div>
     <h3>操作提示</h3>
     <ul class="hint">
-      <li>左键：选中 / 拖拽移动（智能参考线辅助对齐）</li>
-      <li>手柄：拖角缩放</li>
-      <li>Shift+点击：多选；Delete：删除</li>
-      <li>中键拖拽：平移画布</li>
-      <li>Ctrl+滚轮：内容缩放（看整体 / 局部）</li>
-      <li>「适应窗口」：画布铺满视口；「实际大小」：1mm≈4px</li>
-      <li>条码 / 二维码输入值后立即渲染</li>
+      <li>控件栏：文本 / 条码 / 二维码 / 矩形（点击后在画布放置 / 拖入）</li>
+      <li>左键选中 / 拖拽移动（智能参考线 + 1mm 网格吸附）</li>
+      <li>手柄拖角缩放；Shift 多选；Delete 删除</li>
+      <li>Ctrl+C / Ctrl+V 复制粘贴；Ctrl+Z / Ctrl+Y 撤销恢复</li>
+      <li>Ctrl+Shift+C 导出设计 / Ctrl+Shift+V 导入设计（剪贴板）</li>
+      <li>中键拖拽平移；Ctrl+滚轮缩放</li>
+      <li>DPI + 预览打印效果：真实打印比例，仅显示标签范围</li>
     </ul>
   </aside>
   <section id="center">
@@ -119,7 +108,7 @@
   </div>
   <div id="logBox"></div>
 </footer>
-<div id="previewPanel"><img id="previewImg" alt="预览"><button id="closePreviewBtn">关闭预览</button></div>
+
 <script src="konva.min.js"></script>
 <script src="jsbarcode.min.js"></script>
 <script src="qrcode.min.js"></script>
