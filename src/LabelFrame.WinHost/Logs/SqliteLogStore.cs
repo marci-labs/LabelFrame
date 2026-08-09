@@ -90,7 +90,7 @@ public sealed class SqliteLogStore
 
         if (since is not null)
         {
-            conditions.Add("time >= $since");
+            conditions.Add("time > $since");
             command.Parameters.AddWithValue("$since", Format(since.Value));
         }
 

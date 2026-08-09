@@ -157,7 +157,7 @@ public static class Program
             {
                 return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, ex.Message));
             }
-        });
+        }).DisableAntiforgery();
 
         app.MapPost("/api/templates/{name}/preview", async (string name, Api.PreviewRequest? request, TemplateStore templateStore, LabelPreviewRenderer renderer, CancellationToken ct) =>
         {
@@ -268,7 +268,7 @@ public static class Program
             {
                 return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, $"Excel 解析失败：{ex.Message}"));
             }
-        });
+        }).DisableAntiforgery();
 
         // ---- 打印机测试页 / 在线状态 ----
         app.MapGet("/api/printer/status", async (IPrinterStatusProvider provider, CancellationToken ct) =>
