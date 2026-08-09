@@ -31,8 +31,13 @@ Get-ChildItem -Path $PublishDir -Recurse -File | ForEach-Object {
     $fileId = ''
     if ($rel -eq 'LabelFrame.WinHost.exe') { $fileId = ' Id="WinHostExe"' }
     else { $fileId = ' Id="ff' + $index + '"' }
+    # 显式唯一短文件名（8.3），避免 WIX1070 语言资源短名冲突
+    $ext = [System.IO.Path]::GetExtension($rel)
+    if ($ext.Length -gt 0) { $ext = $ext.Substring(1) }   # 去点
+    if ($ext.Length -gt 3) { $ext = $ext.Substring(0, 3) }
+    $shortName = ('LF{0:D6}.{1}' -f $index, $ext.ToUpperInvariant())
     [void]$sb.AppendLine('      <Component Id="f' + $index + '" Guid="' + $guid + '">')
-    [void]$sb.AppendLine('        <File' + $fileId + ' Source="$(var.PublishDir)/' + $rel + '" />')
+    [void]$sb.AppendLine('        <File' + $fileId + ' ShortName="' + $shortName + '" Source="$(var.PublishDir)/' + $rel + '" />')
     [void]$sb.AppendLine('      </Component>')
     $index++
 }
