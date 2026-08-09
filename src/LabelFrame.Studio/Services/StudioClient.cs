@@ -75,6 +75,17 @@ public sealed class StudioClient
         return health ?? throw new InvalidOperationException("健康检查无响应。");
     }
 
+    /// <summary>保存（upsert）模板。</summary>
+    public async Task SaveTemplateAsync(TemplateSaveDto template, CancellationToken cancellationToken = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/templates", template, JsonOptions, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"保存失败（{(int)response.StatusCode}）：{body}");
+        }
+    }
+
     /// <summary>模板列表（可按分组过滤）。</summary>
     public async Task<IReadOnlyList<TemplateSummaryDto>> ListTemplatesAsync(string? group = null, CancellationToken cancellationToken = default)
     {

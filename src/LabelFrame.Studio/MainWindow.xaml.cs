@@ -143,6 +143,33 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void Edit_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.SelectedTemplate is null)
+        {
+            MessageBox.Show(this, "请先选择模板。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            var detail = await _viewModel.GetTemplateAsync(_viewModel.SelectedTemplate.Name);
+            if (detail?.Contract is null || detail.Layout is null)
+            {
+                MessageBox.Show(this, "模板详情读取失败。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var editor = new EditorWindow(_viewModel.Client!, detail) { Owner = this };
+            editor.ShowDialog();
+            await _viewModel.RefreshTemplatesAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "打开编辑器失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private async void Preview_Click(object sender, RoutedEventArgs e)
     {
         try

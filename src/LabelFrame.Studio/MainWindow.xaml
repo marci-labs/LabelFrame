@@ -41,6 +41,7 @@
                         <Button Content="导入 .lfpkg…" Width="100" Margin="4,0" Click="Import_Click"/>
                         <Button Content="导出…" Width="70" Click="Export_Click"/>
                         <Button Content="删除" Width="60" Margin="4,0" Click="Delete_Click"/>
+                        <Button Content="✏ 版式编辑" Width="90" Margin="4,0" FontWeight="Bold" Click="Edit_Click"/>
                     </WrapPanel>
                 </StackPanel>
                 <ListBox x:Name="TemplateList" Margin="0,4"

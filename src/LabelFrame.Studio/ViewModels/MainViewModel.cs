@@ -118,6 +118,12 @@ public sealed class MainViewModel : ObservableObject
 
     public bool IsConnected => _client is not null;
 
+    /// <summary>当前连接的客户端（供编辑器窗口使用）。</summary>
+    public StudioClient? Client => _client;
+
+    /// <summary>读取模板详情。</summary>
+    public Task<TemplateSaveDto?> GetTemplateAsync(string name) => _client!.GetTemplateAsync(name);
+
     public async Task ConnectAsync()
     {
         try
