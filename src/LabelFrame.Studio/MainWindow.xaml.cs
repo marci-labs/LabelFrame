@@ -202,9 +202,39 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ImportData_Click(object sender, RoutedEventArgs e)
+    private async void ImportData_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show(this, "Excel 数据导入将在后续迭代提供（迭代 9）。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+        if (_viewModel.SelectedTemplate is null)
+        {
+            MessageBox.Show(this, "请先选择模板，再导入 Excel 数据。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "选择 Excel 数据文件",
+            Filter = "Excel 文件 (*.xlsx)|*.xlsx|所有文件 (*.*)|*.*",
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await _viewModel.ImportExcelAsync(dialog.FileName);
+            var mappingWindow = new ExcelMappingWindow(_viewModel) { Owner = this };
+            mappingWindow.ShowDialog();
+            if (mappingWindow.Printed)
+            {
+                _viewModel.PreviewAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _viewModel.Log($"Excel 导入失败：{ex.Message}");
+            MessageBox.Show(this, ex.Message, "导入失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void Exit_Click(object sender, RoutedEventArgs e)

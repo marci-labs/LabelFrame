@@ -327,6 +327,14 @@ public sealed class ContractFieldViewModel : ObservableObject
     public LabelFrame.Core.Contracts.LabelFieldType Type { get; set; }
 }
 
+/// <summary>Excel 列 → 契约字段映射（导入时可手工调整）。</summary>
+public sealed class ExcelColumnMapping : ObservableObject
+{
+    public required string ExcelColumn { get; init; }
+
+    private string _fieldKey = string.Empty;
+    public string FieldKey { get => _fieldKey; set => SetProperty(ref _fieldKey, value); }
+}
 /// <summary>数据表单条目（按契约字段生成）。</summary>
 public sealed class FieldEntry : ObservableObject
 {

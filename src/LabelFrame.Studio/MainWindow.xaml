@@ -94,6 +94,7 @@
                         <Button Content="刷新预览" Width="90" Click="Preview_Click"/>
                     </WrapPanel>
                     <TextBlock Text="{Binding JobStatusText}" TextWrapping="Wrap" Margin="0,4"/>
+                    <TextBlock Text="{Binding ExcelFileText}" Foreground="#0A7" FontWeight="Bold" TextWrapping="Wrap" Margin="0,2"/>
                 </StackPanel>
             </DockPanel>
         </Border>

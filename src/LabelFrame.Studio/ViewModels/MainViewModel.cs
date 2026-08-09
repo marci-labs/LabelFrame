@@ -39,6 +39,8 @@ public sealed class MainViewModel : ObservableObject
     private string _detailText = string.Empty;
     private BitmapImage? _previewImage;
     private string _jobStatusText = string.Empty;
+    private string _excelFileName = string.Empty;
+    private ExcelTableData? _excelTable;
 
     public ObservableCollection<string> Groups { get; } = [];
 
@@ -112,6 +114,16 @@ public sealed class MainViewModel : ObservableObject
         set => SetProperty(ref _jobStatusText, value);
     }
 
+    public ObservableCollection<ExcelColumnMapping> ExcelMappings { get; } = [];
+
+    public IReadOnlyList<string> FieldKeyOptions => _detail?.Contract?.Fields.Select(f => f.Key).ToList() ?? [];
+
+    public string ExcelFileText
+    {
+        get => _excelFileName;
+        private set => SetProperty(ref _excelFileName, value);
+    }
+
     public bool IsConnected => _client is not null;
 
     /// <summary>当前连接的客户端（供编辑器窗口使用）。</summary>
@@ -152,6 +164,7 @@ public sealed class MainViewModel : ObservableObject
         DetailText = string.Empty;
         PreviewImage = null;
         JobStatusText = string.Empty;
+        ClearExcelState();
         OnPropertyChanged(nameof(IsConnected));
     }
 
@@ -241,13 +254,18 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>本地实时预览（共享渲染器，无需网络）。</summary>
     public void PreviewAsync()
     {
+        var data = Fields.ToDictionary(f => f.Key, f => f.Value ?? string.Empty);
+        RenderPreviewWithData(data);
+    }
+
+    private void RenderPreviewWithData(Dictionary<string, string> data)
+    {
         if (SelectedTemplate is null || _detail?.Layout is null)
         {
             PreviewImage = null;
             return;
         }
 
-        var data = Fields.ToDictionary(f => f.Key, f => f.Value ?? string.Empty);
         var document = new LabelDocument { Layout = _detail.Layout, Data = data };
         var png = _renderer.RenderPng(document, dpi: 203, null);
         var image = new BitmapImage();
@@ -257,6 +275,76 @@ public sealed class MainViewModel : ObservableObject
         image.EndInit();
         image.Freeze();
         PreviewImage = image;
+    }
+
+    /// <summary>读取 Excel（标题行 + 数据行），按当前模板字段自动建议列映射，并用首行刷新预览。</summary>
+    public async Task ImportExcelAsync(string filePath)
+    {
+        EnsureConnected();
+        if (_detail?.Contract is null)
+        {
+            throw new InvalidOperationException("请先选择模板。");
+        }
+
+        _excelTable = ExcelImportService.Read(filePath);
+        var keys = _detail.Contract.Fields.Select(f => f.Key).ToList();
+        var suggested = ExcelImportService.SuggestMapping(_excelTable.Headers, keys);
+        ExcelMappings.Clear();
+        for (var i = 0; i < _excelTable.Headers.Count; i++)
+        {
+            ExcelMappings.Add(new ExcelColumnMapping
+            {
+                ExcelColumn = _excelTable.Headers[i],
+                FieldKey = i < suggested.Count ? suggested[i] : string.Empty,
+            });
+        }
+
+        ExcelFileText = $"{Path.GetFileName(filePath)}（{_excelTable.Rows.Count} 行）";
+        OnPropertyChanged(nameof(FieldKeyOptions));
+        Log($"已导入 Excel：{ExcelFileText}，共 {_excelTable.Headers.Count} 列。");
+
+        if (_excelTable.Rows.Count > 0)
+        {
+            var first = ExcelImportService.BuildRowsData(
+                _excelTable,
+                ExcelMappings.Select(m => m.FieldKey).ToList()).FirstOrDefault();
+            if (first is not null)
+            {
+                RenderPreviewWithData(first);
+            }
+        }
+    }
+
+    /// <summary>按当前映射批量打印 Excel 全部数据行（一次提交多张）。</summary>
+    public async Task<int> PrintExcelAsync()
+    {
+        EnsureConnected();
+        if (_detail is null || _excelTable is null)
+        {
+            throw new InvalidOperationException("请先导入 Excel。");
+        }
+
+        var labels = ExcelImportService.BuildRowsData(
+            _excelTable,
+            ExcelMappings.Select(m => m.FieldKey).ToList());
+        if (labels.Count == 0)
+        {
+            throw new InvalidOperationException("Excel 没有数据行。");
+        }
+
+        var requestId = $"studio-excel-{Guid.NewGuid():N}";
+        var job = await _client!.SubmitJobAsync(requestId, _detail, labels);
+        JobStatusText = $"已提交 Excel 批量打印 {job.JobId}：{job.Status}（{job.CompletedItems}/{job.TotalItems}）";
+        Log($"提交 Excel 批量打印 {job.JobId}（{job.TotalItems} 张）。");
+        _ = PollJobAsync(job.JobId);
+        return job.TotalItems;
+    }
+
+    private void ClearExcelState()
+    {
+        _excelTable = null;
+        ExcelMappings.Clear();
+        ExcelFileText = string.Empty;
     }
 
     public async Task PrintTestAsync()
@@ -298,6 +386,7 @@ public sealed class MainViewModel : ObservableObject
 
         var detail = await _client!.GetTemplateAsync(SelectedTemplate.Name);
         _detail = detail;
+        ClearExcelState();
         if (detail?.Contract is null || detail.Layout is null)
         {
             DetailText = "模板详情读取失败。";

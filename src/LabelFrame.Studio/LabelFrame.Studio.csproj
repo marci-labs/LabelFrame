@@ -15,4 +15,8 @@
     <ProjectReference Include="..\LabelFrame.Rendering\LabelFrame.Rendering.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="TemplateFrame.Excel.Simple" Version="1.0.5" />
+  </ItemGroup>
+
 </Project>
