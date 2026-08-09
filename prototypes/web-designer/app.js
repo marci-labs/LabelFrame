@@ -20,12 +20,12 @@ const mm = (px) => px / PX;
 const pxv = (v) => v * PX;
 const r2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
 
-// 画布总尺寸 = 标尺区 + 内容画布（padding + 标签），逻辑 px
-const canvasW = () => RULER + (paperW + PAD_MM * 2) * PX;
-const canvasH = () => RULER + (paperH + PAD_MM * 2) * PX;
-// 内容画布（padding 左上角）偏移，逻辑 px
-const contentOX = () => RULER + PAD_MM * PX;
-const contentOY = () => RULER + PAD_MM * PX;
+// 画布总尺寸：设计态 = 标尺区 + 内容画布（padding + 标签）；预览态 = 仅标签（宽高定义范围）
+const canvasW = () => viewMode === 'preview' ? paperW * PX : RULER + (paperW + PAD_MM * 2) * PX;
+const canvasH = () => viewMode === 'preview' ? paperH * PX : RULER + (paperH + PAD_MM * 2) * PX;
+// 内容区偏移：设计态 = 标尺 + padding；预览态 = 0（元素直接按标签坐标渲染）
+const contentOX = () => viewMode === 'preview' ? 0 : RULER + PAD_MM * PX;
+const contentOY = () => viewMode === 'preview' ? 0 : RULER + PAD_MM * PX;
 
 // ---------- Konva ----------
 const stage = new Konva.Stage({ container: 'stage', width: 100, height: 60 });
