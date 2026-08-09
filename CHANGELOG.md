@@ -46,3 +46,12 @@
 - 失败项单独重打：`RetryItemAsync`（Failed → Pending，Failed 作业自动恢复）+ API `POST /api/jobs/{jobId}/items/{itemIndex}/retry`。
 - 打印机测试页 / 在线状态：`GET /api/printer/status`、`POST /api/printer/test`；TCP `~HS` 基础解析、Zebra 连接即在线、驱动模式不可读回、Log 模拟在线。
 - 蓝牙传输随迭代 5 受阻；真实设备字段联调待执行。
+## 迭代 7（Studio 模板工具 V1）— 2026-08-09
+
+- `LabelFrame.Studio`（WPF，net10.0-windows）：WinHost 客户端。
+  - 连接管理：地址配置、一键启动 / 停止 WinHost、传输模式显示（healthz 新增 transport）。
+  - 模板管理：按分组列表、详情（契约字段 + 版式元素）、删除、导出 `.lfpkg`。
+  - 模板导入：文件选择 `.lfpkg` → 导入 WinHost 模板库。
+  - 测试打印：选模板 → 按契约字段自动生成数据表单 → 预览 PNG → 提交打印作业 → 轮询状态与失败原因。
+- 复用 WinHost API，无重复打印逻辑；`StudioClient` 支持注入 HttpClient（可测试）。
+- 测试 85 个全绿；界面验收待执行；版式可视化编辑（拖拽画布）为 V2。

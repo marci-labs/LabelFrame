@@ -19,6 +19,7 @@
 - 迭代 4（模板管理 + 预览）：模板包 zip 导入导出、SQLite 模板库（按分组）、设计期 PNG 预览（ZXing 条码 / 二维码）。
 - 迭代 6（P1 收尾）：失败项单独重打、打印机测试页 / 在线状态（本迭代；真实设备字段联调待执行）。
 - 迭代 5（PDA 宿主）：AndroidHost（前台服务 / 开机自启 / 本地 HTTP / IP 9100 / Server 轮询 / 中文栅格化）已编译打包（真机验收待执行）。
+- 迭代 7（Studio 模板工具 V1）：WPF 可视化界面管理模板、导入 `.lfpkg`、选模板预览并测试打印（本迭代；界面验收待执行）。
 
 详见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
@@ -29,6 +30,7 @@
 | `LabelFrame.Core` | 契约 / 版式模型、数据校验、ZPL 编码、作业队列（迭代 1 起实现） |
 | `LabelFrame.Server` | 轻量服务端：设备注册、作业定向投递、测试入口（迭代 3 起实现） |
 | `LabelFrame.WinHost` | Windows 打印宿主（迭代 2 起实现） |
+| `LabelFrame.Studio` | Windows 模板工具：管理 / 导入导出 / 预览 / 测试打印（迭代 7 起实现） |
 | `LabelFrame.AndroidHost` | Android / PDA 打印宿主（迭代 5 起实现） |
 
 
@@ -56,6 +58,17 @@ dotnet run --project src\LabelFrame.WinHost
 - `POST /api/jobs`：提交作业（requestId + 自包含模板 + labels[]），返回 jobId。
 - `GET /api/jobs/{jobId}`：进度与逐张状态。
 - `POST /api/jobs/{jobId}/suspend|resume|cancel`：挂起 / 恢复 / 取消。
+
+## Studio 使用（迭代 7）
+
+```powershell
+# 先构建并启动 WinHost（或让 Studio 一键启动）
+dotnet run --project src\LabelFrame.WinHost
+# 再启动 Studio
+dotnet run --project src\LabelFrame.Studio
+```
+
+Studio 连接 WinHost（默认 127.0.0.1:53960）后：按分组浏览模板 → 导入 `.lfpkg` → 选模板填数据 → 刷新预览 → 打印测试（走 WinHost 当前传输：Log / TCP / Zebra / 驱动）。
 ## 文档
 
 - [docs/DESIGN.md](docs/DESIGN.md) —— 架构设计与决策记录

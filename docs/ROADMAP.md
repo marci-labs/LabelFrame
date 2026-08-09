@@ -14,6 +14,7 @@
 | 4 | 模板管理 + 预览 | ✅ 已完成（真实设备抽查待执行） |
 | 5 | PDA 宿主 | ✅ 已完成（真机验收待执行） |
 | 6 | P1 收尾 | ✅ 已完成（蓝牙 / Android 项随迭代 5 受阻） |
+| 7 | Studio 模板工具（V1） | ✅ 已完成（界面验收待执行） |
 | 检查点 | 试点验收（成功衡量） | 待定 |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计） | 待定 |
 
@@ -199,6 +200,34 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 6（P1 收尾）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 6 小节），对照上一迭代成果，严格按范围执行；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+
+## 迭代 7：Studio 模板工具（V1）（已完成，界面验收待执行）
+
+**目标**：Windows 上可视化管理模板、导入并测试打印，不依赖命令行 / 手工 JSON。
+
+**范围**：
+- `LabelFrame.Studio`（WPF，net10.0-windows）：WinHost 连接管理（地址 / 一键启动 / 传输模式显示）。
+- 模板管理：按分组列表、详情（契约字段 + 版式元素）、删除、导出 `.lfpkg`。
+- 模板导入：文件选择 `.lfpkg` → 导入 WinHost 模板库。
+- 测试打印：选模板 → 按契约字段生成数据表单 → 实时预览 PNG → 提交打印作业 → 查看状态 / 失败原因。
+- 复用 WinHost API：`/api/templates*`、`/api/jobs`、`/api/printer/*`。
+
+**不在范围**：版式可视化编辑（拖拽画布，V2）；模板分组管理界面（可后续补）。
+
+**验收**：
+- Studio 可列出 / 删除 / 导出模板，导入 `.lfpkg` 后立即可见。
+- 选模板填数据 → 预览 PNG → Log 传输测试打印成功并显示作业状态。
+- 一键启动 / 连接 WinHost（默认 127.0.0.1:53960）。
+
+**完成记录**（2026-08-09）：
+- `LabelFrame.Studio`（WPF，net10.0-windows）：连接管理（地址 / 一键启动 / 停止 / 传输模式显示）、模板列表（分组过滤）/ 详情 / 删除 / 导出、`.lfpkg` 导入、按契约字段生成数据表单、实时预览 PNG、提交测试打印作业并轮询状态。
+- 全部复用 WinHost API（`/api/templates*`、`/api/jobs`、`/api/printer/*`）；WinHost healthz 增加 transport 字段。
+- 测试 85 个全绿（StudioClient 6 个）；界面验收（打开 Studio 手动操作）待执行。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 7（Studio 模板工具 V1）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 7 小节），对照上一迭代成果，严格按范围执行；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 
