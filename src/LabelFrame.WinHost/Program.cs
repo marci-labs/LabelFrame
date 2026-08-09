@@ -311,7 +311,12 @@ public static class Program
             _ = Task.Run(async () =>
             {
                 await Task.Delay(200);
+                HostInfo("收到关闭请求，正在停止宿主…");
                 lifetime.StopApplication();
+                // 托盘线程（WinForms 消息循环）可能阻止 RunAsync 自然返回，延迟后强制退出
+                await Task.Delay(500);
+                HostInfo("关闭完成。");
+                Environment.Exit(0);
             });
             return Results.Ok(new { shuttingDown = true });
         });
@@ -365,6 +370,20 @@ public static class Program
             });
         }
 
+        app.Lifetime.ApplicationStopping.Register(() => HostInfo("ApplicationStopping"));
+        app.Lifetime.ApplicationStopped.Register(() => HostInfo("ApplicationStopped"));
+
+        var tray = new TrayIconService();
+        if (options.EnableTray)
+        {
+            tray.Start(options.ListenUrl, () =>
+            {
+                app.Lifetime.StopApplication();
+                return Task.CompletedTask;
+            });
+            HostInfo("系统托盘已启用（右键托盘图标可退出）。");
+        }
+
         try
         {
             await app.RunAsync();
@@ -375,6 +394,12 @@ public static class Program
             HostInfo($"LabelFrame 启动失败：{ex}");
             HostInfo("如端口被占用，可修改 appsettings.json 的 ListenUrl 或结束占用进程后重试。");
             throw;
+        }
+        finally
+        {
+            tray.Dispose();
+            HostInfo("宿主退出流程完成。");
+            Environment.Exit(0);
         }
     }
 
