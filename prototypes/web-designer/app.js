@@ -879,6 +879,26 @@ function alignSelected(align) {
 }
 
 // ---------- 字段自动推导 ----------
+// 图层显示名称：固定值显示内容；字段填充显示（键名）预览值；条码 / 二维码带类型前缀
+function layerLabel(e) {
+  switch (e.type) {
+    case 'Text':
+      if (e.mode === 'literal') return e.text || '文本';
+      return '(' + (e.key || '未绑定') + ') ' + (e.text || '');
+    case 'Barcode':
+    case 'QrCode': {
+      const t = e.type === 'Barcode' ? '条码' : '二维码';
+      if (e.mode === 'literal') return '(' + t + ') ' + (e.text || '固定值');
+      return '(' + t + ') (' + (e.key || '未绑定') + ') ' + (e.text || '');
+    }
+    case 'Rect': return '矩形';
+    case 'Image': return '图片' + (e.key ? ' (' + e.key + ')' : '');
+    case 'Line': return '线';
+    case 'Region': return '容器';
+    default: return typeLabel(e);
+  }
+}
+
 function renderLayerList() {
   const ul = $('layerList');
   if (!ul) return;
@@ -889,11 +909,15 @@ function renderLayerList() {
   ul.innerHTML = '';
   elements.forEach((e, i) => {
     const li = document.createElement('li');
-    li.textContent = (i + 1) + '. ' + typeLabel(e) + (e.key ? ' (' + e.key + ')' : '') + (e.type === 'Rect' ? '' : '');
+    li.textContent = (i + 1) + '. ' + layerLabel(e);
     li.style.cursor = 'pointer';
     li.style.padding = '2px 4px';
     li.style.borderRadius = '2px';
     li.style.fontFamily = 'Consolas, Microsoft YaHei';
+    li.style.overflow = 'hidden';
+    li.style.textOverflow = 'ellipsis';
+    li.style.whiteSpace = 'nowrap';
+    li.title = layerLabel(e);
     if (selected.includes(e.id)) {
       li.style.background = '#e8f0fe';
       li.style.color = '#1668dc';
