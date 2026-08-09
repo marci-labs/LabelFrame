@@ -511,6 +511,17 @@ function snapNode(g) {
   let bestDx = null, bestDy = null;
   xs.forEach((x) => { cx.forEach((c) => { const d = c - x; if (Math.abs(d) <= TH && (bestDx === null || Math.abs(d) < Math.abs(bestDx.d))) bestDx = { d, c }; }); });
   ys.forEach((y) => { cy.forEach((c) => { const d = c - y; if (Math.abs(d) <= TH && (bestDy === null || Math.abs(d) < Math.abs(bestDy.d))) bestDy = { d, c }; }); });
+  // 网格吸附兜底：无边缘 / 中心目标时，左上角贴到最近 1mm 网格（消除 0.2 之类的小数偏移）
+  if (bestDx === null) {
+    const gridX = Math.round(r.x / PX) * PX;
+    const d = gridX - r.x;
+    if (Math.abs(d) <= TH) bestDx = { d, c: gridX };
+  }
+  if (bestDy === null) {
+    const gridY = Math.round(r.y / PX) * PX;
+    const d = gridY - r.y;
+    if (Math.abs(d) <= TH) bestDy = { d, c: gridY };
+  }
   clearGuides();
   if (bestDx) { g.x(g.x() + bestDx.d); drawGuideV(bestDx.c); }
   if (bestDy) { g.y(g.y() + bestDy.d); drawGuideH(bestDy.c); }
@@ -1062,7 +1073,7 @@ function typeLabel(e) {
 function contentGroup(e) {
   const gContent = document.createElement('div');
   gContent.className = 'group';
-  gContent.innerHTML = '<h4>填充（默认固定值；字段填充 = 键名称 + 预览填充值）</h4>';
+  gContent.innerHTML = '<h4>填充（默认固定值；字段填充 = 键名称 + 预览值）</h4>';
   const modeSel = document.createElement('select');
   [['固定值', 'literal'], ['字段填充', 'field']].forEach(([label, val]) => {
     const o = document.createElement('option');
@@ -1080,6 +1091,10 @@ function contentGroup(e) {
   litInput.addEventListener('change', () => { e.text = litInput.value; commit(); });
   gContent.appendChild(litInput);
 
+  const hint = document.createElement('p');
+  hint.style.cssText = 'color:#888;font-size:11px;margin:4px 0 0';
+  hint.textContent = '打印时从外界数据取「键名称」对应字段填充，预览值会被忽略。';
+  gContent.appendChild(hint);
   const keyInput = document.createElement('input');
   keyInput.placeholder = '键名称（契约字段，自动建立）';
   keyInput.value = e.key || '';
@@ -1087,7 +1102,7 @@ function contentGroup(e) {
   keyInput.addEventListener('change', () => { e.key = keyInput.value.trim(); refreshFields(); commit(); });
   gContent.appendChild(keyInput);
   const valInput = document.createElement('input');
-  valInput.placeholder = '填充值（仅预览用）';
+  valInput.placeholder = '预览值（仅画布显示，打印以外界数据为准）';
   valInput.value = e.text || '';
   valInput.style.marginTop = '4px';
   valInput.addEventListener('change', () => { e.text = valInput.value; commit(); });
