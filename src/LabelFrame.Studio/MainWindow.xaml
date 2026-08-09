@@ -80,7 +80,7 @@
                                             <ColumnDefinition Width="130"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Key}" VerticalAlignment="Center"/>
                                         <TextBox Grid.Column="1" Margin="6,0,0,0"
                                                  Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
                                     </Grid>
@@ -113,12 +113,13 @@
         <Border DockPanel.Dock="Bottom" BorderBrush="#DDD" BorderThickness="0,1,0,0" Padding="6" Height="130">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+                    <Button DockPanel.Dock="Right" Content="清空日志" Width="76" Margin="6,0,0,0" HorizontalAlignment="Right" Click="ClearLogs_Click"/>
                     <TextBlock Text="状态：" FontWeight="Bold"/>
                     <TextBlock Text="{Binding ConnectionText}" Margin="4,0,12,0"/>
                     <TextBlock Text="{Binding TransportText}" Margin="0,0,12,0"/>
                 </StackPanel>
                 <GroupBox Header="日志" Margin="0,4,0,0">
-                    <ListBox ItemsSource="{Binding Logs}" FontFamily="Consolas" FontSize="11"/>
+                    <ListBox x:Name="LogList" ItemsSource="{Binding Logs}" FontFamily="Consolas" FontSize="11"/>
                 </GroupBox>
             </DockPanel>
         </Border>

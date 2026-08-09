@@ -13,13 +13,12 @@ public enum EditorElementType
     Region,
 }
 
-/// <summary>可编辑的版式元素。</summary>
+/// <summary>可编辑的版式元素（迭代 8D：容器化显示、多选、实时通知）。</summary>
 public sealed class LayoutElementViewModel : ObservableObject
 {
     public LayoutElementViewModel(EditorElementType type)
     {
         Type = type;
-        SourceKey = "text";
         switch (type)
         {
             case EditorElementType.Text:
@@ -38,20 +37,31 @@ public sealed class LayoutElementViewModel : ObservableObject
                 XMm = 5; YMm = 5; X2Mm = 60; Y2Mm = 5; ThicknessMm = 0.5;
                 break;
             case EditorElementType.Region:
-                XMm = 5; YMm = 5; WidthMm = 60; HeightMm = 30; Id = "region1"; BorderMm = 0.3;
+                XMm = 5; YMm = 5; WidthMm = 60; HeightMm = 30; Id = "container1"; BorderMm = 0.3;
                 break;
         }
     }
 
     public EditorElementType Type { get; }
 
-    public string DisplayName => $"{Type}";
-    public string DisplayLabel => Type == EditorElementType.Region ? $"区域 ({Id})" : $"{Type} ({SourceKey})";
+    /// <summary>元素中文显示名。</summary>
+    public string DisplayName => Type switch
+    {
+        EditorElementType.Text => "文本",
+        EditorElementType.Barcode => "条码",
+        EditorElementType.QrCode => "二维码",
+        EditorElementType.Image => "图片",
+        EditorElementType.Line => "线",
+        EditorElementType.Region => "容器",
+        _ => Type.ToString(),
+    };
+
+    public string DisplayLabel => Type == EditorElementType.Region ? $"容器 ({Id})" : $"{DisplayName} ({SourceKey})";
 
     public bool IsText => Type == EditorElementType.Text;
     public bool IsRect => Type is EditorElementType.Barcode or EditorElementType.QrCode or EditorElementType.Image;
     public bool IsLine => Type == EditorElementType.Line;
-    public bool IsRegion => Type == EditorElementType.Region;
+    public bool IsContainer => Type == EditorElementType.Region;
 
     private double _xMm;
     public double XMm { get => _xMm; set { if (SetProperty(ref _xMm, value)) OnPropertyChanged(nameof(DisplayLabel)); } }
@@ -171,7 +181,7 @@ public sealed class LayoutElementViewModel : ObservableObject
         {
             SourceKey = ContentMode == "固定值" ? string.Empty : SourceKey,
             Literal = ContentMode == "固定值" ? Literal : null,
-            SizeMm = Math.Max(WidthMm, HeightMm),
+            SizeMm = WidthMm,
             BorderMm = BorderMm,
             RegionId = RegionId,
             RegionHAlign = ParseRegionAlign(RegionHAlign),
@@ -201,7 +211,7 @@ public sealed class LayoutElementViewModel : ObservableObject
         },
         EditorElementType.Region => new LabelRegionElement
         {
-            Id = Id,
+            Id = string.IsNullOrWhiteSpace(Id) ? $"region-{Guid.NewGuid():N}"[..14] : Id,
             WidthMm = WidthMm,
             HeightMm = HeightMm,
             BorderMm = BorderMm,
@@ -295,7 +305,7 @@ public sealed class LayoutElementViewModel : ObservableObject
         => Enum.TryParse<LabelRegionAlign>(value, out var align) ? align : null;
 }
 
-/// <summary>可编辑的契约字段。</summary>
+/// <summary>可编辑的契约字段（迭代 8D：由版式自动推导，元数据后台保留）。</summary>
 public sealed class ContractFieldViewModel : ObservableObject
 {
     public ContractFieldViewModel(string key, string displayName, bool isRequired, LabelFrame.Core.Contracts.LabelFieldType type)
@@ -315,9 +325,8 @@ public sealed class ContractFieldViewModel : ObservableObject
     public bool IsRequired { get => _isRequired; set => SetProperty(ref _isRequired, value); }
 
     public LabelFrame.Core.Contracts.LabelFieldType Type { get; set; }
-
-    public Array AvailableTypes { get; } = Enum.GetValues<LabelFrame.Core.Contracts.LabelFieldType>();
 }
+
 /// <summary>数据表单条目（按契约字段生成）。</summary>
 public sealed class FieldEntry : ObservableObject
 {

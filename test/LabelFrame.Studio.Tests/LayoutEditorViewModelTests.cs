@@ -50,7 +50,7 @@ public class LayoutEditorViewModelTests
     }
 
     [Fact]
-    public void AddElement_should_use_first_field_as_source_key()
+    public void AddElement_should_default_to_unbound_source_key()
     {
         var vm = new LayoutEditorViewModel();
         vm.LoadFrom(CreateTemplate());
@@ -59,7 +59,7 @@ public class LayoutEditorViewModelTests
 
         var added = vm.Elements.Last();
         Assert.Equal(EditorElementType.QrCode, added.Type);
-        Assert.Equal("locationCode", added.SourceKey);
+        Assert.Equal(string.Empty, added.SourceKey);
         Assert.Same(added, vm.SelectedElement);
     }
 
@@ -72,7 +72,7 @@ public class LayoutEditorViewModelTests
         var originalX = element.XMm;
         var originalY = element.YMm;
 
-        vm.MoveElement(element, dxPx: 40, dyPx: 20); // 100% 缩放 4px/mm
+        vm.MoveElements([element], dxPx: 40, dyPx: 20); // 100% 缩放 4px/mm
 
         Assert.Equal(originalX + 10, element.XMm);
         Assert.Equal(originalY + 5, element.YMm);
@@ -85,7 +85,7 @@ public class LayoutEditorViewModelTests
         vm.LoadFrom(CreateTemplate());
         vm.AddElement(EditorElementType.Line);
         var line = vm.Elements.Last();
-        vm.MoveElement(line, 20, 0);
+        vm.MoveElements([line], 20, 0);
 
         var contract = vm.BuildContract();
         var layout = vm.BuildLayout();
@@ -121,29 +121,91 @@ public class LayoutEditorViewModelTests
         Assert.Equal(80, vm.WidthMm);
         Assert.Equal(40, vm.HeightMm);
 
-        // 无字段时添加元素：SourceKey 回退默认 text
+        // 无字段时添加元素：SourceKey 默认空，不产生契约字段
         vm.AddElement(EditorElementType.Text);
-        Assert.Equal("text", vm.Elements[0].SourceKey);
+        Assert.Equal(string.Empty, vm.Elements[0].SourceKey);
+        Assert.Empty(vm.Fields);
 
-        vm.AddField();
+        // 绑定字段后自动建立契约字段
+        vm.Elements[0].SourceKey = "code";
         Assert.Single(vm.Fields);
+        Assert.Equal("code", vm.Fields[0].Key);
 
         var dto = vm.BuildSaveDto();
         Assert.Equal("new-label", dto.Name);
         Assert.Single(dto.Layout!.Elements);
         Assert.Single(dto.Contract!.Fields);
+        Assert.Equal("code", dto.Contract!.Fields[0].Key);
     }
 
     [Fact]
-    public void RenameField_should_update_element_source_keys()
+    public void SourceKey_change_should_derive_fields_automatically()
     {
         var vm = new LayoutEditorViewModel();
         vm.LoadFrom(CreateTemplate());
 
-        vm.RenameField("locationCode", "code");
+        vm.AddElement(EditorElementType.Text);
+        vm.Elements[^1].SourceKey = "newField";
 
-        Assert.Equal("zone", vm.Elements[0].SourceKey);
-        Assert.Equal("code", vm.Elements[1].SourceKey);
+        Assert.Equal(3, vm.Fields.Count);
+        Assert.Equal("newField", vm.Fields[2].Key);
+    }
+
+    [Fact]
+    public void Removing_element_should_remove_unreferenced_field()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(CreateTemplate());
+
+        var text = vm.Elements.First(e => e.SourceKey == "zone");
+        vm.RemoveElement(text);
+
+        Assert.Single(vm.Fields);
+        Assert.Equal("locationCode", vm.Fields[0].Key);
+    }
+
+    [Fact]
+    public void DeleteSelected_should_remove_multiple_elements_and_fields()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(CreateTemplate());
+        vm.AddElement(EditorElementType.Text);
+        vm.Elements[^1].SourceKey = "extra";
+        vm.SelectRange(vm.Elements.ToList());
+
+        vm.DeleteSelected();
+
+        Assert.Empty(vm.Elements);
+        Assert.Empty(vm.Fields);
+        Assert.Empty(vm.SelectedElements);
+        Assert.False(vm.HasSelection);
+    }
+
+    [Fact]
+    public void AlignSelected_should_align_to_bounding_box()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(CreateTemplate());
+        vm.SelectRange(vm.Elements.ToList());
+
+        vm.AlignSelected(EditorAlign.Right);
+
+        // 文本块宽 0：右边界 = 包围框右边界 60；条码宽 55：X = 60 - 55 = 5
+        Assert.Equal(60, vm.Elements[0].XMm);
+        Assert.Equal(5, vm.Elements[1].XMm);
+    }
+
+    [Fact]
+    public void SnapDelta_should_snap_to_canvas_edge()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(CreateTemplate());
+        var element = vm.Elements[0]; // 文本 X=5，向左移动 4.6mm → 左缘 0.4mm，吸附到 0
+
+        var (dx, dy) = vm.SnapDeltaMm([element], dxMm: -4.6, dyMm: 0);
+
+        Assert.Equal(-5.0, dx, 3);
+        Assert.Equal(0.0, dy, 3);
     }
 
     [Fact]
@@ -211,6 +273,7 @@ public class LayoutEditorViewModelTests
         var vm = new LayoutEditorViewModel();
         vm.LoadFrom(CreateTemplate());
         vm.AddElement(EditorElementType.Barcode);
+        vm.Elements[^1].SourceKey = "locationCode";
 
         var layout = vm.BuildLayout();
         var barcode = Assert.IsType<LabelBarcodeElement>(layout.Elements.Last());

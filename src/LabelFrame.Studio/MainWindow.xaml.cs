@@ -15,7 +15,21 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel;
+        _viewModel.Logs.CollectionChanged += (_, _) => ScrollLogsToEnd();
     }
+
+    private void ScrollLogsToEnd()
+    {
+        if (LogList.Items.Count == 0)
+        {
+            return;
+        }
+
+        LogList.ScrollIntoView(LogList.Items[LogList.Items.Count - 1]);
+    }
+
+    private void ClearLogs_Click(object sender, RoutedEventArgs e)
+        => _viewModel.ClearLogs();
 
     private async void Connect_Click(object sender, RoutedEventArgs e)
     {

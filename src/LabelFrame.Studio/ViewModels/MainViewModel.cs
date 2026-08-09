@@ -26,6 +26,9 @@ public sealed class MainViewModel : ObservableObject
         Logs.Add($"{DateTime.Now:HH:mm:ss}  {message}");
     }
 
+    /// <summary>清空日志。</summary>
+    public void ClearLogs() => Logs.Clear();
+
     private string _serverUrl = "http://127.0.0.1:53960";
     private string _connectionText = "未连接";
     private string? _transportText;

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
 using LabelFrame.Core.Contracts;
@@ -7,7 +8,20 @@ using LabelFrame.Studio.Services;
 
 namespace LabelFrame.Studio.ViewModels;
 
-/// <summary>版式编辑器视图模型（V2/V2B）：元素集合、缩放换算、字段编辑、区域布局、保存。</summary>
+/// <summary>多选对齐方式。</summary>
+public enum EditorAlign
+{
+    Left,
+    CenterH,
+    Right,
+    Top,
+    CenterV,
+    Bottom,
+}
+
+/// <summary>
+/// 版式编辑器视图模型（迭代 8D）：元素集合、多选、字段自动推导、对齐 / 吸附、容器布局、保存。
+/// </summary>
 public sealed class LayoutEditorViewModel : ObservableObject
 {
     private readonly StudioClient? _client;
@@ -15,6 +29,24 @@ public sealed class LayoutEditorViewModel : ObservableObject
     public LayoutEditorViewModel(StudioClient? client = null)
     {
         _client = client;
+        Elements.CollectionChanged += (_, e) =>
+        {
+            if (e.OldItems is not null)
+            {
+                foreach (LayoutElementViewModel element in e.OldItems)
+                {
+                    element.PropertyChanged -= OnElementPropertyChanged;
+                }
+            }
+
+            if (e.NewItems is not null)
+            {
+                foreach (LayoutElementViewModel element in e.NewItems)
+                {
+                    element.PropertyChanged += OnElementPropertyChanged;
+                }
+            }
+        };
     }
 
     private string _name = string.Empty;
@@ -61,7 +93,8 @@ public sealed class LayoutEditorViewModel : ObservableObject
         get => _zoom;
         set
         {
-            if (SetProperty(ref _zoom, value))
+            var clamped = Math.Clamp(value, 0.25, 4.0);
+            if (SetProperty(ref _zoom, clamped))
             {
                 OnPropertyChanged(nameof(PixelsPerMm));
                 OnPropertyChanged(nameof(CanvasWidthPx));
@@ -115,20 +148,40 @@ public sealed class LayoutEditorViewModel : ObservableObject
 
     public ObservableCollection<LayoutElementViewModel> Elements { get; } = [];
 
+    /// <summary>契约字段（由版式元素填充 key 自动推导）。</summary>
     public ObservableCollection<ContractFieldViewModel> Fields { get; } = [];
 
-    /// <summary>设计器测试数据（按契约字段生成，用于打印预览 / 打印测试）。</summary>
+    /// <summary>设计器测试数据（按推导字段生成，用于打印预览 / 打印测试）。</summary>
     public ObservableCollection<FieldEntry> TestFields { get; } = [];
 
     /// <summary>日志（底部日志栏）。</summary>
     public ObservableCollection<string> Logs { get; } = [];
 
     private LayoutElementViewModel? _selectedElement;
+    /// <summary>主选中元素（属性面板显示单个元素属性）。</summary>
     public LayoutElementViewModel? SelectedElement
     {
         get => _selectedElement;
-        set => SetProperty(ref _selectedElement, value);
+        private set => SetProperty(ref _selectedElement, value);
     }
+
+    /// <summary>当前选中集合（支持多选）。</summary>
+    public ObservableCollection<LayoutElementViewModel> SelectedElements { get; } = [];
+
+    public bool HasSelection => SelectedElements.Count > 0;
+
+    public bool IsSingleSelection => SelectedElements.Count == 1;
+
+    public bool ShowMultiSelectionPanel => HasSelection && !IsSingleSelection;
+
+    public string SelectionCountText => SelectedElements.Count switch
+    {
+        0 => string.Empty,
+        1 => "已选 1 个元素",
+        _ => $"已选 {SelectedElements.Count} 个元素",
+    };
+
+    public IReadOnlyList<string> FieldKeys => Fields.Select(f => f.Key).ToList();
 
     private ContractFieldViewModel? _selectedField;
     public ContractFieldViewModel? SelectedField
@@ -144,9 +197,7 @@ public sealed class LayoutEditorViewModel : ObservableObject
         set => SetProperty(ref _statusText, value);
     }
 
-    public string[] ElementTypes { get; } = Enum.GetNames<EditorElementType>();
-
-    /// <summary>当前区域 Id 列表（属性面板 RegionId 下拉）。</summary>
+    /// <summary>当前容器 Id 列表（内部用于区域解析）。</summary>
     public ObservableCollection<string> RegionIds { get; } = [];
 
     /// <summary>追加日志。</summary>
@@ -155,6 +206,9 @@ public sealed class LayoutEditorViewModel : ObservableObject
         Logs.Add($"{DateTime.Now:HH:mm:ss}  {message}");
         StatusText = message;
     }
+
+    /// <summary>清空日志。</summary>
+    public void ClearLogs() => Logs.Clear();
 
     public void LoadFrom(TemplateSaveDto template)
     {
@@ -176,8 +230,6 @@ public sealed class LayoutEditorViewModel : ObservableObject
             Fields.Add(new ContractFieldViewModel(field.Key, field.DisplayName, field.IsRequired, field.Type));
         }
 
-        SyncTestFields();
-
         Elements.Clear();
         foreach (var element in template.Layout.Elements)
         {
@@ -185,28 +237,34 @@ public sealed class LayoutEditorViewModel : ObservableObject
         }
 
         RefreshRegionIds();
+        RefreshFields();
         SelectedElement = Elements.FirstOrDefault();
+        SelectedElements.Clear();
+        if (SelectedElement is not null)
+        {
+            SelectedElements.Add(SelectedElement);
+        }
+
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(IsSingleSelection));
+        OnPropertyChanged(nameof(ShowMultiSelectionPanel));
+        OnPropertyChanged(nameof(SelectionCountText));
     }
 
-    /// <summary>添加元素：默认排在上一个元素下方（上下结构为主）。</summary>
+    /// <summary>添加元素：默认排在上一个元素下方（上下结构为主），SourceKey 留空待用户绑定。</summary>
     public void AddElement(EditorElementType type)
     {
         var element = new LayoutElementViewModel(type);
-        if (Fields.Count > 0)
-        {
-            element.SourceKey = Fields[0].Key;
-        }
-
-        PlaceBelow(element);
         if (type == EditorElementType.Region)
         {
             element.Id = NextRegionId();
         }
 
+        PlaceBelow(element);
         Elements.Add(element);
         RefreshRegionIds();
-        SelectedElement = element;
-        Log($"已添加 {type} 元素。");
+        SetSelection(element, additive: false);
+        Log(type == EditorElementType.Region ? "已添加容器（元素拖入容器可自动居中）。" : $"已添加{element.DisplayName}（在属性面板绑定字段或填固定值）。");
     }
 
     /// <summary>把元素放到上一个元素下方（间距 3mm），超界则回到画布顶部。</summary>
@@ -233,33 +291,141 @@ public sealed class LayoutEditorViewModel : ObservableObject
         element.YMm = nextY;
     }
 
+    /// <summary>删除单个元素（保留接口，测试与程序化使用）。</summary>
     public void RemoveElement(LayoutElementViewModel element)
     {
         Elements.Remove(element);
+        SelectedElements.Remove(element);
         if (SelectedElement == element)
         {
-            SelectedElement = Elements.FirstOrDefault();
+            SelectedElement = SelectedElements.LastOrDefault();
         }
 
         RefreshRegionIds();
+        RefreshFields();
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(IsSingleSelection));
+        OnPropertyChanged(nameof(ShowMultiSelectionPanel));
+        OnPropertyChanged(nameof(SelectionCountText));
     }
 
-    public void AddField()
+    /// <summary>删除全部选中元素（Delete 键 / 右键菜单）。</summary>
+    public void DeleteSelected()
     {
-        var index = Fields.Count + 1;
-        Fields.Add(new ContractFieldViewModel($"field{index}", $"字段{index}", isRequired: false, LabelFieldType.Text));
-        SyncTestFields();
-        StatusText = "已添加字段，可在下方编辑键与显示名。";
+        var count = SelectedElements.Count;
+        if (count == 0)
+        {
+            return;
+        }
+
+        foreach (var element in SelectedElements.ToList())
+        {
+            Elements.Remove(element);
+        }
+
+        SelectedElements.Clear();
+        SelectedElement = null;
+        RefreshRegionIds();
+        RefreshFields();
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(IsSingleSelection));
+        OnPropertyChanged(nameof(ShowMultiSelectionPanel));
+        OnPropertyChanged(nameof(SelectionCountText));
+        Log($"已删除 {count} 个元素。");
     }
 
-    public void RemoveField(ContractFieldViewModel field)
+    /// <summary>设置选中集合；additive 为 true 时切换（Ctrl / Shift 点击）。</summary>
+    public void SetSelection(LayoutElementViewModel element, bool additive)
     {
-        Fields.Remove(field);
+        if (additive)
+        {
+            if (SelectedElements.Contains(element))
+            {
+                SelectedElements.Remove(element);
+                if (ReferenceEquals(SelectedElement, element))
+                {
+                    SelectedElement = SelectedElements.LastOrDefault();
+                }
+            }
+            else
+            {
+                SelectedElements.Add(element);
+                SelectedElement = element;
+            }
+        }
+        else
+        {
+            SelectedElements.Clear();
+            SelectedElements.Add(element);
+            SelectedElement = element;
+        }
+
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(IsSingleSelection));
+        OnPropertyChanged(nameof(ShowMultiSelectionPanel));
+        OnPropertyChanged(nameof(SelectionCountText));
+    }
+
+    /// <summary>框选：替换当前选中为命中元素集合（空集合等于清空）。</summary>
+    public void SelectRange(IReadOnlyList<LayoutElementViewModel> elements)
+    {
+        SelectedElements.Clear();
+        foreach (var element in elements)
+        {
+            SelectedElements.Add(element);
+        }
+
+        SelectedElement = elements.FirstOrDefault();
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(IsSingleSelection));
+        OnPropertyChanged(nameof(ShowMultiSelectionPanel));
+        OnPropertyChanged(nameof(SelectionCountText));
+    }
+
+    /// <summary>清空选中。</summary>
+    public void ClearSelection()
+    {
+        SelectedElements.Clear();
+        SelectedElement = null;
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(IsSingleSelection));
+        OnPropertyChanged(nameof(ShowMultiSelectionPanel));
+        OnPropertyChanged(nameof(SelectionCountText));
+    }
+
+    /// <summary>契约字段自动推导：字段 = 版式中「字段填充」元素 SourceKey 去重（保留旧字段顺序与元数据）。</summary>
+    public void RefreshFields()
+    {
+        var referenced = Elements
+            .Where(e => e.Type != EditorElementType.Region && e.ContentMode == "字段填充" && !string.IsNullOrWhiteSpace(e.SourceKey))
+            .Select(e => e.SourceKey!.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var ordered = Fields.Select(f => f.Key).Where(referenced.Contains).ToList();
+        ordered.AddRange(referenced.Except(ordered));
+
+        var existing = Fields.ToDictionary(f => f.Key, StringComparer.Ordinal);
+        Fields.Clear();
+        foreach (var key in ordered)
+        {
+            if (existing.TryGetValue(key, out var old))
+            {
+                Fields.Add(old);
+            }
+            else
+            {
+                Fields.Add(new ContractFieldViewModel(key, key, isRequired: false, LabelFieldType.Text));
+            }
+        }
+
         SyncTestFields();
+        OnPropertyChanged(nameof(FieldKeys));
     }
 
     private void SyncTestFields()
     {
+        var oldValues = TestFields.ToDictionary(f => f.Key, f => f.Value, StringComparer.Ordinal);
         TestFields.Clear();
         foreach (var field in Fields)
         {
@@ -269,30 +435,20 @@ public sealed class LayoutEditorViewModel : ObservableObject
                 DisplayName = field.DisplayName,
                 IsRequired = field.IsRequired,
                 Type = field.Type.ToString(),
+                Value = oldValues.TryGetValue(field.Key, out var value) ? value : string.Empty,
             });
         }
     }
 
-    /// <summary>重命名字段：同步更新引用该字段的元素 SourceKey。</summary>
-    public void RenameField(string oldKey, string newKey)
+    private void OnElementPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(newKey) || oldKey == newKey)
+        if (e.PropertyName == nameof(LayoutElementViewModel.SourceKey))
         {
-            return;
+            RefreshFields();
         }
-
-        foreach (var element in Elements)
-        {
-            if (element.SourceKey == oldKey)
-            {
-                element.SourceKey = newKey;
-            }
-        }
-
-        StatusText = $"字段 {oldKey} 已重命名为 {newKey}，元素引用已同步。";
     }
 
-    /// <summary>在指定毫米位置创建区域（画布拖矩形）。</summary>
+    /// <summary>在指定毫米位置创建容器（拖矩形入口保留，UI 由控件栏容器代替）。</summary>
     public LayoutElementViewModel AddRegionAt(double xMm, double yMm, double widthMm, double heightMm)
     {
         var element = new LayoutElementViewModel(EditorElementType.Region)
@@ -305,11 +461,11 @@ public sealed class LayoutEditorViewModel : ObservableObject
         };
         Elements.Add(element);
         RefreshRegionIds();
-        SelectedElement = element;
+        SetSelection(element, additive: false);
         return element;
     }
 
-    /// <summary>把元素锚定到区域（默认居中），供“拖入格子自动居中”使用。</summary>
+    /// <summary>把元素锚定到容器（默认居中），供“元素拖入容器自动居中”使用。</summary>
     public void AnchorToRegion(LayoutElementViewModel element, string regionId)
     {
         element.RegionId = regionId;
@@ -317,11 +473,200 @@ public sealed class LayoutEditorViewModel : ObservableObject
         element.RegionVAlign = "Center";
     }
 
-    /// <summary>按像素位移移动元素（拖拽用）。</summary>
-    public void MoveElement(LayoutElementViewModel element, double dxPx, double dyPx)
+    /// <summary>解除容器锚定，并把元素位置更新为当前解析位置（拖拽 / 缩放前调用）。</summary>
+    public void DetachFromRegion(LayoutElementViewModel element)
     {
-        element.XMm += dxPx / PixelsPerMm;
-        element.YMm += dyPx / PixelsPerMm;
+        if (element.RegionId is null)
+        {
+            return;
+        }
+
+        var layout = BuildLayout();
+        var regions = LabelLayoutResolver.IndexRegions(layout);
+        var bounds = LabelLayoutResolver.ResolveBounds(element.ToElement(), regions);
+        element.XMm = bounds.XMm;
+        element.YMm = bounds.YMm;
+        element.RegionId = null;
+    }
+
+    /// <summary>按像素位移移动元素（拖拽用）；已锚定元素先解除锚定到当前位置。</summary>
+    public void MoveElements(IEnumerable<LayoutElementViewModel> elements, double dxPx, double dyPx)
+    {
+        var dx = dxPx / PixelsPerMm;
+        var dy = dyPx / PixelsPerMm;
+        foreach (var element in elements)
+        {
+            if (element.RegionId is not null)
+            {
+                DetachFromRegion(element);
+            }
+
+            element.XMm += dx;
+            element.YMm += dy;
+        }
+    }
+
+    /// <summary>元素中心落入容器时自动锚定居中；移出容器解除锚定。</summary>
+    public void AutoAnchor(LayoutElementViewModel element)
+    {
+        var layout = BuildLayout();
+        var regions = LabelLayoutResolver.IndexRegions(layout);
+        var bounds = LabelLayoutResolver.ResolveBounds(element.ToElement(), regions);
+        var centerX = bounds.XMm + bounds.WidthMm / 2;
+        var centerY = bounds.YMm + bounds.HeightMm / 2;
+        var hit = regions.Values.FirstOrDefault(r =>
+            centerX >= r.XMm && centerX <= r.XMm + r.WidthMm &&
+            centerY >= r.YMm && centerY <= r.YMm + r.HeightMm);
+
+        if (hit is not null && element.RegionId != hit.Id)
+        {
+            AnchorToRegion(element, hit.Id);
+        }
+        else if (hit is null && element.RegionId is not null)
+        {
+            element.RegionId = null;
+        }
+    }
+
+    /// <summary>对齐选中的多个元素（以选中集合包围框为基准，容器不参与）。</summary>
+    public void AlignSelected(EditorAlign align)
+    {
+        var selected = SelectedElements.Where(e => e.Type != EditorElementType.Region).ToList();
+        if (selected.Count < 2)
+        {
+            return;
+        }
+
+        var layout = BuildLayout();
+        var regions = LabelLayoutResolver.IndexRegions(layout);
+        var bounds = selected.Select(e => LabelLayoutResolver.ResolveBounds(e.ToElement(), regions)).ToList();
+        var left = bounds.Min(b => b.XMm);
+        var right = bounds.Max(b => b.XMm + b.WidthMm);
+        var top = bounds.Min(b => b.YMm);
+        var bottom = bounds.Max(b => b.YMm + b.HeightMm);
+
+        for (var i = 0; i < selected.Count; i++)
+        {
+            var element = selected[i];
+            var b = bounds[i];
+            if (element.RegionId is not null)
+            {
+                element.RegionId = null;
+            }
+
+            switch (align)
+            {
+                case EditorAlign.Left:
+                    element.XMm = left;
+                    break;
+                case EditorAlign.CenterH:
+                    element.XMm = left + (right - left - b.WidthMm) / 2;
+                    break;
+                case EditorAlign.Right:
+                    element.XMm = right - b.WidthMm;
+                    break;
+                case EditorAlign.Top:
+                    element.YMm = top;
+                    break;
+                case EditorAlign.CenterV:
+                    element.YMm = top + (bottom - top - b.HeightMm) / 2;
+                    break;
+                case EditorAlign.Bottom:
+                    element.YMm = bottom - b.HeightMm;
+                    break;
+            }
+        }
+
+        Log($"已对齐 {selected.Count} 个元素（{align}）。");
+    }
+
+    /// <summary>
+    /// 计算移动吸附：移动元素包围框的边缘 / 中心吸附到画布边界与其它元素（含容器）边缘 / 中心。
+    /// 返回修正后的位移（毫米）。
+    /// </summary>
+    public (double DxMm, double DyMm) SnapDeltaMm(IReadOnlyList<LayoutElementViewModel> moving, double dxMm, double dyMm)
+    {
+        const double thresholdMm = 0.8;
+        if (moving.Count == 0 || (dxMm == 0 && dyMm == 0))
+        {
+            return (dxMm, dyMm);
+        }
+
+        var layout = BuildLayout();
+        var regions = LabelLayoutResolver.IndexRegions(layout);
+        var bounds = moving.Select(e => LabelLayoutResolver.ResolveBounds(e.ToElement(), regions)).ToList();
+        var beforeLeft = bounds.Min(b => b.XMm);
+        var beforeTop = bounds.Min(b => b.YMm);
+        var beforeRight = bounds.Max(b => b.XMm + b.WidthMm);
+        var beforeBottom = bounds.Max(b => b.YMm + b.HeightMm);
+        var afterLeft = beforeLeft + dxMm;
+        var afterTop = beforeTop + dyMm;
+        var afterRight = beforeRight + dxMm;
+        var afterBottom = beforeBottom + dyMm;
+
+        // 候选线：画布边界 / 中心 + 其它元素（含容器）边界 / 中心
+        var candidatesX = new List<double> { 0, WidthMm / 2, WidthMm };
+        var candidatesY = new List<double> { 0, HeightMm / 2, HeightMm };
+        var movingSet = new HashSet<LayoutElementViewModel>(moving);
+        foreach (var other in Elements)
+        {
+            if (movingSet.Contains(other))
+            {
+                continue;
+            }
+
+            var ob = LabelLayoutResolver.ResolveBounds(other.ToElement(), regions);
+            candidatesX.Add(ob.XMm);
+            candidatesX.Add(ob.XMm + ob.WidthMm / 2);
+            candidatesX.Add(ob.XMm + ob.WidthMm);
+            candidatesY.Add(ob.YMm);
+            candidatesY.Add(ob.YMm + ob.HeightMm / 2);
+            candidatesY.Add(ob.YMm + ob.HeightMm);
+        }
+
+        var (adjDx, _) = SnapAxis(
+            candidatesX,
+            afterLeft,
+            (afterLeft + afterRight) / 2,
+            afterRight,
+            thresholdMm);
+        var (adjDy, _) = SnapAxis(
+            candidatesY,
+            afterTop,
+            (afterTop + afterBottom) / 2,
+            afterBottom,
+            thresholdMm);
+        return (dxMm + adjDx, dyMm + adjDy);
+    }
+
+    private static (double Adjustment, bool Snapped) SnapAxis(
+        IReadOnlyList<double> candidates,
+        double afterStart,
+        double afterCenter,
+        double afterEnd,
+        double threshold)
+    {
+        var best = (Adjustment: 0.0, Snapped: false);
+        var bestDistance = threshold;
+        foreach (var candidate in candidates)
+        {
+            foreach (var (target, delta) in new[]
+            {
+                (afterStart, candidate - afterStart),
+                (afterCenter, candidate - afterCenter),
+                (afterEnd, candidate - afterEnd),
+            })
+            {
+                var distance = Math.Abs(delta);
+                if (distance <= bestDistance)
+                {
+                    bestDistance = distance;
+                    best = (delta, true);
+                }
+            }
+        }
+
+        return best;
     }
 
     public LabelContract BuildContract() => new()
