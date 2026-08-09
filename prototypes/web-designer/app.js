@@ -2,22 +2,30 @@
 'use strict';
 
 // ---------- 常量与状态 ----------
-const PX = 4;                    // 1mm = 4px（逻辑像素，100% = 实际大小）
+const PX = 4;                    // 1mm = 4px（设计逻辑像素）
+const PAD_MM = 10;               // 画布四周留白（mm）
+const REAL_FACTOR = 2;           // 「实际大小」= 1mm 8 点 = 4px*2（203dpi 打印比例）
 let contentZoom = 1;             // 内容缩放（Ctrl+滚轮，设计时看整体 / 局部）
-let viewMode = 'fit';            // 'fit' 视口自适应 | 'actual' 实际大小
+let viewMode = 'fit';            // 'fit' 画布铺满视口 | 'actual' 真实比例（1mm=8点）
 let paperW = 100, paperH = 60;
-let elements = [];               // 版式元素状态
+let elements = [];               // 版式元素状态（坐标 = 标签内容区，0..paperW）
 let selected = [];               // 选中的元素 id
-let pendingType = null;          // 控件栏待放置类型
+let pendingType = null;
 let serverUrl = 'http://127.0.0.1:53960';
 let connected = false;
-let pendingQr = [];              // 二维码异步渲染队列
 
 const $ = (id) => document.getElementById(id);
 const uid = () => 'e' + Math.random().toString(36).slice(2, 10);
 const mm = (px) => px / PX;
 const pxv = (v) => v * PX;
 const r2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+
+// 画布（含 padding）总尺寸，逻辑 px
+const canvasW = () => (paperW + PAD_MM * 2) * PX;
+const canvasH = () => (paperH + PAD_MM * 2) * PX;
+// 内容区偏移（padding 左上角），逻辑 px
+const contentOX = () => PAD_MM * PX;
+const contentOY = () => PAD_MM * PX;
 
 // ---------- Konva ----------
 const stage = new Konva.Stage({ container: 'stage', width: 100, height: 60 });
@@ -39,8 +47,10 @@ function createTransformer() {
       const e = elementById(g.id());
       if (!e) return;
       const r = g.getClientRect();
-      e.x = mm(r.x); e.y = mm(r.y);
-      e.w = mm(r.width); e.h = mm(r.height);
+      e.x = mm(r.x) - PAD_MM;
+      e.y = mm(r.y) - PAD_MM;
+      e.w = mm(r.width);
+      e.h = mm(r.height);
       if (e.type === 'QrCode') { e.w = e.h = Math.max(e.w, e.h); }
       if (e.type === 'Text') { e.fontH = e.h; }
       if (e.type === 'Barcode') { e.heightMm = e.h; }
@@ -51,31 +61,48 @@ function createTransformer() {
   return t;
 }
 
-// ---------- 视口模型（容器自适应 + 内容缩放） ----------
-function totalScale() {
+// ---------- 视口模型（画布铺满视口 + 内容缩放 + 真实比例） ----------
+function fitScale() {
   const vw = $('viewport').clientWidth, vh = $('viewport').clientHeight;
-  const lw = paperW * PX, lh = paperH * PX;
-  const fit = Math.max(0.05, Math.min((vw - 40) / lw, (vh - 20) / lh));
-  return (viewMode === 'actual' ? 1 : fit) * contentZoom;
+  const cw = canvasW(), ch = canvasH();
+  return Math.max(0.05, Math.min((vw - 16) / cw, (vh - 16) / ch));
+}
+function totalScale() {
+  return (viewMode === 'actual' ? REAL_FACTOR : fitScale()) * contentZoom;
 }
 
 function applyView() {
-  const lw = paperW * PX, lh = paperH * PX;
+  const cw = canvasW(), ch = canvasH();
   const total = totalScale();
-  stage.width(lw); stage.height(lh);
+  stage.width(cw); stage.height(ch);
   stage.scale({ x: total, y: total });
+  clampStage();
   const box = $('stageBox');
-  box.style.width = (lw * total) + 'px';
-  box.style.height = (lh * total + 20) + 'px';
+  box.style.width = (cw * total) + 'px';
+  box.style.height = (ch * total + 20) + 'px';
   const vw = $('viewport').clientWidth, vh = $('viewport').clientHeight;
-  box.style.left = Math.max(0, (vw - lw * total) / 2) + 'px';
-  box.style.top = Math.max(0, (vh - lh * total - 20) / 2) + 'px';
+  box.style.left = Math.max(0, (vw - cw * total) / 2) + 'px';
+  box.style.top = Math.max(0, (vh - ch * total - 20) / 2) + 'px';
   $('zoomLabel').textContent = Math.round(contentZoom * 100) + '%';
   drawRulers();
 }
 
-function fitWindow() { viewMode = 'fit'; contentZoom = 1; applyView(); render(); }
-function actualSize() { viewMode = 'actual'; contentZoom = 1; applyView(); render(); }
+// 画布平移不越界：保证画布至少有一块区域在视口内，且不超出可视范围过多
+function clampStage() {
+  const total = totalScale();
+  const cw = canvasW() * total, ch = canvasH() * total;
+  const vw = $('viewport').clientWidth, vh = $('viewport').clientHeight;
+  let x = stage.x(), y = stage.y();
+  if (cw > vw) x = Math.min(0, Math.max(vw - cw, x));
+  else x = 0;
+  if (ch > vh) y = Math.min(0, Math.max(vh - ch, y));
+  else y = 0;
+  if (x !== stage.x()) stage.x(x);
+  if (y !== stage.y()) stage.y(y);
+}
+
+function fitWindow() { viewMode = 'fit'; contentZoom = 1; stage.x(0); stage.y(0); applyView(); render(); }
+function actualSize() { viewMode = 'actual'; contentZoom = 1; stage.x(0); stage.y(0); applyView(); render(); }
 
 // ---------- 日志 ----------
 function log(msg) {
@@ -102,11 +129,16 @@ function defaultElement(type) {
 
 // ---------- 渲染 ----------
 function render() {
-  pendingQr = [];
   layer.destroyChildren();
   tr = createTransformer();
   layer.add(tr);
   drawGrid();
+  // 标签内容区边界（比网格深一些，提示真实纸张范围）
+  layer.add(new Konva.Rect({
+    x: contentOX(), y: contentOY(),
+    width: paperW * PX, height: paperH * PX,
+    stroke: '#b0b8c4', strokeWidth: 1, dash: [8, 4], listening: false, strokeScaleEnabled: false,
+  }));
   elements.forEach((e) => {
     const g = nodeFor(e);
     if (g) layer.add(g);
@@ -116,37 +148,41 @@ function render() {
   layer.draw();
   drawRulers();
   refreshFields();
-  $('paperInfo').textContent = '纸张 ' + paperW + ' x ' + paperH + ' mm';
+  $('paperInfo').textContent = '纸张 ' + paperW + ' x ' + paperH + ' mm（四周留白 ' + PAD_MM + ' mm）';
 }
 
 function drawGrid() {
   if (!$('gridCheck').checked) return;
   const step = 5 * PX;
+  const ox = contentOX(), oy = contentOY();
   const w = paperW * PX, h = paperH * PX;
   for (let x = 0; x <= w; x += step) {
-    layer.add(new Konva.Line({ points: [x, 0, x, h], stroke: (x / step) % 2 === 0 ? '#dde4ec' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
+    layer.add(new Konva.Line({ points: [ox + x, oy, ox + x, oy + h], stroke: (x / step) % 2 === 0 ? '#dde4ec' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
   }
   for (let y = 0; y <= h; y += step) {
-    layer.add(new Konva.Line({ points: [0, y, w, y], stroke: (y / step) % 2 === 0 ? '#dde4ec' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
+    layer.add(new Konva.Line({ points: [ox, oy + y, ox + w, oy + y], stroke: (y / step) % 2 === 0 ? '#dde4ec' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
   }
 }
 
+// 标尺覆盖整个画布（含 padding）：0 到 paper+2*PAD，单位 mm，随画布移动
 function drawRulers() {
   const total = totalScale();
   const hR = $('hRuler'), vR = $('vRuler');
   hR.innerHTML = ''; vR.innerHTML = '';
-  hR.style.width = (paperW * PX * total) + 'px';
-  vR.style.height = (paperH * PX * total) + 'px';
-  for (let m = 0; m <= paperW; m++) {
+  hR.style.width = (canvasW() * total) + 'px';
+  vR.style.height = (canvasH() * total) + 'px';
+  const wMm = paperW + PAD_MM * 2, hMm = paperH + PAD_MM * 2;
+  for (let m = 0; m <= wMm; m++) {
     const x = m * PX * total;
-    if (m % 10 === 0) {
+    const isPaperEdge = m === PAD_MM || m === PAD_MM + paperW;
+    if (m % 10 === 0 || isPaperEdge) {
       const line = document.createElement('div');
       line.className = 'ruler-line';
-      line.style.cssText = 'left:' + x + 'px;top:0;width:1px;height:14px';
+      line.style.cssText = 'left:' + x + 'px;top:0;width:' + (isPaperEdge ? 2 : 1) + 'px;height:14px;' + (isPaperEdge ? 'background:#1668dc;' : '');
       hR.appendChild(line);
       const t = document.createElement('div');
       t.className = 'ruler-text';
-      t.style.cssText = 'left:' + (x + 2) + 'px;top:1px';
+      t.style.cssText = 'left:' + (x + 2) + 'px;top:1px;' + (isPaperEdge ? 'color:#1668dc;font-weight:bold;' : '');
       t.textContent = m;
       hR.appendChild(t);
     } else if (m % 5 === 0) {
@@ -156,16 +192,17 @@ function drawRulers() {
       hR.appendChild(line);
     }
   }
-  for (let m = 0; m <= paperH; m++) {
+  for (let m = 0; m <= hMm; m++) {
     const y = m * PX * total;
-    if (m % 10 === 0) {
+    const isPaperEdge = m === PAD_MM || m === PAD_MM + paperH;
+    if (m % 10 === 0 || isPaperEdge) {
       const line = document.createElement('div');
       line.className = 'ruler-line';
-      line.style.cssText = 'left:0;top:' + y + 'px;height:1px;width:14px';
+      line.style.cssText = 'left:0;top:' + y + 'px;height:1px;width:14px;' + (isPaperEdge ? 'background:#1668dc;' : '');
       vR.appendChild(line);
       const t = document.createElement('div');
       t.className = 'ruler-text';
-      t.style.cssText = 'left:2px;top:' + (y + 1) + 'px';
+      t.style.cssText = 'left:2px;top:' + (y + 1) + 'px;' + (isPaperEdge ? 'color:#1668dc;font-weight:bold;' : '');
       t.textContent = m;
       vR.appendChild(t);
     } else if (m % 5 === 0) {
@@ -183,14 +220,22 @@ function elementContent(e) {
   return e.key;
 }
 
-// ---------- 文本适应（自动换行 / 截断 / 缩小字体） ----------
+// ---------- 文本适应（自动换行 / 截断 / 缩小字体 / 不限制高度） ----------
 function applyTextFit(text, e, content) {
   const wPx = Math.max(2, pxv(e.w) - 2 * pxv(e.padding || 0));
   const hPx = Math.max(2, pxv(e.h));
-  text.width(wPx); text.height(hPx);
-  text.verticalAlign('middle');
+  text.width(wPx);
   text.wrap(e.fitMode === 'wrap' || e.fitMode === 'shrink' ? 'word' : 'none');
   text.ellipsis(false);
+  if (e.fitMode === 'auto') {
+    // 不限制高度：显示全部内容（框高度固定，但内容允许超出，便于观察真实占用）
+    text.height(null);
+    text.verticalAlign('top');
+    text.text(content);
+    return;
+  }
+  text.height(hPx);
+  text.verticalAlign('middle');
   if (e.fitMode === 'truncate') {
     let t = content;
     if (text.measureSize(t).width > wPx) {
@@ -266,9 +311,10 @@ function queueQrRender(holder, e, wPx, hPx) {
   im.src = dataUrl;
 }
 
-// ---------- 元素节点（Group：边框 + 内容） ----------
+// ---------- 元素节点（Group：边框 + 内容；坐标 = padding 偏移 + 内容坐标） ----------
 function nodeFor(e) {
-  const x = pxv(e.x), y = pxv(e.y);
+  const x = contentOX() + pxv(e.x);
+  const y = contentOY() + pxv(e.y);
   const w = Math.max(2, pxv(e.w)), h = Math.max(2, pxv(e.h));
   const g = new Konva.Group({ id: e.id, name: 'element', x, y, draggable: true });
   const borderW = Math.max(1, pxv(e.border || 0));
@@ -277,7 +323,7 @@ function nodeFor(e) {
     case 'Text': {
       const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW, strokeScaleEnabled: false });
       const text = new Konva.Text({
-        x: pxv(e.padding || 0), y: 0, width: Math.max(2, w - 2 * pxv(e.padding || 0)), height: h,
+        x: pxv(e.padding || 0), y: 0, width: Math.max(2, w - 2 * pxv(e.padding || 0)),
         fontSize: Math.max(1, pxv(e.fontH)), fontFamily: 'Microsoft YaHei',
         fill: e.mode === 'field' && !e.key ? '#999' : '#000',
         listening: false, strokeScaleEnabled: false,
@@ -351,13 +397,29 @@ function clearSelection() {
   render(); renderProps();
 }
 
+// ---------- 坐标换算（不依赖 Konva 指针状态，HTML5 拖拽期间也可靠） ----------
+// viewX/Y：相对 stage 内容盒左上角的视觉像素
+function viewToLogic(viewX, viewY) {
+  const rect = $('stage').getBoundingClientRect();
+  const sx = stage.scaleX(), sy = stage.scaleY();
+  return {
+    x: (viewX - stage.x()) / sx,
+    y: (viewY - stage.y()) / sy,
+  };
+}
+// 视觉像素 → 标签内容坐标（mm）
+function viewToContentMm(viewX, viewY) {
+  const l = viewToLogic(viewX, viewY);
+  return { x: mm(l.x) - PAD_MM, y: mm(l.y) - PAD_MM };
+}
+
 // ---------- 画布交互 ----------
 stage.on('click', (ev) => {
   const el = elementFromTarget(ev.target);
   if (!el) {
     if (pendingType) {
       const ptr = stage.getPointerPosition();
-      addElementAt(pendingType, ptr.x, ptr.y);
+      if (ptr) addElementAt(pendingType, ptr.x, ptr.y);
       pendingType = null;
       return;
     }
@@ -375,12 +437,12 @@ function clearGuides() {
   guideLines = [];
 }
 function drawGuideV(x) {
-  const n = new Konva.Line({ points: [x, 0, x, paperH * PX], stroke: '#ff4d6d', strokeWidth: 1, dash: [5, 3], listening: false, strokeScaleEnabled: false });
+  const n = new Konva.Line({ points: [x, 0, x, canvasH()], stroke: '#ff4d6d', strokeWidth: 1, dash: [5, 3], listening: false, strokeScaleEnabled: false });
   guideLines.push(n);
   layer.add(n);
 }
 function drawGuideH(y) {
-  const n = new Konva.Line({ points: [0, y, paperW * PX, y], stroke: '#ff4d6d', strokeWidth: 1, dash: [5, 3], listening: false, strokeScaleEnabled: false });
+  const n = new Konva.Line({ points: [0, y, canvasW(), y], stroke: '#ff4d6d', strokeWidth: 1, dash: [5, 3], listening: false, strokeScaleEnabled: false });
   guideLines.push(n);
   layer.add(n);
 }
@@ -391,8 +453,9 @@ function snapNode(g) {
   const TH = 6; // 吸附阈值（逻辑 px）
   const xs = [r.x, r.x + r.width / 2, r.x + r.width];
   const ys = [r.y, r.y + r.height / 2, r.y + r.height];
-  const cx = [0, (paperW * PX) / 2, paperW * PX];
-  const cy = [0, (paperH * PX) / 2, paperH * PX];
+  // 候选线：画布（含 padding）边缘 / 中心 + 内容区边缘 / 中心
+  const cx = [0, canvasW() / 2, canvasW(), contentOX(), contentOX() + paperW * PX / 2, contentOX() + paperW * PX];
+  const cy = [0, canvasH() / 2, canvasH(), contentOY(), contentOY() + paperH * PX / 2, contentOY() + paperH * PX];
   elements.forEach((o) => {
     if (o.id === e.id) return;
     const n = layer.findOne('#' + o.id);
@@ -443,38 +506,35 @@ stage.on('dragend', (ev) => {
   const e = elementById(el.id());
   if (!e) return;
   const r = el.getClientRect();
-  e.x = mm(r.x); e.y = mm(r.y);
+  e.x = mm(r.x) - PAD_MM;
+  e.y = mm(r.y) - PAD_MM;
   renderProps();
-  // 兼容旧模板容器逻辑：元素中心落入容器则记录容器归属（保留后台能力）
   const container = containerHit(e);
   if (container) e.regionId = container.containerId; else delete e.regionId;
 });
 
-// 元素值 / 样式变化后重新渲染（不打断选中）
 function commit() { render(); renderProps(); }
 
-// Ctrl+滚轮：内容缩放（以鼠标为中心，视口自适应基准不变）
+// Ctrl+滚轮：内容缩放（以鼠标为中心；画布仍铺满视口的基准不变）
 stage.on('wheel', (ev) => {
   ev.evt.preventDefault();
   if (!ev.evt.ctrlKey) return;
   const oldZoom = contentZoom;
   contentZoom = Math.max(0.1, Math.min(8, contentZoom * (ev.evt.deltaY < 0 ? 1.1 : 1 / 1.1)));
-  const base = viewMode === 'actual' ? 1 : (() => {
-    const vw = $('viewport').clientWidth, vh = $('viewport').clientHeight;
-    return Math.max(0.05, Math.min((vw - 40) / (paperW * PX), (vh - 20) / (paperH * PX)));
-  })();
+  const base = viewMode === 'actual' ? REAL_FACTOR : fitScale();
   const oldTotal = base * oldZoom;
   const newTotal = base * contentZoom;
   const ptr = stage.getPointerPosition();
   if (ptr) {
-    stage.x(ptr.x - ((ptr.x - stage.x()) * newTotal / oldTotal));
-    stage.y(ptr.y - ((ptr.y - stage.y()) * newTotal / oldTotal));
+    const sx = ptr.x, sy = ptr.y;
+    stage.x(sx - ((sx - stage.x()) * newTotal / oldTotal));
+    stage.y(sy - ((sy - stage.y()) * newTotal / oldTotal));
   }
   applyView();
   render();
 });
 
-// 中键平移
+// 中键平移（带边界限制）
 let panning = false, panStart = { x: 0, y: 0 }, stageStart = { x: 0, y: 0 };
 stage.on('mousedown', (ev) => {
   if (ev.evt.button === 1) {
@@ -488,6 +548,7 @@ stage.on('mousemove', (ev) => {
   if (panning) {
     stage.x(stageStart.x + (ev.evt.clientX - panStart.x));
     stage.y(stageStart.y + (ev.evt.clientY - panStart.y));
+    clampStage();
     layer.draw();
   }
 });
@@ -525,18 +586,15 @@ $('stageBox').addEventListener('drop', (ev) => {
   ev.preventDefault();
   const type = ev.dataTransfer.getData('text/plain');
   if (!type) return;
-  const ptr = stage.getPointerPosition();
-  if (ptr) addElementAt(type, ptr.x, ptr.y);
-  else {
-    const rect = $('stage').getBoundingClientRect();
-    addElementAt(type, (ev.clientX - rect.left) / stage.scaleX(), (ev.clientY - rect.top) / stage.scaleY());
-  }
+  const stageRect = $('stage').getBoundingClientRect();
+  const pos = viewToContentMm(ev.clientX - stageRect.left, ev.clientY - stageRect.top);
+  addElementAt(type, pos.x, pos.y);
 });
 
-function addElementAt(type, logicX, logicY) {
+function addElementAt(type, contentX, contentY) {
   const e = defaultElement(type);
-  e.x = Math.max(0, Math.min(paperW - 2, mm(logicX)));
-  e.y = Math.max(0, Math.min(paperH - 2, mm(logicY)));
+  e.x = Math.max(0, Math.min(paperW - 2, r2(contentX)));
+  e.y = Math.max(0, Math.min(paperH - 2, r2(contentY)));
   elements.push(e);
   selected = [e.id];
   status('已添加「' + (e.type === 'Barcode' ? '条码' : e.type === 'QrCode' ? '二维码' : '文本') + '」。');
@@ -645,7 +703,7 @@ function renderProps() {
 
   const gPos = document.createElement('div');
   gPos.className = 'group';
-  gPos.innerHTML = '<h4>位置 / 尺寸（mm）</h4>';
+  gPos.innerHTML = '<h4>位置 / 尺寸（mm，相对标签内容区）</h4>';
   addNum(gPos, 'X', e.x, (v) => { e.x = v; });
   addNum(gPos, 'Y', e.y, (v) => { e.y = v; });
   if (e.type !== 'Line') {
@@ -674,7 +732,7 @@ function renderProps() {
     addSelect(gText, '文字对齐', [['左对齐', 'Left'], ['居中', 'Center'], ['右对齐', 'Right']], e.align, (v) => { e.align = v; });
     addNum(gText, '内边距', e.padding || 0, (v) => { e.padding = Math.max(0, v); });
     addNum(gText, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
-    addSelect(gText, '文本溢出', [['自动换行', 'wrap'], ['超长截断', 'truncate'], ['缩小字体', 'shrink']], e.fitMode || 'wrap', (v) => { e.fitMode = v; });
+    addSelect(gText, '文本溢出', [['自动换行', 'wrap'], ['超长截断', 'truncate'], ['缩小字体', 'shrink'], ['不限制高度', 'auto']], e.fitMode || 'wrap', (v) => { e.fitMode = v; });
     box.appendChild(gText);
   } else if (e.type === 'Barcode') {
     const gBar = document.createElement('div');
@@ -1014,7 +1072,7 @@ function init() {
   window.addEventListener('resize', () => { applyView(); render(); });
   applyView();
   render();
-  status('原型就绪：控件栏（文本 / 条码 / 二维码）→ 画布；拖动有智能参考线；条码 / 二维码输入值立即渲染。');
+  status('原型就绪：画布四周留白 10mm，标尺覆盖全画布；拖入控件到画布定位；1mm=8 点查看真实比例。');
 }
 
 init();
