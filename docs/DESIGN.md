@@ -108,6 +108,7 @@ flowchart LR
 - 业界参考：Figma（视口缩放 + 参考线）、BarTender Auto-Fit（文本适应多模式）、Cleverence Label（Shrink to fit + 最小字高）、Konva snapping 库（参考线吸附）。
 - 原型 v3（2026-08-09）：画布 = 输入尺寸 + 四周 10mm 留白，标尺以 mm 覆盖全画布并跟随画布；画布平移 clamp 不越界；「实际大小」= 1mm=8 点（203dpi 打印比例）；文本溢出新增「不限制高度」；修复 HTML5 拖入坐标（改用 clientX/Y 几何换算，不依赖 Konva 指针状态）。
 - 原型 v3 核心修复（2026-08-09 第二轮）：stage 尺寸 = 逻辑尺寸 × 比例尺（Konva stage.scale 不改变 canvas 容器尺寸，原实现放大时内容被裁剪导致元素不可见 / 网格范围异常）；标尺 0 点与画布左缘对齐（左上角空块布局）；「适应窗口 / 实际大小」统一为同一比例尺的两个预设（设计时按点处理，需要真实比例时再换算点与 mm）。
+- 原型 v3 第三轮修复（2026-08-09）：控件不可见根因 = Konva 9.3 Text 无 clipFunc 导致 render 抛异常（改 Group clip + 未绑定占位）；标尺画进 Konva 与内容同坐标系（解决放大 + 平移后错位）；中键平移改用原生 DOM + document 级 mouseup（修复粘滞）。
 - 待用户本机验收后确定 UI 技术栈（Tauri 2 / Blazor Hybrid / 维持 WPF）；后端与公共契约不随 UI 选型变动。
 ## 6. Server API 契约（迭代 3）
 

@@ -29,11 +29,6 @@
   #center { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   #viewport { flex: 1; overflow: hidden; background: #e9edf2; position: relative; }
   #stageBox { position: absolute; left: 50%; top: 50%; transform-origin: 0 0; background: #fff; border: 1px solid #9aa6b4; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-  #hRuler, #vRuler { background: #f7f8fa; position: relative; overflow: hidden; }
-  #hRuler { height: 20px; border-bottom: 1px solid #d8dee6; }
-  #vRuler { width: 20px; border-right: 1px solid #d8dee6; }
-  .ruler-line { position: absolute; background: #9aa6b4; }
-  .ruler-text { position: absolute; font-size: 9px; color: #667; }
   #props label { display: block; margin: 5px 0; color: #444; }
   #props label span { display: inline-block; width: 84px; }
   #props input, #props select { width: 118px; }
@@ -93,14 +88,7 @@
   <section id="center">
     <div id="viewport">
       <div id="stageBox">
-        <div style="display:flex">
-          <div style="width:20px;height:20px;background:#f7f8fa;border-bottom:1px solid #d8dee6;border-right:1px solid #d8dee6"></div>
-          <div id="hRuler"></div>
-        </div>
-        <div style="display:flex">
-          <div id="vRuler"></div>
-          <div id="stage"></div>
-        </div>
+        <div id="stage"></div>
       </div>
     </div>
   </section>

@@ -4,6 +4,7 @@
 // ---------- 常量与状态 ----------
 const PX = 4;                    // 1mm = 4px（设计逻辑像素）
 const PAD_MM = 10;               // 画布四周留白（mm）
+const RULER = 20;                // 标尺区（逻辑 px，画进 Konva 与内容同坐标系）
 const REAL_FACTOR = 2;           // 「实际大小」= 1mm 8 点 = 4px*2（203dpi 打印比例）
 let contentZoom = 1;             // 内容缩放（Ctrl+滚轮，设计时看整体 / 局部）
 let viewMode = 'fit';            // 'fit' 画布铺满视口 | 'actual' 真实比例（1mm=8点）
@@ -20,12 +21,12 @@ const mm = (px) => px / PX;
 const pxv = (v) => v * PX;
 const r2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
 
-// 画布（含 padding）总尺寸，逻辑 px
-const canvasW = () => (paperW + PAD_MM * 2) * PX;
-const canvasH = () => (paperH + PAD_MM * 2) * PX;
-// 内容区偏移（padding 左上角），逻辑 px
-const contentOX = () => PAD_MM * PX;
-const contentOY = () => PAD_MM * PX;
+// 画布总尺寸 = 标尺区 + 内容画布（padding + 标签），逻辑 px
+const canvasW = () => RULER + (paperW + PAD_MM * 2) * PX;
+const canvasH = () => RULER + (paperH + PAD_MM * 2) * PX;
+// 内容画布（padding 左上角）偏移，逻辑 px
+const contentOX = () => RULER + PAD_MM * PX;
+const contentOY = () => RULER + PAD_MM * PX;
 
 // ---------- Konva ----------
 const stage = new Konva.Stage({ container: 'stage', width: 100, height: 60 });
@@ -47,8 +48,8 @@ function createTransformer() {
       const e = elementById(g.id());
       if (!e) return;
       const r = g.getClientRect();
-      e.x = mm(r.x) - PAD_MM;
-      e.y = mm(r.y) - PAD_MM;
+      e.x = mm(r.x - RULER) - PAD_MM;
+      e.y = mm(r.y - RULER) - PAD_MM;
       e.w = mm(r.width);
       e.h = mm(r.height);
       if (e.type === 'QrCode') { e.w = e.h = Math.max(e.w, e.h); }
@@ -81,13 +82,12 @@ function applyView() {
   stage.scale({ x: total, y: total });
   clampStage();
   const box = $('stageBox');
-  box.style.width = (cw * total + 20) + 'px';
-  box.style.height = (ch * total + 20) + 'px';
+  box.style.width = (cw * total) + 'px';
+  box.style.height = (ch * total) + 'px';
   const vw = $('viewport').clientWidth, vh = $('viewport').clientHeight;
   box.style.left = Math.max(0, (vw - cw * total) / 2) + 'px';
   box.style.top = Math.max(0, (vh - ch * total - 20) / 2) + 'px';
   $('zoomLabel').textContent = Math.round(contentZoom * 100) + '%';
-  drawRulers();
 }
 
 // 画布平移不越界：保证画布至少有一块区域在视口内，且不超出可视范围过多
@@ -148,8 +148,8 @@ function render() {
   });
   const selNodes = selected.map((id) => layer.findOne('#' + id)).filter(Boolean);
   tr.nodes(selNodes);
+  drawRulersKonva();
   layer.draw();
-  drawRulers();
   refreshFields();
   $('paperInfo').textContent = '纸张 ' + paperW + ' x ' + paperH + ' mm（四周留白 ' + PAD_MM + ' mm）';
 }
@@ -157,61 +157,42 @@ function render() {
 function drawGrid() {
   if (!$('gridCheck').checked) return;
   const step = 5 * PX;
-  const w = canvasW(), h = canvasH();
-  for (let x = 0; x <= w; x += step) {
-    layer.add(new Konva.Line({ points: [x, 0, x, h], stroke: (x / step) % 2 === 0 ? '#e3e9f0' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
+  const gw = (paperW + PAD_MM * 2) * PX, gh = (paperH + PAD_MM * 2) * PX;
+  for (let x = 0; x <= gw; x += step) {
+    layer.add(new Konva.Line({ points: [RULER + x, RULER, RULER + x, RULER + gh], stroke: (x / step) % 2 === 0 ? '#e3e9f0' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
   }
-  for (let y = 0; y <= h; y += step) {
-    layer.add(new Konva.Line({ points: [0, y, w, y], stroke: (y / step) % 2 === 0 ? '#e3e9f0' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
+  for (let y = 0; y <= gh; y += step) {
+    layer.add(new Konva.Line({ points: [RULER, RULER + y, RULER + gw, RULER + y], stroke: (y / step) % 2 === 0 ? '#e3e9f0' : '#eef1f5', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
   }
 }
 
-// 标尺覆盖整个画布（含 padding）：0 到 paper+2*PAD，单位 mm，随画布移动
-function drawRulers() {
-  const total = totalScale();
-  const hR = $('hRuler'), vR = $('vRuler');
-  hR.innerHTML = ''; vR.innerHTML = '';
-  hR.style.width = (canvasW() * total) + 'px';
-  vR.style.height = (canvasH() * total) + 'px';
+// 标尺画进 Konva（与内容同一坐标系）：随画布平移 / 缩放天然对齐
+function drawRulersKonva() {
+  // 左上角
+  layer.add(new Konva.Rect({ x: 0, y: 0, width: RULER, height: RULER, fill: '#f7f8fa', stroke: '#d8dee6', strokeWidth: 1, listening: false, strokeScaleEnabled: false }));
   const wMm = paperW + PAD_MM * 2, hMm = paperH + PAD_MM * 2;
+  // 顶部标尺（0mm 对应内容画布左缘）
   for (let m = 0; m <= wMm; m++) {
-    const x = m * PX * total;
-    const isPaperEdge = m === PAD_MM || m === PAD_MM + paperW;
-    if (m % 10 === 0 || isPaperEdge) {
-      const line = document.createElement('div');
-      line.className = 'ruler-line';
-      line.style.cssText = 'left:' + x + 'px;top:0;width:' + (isPaperEdge ? 2 : 1) + 'px;height:14px;' + (isPaperEdge ? 'background:#1668dc;' : '');
-      hR.appendChild(line);
-      const t = document.createElement('div');
-      t.className = 'ruler-text';
-      t.style.cssText = 'left:' + (x + 2) + 'px;top:1px;' + (isPaperEdge ? 'color:#1668dc;font-weight:bold;' : '');
-      t.textContent = m;
-      hR.appendChild(t);
-    } else if (m % 5 === 0) {
-      const line = document.createElement('div');
-      line.className = 'ruler-line';
-      line.style.cssText = 'left:' + x + 'px;top:0;width:1px;height:8px';
-      hR.appendChild(line);
+    const x = RULER + m * PX;
+    const isEdge = m === PAD_MM || m === PAD_MM + paperW;
+    const len = m % 10 === 0 || isEdge ? 14 : m % 5 === 0 ? 9 : 4;
+    const color = isEdge ? '#1668dc' : '#9aa6b4';
+    const width = isEdge ? 2 : 1;
+    layer.add(new Konva.Line({ points: [x, RULER - len, x, RULER], stroke: color, strokeWidth: width, listening: false, strokeScaleEnabled: false }));
+    if (m % 10 === 0 || isEdge) {
+      layer.add(new Konva.Text({ x: x + 2, y: RULER - 12, text: String(m), fontSize: 9, fontFamily: 'Consolas, Microsoft YaHei', fill: isEdge ? '#1668dc' : '#667', listening: false }));
     }
   }
+  // 左侧标尺
   for (let m = 0; m <= hMm; m++) {
-    const y = m * PX * total;
-    const isPaperEdge = m === PAD_MM || m === PAD_MM + paperH;
-    if (m % 10 === 0 || isPaperEdge) {
-      const line = document.createElement('div');
-      line.className = 'ruler-line';
-      line.style.cssText = 'left:0;top:' + y + 'px;height:1px;width:14px;' + (isPaperEdge ? 'background:#1668dc;' : '');
-      vR.appendChild(line);
-      const t = document.createElement('div');
-      t.className = 'ruler-text';
-      t.style.cssText = 'left:2px;top:' + (y + 1) + 'px;' + (isPaperEdge ? 'color:#1668dc;font-weight:bold;' : '');
-      t.textContent = m;
-      vR.appendChild(t);
-    } else if (m % 5 === 0) {
-      const line = document.createElement('div');
-      line.className = 'ruler-line';
-      line.style.cssText = 'left:0;top:' + y + 'px;height:1px;width:8px';
-      vR.appendChild(line);
+    const y = RULER + m * PX;
+    const isEdge = m === PAD_MM || m === PAD_MM + paperH;
+    const len = m % 10 === 0 || isEdge ? 14 : m % 5 === 0 ? 9 : 4;
+    const color = isEdge ? '#1668dc' : '#9aa6b4';
+    const width = isEdge ? 2 : 1;
+    layer.add(new Konva.Line({ points: [RULER - len, y, RULER, y], stroke: color, strokeWidth: width, listening: false, strokeScaleEnabled: false }));
+    if (m % 10 === 0 || isEdge) {
+      layer.add(new Konva.Text({ x: RULER - 13, y: y + 2, text: String(m), fontSize: 9, fontFamily: 'Consolas, Microsoft YaHei', fill: isEdge ? '#1668dc' : '#667', listening: false }));
     }
   }
 }
@@ -223,6 +204,7 @@ function elementContent(e) {
 }
 
 // ---------- 文本适应（自动换行 / 截断 / 缩小字体 / 不限制高度） ----------
+// 返回裁剪区域（{wPx, hPx, clip}）；clip=false 表示不裁剪（不限制高度模式）
 function applyTextFit(text, e, content) {
   const wPx = Math.max(2, pxv(e.w) - 2 * pxv(e.padding || 0));
   const hPx = Math.max(2, pxv(e.h));
@@ -230,11 +212,10 @@ function applyTextFit(text, e, content) {
   text.wrap(e.fitMode === 'wrap' || e.fitMode === 'shrink' ? 'word' : 'none');
   text.ellipsis(false);
   if (e.fitMode === 'auto') {
-    // 不限制高度：显示全部内容（框高度固定，但内容允许超出，便于观察真实占用）
     text.height(null);
     text.verticalAlign('top');
     text.text(content);
-    return;
+    return { wPx, hPx, clip: false };
   }
   text.height(hPx);
   text.verticalAlign('middle');
@@ -264,15 +245,31 @@ function applyTextFit(text, e, content) {
   } else {
     text.text(content);
   }
-  text.clipFunc((ctx) => { ctx.beginPath(); ctx.rect(0, 0, wPx, hPx); });
+  return { wPx, hPx, clip: true };
 }
 
 // ---------- 条码 / 二维码实时渲染 ----------
 function makeBarcodeCanvas(e) {
   const content = elementContent(e);
+  const isUnbound = content === '（未绑定字段）' || content === '（固定值）';
   const c = document.createElement('canvas');
+  if (isUnbound) {
+    // 未绑定：绘制可见占位（边框 + 文字），便于用户看到元素存在
+    c.width = Math.max(100, pxv(e.w || 40));
+    c.height = Math.max(40, pxv(e.h || 20));
+    const ctx = c.getContext('2d');
+    ctx.strokeStyle = '#9ab3d6';
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(1, 1, c.width - 2, c.height - 2);
+    ctx.fillStyle = '#7a8490';
+    ctx.font = '14px "Microsoft YaHei"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('条码 · 未绑定字段', c.width / 2, c.height / 2);
+    return c;
+  }
   try {
-    JsBarcode(c, content === '（未绑定字段）' ? ' ' : content, {
+    JsBarcode(c, content, {
       format: e.barcodeFormat || 'CODE128',
       displayValue: e.displayValue !== false,
       width: Math.max(1, e.moduleWidth || 1),
@@ -298,8 +295,28 @@ function fitImageNode(node, wPx, hPx) {
 
 function queueQrRender(holder, e, wPx, hPx) {
   const content = elementContent(e);
+  const isUnbound = content === '（未绑定字段）' || content === '（固定值）';
+  if (isUnbound) {
+    const c = document.createElement('canvas');
+    c.width = Math.max(60, wPx);
+    c.height = Math.max(60, hPx);
+    const ctx = c.getContext('2d');
+    ctx.strokeStyle = '#9ab3d6';
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(1, 1, c.width - 2, c.height - 2);
+    ctx.fillStyle = '#7a8490';
+    ctx.font = '14px "Microsoft YaHei"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('二维码 · 未绑定字段', c.width / 2, c.height / 2);
+    const node = new Konva.Image({ image: c, listening: false });
+    fitImageNode(node, wPx, hPx);
+    holder.add(node);
+    layer.draw();
+    return;
+  }
   const qr = qrcode(0, e.qrEcc || 'M');
-  qr.addData(content === '（未绑定字段）' ? ' ' : content);
+  qr.addData(content);
   qr.make();
   const dataUrl = qr.createDataURL(4, e.qrMargin == null ? 2 : e.qrMargin);
   const im = new Image();
@@ -331,8 +348,16 @@ function nodeFor(e) {
         listening: false, strokeScaleEnabled: false,
       });
       text.align(e.align === 'Center' ? 'center' : e.align === 'Right' ? 'right' : 'left');
-      applyTextFit(text, e, elementContent(e));
-      g.add(rect); g.add(text);
+      const fit = applyTextFit(text, e, elementContent(e));
+      g.add(rect);
+      if (fit.clip) {
+        // Konva 9 Text 无 clipFunc，用 Group 的 clip 属性裁剪
+        const clip = new Konva.Group({ x: 0, y: 0, clipX: 0, clipY: 0, clipWidth: fit.wPx, clipHeight: fit.hPx });
+        clip.add(text);
+        g.add(clip);
+      } else {
+        g.add(text);
+      }
       return g;
     }
     case 'Barcode': {
@@ -412,7 +437,7 @@ function viewToLogic(viewX, viewY) {
 // 视觉像素 → 标签内容坐标（mm）
 function viewToContentMm(viewX, viewY) {
   const l = viewToLogic(viewX, viewY);
-  return { x: mm(l.x) - PAD_MM, y: mm(l.y) - PAD_MM };
+  return { x: mm(l.x - RULER) - PAD_MM, y: mm(l.y - RULER) - PAD_MM };
 }
 
 // ---------- 画布交互 ----------
@@ -508,8 +533,8 @@ stage.on('dragend', (ev) => {
   const e = elementById(el.id());
   if (!e) return;
   const r = el.getClientRect();
-  e.x = mm(r.x) - PAD_MM;
-  e.y = mm(r.y) - PAD_MM;
+  e.x = mm(r.x - RULER) - PAD_MM;
+  e.y = mm(r.y - RULER) - PAD_MM;
   renderProps();
   const container = containerHit(e);
   if (container) e.regionId = container.containerId; else delete e.regionId;
@@ -536,25 +561,34 @@ stage.on('wheel', (ev) => {
   render();
 });
 
-// 中键平移（带边界限制）
+// 中键平移（原生 DOM + document 级监听，保证松开必复位、不粘滞）
 let panning = false, panStart = { x: 0, y: 0 }, stageStart = { x: 0, y: 0 };
-stage.on('mousedown', (ev) => {
-  if (ev.evt.button === 1) {
+const stageDom = document.getElementById('stage');
+function panMove(ev) {
+  if (!panning) return;
+  stage.x(stageStart.x + (ev.clientX - panStart.x));
+  stage.y(stageStart.y + (ev.clientY - panStart.y));
+  clampStage();
+  layer.draw();
+}
+function panEnd() {
+  if (!panning) return;
+  panning = false;
+  document.removeEventListener('mousemove', panMove);
+  document.removeEventListener('mouseup', panEnd);
+}
+stageDom.addEventListener('mousedown', (ev) => {
+  if (ev.button === 1) {
+    ev.preventDefault();
     panning = true;
-    panStart = { x: ev.evt.clientX, y: ev.evt.clientY };
+    panStart = { x: ev.clientX, y: ev.clientY };
     stageStart = { x: stage.x(), y: stage.y() };
-    ev.evt.preventDefault();
+    document.addEventListener('mousemove', panMove);
+    document.addEventListener('mouseup', panEnd);
   }
 });
-stage.on('mousemove', (ev) => {
-  if (panning) {
-    stage.x(stageStart.x + (ev.evt.clientX - panStart.x));
-    stage.y(stageStart.y + (ev.evt.clientY - panStart.y));
-    clampStage();
-    layer.draw();
-  }
-});
-stage.on('mouseup', (ev) => { if (ev.evt.button === 1) panning = false; });
+// 兜底：窗口失焦也复位
+window.addEventListener('blur', panEnd);
 
 // 键盘删除
 document.addEventListener('keydown', (ev) => {
