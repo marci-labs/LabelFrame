@@ -1,4 +1,7 @@
 using System.Windows;
+using LabelFrame.Core.Contracts;
+using LabelFrame.Core.Layout;
+using LabelFrame.Studio.Services;
 using LabelFrame.Studio.ViewModels;
 
 namespace LabelFrame.Studio;
@@ -140,6 +143,51 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "删除失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void NewTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.Client is null)
+        {
+            MessageBox.Show(this, "请先连接 WinHost。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var dialog = new NewTemplateWindow { Owner = this };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var dto = new TemplateSaveDto(
+            dialog.TemplateName,
+            dialog.Group,
+            new LabelContract
+            {
+                Name = dialog.TemplateName,
+                Version = "1.0",
+                Fields = [],
+            },
+            new LabelLayout
+            {
+                Name = $"{dialog.TemplateName}-layout",
+                ContractName = dialog.TemplateName,
+                ContractVersion = "1.0",
+                WidthMm = dialog.WidthMm,
+                HeightMm = dialog.HeightMm,
+                Elements = [],
+            });
+
+        try
+        {
+            var editor = new EditorWindow(_viewModel.Client, dto) { Owner = this };
+            editor.ShowDialog();
+            _ = _viewModel.RefreshTemplatesAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "打开编辑器失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

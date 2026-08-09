@@ -99,6 +99,42 @@ public class LayoutEditorViewModelTests
     }
 
     [Fact]
+    public void LoadFrom_empty_template_should_support_creation_flow()
+    {
+        var vm = new LayoutEditorViewModel();
+        vm.LoadFrom(new TemplateSaveDto(
+            "new-label",
+            "默认",
+            new LabelContract { Name = "new-label", Version = "1.0", Fields = [] },
+            new LabelLayout
+            {
+                Name = "new-label-layout",
+                ContractName = "new-label",
+                ContractVersion = "1.0",
+                WidthMm = 80,
+                HeightMm = 40,
+                Elements = [],
+            }));
+
+        Assert.Empty(vm.Fields);
+        Assert.Empty(vm.Elements);
+        Assert.Equal(80, vm.WidthMm);
+        Assert.Equal(40, vm.HeightMm);
+
+        // 无字段时添加元素：SourceKey 回退默认 text
+        vm.AddElement(EditorElementType.Text);
+        Assert.Equal("text", vm.Elements[0].SourceKey);
+
+        vm.AddField();
+        Assert.Single(vm.Fields);
+
+        var dto = vm.BuildSaveDto();
+        Assert.Equal("new-label", dto.Name);
+        Assert.Single(dto.Layout!.Elements);
+        Assert.Single(dto.Contract!.Fields);
+    }
+
+    [Fact]
     public void SaveAsync_without_client_should_throw()
     {
         var vm = new LayoutEditorViewModel();
