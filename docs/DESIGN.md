@@ -111,6 +111,7 @@ flowchart LR
 - 原型 v3 第三轮修复（2026-08-09）：控件不可见根因 = Konva 9.3 Text 无 clipFunc 导致 render 抛异常（改 Group clip + 未绑定占位）；标尺画进 Konva 与内容同坐标系（解决放大 + 平移后错位）；中键平移改用原生 DOM + document 级 mouseup（修复粘滞）。
 - 原型 v3 第四轮修复（2026-08-09）：吸附 / 定位统一逻辑坐标（getClientRect relativeTo layer，原绝对坐标在比例尺下偏差）；二维码同步 canvas 渲染；属性下拉 / 勾选补 commit；边框 / 内边距通用化；文本模式收敛为「缩小适应 / 溢出显示」两种（文本框 = 遮罩区域）。
 - 原型 v3 第五轮改进（2026-08-09）：字高独立于文本框（拉伸只改遮罩）；内边距拆上下 / 左右；填充默认固定值，字段填充 = 键名称 + 预览填充值；Ctrl+C / Ctrl+V 复制粘贴。
+- 原型 v3 第六轮改进（2026-08-09）：Ctrl+Z / Ctrl+Y 撤销恢复；字高调大才撑高文本框；吸附强化（边完全重合）；导出 / 导入设计到剪贴板（labelframe-web-design JSON 格式）；控件栏新增矩形控件（保存映射 region）；文本框基础属性新增高度字段。
 - 待用户本机验收后确定 UI 技术栈（Tauri 2 / Blazor Hybrid / 维持 WPF）；后端与公共契约不随 UI 选型变动。
 ## 6. Server API 契约（迭代 3）
 

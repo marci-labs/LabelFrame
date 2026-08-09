@@ -56,6 +56,7 @@ function createTransformer() {
       if (e.type === 'Barcode') { e.heightMm = e.h; }
       // 文本：只改遮罩区域，字高保持独立（不随框拉伸变大）
     });
+    pushHistory();
     render();
     renderProps();
   });
@@ -126,6 +127,7 @@ function defaultElement(type) {
     case 'QrCode': return { id, type, x: 5, y: 20, w: 20, h: 20, mode: 'literal', key: '', text: 'ABC-123', border: 0, paddingH: 1, paddingV: 1, qrEcc: 'M', qrMargin: 2 };
     case 'Image':  return { id, type, x: 5, y: 20, w: 20, h: 20, key: '', border: 0 };
     case 'Line':   return { id, type, x: 5, y: 5, w: 60, h: 0, thickness: 0.5 };
+    case 'Rect':   return { id, type, x: 5, y: 5, w: 40, h: 20, border: 0.3, fill: '' };
     case 'Region': return { id, type, x: 5, y: 5, w: 60, h: 30, border: 0.3, containerId: 'c' + Math.random().toString(36).slice(2, 8) };
   }
 }
@@ -390,6 +392,15 @@ function nodeFor(e) {
       line.draggable(true);
       return line;
     }
+    case 'Rect': {
+      const rect = new Konva.Rect({
+        x: 0, y: 0, width: w, height: h,
+        stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW,
+        fill: e.fill || 'transparent', strokeScaleEnabled: false,
+      });
+      g.add(rect);
+      return g;
+    }
     case 'Region': {
       const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, fill: 'rgba(0,128,255,0.06)', stroke: e.border > 0 ? '#000' : '#8a94a0', strokeWidth: borderW, dash: [6, 4], strokeScaleEnabled: false });
       const t = new Konva.Text({ x: 4, y: 2, text: '容器 ' + (e.containerId || ''), fontSize: 10, fontFamily: 'Microsoft YaHei', fill: '#7a8490', listening: false });
@@ -468,12 +479,12 @@ function clearGuides() {
   guideLines = [];
 }
 function drawGuideV(x) {
-  const n = new Konva.Line({ points: [x, 0, x, canvasH()], stroke: '#ff4d6d', strokeWidth: 1, dash: [5, 3], listening: false, strokeScaleEnabled: false });
+  const n = new Konva.Line({ points: [x, 0, x, canvasH()], stroke: '#ff2d55', strokeWidth: 1.5, dash: [6, 3], listening: false, strokeScaleEnabled: false });
   guideLines.push(n);
   layer.add(n);
 }
 function drawGuideH(y) {
-  const n = new Konva.Line({ points: [0, y, canvasW(), y], stroke: '#ff4d6d', strokeWidth: 1, dash: [5, 3], listening: false, strokeScaleEnabled: false });
+  const n = new Konva.Line({ points: [0, y, canvasW(), y], stroke: '#ff2d55', strokeWidth: 1.5, dash: [6, 3], listening: false, strokeScaleEnabled: false });
   guideLines.push(n);
   layer.add(n);
 }
@@ -481,7 +492,7 @@ function snapNode(g) {
   const e = elementById(g.id());
   if (!e) return;
   const r = g.getClientRect({ relativeTo: layer });
-  const TH = 6; // 吸附阈值（逻辑 px）
+  const TH = 8; // 吸附阈值（逻辑 px）
   const xs = [r.x, r.x + r.width / 2, r.x + r.width];
   const ys = [r.y, r.y + r.height / 2, r.y + r.height];
   // 候选线：画布（含 padding）边缘 / 中心 + 内容区边缘 / 中心
@@ -539,12 +550,51 @@ stage.on('dragend', (ev) => {
   const r = el.getClientRect({ relativeTo: layer });
   e.x = mm(r.x - RULER) - PAD_MM;
   e.y = mm(r.y - RULER) - PAD_MM;
+  pushHistory();
   renderProps();
   const container = containerHit(e);
   if (container) e.regionId = container.containerId; else delete e.regionId;
 });
 
-function commit() { render(); renderProps(); }
+// ---------- 撤销 / 重做 ----------
+let undoStack = [], redoStack = [], historyPaused = false;
+function snapshot() { return JSON.stringify({ paperW, paperH, elements }); }
+function pushHistory() {
+  if (historyPaused) return;
+  undoStack.push(snapshot());
+  if (undoStack.length > 100) undoStack.shift();
+  redoStack = [];
+}
+function undo() {
+  if (!undoStack.length) { status('没有可撤销的操作。'); return; }
+  historyPaused = true;
+  redoStack.push(snapshot());
+  const s = JSON.parse(undoStack.pop());
+  paperW = s.paperW; paperH = s.paperH;
+  $('widthInput').value = paperW; $('heightInput').value = paperH;
+  elements = s.elements;
+  selected = [];
+  applyView(); render(); renderProps();
+  status('已撤销。');
+  historyPaused = false;
+}
+function redo() {
+  if (!redoStack.length) { status('没有可恢复的操作。'); return; }
+  historyPaused = true;
+  undoStack.push(snapshot());
+  const s = JSON.parse(redoStack.pop());
+  paperW = s.paperW; paperH = s.paperH;
+  $('widthInput').value = paperW; $('heightInput').value = paperH;
+  elements = s.elements;
+  selected = [];
+  applyView(); render(); renderProps();
+  status('已恢复。');
+  historyPaused = false;
+}
+function commit() {
+  pushHistory();
+  render(); renderProps();
+}
 
 // Ctrl+滚轮：内容缩放（以鼠标为中心；画布仍铺满视口的基准不变）
 stage.on('wheel', (ev) => {
@@ -594,7 +644,51 @@ stageDom.addEventListener('mousedown', (ev) => {
 // 兜底：窗口失焦也复位
 window.addEventListener('blur', panEnd);
 
-// 剪贴板（内部缓存）
+// 设计代码导出 / 导入（系统剪贴板，file:// 受限时用 prompt 兜底）
+function writeClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(() => true).catch(() => false);
+  }
+  return Promise.resolve(false);
+}
+async function readClipboard() {
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    try { return await navigator.clipboard.readText(); } catch (ex) { return null; }
+  }
+  return null;
+}
+async function exportDesign() {
+  const payload = JSON.stringify({ format: 'labelframe-web-design', version: 1, paperW, paperH, elements }, null, 2);
+  const ok = await writeClipboard(payload);
+  if (ok) status('设计已复制到剪贴板（' + elements.length + ' 个元素），可用「导入设计」恢复。');
+  else {
+    const text = prompt('复制以下设计代码（Ctrl+C），程序更新后可用「导入设计」恢复：', payload);
+    if (text !== null) status('已生成设计代码。');
+  }
+}
+async function importDesign() {
+  let text = await readClipboard();
+  if (!text) text = prompt('请粘贴设计代码：');
+  if (!text) return;
+  try {
+    const data = JSON.parse(text);
+    if (data.format !== 'labelframe-web-design' || !Array.isArray(data.elements)) throw new Error('格式不正确');
+    paperW = data.paperW || 100;
+    paperH = data.paperH || 60;
+    $('widthInput').value = paperW;
+    $('heightInput').value = paperH;
+    elements = data.elements.map((e) => ({ ...e, id: uid() }));
+    selected = [];
+    applyView();
+    render();
+    renderProps();
+    status('已从剪贴板导入设计（' + elements.length + ' 个元素）。');
+  } catch (ex) {
+    status('导入失败：' + ex.message);
+  }
+}
+
+// 剪贴板（内部缓存，Ctrl+C/V 用）
 let clipboard = [];
 function pasteClipboard() {
   const copies = clipboard.map((e) => {
@@ -616,6 +710,26 @@ document.addEventListener('keydown', (ev) => {
   const tag = ev.target && ev.target.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
   const ctrl = ev.ctrlKey || ev.metaKey;
+  if (ctrl && ev.shiftKey && ev.key.toLowerCase() === 'c') {
+    exportDesign();
+    ev.preventDefault();
+    return;
+  }
+  if (ctrl && ev.shiftKey && ev.key.toLowerCase() === 'v') {
+    importDesign();
+    ev.preventDefault();
+    return;
+  }
+  if (ctrl && !ev.shiftKey && ev.key.toLowerCase() === 'z') {
+    ev.preventDefault();
+    undo();
+    return;
+  }
+  if (ctrl && ev.key.toLowerCase() === 'y') {
+    ev.preventDefault();
+    redo();
+    return;
+  }
   if (ctrl && ev.key.toLowerCase() === 'c') {
     if (selected.length) {
       clipboard = elements.filter((e) => selected.includes(e.id)).map((e) => JSON.parse(JSON.stringify(e)));
@@ -668,7 +782,7 @@ function addElementAt(type, contentX, contentY) {
   e.y = Math.max(0, Math.min(paperH - 2, r2(contentY)));
   elements.push(e);
   selected = [e.id];
-  status('已添加「' + (e.type === 'Barcode' ? '条码' : e.type === 'QrCode' ? '二维码' : '文本') + '」。');
+  status('已添加「' + (e.type === 'Barcode' ? '条码' : e.type === 'QrCode' ? '二维码' : e.type === 'Rect' ? '矩形' : '文本') + '」。');
   commit();
 }
 
@@ -782,12 +896,10 @@ function renderProps() {
       e.w = Math.max(1, v);
       if (e.type === 'QrCode') e.h = e.w;
     });
-    if (e.type !== 'Text') {
-      addNum(gPos, '高', e.h, (v) => {
-        e.h = Math.max(1, v);
-        if (e.type === 'QrCode') e.w = e.h;
-      });
-    }
+    addNum(gPos, '高', e.h, (v) => {
+      e.h = Math.max(1, v);
+      if (e.type === 'QrCode') e.w = e.h;
+    });
   }
   box.appendChild(gPos);
 
@@ -806,7 +918,10 @@ function renderProps() {
     const gText = document.createElement('div');
     gText.className = 'group';
     gText.innerHTML = '<h4>文本 / 字体</h4>';
-    addNum(gText, '字高', e.fontH, (v) => { e.fontH = Math.max(1, v); e.h = e.fontH; });
+    addNum(gText, '字高', e.fontH, (v) => {
+      e.fontH = Math.max(1, v);
+      if (e.fontH > e.h) e.h = e.fontH; // 字高超过框高才撑高；缩小不改框
+    });
     addSelect(gText, '文字对齐', [['左对齐', 'Left'], ['居中', 'Center'], ['右对齐', 'Right']], e.align, (v) => { e.align = v; });
     addSelect(gText, '溢出处理', [['缩小适应', 'shrink'], ['隐藏', 'overflow']], e.fitMode || 'shrink', (v) => { e.fitMode = v; });
     box.appendChild(gText);
@@ -825,6 +940,29 @@ function renderProps() {
     addSelect(gQr, '纠错级别', [['L(约7%)', 'L'], ['M(约15%)', 'M'], ['Q(约25%)', 'Q'], ['H(约30%)', 'H']], e.qrEcc || 'M', (v) => { e.qrEcc = v; });
     addNum(gQr, '边距', e.qrMargin == null ? 2 : e.qrMargin, (v) => { e.qrMargin = Math.max(0, v); });
     box.appendChild(gQr);
+  } else if (e.type === 'Rect') {
+    const gRect = document.createElement('div');
+    gRect.className = 'group';
+    gRect.innerHTML = '<h4>矩形</h4>';
+    addNum(gRect, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
+    const fillWrap = document.createElement('label');
+    const span = document.createElement('span');
+    span.textContent = '填充色';
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = e.fill || '#ffffff';
+    colorInput.style.width = '40px';
+    colorInput.style.padding = '0';
+    colorInput.addEventListener('change', () => { e.fill = colorInput.value; commit(); });
+    const noneBtn = document.createElement('button');
+    noneBtn.textContent = '无填充';
+    noneBtn.style.marginLeft = '4px';
+    noneBtn.addEventListener('click', () => { e.fill = ''; commit(); });
+    fillWrap.appendChild(span);
+    fillWrap.appendChild(colorInput);
+    fillWrap.appendChild(noneBtn);
+    gRect.appendChild(fillWrap);
+    box.appendChild(gRect);
   } else if (e.type === 'Line') {
     const gLine = document.createElement('div');
     gLine.className = 'group';
@@ -866,6 +1004,7 @@ function typeLabel(e) {
     case 'QrCode': return '二维码';
     case 'Image': return '图片';
     case 'Line': return '线';
+    case 'Rect': return '矩形';
     case 'Region': return '容器';
   }
   return e.type;
@@ -1041,7 +1180,7 @@ function parseElement(j) {
     case 'line':
       return { ...base, type: 'Line', x: j.xMm, y: j.yMm, w: (j.x2Mm || 0) - j.xMm, h: (j.y2Mm || 0) - j.yMm, thickness: j.thicknessMm || 0.5 };
     case 'region':
-      return { ...base, type: 'Region', w: j.widthMm || 60, h: j.heightMm || 30, containerId: j.id || 'c1' };
+      return { ...base, type: 'Rect', w: j.widthMm || 60, h: j.heightMm || 30, containerId: j.id || 'c1', fill: '' };
     default:
       return null;
   }
@@ -1062,6 +1201,8 @@ function toElementJson(e) {
       return { type: 'image', ...base, sourceKey: e.key || '', widthMm: r2(e.w), heightMm: r2(e.h), borderMm: r2(e.border || 0) };
     case 'Line':
       return { type: 'line', xMm: r2(e.x), yMm: r2(e.y), x2Mm: r2(e.x + e.w), y2Mm: r2(e.y + e.h), thicknessMm: r2(e.thickness || 0.5) };
+    case 'Rect':
+      return { type: 'region', xMm: r2(e.x), yMm: r2(e.y), id: e.containerId || ('c' + Math.random().toString(36).slice(2, 8)), widthMm: r2(e.w), heightMm: r2(e.h), borderMm: r2(e.border || 0.3) };
     case 'Region':
       return { type: 'region', xMm: r2(e.x), yMm: r2(e.y), id: e.containerId, widthMm: r2(e.w), heightMm: r2(e.h), borderMm: r2(e.border || 0.3) };
   }
@@ -1127,6 +1268,8 @@ function init() {
   $('loadBtn').addEventListener('click', loadTemplate);
   $('saveBtn').addEventListener('click', saveTemplate);
   $('previewBtn').addEventListener('click', previewTemplate);
+  $('exportBtn').addEventListener('click', exportDesign);
+  $('importBtn').addEventListener('click', importDesign);
   $('fitBtn').addEventListener('click', () => {
     $('fitBtn').classList.add('active');
     $('actualBtn').classList.remove('active');

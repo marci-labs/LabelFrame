@@ -63,6 +63,8 @@
   <label><input id="gridCheck" type="checkbox" checked> 网格</label>
   <button id="saveBtn" class="primary">保存</button>
   <button id="previewBtn">预览</button>
+  <button id="exportBtn" title="复制设计代码到剪贴板（Ctrl+Shift+C）">导出设计</button>
+  <button id="importBtn" title="从剪贴板导入设计代码（Ctrl+Shift+V）">导入设计</button>
 </header>
 <main>
   <aside id="left">
@@ -71,6 +73,7 @@
       <button data-type="Text">文本</button>
       <button data-type="Barcode">条码</button>
       <button data-type="QrCode">二维码</button>
+      <button data-type="Rect">矩形</button>
     </div>
     <h3>契约字段 <small>（自动推导）</small></h3>
     <ul id="fieldList"><li style="color:#999">暂无字段</li></ul>
