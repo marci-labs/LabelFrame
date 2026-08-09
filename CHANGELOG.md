@@ -146,3 +146,10 @@
 - AndroidHost 演进：PDA 测试模式（pc_host 配置 / 拉模板列表 / 点击模板用 testData 本地打印 / 终态日志回传 PC / 内置测试页）。
 - 前端规格 docs/FRONTEND-SPEC.md 定稿（hermes 两轮审阅全部落定），前端并行开发中。
 - 测试 118 个全绿；AndroidHost 编译通过。
+
+## 迭代 10（MSI 安装包）— 2026-08-09
+
+- WinHost 单机 UX：WinExe（无控制台）、启动自动打开浏览器、Log 写 host.log、本机优雅关闭端点。
+- 一键打包脚本：publish-winhost.ps1（self-contained + web/dist）+ build-msi.ps1（WiX v7）。
+- MSI：桌面 / 开始菜单快捷方式、默认配置、卸载清理；产物 LabelFrame-0.11.0.msi（约 47MB）。
+- 发布版冒烟通过；MSI 数据库验证 374 文件 + 2 快捷方式；沙箱无法实际安装（Windows Installer 服务受限），真机验收待执行。

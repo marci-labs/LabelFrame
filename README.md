@@ -41,7 +41,21 @@
 | `LabelFrame.AndroidHost` | Android / PDA 打印宿主（迭代 5 起实现） |
 
 
-## 快速验证（迭代 2）
+## 安装包（迭代 10）
+
+一键构建 MSI（需已安装 WiX Toolset v7 与 node / pnpm）：
+
+```powershell
+# 先构建前端产物
+cd web; pnpm install; pnpm build; cd ..
+# 一键打包（联网发布 self-contained + WiX 构建）
+.\scripts\build-msi.ps1
+```
+
+产物：`artifacts\LabelFrame-0.11.0.msi`（约 47MB，含 WinHost + Web UI）。
+
+干净电脑使用：安装 MSI → 桌面 / 开始菜单「LabelFrame 标签打印」→ 双击图标 → 自动启动服务并打开浏览器（http://127.0.0.1:53960）→ 直接模板编辑与打印测试。
+
 
 无需打印机即可验证 WinHost 打印闭环（日志传输模拟打印机）：
 

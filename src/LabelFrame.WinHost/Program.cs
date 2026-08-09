@@ -283,6 +283,23 @@ public static class Program
             return Results.Ok(new { sent = true, bytes = System.Text.Encoding.UTF8.GetByteCount(testZpl) });
         });
 
+        // ---- 本机服务关闭（Web UI 设置页「退出程序」用）----
+        app.MapPost("/api/host/shutdown", (HttpContext context, IHostApplicationLifetime lifetime) =>
+        {
+            var remote = context.Connection.RemoteIpAddress;
+            if (remote is null || !System.Net.IPAddress.IsLoopback(remote))
+            {
+                return Results.Forbid();
+            }
+
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(200);
+                lifetime.StopApplication();
+            });
+            return Results.Ok(new { shuttingDown = true });
+        });
+
         // ---- Web UI 静态托管（前端构建产物 web/dist）----
         var webUiPath = ResolveWebUiPath(options);
         if (webUiPath is not null)
@@ -308,6 +325,27 @@ public static class Program
         else
         {
             Console.WriteLine("[LabelFrame] 未找到 Web UI 构建产物（web/dist），仅提供 API。");
+        }
+
+        // 单机模式：启动后自动打开默认浏览器
+        if (options.OpenBrowser)
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1000);
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = options.ListenUrl,
+                        UseShellExecute = true,
+                    });
+                }
+                catch
+                {
+                    // 打开浏览器失败不影响服务
+                }
+            });
         }
 
         await app.RunAsync();
@@ -364,9 +402,29 @@ public static class Program
             => Task.FromResult(new PrinterStatusInfo(false, false, false, "当前传输不支持状态查询。"));
     }
 
+    /// <summary>Log 传输写入宿主日志文件（WinExe 无控制台，避免 Console 不可用）。</summary>
+    private static TextWriter OpenHostLogWriter(HostOptions options)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(options.HostLogPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var writer = new StreamWriter(options.HostLogPath, append: true) { AutoFlush = true };
+            return TextWriter.Synchronized(writer);
+        }
+        catch
+        {
+            return TextWriter.Null;
+        }
+    }
+
     private static IPrintTransport CreateTransport(HostOptions options) => options.Transport switch
     {
-        TransportMode.Log => new LogPrintTransport(Console.Out),
+        TransportMode.Log => new LogPrintTransport(OpenHostLogWriter(options)),
         TransportMode.Tcp => new Tcp9100PrintTransport(options.TcpHost, options.TcpPort),
         TransportMode.WindowsDriver => new RawPrinterTransport(options.PrinterName),
         TransportMode.Zebra => new ZebraPrinterTransport(

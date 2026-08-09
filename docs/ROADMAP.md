@@ -23,7 +23,7 @@
 | 11 | 单机模式（Host 服务化 + Web Vite/TS 前端 + PDA 测试链路） | 🔄 进行中 |
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
-| 10 | MSI 安装包 | 📋 计划中 |
+| 10 | MSI 安装包 | ✅ 已完成 |
 | 检查点 | 试点验收（成功衡量） | 待定 |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计） | 待定 |
 
@@ -438,7 +438,7 @@
 
 ---
 
-## 迭代 10：MSI 安装包（计划中）
+## 迭代 10：MSI 安装包（已完成）
 
 **目标**：Windows 安装包，安装即配置好（WinHost + Studio）。
 
@@ -450,7 +450,14 @@
 
 **不在范围**：数字签名 / 自动更新。
 
-**验收**：全新 Windows 机器安装后，打开 Studio 即连本机 WinHost（Log 模式）并可导入模板打印。
+**验收**：全新 Windows 机器安装后，双击图标自动启动服务并打开浏览器（http://127.0.0.1:53960），直接模板编辑与打印测试。
+
+**完成记录**（2026-08-09）：
+- WinHost 单机 UX：OutputType 改 WinExe（无控制台）、启动自动打开默认浏览器（OpenBrowser 可关）、Log 传输写宿主日志文件（host.log）、本机 `POST /api/host/shutdown` 优雅关闭。
+- 一键打包：`scripts/publish-winhost.ps1`（self-contained win-x64 + web/dist）与 `scripts/build-msi.ps1`（WiX v7 构建）。
+- MSI：桌面 + 开始菜单快捷方式「LabelFrame 标签打印」，默认 appsettings.json（端口 53960 / Log 传输 / 开浏览器），卸载清理。
+- 产物 `artifacts\LabelFrame-0.11.0.msi`（约 47MB）；MSI 数据库只读验证 374 文件 + 快捷方式正确；发布版 exe 冒烟通过（healthz / 静态页 / 优雅关闭 / 日志文件）。
+- 已知：本沙箱 Windows Installer 服务受限无法执行实际安装，真机安装验收待执行。
 
 ---
 

@@ -11,3 +11,5 @@ obj/
 ## OS
 Thumbs.db
 Desktop.ini
+## Build artifacts
+artifacts/

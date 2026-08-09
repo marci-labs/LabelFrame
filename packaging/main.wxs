@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="LabelFrame 标签打印" Manufacturer="LabelFrame" Version="0.11.0"
+           UpgradeCode="8B1E4F2A-6C3D-4E5F-9A0B-1C2D3E4F5A6B">
+    <SummaryInformation Description="LabelFrame 单机标签设计与打印工具" />
+    <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- 程序文件：发布产物 + web/dist -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <!-- 发布产物 + web/dist（含 appsettings.json）由 files.wxs 打包 -->
+    </StandardDirectory>
+
+    <!-- 开始菜单 -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="LabelFrame">
+        <Component Id="StartMenuShortcut">
+          <Shortcut Id="StartMenuShortcut" Name="LabelFrame 标签打印"
+                    Description="启动 LabelFrame 并打开浏览器编辑模板"
+                    Target="[INSTALLFOLDER]LabelFrame.WinHost.exe"
+                    WorkingDirectory="INSTALLFOLDER" />
+          <RemoveFolder Id="ApplicationProgramsRemove" Directory="ApplicationProgramsFolder" On="uninstall" />
+          <RegistryValue Root="HKCU" Key="SoftwareLabelFrame" Name="startmenu" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- 桌面快捷方式 -->
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut">
+        <Shortcut Id="DesktopShortcut" Name="LabelFrame 标签打印"
+                  Description="启动 LabelFrame 并打开浏览器编辑模板"
+                  Target="[INSTALLFOLDER]LabelFrame.WinHost.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="DesktopRemove" Directory="DesktopFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="SoftwareLabelFrame" Name="desktop" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <Feature Id="MainFeature" Title="LabelFrame" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+  </Package>
+</Wix>

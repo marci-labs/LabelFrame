@@ -90,6 +90,15 @@ public sealed class HostOptions
         "LabelFrame",
         "logs.db");
 
+    /// <summary>Log 传输 / 宿主日志文件路径（默认 %LOCALAPPDATA%\LabelFrame\host.log）。</summary>
+    public string HostLogPath { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "LabelFrame",
+        "host.log");
+
+    /// <summary>启动后自动打开默认浏览器（单机模式默认开启，可用 LABELFRAME_OPEN_BROWSER=0 关闭）。</summary>
+    public bool OpenBrowser { get; set; } = true;
+
     /// <summary>应用 LABELFRAME_* 环境变量覆盖（优先级最高）。</summary>
     public void ApplyEnvironmentOverrides()
     {
@@ -181,6 +190,16 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_LOGS_DB") is { } logsDb)
         {
             LogsDbPath = logsDb;
+        }
+
+        if (GetEnv("LABELFRAME_HOST_LOG") is { } hostLog)
+        {
+            HostLogPath = hostLog;
+        }
+
+        if (GetEnv("LABELFRAME_OPEN_BROWSER") is { } openBrowser)
+        {
+            OpenBrowser = openBrowser is "1" or "true" or "True";
         }
     }
 
