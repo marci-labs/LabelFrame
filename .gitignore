@@ -13,3 +13,4 @@ Thumbs.db
 Desktop.ini
 ## Build artifacts
 artifacts/
+packaging/files.wxs
