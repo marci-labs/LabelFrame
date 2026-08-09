@@ -109,7 +109,7 @@ public sealed class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     private static extern IntPtr LoadIcon(IntPtr hInstance, IntPtr lpIconName);
 
-    [DllImport("user32.dll")]
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
     [DllImport("user32.dll")]
@@ -127,14 +127,21 @@ public sealed class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     private static extern IntPtr TrackPopupMenu(IntPtr hMenu, uint uFlags, int x, int y, int nReserved, IntPtr hWnd, IntPtr prcRect);
 
-    [DllImport("user32.dll")]
+    [DllImport("kernel32.dll")]
     private static extern uint GetCurrentThreadId();
 
+    private readonly Action<string>? _log;
     private Thread? _thread;
     private IntPtr _hwnd;
     private uint _threadId;
     private WndProcDelegate? _wndProc; // 防止委托被 GC
     private bool _disposed;
+
+    /// <summary>创建托盘服务（可选日志回调，用于把异常写入 host.log）。</summary>
+    public TrayIconService(Action<string>? log = null)
+    {
+        _log = log;
+    }
 
     /// <summary>启动托盘（独立消息循环线程）。</summary>
     /// <param name="listenUrl">界面地址（双击 / 菜单打开）。</param>
@@ -150,50 +157,59 @@ public sealed class TrayIconService : IDisposable
 
     private void RunTrayLoop(string listenUrl, Func<Task> shutdown)
     {
-        _threadId = GetCurrentThreadId();
-        var instance = GetModuleHandle(null);
-        _wndProc = (hWnd, msg, wParam, lParam) => WndProc(hWnd, msg, wParam, lParam, listenUrl, shutdown);
+        try
+        {
+            _threadId = GetCurrentThreadId();
+            var instance = GetModuleHandle(null);
+            _wndProc = (hWnd, msg, wParam, lParam) => WndProc(hWnd, msg, wParam, lParam, listenUrl, shutdown);
 
-        // 注册窗口类并创建隐藏消息窗口
-        var wc = new WNDCLASS
-        {
-            lpfnWndProc = Marshal.GetFunctionPointerForDelegate(_wndProc),
-            hInstance = instance,
-            lpszClassName = WindowClass,
-        };
-        RegisterClassW(ref wc);
-        _hwnd = CreateWindowEx(
-            0, WindowClass, "LabelFrameTray", 0,
-            0, 0, 0, 0, IntPtr.Zero, IntPtr.Zero, instance, IntPtr.Zero);
-        if (_hwnd == IntPtr.Zero)
-        {
-            return;
+            // 注册窗口类并创建隐藏消息窗口
+            var wc = new WNDCLASS
+            {
+                lpfnWndProc = Marshal.GetFunctionPointerForDelegate(_wndProc),
+                hInstance = instance,
+                lpszClassName = WindowClass,
+            };
+            RegisterClassW(ref wc);
+            _hwnd = CreateWindowEx(
+                0, WindowClass, "LabelFrameTray", 0,
+                0, 0, 0, 0, IntPtr.Zero, IntPtr.Zero, instance, IntPtr.Zero);
+            if (_hwnd == IntPtr.Zero)
+            {
+                _log?.Invoke("托盘窗口创建失败（CreateWindowEx 返回空）。");
+                return;
+            }
+
+            var icon = LoadIcon(instance, new IntPtr(0x7F00)); // IDI_APPLICATION
+            var nid = new NOTIFYICONDATA
+            {
+                cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
+                hWnd = _hwnd,
+                uID = 1,
+                uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
+                uCallbackMessage = WM_USER + 1,
+                hIcon = icon,
+                szTip = "LabelFrame 标签打印",
+            };
+            Shell_NotifyIcon(NIM_ADD, ref nid);
+
+            while (GetMessage(out var msg, IntPtr.Zero, 0, 0))
+            {
+                TranslateMessage(ref msg);
+                DispatchMessage(ref msg);
+            }
+
+            Shell_NotifyIcon(NIM_DELETE, ref nid);
+            if (_hwnd != IntPtr.Zero)
+            {
+                DestroyWindow(_hwnd);
+                _hwnd = IntPtr.Zero;
+            }
         }
-
-        var icon = LoadIcon(instance, new IntPtr(0x7F00)); // IDI_APPLICATION
-        var nid = new NOTIFYICONDATA
+        catch (Exception ex)
         {
-            cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
-            hWnd = _hwnd,
-            uID = 1,
-            uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
-            uCallbackMessage = WM_USER + 1,
-            hIcon = icon,
-            szTip = "LabelFrame 标签打印",
-        };
-        Shell_NotifyIcon(NIM_ADD, ref nid);
-
-        while (GetMessage(out var msg, IntPtr.Zero, 0, 0))
-        {
-            TranslateMessage(ref msg);
-            DispatchMessage(ref msg);
-        }
-
-        Shell_NotifyIcon(NIM_DELETE, ref nid);
-        if (_hwnd != IntPtr.Zero)
-        {
-            DestroyWindow(_hwnd);
-            _hwnd = IntPtr.Zero;
+            // 托盘异常只记录日志，不让宿主进程崩溃（WinExe 无窗口，用户看不到错误弹窗）
+            _log?.Invoke($"托盘服务异常：{ex}");
         }
     }
 

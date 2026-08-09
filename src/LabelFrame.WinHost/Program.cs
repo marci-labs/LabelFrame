@@ -373,7 +373,7 @@ public static class Program
         app.Lifetime.ApplicationStopping.Register(() => HostInfo("ApplicationStopping"));
         app.Lifetime.ApplicationStopped.Register(() => HostInfo("ApplicationStopped"));
 
-        var tray = new TrayIconService();
+        var tray = new TrayIconService(HostInfo);
         if (options.EnableTray)
         {
             tray.Start(options.ListenUrl, () =>

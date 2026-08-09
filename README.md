@@ -52,7 +52,7 @@ cd web; pnpm install; pnpm build; cd ..
 .\scripts\build-msi.ps1
 ```
 
-产物：`artifacts\LabelFrame-0.11.0.msi`（约 10MB，framework-dependent，含 WinHost + Web UI + 应用图标）。
+产物：`artifacts\LabelFrame-0.11.1.msi`（约 10MB，x64 framework-dependent，含 WinHost + Web UI + 应用图标；安装到 `C:\Program Files\LabelFrame`）。
 
 前置要求：目标机需安装 **.NET 10 Desktop Runtime**（x64，下载：https://dotnet.microsoft.com/download/dotnet/10.0）。安装 MSI 时会用 .NET 官方自检程序（NetCoreCheck）实时检测：已安装则直接继续（无需重启），缺失则弹出可点击的官方下载链接对话框（不自动安装）。
 
