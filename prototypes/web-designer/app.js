@@ -1140,7 +1140,11 @@ function contentGroup(e) {
     if (e.mode === val) o.selected = true;
     modeSel.appendChild(o);
   });
-  modeSel.addEventListener('change', () => { e.mode = modeSel.value; commit(); });
+  modeSel.addEventListener('change', () => {
+    if (modeSel.value === 'literal') e.key = ''; // 切到固定值时清空键名称，避免残留
+    e.mode = modeSel.value;
+    commit();
+  });
   gContent.appendChild(modeSel);
 
   const litInput = document.createElement('input');
@@ -1420,5 +1424,6 @@ function init() {
   status('原型就绪：画布四周留白 10mm，标尺覆盖全画布；拖入控件到画布定位；1mm=8 点查看真实比例。');
 }
 
+init();
 init();
 })();
