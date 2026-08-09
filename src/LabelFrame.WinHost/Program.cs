@@ -65,6 +65,10 @@ public static class Program
         builder.Services.AddSingleton(templateStore);
         builder.Services.AddSingleton<LabelPreviewRenderer>();
 
+        // 本地工具服务：地址由用户配置（可跨机器 / 跨端口），启用宽松 CORS
+        builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+
         var logStore = new SqliteLogStore(options.LogsDbPath);
         await logStore.InitializeAsync();
         builder.Services.AddSingleton(logStore);
@@ -85,6 +89,8 @@ public static class Program
         }
 
         var app = builder.Build();
+
+        app.UseCors();
 
         app.MapGet("/healthz", () => Results.Ok(new { service = "LabelFrame.WinHost", status = "ok", transport = options.Transport.ToString() }));
 
