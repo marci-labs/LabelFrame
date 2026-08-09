@@ -145,7 +145,7 @@ function status(msg) { $('statusText').textContent = msg; log(msg); }
 function defaultElement(type) {
   const id = uid();
   switch (type) {
-    case 'Text':   return { id, type, x: 5, y: 5, w: 40, h: 5, fontH: 5, fontW: 5, mode: 'literal', key: '', text: '文本', align: 'Left', paddingH: 1, paddingV: 1, border: 0, fitMode: 'shrink' };
+    case 'Text':   return { id, type, x: 5, y: 5, w: 40, h: 10, fontH: 5, fontW: 5, fontFamily: 'Microsoft YaHei', wrap: true, lineHeight: 1.2, mode: 'literal', key: '', text: '文本', align: 'Left', paddingH: 1, paddingV: 1, border: 0, fitMode: 'shrink' };
     case 'Barcode':return { id, type, x: 5, y: 20, w: 50, h: 20, mode: 'literal', key: '', text: 'ABC-123', border: 0, paddingH: 1, paddingV: 1, barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1 };
     case 'QrCode': return { id, type, x: 5, y: 20, w: 20, h: 20, mode: 'literal', key: '', text: 'ABC-123', border: 0, paddingH: 1, paddingV: 1, qrEcc: 'M', qrMargin: 2 };
     case 'Image':  return { id, type, x: 5, y: 20, w: 20, h: 20, key: '', border: 0 };
@@ -243,15 +243,32 @@ function applyTextFit(text, e, content) {
   const hPx = Math.max(2, pxv(e.h) - 2 * pxv(e.paddingV || 0));
   text.width(wPx);
   text.height(hPx);
-  text.wrap('none');
   text.ellipsis(false);
   text.verticalAlign('middle');
+  text.fontFamily(e.fontFamily || 'Microsoft YaHei');
+  text.lineHeight(e.lineHeight || 1.2);
+  if (e.wrap) {
+    // 自动换行：超过可显示区域则换行；换行后仍超出 → 整体缩小字体直至能显示在打印区域内
+    text.wrap('word');
+    let fs = Math.max(1, pxv(e.fontH));
+    const minFs = Math.max(1, pxv(1.5));
+    text.fontSize(fs);
+    let m = text.measureSize(content);
+    while ((m.width > wPx || m.height > hPx) && fs > minFs) {
+      fs = Math.max(minFs, fs - 0.5);
+      text.fontSize(fs);
+      m = text.measureSize(content);
+    }
+    text.text(content);
+    return { wPx, hPx, clip: true };
+  }
+  // 单行：不换行（按设置隐藏或缩小）
+  text.wrap('none');
   if (e.fitMode === 'overflow') {
     text.fontSize(Math.max(1, pxv(e.fontH)));
     text.text(content);
     return { wPx, hPx, clip: true };
   }
-  // shrink：缩小字体以适应绘制区域（有最小字高）
   let fs = Math.max(1, pxv(e.fontH));
   const minFs = Math.max(1, pxv(1.5));
   text.fontSize(fs);
@@ -1037,12 +1054,19 @@ function renderProps() {
     const gText = document.createElement('div');
     gText.className = 'group';
     gText.innerHTML = '<h4>文本 / 字体</h4>';
+    addSelect(gText, '字体', [['微软雅黑', 'Microsoft YaHei'], ['宋体', 'SimSun'], ['黑体', 'SimHei'], ['楷体', 'KaiTi'], ['Arial', 'Arial'], ['Consolas', 'Consolas']], e.fontFamily || 'Microsoft YaHei', (v) => { e.fontFamily = v; });
     addNum(gText, '字高', e.fontH, (v) => {
       e.fontH = Math.max(1, v);
       if (e.fontH > e.h) e.h = e.fontH; // 字高超过框高才撑高；缩小不改框
     });
+    addCheck(gText, '自动换行', e.wrap !== false, (v) => { e.wrap = v; });
+    addNum(gText, '行间距', e.lineHeight || 1.2, (v) => { e.lineHeight = Math.max(1, v); });
     addSelect(gText, '文字对齐', [['左对齐', 'Left'], ['居中', 'Center'], ['右对齐', 'Right']], e.align, (v) => { e.align = v; });
-    addSelect(gText, '溢出处理', [['缩小适应', 'shrink'], ['隐藏', 'overflow']], e.fitMode || 'shrink', (v) => { e.fitMode = v; });
+    addSelect(gText, '单行溢出', [['缩小适应', 'shrink'], ['隐藏', 'overflow']], e.fitMode || 'shrink', (v) => { e.fitMode = v; });
+    const tip = document.createElement('p');
+    tip.style.cssText = 'color:#888;font-size:11px;margin:4px 0 0';
+    tip.textContent = '自动换行开启：超过显示区域自动换行，仍超出则整体缩小字体（适应打印区域）。';
+    gText.appendChild(tip);
     box.appendChild(gText);
   } else if (e.type === 'Barcode') {
     const gBar = document.createElement('div');
@@ -1276,7 +1300,7 @@ function parseElement(j) {
   const base = { id: uid(), x: j.xMm || 0, y: j.yMm || 0, border: j.borderMm || 0 };
   switch (j.type) {
     case 'text':
-      return { ...base, type: 'Text', w: j.widthMm || 0, h: j.fontHeightMm, fontH: j.fontHeightMm, fontW: j.fontWidthMm || 5, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', align: j.textAlign || 'Left', paddingH: j.paddingMm || 0, paddingV: j.paddingMm || 0, fitMode: 'shrink', regionId: j.regionId || null };
+      return { ...base, type: 'Text', w: j.widthMm || 0, h: j.fontHeightMm, fontH: j.fontHeightMm, fontW: j.fontWidthMm || 5, fontFamily: 'Microsoft YaHei', wrap: true, lineHeight: 1.2, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', align: j.textAlign || 'Left', paddingH: j.paddingMm || 0, paddingV: j.paddingMm || 0, fitMode: 'shrink', regionId: j.regionId || null };
     case 'barcode':
       return { ...base, type: 'Barcode', w: (j.heightMm || 20) * 2.5, h: j.heightMm || 20, heightMm: j.heightMm || 20, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1, regionId: j.regionId || null };
     case 'qrcode':
