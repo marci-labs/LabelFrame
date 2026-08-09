@@ -495,6 +495,7 @@ function viewToContentMm(viewX, viewY) {
 // ---------- 画布交互 ----------
 stage.on('click', (ev) => {
   if (viewMode === 'preview') return; // 预览锁定：不可选中 / 放置
+  if (ev.evt.button !== 0 || panning) return; // 仅左键选中 / 放置；中键只平移
   const el = elementFromTarget(ev.target);
   if (!el) {
     if (pendingType) {
