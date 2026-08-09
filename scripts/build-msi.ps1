@@ -1,7 +1,10 @@
 ﻿# 一键构建 LabelFrame MSI 安装包
 param(
     [string]$Version = '0.11.0',
-    [string]$Runtime = 'win-x64'
+    [string]$Runtime = 'win-x64',
+    [string]$PfxPath = '',
+    [string]$PfxPassword = 'LabelFrame@2026',
+    [switch]$Sign
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -26,5 +29,23 @@ $global:LASTEXITCODE = 0
 & $wix eula accept wix7 2>$null | Out-Null
 & $wix build (Join-Path $root 'packaging\main.wxs') $filesWxs -d PublishDir=$publishDir -o $msi 2>&1 | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
+
+# 5) 代码签名（可选：-Sign）
+if ($Sign) {
+    if (-not $PfxPath) { $PfxPath = Join-Path $root 'artifacts\cert\labelframe.pfx' }
+    if (-not (Test-Path $PfxPath)) { throw "未找到证书 $PfxPath，请先运行 scripts\create-signing-cert.ps1" }
+    $signtoolPath = $env:SIGNFILE
+    if (-not $signtoolPath) {
+        $found = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending | Select-Object -First 1
+        if ($found) { $signtoolPath = $found.FullName }
+    }
+    if (-not $signtoolPath) { throw '未找到 signtool.exe：请安装 Windows SDK，或设置环境变量 SIGNFILE 指向 signtool.exe' }
+    $global:LASTEXITCODE = 0
+    & $signtoolPath sign /f $PfxPath /p $PfxPassword /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $msi 2>&1 | Write-Host
+    if ($LASTEXITCODE -ne 0) { throw 'MSI 签名失败' }
+    Write-Host "MSI 已签名：$msi"
+}
+
 Write-Host "MSI 生成完成：$msi"
 Write-Host "大小：$([Math]::Round((Get-Item $msi).Length / 1MB, 1)) MB"

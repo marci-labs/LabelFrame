@@ -52,9 +52,14 @@ cd web; pnpm install; pnpm build; cd ..
 .\scripts\build-msi.ps1
 ```
 
-产物：`artifacts\LabelFrame-0.11.0.msi`（约 47MB，含 WinHost + Web UI）。
+产物：`artifacts\LabelFrame-0.11.0.msi`（约 56MB，含 WinHost + Web UI + 应用图标）。
 
-干净电脑使用：安装 MSI → 桌面 / 开始菜单「LabelFrame 标签打印」→ 双击图标 → 自动启动服务并打开浏览器（http://127.0.0.1:53960）→ 直接模板编辑与打印测试。
+干净电脑使用：安装 MSI → 桌面 / 开始菜单「LabelFrame」→ 双击图标 → 自动启动服务并打开浏览器（http://127.0.0.1:53960）→ 直接模板编辑与打印测试。
+
+辅助脚本：
+- `scripts\generate-icon.ps1`：生成应用图标（双色 L 型，assets\labelframe.ico）。
+- `scripts\create-signing-cert.ps1`：生成自签名代码签名证书（openssl + .NET 重封装）；`scripts\build-msi.ps1 -Sign` 签名 MSI（需本机有 signtool，或用环境变量 SIGNFILE 指定）。正式分发建议购买商业代码签名证书。
+- `scripts\cleanup-residue.ps1`：管理员运行，清理历史安装残留（旧目录 / 快捷方式 / 注册表 / 数据目录）。
 
 
 无需打印机即可验证 WinHost 打印闭环（日志传输模拟打印机）：

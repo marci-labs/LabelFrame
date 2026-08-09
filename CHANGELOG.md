@@ -152,4 +152,6 @@
 - WinHost 单机 UX：WinExe（无控制台）、启动自动打开浏览器、Log 写 host.log、本机优雅关闭端点。
 - 一键打包脚本：publish-winhost.ps1（self-contained + web/dist）+ build-msi.ps1（WiX v7）。
 - MSI：桌面 / 开始菜单快捷方式、默认配置、卸载清理；产物 LabelFrame-0.11.0.msi（约 47MB）。
-- 发布版冒烟通过；MSI 数据库验证 374 文件 + 2 快捷方式；沙箱无法实际安装（Windows Installer 服务受限），真机验收待执行。
+- 发布版冒烟通过；MSI 数据库验证 443 文件 + 2 快捷方式（Target=#WinHostExe）；沙箱无法实际安装 / 签名（Windows Installer 服务与 CryptoAPI 受限），真机验收与签名待执行。
+- 名称统一为 LabelFrame（安装目录 / 快捷方式 / 卸载显示）；新增应用图标（蓝底白色 L 型，嵌入 exe 与快捷方式）。
+- 新增脚本：generate-icon / create-signing-cert（openssl 自签名 + .NET 重封装）/ cleanup-residue（管理员清理历史残留）。
