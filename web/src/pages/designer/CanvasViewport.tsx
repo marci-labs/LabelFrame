@@ -1,0 +1,508 @@
+// 设计器画布（react-konva）：毫米标尺 + 网格、智能参考线吸附、多选拖动、
+// 8 手柄缩放、中键平移、Ctrl+滚轮缩放、DPI 打印预览。
+// 拖动过程中的高频节点操作直接走 Konva 实例（不触发 React 渲染），
+// dragend / transformend 才提交状态（与原型一致）。
+
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Layer, Rect as KRect, Line as KLine, Stage, Text as KText, Transformer } from 'react-konva'
+import Konva from 'konva'
+import type { KonvaEventObject } from 'konva/lib/Node'
+import { ElementNode } from './ElementNode'
+import type { DesignElement } from '../../lib/design/types'
+import { elementById } from '../../lib/design/model'
+import { designCanvasSize, fitScale, logicToContentMm, previewCanvasSize, previewScale, PX, RULER } from '../../lib/design/geometry'
+import { computeSnap } from '../../lib/design/snapping'
+
+export interface DesignState {
+  paperW: number
+  paperH: number
+  elements: DesignElement[]
+}
+
+export type ViewMode = 'fit' | 'preview'
+
+interface CanvasViewportProps {
+  state: DesignState
+  selected: string[]
+  viewMode: ViewMode
+  dpi: number
+  zoom: number
+  gridOn: boolean
+  pendingType: string | null
+  onSelect: (ids: string[], toggle?: boolean) => void
+  onAddElement: (type: string, xMm: number, yMm: number) => void
+  /** dragend / transformend 提交（元素坐标 / 尺寸 / 锚定）。 */
+  onUpdateElements: (updater: (els: DesignElement[]) => DesignElement[]) => void
+  onCommit: () => void
+  onZoomChange: (z: number) => void
+}
+
+export function CanvasViewport(props: CanvasViewportProps) {
+  const { state, selected, viewMode, dpi, zoom, gridOn } = props
+  const { paperW, paperH, elements } = state
+  const preview = viewMode === 'preview'
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<Konva.Stage>(null)
+  const layerRef = useRef<Konva.Layer>(null)
+  const trRef = useRef<Konva.Transformer>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const guidesRef = useRef<Konva.Line[]>([])
+  const panRef = useRef({ panning: false, startX: 0, startY: 0, stageX: 0, stageY: 0 })
+  const multiDragRef = useRef<{ targetId: string; lastX: number; lastY: number } | null>(null)
+
+  // 闭包镜像：高频回调里读取最新状态
+  const stateRef = useRef(props)
+  stateRef.current = props
+
+  const [viewport, setViewport] = useState({ w: 0, h: 0 })
+  const [total, setTotal] = useState(1)
+
+  // 画布逻辑尺寸
+  const canvasSize = useMemo(
+    () => (preview ? previewCanvasSize(paperW, paperH) : designCanvasSize(paperW, paperH)),
+    [preview, paperW, paperH],
+  )
+  const ox = preview ? 0 : RULER + 10 * PX
+  const oy = preview ? 0 : RULER + 10 * PX
+
+  // 视口尺寸跟踪
+  useLayoutEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const update = () => setViewport({ w: el.clientWidth, h: el.clientHeight })
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // 总缩放 = 适应窗口（或 DPI 预览）× 内容缩放
+  useLayoutEffect(() => {
+    const base = preview ? previewScale(dpi) : fitScale(viewport.w, viewport.h, canvasSize.w, canvasSize.h)
+    setTotal(base * zoom)
+  }, [viewport, canvasSize, preview, dpi, zoom])
+
+  // stageBox 尺寸 / 位置（直接操作 DOM，避免重渲染循环）
+  useLayoutEffect(() => {
+    const box = boxRef.current
+    const stage = stageRef.current
+    if (!box || !stage || viewport.w === 0) return
+    box.style.width = canvasSize.w * total + 'px'
+    box.style.height = canvasSize.h * total + 'px'
+    box.style.left = Math.max(0, (viewport.w - canvasSize.w * total) / 2) + 'px'
+    box.style.top = Math.max(0, (viewport.h - canvasSize.h * total - 20) / 2) + 'px'
+    stage.width(canvasSize.w * total)
+    stage.height(canvasSize.h * total)
+    stage.scale({ x: total, y: total })
+    clampStage()
+  }, [canvasSize, total, viewport])
+
+  /** 平移不越界：画布至少一块区域在视口内。 */
+  const clampStage = useCallback(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    const cw = canvasSize.w * total
+    const ch = canvasSize.h * total
+    const vw = viewport.w
+    const vh = viewport.h
+    let x = stage.x()
+    let y = stage.y()
+    if (cw > vw) x = Math.min(0, Math.max(vw - cw, x))
+    else x = 0
+    if (ch > vh) y = Math.min(0, Math.max(vh - ch, y))
+    else y = 0
+    if (x !== stage.x()) stage.x(x)
+    if (y !== stage.y()) stage.y(y)
+  }, [canvasSize, total, viewport])
+
+  // 参考线
+  const clearGuides = useCallback(() => {
+    guidesRef.current.forEach((n) => n.destroy())
+    guidesRef.current = []
+  }, [])
+  const addGuide = useCallback((vertical: boolean, pos: number) => {
+    const layer = layerRef.current
+    if (!layer) return
+    const n = new Konva.Line({
+      points: vertical ? [pos, 0, pos, canvasSize.h] : [0, pos, canvasSize.w, pos],
+      stroke: '#ff2d55',
+      strokeWidth: 1.5,
+      dash: [6, 3],
+      listening: false,
+      strokeScaleEnabled: false,
+    })
+    guidesRef.current.push(n)
+    layer.add(n)
+  }, [canvasSize])
+
+  /** 拖动吸附（原型 snapNode）：目标 = 画布/内容区/其它元素边缘中心，网格兜底。 */
+  const snapNode = useCallback(
+    (g: Konva.Node) => {
+      const layer = layerRef.current
+      if (!layer) return
+      const e = elementById(stateRef.current.state.elements, g.id())
+      if (!e) return
+      const r = g.getClientRect({ relativeTo: layer })
+      const others = stateRef.current.state.elements
+        .filter((o) => o.id !== e.id)
+        .map((o) => {
+          const n = layer.findOne('#' + o.id)
+          if (!n) return null
+          const or = n.getClientRect({ relativeTo: layer })
+          return { x: or.x, y: or.y, w: or.width, h: or.height }
+        })
+        .filter((x): x is { x: number; y: number; w: number; h: number } => x !== null)
+      const snap = computeSnap({ x: r.x, y: r.y, w: r.width, h: r.height }, canvasSize.w, canvasSize.h, ox, oy, paperW * PX, paperH * PX, others)
+      clearGuides()
+      if (snap.dx !== 0 || snap.guideX !== null) {
+        g.x(g.x() + snap.dx)
+        if (snap.guideX !== null) addGuide(true, snap.guideX)
+      }
+      if (snap.dy !== 0 || snap.guideY !== null) {
+        g.y(g.y() + snap.dy)
+        if (snap.guideY !== null) addGuide(false, snap.guideY)
+      }
+    },
+    [addGuide, canvasSize, clearGuides, ox, oy, paperH, paperW],
+  )
+
+  /** 容器命中：中心点在容器内 → 锚定（原型 containerHit）。 */
+  const containerHit = useCallback(
+    (e: DesignElement): string | undefined => {
+      const hit = elements.find(
+        (c): c is import('../../lib/design/types').RegionElement =>
+          c.type === 'Region' && c.containerId !== e.id && e.x + e.w / 2 >= c.x && e.x + e.w / 2 <= c.x + c.w && e.y + e.h / 2 >= c.y && e.y + e.h / 2 <= c.y + c.h,
+      )
+      return hit?.containerId
+    },
+    [elements],
+  )
+
+  const elementFromTarget = (target: Konva.Node | null): Konva.Node | null => {
+    if (!target) return null
+    if (target.hasName('element')) return target
+    return target.findAncestor('.element')
+  }
+
+  // ---------- 画布交互 ----------
+
+  const handleClick = (ev: KonvaEventObject<MouseEvent>) => {
+    const p = stateRef.current
+    if (p.viewMode === 'preview') return
+    if (ev.evt.button !== 0 || panRef.current.panning) return
+    const el = elementFromTarget(ev.target)
+    if (!el) {
+      if (p.pendingType) {
+        const ptr = ev.target.getStage()?.getPointerPosition()
+        if (ptr) {
+          const pos = logicToContentMm(ptr.x - stageRef.current!.x(), ptr.y - stageRef.current!.y(), false)
+          p.onAddElement(p.pendingType, pos.x, pos.y)
+        }
+        return
+      }
+      p.onSelect([], false)
+      return
+    }
+    p.onSelect([el.id()], ev.evt.shiftKey || ev.evt.ctrlKey)
+  }
+
+  const handleWheel = (ev: KonvaEventObject<WheelEvent>) => {
+    ev.evt.preventDefault()
+    if (!ev.evt.ctrlKey) return
+    const p = stateRef.current
+    const oldZoom = p.zoom
+    const newZoom = Math.max(0.1, Math.min(8, oldZoom * (ev.evt.deltaY < 0 ? 1.1 : 1 / 1.1)))
+    const stage = stageRef.current
+    if (stage) {
+      const base = p.viewMode === 'preview' ? previewScale(p.dpi) : fitScale(viewport.w, viewport.h, canvasSize.w, canvasSize.h)
+      const oldTotal = base * oldZoom
+      const newTotal = base * newZoom
+      const ptr = stage.getPointerPosition()
+      if (ptr) {
+        stage.x(ptr.x - ((ptr.x - stage.x()) * newTotal) / oldTotal)
+        stage.y(ptr.y - ((ptr.y - stage.y()) * newTotal) / oldTotal)
+      }
+    }
+    p.onZoomChange(newZoom)
+  }
+
+  // 中键平移（DOM 级，document 监听保证复位）
+  useEffect(() => {
+    const dom = stageRef.current?.container()
+    if (!dom) return
+    const onDown = (ev: MouseEvent) => {
+      if (ev.button !== 1) return
+      ev.preventDefault()
+      const stage = stageRef.current!
+      panRef.current = { panning: true, startX: ev.clientX, startY: ev.clientY, stageX: stage.x(), stageY: stage.y() }
+      document.addEventListener('mousemove', onMove)
+      document.addEventListener('mouseup', onUp)
+    }
+    const onMove = (ev: MouseEvent) => {
+      const pan = panRef.current
+      if (!pan.panning) return
+      const stage = stageRef.current!
+      stage.x(pan.stageX + (ev.clientX - pan.startX))
+      stage.y(pan.stageY + (ev.clientY - pan.startY))
+      clampStage()
+      stage.batchDraw()
+    }
+    const onUp = () => {
+      panRef.current.panning = false
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    dom.addEventListener('mousedown', onDown)
+    return () => {
+      dom.removeEventListener('mousedown', onDown)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+  }, [clampStage])
+
+  // 拖入画布（HTML5 DnD，用 clientX/Y 几何换算，不依赖 Konva 指针）
+  const handleDrop = (ev: React.DragEvent) => {
+    ev.preventDefault()
+    const p = stateRef.current
+    const type = ev.dataTransfer.getData('text/plain')
+    if (!type || p.viewMode === 'preview') return
+    const dom = stageRef.current?.container()
+    if (!dom) return
+    const rect = dom.getBoundingClientRect()
+    const sx = stageRef.current!.scaleX()
+    const sy = stageRef.current!.scaleY()
+    const logicX = (ev.clientX - rect.left - stageRef.current!.x()) / sx
+    const logicY = (ev.clientY - rect.top - stageRef.current!.y()) / sy
+    const pos = logicToContentMm(logicX, logicY, false)
+    p.onAddElement(type, pos.x, pos.y)
+  }
+
+  // ---------- 拖动（多选跟随 + 吸附） ----------
+  const handleDragStart = (ev: KonvaEventObject<DragEvent>) => {
+    const p = stateRef.current
+    const el = elementFromTarget(ev.target)
+    if (el && p.selected.length > 1 && p.selected.includes(el.id())) {
+      multiDragRef.current = { targetId: el.id(), lastX: el.x(), lastY: el.y() }
+    } else {
+      multiDragRef.current = null
+    }
+  }
+
+  const handleDragMove = (ev: KonvaEventObject<DragEvent>) => {
+    const p = stateRef.current
+    const layer = layerRef.current
+    const el = elementFromTarget(ev.target)
+    if (!el || !layer) return
+    const md = multiDragRef.current
+    if (md) {
+      const dx = el.x() - md.lastX
+      const dy = el.y() - md.lastY
+      md.lastX = el.x()
+      md.lastY = el.y()
+      p.selected.forEach((id) => {
+        if (id === md.targetId) return
+        const n = layer.findOne('#' + id)
+        if (n) {
+          n.x(n.x() + dx)
+          n.y(n.y() + dy)
+        }
+      })
+    }
+    snapNode(el)
+    layer.batchDraw()
+  }
+
+  const handleDragEnd = (ev: KonvaEventObject<DragEvent>) => {
+    const p = stateRef.current
+    const layer = layerRef.current
+    multiDragRef.current = null
+    const el = elementFromTarget(ev.target)
+    if (!el || !layer) {
+      clearGuides()
+      return
+    }
+    const e = elementById(p.state.elements, el.id())
+    if (!e) {
+      clearGuides()
+      return
+    }
+    // Konva 拖拽会用指针位置覆盖 dragmove 里的吸附，松手再吸一次保证落点精确
+    snapNode(el)
+    const r = el.getClientRect({ relativeTo: layer })
+    const pos = logicToContentMm(r.x, r.y, false)
+    const regionId = p.viewMode === 'preview' ? e.regionId : containerHit({ ...e, x: pos.x, y: pos.y })
+    clearGuides()
+    p.onUpdateElements((els) =>
+      els.map((o) => {
+        if (o.id !== e.id) return o
+        const next = { ...o, x: Math.round(pos.x * 100) / 100, y: Math.round(pos.y * 100) / 100 }
+        if (regionId) next.regionId = regionId
+        else delete next.regionId
+        return next
+      }),
+    )
+    p.onCommit()
+  }
+
+  // ---------- 8 手柄缩放 ----------
+  const handleTransformEnd = () => {
+    const p = stateRef.current
+    const layer = layerRef.current
+    const tr = trRef.current
+    if (!layer || !tr) return
+    const updates = new Map<string, Partial<DesignElement>>()
+    tr.nodes().forEach((g) => {
+      const e = elementById(p.state.elements, g.id())
+      if (!e) return
+      const r = g.getClientRect({ relativeTo: layer })
+      let w = r.width / PX
+      let h = r.height / PX
+      if (e.type === 'QrCode') w = h = Math.max(w, h)
+      updates.set(e.id, {
+        x: Math.round((r.x - ox) / PX * 100) / 100,
+        y: Math.round((r.y - oy) / PX * 100) / 100,
+        w: Math.round(w * 100) / 100,
+        h: Math.round(h * 100) / 100,
+      })
+    })
+    p.onUpdateElements((els) =>
+      els.map((o): DesignElement => {
+        const patch = updates.get(o.id)
+        return patch ? ({ ...o, ...patch } as DesignElement) : o
+      }),
+    )
+    p.onCommit()
+  }
+
+  // Transformer 绑定选中节点
+  useEffect(() => {
+    const tr = trRef.current
+    const layer = layerRef.current
+    if (!tr || !layer) return
+    const nodes = selected
+      .map((id) => layer.findOne('#' + id))
+      .filter((n): n is Konva.Node => n !== null && n !== undefined)
+    tr.nodes(preview ? [] : nodes)
+    tr.getLayer()?.batchDraw()
+  }, [selected, elements, preview])
+
+  // 画布网格
+  const gridNodes = useMemo(() => {
+    if (preview || !gridOn) return []
+    const step = 5 * PX
+    const gw = (paperW + 10 * 2) * PX
+    const gh = (paperH + 10 * 2) * PX
+    const nodes: React.ReactNode[] = []
+    for (let x = 0; x <= gw; x += step) {
+      nodes.push(
+        <KLine key={'v' + x} points={[RULER + x, RULER, RULER + x, RULER + gh]} stroke={(x / step) % 2 === 0 ? '#e3e9f0' : '#eef1f5'} strokeWidth={1} listening={false} strokeScaleEnabled={false} />,
+      )
+    }
+    for (let y = 0; y <= gh; y += step) {
+      nodes.push(
+        <KLine key={'h' + y} points={[RULER, RULER + y, RULER + gw, RULER + y]} stroke={(y / step) % 2 === 0 ? '#e3e9f0' : '#eef1f5'} strokeWidth={1} listening={false} strokeScaleEnabled={false} />,
+      )
+    }
+    return nodes
+  }, [preview, gridOn, paperH, paperW])
+
+  // 毫米标尺（画进 Konva 与内容同坐标系；标签边缘用主色粗刻度）
+  const rulerNodes = useMemo(() => {
+    if (preview) return []
+    const nodes: React.ReactNode[] = []
+    const wMm = paperW + 20
+    const hMm = paperH + 20
+    const tick = (m: number, vertical: boolean) => {
+      const isEdge = m === 10 || m === 10 + (vertical ? paperH : paperW)
+      const len = m % 10 === 0 || isEdge ? 14 : m % 5 === 0 ? 9 : 4
+      const color = isEdge ? '#1a5fd0' : '#9aa6b4'
+      const width = isEdge ? 2 : 1
+      if (vertical) {
+        const y = RULER + m * PX
+        nodes.push(<KLine key={'vy' + m} points={[RULER - len, y, RULER, y]} stroke={color} strokeWidth={width} listening={false} strokeScaleEnabled={false} />)
+        if (m % 10 === 0 || isEdge) {
+          nodes.push(<KText key={'vt' + m} x={RULER - 13} y={y + 2} text={String(m)} fontSize={9} fontFamily="Consolas, Microsoft YaHei" fill={isEdge ? '#1a5fd0' : '#667'} listening={false} />)
+        }
+      } else {
+        const x = RULER + m * PX
+        nodes.push(<KLine key={'hx' + m} points={[x, RULER - len, x, RULER]} stroke={color} strokeWidth={width} listening={false} strokeScaleEnabled={false} />)
+        if (m % 10 === 0 || isEdge) {
+          nodes.push(<KText key={'ht' + m} x={x + 2} y={RULER - 12} text={String(m)} fontSize={9} fontFamily="Consolas, Microsoft YaHei" fill={isEdge ? '#1a5fd0' : '#667'} listening={false} />)
+        }
+      }
+    }
+    for (let m = 0; m <= wMm; m++) tick(m, false)
+    for (let m = 0; m <= hMm; m++) tick(m, true)
+    return nodes
+  }, [paperH, paperW, preview])
+
+  return (
+    <div
+      ref={containerRef}
+      className="canvas-viewport"
+      style={{ flex: 1, overflow: 'hidden', background: 'var(--bg-deep)', position: 'relative', minHeight: 0 }}
+      onDragOver={(ev) => {
+        ev.preventDefault()
+        ev.dataTransfer.dropEffect = 'copy'
+      }}
+      onDrop={handleDrop}
+    >
+      <div ref={boxRef} style={{ position: 'absolute', background: preview ? '#fff' : '#fff', border: '1px solid #9aa6b4', boxShadow: '0 2px 8px rgba(0,0,0,.08)', left: 0, top: 0 }}>
+        <Stage ref={stageRef} width={canvasSize.w * total || 1} height={canvasSize.h * total || 1} scaleX={total} scaleY={total} onClick={handleClick} onWheel={handleWheel}>
+          <Layer ref={layerRef}>
+            {!preview && <KRect x={0} y={0} width={RULER} height={RULER} fill="#f7f8fa" stroke="#d8dee6" strokeWidth={1} listening={false} strokeScaleEnabled={false} />}
+            {gridNodes}
+            {!preview && (
+              <KRect
+                x={ox}
+                y={oy}
+                width={paperW * PX}
+                height={paperH * PX}
+                stroke="#b0b8c4"
+                strokeWidth={1}
+                dash={[8, 4]}
+                listening={false}
+                strokeScaleEnabled={false}
+              />
+            )}
+            {rulerNodes}
+            {elements.map((e) => (
+              <ElementNode
+                key={e.id}
+                e={e}
+                editable={!preview}
+                ox={ox}
+                oy={oy}
+                onDragStart={handleDragStart}
+                onDragMove={handleDragMove}
+                onDragEnd={handleDragEnd}
+              />
+            ))}
+            <Transformer
+              ref={trRef}
+              rotateEnabled={false}
+              keepRatio={false}
+              anchorSize={8}
+              anchorStroke="#1a5fd0"
+              anchorFill="#fff"
+              borderStroke="#1a5fd0"
+              borderDash={[4, 2]}
+              onTransformEnd={handleTransformEnd}
+            />
+          </Layer>
+        </Stage>
+      </div>
+      {preview && (
+        <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', background: 'rgba(29,38,51,.78)', color: '#fff', fontSize: 12, padding: '4px 12px', borderRadius: 999, pointerEvents: 'none', fontFamily: 'var(--font-mono)' }}>
+          {dpi} dpi 打印预览 · 中键平移 · Ctrl+滚轮缩放
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** 元素查询（供组件内使用）。 */
+export function findElement(els: readonly DesignElement[], id: string): DesignElement | undefined {
+  return elementById(els, id)
+}

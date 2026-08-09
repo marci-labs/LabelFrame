@@ -161,3 +161,4 @@ flowchart LR
 - Excel 导入（迭代 9）拟用 `TemplateFrame.Excel.Simple`（决策 #32）：其为第三方包，构建需联网还原 `DocumentFormat.OpenXml 3.3.0`；版本 / 表名约定在实施时定稿（未决）。
 - 区域布局的 ZPL 实现：区域内文本对齐用 `^FB` 块（宽度 = 区域宽 - padding×2）；区域边框用 `^GB`；元素在区域内的位置由对齐参数计算。文本块宽度为 0 时不做块对齐（保持旧行为）。真实打印效果待设备抽查（未决）。
 - Studio 2.0 实时预览依赖本地渲染（共享库 `LabelFrame.Rendering`，GDI + ZXing），与打印端同坐标/同解析；拖拽节流刷新。字体渲染差异（GDI vs 打印机）以真机抽查为准（未决）。
+- Web 前端增强字段与后端契约的差距（hermes 交付报告决策 #6，未决）：文本 `wrap / lineHeight / valign / fitMode / fontFamily`、条码 `displayValue / 码制`、二维码 `qrEcc / qrMargin` 等前端属性在后端版式契约中无对应字段，保存后重新加载回到默认值；打印效果以 ZPL 编码器能力为准（文本单行 / ^FB 块宽）。如需保真，属跨迭代公共契约扩展，需先讨论再实施（未决）。

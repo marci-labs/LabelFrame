@@ -97,7 +97,7 @@ Base：后端地址（默认 `http://127.0.0.1:53960`）。JSON 一律 camelCase
 契约 / 版式元素 JSON（`contract` / `layout`）：
 - `contract`：`{ name, version, fields: [{ key, displayName, isRequired, type }] }`
 - `layout`：`{ name, contractName, contractVersion, widthMm, heightMm, elements: [...] }`
-- 元素数组由 `LabelElementJsonConverter` 按 `type` 判别：`text` / `barcode` / `qrcode` / `image` / `line` / `region`；字段 camelCase（`xMm`, `yMm`, `sourceKey`, `literal`, `fontHeightMm`, `widthMm`, `textAlign`, `paddingMm`, `borderMm`, `regionId` 等）。详见 `prototypes/web-designer/app.js` 的 `toElementJson` / `parseElement`（原型已实现往返）。
+- 元素数组由 `LabelElementJsonConverter` 按 `type` 判别：`text` / `barcode` / `qrcode` / `image` / `line` / `region`；字段 camelCase（`xMm`, `yMm`, `sourceKey`, `literal`, `fontHeightMm`, `widthMm`, `textAlign`, `paddingMm`, `borderMm`, `regionId` 等）。双向转换实现在 `web/src/lib/design/convert.ts`（严格镜像后端 `LabelElementJsonConverter` 的省略规则，含 15 个往返单测）。
 
 ## 5. 验收清单
 
