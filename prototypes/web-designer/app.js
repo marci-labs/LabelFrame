@@ -47,7 +47,7 @@ function createTransformer() {
     t.nodes().forEach((g) => {
       const e = elementById(g.id());
       if (!e) return;
-      const r = g.getClientRect();
+      const r = g.getClientRect({ relativeTo: layer });
       e.x = mm(r.x - RULER) - PAD_MM;
       e.y = mm(r.y - RULER) - PAD_MM;
       e.w = mm(r.width);
@@ -121,9 +121,9 @@ function status(msg) { $('statusText').textContent = msg; log(msg); }
 function defaultElement(type) {
   const id = uid();
   switch (type) {
-    case 'Text':   return { id, type, x: 5, y: 5, w: 40, h: 5, fontH: 5, fontW: 5, mode: 'field', key: '', text: '', align: 'Left', padding: 1, border: 0, fitMode: 'wrap' };
-    case 'Barcode':return { id, type, x: 5, y: 20, w: 50, h: 20, mode: 'field', key: '', text: '', border: 0, barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1 };
-    case 'QrCode': return { id, type, x: 5, y: 20, w: 20, h: 20, mode: 'field', key: '', text: '', border: 0, qrEcc: 'M', qrMargin: 2 };
+    case 'Text':   return { id, type, x: 5, y: 5, w: 40, h: 5, fontH: 5, fontW: 5, mode: 'field', key: '', text: '', align: 'Left', padding: 1, border: 0, fitMode: 'shrink' };
+    case 'Barcode':return { id, type, x: 5, y: 20, w: 50, h: 20, mode: 'field', key: '', text: '', border: 0, padding: 1, barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1 };
+    case 'QrCode': return { id, type, x: 5, y: 20, w: 20, h: 20, mode: 'field', key: '', text: '', border: 0, padding: 1, qrEcc: 'M', qrMargin: 2 };
     case 'Image':  return { id, type, x: 5, y: 20, w: 20, h: 20, key: '', border: 0 };
     case 'Line':   return { id, type, x: 5, y: 5, w: 60, h: 0, thickness: 0.5 };
     case 'Region': return { id, type, x: 5, y: 5, w: 60, h: 30, border: 0.3, containerId: 'c' + Math.random().toString(36).slice(2, 8) };
@@ -204,47 +204,31 @@ function elementContent(e) {
 }
 
 // ---------- 文本适应（自动换行 / 截断 / 缩小字体 / 不限制高度） ----------
-// 返回裁剪区域（{wPx, hPx, clip}）；clip=false 表示不裁剪（不限制高度模式）
+// 文本绘制：文本框 = 遮罩区域；内容按设置 缩小适应(shrink) / 原样溢出(overflow，超出被遮罩裁剪)
 function applyTextFit(text, e, content) {
   const wPx = Math.max(2, pxv(e.w) - 2 * pxv(e.padding || 0));
   const hPx = Math.max(2, pxv(e.h));
   text.width(wPx);
-  text.wrap(e.fitMode === 'wrap' || e.fitMode === 'shrink' ? 'word' : 'none');
-  text.ellipsis(false);
-  if (e.fitMode === 'auto') {
-    text.height(null);
-    text.verticalAlign('top');
-    text.text(content);
-    return { wPx, hPx, clip: false };
-  }
   text.height(hPx);
+  text.wrap('none');
+  text.ellipsis(false);
   text.verticalAlign('middle');
-  if (e.fitMode === 'truncate') {
-    let t = content;
-    if (text.measureSize(t).width > wPx) {
-      let lo = 0, hi = t.length;
-      while (lo < hi) {
-        const mid = Math.ceil((lo + hi) / 2);
-        const cand = t.slice(0, mid) + '…';
-        if (text.measureSize(cand).width <= wPx) lo = mid; else hi = mid - 1;
-      }
-      t = t.slice(0, lo) + (lo < content.length ? '…' : '');
-    }
-    text.text(t);
-  } else if (e.fitMode === 'shrink') {
-    let fs = Math.max(1, pxv(e.fontH));
-    const minFs = Math.max(1, pxv(1.5));
-    text.fontSize(fs);
-    let m = text.measureSize(content);
-    while ((m.width > wPx || m.height > hPx) && fs > minFs) {
-      fs = Math.max(minFs, fs - 0.5);
-      text.fontSize(fs);
-      m = text.measureSize(content);
-    }
+  if (e.fitMode === 'overflow') {
+    text.fontSize(Math.max(1, pxv(e.fontH)));
     text.text(content);
-  } else {
-    text.text(content);
+    return { wPx, hPx, clip: true };
   }
+  // shrink：缩小字体以适应绘制区域（有最小字高）
+  let fs = Math.max(1, pxv(e.fontH));
+  const minFs = Math.max(1, pxv(1.5));
+  text.fontSize(fs);
+  let m = text.measureSize(content);
+  while ((m.width > wPx || m.height > hPx) && fs > minFs) {
+    fs = Math.max(minFs, fs - 0.5);
+    text.fontSize(fs);
+    m = text.measureSize(content);
+  }
+  text.text(content);
   return { wPx, hPx, clip: true };
 }
 
@@ -293,11 +277,12 @@ function fitImageNode(node, wPx, hPx) {
   node.x((wPx - iw * fit) / 2); node.y((hPx - ih * fit) / 2);
 }
 
-function queueQrRender(holder, e, wPx, hPx) {
+// 二维码同步渲染：直接遍历模块绘制到 canvas（无异步加载，稳定可见）
+function makeQrCanvas(e, wPx, hPx) {
+  const c = document.createElement('canvas');
   const content = elementContent(e);
   const isUnbound = content === '（未绑定字段）' || content === '（固定值）';
   if (isUnbound) {
-    const c = document.createElement('canvas');
     c.width = Math.max(60, wPx);
     c.height = Math.max(60, hPx);
     const ctx = c.getContext('2d');
@@ -309,25 +294,35 @@ function queueQrRender(holder, e, wPx, hPx) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('二维码 · 未绑定字段', c.width / 2, c.height / 2);
-    const node = new Konva.Image({ image: c, listening: false });
-    fitImageNode(node, wPx, hPx);
-    holder.add(node);
-    layer.draw();
-    return;
+    return c;
   }
-  const qr = qrcode(0, e.qrEcc || 'M');
-  qr.addData(content);
-  qr.make();
-  const dataUrl = qr.createDataURL(4, e.qrMargin == null ? 2 : e.qrMargin);
-  const im = new Image();
-  im.onload = () => {
-    if (holder.isDestroyed()) return;
-    const node = new Konva.Image({ image: im, listening: false });
-    fitImageNode(node, wPx, hPx);
-    holder.add(node);
-    layer.draw();
-  };
-  im.src = dataUrl;
+  try {
+    const qr = qrcode(0, e.qrEcc || 'M');
+    qr.addData(content);
+    qr.make();
+    const count = qr.getModuleCount();
+    const cell = 4;
+    const margin = (e.qrMargin == null ? 2 : e.qrMargin) * cell;
+    c.width = count * cell + margin * 2;
+    c.height = count * cell + margin * 2;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#000000';
+    for (let r = 0; r < count; r++) {
+      for (let col = 0; col < count; col++) {
+        if (qr.isDark(r, col)) ctx.fillRect(margin + col * cell, margin + r * cell, cell, cell);
+      }
+    }
+    return c;
+  } catch (ex) {
+    c.width = Math.max(60, wPx);
+    c.height = Math.max(60, hPx);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f0f1f3';
+    ctx.fillRect(0, 0, c.width, c.height);
+    return c;
+  }
 }
 
 // ---------- 元素节点（Group：边框 + 内容；坐标 = padding 偏移 + 内容坐标） ----------
@@ -362,16 +357,26 @@ function nodeFor(e) {
     }
     case 'Barcode': {
       const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW, strokeScaleEnabled: false });
+      const pad = pxv(e.padding || 0);
+      const innerW = Math.max(2, w - pad * 2), innerH = Math.max(2, h - pad * 2);
       const canvas = makeBarcodeCanvas(e);
       const img = new Konva.Image({ image: canvas, listening: false });
-      fitImageNode(img, w, h);
+      fitImageNode(img, innerW, innerH);
+      img.x(img.x() + pad);
+      img.y(img.y() + pad);
       g.add(rect); g.add(img);
       return g;
     }
     case 'QrCode': {
       const rect = new Konva.Rect({ x: 0, y: 0, width: w, height: h, stroke: e.border > 0 ? '#000' : null, strokeWidth: borderW, strokeScaleEnabled: false });
-      g.add(rect);
-      queueQrRender(g, e, w, h);
+      const pad = pxv(e.padding || 0);
+      const innerW = Math.max(2, w - pad * 2), innerH = Math.max(2, h - pad * 2);
+      const canvas = makeQrCanvas(e, innerW, innerH);
+      const img = new Konva.Image({ image: canvas, listening: false });
+      fitImageNode(img, innerW, innerH);
+      img.x(img.x() + pad);
+      img.y(img.y() + pad);
+      g.add(rect); g.add(img);
       return g;
     }
     case 'Image': {
@@ -476,7 +481,7 @@ function drawGuideH(y) {
 function snapNode(g) {
   const e = elementById(g.id());
   if (!e) return;
-  const r = g.getClientRect();
+  const r = g.getClientRect({ relativeTo: layer });
   const TH = 6; // 吸附阈值（逻辑 px）
   const xs = [r.x, r.x + r.width / 2, r.x + r.width];
   const ys = [r.y, r.y + r.height / 2, r.y + r.height];
@@ -487,7 +492,7 @@ function snapNode(g) {
     if (o.id === e.id) return;
     const n = layer.findOne('#' + o.id);
     if (!n) return;
-    const or = n.getClientRect();
+    const or = n.getClientRect({ relativeTo: layer });
     cx.push(or.x, or.x + or.width / 2, or.x + or.width);
     cy.push(or.y, or.y + or.height / 2, or.y + or.height);
   });
@@ -532,7 +537,7 @@ stage.on('dragend', (ev) => {
   if (!el) return;
   const e = elementById(el.id());
   if (!e) return;
-  const r = el.getClientRect();
+  const r = el.getClientRect({ relativeTo: layer });
   e.x = mm(r.x - RULER) - PAD_MM;
   e.y = mm(r.y - RULER) - PAD_MM;
   renderProps();
@@ -758,6 +763,12 @@ function renderProps() {
 
   if (e.type === 'Text' || e.type === 'Barcode' || e.type === 'QrCode') {
     box.appendChild(contentGroup(e));
+    const gCommon = document.createElement('div');
+    gCommon.className = 'group';
+    gCommon.innerHTML = '<h4>边框 / 内边距（通用）</h4>';
+    addNum(gCommon, '内边距', e.padding || 0, (v) => { e.padding = Math.max(0, v); });
+    addNum(gCommon, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
+    box.appendChild(gCommon);
   }
 
   if (e.type === 'Text') {
@@ -766,9 +777,7 @@ function renderProps() {
     gText.innerHTML = '<h4>文本 / 字体</h4>';
     addNum(gText, '字高', e.fontH, (v) => { e.fontH = Math.max(1, v); e.h = e.fontH; });
     addSelect(gText, '文字对齐', [['左对齐', 'Left'], ['居中', 'Center'], ['右对齐', 'Right']], e.align, (v) => { e.align = v; });
-    addNum(gText, '内边距', e.padding || 0, (v) => { e.padding = Math.max(0, v); });
-    addNum(gText, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
-    addSelect(gText, '文本溢出', [['自动换行', 'wrap'], ['超长截断', 'truncate'], ['缩小字体', 'shrink'], ['不限制高度', 'auto']], e.fitMode || 'wrap', (v) => { e.fitMode = v; });
+    addSelect(gText, '溢出处理', [['缩小适应', 'shrink'], ['溢出显示', 'overflow']], e.fitMode || 'shrink', (v) => { e.fitMode = v; });
     box.appendChild(gText);
   } else if (e.type === 'Barcode') {
     const gBar = document.createElement('div');
@@ -777,7 +786,6 @@ function renderProps() {
     addSelect(gBar, '码制', [['Code128', 'CODE128'], ['EAN13', 'EAN13'], ['CODE39', 'CODE39'], ['UPC', 'UPC']], e.barcodeFormat || 'CODE128', (v) => { e.barcodeFormat = v; });
     addCheck(gBar, '底部显示文字', e.displayValue !== false, (v) => { e.displayValue = v; });
     addNum(gBar, '模块宽', e.moduleWidth || 1, (v) => { e.moduleWidth = Math.max(0.5, v); });
-    addNum(gBar, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
     box.appendChild(gBar);
   } else if (e.type === 'QrCode') {
     const gQr = document.createElement('div');
@@ -785,7 +793,6 @@ function renderProps() {
     gQr.innerHTML = '<h4>二维码参数</h4>';
     addSelect(gQr, '纠错级别', [['L(约7%)', 'L'], ['M(约15%)', 'M'], ['Q(约25%)', 'Q'], ['H(约30%)', 'H']], e.qrEcc || 'M', (v) => { e.qrEcc = v; });
     addNum(gQr, '边距', e.qrMargin == null ? 2 : e.qrMargin, (v) => { e.qrMargin = Math.max(0, v); });
-    addNum(gQr, '边框', e.border || 0, (v) => { e.border = Math.max(0, v); });
     box.appendChild(gQr);
   } else if (e.type === 'Line') {
     const gLine = document.createElement('div');
@@ -896,7 +903,7 @@ function addSelect(parent, label, options, value, onSet) {
     if (value === val) o.selected = true;
     sel.appendChild(o);
   });
-  sel.addEventListener('change', () => onSet(sel.value));
+  sel.addEventListener('change', () => { onSet(sel.value); commit(); });
   wrap.appendChild(span);
   wrap.appendChild(sel);
   parent.appendChild(wrap);
@@ -910,7 +917,7 @@ function addCheck(parent, label, value, onSet) {
   cb.type = 'checkbox';
   cb.checked = !!value;
   cb.style.width = 'auto';
-  cb.addEventListener('change', () => onSet(cb.checked));
+  cb.addEventListener('change', () => { onSet(cb.checked); commit(); });
   wrap.appendChild(span);
   wrap.appendChild(cb);
   parent.appendChild(wrap);
@@ -983,7 +990,7 @@ function parseElement(j) {
   const base = { id: uid(), x: j.xMm || 0, y: j.yMm || 0, border: j.borderMm || 0 };
   switch (j.type) {
     case 'text':
-      return { ...base, type: 'Text', w: j.widthMm || 0, h: j.fontHeightMm, fontH: j.fontHeightMm, fontW: j.fontWidthMm || 5, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', align: j.textAlign || 'Left', padding: j.paddingMm || 0, fitMode: 'wrap', regionId: j.regionId || null };
+      return { ...base, type: 'Text', w: j.widthMm || 0, h: j.fontHeightMm, fontH: j.fontHeightMm, fontW: j.fontWidthMm || 5, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', align: j.textAlign || 'Left', padding: j.paddingMm || 0, fitMode: 'shrink', regionId: j.regionId || null };
     case 'barcode':
       return { ...base, type: 'Barcode', w: (j.heightMm || 20) * 2.5, h: j.heightMm || 20, heightMm: j.heightMm || 20, mode: j.literal != null ? 'literal' : 'field', key: j.sourceKey || '', text: j.literal || '', barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1, regionId: j.regionId || null };
     case 'qrcode':
