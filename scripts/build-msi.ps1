@@ -40,7 +40,26 @@ if ($Sign) {
             Sort-Object FullName -Descending | Select-Object -First 1
         if ($found) { $signtoolPath = $found.FullName }
     }
+    # 自动从 NuGet 下载 Windows SDK BuildTools 提取 signtool（无需安装 SDK）
+    if (-not $signtoolPath) {
+        $toolsDir = Join-Path $root 'artifacts\tools'
+        $cachedSig = Get-ChildItem $toolsDir -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+        if ($cachedSig) {
+            $signtoolPath = $cachedSig.FullName
+        } else {
+            Write-Host '未找到 signtool，正在从 NuGet 下载 Windows SDK BuildTools 提取…'
+            New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
+            $ver = (Invoke-RestMethod 'https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/index.json' -TimeoutSec 60).versions | Select-Object -Last 1
+            $zip = Join-Path $toolsDir 'sdkbt.zip'
+            Invoke-WebRequest "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/$ver/microsoft.windows.sdk.buildtools.$ver.nupkg" -OutFile $zip -TimeoutSec 300
+            Expand-Archive -Path $zip -DestinationPath $toolsDir -Force
+            $extracted = Get-ChildItem $toolsDir -Recurse -Filter signtool.exe | Sort-Object FullName -Descending | Select-Object -First 1
+            if (-not $extracted) { throw 'signtool 提取失败。' }
+            $signtoolPath = $extracted.FullName
+        }
+    }
     if (-not $signtoolPath) { throw '未找到 signtool.exe：请安装 Windows SDK，或设置环境变量 SIGNFILE 指向 signtool.exe' }
+    Write-Host "使用 signtool：$signtoolPath"
     $global:LASTEXITCODE = 0
     & $signtoolPath sign /f $PfxPath /p $PfxPassword /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $msi 2>&1 | Write-Host
     if ($LASTEXITCODE -ne 0) { throw 'MSI 签名失败' }
