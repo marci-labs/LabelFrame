@@ -52,9 +52,11 @@ cd web; pnpm install; pnpm build; cd ..
 .\scripts\build-msi.ps1
 ```
 
-产物：`artifacts\LabelFrame-0.11.0.msi`（约 56MB，含 WinHost + Web UI + 应用图标）。
+产物：`artifacts\LabelFrame-0.11.0.msi`（约 10MB，framework-dependent，含 WinHost + Web UI + 应用图标）。
 
-干净电脑使用：安装 MSI → 桌面 / 开始菜单「LabelFrame」→ 双击图标 → 自动启动服务并打开浏览器（http://127.0.0.1:53960）→ 直接模板编辑与打印测试。
+前置要求：目标机需安装 **.NET 10 Desktop Runtime**（下载：https://dotnet.microsoft.com/download/dotnet/10.0）；缺失时启动会提示安装。
+
+干净电脑使用：安装 MSI → 桌面 / 开始菜单「LabelFrame」→ 双击图标 → 自动启动服务并打开浏览器（http://127.0.0.1:53960）→ 直接模板编辑与打印测试。系统托盘出现 L 图标：双击打开界面、右键可退出。
 
 辅助脚本：
 - `scripts\generate-icon.ps1`：生成应用图标（双色 L 型，assets\labelframe.ico）。

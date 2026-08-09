@@ -1,4 +1,4 @@
-﻿# 发布 LabelFrame 单机版（WinHost self-contained + web/dist）
+﻿# 发布 LabelFrame 单机版（WinHost framework-dependent + web/dist）
 param(
     [string]$Configuration = 'Release',
     [string]$Runtime = 'win-x64',
@@ -9,9 +9,9 @@ $root = Split-Path -Parent $PSScriptRoot
 if (-not $OutputDir) { $OutputDir = Join-Path $root 'artifacts' }
 $publishDir = Join-Path $OutputDir $Runtime
 
-Write-Host "publish WinHost ($Configuration / $Runtime self-contained) ..."
+Write-Host "publish WinHost ($Configuration / $Runtime framework-dependent) ..."
 dotnet publish (Join-Path $root 'src\LabelFrame.WinHost\LabelFrame.WinHost.csproj') `
-    -c $Configuration -r $Runtime --self-contained true `
+    -c $Configuration -r $Runtime -p:SelfContained=false `
     -o $publishDir -p:DebugType=None -p:DebugSymbols=false | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'WinHost publish failed' }
 
