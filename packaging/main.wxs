@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package Name="LabelFrame" Manufacturer="LabelFrame" Version="0.11.0"
            UpgradeCode="8B1E4F2A-6C3D-4E5F-9A0B-1C2D3E4F5A6B">
@@ -6,9 +6,9 @@
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <!-- 程序文件：发布产物 + web/dist -->
-    <StandardDirectory Id="ProgramFiles6432Folder">
-      <!-- 发布产物 + web/dist（含 appsettings.json）由 files.wxs 打包 -->
+    <!-- 安装目录：Program Files\LabelFrame（64 位） -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="LabelFrame" />
     </StandardDirectory>
 
     <!-- 开始菜单 -->
@@ -20,7 +20,7 @@
                     Target="[#WinHostExe]"
                     WorkingDirectory="INSTALLFOLDER" />
           <RemoveFolder Id="ApplicationProgramsRemove" Directory="ApplicationProgramsFolder" On="uninstall" />
-          <RegistryValue Root="HKCU" Key="SoftwareLabelFrame" Name="startmenu" Type="integer" Value="1" KeyPath="yes" />
+          <RegistryValue Root="HKCU" Key="Software\LabelFrame" Name="startmenu" Type="integer" Value="1" KeyPath="yes" />
         </Component>
       </Directory>
     </StandardDirectory>
@@ -33,12 +33,13 @@
                   Target="[#WinHostExe]"
                   WorkingDirectory="INSTALLFOLDER" />
         <RemoveFolder Id="DesktopRemove" Directory="DesktopFolder" On="uninstall" />
-        <RegistryValue Root="HKCU" Key="SoftwareLabelFrame" Name="desktop" Type="integer" Value="1" KeyPath="yes" />
+        <RegistryValue Root="HKCU" Key="Software\LabelFrame" Name="desktop" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </StandardDirectory>
 
     <Feature Id="MainFeature" Title="LabelFrame" Level="1">
       <ComponentGroupRef Id="AppFiles" />
+      <ComponentGroupRef Id="WebFiles" />
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="DesktopShortcut" />
     </Feature>

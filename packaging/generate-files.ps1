@@ -1,4 +1,4 @@
-﻿# 生成 WiX 文件清单（fragment wxs）
+﻿# 生成 WiX 文件清单（fragment wxs）：根目录文件 + web/dist 子目录
 param(
     [string]$PublishDir = '',
     [string]$OutFile = ''
@@ -18,31 +18,53 @@ function New-GuidFromPath([string]$rel) {
     return [Guid]::Parse([BitConverter]::ToString($b).Replace('-', '')).ToString().ToUpperInvariant()
 }
 
+function Add-FileLine([System.Text.StringBuilder]$sb, [int]$idx, [string]$guid, [string]$rel, [string]$fileId, [string]$prefix) {
+    $ext = [System.IO.Path]::GetExtension($rel)
+    if ($ext.Length -gt 0) { $ext = $ext.Substring(1) }
+    if ($ext.Length -gt 3) { $ext = $ext.Substring(0, 3) }
+    $shortName = ('LF{0:D6}.{1}' -f $idx, $ext.ToUpperInvariant())
+    [void]$sb.AppendLine('      <Component Id="' + $prefix + $idx + '" Guid="' + $guid + '">')
+    [void]$sb.AppendLine('        <File' + $fileId + ' ShortName="' + $shortName + '" Source="$(var.PublishDir)/' + $rel + '" />')
+    [void]$sb.AppendLine('      </Component>')
+}
+
 $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('<?xml version="1.0" encoding="utf-8"?>')
 [void]$sb.AppendLine('<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">')
 [void]$sb.AppendLine('  <Fragment>')
+[void]$sb.AppendLine('    <DirectoryRef Id="INSTALLFOLDER">')
+[void]$sb.AppendLine('      <Directory Id="WebDir" Name="web">')
+[void]$sb.AppendLine('        <Directory Id="WebDistDir" Name="dist" />')
+[void]$sb.AppendLine('      </Directory>')
+[void]$sb.AppendLine('    </DirectoryRef>')
 [void]$sb.AppendLine('    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">')
+
+$webSb = New-Object System.Text.StringBuilder
+[void]$webSb.AppendLine('    <ComponentGroup Id="WebFiles" Directory="WebDistDir">')
+
 $index = 0
+$webIndex = 0
 Get-ChildItem -Path $PublishDir -Recurse -File | ForEach-Object {
     $rel = $_.FullName.Substring($PublishDir.Length).TrimStart('\')
     $rel = $rel -replace '\\', '/'
     $guid = New-GuidFromPath $rel
-    $fileId = ''
-    if ($rel -eq 'LabelFrame.WinHost.exe') { $fileId = ' Id="WinHostExe"' }
-    else { $fileId = ' Id="ff' + $index + '"' }
-    # 显式唯一短文件名（8.3），避免 WIX1070 语言资源短名冲突
-    $ext = [System.IO.Path]::GetExtension($rel)
-    if ($ext.Length -gt 0) { $ext = $ext.Substring(1) }   # 去点
-    if ($ext.Length -gt 3) { $ext = $ext.Substring(0, 3) }
-    $shortName = ('LF{0:D6}.{1}' -f $index, $ext.ToUpperInvariant())
-    [void]$sb.AppendLine('      <Component Id="f' + $index + '" Guid="' + $guid + '">')
-    [void]$sb.AppendLine('        <File' + $fileId + ' ShortName="' + $shortName + '" Source="$(var.PublishDir)/' + $rel + '" />')
-    [void]$sb.AppendLine('      </Component>')
-    $index++
+    $isWeb = $rel.StartsWith('web/dist/')
+    if ($rel -eq 'LabelFrame.WinHost.exe') {
+        Add-FileLine $sb $index $guid $rel ' Id="WinHostExe"' 'f'
+        $index++
+    } elseif ($isWeb) {
+        Add-FileLine $webSb $webIndex $guid $rel (' Id="wf' + $webIndex + '"') 'w'
+        $webIndex++
+    } else {
+        Add-FileLine $sb $index $guid $rel (' Id="ff' + $index + '"') 'f'
+        $index++
+    }
 }
+
 [void]$sb.AppendLine('    </ComponentGroup>')
+[void]$webSb.AppendLine('    </ComponentGroup>')
+[void]$sb.Append($webSb.ToString())
 [void]$sb.AppendLine('  </Fragment>')
 [void]$sb.AppendLine('</Wix>')
 [System.IO.File]::WriteAllText($OutFile, $sb.ToString(), (New-Object System.Text.UTF8Encoding($false)))
-Write-Host "generated $index files -> $OutFile"
+Write-Host "generated $($index + $webIndex) files -> $OutFile"
