@@ -163,6 +163,8 @@ export function DataPrint() {
   const [values, setValues] = useState<Record<string, string>>({})
   // 打印方式：'' = 默认（服务端配置）；显式 Vector / Image 时随作业提交
   const [printMode, setPrintMode] = useState<'' | 'Vector' | 'Image'>('')
+  // 调试：图片模式下不打印，保存实际打印位图（PNG）
+  const [debugSave, setDebugSave] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [mappingOpen, setMappingOpen] = useState(false)
@@ -232,6 +234,31 @@ export function DataPrint() {
       return
     }
     void submit([{ data: { ...values } }])
+  }
+
+  const saveDebugImage = async () => {
+    if (!pkg) return
+    setSubmitting(true)
+    try {
+      const { blob, filename } = await api.renderImage({
+        requestId: `render-${Date.now()}`,
+        template: { name: pkg.name, contract: pkg.contract, layout: pkg.layout },
+        labels: [{ data: { ...values } }],
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      app.setStatus(`已保存打印图片：${filename}`)
+    } catch (err) {
+      app.setStatus(err instanceof ApiError ? err.message : '保存打印图片失败。')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const pickExcel = async (file: File) => {
@@ -321,12 +348,18 @@ export function DataPrint() {
                 <>
                   <label className="field" style={{ maxWidth: 300 }}>
                     打印方式
-                    <select className="input" value={printMode} onChange={(ev) => setPrintMode(ev.target.value as '' | 'Vector' | 'Image')} title="默认跟随服务端配置（appsettings PrintMode）">
+                    <select className="input" value={printMode} onChange={(ev) => { setPrintMode(ev.target.value as '' | 'Vector' | 'Image'); if (ev.target.value !== 'Image') setDebugSave(false) }} title="默认跟随服务端配置（appsettings PrintMode）">
                       <option value="">默认（服务端）</option>
                       <option value="Vector">矢量 ZPL</option>
                       <option value="Image">图片（整版位图）</option>
                     </select>
                   </label>
+                  {printMode === 'Image' && (
+                    <label className="field" style={{ maxWidth: 300, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <input type="checkbox" checked={debugSave} onChange={(ev) => setDebugSave(ev.target.checked)} />
+                      调试：不打印，保存实际打印图片（PNG）
+                    </label>
+                  )}
                   {fieldKeys.map((k) => (
                     <label className="field" key={k}>
                       {k}
@@ -339,9 +372,9 @@ export function DataPrint() {
                     </label>
                   ))}
                   <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                    <button className="btn primary" onClick={testPrint} disabled={submitting || !pkg}>
+                    <button className="btn primary" onClick={debugSave ? saveDebugImage : testPrint} disabled={submitting || !pkg}>
                       <Icon name="printer" size={13} />
-                      {submitting ? '提交中…' : '打印测试（单张）'}
+                      {submitting ? '提交中…' : debugSave ? '保存打印图片' : '打印测试（单张）'}
                     </button>
                     {excel && (
                       <button className="btn" onClick={() => setMappingOpen(true)} disabled={!excel}>

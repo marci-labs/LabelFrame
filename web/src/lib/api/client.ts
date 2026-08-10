@@ -96,6 +96,26 @@ export const api = {
       body: '{}',
     }),
 
+  renderImage: async (req: SubmitJobRequest): Promise<{ blob: Blob; filename: string }> => {
+    let res: Response
+    try {
+      res = await fetch(getBaseUrl() + '/api/print/render-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req),
+        mode: 'cors',
+      })
+    } catch {
+      throw new ApiError('NETWORK_ERROR', `无法连接后端：${getBaseUrl()}，请检查「设置」中的地址与后端是否已启动。`)
+    }
+    if (!res.ok) throw new ApiError('RENDER_IMAGE_FAILED', `保存打印图片失败（HTTP ${res.status}）。`)
+    const blob = await res.blob()
+    const disposition = res.headers.get('Content-Disposition') ?? ''
+    const match = /filename="?([^";]+)"?/.exec(disposition)
+    const filename = match?.[1] ?? 'label-print.png'
+    return { blob, filename }
+  },
+
   getLogs: (deviceId?: string, since?: string) => {
     const params = new URLSearchParams()
     if (deviceId) params.set('deviceId', deviceId)

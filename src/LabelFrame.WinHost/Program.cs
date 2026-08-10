@@ -199,6 +199,39 @@ public static class Program
             return Results.File(png, "image/png");
         });
 
+        // 图片打印调试：渲染实际发送给打印机的 1bpp 位图为 PNG（不建作业、不打印），用于排查文字清晰度 / 定位
+        app.MapPost("/api/print/render-image", async (Api.SubmitJobRequest? request, TemplateStore templateStore, LabelPreviewRenderer renderer, CancellationToken ct) =>
+        {
+            if (request?.Template?.Contract is null || request.Template.Layout is null)
+            {
+                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "缺少 template（contract + layout）。"));
+            }
+
+            if (request.Labels is null || request.Labels.Count == 0)
+            {
+                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "缺少 labels（至少一张）。"));
+            }
+
+            var document = new LabelDocument
+            {
+                Layout = request.Template.Layout,
+                Data = request.Labels[0].Data ?? new Dictionary<string, string>(),
+            };
+            IReadOnlyDictionary<string, byte[]> images = new Dictionary<string, byte[]>();
+            if (!string.IsNullOrWhiteSpace(request.Template.Name))
+            {
+                var package = await templateStore.GetAsync(request.Template.Name, ct);
+                if (package is not null)
+                {
+                    images = package.Images;
+                }
+            }
+
+            var png = renderer.RenderLabelBitmapPng(document, options.Dpi, images);
+            var fileName = $"{(string.IsNullOrWhiteSpace(request.Template.Name) ? "label" : request.Template.Name)}-print.png";
+            return Results.File(png, "image/png", fileName);
+        });
+
         app.MapPost("/api/jobs", async (SubmitJobRequest? request, JobSubmissionService service, CancellationToken ct) =>
         {
             if (request is null)

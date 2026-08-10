@@ -72,6 +72,35 @@ public class LabelPreviewRendererTests
         Assert.True(bitmap.Pixels.Any(b => b != 0), "位图不应为全白（应有文字内容）。");
     }
     [Fact]
+    public void RenderLabelBitmapPng_should_return_png_of_print_bitmap()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "png",
+                ContractName = "png",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "text", XMm = 5, YMm = 5, FontHeightMm = 8, FontWidthMm = 8, WidthMm = 60 },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["text"] = "ABC-123" },
+        };
+
+        var png = new LabelPreviewRenderer().RenderLabelBitmapPng(document, dpi: 203);
+
+        Assert.True(png.Length > 8);
+        Assert.Equal(0x89, png[0]);
+        Assert.Equal(0x50, png[1]);
+        Assert.Equal(0x4E, png[2]);
+        Assert.Equal(0x47, png[3]);
+    }
+
+    [Fact]
     public void RenderPng_should_include_qr_code()
     {
         var document = new LabelDocument

@@ -53,8 +53,9 @@ public sealed class LabelPreviewRenderer
         using (var graphics = Graphics.FromImage(bitmap))
         {
             graphics.Clear(Color.White);
-            graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            // 打印位图最终是 1bpp：关闭抗锯齿，用单比特网格对齐，避免灰度被阈值切掉导致文字发虚/断笔
+            graphics.SmoothingMode = SmoothingMode.None;
+            graphics.TextRenderingHint = TextRenderingHint.SingleBitPerPixelGridFit;
             foreach (var element in document.Layout.Elements)
             {
                 DrawElement(graphics, element, document, templateImages, dpi);
@@ -288,6 +289,42 @@ public sealed class LabelPreviewRenderer
     }
 
 
+    /// <summary>渲染整张标签为 1bpp 位图并转成 PNG（与发送给打印机的 ^GF 内容一致，用于调试/保存）。</summary>
+    public byte[] RenderLabelBitmapPng(LabelDocument document, int dpi = 203, IReadOnlyDictionary<string, byte[]>? templateImages = null)
+    {
+        var labelBitmap = RenderLabelBitmap(document, dpi, templateImages);
+        using var bitmap = new Bitmap(labelBitmap.Width, labelBitmap.Height, PixelFormat.Format32bppArgb);
+        var rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+        var data = bitmap.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+        try
+        {
+            var bytesPerPixel = 4;
+            var pixelBytes = new byte[bitmap.Width * bitmap.Height * bytesPerPixel];
+            for (var y = 0; y < labelBitmap.Height; y++)
+            {
+                for (var x = 0; x < labelBitmap.Width; x++)
+                {
+                    var bit = (labelBitmap.Pixels[y * labelBitmap.RowBytes + (x >> 3)] & (0x80 >> (x & 7))) != 0;
+                    var offset = (y * bitmap.Width + x) * bytesPerPixel;
+                    // BGRA：白底黑字
+                    pixelBytes[offset] = bit ? (byte)0 : byte.MaxValue;     // B
+                    pixelBytes[offset + 1] = bit ? (byte)0 : byte.MaxValue; // G
+                    pixelBytes[offset + 2] = bit ? (byte)0 : byte.MaxValue; // R
+                    pixelBytes[offset + 3] = byte.MaxValue;                 // A
+                }
+            }
+
+            System.Runtime.InteropServices.Marshal.Copy(pixelBytes, 0, data.Scan0, pixelBytes.Length);
+        }
+        finally
+        {
+            bitmap.UnlockBits(data);
+        }
+
+        using var stream = new MemoryStream();
+        bitmap.Save(stream, ImageFormat.Png);
+        return stream.ToArray();
+    }
     private static float MeasureTextWidth(Graphics graphics, string text, Font font)
     {
         if (string.IsNullOrEmpty(text))
