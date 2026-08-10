@@ -2,6 +2,8 @@ using LabelFrame.Core.Documents;
 using LabelFrame.Core.Encoding;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Layout;
+using LabelFrame.Core.Templates;
+using LabelFrame.Rendering;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
 using LabelFrame.WinHost.Rendering;
@@ -53,7 +55,10 @@ public class ServerRoutingWorkerTests
             var store = new SqliteLabelJobStore(dbPath);
             await store.InitializeAsync();
             var queue = new LabelJobQueue(store);
-            var submission = new JobSubmissionService(queue, new ZplEncoder(), new GdiTextRasterizer(), dpi: 203);
+            var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
+            var templates = new TemplateStore(templatesDb);
+            await templates.InitializeAsync();
+            var submission = new JobSubmissionService(queue, new ZplEncoder(), new GdiTextRasterizer(), dpi: 203, new LabelPreviewRenderer(), templates, PrintMode.Vector);
 
             var poller = new FakePoller();
             var payload = new ServerJobPayload(

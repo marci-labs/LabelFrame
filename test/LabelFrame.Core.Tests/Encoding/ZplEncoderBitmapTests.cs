@@ -61,6 +61,19 @@ public class ZplEncoderBitmapTests
     }
 
     [Fact]
+    public void Encode_image_should_emit_pw_ll_and_full_gf()
+    {
+        var bitmap = new LabelBitmap(16, 8, new byte[16]);
+        var zpl = new ZplEncoder().EncodeImage(bitmap, widthMm: 70, heightMm: 50, dpi: 203);
+
+        // 70mm / 50mm @203dpi => PW559 / LL400；16x8 位图 RowBytes=2，总字节 16
+        Assert.StartsWith("^XA", zpl);
+        Assert.Contains("^PW559", zpl);
+        Assert.Contains("^LL400", zpl);
+        Assert.Contains("^FO0,0^GFA,16,16,2,", zpl);
+        Assert.EndsWith("^XZ", zpl.TrimEnd());
+    }
+    [Fact]
     public void Bitmap_row_bytes_should_pad_to_byte_boundary()
     {
         var bitmap = new LabelBitmap(10, 2);

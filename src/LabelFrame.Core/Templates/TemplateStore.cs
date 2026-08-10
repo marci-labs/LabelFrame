@@ -98,6 +98,22 @@ public sealed class TemplateStore
         await using var connection = await OpenAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
+        // testData 读-改-写：以数据库现有值为基底 → 并入显式传入 → 被元素预览值派生覆盖（预览值优先）
+        var testData = await ReadTestDataAsync(connection, (Microsoft.Data.Sqlite.SqliteTransaction)transaction, package.Name, cancellationToken);
+        foreach (var (key, value) in package.TestData)
+        {
+            testData[key] = value;
+        }
+
+        foreach (var element in package.Layout.Elements)
+        {
+            var key = GetSourceKey(element);
+            if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(element.PreviewValue))
+            {
+                testData[key] = element.PreviewValue!;
+            }
+        }
+
         await using (var command = connection.CreateCommand())
         {
             command.Transaction = (Microsoft.Data.Sqlite.SqliteTransaction)transaction;
@@ -116,7 +132,7 @@ public sealed class TemplateStore
             command.Parameters.AddWithValue("$group", package.Group);
             command.Parameters.AddWithValue("$contractJson", JsonSerializer.Serialize(package.Contract, JsonOptions));
             command.Parameters.AddWithValue("$layoutJson", JsonSerializer.Serialize(package.Layout, JsonOptions));
-            command.Parameters.AddWithValue("$testDataJson", JsonSerializer.Serialize(package.TestData, JsonOptions));
+            command.Parameters.AddWithValue("$testDataJson", JsonSerializer.Serialize(testData, JsonOptions));
             command.Parameters.AddWithValue("$now", Format(now));
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -139,6 +155,33 @@ public sealed class TemplateStore
     }
 
     /// <summary>按名称查询模板（含图片资源）。</summary>
+    private static async Task<Dictionary<string, string>> ReadTestDataAsync(
+        SqliteConnection connection,
+        Microsoft.Data.Sqlite.SqliteTransaction transaction,
+        string name,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT test_data_json FROM templates WHERE id = $id;";
+        command.Parameters.AddWithValue("$id", name);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        if (result is not string json || string.IsNullOrWhiteSpace(json))
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        return JsonSerializer.Deserialize<Dictionary<string, string>>(json, JsonOptions)
+               ?? new Dictionary<string, string>(StringComparer.Ordinal);
+    }
+
+    private static string? GetSourceKey(LabelElement element) => element switch
+    {
+        LabelTextElement t => t.SourceKey,
+        LabelBarcodeElement b => b.SourceKey,
+        LabelQrCodeElement q => q.SourceKey,
+        _ => null,
+    };
     public async Task<TemplatePackage?> GetAsync(string name, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);

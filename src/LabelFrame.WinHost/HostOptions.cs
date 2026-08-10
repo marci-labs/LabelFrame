@@ -18,6 +18,16 @@ public enum TransportMode
     Zebra,
 }
 
+/// <summary>打印输出模式。</summary>
+public enum PrintMode
+{
+    /// <summary>矢量 ZPL 指令（默认，文本用内置字体、条码/二维码由打印机生成）。</summary>
+    Vector,
+
+    /// <summary>整版位图（1bpp）经 ^GF 直传打印机，与画布预览所见一致。</summary>
+    Image,
+}
+
 /// <summary>WinHost 配置：端口、数据库、传输、中文渲染。</summary>
 public sealed class HostOptions
 {
@@ -44,6 +54,9 @@ public sealed class HostOptions
 
     /// <summary>传输模式。</summary>
     public TransportMode Transport { get; set; } = TransportMode.Log;
+
+    /// <summary>打印输出模式（默认矢量 ZPL，可 LABELFRAME_PRINT_MODE=Image 切换整版位图）。</summary>
+    public PrintMode PrintMode { get; set; } = PrintMode.Vector;
 
     /// <summary>Zebra SDK 连接类型（Transport=Zebra 时生效）。</summary>
     public ZebraTransportKind ZebraKind { get; set; } = ZebraTransportKind.Tcp;
@@ -123,6 +136,11 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_TRANSPORT") is { } transport)
         {
             Transport = Enum.Parse<TransportMode>(transport, ignoreCase: true);
+        }
+
+        if (GetEnv("LABELFRAME_PRINT_MODE") is { } printMode)
+        {
+            PrintMode = Enum.Parse<PrintMode>(printMode, ignoreCase: true);
         }
 
         if (GetEnv("LABELFRAME_TCP_HOST") is { } tcpHost)

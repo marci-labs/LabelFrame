@@ -156,6 +156,118 @@ public class TemplateStoreTests
     }
 
     [Fact]
+    public async Task Save_should_derive_test_data_from_preview_values()
+    {
+        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lftpl-{Guid.NewGuid():N}.db");
+        try
+        {
+            var store = new TemplateStore(dbPath);
+            await store.InitializeAsync();
+            var package = CreatePackage("t1", "项目A");
+            package = new TemplatePackage
+            {
+                Name = package.Name,
+                Group = package.Group,
+                Contract = package.Contract,
+                Layout = new LabelLayout
+                {
+                    Name = "l",
+                    ContractName = "location-label",
+                    ContractVersion = "1.0",
+                    WidthMm = 100,
+                    HeightMm = 60,
+                    Elements = [new LabelTextElement { SourceKey = "locationCode", PreviewValue = "A-01-02-03", XMm = 5, YMm = 5, FontHeightMm = 8, FontWidthMm = 8 }],
+                },
+                Images = package.Images,
+                TestData = new Dictionary<string, string>(),
+            };
+            await store.SaveAsync(package);
+
+            var loaded = await store.GetAsync("t1");
+            Assert.NotNull(loaded);
+            Assert.Equal("A-01-02-03", loaded!.TestData["locationCode"]);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath)) { File.Delete(dbPath); }
+        }
+    }
+
+    [Fact]
+    public async Task Save_should_keep_existing_test_data_when_no_preview_values()
+    {
+        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lftpl-{Guid.NewGuid():N}.db");
+        try
+        {
+            var store = new TemplateStore(dbPath);
+            await store.InitializeAsync();
+            var first = CreatePackage("t1", "项目A");
+            first = new TemplatePackage
+            {
+                Name = first.Name,
+                Group = first.Group,
+                Contract = first.Contract,
+                Layout = first.Layout,
+                Images = first.Images,
+                TestData = new Dictionary<string, string> { ["locationCode"] = "OLD-EXPLICIT" },
+            };
+            await store.SaveAsync(first);
+
+            // 第二次保存不传 testData（空）、布局无 previewValue → 旧显式值保留
+            var second = CreatePackage("t1", "项目A");
+            await store.SaveAsync(second);
+
+            var loaded = await store.GetAsync("t1");
+            Assert.NotNull(loaded);
+            Assert.Equal("OLD-EXPLICIT", loaded!.TestData["locationCode"]);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath)) { File.Delete(dbPath); }
+        }
+    }
+
+    [Fact]
+    public async Task Save_preview_values_should_override_explicit_test_data()
+    {
+        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lftpl-{Guid.NewGuid():N}.db");
+        try
+        {
+            var store = new TemplateStore(dbPath);
+            await store.InitializeAsync();
+            var package = CreatePackage("t1", "项目A");
+            package = new TemplatePackage
+            {
+                Name = package.Name,
+                Group = package.Group,
+                Contract = package.Contract,
+                Layout = new LabelLayout
+                {
+                    Name = "l",
+                    ContractName = "location-label",
+                    ContractVersion = "1.0",
+                    WidthMm = 100,
+                    HeightMm = 60,
+                    Elements = [new LabelTextElement { SourceKey = "locationCode", PreviewValue = "PREVIEW-VALUE", XMm = 5, YMm = 5, FontHeightMm = 8, FontWidthMm = 8 }],
+                },
+                Images = package.Images,
+                TestData = new Dictionary<string, string> { ["locationCode"] = "EXPLICIT-VALUE" },
+            };
+            await store.SaveAsync(package);
+
+            var loaded = await store.GetAsync("t1");
+            Assert.NotNull(loaded);
+            Assert.Equal("PREVIEW-VALUE", loaded!.TestData["locationCode"]);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath)) { File.Delete(dbPath); }
+        }
+    }
+    [Fact]
     public async Task Delete_should_remove_template_and_images()
     {
         var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lftpl-{Guid.NewGuid():N}.db");

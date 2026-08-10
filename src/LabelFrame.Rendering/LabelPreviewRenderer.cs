@@ -42,6 +42,42 @@ public sealed class LabelPreviewRenderer
         return stream.ToArray();
     }
 
+    /// <summary>渲染整张标签为 1bpp 位图（白底黑字，与预览同源；图片打印模式用）。</summary>
+    public LabelBitmap RenderLabelBitmap(LabelDocument document, int dpi = 203, IReadOnlyDictionary<string, byte[]>? templateImages = null)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        var width = Math.Max(1, ToDots(document.Layout.WidthMm, dpi));
+        var height = Math.Max(1, ToDots(document.Layout.HeightMm, dpi));
+        using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+        using (var graphics = Graphics.FromImage(bitmap))
+        {
+            graphics.Clear(Color.White);
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            foreach (var element in document.Layout.Elements)
+            {
+                DrawElement(graphics, element, document, templateImages, dpi);
+            }
+        }
+
+        var result = new LabelBitmap(width, height);
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var pixel = bitmap.GetPixel(x, y);
+                var luma = (pixel.R * 299 + pixel.G * 587 + pixel.B * 114) / 1000;
+                if (luma < 128)
+                {
+                    result.Pixels[y * result.RowBytes + (x >> 3)] |= (byte)(0x80 >> (x & 7));
+                }
+            }
+        }
+
+        return result;
+    }
+
     private static void DrawElement(
         Graphics graphics,
         LabelElement element,
@@ -103,7 +139,9 @@ public sealed class LabelPreviewRenderer
             _ => StringAlignment.Near,
         };
         format.LineAlignment = StringAlignment.Near;
-        var rect = new RectangleF(x + padding, y + padding, Math.Max(1, boxWidth), Math.Max(1, fontSize));
+        // 未显式指定块宽时按文本实际宽度绘制，避免 1px 矩形把文字裁掉（与 ZPL 无 ^FB 行为一致）
+        var drawWidth = boxWidth > 0 ? boxWidth : MeasureTextWidth(graphics, value, font);
+        var rect = new RectangleF(x + padding, y + padding, Math.Max(1, drawWidth), Math.Max(1, fontSize));
         graphics.DrawString(value, font, Brushes.Black, rect, format);
         format.Dispose();
     }
@@ -250,6 +288,15 @@ public sealed class LabelPreviewRenderer
     }
 
 
+    private static float MeasureTextWidth(Graphics graphics, string text, Font font)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return 1;
+        }
+
+        return graphics.MeasureString(text, font, new PointF(0, 0), StringFormat.GenericTypographic).Width;
+    }
     private static Bitmap ToBitmap(ZXing.Rendering.PixelData pixelData)
     {
         var bitmap = new Bitmap(pixelData.Width, pixelData.Height, PixelFormat.Format32bppArgb);

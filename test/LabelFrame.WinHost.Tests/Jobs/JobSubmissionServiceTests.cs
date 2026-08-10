@@ -1,8 +1,10 @@
 using LabelFrame.Core.Documents;
 using LabelFrame.Core.Encoding;
 using LabelFrame.Core.Jobs;
+using LabelFrame.Core.Templates;
 using LabelFrame.WinHost.Tests.Samples;
 using LabelFrame.Core.Validation;
+using LabelFrame.Rendering;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
 using LabelFrame.WinHost.Rendering;
@@ -11,14 +13,19 @@ namespace LabelFrame.WinHost.Tests.Jobs;
 
 public class JobSubmissionServiceTests
 {
-    private static (JobSubmissionService Service, SqliteLabelJobStore Store) CreateService()
+    private static (JobSubmissionService Service, SqliteLabelJobStore Store, TemplateStore Templates) CreateService()
     {
         var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfhost-{Guid.NewGuid():N}.db");
         var store = new SqliteLabelJobStore(dbPath);
         store.InitializeAsync().GetAwaiter().GetResult();
         var queue = new LabelJobQueue(store);
-        var service = new JobSubmissionService(queue, new ZplEncoder(), new GdiTextRasterizer(), dpi: 203);
-        return (service, store);
+
+        var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lftpl-{Guid.NewGuid():N}.db");
+        var templates = new TemplateStore(templatesDb);
+        templates.InitializeAsync().GetAwaiter().GetResult();
+
+        var service = new JobSubmissionService(queue, new ZplEncoder(), new GdiTextRasterizer(), dpi: 203, new LabelPreviewRenderer(), templates, PrintMode.Vector);
+        return (service, store, templates);
     }
 
     private static SubmitJobRequest CreateRequest(string requestId, params IReadOnlyDictionary<string, string>[] labels) => new(
@@ -29,7 +36,7 @@ public class JobSubmissionServiceTests
     [Fact]
     public async Task Valid_request_should_create_job_with_encoded_zpl()
     {
-        var (service, store) = CreateService();
+        var (service, store, _) = CreateService();
         var request = CreateRequest("req-valid", new Dictionary<string, string>
         {
             ["zone"] = "A-01",
@@ -48,7 +55,7 @@ public class JobSubmissionServiceTests
     [Fact]
     public async Task Duplicate_request_id_should_return_existing_job()
     {
-        var (service, store) = CreateService();
+        var (service, store, _) = CreateService();
         var request = CreateRequest("req-duplicate", new Dictionary<string, string>
         {
             ["zone"] = "A-01",
@@ -67,7 +74,7 @@ public class JobSubmissionServiceTests
     [Fact]
     public async Task Missing_required_field_should_fail_with_problem_code_and_not_create_job()
     {
-        var (service, store) = CreateService();
+        var (service, store, _) = CreateService();
         var request = CreateRequest("req-invalid", new Dictionary<string, string>
         {
             ["zone"] = "A-01",
@@ -84,7 +91,7 @@ public class JobSubmissionServiceTests
     [Fact]
     public async Task Chinese_label_should_encode_gf()
     {
-        var (service, store) = CreateService();
+        var (service, store, _) = CreateService();
         var request = CreateRequest("req-cn", new Dictionary<string, string>
         {
             ["zone"] = "中文区域",
@@ -99,9 +106,31 @@ public class JobSubmissionServiceTests
     }
 
     [Fact]
+    public async Task Image_print_mode_should_encode_whole_label_as_gf()
+    {
+        var (service, store, _) = CreateService();
+        var request = CreateRequest("req-image", new Dictionary<string, string>
+        {
+            ["zone"] = "A-01",
+            ["locationCode"] = "A-01-02-03",
+        }) with { PrintMode = PrintMode.Image };
+
+        var result = await service.SubmitAsync(request);
+
+        Assert.NotNull(result.Job);
+        var stored = await store.GetJobAsync(result.Job!.Id);
+        var zpl = stored!.Items[0].Zpl;
+        // 100mm x 60mm @203dpi => PW799 / LL480；整版 ^GF，无元素级 ^BC
+        Assert.StartsWith("^XA", zpl);
+        Assert.Contains("^PW799", zpl);
+        Assert.Contains("^LL480", zpl);
+        Assert.Contains("^FO0,0^GFA,", zpl);
+        Assert.DoesNotContain("^BC", zpl);
+    }
+    [Fact]
     public async Task Empty_labels_should_fail_with_invalid_request()
     {
-        var (service, _) = CreateService();
+        var (service, _, _) = CreateService();
         var request = new SubmitJobRequest("req-empty", new TemplateDto(LocationLabelSamples.Contract, LocationLabelSamples.Layout), new List<LabelDto>());
 
         var result = await service.SubmitAsync(request);
@@ -113,7 +142,7 @@ public class JobSubmissionServiceTests
     [Fact]
     public async Task Missing_data_key_should_fail_with_encode_error()
     {
-        var (service, _) = CreateService();
+        var (service, _, _) = CreateService();
         var layout = new LabelFrame.Core.Layout.LabelLayout
         {
             Name = "missing-key",

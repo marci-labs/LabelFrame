@@ -46,6 +46,32 @@ public class LabelPreviewRendererTests
     }
 
     [Fact]
+    public void RenderLabelBitmap_should_match_label_size_and_have_content()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "loc",
+                ContractName = "loc",
+                ContractVersion = "1.0",
+                WidthMm = 100,
+                HeightMm = 60,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "locationCode", XMm = 5, YMm = 14, FontHeightMm = 8, FontWidthMm = 8 },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["locationCode"] = "A-01-02-03" },
+        };
+
+        var bitmap = new LabelPreviewRenderer().RenderLabelBitmap(document, dpi: 203);
+
+        Assert.Equal(799, bitmap.Width);
+        Assert.Equal(480, bitmap.Height);
+        Assert.True(bitmap.Pixels.Any(b => b != 0), "位图不应为全白（应有文字内容）。");
+    }
+    [Fact]
     public void RenderPng_should_include_qr_code()
     {
         var document = new LabelDocument

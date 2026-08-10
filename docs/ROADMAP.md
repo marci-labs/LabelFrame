@@ -21,7 +21,7 @@
 | 8D | 设计器交互重做（容器 / 设计测试分离 / 字段自动推导 / 标尺对齐 / 多选手柄） | ✅ 已完成（界面验收待执行） |
 | 9 | Excel 数据导入 | ✅ 已完成 |
 | 11 | 单机模式（Host 服务化 + Web Vite/TS 前端 + PDA 测试链路） | 🔄 进行中 |
-| 12 | 模板预览值持久化 + 图片打印实验 | 📝 规格评审中 |
+| 12 | 模板预览值持久化 + 图片打印实验 | 🔄 进行中（后端完成，前端待实施） |
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
@@ -396,8 +396,9 @@
 - 后端：元素模型 + JSON 转换器支持 `previewValue`；保存模板时自动派生 `testData`；新增 `PrintMode`（Vector / Image）与整版位图 `^GF` 打印；`SubmitJobRequest` 增加 `template.name` / `printMode`。
 **不在范围**：图片打印方案的最终定型（先实验评估）；其他打印指令集（TSPL 等）。
 **验收**：见 `docs/ITERATION-12-SPEC.md` 第 6 节。
+**进度（2026-08-10）**：规格 v3 双方确认；**后端已按第 4 节完成**（previewValue / testData 读改写 / PrintMode 图片打印 / template.name / healthz，127 个测试全绿，Image 模式端到端冒烟通过），待前端（hermes）按第 3 节实施后联调。
 **启动命令**：
-> 继续 LabelFrame 迭代 12。先读 `docs/ITERATION-12-SPEC.md`、`docs/DESIGN.md`、`docs/ROADMAP.md`；规格评审通过后：前端按规格第 3 节实施，后端按第 4 节实施；提交用 Conventional Commits；不推 tag。
+> 继续 LabelFrame 迭代 12。先读 `docs/ITERATION-12-SPEC.md`、`docs/DESIGN.md`、`docs/ROADMAP.md`；前端按规格第 3 节实施，后端已完成第 4 节；提交用 Conventional Commits；不推 tag。
 
 ---## 迭代 11：单机模式（进行中）
 

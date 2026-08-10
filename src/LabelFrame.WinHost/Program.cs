@@ -70,8 +70,7 @@ public static class Program
         builder.Services.AddSingleton(queue);
         builder.Services.AddSingleton<IZplEncoder>(new ZplEncoder());
         builder.Services.AddSingleton<ITextRasterizer>(new GdiTextRasterizer(options.FontFamily, options.FontFilePath));
-        builder.Services.AddSingleton(sp => new JobSubmissionService(queue, sp.GetRequiredService<IZplEncoder>(), sp.GetRequiredService<ITextRasterizer>(), options.Dpi));
-        builder.Services.AddSingleton<IPrintTransport>(CreateTransport(options));
+        builder.Services.AddSingleton<IPrintTransport>(CreateTransport(options, hostLogWriter));
         builder.Services.AddSingleton<IPrinterStatusProvider>(sp =>
             sp.GetRequiredService<IPrintTransport>() as IPrinterStatusProvider ?? new UnsupportedStatusProvider());
         builder.Services.AddHostedService<JobPrintWorker>();
@@ -80,6 +79,14 @@ public static class Program
         await templateStore.InitializeAsync();
         builder.Services.AddSingleton(templateStore);
         builder.Services.AddSingleton<LabelPreviewRenderer>();
+        builder.Services.AddSingleton(sp => new JobSubmissionService(
+            queue,
+            sp.GetRequiredService<IZplEncoder>(),
+            sp.GetRequiredService<ITextRasterizer>(),
+            options.Dpi,
+            sp.GetRequiredService<LabelPreviewRenderer>(),
+            sp.GetRequiredService<TemplateStore>(),
+            options.PrintMode));
 
         // 本地工具服务：地址由用户配置（可跨机器 / 跨端口），启用宽松 CORS
         builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
@@ -108,7 +115,7 @@ public static class Program
 
         app.UseCors();
 
-        app.MapGet("/healthz", () => Results.Ok(new { service = "LabelFrame.WinHost", status = "ok", transport = options.Transport.ToString() }));
+        app.MapGet("/healthz", () => Results.Ok(new { service = "LabelFrame.WinHost", status = "ok", transport = options.Transport.ToString(), printMode = options.PrintMode.ToString() }));
 
         // ---- 模板管理（单机 CRUD + 导入导出 + 预览）----
         app.MapPost("/api/templates", async (Api.TemplatePackageDto? dto, TemplateStore templateStore, CancellationToken ct) =>
@@ -474,9 +481,10 @@ public static class Program
         }
     }
 
-    private static IPrintTransport CreateTransport(HostOptions options) => options.Transport switch
+    private static IPrintTransport CreateTransport(HostOptions options, TextWriter hostLogWriter) => options.Transport switch
     {
-        TransportMode.Log => new LogPrintTransport(OpenHostLogWriter(options)),
+        // 复用宿主日志写入器（同一文件不能再开第二个写入器，否则文件锁导致写入被静默丢弃）
+        TransportMode.Log => new LogPrintTransport(hostLogWriter),
         TransportMode.Tcp => new Tcp9100PrintTransport(options.TcpHost, options.TcpPort),
         TransportMode.WindowsDriver => new RawPrinterTransport(options.PrinterName),
         TransportMode.Zebra => new ZebraPrinterTransport(

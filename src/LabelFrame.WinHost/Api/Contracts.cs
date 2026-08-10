@@ -8,10 +8,15 @@ namespace LabelFrame.WinHost.Api;
 public sealed record SubmitJobRequest(
     string? RequestId,
     TemplateDto? Template,
-    IReadOnlyList<LabelDto>? Labels);
+    IReadOnlyList<LabelDto>? Labels,
+    PrintMode? PrintMode = null);
 
 /// <summary>自包含模板。</summary>
-public sealed record TemplateDto(LabelContract? Contract, LabelLayout? Layout);
+public sealed record TemplateDto(LabelContract? Contract, LabelLayout? Layout)
+{
+    /// <summary>模板名（可选）：Image 打印模式用于从模板库加载图片资源；Vector 模式忽略。</summary>
+    public string? Name { get; init; }
+}
 
 /// <summary>单张标签数据。</summary>
 public sealed record LabelDto(IReadOnlyDictionary<string, string>? Data);

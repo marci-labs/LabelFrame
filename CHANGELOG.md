@@ -162,3 +162,11 @@
 - 修复托盘 P/Invoke 崩溃（0.11.1，2026-08-10）：`GetCurrentThreadId` / `GetModuleHandle` 被错误声明为从 `user32.dll` 导入（实际在 `kernel32.dll`），托盘线程启动即抛 `EntryPointNotFoundException`，未处理异常直接杀死宿主进程——这是「装完啥也不显示 / 页面打不开」的根因；已改为正确 DLL，并给托盘循环加异常保护：托盘出问题只记日志，不再让宿主退出。
 - MSI 改为 **x64 包**（0.11.1，2026-08-10）：此前 MSI 是 32 位包，`ProgramFiles64Folder` 不生效导致装到 `Program Files (x86)`；现 `wix build -arch x64`，安装到 `C:\Program Files\LabelFrame`；版本 0.11.1 支持直接覆盖已装的 0.11.0。
 - ZPL 编码器显式输出 `^PW` / `^LL`（0.11.2，2026-08-10）：按模板宽高换算点数（70×50 @203dpi → `^PW559` / `^LL400`），避免打印机沿用旧标签长度导致一张作业走多张纸；新增对应单元测试。
+## 迭代 12（模板预览值 + 图片打印，后端部分，2026-08-10）
+
+- 元素 JSON 新增 `previewValue`（字段填充模式预览值持久化，text/barcode/qrcode 非空时输出，旧模板向后兼容）。
+- `TemplateStore.SaveAsync` testData 读-改-写：数据库现有值 → 并入显式传入 → 被元素预览值派生覆盖；旧模板显式测试数据不再因前端不传而被清空。
+- 新增 `PrintMode`（Vector 默认 / Image）：Image 模式整版渲染 1bpp 位图经 `^GF` 直传打印机，与画布预览同源；`SubmitJobRequest` 支持 `printMode` 覆盖、`template.name` 取模板图片；`/healthz` 返回 `printMode`。
+- 修复：预览渲染器文本无显式块宽时被裁成 1px 导致图片打印空白（改为按文本实际宽度绘制）。
+- 修复：Log 传输重复打开同一 host.log 触发文件锁、ZPL 被静默丢弃（复用宿主日志写入器）。
+- 测试 127 个全绿（新增 previewValue 往返、testData 派生/保留/覆盖、EncodeImage、RenderLabelBitmap、Image 打印模式用例）。

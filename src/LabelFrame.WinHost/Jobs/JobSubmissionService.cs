@@ -2,7 +2,9 @@ using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Documents;
 using LabelFrame.Core.Encoding;
 using LabelFrame.Core.Jobs;
+using LabelFrame.Core.Templates;
 using LabelFrame.Core.Validation;
+using LabelFrame.Rendering;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Rendering;
 
@@ -17,15 +19,28 @@ public sealed class JobSubmissionService
     private readonly LabelJobQueue _queue;
     private readonly IZplEncoder _encoder;
     private readonly ITextRasterizer _rasterizer;
+    private readonly LabelPreviewRenderer _renderer;
+    private readonly TemplateStore _templateStore;
     private readonly int _dpi;
+    private readonly PrintMode _defaultPrintMode;
 
     /// <summary>创建提交服务。</summary>
-    public JobSubmissionService(LabelJobQueue queue, IZplEncoder encoder, ITextRasterizer rasterizer, int dpi)
+    public JobSubmissionService(
+        LabelJobQueue queue,
+        IZplEncoder encoder,
+        ITextRasterizer rasterizer,
+        int dpi,
+        LabelPreviewRenderer renderer,
+        TemplateStore templateStore,
+        PrintMode defaultPrintMode)
     {
         _queue = queue;
         _encoder = encoder;
         _rasterizer = rasterizer;
+        _renderer = renderer;
+        _templateStore = templateStore;
         _dpi = dpi;
+        _defaultPrintMode = defaultPrintMode;
     }
 
     /// <summary>提交作业；失败返回问题码（不建作业）。</summary>
@@ -47,6 +62,7 @@ public sealed class JobSubmissionService
         }
 
         var zplLabels = new List<string>(request.Labels.Count);
+        var printMode = request.PrintMode ?? _defaultPrintMode;
         foreach (var label in request.Labels)
         {
             var data = label.Data ?? new Dictionary<string, string>();
@@ -64,8 +80,18 @@ public sealed class JobSubmissionService
                     Layout = request.Template.Layout,
                     Data = data,
                 };
-                document = _rasterizer.Rasterize(document, _dpi);
-                zplLabels.Add(_encoder.Encode(document, _dpi));
+                if (printMode == PrintMode.Image)
+                {
+                    // 图片打印：整版渲染 1bpp 位图，经 ^GF 输出，与预览所见一致
+                    var images = await LoadTemplateImagesAsync(request.Template.Name, cancellationToken);
+                    var bitmap = _renderer.RenderLabelBitmap(document, _dpi, images);
+                    zplLabels.Add(_encoder.EncodeImage(bitmap, document.Layout.WidthMm, document.Layout.HeightMm, _dpi));
+                }
+                else
+                {
+                    document = _rasterizer.Rasterize(document, _dpi);
+                    zplLabels.Add(_encoder.Encode(document, _dpi));
+                }
             }
             catch (NotSupportedException ex)
             {
@@ -79,5 +105,15 @@ public sealed class JobSubmissionService
 
         var (job, created) = await _queue.SubmitAsync(request.RequestId, zplLabels, cancellationToken);
         return SubmitJobResult.Success(job, created);
+    }
+    private async Task<IReadOnlyDictionary<string, byte[]>> LoadTemplateImagesAsync(string? templateName, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(templateName))
+        {
+            return new Dictionary<string, byte[]>();
+        }
+
+        var package = await _templateStore.GetAsync(templateName, cancellationToken);
+        return package?.Images ?? new Dictionary<string, byte[]>();
     }
 }

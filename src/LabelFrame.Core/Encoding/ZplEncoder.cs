@@ -37,6 +37,26 @@ public sealed class ZplEncoder : IZplEncoder
         return sb.ToString();
     }
 
+    /// <summary>整版位图编码：把整张标签的 1bpp 位图经 ^GF 输出（图片打印模式，所见即所得）。</summary>
+    public string EncodeImage(LabelBitmap bitmap, double widthMm, double heightMm, int dpi = DefaultDpi)
+    {
+        ArgumentNullException.ThrowIfNull(bitmap);
+        if (dpi <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(dpi), "DPI 必须为正整数。");
+        }
+
+        var totalBytes = bitmap.RowBytes * bitmap.Height;
+        var hex = Convert.ToHexString(bitmap.Pixels);
+        var sb = new StringBuilder();
+        sb.AppendLine("^XA");
+        sb.AppendLine($"^PW{Math.Max(1, ToDots(widthMm, dpi))}");
+        sb.AppendLine($"^LL{Math.Max(1, ToDots(heightMm, dpi))}");
+        sb.Append($"^FO0,0^GFA,{totalBytes},{totalBytes},{bitmap.RowBytes},{hex}^FS").AppendLine();
+        sb.Append("^XZ");
+        return sb.ToString();
+    }
+
     private static void AppendElement(
         StringBuilder sb,
         LabelElement element,

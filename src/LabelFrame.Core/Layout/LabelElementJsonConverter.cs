@@ -88,6 +88,10 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                 {
                     writer.WriteString("literal", text.Literal);
                 }
+                if (text.PreviewValue is not null)
+                {
+                    writer.WriteString("previewValue", text.PreviewValue);
+                }
 
                 writer.WriteString("fontName", text.FontName);
                 writer.WriteNumber("fontHeightMm", text.FontHeightMm);
@@ -109,6 +113,10 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                 {
                     writer.WriteString("literal", barcode.Literal);
                 }
+                if (barcode.PreviewValue is not null)
+                {
+                    writer.WriteString("previewValue", barcode.PreviewValue);
+                }
 
                 writer.WriteNumber("heightMm", barcode.HeightMm);
                 writer.WriteNumber("moduleWidth", barcode.ModuleWidth);
@@ -118,6 +126,10 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                 if (qrCode.Literal is not null)
                 {
                     writer.WriteString("literal", qrCode.Literal);
+                }
+                if (qrCode.PreviewValue is not null)
+                {
+                    writer.WriteString("previewValue", qrCode.PreviewValue);
                 }
 
                 writer.WriteNumber("sizeMm", qrCode.SizeMm);

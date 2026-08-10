@@ -94,6 +94,30 @@ public class LabelElementJsonConverterTests
     }
 
     [Fact]
+    public void Preview_value_should_round_trip_for_field_mode_elements()
+    {
+        var element = new LabelTextElement { SourceKey = "locationCode", PreviewValue = "A-01-02-03", XMm = 5, YMm = 5, FontHeightMm = 5, FontWidthMm = 5 };
+
+        var json = JsonSerializer.Serialize<LabelElement>(element, Options);
+        var roundTrip = JsonSerializer.Deserialize<LabelElement>(json, Options);
+
+        var text = Assert.IsType<LabelTextElement>(roundTrip);
+        Assert.Equal("A-01-02-03", text.PreviewValue);
+        Assert.Contains("\"previewValue\":\"A-01-02-03\"", json);
+    }
+
+    [Fact]
+    public void Missing_preview_value_should_be_null_and_literal_mode_should_not_emit_it()
+    {
+        const string fieldJson = """{"type":"text","xMm":5,"yMm":5,"sourceKey":"k","fontHeightMm":5,"fontWidthMm":5}""";
+        var field = Assert.IsType<LabelTextElement>(JsonSerializer.Deserialize<LabelElement>(fieldJson, Options));
+        Assert.Null(field.PreviewValue);
+
+        var literal = new LabelTextElement { Literal = "x", XMm = 0, YMm = 0, FontHeightMm = 5, FontWidthMm = 5 };
+        var literalJson = JsonSerializer.Serialize<LabelElement>(literal, Options);
+        Assert.DoesNotContain("previewValue", literalJson);
+    }
+    [Fact]
     public void Unknown_type_should_throw_json_exception()
     {
         const string json = """{"type":"hexagon","xMm":0,"yMm":0}""";

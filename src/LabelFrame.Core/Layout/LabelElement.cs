@@ -29,4 +29,7 @@ public abstract class LabelElement
 
     /// <summary>元素类型。</summary>
     public abstract LabelElementType Type { get; }
+
+    /// <summary>字段填充模式的预览值（仅画布 / 测试默认值用，打印以外界数据为准）；固定值模式用 Literal，不写此项。</summary>
+    public string? PreviewValue { get; init; }
 }
