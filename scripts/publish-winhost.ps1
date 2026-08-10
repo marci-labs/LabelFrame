@@ -24,6 +24,8 @@ if (-not (Test-Path $webDist)) {
     Pop-Location
 }
 $targetWeb = Join-Path $publishDir 'web\dist'
+# 先清空目标，避免历史构建的旧资源残留进安装包
+if (Test-Path -LiteralPath $targetWeb) { Remove-Item -LiteralPath $targetWeb -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $targetWeb | Out-Null
 Copy-Item -Path (Join-Path $webDist '*') -Destination $targetWeb -Recurse -Force
 Write-Host "done: $publishDir"
