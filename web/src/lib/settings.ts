@@ -16,7 +16,17 @@ function getLocalStorage(): Storage | null {
 export function getBaseUrl(): string {
   const storage = getLocalStorage()
   const v = storage ? storage.getItem(KEY) : null
-  return v && v.trim() ? v.trim().replace(/\/+$/, '') : DEFAULT_BASE_URL
+  const origin = typeof window !== 'undefined' ? window.location.origin : null
+  if (v && v.trim()) {
+    const cleaned = v.trim().replace(/\/+$/, '')
+    // 方案 B（迭代 15 附九第 2 条）：旧版保存的默认地址（127.0.0.1）在非本机页面来源下视为残留，忽略并返回页面来源
+    if (origin && cleaned === DEFAULT_BASE_URL && origin !== DEFAULT_BASE_URL) {
+      return origin
+    }
+    return cleaned
+  }
+  // 无存储值：默认返回页面自身来源（PDA 远程访问等场景）；Node 环境（无 window）回退默认地址
+  return origin ?? DEFAULT_BASE_URL
 }
 
 export function setBaseUrl(url: string): void {
