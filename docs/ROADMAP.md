@@ -22,6 +22,7 @@
 | 9 | Excel 数据导入 | ✅ 已完成 |
 | 11 | 单机模式（Host 服务化 + Web Vite/TS 前端 + PDA 测试链路） | 🔄 进行中 |
 | 12 | 模板预览值持久化 + 图片打印实验 | 🔄 进行中（后端完成，前端待实施） |
+| 13 | 文本排版与二维码参数持久化（元素契约补齐） | 📝 契约已通过，待实施 |
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
@@ -386,6 +387,18 @@
 **验收**：拖入控件即可见且位置正确；标尺覆盖含留白的全画布并随画布移动；平移画布不越界；「实际大小」= 1mm=8 点；文本可选「不限制高度」。
 
 **完成记录**（2026-08-09）：原型 v3 完成；二 ~ 四轮修复渲染模型、标尺、平移、控件可见性、吸附定位、二维码、边框内边距通用化、文本模式（缩小适应 / 隐藏）；第五轮：字高独立、内边距上下 / 左右、填充默认固定值、Ctrl+C/V；第六轮：Ctrl+Z/Y 撤销恢复、字高调大才撑高、吸附强化、导出 / 导入设计（剪贴板 JSON）、矩形控件、文本框高度字段；吸附落点修复；第七轮：矩形镂空、图层面板；第八轮：网格吸附兜底、字段填充提示；第九轮：真实 DPI 打印预览、纯打印效果、预览仅显示标签范围；第十轮：文本框自动换行（超右换行、超下隐藏）+ 行间距 + 字体选择 + 垂直对齐（顶 / 中 / 底）；填充切换清理；图层显示名称优化；**纯前端编辑器化**（移除后端按钮，导出 / 导入走快捷键）；headless 自测通过；待用户本机验收后进入「桌面壳」阶段。
+
+---
+## 迭代 13：文本排版与二维码参数持久化（元素契约补齐，契约已通过，待实施）
+
+**目标**：补齐元素契约缺失字段（wrap / lineHeight / fitMode / fontFamily / qrEcc / qrMargin / displayValue / paddingH-V），导入→保存→重开逐字段一致；Skia 图片打印按这些字段真实渲染，与前端预览一致；旧模板向后兼容。
+**范围**：
+- 后端：C# 模型属性 + LabelElementJsonConverter 读写（非默认才写）+ SkiaLabelRenderer 渲染支持（wrap 换行+行距+超高整体缩小、overflow 隐藏、fontFamily、qrEcc/qrMargin、displayValue、paddingH/V）+ VerticalAlign 默认统一 Middle + 旧模板框高兜底 10mm + 测试。
+- 前端（hermes）：convert.ts 字段映射 + convert.test.ts；ElementNode wrap=true 超高改整体缩小。
+**不在范围**：ZPL 矢量路径（新字段不参与）；barcodeFormat（仅 CODE128）。
+**验收**：见 docs/ITERATION-13-CONTRACT.md §6。
+**启动命令**：
+> 继续 LabelFrame 迭代 13（后端）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-13-SPEC.md、docs/ITERATION-13-CONTRACT.md（含 Hermes 评估结论，已通过）。按 ITERATION-13-CONTRACT.md §3 字段对照、§4 Skia 渲染语义、§7 分工实施后端：C# 模型属性（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/paddingV，VerticalAlign 默认改 Middle，PaddingHMm/PaddingVMm）、LabelElementJsonConverter 读写（非默认才写）、SkiaLabelRenderer 渲染支持、测试与验收；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 ## 迭代 12：模板预览值持久化 + 图片打印实验（规格评审中）
