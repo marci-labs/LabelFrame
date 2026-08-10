@@ -207,3 +207,8 @@
 - ZPL（Vector）：新增 `ZplBoldMode`（默认 `FontVariant` 方案 A：粗体字体变体映射 `"0"→"1"`；`WidthScale` 方案 B：宽度 ×1.15 放大兜底）；`ZplEncoder` 构造函数可注入模式与映射表；WinHost `HostOptions.BoldMode` + `LABELFRAME_BOLD_MODE` 环境变量可配置。
 - Skia（Image）：测量与绘制字体统一 `SKFont.Embolden = text.Bold`，换行 / shrink 度量按加粗字体计算，与前端预览一致。
 - 测试 156 全绿（新增 bold 往返/省略、ZPL 方案 A/B、Skia 加粗墨迹对比）。
+## 迭代 14 打包（0.12.3，2026-08-10）
+
+- 含迭代 14 前后端合并版：文本加粗（`bold` 契约 + ZPL 方案 A/B + Skia Embolden）+ 前端加粗设置与属性面板两项修复。
+- `appsettings.json` 保留用户配置机制沿用（独立组件 NeverOverwrite + Permanent）。
+- 产物 `LabelFrame-0.12.3.msi`（2026-08-10）：可覆盖 0.12.x / 0.11.x 安装。
