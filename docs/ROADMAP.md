@@ -406,7 +406,8 @@
 - 前端（hermes，commit 8294bef）：convert.ts 字段映射（paddingH/paddingV/fontFamily/wrap/lineHeight/fitMode/qrEcc/qrMargin/displayValue，写方向非默认才写、读回 ?? 默认 + paddingMm 兜底）；ElementNode TextContent wrap=true 超高改整体缩小（最小 1.5mm，与 Skia §4.4 一致）；convert.test.ts 64 用例全绿（+7 新增）。
 - 复现验证：100×60 方案往返关键差异清零（wrap/lineHeight/qrEcc/paddingV 均保留；剩余仅默认值显式化，显示一致）。
 - 文档归档：ITERATION-13-SPEC / CONTRACT 标记已完成；DESIGN 决策 #47 更新为前后端完成；CHANGELOG 记录。
-- 产物 `LabelFrame-0.12.0.msi`（2026-08-10）：含迭代 13 前后端合并版（元素契约第二批字段 + Skia 渲染 + 前端映射），用户测试验收待执行。
+- 产物 `LabelFrame-0.12.1.msi`（2026-08-10）：含迭代 13 前后端合并版（元素契约第二批字段 + Skia 渲染 + 前端映射），用户测试验收待执行。
+- 前端修复（0.12.1，commit abf58a0）：画布中文长文本字高失真——含 CJK 文本改用 wrap=`char` 逐字换行（与 Skia 打印语义一致），shrink 按行数估算换行后总高只对超高缩小；70×50 方案 MaterialName 修复后两行 2.85mm；64 单测 + build + lint 全绿。产物 `LabelFrame-0.12.1.msi`。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 13（后端）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-13-SPEC.md、docs/ITERATION-13-CONTRACT.md（含 Hermes 评估结论，已通过）。按 ITERATION-13-CONTRACT.md §3 字段对照、§4 Skia 渲染语义、§7 分工实施后端：C# 模型属性（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/paddingV，VerticalAlign 默认改 Middle，PaddingHMm/PaddingVMm）、LabelElementJsonConverter 读写（非默认才写）、SkiaLabelRenderer 渲染支持、测试与验收；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。

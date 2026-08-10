@@ -190,3 +190,8 @@
 - 复现验证：100×60 方案导入 → 保存 → 重开，关键差异清零（wrap / lineHeight / qrEcc / paddingV 均保留；剩余仅默认值显式化，显示一致）。
 - 文档归档：`docs/ITERATION-13-SPEC.md` / `docs/ITERATION-13-CONTRACT.md` 标记已完成；ROADMAP 迭代 13 状态更新为「已完成（用户验收待执行）」；DESIGN 决策 #47 更新为前后端完成。
 - 产物 `LabelFrame-0.12.0.msi`（2026-08-10）：含迭代 13 前后端合并版（元素契约第二批字段 + Skia 图片打印渲染 + 前端字段映射与 wrap 超高缩小），可覆盖 0.11.x 安装；用户测试验收待执行。
+## 迭代 13 前端修复（0.12.1，2026-08-10）
+
+- 修复画布中文长文本字高失真（commit abf58a0）：Konva `wrap='word'` 按空格分词，中文无空格永不换行 → 长文本单行溢出被 shrink 缩小；改为含 CJK 文本用 `wrap='char'` 逐字换行（与 Skia 打印语义一致），纯 ASCII 保持 `word`；shrink 缩小循环按「单行宽 ÷ 内容宽 = 行数」估算换行后总高，只对超高整体缩小（最小 1.5mm），并补 `lineHeight` 依赖。
+- 实测：70×50 方案 MaterialName（fontH 3, wrap）修复前单行 1.59mm，修复后两行 2.85mm；64 单测 + build + lint 全绿。
+- 产物 `LabelFrame-0.12.1.msi`（2026-08-10）：含该前端修复，可覆盖 0.12.0 / 0.11.x 安装。
