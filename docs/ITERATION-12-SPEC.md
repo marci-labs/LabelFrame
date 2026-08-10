@@ -262,3 +262,14 @@
 2. **问题 2（healthz printMode 前端消费）——采纳**：3.3 补充 `HealthzResponse.printMode` 类型与设置页「打印机」面板信息显示；下拉「默认（服务端）」不发送 `printMode`。已修订 3.3。
 3. **小项**：3.1 补 literal 模式 `previewValue === undefined` 断言；验收 1 前置依赖「画布选中修复」已在 §6 注明。
 4. **补充确认**：后端 Image 模式无 `template.name` 时按无图渲染（文本 / 条码 / 二维码不受影响）。
+
+---
+
+### 附五：渲染方案定稿（2026-08-10，用户确认方案 2：后端 SkiaSharp）
+
+- **不做**「后端内置 TS 脚本渲染」：目标机无 Node 运行时、Konva 依赖 DOM，纯脚本环境跑不了。
+- 后端新增 **SkiaSharp 渲染器** `SkiaLabelRenderer`（`ILabelBitmapRenderer`）：canvas 类 2D 库，纯托管、跨平台（PDA 可复用），实现与前端同源的绘制规则（文本超出框宽缩小适应、左中右对齐、内边距/边框、线条/区域、ZXing 条码二维码、模板图片）。
+- 图片打印（`PrintMode=Image`）与 `POST /api/print/render-image` 均已切换至 Skia 渲染；GDI `LabelPreviewRenderer` 仅保留给旧预览接口。
+- 已修复的 GDI 问题：CJK / 右对齐 / 长文本整段不绘制；生僻字开头导致只匹配小字体；行高为负导致裁剪空矩形。
+- 前端任务（hermes，待实施）：抽象 `renderLabelImage(elements, paperW, paperH, dpi, supersample)`，编辑器打印预览与联调对比共用；建议 2x 超采样提升小字清晰度；调试图改内嵌预览（不落文件）。
+- 端到端已验证：70×50 模板 MaterialName / CompanyName / Specification / WarehouseName 全部渲染。

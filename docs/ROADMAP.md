@@ -396,7 +396,7 @@
 - 后端：元素模型 + JSON 转换器支持 `previewValue`；保存模板时自动派生 `testData`；新增 `PrintMode`（Vector / Image）与整版位图 `^GF` 打印；`SubmitJobRequest` 增加 `template.name` / `printMode`。
 **不在范围**：图片打印方案的最终定型（先实验评估）；其他打印指令集（TSPL 等）。
 **验收**：见 `docs/ITERATION-12-SPEC.md` 第 6 节。
-**进度（2026-08-10）**：规格 v3 双方确认；**后端已按第 4 节完成**（previewValue / testData 读改写 / PrintMode 图片打印 / template.name / healthz，127 个测试全绿，Image 模式端到端冒烟通过），待前端（hermes）按第 3 节实施后联调。
+**进度（2026-08-10）**：规格 v3 双方确认；**后端已完成**：previewValue / testData 读改写 / PrintMode 图片打印 / template.name / healthz，且图片渲染定稿为 **SkiaSharp**（0.11.5，修复 CJK 字段缺失，133 个测试全绿，70×50 模板端到端验证通过）；待前端（hermes）按第 3 节实施 `renderLabelImage` 后联调。
 **启动命令**：
 > 继续 LabelFrame 迭代 12。先读 `docs/ITERATION-12-SPEC.md`、`docs/DESIGN.md`、`docs/ROADMAP.md`；前端按规格第 3 节实施，后端已完成第 4 节；提交用 Conventional Commits；不推 tag。
 
@@ -474,7 +474,7 @@
 - MSI 增加 .NET Desktop Runtime（x64）检测：缺失时全 UI 安装显示带可点击官方下载链接的对话框（MSI Hyperlink 控件）；静默 / 基础 UI 由 LaunchCondition 拦截；不自动安装（2026-08-10 用户确认放弃 Burn 自动引导方案）。
 - 修复运行时误报缺失（2026-08-10）：改用 WiX NetFx 扩展 DotNetCompatibilityCheck（官方 NetCoreCheck 自检，x64 Desktop >= 10.0.0、latestMajor），替换失效的注册表搜索（版本号为命名值 + 32 位视图导致已装仍误报）；装完运行时无需重启。产物已重建：`artifacts\LabelFrame-0.11.0.msi`（约 10.3MB）。
 - 修复托盘崩溃与安装目录（0.11.1，2026-08-10）：托盘 P/Invoke 两个 API 声明错 DLL（`GetCurrentThreadId` / `GetModuleHandle` 在 `kernel32.dll`），启动即崩导致「装完没反应」；已修正并加异常保护。MSI 改 `-arch x64` 构建（此前 32 位包错装 `Program Files (x86)`），现安装到 `C:\Program Files\LabelFrame`；产物 `artifacts\LabelFrame-0.11.1.msi`（约 10.3MB），可覆盖 0.11.0。
-- ZPL 输出 `^PW` / `^LL`（0.11.2，2026-08-10）：按模板宽高换算点数，一张作业严格走一张标签长度，避免多出纸；产物 `artifacts\LabelFrame-0.11.3.msi`（约 10.3MB，含迭代 12 前后端合并版）。
+- ZPL 输出 `^PW` / `^LL`（0.11.2，2026-08-10）：按模板宽高换算点数，一张作业严格走一张标签长度，避免多出纸；产物 `artifacts\LabelFrame-0.11.5.msi`（约 10.3MB，含迭代 12 前后端合并版 + SkiaSharp 渲染器）。
 
 ---
 

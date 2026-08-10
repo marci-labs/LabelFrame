@@ -58,7 +58,7 @@ public class ServerRoutingWorkerTests
             var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
             var templates = new TemplateStore(templatesDb);
             await templates.InitializeAsync();
-            var submission = new JobSubmissionService(queue, new ZplEncoder(), new GdiTextRasterizer(), dpi: 203, new LabelPreviewRenderer(), templates, PrintMode.Vector);
+            var submission = new JobSubmissionService(queue, new ZplEncoder(), new GdiTextRasterizer(), dpi: 203, new SkiaLabelRenderer(), templates, PrintMode.Vector);
 
             var poller = new FakePoller();
             var payload = new ServerJobPayload(

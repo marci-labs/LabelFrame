@@ -24,7 +24,7 @@ public class JobSubmissionServiceTests
         var templates = new TemplateStore(templatesDb);
         templates.InitializeAsync().GetAwaiter().GetResult();
 
-        var service = new JobSubmissionService(queue, new ZplEncoder(), new GdiTextRasterizer(), dpi: 203, new LabelPreviewRenderer(), templates, PrintMode.Vector);
+        var service = new JobSubmissionService(queue, new ZplEncoder(), new GdiTextRasterizer(), dpi: 203, new SkiaLabelRenderer(), templates, PrintMode.Vector);
         return (service, store, templates);
     }
 

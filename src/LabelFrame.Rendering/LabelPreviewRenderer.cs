@@ -122,8 +122,23 @@ public sealed class LabelPreviewRenderer
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
         var boxWidth = ToDots(bounds.WidthMm, dpi);
-        var fontSize = Math.Max(1, ToDots(text.FontHeightMm, dpi));
         var padding = ToDots(text.PaddingMm, dpi);
+
+        // 字号：先按 fontHeightMm；若文本超过可用框宽则缩小适应（与编辑器 shrink 行为一致），最小 1.5mm
+        var baseFontSize = Math.Max(1, ToDots(text.FontHeightMm, dpi));
+        var fontSize = baseFontSize;
+        if (boxWidth > 0)
+        {
+            using var measureFont = new Font("Microsoft YaHei", baseFontSize, FontStyle.Regular, GraphicsUnit.Pixel);
+            var textWidth = MeasureTextWidth(graphics, value, measureFont);
+            var innerWidth = Math.Max(1, boxWidth - 2 * padding);
+            if (textWidth > innerWidth)
+            {
+                var minFont = Math.Max(1, ToDots(1.5, dpi));
+                fontSize = Math.Max(minFont, (int)(baseFontSize * innerWidth / textWidth));
+            }
+        }
+
         using var font = new Font("Microsoft YaHei", fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
 
         if (text.BorderMm > 0 && boxWidth > 0)
@@ -132,7 +147,9 @@ public sealed class LabelPreviewRenderer
             graphics.DrawRectangle(borderPen, x, y, boxWidth + 2 * padding, fontSize + 2 * padding);
         }
 
-        var format = new StringFormat(StringFormat.GenericTypographic);
+        // 注意：不能用 GenericTypographic——对超出矩形需要换行的长文本会整段不绘制（GDI 实测行为）
+        var format = new StringFormat(StringFormat.GenericDefault);
+        format.FormatFlags = StringFormatFlags.NoWrap;
         format.Alignment = text.TextAlign switch
         {
             LabelFrame.Core.Layout.LabelTextAlign.Center => StringAlignment.Center,

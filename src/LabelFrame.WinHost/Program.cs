@@ -79,12 +79,13 @@ public static class Program
         await templateStore.InitializeAsync();
         builder.Services.AddSingleton(templateStore);
         builder.Services.AddSingleton<LabelPreviewRenderer>();
+        builder.Services.AddSingleton<ILabelBitmapRenderer>(new SkiaLabelRenderer());
         builder.Services.AddSingleton(sp => new JobSubmissionService(
             queue,
             sp.GetRequiredService<IZplEncoder>(),
             sp.GetRequiredService<ITextRasterizer>(),
             options.Dpi,
-            sp.GetRequiredService<LabelPreviewRenderer>(),
+            sp.GetRequiredService<ILabelBitmapRenderer>(),
             sp.GetRequiredService<TemplateStore>(),
             options.PrintMode));
 
@@ -200,7 +201,7 @@ public static class Program
         });
 
         // 图片打印调试：渲染实际发送给打印机的 1bpp 位图为 PNG（不建作业、不打印），用于排查文字清晰度 / 定位
-        app.MapPost("/api/print/render-image", async (Api.SubmitJobRequest? request, TemplateStore templateStore, LabelPreviewRenderer renderer, CancellationToken ct) =>
+        app.MapPost("/api/print/render-image", async (Api.SubmitJobRequest? request, TemplateStore templateStore, ILabelBitmapRenderer renderer, CancellationToken ct) =>
         {
             if (request?.Template?.Contract is null || request.Template.Layout is null)
             {

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame" Manufacturer="LabelFrame" Version="0.11.4"
+  <Package Name="LabelFrame" Manufacturer="LabelFrame" Version="0.11.5"
            UpgradeCode="8B1E4F2A-6C3D-4E5F-9A0B-1C2D3E4F5A6B">
     <SummaryInformation Description="LabelFrame 单机标签设计与打印工具" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />

@@ -19,7 +19,7 @@ public sealed class JobSubmissionService
     private readonly LabelJobQueue _queue;
     private readonly IZplEncoder _encoder;
     private readonly ITextRasterizer _rasterizer;
-    private readonly LabelPreviewRenderer _renderer;
+    private readonly ILabelBitmapRenderer _renderer;
     private readonly TemplateStore _templateStore;
     private readonly int _dpi;
     private readonly PrintMode _defaultPrintMode;
@@ -30,7 +30,7 @@ public sealed class JobSubmissionService
         IZplEncoder encoder,
         ITextRasterizer rasterizer,
         int dpi,
-        LabelPreviewRenderer renderer,
+        ILabelBitmapRenderer renderer,
         TemplateStore templateStore,
         PrintMode defaultPrintMode)
     {

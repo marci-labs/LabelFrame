@@ -172,3 +172,4 @@
 - 测试 127 个全绿（新增 previewValue 往返、testData 派生/保留/覆盖、EncodeImage、RenderLabelBitmap、Image 打印模式用例）。
 - 产物 `LabelFrame-0.11.3.msi`（2026-08-10）：含迭代 12 前后端合并版（预览值持久化 + 测试默认值 + 打印方式选择 + 图片打印），可覆盖 0.11.x 安装。
 - 图片打印调试与清晰度优化（0.11.4，2026-08-10）：打印位图改为单比特网格对齐（去抗锯齿灰度，避免 1bpp 阈值切字发虚）；新增 `POST /api/print/render-image` 与前端「调试：不打印，保存实际打印图片（PNG）」复选框（图片打印方式下显示），用于排查文字清晰度 / 定位是渲染问题还是打印机问题。产物 `LabelFrame-0.11.4.msi`。
+- 后端渲染器改为 SkiaSharp（0.11.5，2026-08-10，方案 2）：新增 `SkiaLabelRenderer`（canvas 类 2D 渲染，与前端同源规则：文本超出框宽缩小适应、左中右对齐、内边距/边框、线条/区域、ZXing 条码二维码、模板图片），图片打印与「保存打印图片」均切换；修复 GDI 渲染的 CJK / 右对齐 / 长文本缺失问题（含生僻字开头只匹配小字体、行高为负导致裁剪空矩形）。你的 70×50 模板四个字段（MaterialName / CompanyName / Specification / WarehouseName）端到端验证全部渲染。产物 `LabelFrame-0.11.5.msi`。

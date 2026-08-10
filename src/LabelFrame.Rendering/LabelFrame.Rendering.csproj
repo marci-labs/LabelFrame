@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.7" />
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
