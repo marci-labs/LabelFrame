@@ -70,6 +70,10 @@ $webIndex = 0
 foreach ($f in $allFiles) {
     $rel = $f.FullName.Substring($PublishDir.Length).TrimStart('\') -replace '\\', '/'
     $guid = New-GuidFromPath $rel
+    if ($rel -eq 'appsettings.json') {
+        # 用户配置：不放入自动文件清单，由 main.wxs 独立组件管理（NeverOverwrite + Permanent，升级/修复/卸载均保留用户数据）
+        continue
+    }
     if ($rel -eq 'LabelFrame.WinHost.exe') {
         Add-FileLine $sb $index $guid $rel ' Id="WinHostExe"' 'f'
         $index++

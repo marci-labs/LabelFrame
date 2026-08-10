@@ -500,6 +500,7 @@
 - 修复运行时误报缺失（2026-08-10）：改用 WiX NetFx 扩展 DotNetCompatibilityCheck（官方 NetCoreCheck 自检，x64 Desktop >= 10.0.0、latestMajor），替换失效的注册表搜索（版本号为命名值 + 32 位视图导致已装仍误报）；装完运行时无需重启。产物已重建：`artifacts\LabelFrame-0.11.0.msi`（约 10.3MB）。
 - 修复托盘崩溃与安装目录（0.11.1，2026-08-10）：托盘 P/Invoke 两个 API 声明错 DLL（`GetCurrentThreadId` / `GetModuleHandle` 在 `kernel32.dll`），启动即崩导致「装完没反应」；已修正并加异常保护。MSI 改 `-arch x64` 构建（此前 32 位包错装 `Program Files (x86)`），现安装到 `C:\Program Files\LabelFrame`；产物 `artifacts\LabelFrame-0.11.1.msi`（约 10.3MB），可覆盖 0.11.0。
 - ZPL 输出 `^PW` / `^LL`（0.11.2，2026-08-10）：按模板宽高换算点数，一张作业严格走一张标签长度，避免多出纸；产物 `artifacts\LabelFrame-0.11.6.msi`（约 14.1MB，含迭代 12 前后端合并版 + SkiaSharp 渲染器 + 文本垂直对齐契约）。
+- 升级保留用户配置（0.12.2，2026-08-10）：appsettings.json 改为独立组件 NeverOverwrite + Permanent，覆盖安装 / 修复不覆盖、卸载保留，避免更新覆盖用户配置；决策 #48。
 
 ---
 

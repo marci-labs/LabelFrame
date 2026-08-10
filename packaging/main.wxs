@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame" Manufacturer="LabelFrame" Version="0.12.1"
+  <Package Name="LabelFrame" Manufacturer="LabelFrame" Version="0.12.2"
            UpgradeCode="8B1E4F2A-6C3D-4E5F-9A0B-1C2D3E4F5A6B">
     <SummaryInformation Description="LabelFrame 单机标签设计与打印工具" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
@@ -41,7 +41,13 @@
 
     <!-- 安装目录：Program Files\LabelFrame（64 位） -->
     <StandardDirectory Id="ProgramFiles64Folder">
-      <Directory Id="INSTALLFOLDER" Name="LabelFrame" />
+      <Directory Id="INSTALLFOLDER" Name="LabelFrame">
+      <!-- 用户配置 appsettings.json：独立组件、GUID 固定；NeverOverwrite 升级/修复不覆盖，
+           Permanent 卸载不删除，保留用户数据（新装仍写入默认配置） -->
+      <Component Id="AppSettingsFile" Guid="B0E5FE56-15B9-4373-9F93-F0C5380D0060" NeverOverwrite="yes" Permanent="yes">
+        <File Id="AppSettingsFile" Source="$(var.PublishDir)/appsettings.json" KeyPath="yes" />
+      </Component>
+    </Directory>
     </StandardDirectory>
 
     <!-- 开始菜单 -->
@@ -73,6 +79,7 @@
     <Feature Id="MainFeature" Title="LabelFrame" Level="1">
       <ComponentGroupRef Id="AppFiles" />
       <ComponentGroupRef Id="WebFiles" />
+      <ComponentRef Id="AppSettingsFile" />
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="DesktopShortcut" />
     </Feature>

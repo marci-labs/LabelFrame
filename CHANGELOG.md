@@ -195,3 +195,8 @@
 - 修复画布中文长文本字高失真（commit abf58a0）：Konva `wrap='word'` 按空格分词，中文无空格永不换行 → 长文本单行溢出被 shrink 缩小；改为含 CJK 文本用 `wrap='char'` 逐字换行（与 Skia 打印语义一致），纯 ASCII 保持 `word`；shrink 缩小循环按「单行宽 ÷ 内容宽 = 行数」估算换行后总高，只对超高整体缩小（最小 1.5mm），并补 `lineHeight` 依赖。
 - 实测：70×50 方案 MaterialName（fontH 3, wrap）修复前单行 1.59mm，修复后两行 2.85mm；64 单测 + build + lint 全绿。
 - 产物 `LabelFrame-0.12.1.msi`（2026-08-10）：含该前端修复，可覆盖 0.12.0 / 0.11.x 安装。
+## 打包优化（0.12.2，2026-08-10）
+
+- MSI 升级不再覆盖用户配置：`appsettings.json` 从自动文件清单（AppFiles）中剔除，改为 `main.wxs` 中 GUID 固定的独立组件，标记 `NeverOverwrite="yes"`（升级 / 修复不覆盖）+ `Permanent="yes"`（卸载不删除）。新装仍写入默认配置；已改过的配置在后续更新中保留。
+- 说明：`appsettings.json` 属于用户数据，卸载时也会保留（与 %LOCALAPPDATA%\LabelFrame 下的数据库一致）；需要全新默认配置时可手动删除该文件后重装。
+- 产物 `LabelFrame-0.12.2.msi`（2026-08-10）：可覆盖 0.12.x / 0.11.x 安装。
