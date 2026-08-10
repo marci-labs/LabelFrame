@@ -187,4 +187,258 @@ public class SkiaLabelRendererTests
         Assert.Equal(0x4E, png[2]);
         Assert.Equal(0x47, png[3]);
     }
+
+    [Fact]
+    public void Wrap_true_text_should_wrap_into_multiple_lines()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "wrap",
+                ContractName = "wrap",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 5, FontHeightMm = 3, FontWidthMm = 3, WidthMm = 25, HeightMm = 15, Wrap = true, VerticalAlign = LabelVerticalAlign.Top },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "5m门架O20起升拉线固定支架" },
+        };
+
+        var bitmap = new SkiaLabelRenderer().RenderLabelBitmap(document, dpi: 203);
+
+        // 15 字符 @3mm、块宽 25mm → 至少两行：第一行带与第二行带都应有墨迹
+        var firstBand = CountBlack(bitmap, 5, 5, 25, 3);
+        var secondBand = CountBlack(bitmap, 5, 8, 25, 3);
+        Assert.True(firstBand > 50, $"wrap=true 第一行应有墨迹：{firstBand}");
+        Assert.True(secondBand > 50, $"wrap=true 第二行应有墨迹：{secondBand}");
+    }
+
+    [Fact]
+    public void Wrap_true_text_over_height_should_shrink_to_fit_box()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "wrap-fit",
+                ContractName = "wrap-fit",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 5, FontHeightMm = 3, FontWidthMm = 3, WidthMm = 25, HeightMm = 6, Wrap = true, VerticalAlign = LabelVerticalAlign.Top },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "5m门架O20起升拉线固定支架" },
+        };
+
+        var bitmap = new SkiaLabelRenderer().RenderLabelBitmap(document, dpi: 203);
+
+        Assert.True(CountBlack(bitmap, 5, 5, 25, 6) > 200, $"wrap=true 超高整体缩小后框内应有墨迹：{CountBlack(bitmap, 5, 5, 25, 6)}");
+        Assert.Equal(0, CountBlack(bitmap, 5, 11, 25, 5));
+    }
+
+    [Fact]
+    public void Overflow_should_keep_font_size_while_shrink_reduces_it()
+    {
+        LabelDocument Doc(LabelFitMode fitMode) => new()
+        {
+            Layout = new LabelLayout
+            {
+                Name = "fit",
+                ContractName = "fit",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 5, FontHeightMm = 3, FontWidthMm = 3, WidthMm = 10, HeightMm = 8, FitMode = fitMode, VerticalAlign = LabelVerticalAlign.Top },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "5m门架O20起升拉线固定支架" },
+        };
+
+        var shrink = new SkiaLabelRenderer().RenderLabelBitmap(Doc(LabelFitMode.Shrink), dpi: 203);
+        var overflow = new SkiaLabelRenderer().RenderLabelBitmap(Doc(LabelFitMode.Overflow), dpi: 203);
+
+        // 框内 2~3mm 带：overflow 保持 3mm 字号（墨迹约到框内 3mm）有墨迹；shrink 缩到最小 1.5mm 则无
+        var midBand = CountBlack(overflow, 5, 7, 10, 1);
+        Assert.True(midBand > 0, $"overflow 保持字号，框内 2~3mm 带应有墨迹：{midBand}");
+        Assert.Equal(0, CountBlack(shrink, 5, 7, 10, 1));
+    }
+
+    [Fact]
+    public void Text_with_custom_font_family_should_render()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "font",
+                ContractName = "font",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 5, FontHeightMm = 5, FontWidthMm = 5, WidthMm = 40, FontFamily = "Arial" },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "ABCDEF" },
+        };
+
+        var bitmap = new SkiaLabelRenderer().RenderLabelBitmap(document, dpi: 203);
+
+        Assert.True(CountBlack(bitmap, 5, 5, 40, 10) > 50, "自定义 fontFamily 的文本应正常渲染");
+    }
+
+    [Fact]
+    public void Qr_code_ecc_and_margin_should_render_with_quiet_zone()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "qr",
+                ContractName = "qr",
+                ContractVersion = "1.0",
+                WidthMm = 50,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelQrCodeElement { SourceKey = "qr", XMm = 5, YMm = 5, SizeMm = 20, QrEcc = LabelQrEcc.H, QrMargin = 4 },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["qr"] = "LABELFRAME-DEMO-001" },
+        };
+
+        var bitmap = new SkiaLabelRenderer().RenderLabelBitmap(document, dpi: 203);
+
+        Assert.True(CountBlack(bitmap, 5, 5, 20, 20) > 100, "二维码应有墨迹");
+        // 静区：qrMargin=4 模块，外圈 1mm 应为空白
+        Assert.Equal(0, CountBlack(bitmap, 5, 5, 20, 1));
+        Assert.Equal(0, CountBlack(bitmap, 5, 24, 20, 1));
+        Assert.Equal(0, CountBlack(bitmap, 5, 5, 1, 20));
+        Assert.Equal(0, CountBlack(bitmap, 24, 5, 1, 20));
+    }
+
+    [Fact]
+    public void Qr_code_ecc_variants_should_render()
+    {
+        foreach (var ecc in new[] { LabelQrEcc.L, LabelQrEcc.M, LabelQrEcc.Q, LabelQrEcc.H })
+        {
+            var document = new LabelDocument
+            {
+                Layout = new LabelLayout
+                {
+                    Name = "qr",
+                    ContractName = "qr",
+                    ContractVersion = "1.0",
+                    WidthMm = 50,
+                    HeightMm = 50,
+                    Elements =
+                    [
+                        new LabelQrCodeElement { SourceKey = "qr", XMm = 5, YMm = 5, SizeMm = 20, QrEcc = ecc, QrMargin = 2 },
+                    ],
+                },
+                Data = new Dictionary<string, string> { ["qr"] = "LABELFRAME-DEMO-001" },
+            };
+
+            var bitmap = new SkiaLabelRenderer().RenderLabelBitmap(document, dpi: 203);
+
+            Assert.True(CountBlack(bitmap, 5, 5, 20, 20) > 100, $"ECC {ecc} 二维码应渲染");
+        }
+    }
+
+    [Fact]
+    public void Barcode_display_value_should_render_bottom_text_or_bars_to_bottom()
+    {
+        LabelDocument Doc(bool displayValue) => new()
+        {
+            Layout = new LabelLayout
+            {
+                Name = "bc",
+                ContractName = "bc",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelBarcodeElement { SourceKey = "code", XMm = 5, YMm = 5, HeightMm = 22, ModuleWidth = 2, DisplayValue = displayValue },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["code"] = "1234567890" },
+        };
+
+        var withText = new SkiaLabelRenderer().RenderLabelBitmap(Doc(true), dpi: 203);
+        var withoutText = new SkiaLabelRenderer().RenderLabelBitmap(Doc(false), dpi: 203);
+
+        // displayValue=true：底部 0.5mm 为文字基线以下空白（数字无下伸笔画）
+        Assert.Equal(0, CountBlack(withText, 5, 26.5, 55, 0.5));
+        // displayValue=false：条码条贯穿到底，底部 0.5mm 有墨迹
+        Assert.True(CountBlack(withoutText, 5, 26.5, 55, 0.5) > 0, "displayValue=false 时条码条应画到底部");
+        // 文字带（底部约 15% 高度）应有数字墨迹
+        Assert.True(CountBlack(withText, 5, 22, 55, 4) > 20, "displayValue=true 时底部应绘制数值文字");
+    }
+
+    [Fact]
+    public void Text_asymmetric_padding_should_inset_content()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "pad",
+                ContractName = "pad",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 5, FontHeightMm = 3, FontWidthMm = 3, WidthMm = 25, HeightMm = 12, PaddingHMm = 2, PaddingVMm = 1, VerticalAlign = LabelVerticalAlign.Middle },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "ABCD" },
+        };
+
+        var bitmap = new SkiaLabelRenderer().RenderLabelBitmap(document, dpi: 203);
+
+        // 左 1mm 与上 0.5mm 应为内边距空白
+        Assert.Equal(0, CountBlack(bitmap, 5, 5, 1, 12));
+        Assert.Equal(0, CountBlack(bitmap, 5, 5, 25, 0.5));
+        // 内容区中部应有墨迹
+        Assert.True(CountBlack(bitmap, 7, 9, 20, 3) > 20, $"双边内边距后内容区应有墨迹：{CountBlack(bitmap, 7, 9, 20, 3)}");
+    }
+
+    [Fact]
+    public void Old_template_without_height_should_center_in_fallback_box()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "old",
+                ContractName = "old",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 5, FontHeightMm = 3, FontWidthMm = 3, WidthMm = 25 },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "ABCD" },
+        };
+
+        var bitmap = new SkiaLabelRenderer().RenderLabelBitmap(document, dpi: 203);
+
+        // 无 heightMm：框高兜底 = max(字高 + 2×内边距, 10) = 10mm；默认 Middle 居中 → 顶部带为空、中部有墨迹
+        Assert.Equal(0, CountBlack(bitmap, 5, 5, 25, 2));
+        Assert.True(CountBlack(bitmap, 5, 8, 25, 3) > 20, $"旧模板默认 Middle 应在兜底框中部：{CountBlack(bitmap, 5, 8, 25, 3)}");
+    }
 }

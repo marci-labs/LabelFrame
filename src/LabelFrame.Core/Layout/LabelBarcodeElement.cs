@@ -17,4 +17,7 @@ public sealed class LabelBarcodeElement : LabelElement
 
     /// <summary>窄条宽度（ZPL 模块宽度 1-10，默认 2）。</summary>
     public int ModuleWidth { get; init; } = 2;
+
+    /// <summary>条码底部数值文字（默认 true；false 时仅条码，不绘制文字）。</summary>
+    public bool DisplayValue { get; init; } = true;
 }

@@ -338,4 +338,49 @@ public class ZplEncoderTests
 
         Assert.Contains("text", exception.Message);
     }
+
+    [Fact]
+    public void New_iteration_13_fields_should_not_affect_zpl_output()
+    {
+        LabelDocument Doc(bool withNewFields) => new()
+        {
+            Layout = new LabelLayout
+            {
+                Name = "it13",
+                ContractName = "it13",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement
+                    {
+                        SourceKey = "name",
+                        XMm = 5,
+                        YMm = 5,
+                        FontHeightMm = 3,
+                        FontWidthMm = 3,
+                        WidthMm = 25,
+                        PaddingMm = 1,
+                        PaddingHMm = 2,
+                        PaddingVMm = 1,
+                        VerticalAlign = LabelVerticalAlign.Bottom,
+                        FontFamily = withNewFields ? "SimSun" : LabelTextElement.DefaultFontFamily,
+                        Wrap = withNewFields,
+                        LineHeight = withNewFields ? 1.5 : 1.2,
+                        FitMode = withNewFields ? LabelFitMode.Overflow : LabelFitMode.Shrink,
+                    },
+                    new LabelBarcodeElement { SourceKey = "code", XMm = 5, YMm = 20, HeightMm = 20, ModuleWidth = 2, DisplayValue = !withNewFields },
+                    new LabelQrCodeElement { SourceKey = "qr", XMm = 40, YMm = 5, SizeMm = 20, QrEcc = withNewFields ? LabelQrEcc.H : LabelQrEcc.M, QrMargin = withNewFields ? 4 : 2 },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["name"] = "ABC", ["code"] = "12345", ["qr"] = "LABELFRAME" },
+        };
+
+        var plain = new ZplEncoder().Encode(Doc(false), dpi: 203);
+        var withFields = new ZplEncoder().Encode(Doc(true), dpi: 203);
+
+        // 契约 §4.9：新排版字段不参与 ZPL 编码，矢量输出与现状一致
+        Assert.Equal(plain, withFields);
+    }
 }

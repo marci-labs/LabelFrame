@@ -1,9 +1,11 @@
 using System.Runtime.InteropServices;
+using System.Text;
 using LabelFrame.Core.Documents;
 using LabelFrame.Core.Layout;
 using SkiaSharp;
 using ZXing;
 using ZXing.Common;
+using ZXing.QrCode;
 
 namespace LabelFrame.Rendering;
 
@@ -18,9 +20,11 @@ public interface ILabelBitmapRenderer
 }
 
 /// <summary>
-/// SkiaSharp 后端渲染器：与前端 canvas 渲染同源（文字缩小适应 / 左中右对齐 /
-/// 内边距 / 边框、线条、区域、ZXing 条码二维码、模板图片），输出 1bpp 位图。
+/// SkiaSharp 后端渲染器：与前端 canvas 渲染同源（自动换行 / 行距 / 溢出处理 / 字体族 /
+/// 左中右对齐 / 双边内边距 / 边框、线条、区域、ZXing 条码二维码参数、模板图片），输出 1bpp 位图。
 /// 用于图片打印与调试，避免 GDI 对 CJK / 右对齐 / 长文本的兼容问题。
+/// 新排版字段（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/V）
+/// 只影响本渲染器，不参与 ZPL 矢量编码（与契约 §4 一致）。
 /// </summary>
 public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
 {
@@ -110,27 +114,16 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
         var boxWidth = ToDots(bounds.WidthMm, dpi);
-        var padding = ToDots(text.PaddingMm, dpi);
-        using var typeface = CreateTypeface(value);
+        var padH = ToDots(text.EffectivePaddingHMm, dpi);
+        var padV = ToDots(text.EffectivePaddingVMm, dpi);
+        // 决策 A：无 heightMm 时框高兜底 = max(字高 + 2×最大双边内边距, 10mm)（与前端读回兜底一致）
+        var boxHeightMm = text.HeightMm > 0
+            ? text.HeightMm
+            : Math.Max(text.FontHeightMm + 2 * Math.Max(text.EffectivePaddingHMm, text.EffectivePaddingVMm), 10);
+        var boxHeight = ToDots(boxHeightMm, dpi);
+        using var typeface = CreateTypeface(text.FontFamily, value);
 
-        // 字号：先按 fontHeightMm；若文本超过可用框宽则缩小适应（与前端 shrink 一致），最小 1.5mm
-        var baseFontSize = Math.Max(1f, ToDots(text.FontHeightMm, dpi));
-        var fontSize = baseFontSize;
-        if (boxWidth > 0 && !string.IsNullOrEmpty(value))
-        {
-            using var measureFont = new SKFont(typeface, baseFontSize);
-            var measuredWidth = measureFont.MeasureText(value);
-            var innerWidth = Math.Max(1, boxWidth - 2 * padding);
-            if (measuredWidth > innerWidth)
-            {
-                var minFont = Math.Max(1f, ToDots(1.5, dpi));
-                fontSize = Math.Max(minFont, baseFontSize * innerWidth / measuredWidth);
-            }
-        }
-
-        // 有框高（前端保存 heightMm）时按框高；无框高（旧模板）时按字高，避免内边距把裁剪区算成负数
-        var hasBox = bounds.HeightMm > 0;
-        var boxHeight = hasBox ? ToDots(bounds.HeightMm, dpi) : fontSize;
+        // 边框 = 元素框；内边距在框内（与前端 ElementNode 一致）
         if (text.BorderMm > 0 && boxWidth > 0)
         {
             using var borderPaint = new SKPaint
@@ -140,7 +133,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
                 IsAntialias = false,
                 Color = SKColors.Black,
             };
-            canvas.DrawRect(new SKRect(x, y, x + boxWidth + 2 * padding, y + boxHeight + 2 * padding), borderPaint);
+            canvas.DrawRect(new SKRect(x, y, x + boxWidth, y + boxHeight), borderPaint);
         }
 
         if (string.IsNullOrEmpty(value))
@@ -148,40 +141,174 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
             return;
         }
 
+        var innerX = (float)(x + padH);
+        var innerY = (float)(y + padV);
+        // 内容区 = 元素框减去 paddingH / paddingV（0 = 宽度不限）
+        var innerW = boxWidth > 0 ? Math.Max(1, boxWidth - 2 * padH) : 0;
+        var innerH = Math.Max(1, boxHeight - 2 * padV);
+        var baseFontSize = Math.Max(1f, ToDots(text.FontHeightMm, dpi));
+        var lineHeightFactor = (float)(text.LineHeight > 0 ? text.LineHeight : 1.2);
+        var minFontSize = Math.Max(1f, ToDots(1.5, dpi));
+
+        var fontSize = baseFontSize;
+        List<string> lines;
+        if (text.Wrap)
+        {
+            // wrap=true：按框宽自动换行；若整体超高则整体缩小至能放下（最小 1.5mm），避免打印丢字
+            lines = WrapLines(value, typeface, fontSize, innerW);
+            var totalHeight = lines.Count * fontSize * lineHeightFactor;
+            var guard = 0;
+            while (totalHeight > innerH && fontSize > minFontSize && guard++ < 10)
+            {
+                fontSize = Math.Max(minFontSize, fontSize * innerH / totalHeight);
+                lines = WrapLines(value, typeface, fontSize, innerW);
+                totalHeight = lines.Count * fontSize * lineHeightFactor;
+            }
+        }
+        else if (text.FitMode == LabelFitMode.Overflow)
+        {
+            // wrap=false + overflow：单行、不缩小、按框裁剪（隐藏溢出）
+            lines = [value];
+        }
+        else
+        {
+            // wrap=false + shrink（默认）：单行，超出框宽 / 框高按比例缩小至最小 1.5mm
+            lines = [value];
+            using var measureFont = new SKFont(typeface, fontSize);
+            var measuredWidth = measureFont.MeasureText(value);
+            var widthFactor = innerW > 0 && measuredWidth > innerW ? innerW / measuredWidth : 1f;
+            var fitLineHeightPx = fontSize * lineHeightFactor;
+            var heightFactor = fitLineHeightPx > innerH ? innerH / fitLineHeightPx : 1f;
+            var factor = Math.Min(widthFactor, heightFactor);
+            if (factor < 1f)
+            {
+                fontSize = Math.Max(minFontSize, fontSize * factor);
+            }
+        }
+
         using var font = new SKFont(typeface, fontSize);
         using var paint = new SKPaint { IsAntialias = true, Color = SKColors.Black };
-        var textWidth = font.MeasureText(value);
-        var drawWidth = (float)(boxWidth > 0 ? boxWidth : textWidth);
-        var innerX = (float)(x + padding);
-        var innerY = (float)(y + padding);
         var fm = font.Metrics;
-        var lineHeight = fm.Descent - fm.Ascent; // Ascent 为负，行高 = Descent - Ascent
-        var innerTop = innerY;
-        // 裁剪高度至少一行，避免内边距过大/无框高时裁剪区塌缩导致文字消失
-        var innerH = (int)Math.Max(lineHeight, hasBox ? boxHeight - 2 * padding : 0);
-        // 与前端一致：文本在元素框内按 valign 垂直对齐（Top / Middle / Bottom）
-        var baseline = text.VerticalAlign switch
+        var lineHeightPx = fontSize * lineHeightFactor;
+        var totalHeightPx = lines.Count * lineHeightPx;
+        // 与前端一致：文本在元素框内按 verticalAlign 垂直对齐（Top / Middle / Bottom）
+        var startY = innerY;
+        switch (text.VerticalAlign)
         {
-            LabelVerticalAlign.Middle => innerTop + (innerH - lineHeight) / 2 - fm.Ascent,
-            LabelVerticalAlign.Bottom => innerTop + innerH - fm.Descent,
-            _ => innerTop - fm.Ascent,
-        };
-        var textX = innerX;
-        switch (text.TextAlign)
-        {
-            case LabelTextAlign.Center:
-                textX += (drawWidth - textWidth) / 2;
+            case LabelVerticalAlign.Middle:
+                startY += (innerH - totalHeightPx) / 2;
                 break;
-            case LabelTextAlign.Right:
-                textX += drawWidth - textWidth;
+            case LabelVerticalAlign.Bottom:
+                startY += innerH - totalHeightPx;
                 break;
         }
 
-        // 裁剪到文本框，避免溢出到其他区域（与前端 overflow 隐藏一致）
+        startY = Math.Max(innerY, startY);
         canvas.Save();
-        canvas.ClipRect(new SKRect(innerX, innerY, innerX + Math.Max(1, drawWidth), innerY + Math.Max(1, innerH)));
-        canvas.DrawText(value, textX, baseline, SKTextAlign.Left, font, paint);
+        var clipRight = innerW > 0 ? innerX + innerW : canvas.DeviceClipBounds.Right;
+        canvas.ClipRect(new SKRect(innerX, innerY, clipRight, innerY + innerH));
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var line = lines[i];
+            if (line.Length == 0)
+            {
+                continue;
+            }
+
+            var lineWidth = font.MeasureText(line);
+            var lineX = innerX;
+            if (innerW > 0)
+            {
+                lineX = text.TextAlign switch
+                {
+                    LabelTextAlign.Center => innerX + (innerW - lineWidth) / 2,
+                    LabelTextAlign.Right => innerX + innerW - lineWidth,
+                    _ => innerX,
+                };
+            }
+
+            var lineTop = startY + i * lineHeightPx;
+            var baseline = lineTop - fm.Ascent;
+            canvas.DrawText(line, lineX, baseline, SKTextAlign.Left, font, paint);
+        }
+
         canvas.Restore();
+    }
+
+    /// <summary>按框宽换行：英文按空格断词，超宽单词 / 中文按字拆行。</summary>
+    private static List<string> WrapLines(string value, SKTypeface typeface, float fontSize, float maxWidth)
+    {
+        using var font = new SKFont(typeface, fontSize);
+        var lines = new List<string>();
+        if (string.IsNullOrEmpty(value))
+        {
+            return lines;
+        }
+
+        if (maxWidth <= 0)
+        {
+            lines.Add(value);
+            return lines;
+        }
+
+        foreach (var rawLine in value.Split('\n'))
+        {
+            var current = new StringBuilder();
+            var words = rawLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (rawLine.Length == 0 || words.Length == 0)
+            {
+                lines.Add(string.Empty);
+                continue;
+            }
+
+            foreach (var word in words)
+            {
+                if (font.MeasureText(word) > maxWidth)
+                {
+                    // 超宽单词 / 无空格中文：按字拆行
+                    if (current.Length > 0)
+                    {
+                        lines.Add(current.ToString());
+                        current.Clear();
+                    }
+
+                    foreach (var ch in word)
+                    {
+                        var trial = current.Length == 0 ? ch.ToString() : current.ToString() + ch;
+                        if (current.Length > 0 && font.MeasureText(trial) > maxWidth)
+                        {
+                            lines.Add(current.ToString());
+                            current.Clear();
+                        }
+
+                        current.Append(ch);
+                    }
+
+                    continue;
+                }
+
+                var candidate = current.Length == 0 ? word : current.ToString() + " " + word;
+                if (current.Length > 0 && font.MeasureText(candidate) > maxWidth)
+                {
+                    lines.Add(current.ToString());
+                    current.Clear();
+                }
+
+                if (current.Length > 0)
+                {
+                    current.Append(' ');
+                }
+
+                current.Append(word);
+            }
+
+            if (current.Length > 0)
+            {
+                lines.Add(current.ToString());
+            }
+        }
+
+        return lines;
     }
 
     private static void DrawBarcode(
@@ -200,8 +327,16 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         var bounds = LabelLayoutResolver.ResolveBounds(barcode, regions);
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
-        var height = Math.Max(1, ToDots(bounds.HeightMm, dpi));
-        var width = Math.Max(1, ToDots(bounds.WidthMm, dpi));
+        var boxWidth = Math.Max(1, ToDots(bounds.WidthMm, dpi));
+        var boxHeight = Math.Max(1, ToDots(bounds.HeightMm, dpi));
+        var padH = ToDots(barcode.EffectivePaddingHMm, dpi);
+        var padV = ToDots(barcode.EffectivePaddingVMm, dpi);
+        // 内容区 = 元素框减去 paddingH / paddingV
+        var contentX = x + padH;
+        var contentY = y + padV;
+        var contentW = Math.Max(1, boxWidth - 2 * padH);
+        var contentH = Math.Max(1, boxHeight - 2 * padV);
+
         if (barcode.BorderMm > 0)
         {
             using var borderPaint = new SKPaint
@@ -211,17 +346,53 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
                 IsAntialias = false,
                 Color = SKColors.Black,
             };
-            canvas.DrawRect(new SKRect(x, y, x + width, y + height), borderPaint);
+            canvas.DrawRect(new SKRect(x, y, x + boxWidth, y + boxHeight), borderPaint);
         }
 
+        // displayValue=true：底部绘制数值文字（字号取框高比例，最小 1.5mm），条码占剩余高度；
+        // displayValue=false：仅条码（PureBarcode，不绘制文字）
+        var textSize = 0f;
+        var textBand = 0f;
+        if (barcode.DisplayValue)
+        {
+            textSize = Math.Max(ToDots(1.5, dpi), contentH * 0.15f);
+            using var measureFont = new SKFont(CreateTypeface(LabelTextElement.DefaultFontFamily, value), textSize);
+            var measured = measureFont.MeasureText(value);
+            if (measured > contentW)
+            {
+                textSize = Math.Max(ToDots(1.5, dpi), textSize * contentW / measured);
+            }
+
+            textBand = textSize * 1.2f;
+            if (textBand >= contentH)
+            {
+                textBand = Math.Max(0f, contentH * 0.15f);
+            }
+        }
+
+        var barcodeHeight = Math.Max(1, (int)(contentH - textBand));
         var writer = new BarcodeWriter<ZXing.Rendering.PixelData>
         {
             Format = BarcodeFormat.CODE_128,
-            Options = new EncodingOptions { Height = height, Width = width, Margin = 4, PureBarcode = false },
+            Options = new EncodingOptions { Height = barcodeHeight, Width = contentW, Margin = 2, PureBarcode = true },
             Renderer = new ZXing.Rendering.PixelDataRenderer(),
         };
         using var barcodeBitmap = ToSkBitmap(writer.Write(value));
-        canvas.DrawBitmap(barcodeBitmap, x, y);
+        canvas.DrawBitmap(barcodeBitmap, contentX, contentY);
+
+        if (barcode.DisplayValue)
+        {
+            using var typeface = CreateTypeface(LabelTextElement.DefaultFontFamily, value);
+            using var textFont = new SKFont(typeface, textSize);
+            using var textPaint = new SKPaint { IsAntialias = true, Color = SKColors.Black };
+            var textWidth = textFont.MeasureText(value);
+            var textX = contentX + Math.Max(0, (contentW - textWidth) / 2);
+            var textY = contentY + contentH - textFont.Metrics.Descent;
+            canvas.Save();
+            canvas.ClipRect(new SKRect(contentX, contentY, contentX + contentW, contentY + contentH));
+            canvas.DrawText(value, textX, textY, SKTextAlign.Left, textFont, textPaint);
+            canvas.Restore();
+        }
     }
 
     private static void DrawQrCode(
@@ -240,7 +411,16 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         var bounds = LabelLayoutResolver.ResolveBounds(qrCode, regions);
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
-        var size = Math.Max(1, ToDots(bounds.WidthMm, dpi));
+        var boxSize = Math.Max(1, ToDots(bounds.WidthMm, dpi));
+        var padH = ToDots(qrCode.EffectivePaddingHMm, dpi);
+        var padV = ToDots(qrCode.EffectivePaddingVMm, dpi);
+        // 内容区 = 元素框减去 paddingH / paddingV；二维码保持正方形并居中
+        var contentW = Math.Max(1, boxSize - 2 * padH);
+        var contentH = Math.Max(1, boxSize - 2 * padV);
+        var contentSize = Math.Min(contentW, contentH);
+        var contentX = x + padH + (contentW - contentSize) / 2;
+        var contentY = y + padV + (contentH - contentSize) / 2;
+
         if (qrCode.BorderMm > 0)
         {
             using var borderPaint = new SKPaint
@@ -250,17 +430,29 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
                 IsAntialias = false,
                 Color = SKColors.Black,
             };
-            canvas.DrawRect(new SKRect(x, y, x + size, y + size), borderPaint);
+            canvas.DrawRect(new SKRect(x, y, x + boxSize, y + boxSize), borderPaint);
         }
 
         var writer = new BarcodeWriter<ZXing.Rendering.PixelData>
         {
             Format = BarcodeFormat.QR_CODE,
-            Options = new EncodingOptions { Width = size, Height = size, Margin = 2 },
+            Options = new QrCodeEncodingOptions
+            {
+                Width = contentSize,
+                Height = contentSize,
+                Margin = qrCode.QrMargin,
+                ErrorCorrection = qrCode.QrEcc switch
+                {
+                    LabelQrEcc.L => ZXing.QrCode.Internal.ErrorCorrectionLevel.L,
+                    LabelQrEcc.Q => ZXing.QrCode.Internal.ErrorCorrectionLevel.Q,
+                    LabelQrEcc.H => ZXing.QrCode.Internal.ErrorCorrectionLevel.H,
+                    _ => ZXing.QrCode.Internal.ErrorCorrectionLevel.M,
+                },
+            },
             Renderer = new ZXing.Rendering.PixelDataRenderer(),
         };
         using var qrBitmap = ToSkBitmap(writer.Write(value));
-        canvas.DrawBitmap(qrBitmap, x, y);
+        canvas.DrawBitmap(qrBitmap, contentX, contentY);
     }
 
     private static void DrawImage(
@@ -408,12 +600,13 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
     }
 
     /// <summary>
-    /// 创建文本字型：优先指定字体族；文本含非 ASCII（中文等）时用系统字体回退
-    /// 匹配第一个非 ASCII 字符，避免指定字体缺字型导致整段文本不绘制。
+    /// 创建文本字型：优先指定字体族（fontFamily，缺省回退微软雅黑）；文本含非 ASCII（中文等）时用系统字体回退
+    /// 匹配常见中文字符，避免指定字体缺字型导致整段文本不绘制。
     /// </summary>
-    private static SKTypeface CreateTypeface(string value)
+    private static SKTypeface CreateTypeface(string fontFamily, string value)
     {
-        var preferred = SKTypeface.FromFamilyName(FontFamily) ?? SKTypeface.Default;
+        var family = string.IsNullOrWhiteSpace(fontFamily) ? LabelTextElement.DefaultFontFamily : fontFamily;
+        var preferred = SKTypeface.FromFamilyName(family) ?? SKTypeface.FromFamilyName(FontFamily) ?? SKTypeface.Default;
         if (string.IsNullOrEmpty(value))
         {
             return preferred;

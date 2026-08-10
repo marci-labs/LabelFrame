@@ -7,6 +7,9 @@ namespace LabelFrame.Core.Layout;
 /// 版式元素 JSON 转换器：按 "type" 判别子类型（text / barcode / qrcode / image / line / region），
 /// 然后委托具体类型的默认反序列化；不依赖 JsonPolymorphic 属性，
 /// 保证在 ASP.NET Core HttpJsonOptions 等环境中稳定反序列化。
+/// 写方向遵循「非默认才写」省略风格（padding/border &gt;0、wrap=true、displayValue=false、
+/// verticalAlign 非 Middle、fitMode 非 Shrink、lineHeight 非 1.2、fontFamily 非默认、
+/// qrEcc 非 M、qrMargin 非 2），与前端 convert.ts 写方向一致。
 /// </summary>
 public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
 {
@@ -60,6 +63,16 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
             writer.WriteNumber("paddingMm", value.PaddingMm);
         }
 
+        if (value.PaddingHMm > 0)
+        {
+            writer.WriteNumber("paddingH", value.PaddingHMm);
+        }
+
+        if (value.PaddingVMm > 0)
+        {
+            writer.WriteNumber("paddingV", value.PaddingVMm);
+        }
+
         if (value.BorderMm > 0)
         {
             writer.WriteNumber("borderMm", value.BorderMm);
@@ -111,9 +124,31 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                     writer.WriteString("textAlign", text.TextAlign.ToString());
                 }
 
-                if (text.VerticalAlign != LabelVerticalAlign.Top)
+                // 决策 A：默认 Middle，非 Middle（Top / Bottom）才写
+                if (text.VerticalAlign != LabelVerticalAlign.Middle)
                 {
                     writer.WriteString("verticalAlign", text.VerticalAlign.ToString());
+                }
+
+                if (!string.Equals(text.FontFamily, LabelTextElement.DefaultFontFamily, StringComparison.Ordinal))
+                {
+                    writer.WriteString("fontFamily", text.FontFamily);
+                }
+
+                if (text.Wrap)
+                {
+                    writer.WriteBoolean("wrap", true);
+                }
+
+                if (text.LineHeight != 1.2)
+                {
+                    writer.WriteNumber("lineHeight", text.LineHeight);
+                }
+
+                if (text.FitMode != LabelFitMode.Shrink)
+                {
+                    // 前端枚举为小写 shrink / overflow
+                    writer.WriteString("fitMode", text.FitMode == LabelFitMode.Overflow ? "overflow" : "shrink");
                 }
 
                 break;
@@ -130,6 +165,11 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
 
                 writer.WriteNumber("heightMm", barcode.HeightMm);
                 writer.WriteNumber("moduleWidth", barcode.ModuleWidth);
+                if (!barcode.DisplayValue)
+                {
+                    writer.WriteBoolean("displayValue", false);
+                }
+
                 break;
             case LabelQrCodeElement qrCode:
                 writer.WriteString("sourceKey", qrCode.SourceKey);
@@ -143,6 +183,16 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                 }
 
                 writer.WriteNumber("sizeMm", qrCode.SizeMm);
+                if (qrCode.QrEcc != LabelQrEcc.M)
+                {
+                    writer.WriteString("qrEcc", qrCode.QrEcc.ToString());
+                }
+
+                if (qrCode.QrMargin != 2)
+                {
+                    writer.WriteNumber("qrMargin", qrCode.QrMargin);
+                }
+
                 break;
             case LabelImageElement image:
                 writer.WriteString("sourceKey", image.SourceKey);

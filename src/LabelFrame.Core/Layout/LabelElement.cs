@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace LabelFrame.Core.Layout;
 
 /// <summary>
@@ -12,8 +14,22 @@ public abstract class LabelElement
     /// <summary>左上角 Y 坐标（毫米）。</summary>
     public double YMm { get; init; }
 
-    /// <summary>元素内边距（毫米，当前用于文本内容盒）。</summary>
+    /// <summary>元素内边距（毫米，兼容保留；新模板由 <see cref="PaddingHMm"/> / <see cref="PaddingVMm"/> 双边内边距取代单值近似）。</summary>
     public double PaddingMm { get; init; }
+
+    /// <summary>水平内边距（毫米，0 = 未设；缺失时用 <see cref="PaddingMm"/> 兜底）。</summary>
+    [JsonPropertyName("paddingH")]
+    public double PaddingHMm { get; init; }
+
+    /// <summary>垂直内边距（毫米，0 = 未设；缺失时用 <see cref="PaddingMm"/> 兜底）。</summary>
+    [JsonPropertyName("paddingV")]
+    public double PaddingVMm { get; init; }
+
+    /// <summary>有效水平内边距（毫米）：新字段未设时回退单值 <see cref="PaddingMm"/>。</summary>
+    public double EffectivePaddingHMm => PaddingHMm > 0 ? PaddingHMm : PaddingMm;
+
+    /// <summary>有效垂直内边距（毫米）：新字段未设时回退单值 <see cref="PaddingMm"/>。</summary>
+    public double EffectivePaddingVMm => PaddingVMm > 0 ? PaddingVMm : PaddingMm;
 
     /// <summary>元素边框线宽（毫米，0 = 无边框）。</summary>
     public double BorderMm { get; init; }
