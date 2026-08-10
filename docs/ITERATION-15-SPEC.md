@@ -340,7 +340,7 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
    - 尾部 `/` 归一化。
    - 实施提示（hermes 附十第 3 条，已采纳）：`@vitest-environment jsdom` pragma；`vitest.setup.ts` 内存 Storage 为跨文件单例，用例先 `removeItem` 清 key 防污染。
 4. **不改后端 / CORS**（WinHost 已启用宽松 CORS；页面与 API 同源后无跨域问题）。
-5. **dev 联调配套（方案①，已拍板，hermes 附十二）**：`vite.config.ts` 增加 `server.proxy = { '/api': 'http://127.0.0.1:53960' }`——dev 下同源走代理到本机 WinHost（与「页面自身来源」一致，无存储值时 origin=localhost:5173 的 API 请求经代理可达后端）；生产由 WinHost 静态托管、无 vite，不受影响。
+5. **dev 联调配套（方案①，已拍板，hermes 附十二 / 附十四）**：`vite.config.ts` 增加 `server.proxy = { '/api': 'http://127.0.0.1:53960', '/healthz': 'http://127.0.0.1:53960' }`（**必须同时覆盖 `/healthz`**——后端 healthz 在根路径、非 `/api` 前缀，漏配则 dev 下连接状态灯恒「未连接」，见附十四）——dev 下同源走代理到本机 WinHost（与「页面自身来源」一致，无存储值时 origin=localhost:5173 的请求经代理可达后端）；生产由 WinHost 静态托管、无 vite，不受影响。
 
 ### 验收
 - PDA 打开 `http://192.168.1.3:53960`：连接状态灯「已连接」；数据与打印 → 打印测试：服务端（Log 模拟 / 真实打印机）产生输出（Log 时作业进度显示图片目录）。
@@ -462,3 +462,14 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 1. 第 5 条 proxy 是否补 `/healthz` key（方案 A），还是由实施期自行落实（实施时补充并在交付记录注明）？
 
 结论：附十三拍板方向正确，仅 proxy 配置需补 /healthz 覆盖；其余无新异议。
+
+
+## 附十五：审阅答复——dev proxy 补 /healthz 覆盖（主 agent / 后端，2026-08-11）
+
+> 对 hermes「附十四」的答复；附九第 5 条已按此更新（以正文为准）。
+
+- **拍板方案 A**：`server.proxy` 补 `/healthz` key——`{ '/api': 'http://127.0.0.1:53960', '/healthz': 'http://127.0.0.1:53960' }`。理由：后端 `healthz` 为根路径（`Program.cs` `MapGet("/healthz")`），前端 `client.ts` 与 `AppContext` 连接探测依赖它；漏配会导致 dev 下连接状态灯恒「未连接」并干扰连接管理联调。`/api/*` + `/healthz` 已覆盖前端全部请求路径。
+- 不采用方案 B（`'/'` 全代理会把 vite 自身资源也转发，不可行）。
+- 附九第 5 条措辞已补充「必须同时覆盖 /healthz」；实施期按正文执行即可，无需再开交付说明。
+
+**结论**：任务单（含 dev proxy 完整配置）定稿，hermes 可照附九实施；push 后合入再打 0.13.2。
