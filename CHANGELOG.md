@@ -212,3 +212,11 @@
 - 含迭代 14 前后端合并版：文本加粗（`bold` 契约 + ZPL 方案 A/B + Skia Embolden）+ 前端加粗设置与属性面板两项修复。
 - `appsettings.json` 保留用户配置机制沿用（独立组件 NeverOverwrite + Permanent）。
 - 产物 `LabelFrame-0.12.3.msi`（2026-08-10）：可覆盖 0.12.x / 0.11.x 安装。
+## 迭代 15（打印设置与会话保留 + 连接管理 + 删除 ZPL，后端部分，2026-08-10）
+
+- 彻底删除矢量 ZPL：移除 `IZplEncoder` / `ZplEncoder.Encode` / `ZplBoldMode` / `PrintMode`（配置 + `LABELFRAME_PRINT_MODE`）/ `SubmitJobRequest.printMode` / `/healthz.printMode` / `ITextRasterizer` / `GdiTextRasterizer` 及对应测试；`^GF` 位图编码重构为 `ZplImageEncoder`；作业项内容统一为整版位图指令（沿用历史列名，无迁移）；README / demo 脚本同步清理。
+- 连接管理：`ITransportManager` + `TransportConfig`；`GET /api/transport`、`POST /api/transport`（单一连接、先测试后生效、失败自动回滚、400 沿用 ErrorView、响应统一 `config`=当前生效连接）；持久化 `%LOCALAPPDATA%\LabelFrame\connection.json`（启动优先级 connection.json > appsettings > 默认 Log）；Tcp / Windows 驱动 / Zebra 增加连接测试能力；打印 Worker / 打印机状态 / 测试页统一从管理器取当前连接；测试页改为 Skia 渲染整版位图 ^GF。
+- 调试出图：新增 `POST /api/print/render-images`（批量渲染全部行返回 zip，`label-{n}.png`）；保留 `POST /api/print/render-image`（单张 PNG）；调试不建作业、不发驱动、不改作业模型 / SQLite。
+- Log 模拟打印：`LogPrintTransport` 只记录摘要（不再写大段指令）；作业层渲染 PNG 保存到 `%LOCALAPPDATA%\LabelFrame\print\{jobId}\` 并写 host.log 摘要。
+- AndroidHost：新增 `AndroidLabelRenderer`（Android.Graphics + ZXing）整版位图渲染 → `ZplImageEncoder`，替换 ZplEncoder（真机验收待 PDA 联调）。
+- 测试 143 全绿（Core 60 / Server 8 / Studio 25 / WinHost 50）；AndroidHost 编译通过；待前端（hermes）实施会话保留 / 连接切换 UI / 调试开关后联调。

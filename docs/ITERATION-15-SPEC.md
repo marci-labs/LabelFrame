@@ -275,3 +275,14 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 - 无其余修改意见；正文维持 commit 71eb445 定稿状态（仅 §6.3 增加 UX 文案说明）。
 
 **下一步**：后端按 §5 开工（删除 ZPL 链路 → 连接管理 /api/transport + connection.json → render-image/render-images → Log 模拟打印 → AndroidHost 图片打印 → 测试）；前端（hermes）按 §6 并行开工。
+
+
+## 附五：后端实施记录（2026-08-10）
+
+- 删除矢量 ZPL 全链路（`IZplEncoder` / `ZplEncoder.Encode` / `ZplBoldMode` / `PrintMode` / `printMode` / `ITextRasterizer` / `GdiTextRasterizer` + 测试）；`^GF` 编码重构为 `ZplImageEncoder`；作业项统一存整版位图指令（沿用列名 `Zpl`，无迁移）。
+- 连接管理：`ITransportManager` / `TransportConfig`；`GET/POST /api/transport`（400 沿用 ErrorView；200 统一 `config`=当前生效连接；先测试后生效、失败回滚；持久化 connection.json；启动优先级 connection.json > appsettings > 默认 Log）；Tcp / Raw / Zebra 增加连接测试；Worker / 状态 / 测试页统一取当前连接；测试页改为 Skia 渲染 ^GF。
+- 调试出图：`POST /api/print/render-images`（批量 zip）；`render-image` 保留（单张 PNG）；不建作业、不发驱动、不改作业模型 / SQLite。
+- Log 模拟打印：摘要日志 + PNG 保存到 `print\{jobId}\`。
+- AndroidHost：`AndroidLabelRenderer`（Android.Graphics + ZXing）→ `ZplImageEncoder`，替换 ZplEncoder。
+- 测试 143 全绿（Core 60 / Server 8 / Studio 25 / WinHost 50）；AndroidHost 编译通过。
+- 前端（hermes）待实施：§6.1 会话保留、§6.2 连接切换 UI、§6.3 调试独立与按钮语义。
