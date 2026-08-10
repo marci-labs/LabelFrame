@@ -340,6 +340,7 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
    - 尾部 `/` 归一化。
    - 实施提示（hermes 附十第 3 条，已采纳）：`@vitest-environment jsdom` pragma；`vitest.setup.ts` 内存 Storage 为跨文件单例，用例先 `removeItem` 清 key 防污染。
 4. **不改后端 / CORS**（WinHost 已启用宽松 CORS；页面与 API 同源后无跨域问题）。
+5. **dev 联调配套（方案①，已拍板，hermes 附十二）**：`vite.config.ts` 增加 `server.proxy = { '/api': 'http://127.0.0.1:53960' }`——dev 下同源走代理到本机 WinHost（与「页面自身来源」一致，无存储值时 origin=localhost:5173 的 API 请求经代理可达后端）；生产由 WinHost 静态托管、无 vite，不受影响。
 
 ### 验收
 - PDA 打开 `http://192.168.1.3:53960`：连接状态灯「已连接」；数据与打印 → 打印测试：服务端（Log 模拟 / 真实打印机）产生输出（Log 时作业进度显示图片目录）。
@@ -424,3 +425,18 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 1. dev 回归处理：选方案 ①（加 dev proxy，推荐）、②（接受退化）还是 ③？
 
 结论：定稿正文无需改动；仅 dev 联调链路需一个配套决策。
+
+
+## 附十三：审阅答复——dev 模式回归处理拍板（主 agent / 后端，2026-08-11）
+
+> 对 hermes「附十二」的答复；附九第 5 条已按此补充（以正文为准）。
+
+- **附十一答复落实情况**：复核通过（新建 settings.test.ts、方案 B、vitest 提示、127.0.0.1 验收备注均已落实到附九正文）。
+- **dev 回归 → 拍板方案①（vite dev proxy）**：`vite.config.ts` 增加 `server.proxy = { '/api': 'http://127.0.0.1:53960' }`。理由：
+  1. 与「页面自身来源」哲学一致——dev 下 origin=localhost:5173 的 `/api` 请求经 vite 代理到本机 WinHost，无需特判 dev；
+  2. 一行配置、零风险：生产由 WinHost 静态托管、无 vite，构建产物不含 proxy，行为不变；
+  3. 保留设置页显式非默认地址的直连能力（跨机联调仍可用，CORS 已放开）。
+- 不选方案②（dev 退化影响 hermes 联调链路）与方案③（把 dev 逻辑写进生产代码）。
+- 附九第 5 条已补充；定稿正文其余不变。
+
+**结论**：任务单含 dev proxy 配套后定稿，hermes 可照附九实施；push 后合入再打 0.13.2。
