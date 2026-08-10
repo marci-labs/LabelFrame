@@ -27,7 +27,7 @@
 - 迭代 9（Excel 数据导入）：已完成（选 .xlsx → 列映射 → 批量打印）。
 - 迭代 8E/8F（Web 设计器原型 v2/v3）：视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出 / 画布留白标尺 / 真实比例 1mm=8点；`prototypes/web-designer/`，用于 UI 技术选型评估。
 - 迭代 9（Excel 导入）/ 迭代 10（MSI 安装包）：已完成。
-- 迭代 13（文本排版与二维码参数持久化）：元素契约补齐（wrap / lineHeight / fitMode / fontFamily / qrEcc / qrMargin / displayValue / paddingH-V）+ Skia 图片打印渲染 + 前端字段映射，前后端已完成（用户验收待执行）；产物 `LabelFrame-0.13.1.msi`。
+- 迭代 13（文本排版与二维码参数持久化）：元素契约补齐（wrap / lineHeight / fitMode / fontFamily / qrEcc / qrMargin / displayValue / paddingH-V）+ Skia 图片打印渲染 + 前端字段映射，前后端已完成（用户验收待执行）；产物 `LabelFrame-0.13.2.msi`。
 详见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
 ## 组成
@@ -52,7 +52,7 @@ cd web; pnpm install; pnpm build; cd ..
 .\scripts\build-msi.ps1
 ```
 
-产物：`artifacts\LabelFrame-0.13.1.msi`（约 10MB，x64 framework-dependent，含 WinHost + Web UI + 应用图标；安装到 `C:\Program Files\LabelFrame`）。`appsettings.json` 为独立用户配置组件：覆盖安装 / 修复不覆盖、卸载保留，升级不会丢用户配置。
+产物：`artifacts\LabelFrame-0.13.2.msi`（约 10MB，x64 framework-dependent，含 WinHost + Web UI + 应用图标；安装到 `C:\Program Files\LabelFrame`）。`appsettings.json` 为独立用户配置组件：覆盖安装 / 修复不覆盖、卸载保留，升级不会丢用户配置。
 
 前置要求：目标机需安装 **.NET 10 Desktop Runtime**（x64，下载：https://dotnet.microsoft.com/download/dotnet/10.0）。安装 MSI 时会用 .NET 官方自检程序（NetCoreCheck）实时检测：已安装则直接继续（无需重启），缺失则弹出可点击的官方下载链接对话框（不自动安装）。
 打印：统一为整版位图（Skia 渲染 → `^GF` 直传打印机），与画布预览同源（迭代 15 起移除矢量 ZPL）。连接方式可在 Web 设置页 / 数据与打印页切换（Log / TCP / Windows 驱动 / Zebra，单一连接生效、先测试后生效、持久化到 %LOCALAPPDATA%\LabelFrame\connection.json），默认 Log（模拟打印：渲染图片保存到 `%LOCALAPPDATA%\LabelFrame\print\{jobId}\`，作业进度中会显示目录；host.log 有摘要）。调试开关开启时只出图不发送驱动（单张 PNG / 批量 zip）。
