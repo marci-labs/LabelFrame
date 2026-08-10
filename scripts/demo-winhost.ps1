@@ -1,7 +1,7 @@
-﻿# LabelFrame WinHost 快速演示（迭代 2）
+# LabelFrame WinHost 快速演示（迭代 2）
 # 用法： powershell -ExecutionPolicy Bypass -File .\scripts\demo-winhost.ps1
 # 说明：以日志传输（模拟打印机）启动 WinHost，提交一个含中文的库位码作业，
-#       打印完成后展示生成的 ZPL，并给出接真实打印机的方法。
+#       打印完成后展示保存的打印图片（PNG）目录，并给出接真实打印机的方法。
 param(
     [int]$Port = 53999,
     [string]$Db = (Join-Path $env:TEMP "LabelFrame-demo-$([guid]::NewGuid().ToString('N')).db")
@@ -69,19 +69,16 @@ try {
     }
     Write-Host "作业终态：status=$($job.status) completed=$($job.completedItems)/$($job.totalItems)"
 
-    Write-Host '== 4/4 模拟打印机输出的 ZPL（截取）...' -ForegroundColor Cyan
+    Write-Host '== 4/4 模拟打印图片（Log：整版位图 PNG 保存到 print 目录）...' -ForegroundColor Cyan
     Start-Sleep -Milliseconds 300
     if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
     $proc.WaitForExit(5000) | Out-Null
-    $logs = $outTask.Result
-    $marks = [regex]::Matches($logs, '=== LabelFrame 模拟打印机 ===')
-    $idx = 0
-    foreach ($m in $marks) {
-        $idx++
-        $end = $logs.IndexOf('=== 输出结束 ===', $m.Index)
-        $zpl = $logs.Substring($m.Index, $end - $m.Index)
-        Write-Host "--- 第 $idx 张 ---"
-        Write-Host $zpl.Trim()
+    $printDir = Join-Path $env:LOCALAPPDATA "LabelFrame\print\$($job.jobId)"
+    if (Test-Path $printDir) {
+        Write-Host "打印图片目录：$printDir"
+        Get-ChildItem $printDir -Filter *.png | ForEach-Object { Write-Host ("  - " + $_.Name + " (" + [Math]::Round($_.Length / 1KB, 1) + " KB)") }
+    } else {
+        Write-Host "未找到打印图片目录：$printDir（详见 %LOCALAPPDATA%\LabelFrame\host.log）"
     }
     Write-Host ''
     Write-Host '演示完成。接真实打印机：设置环境变量后启动 WinHost，例如：' -ForegroundColor Green

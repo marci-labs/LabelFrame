@@ -117,6 +117,40 @@ public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvi
         return printers[0].GetConnection();
     }
 
+    /// <summary>连接测试：建立连接后关闭（SDK 统一处理 TCP / USB / 驱动），用于连接管理「先测试后生效」。</summary>
+    public Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.Run(() =>
+        {
+            Connection? connection = null;
+            try
+            {
+                connection = CreateConnection();
+                connection.Open();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                if (connection is not null)
+                {
+                    try
+                    {
+                        connection.Close();
+                    }
+                    catch
+                    {
+                        // 忽略关闭异常
+                    }
+                }
+            }
+        }, cancellationToken);
+    }
+
     /// <inheritdoc />
     /// <remarks>通过 Zebra 官方 SDK 查询打印机状态（缺纸 / 暂停 / 就绪）。</remarks>
     public Task<PrinterStatusInfo> GetStatusAsync(CancellationToken cancellationToken = default)

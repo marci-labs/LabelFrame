@@ -1,5 +1,6 @@
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Transport;
+using LabelFrame.WinHost.Transport;
 
 namespace LabelFrame.WinHost.Jobs;
 
@@ -12,14 +13,14 @@ public sealed class JobPrintWorker : BackgroundService
     private static readonly TimeSpan IdleDelay = TimeSpan.FromMilliseconds(200);
 
     private readonly LabelJobQueue _queue;
-    private readonly IPrintTransport _transport;
+    private readonly ITransportManager _transportManager;
     private readonly ILogger<JobPrintWorker> _logger;
 
     /// <summary>创建打印 Worker。</summary>
-    public JobPrintWorker(LabelJobQueue queue, IPrintTransport transport, ILogger<JobPrintWorker> logger)
+    public JobPrintWorker(LabelJobQueue queue, ITransportManager transportManager, ILogger<JobPrintWorker> logger)
     {
         _queue = queue;
-        _transport = transport;
+        _transportManager = transportManager;
         _logger = logger;
     }
 
@@ -55,7 +56,8 @@ public sealed class JobPrintWorker : BackgroundService
                 _logger.LogInformation("开始打印作业 {JobId} 第 {Index} 张。", jobId, item.Index);
                 try
                 {
-                    await _transport.SendAsync(item.Zpl, stoppingToken);
+                    // 每次发送前取当前连接（切换后下一张生效；正在发送的这一张不受影响）
+                    await _transportManager.CurrentTransport.SendAsync(item.Zpl, stoppingToken);
                     await _queue.CompleteItemAsync(jobId, item.Id, stoppingToken);
                     _logger.LogInformation("作业 {JobId} 第 {Index} 张打印完成。", jobId, item.Index);
                 }

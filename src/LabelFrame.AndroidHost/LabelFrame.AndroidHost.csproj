@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.6" />
+    <PackageReference Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 
   <ItemGroup>

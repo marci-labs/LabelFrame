@@ -7,7 +7,7 @@ using LabelFrame.Core.Validation;
 using LabelFrame.Rendering;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
-using LabelFrame.WinHost.Rendering;
+using LabelFrame.WinHost.Transport;
 
 namespace LabelFrame.WinHost.Tests.Jobs;
 
@@ -24,7 +24,8 @@ public class JobSubmissionServiceTests
         var templates = new TemplateStore(templatesDb);
         templates.InitializeAsync().GetAwaiter().GetResult();
 
-        var service = new JobSubmissionService(queue, new ZplEncoder(), new GdiTextRasterizer(), dpi: 203, new SkiaLabelRenderer(), templates, PrintMode.Vector);
+        var transportManager = new TransportManager(new HostOptions { Transport = TransportMode.Log }, TextWriter.Null);
+        var service = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, transportManager, TextWriter.Null);
         return (service, store, templates);
     }
 
@@ -34,7 +35,7 @@ public class JobSubmissionServiceTests
         labels.Select(d => new LabelDto(d)).ToList());
 
     [Fact]
-    public async Task Valid_request_should_create_job_with_encoded_zpl()
+    public async Task Valid_request_should_create_job_with_encoded_gf_image()
     {
         var (service, store, _) = CreateService();
         var request = CreateRequest("req-valid", new Dictionary<string, string>
@@ -49,7 +50,9 @@ public class JobSubmissionServiceTests
         Assert.True(result.Created);
         Assert.Equal(LabelJobStatus.Pending, result.Job!.Status);
         var stored = await store.GetJobAsync(result.Job.Id);
-        Assert.Contains("^BC", stored!.Items[0].Zpl);
+        // 迭代 15：恒为整版位图（^GF），不再有元素级 ^BC
+        Assert.Contains("^GF", stored!.Items[0].Zpl);
+        Assert.DoesNotContain("^BC", stored.Items[0].Zpl);
     }
 
     [Fact]
@@ -106,14 +109,14 @@ public class JobSubmissionServiceTests
     }
 
     [Fact]
-    public async Task Image_print_mode_should_encode_whole_label_as_gf()
+    public async Task Every_job_should_encode_whole_label_as_gf()
     {
         var (service, store, _) = CreateService();
         var request = CreateRequest("req-image", new Dictionary<string, string>
         {
             ["zone"] = "A-01",
             ["locationCode"] = "A-01-02-03",
-        }) with { PrintMode = PrintMode.Image };
+        });
 
         var result = await service.SubmitAsync(request);
 
@@ -127,6 +130,7 @@ public class JobSubmissionServiceTests
         Assert.Contains("^FO0,0^GFA,", zpl);
         Assert.DoesNotContain("^BC", zpl);
     }
+
     [Fact]
     public async Task Empty_labels_should_fail_with_invalid_request()
     {
@@ -140,9 +144,9 @@ public class JobSubmissionServiceTests
     }
 
     [Fact]
-    public async Task Missing_data_key_should_fail_with_encode_error()
+    public async Task Missing_data_key_should_render_empty_and_create_job()
     {
-        var (service, _, _) = CreateService();
+        var (service, store, _) = CreateService();
         var layout = new LabelFrame.Core.Layout.LabelLayout
         {
             Name = "missing-key",
@@ -162,7 +166,10 @@ public class JobSubmissionServiceTests
 
         var result = await service.SubmitAsync(request);
 
-        Assert.Null(result.Job);
-        Assert.Equal(JobErrorCodes.EncodeFailed, result.ErrorCode);
+        // 迭代 15：图片渲染容错（TryGet），缺失的非必填字段渲染为空文本，作业正常创建（与预览一致）
+        Assert.NotNull(result.Job);
+        Assert.True(result.Created);
+        var stored = await store.GetJobAsync(result.Job!.Id);
+        Assert.Contains("^GF", stored!.Items[0].Zpl);
     }
 }

@@ -57,6 +57,23 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
         }
     }
 
+    /// <summary>连接测试：尝试 TCP 连接（3 秒超时），成功返回 true。</summary>
+    public async Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
+    {
+        using var client = new TcpClient();
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(3));
+        try
+        {
+            await client.ConnectAsync(_host, _port, timeoutCts.Token);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <inheritdoc />
     /// <remarks>
     /// Zebra ~HS 主机状态响应为逗号分隔字段：第 2 个字段为暂停位，第 5 个字段为缺纸位；

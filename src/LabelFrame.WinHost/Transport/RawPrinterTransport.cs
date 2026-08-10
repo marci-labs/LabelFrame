@@ -34,6 +34,18 @@ public sealed class RawPrinterTransport : IPrintTransport, IPrinterStatusProvide
         return Task.CompletedTask;
     }
 
+    /// <summary>连接测试：按名打开打印机（成功即关闭），用于连接管理「先测试后生效」。</summary>
+    public bool TestConnection()
+    {
+        if (!OpenPrinter(_printerName, out var printer, IntPtr.Zero))
+        {
+            return false;
+        }
+
+        ClosePrinter(printer);
+        return true;
+    }
+
     /// <inheritdoc />
     /// <remarks>winspool raw 传输无法读回打印机状态，统一按在线处理。</remarks>
     public Task<PrinterStatusInfo> GetStatusAsync(CancellationToken cancellationToken = default)

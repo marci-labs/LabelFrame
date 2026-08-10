@@ -8,13 +8,12 @@ namespace LabelFrame.WinHost.Api;
 public sealed record SubmitJobRequest(
     string? RequestId,
     TemplateDto? Template,
-    IReadOnlyList<LabelDto>? Labels,
-    PrintMode? PrintMode = null);
+    IReadOnlyList<LabelDto>? Labels);
 
 /// <summary>自包含模板。</summary>
 public sealed record TemplateDto(LabelContract? Contract, LabelLayout? Layout)
 {
-    /// <summary>模板名（可选）：Image 打印模式用于从模板库加载图片资源；Vector 模式忽略。</summary>
+    /// <summary>模板名（可选）：打印时用于从模板库加载图片资源。</summary>
     public string? Name { get; init; }
 }
 
@@ -73,3 +72,27 @@ public static class JobViews
         job.Items.Count(i => i.Status == LabelJobItemStatus.Completed),
         job.Items.Select(i => new JobItemView(i.Index, i.Status.ToString(), i.ErrorCode, i.ErrorMessage)).ToList());
 }
+
+/// <summary>连接参数（只含当前模式所需字段；未使用字段返回空 / 默认）。</summary>
+public sealed record TransportParamsDto(
+    string TcpHost,
+    int TcpPort,
+    string PrinterName,
+    string ZebraKind,
+    string ZebraUsbName);
+
+/// <summary>连接状态（GET /api/transport 与 POST 响应共用）。</summary>
+public sealed record TransportConfigDto(string Mode, TransportParamsDto Params, IReadOnlyList<string> AvailableModes);
+
+/// <summary>连接切换 / 测试请求（POST /api/transport）。</summary>
+public sealed record TransportApplyRequest(
+    string? Mode,
+    string? TcpHost,
+    int? TcpPort,
+    string? PrinterName,
+    string? ZebraKind,
+    string? ZebraUsbName,
+    bool? TestOnly);
+
+/// <summary>连接切换 / 测试响应：ok + 中文消息 + 当前生效连接（失败时 config = 未变前的连接）。</summary>
+public sealed record TransportApplyResponse(bool Ok, string Message, TransportConfigDto Config);

@@ -5,15 +5,25 @@ namespace LabelFrame.Core.Tests.Transport;
 public class LogPrintTransportTests
 {
     [Fact]
-    public async Task SendAsync_should_write_command_to_writer()
+    public async Task SendAsync_should_write_summary_not_payload()
     {
         var writer = new StringWriter();
         var transport = new LogPrintTransport(writer);
 
-        await transport.SendAsync("^XA^XZ");
+        await transport.SendAsync(new string('A', 4096));
 
         var output = writer.ToString();
-        Assert.Contains("^XA^XZ", output);
-        Assert.StartsWith("=== LabelFrame 模拟打印机 ===", output);
+        // 迭代 15：Log 只记录摘要（^GF 数据量大，内容省略），不再写完整指令
+        Assert.StartsWith("=== LabelFrame 模拟打印机（Log）", output);
+        Assert.Contains("4096", output);
+        Assert.DoesNotContain("AAAA", output);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_should_report_online()
+    {
+        var transport = new LogPrintTransport(TextWriter.Null);
+        var status = await transport.GetStatusAsync();
+        Assert.True(status.IsOnline);
     }
 }

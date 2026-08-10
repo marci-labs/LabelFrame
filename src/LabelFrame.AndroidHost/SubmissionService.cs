@@ -7,20 +7,20 @@ using LabelFrame.Core.Validation;
 
 namespace LabelFrame.AndroidHost;
 
-/// <summary>提交服务：校验 → 中文栅格化 → ZPL 编码 → 本地作业队列（与 WinHost 同构）。</summary>
+/// <summary>提交服务：校验 → Android 整版位图渲染 → ^GF 编码 → 本地作业队列（与 WinHost 同构；迭代 15 起恒为图片打印）。</summary>
 public sealed class SubmissionService
 {
     private readonly LabelJobQueue _queue;
-    private readonly ZplEncoder _encoder;
-    private readonly AndroidTextRasterizer _rasterizer;
+    private readonly ZplImageEncoder _encoder;
+    private readonly AndroidLabelRenderer _renderer;
     private readonly int _dpi;
 
     /// <summary>创建提交服务。</summary>
-    public SubmissionService(LabelJobQueue queue, AndroidTextRasterizer rasterizer, int dpi)
+    public SubmissionService(LabelJobQueue queue, AndroidLabelRenderer renderer, int dpi)
     {
         _queue = queue;
-        _encoder = new ZplEncoder();
-        _rasterizer = rasterizer;
+        _encoder = new ZplImageEncoder();
+        _renderer = renderer;
         _dpi = dpi;
     }
 
@@ -42,7 +42,7 @@ public sealed class SubmissionService
             return SubmitResult.Failure(JobErrorCodes.InvalidRequest, "缺少 labels（至少一张）。");
         }
 
-        var zplLabels = new List<string>(request.Labels.Count);
+        var commandLabels = new List<string>(request.Labels.Count);
         foreach (var label in request.Labels)
         {
             var data = label.Data ?? new Dictionary<string, string>();
@@ -56,8 +56,8 @@ public sealed class SubmissionService
             try
             {
                 var document = new LabelDocument { Layout = request.Template.Layout, Data = data };
-                document = _rasterizer.Rasterize(document, _dpi);
-                zplLabels.Add(_encoder.Encode(document, _dpi));
+                var bitmap = _renderer.RenderLabelBitmap(document, _dpi);
+                commandLabels.Add(_encoder.EncodeImage(bitmap, document.Layout.WidthMm, document.Layout.HeightMm, _dpi));
             }
             catch (NotSupportedException ex)
             {
@@ -65,7 +65,7 @@ public sealed class SubmissionService
             }
         }
 
-        var (job, created) = await _queue.SubmitAsync(request.RequestId, zplLabels, cancellationToken);
+        var (job, created) = await _queue.SubmitAsync(request.RequestId, commandLabels, cancellationToken);
         return SubmitResult.Success(job, created);
     }
 }

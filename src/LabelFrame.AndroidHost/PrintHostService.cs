@@ -38,7 +38,7 @@ public sealed class PrintHostService : Service
         store.InitializeAsync().GetAwaiter().GetResult();
         _queue = new LabelJobQueue(store);
         _transport = new Tcp9100PrintTransport(config.TcpHost, LabelHostConfig.TcpPort);
-        var submission = new SubmissionService(_queue, new AndroidTextRasterizer(), LabelHostConfig.Dpi);
+        var submission = new SubmissionService(_queue, new AndroidLabelRenderer(), LabelHostConfig.Dpi);
 
         _cts = new CancellationTokenSource();
         var pcClient = string.IsNullOrWhiteSpace(config.PcHostUrl)

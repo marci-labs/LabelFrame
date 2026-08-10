@@ -11,7 +11,6 @@ using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
 using LabelFrame.WinHost.Logs;
 using LabelFrame.Rendering;
-using LabelFrame.WinHost.Rendering;
 using LabelFrame.WinHost.Transport;
 
 namespace LabelFrame.WinHost;
@@ -39,6 +38,7 @@ public static class Program
         builder.WebHost.UseUrls(options.ListenUrl);
 
         var hostLogWriter = OpenHostLogWriter(options);
+        var transportManager = new TransportManager(options, hostLogWriter);
         void HostInfo(string message)
         {
             try
@@ -52,7 +52,7 @@ public static class Program
             }
         }
 
-        HostInfo($"LabelFrame 启动：监听 {options.ListenUrl}，传输 {options.Transport}，DPI {options.Dpi}，OpenBrowser={options.OpenBrowser}");
+        HostInfo($"LabelFrame 启动：监听 {options.ListenUrl}，连接 {transportManager.CurrentConfig.Describe()}，DPI {options.Dpi}，OpenBrowser={options.OpenBrowser}");
 
         var store = new SqliteLabelJobStore(options.DatabasePath);
         await store.InitializeAsync();
@@ -68,11 +68,10 @@ public static class Program
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton<ILabelJobStore>(store);
         builder.Services.AddSingleton(queue);
-        builder.Services.AddSingleton<IZplEncoder>(new ZplEncoder(options.BoldMode));
-        builder.Services.AddSingleton<ITextRasterizer>(new GdiTextRasterizer(options.FontFamily, options.FontFilePath));
-        builder.Services.AddSingleton<IPrintTransport>(CreateTransport(options, hostLogWriter));
+        builder.Services.AddSingleton<ITransportManager>(transportManager);
+        builder.Services.AddSingleton<ZplImageEncoder>();
         builder.Services.AddSingleton<IPrinterStatusProvider>(sp =>
-            sp.GetRequiredService<IPrintTransport>() as IPrinterStatusProvider ?? new UnsupportedStatusProvider());
+            sp.GetRequiredService<ITransportManager>().CurrentTransport as IPrinterStatusProvider ?? new UnsupportedStatusProvider());
         builder.Services.AddHostedService<JobPrintWorker>();
 
         var templateStore = new TemplateStore(options.TemplatesDbPath);
@@ -82,12 +81,12 @@ public static class Program
         builder.Services.AddSingleton<ILabelBitmapRenderer>(new SkiaLabelRenderer());
         builder.Services.AddSingleton(sp => new JobSubmissionService(
             queue,
-            sp.GetRequiredService<IZplEncoder>(),
-            sp.GetRequiredService<ITextRasterizer>(),
+            sp.GetRequiredService<ZplImageEncoder>(),
             options.Dpi,
             sp.GetRequiredService<ILabelBitmapRenderer>(),
             sp.GetRequiredService<TemplateStore>(),
-            options.PrintMode));
+            sp.GetRequiredService<ITransportManager>(),
+            hostLogWriter));
 
         // 本地工具服务：地址由用户配置（可跨机器 / 跨端口），启用宽松 CORS
         builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
@@ -116,7 +115,8 @@ public static class Program
 
         app.UseCors();
 
-        app.MapGet("/healthz", () => Results.Ok(new { service = "LabelFrame.WinHost", status = "ok", transport = options.Transport.ToString(), printMode = options.PrintMode.ToString() }));
+        app.MapGet("/healthz", (ITransportManager transportManager) =>
+            Results.Ok(new { service = "LabelFrame.WinHost", status = "ok", transport = transportManager.CurrentConfig.Mode.ToString() }));
 
         // ---- 模板管理（单机 CRUD + 导入导出 + 预览）----
         app.MapPost("/api/templates", async (Api.TemplatePackageDto? dto, TemplateStore templateStore, CancellationToken ct) =>
@@ -233,6 +233,70 @@ public static class Program
             return Results.File(png, "image/png", fileName);
         });
 
+        // 调试出图（批量）：后端渲染全部行为 zip（不建作业、不发驱动；迭代 15）
+        app.MapPost("/api/print/render-images", async (Api.SubmitJobRequest? request, JobSubmissionService service, CancellationToken ct) =>
+        {
+            if (request is null)
+            {
+                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "请求体不能为空。"));
+            }
+
+            try
+            {
+                var images = await service.RenderImagesAsync(request, ct);
+                using var stream = new MemoryStream();
+                using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+                {
+                    foreach (var image in images)
+                    {
+                        var entry = archive.CreateEntry($"label-{image.Index + 1}.png");
+                        using var entryStream = entry.Open();
+                        entryStream.Write(image.Png);
+                    }
+                }
+
+                var name = string.IsNullOrWhiteSpace(request.Template?.Name) ? "label" : request.Template.Name;
+                var fileName = $"{name}-debug-{DateTime.Now:yyyyMMddHHmmss}.zip";
+                return Results.File(stream.ToArray(), "application/zip", fileName);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, ex.Message));
+            }
+        });
+
+        // ---- 连接管理（迭代 15）：查询 / 切换 / 测试；单一连接生效，先测试后生效 ----
+        app.MapGet("/api/transport", (ITransportManager transportManager) =>
+            Results.Ok(ToTransportConfigDto(transportManager.CurrentConfig)));
+
+        app.MapPost("/api/transport", async (Api.TransportApplyRequest? request, ITransportManager transportManager, CancellationToken ct) =>
+        {
+            if (request is null || string.IsNullOrWhiteSpace(request.Mode))
+            {
+                return Results.BadRequest(new ErrorView("LF_TRANSPORT_INVALID", "缺少连接方式（mode）。"));
+            }
+
+            if (!Enum.TryParse<TransportMode>(request.Mode, ignoreCase: true, out var mode))
+            {
+                return Results.BadRequest(new ErrorView("LF_TRANSPORT_INVALID", $"不支持的连接方式：{request.Mode}。"));
+            }
+
+            var config = new TransportConfig
+            {
+                Mode = mode,
+                TcpHost = request.TcpHost ?? transportManager.CurrentConfig.TcpHost,
+                TcpPort = request.TcpPort ?? transportManager.CurrentConfig.TcpPort,
+                PrinterName = request.PrinterName ?? transportManager.CurrentConfig.PrinterName,
+                ZebraKind = request.ZebraKind is not null && Enum.TryParse<ZebraTransportKind>(request.ZebraKind, ignoreCase: true, out var zebraKind)
+                    ? zebraKind
+                    : transportManager.CurrentConfig.ZebraKind,
+                ZebraUsbName = request.ZebraUsbName ?? transportManager.CurrentConfig.ZebraUsbName,
+            };
+
+            var result = await transportManager.ApplyAsync(config, request.TestOnly ?? false, ct);
+            return Results.Ok(new TransportApplyResponse(result.Ok, result.Message, ToTransportConfigDto(result.Config)));
+        });
+
         app.MapPost("/api/jobs", async (SubmitJobRequest? request, JobSubmissionService service, CancellationToken ct) =>
         {
             if (request is null)
@@ -328,16 +392,32 @@ public static class Program
         }).DisableAntiforgery();
 
         // ---- 打印机测试页 / 在线状态 ----
-        app.MapGet("/api/printer/status", async (IPrinterStatusProvider provider, CancellationToken ct) =>
-            Results.Ok(await provider.GetStatusAsync(ct)));
+        app.MapGet("/api/printer/status", async (ITransportManager transportManager, CancellationToken ct) =>
+            Results.Ok(await (transportManager.CurrentTransport as IPrinterStatusProvider ?? new UnsupportedStatusProvider()).GetStatusAsync(ct)));
 
-        app.MapPost("/api/printer/test", async (IPrintTransport transport, CancellationToken ct) =>
+        app.MapPost("/api/printer/test", async (ITransportManager transportManager, ILabelBitmapRenderer renderer, ZplImageEncoder encoder, CancellationToken ct) =>
         {
-            const string testZpl =
-                "^XA^FO40,40^A0N,64,64^FDLabelFrame Test^FS" +
-                "^FO40,120^BY2,3^BCN,80,Y,N,N^FDLABELFRAME-TEST^FS^XZ";
-            await transport.SendAsync(testZpl, ct);
-            return Results.Ok(new { sent = true, bytes = System.Text.Encoding.UTF8.GetByteCount(testZpl) });
+            // 测试页与正式打印同源：Skia 渲染整版位图经 ^GF 发送（图片打印语义，无矢量 ZPL）
+            var document = new LabelDocument
+            {
+                Layout = new LabelLayout
+                {
+                    Name = "test",
+                    ContractName = "test",
+                    ContractVersion = "1.0",
+                    WidthMm = 40,
+                    HeightMm = 20,
+                    Elements =
+                    [
+                        new LabelTextElement { Literal = "LabelFrame Test", XMm = 2, YMm = 4, FontHeightMm = 3, FontWidthMm = 3, WidthMm = 36, TextAlign = LabelTextAlign.Center },
+                    ],
+                },
+                Data = new Dictionary<string, string>(),
+            };
+            var bitmap = renderer.RenderLabelBitmap(document, options.Dpi);
+            var command = encoder.EncodeImage(bitmap, document.Layout.WidthMm, document.Layout.HeightMm, options.Dpi);
+            await transportManager.CurrentTransport.SendAsync(command, ct);
+            return Results.Ok(new { sent = true, bytes = System.Text.Encoding.UTF8.GetByteCount(command) });
         });
 
         // ---- 本机服务关闭（Web UI 设置页「退出程序」用）----
@@ -505,7 +585,6 @@ public static class Program
             {
                 Directory.CreateDirectory(directory);
             }
-
             var writer = new StreamWriter(options.HostLogPath, append: true) { AutoFlush = true };
             return TextWriter.Synchronized(writer);
         }
@@ -515,18 +594,14 @@ public static class Program
         }
     }
 
-    private static IPrintTransport CreateTransport(HostOptions options, TextWriter hostLogWriter) => options.Transport switch
-    {
-        // 复用宿主日志写入器（同一文件不能再开第二个写入器，否则文件锁导致写入被静默丢弃）
-        TransportMode.Log => new LogPrintTransport(hostLogWriter),
-        TransportMode.Tcp => new Tcp9100PrintTransport(options.TcpHost, options.TcpPort),
-        TransportMode.WindowsDriver => new RawPrinterTransport(options.PrinterName),
-        TransportMode.Zebra => new ZebraPrinterTransport(
-            options.ZebraKind,
-            options.TcpHost,
-            options.TcpPort,
-            options.PrinterName,
-            options.ZebraUsbName),
-        _ => throw new InvalidOperationException($"不支持的传输模式：{options.Transport}。"),
-    };
+    /// <summary>TransportConfig → API DTO（params 含全部字段，前端只展示当前模式所需）。</summary>
+    private static TransportConfigDto ToTransportConfigDto(TransportConfig config) => new(
+        config.Mode.ToString(),
+        new TransportParamsDto(
+            config.TcpHost,
+            config.TcpPort,
+            config.PrinterName,
+            config.ZebraKind.ToString(),
+            config.ZebraUsbName),
+        new[] { "Log", "Tcp", "WindowsDriver", "Zebra" });
 }
