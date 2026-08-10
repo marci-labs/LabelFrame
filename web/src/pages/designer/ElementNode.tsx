@@ -41,34 +41,34 @@ export function ElementNode({ e, editable, ox, oy, onDragStart, onDragMove, onDr
     case 'Text':
       return (
         <Group {...common}>
-          <KRect x={0} y={0} width={w} height={h} stroke={e.border > 0 ? '#000' : undefined} strokeWidth={borderW} strokeScaleEnabled={false} listening={false} />
+          <KRect x={0} y={0} width={w} height={h} stroke={e.border > 0 ? '#000' : undefined} strokeWidth={borderW} strokeScaleEnabled={false} />
           <TextContent e={e} />
         </Group>
       )
     case 'Barcode':
       return (
         <Group {...common}>
-          <KRect x={0} y={0} width={w} height={h} stroke={e.border > 0 ? '#000' : undefined} strokeWidth={borderW} strokeScaleEnabled={false} listening={false} />
+          <KRect x={0} y={0} width={w} height={h} stroke={e.border > 0 ? '#000' : undefined} strokeWidth={borderW} strokeScaleEnabled={false} />
           <ImageContent e={e} wPx={w} hPx={h} />
         </Group>
       )
     case 'QrCode':
       return (
         <Group {...common}>
-          <KRect x={0} y={0} width={w} height={h} stroke={e.border > 0 ? '#000' : undefined} strokeWidth={borderW} strokeScaleEnabled={false} listening={false} />
+          <KRect x={0} y={0} width={w} height={h} stroke={e.border > 0 ? '#000' : undefined} strokeWidth={borderW} strokeScaleEnabled={false} />
           <ImageContent e={e} wPx={w} hPx={h} qr />
         </Group>
       )
     case 'Rect':
       return (
         <Group {...common}>
-          <KRect x={0} y={0} width={w} height={h} stroke={e.border > 0 ? '#000' : undefined} strokeWidth={borderW} fill="transparent" strokeScaleEnabled={false} listening={false} />
+          <KRect x={0} y={0} width={w} height={h} stroke={e.border > 0 ? '#000' : undefined} strokeWidth={borderW} fill="transparent" strokeScaleEnabled={false} />
         </Group>
       )
     case 'Image':
       return (
         <Group {...common}>
-          <KRect x={0} y={0} width={w} height={h} fill="#f5f6f8" stroke={e.border > 0 ? '#000' : '#aab4c0'} strokeWidth={borderW} dash={[4, 3]} strokeScaleEnabled={false} listening={false} />
+          <KRect x={0} y={0} width={w} height={h} fill="#f5f6f8" stroke={e.border > 0 ? '#000' : '#aab4c0'} strokeWidth={borderW} dash={[4, 3]} strokeScaleEnabled={false} />
           <KText x={4} y={4} text={'图片: ' + (e.key || '')} fontSize={11} fontFamily="Microsoft YaHei" fill="#6b7684" listening={false} />
         </Group>
       )
@@ -79,7 +79,7 @@ export function ElementNode({ e, editable, ox, oy, onDragStart, onDragMove, onDr
     case 'Region':
       return (
         <Group {...common}>
-          <KRect x={0} y={0} width={w} height={h} fill="rgba(0,128,255,0.06)" stroke={e.border > 0 ? '#000' : '#8a94a0'} strokeWidth={borderW} dash={[6, 4]} strokeScaleEnabled={false} listening={false} />
+          <KRect x={0} y={0} width={w} height={h} fill="rgba(0,128,255,0.06)" stroke={e.border > 0 ? '#000' : '#8a94a0'} strokeWidth={borderW} dash={[6, 4]} strokeScaleEnabled={false} />
           <KText x={4} y={2} text={'容器 ' + (e.containerId || '')} fontSize={10} fontFamily="Microsoft YaHei" fill="#7a8490" listening={false} />
         </Group>
       )
