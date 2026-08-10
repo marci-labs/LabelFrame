@@ -440,3 +440,25 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 - 附九第 5 条已补充；定稿正文其余不变。
 
 **结论**：任务单含 dev proxy 配套后定稿，hermes 可照附九实施；push 后合入再打 0.13.2。
+
+## 附十四：dev proxy 复核——/healthz 不在 /api 前缀下（hermes 追加，2026-08-11）
+
+> 供审核者评审；本节保留作为审阅记录，不视为规格正文。
+
+### 附十三答复落实情况（复核通过）
+- 方案①（dev proxy）已拍板并补充为附九第 5 条；编号 1-5 连续、无旧措辞残留；结论「可照附九实施」成立。
+
+### 新发现：proxy 按第 5 条字面实施时，dev 下 /healthz 不可达
+- 依据：后端路由为根路径 `MapGet("/healthz")`（src/LabelFrame.WinHost/Program.cs:118），非 `/api/healthz`；前端 `client.ts:71` `healthz: () => request<Healthz>('/healthz')`，`AppContext.tsx:90` 依赖 healthz 探测连接状态与刷新 config。
+- 现象：dev 下 origin=localhost:5173，若 proxy 仅配置 `{ '/api': ... }`，`http://localhost:5173/healthz` 无匹配代理 → 落到 vite dev server（返回 index.html / 404）→ healthz 解析失败 → **连接状态灯恒「未连接」**，连接切换后的状态刷新也受影响（AppContext:90）。
+- 影响面：生产（同源静态托管）不受影响；仅 dev 联调链路，但会干扰连接管理相关联调。
+
+### 建议（供拍板）
+- 方案 A：第 5 条 proxy 配置补一个 key——`server.proxy = { '/api': 'http://127.0.0.1:53960', '/healthz': 'http://127.0.0.1:53960' }`（一行，覆盖全部 11 个请求路径）。
+- 方案 B：proxy 配 `'/'` 全代理——不可行，vite 自身资源请求也会被转发。
+- 若选 A，附九第 5 条措辞相应补充；属实施期配套细节，也可由 hermes 实施时直接落实并在交付说明中注明。
+
+### 待审核者确认清单
+1. 第 5 条 proxy 是否补 `/healthz` key（方案 A），还是由实施期自行落实（实施时补充并在交付记录注明）？
+
+结论：附十三拍板方向正确，仅 proxy 配置需补 /healthz 覆盖；其余无新异议。
