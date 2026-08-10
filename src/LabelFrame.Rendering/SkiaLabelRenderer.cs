@@ -155,13 +155,13 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         if (text.Wrap)
         {
             // wrap=true：按框宽自动换行；若整体超高则整体缩小至能放下（最小 1.5mm），避免打印丢字
-            lines = WrapLines(value, typeface, fontSize, innerW);
+            lines = WrapLines(value, typeface, fontSize, innerW, text.Bold);
             var totalHeight = lines.Count * fontSize * lineHeightFactor;
             var guard = 0;
             while (totalHeight > innerH && fontSize > minFontSize && guard++ < 10)
             {
                 fontSize = Math.Max(minFontSize, fontSize * innerH / totalHeight);
-                lines = WrapLines(value, typeface, fontSize, innerW);
+                lines = WrapLines(value, typeface, fontSize, innerW, text.Bold);
                 totalHeight = lines.Count * fontSize * lineHeightFactor;
             }
         }
@@ -174,7 +174,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         {
             // wrap=false + shrink（默认）：单行，超出框宽 / 框高按比例缩小至最小 1.5mm
             lines = [value];
-            using var measureFont = new SKFont(typeface, fontSize);
+            using var measureFont = new SKFont(typeface, fontSize) { Embolden = text.Bold };
             var measuredWidth = measureFont.MeasureText(value);
             var widthFactor = innerW > 0 && measuredWidth > innerW ? innerW / measuredWidth : 1f;
             var fitLineHeightPx = fontSize * lineHeightFactor;
@@ -186,7 +186,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
             }
         }
 
-        using var font = new SKFont(typeface, fontSize);
+        using var font = new SKFont(typeface, fontSize) { Embolden = text.Bold };
         using var paint = new SKPaint { IsAntialias = true, Color = SKColors.Black };
         var fm = font.Metrics;
         var lineHeightPx = fontSize * lineHeightFactor;
@@ -236,9 +236,9 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
     }
 
     /// <summary>按框宽换行：英文按空格断词，超宽单词 / 中文按字拆行。</summary>
-    private static List<string> WrapLines(string value, SKTypeface typeface, float fontSize, float maxWidth)
+    private static List<string> WrapLines(string value, SKTypeface typeface, float fontSize, float maxWidth, bool embolden)
     {
-        using var font = new SKFont(typeface, fontSize);
+        using var font = new SKFont(typeface, fontSize) { Embolden = embolden };
         var lines = new List<string>();
         if (string.IsNullOrEmpty(value))
         {

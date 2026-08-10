@@ -13,6 +13,26 @@ public sealed class ZplEncoder : IZplEncoder
     /// <summary>默认打印机分辨率（203 dpi，Zebra 常见）。</summary>
     public const int DefaultDpi = 203;
 
+    /// <summary>默认粗体字体映射（方案 A）：ZPL 内置字体 "0"（标准）→ "1"（常见 Zebra 粗体字体）。</summary>
+    private static readonly IReadOnlyDictionary<string, string> DefaultBoldFontMap =
+        new Dictionary<string, string> { ["0"] = "1" };
+
+    private readonly ZplBoldMode _boldMode;
+    private readonly IReadOnlyDictionary<string, string> _boldFontMap;
+
+    /// <summary>
+    /// 创建编码器。
+    /// </summary>
+    /// <param name="boldMode">文本加粗实现方式（默认 <see cref="ZplBoldMode.FontVariant"/> 方案 A）。</param>
+    /// <param name="boldFontMap">粗体字体映射表（方案 A 用；缺省 "0"→"1"）。</param>
+    public ZplEncoder(
+        ZplBoldMode boldMode = ZplBoldMode.FontVariant,
+        IReadOnlyDictionary<string, string>? boldFontMap = null)
+    {
+        _boldMode = boldMode;
+        _boldFontMap = boldFontMap ?? DefaultBoldFontMap;
+    }
+
     /// <inheritdoc />
     public string Encode(LabelDocument document, int dpi = DefaultDpi)
     {
@@ -57,7 +77,7 @@ public sealed class ZplEncoder : IZplEncoder
         return sb.ToString();
     }
 
-    private static void AppendElement(
+    private void AppendElement(
         StringBuilder sb,
         LabelElement element,
         IReadOnlyDictionary<string, string> data,
@@ -104,7 +124,7 @@ public sealed class ZplEncoder : IZplEncoder
         => (int)Math.Round(mm / 25.4 * dpi, MidpointRounding.AwayFromZero);
 
 
-    private static void AppendText(
+    private void AppendText(
         StringBuilder sb,
         LabelTextElement text,
         IReadOnlyDictionary<string, string> data,
@@ -119,6 +139,21 @@ public sealed class ZplEncoder : IZplEncoder
         var fontHeight = ToDots(text.FontHeightMm, dpi);
         var fontWidth = ToDots(text.FontWidthMm, dpi);
         var padding = ToDots(text.PaddingMm, dpi);
+        var fontName = text.FontName;
+        if (text.Bold)
+        {
+            // 迭代 14 加粗：方案 A 映射粗体字体变体（默认 "0"→"1"）；方案 B 宽度放大模拟（兜底）
+            if (_boldMode == ZplBoldMode.FontVariant)
+            {
+                fontName = _boldFontMap.TryGetValue(text.FontName, out var boldFont) ? boldFont : text.FontName;
+            }
+            else
+            {
+                var baseWidth = fontWidth > 0 ? fontWidth : Math.Max(1, (int)Math.Round(fontHeight * 0.6, MidpointRounding.AwayFromZero));
+                fontWidth = Math.Max(1, (int)Math.Round(baseWidth * 1.15, MidpointRounding.AwayFromZero));
+            }
+        }
+
         var (escaped, needsFieldHex) = EscapeFieldData(value);
 
         if (text.BorderMm > 0 && boxWidth > 0)
@@ -128,7 +163,7 @@ public sealed class ZplEncoder : IZplEncoder
 
         var textX = x + padding;
         var textY = y + padding;
-        sb.Append($"^FO{textX},{textY}^A{text.FontName}N,{fontHeight},{fontWidth}");
+        sb.Append($"^FO{textX},{textY}^A{fontName}N,{fontHeight},{fontWidth}");
         if (boxWidth > 0)
         {
             var justify = text.TextAlign switch
@@ -287,4 +322,13 @@ public sealed class ZplEncoder : IZplEncoder
 
         return (sb.ToString(), needsFieldHex);
     }
+}
+/// <summary>ZPL 文本加粗实现方式（ZPL 无标准加粗修饰符）。</summary>
+public enum ZplBoldMode
+{
+    /// <summary>方案 A（默认）：粗体字体变体映射（默认 "0"→"1"）。</summary>
+    FontVariant,
+
+    /// <summary>方案 B：保持字体、宽度方向按比例放大模拟（视觉近似，兜底）。</summary>
+    WidthScale,
 }

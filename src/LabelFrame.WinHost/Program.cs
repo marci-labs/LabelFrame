@@ -68,7 +68,7 @@ public static class Program
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton<ILabelJobStore>(store);
         builder.Services.AddSingleton(queue);
-        builder.Services.AddSingleton<IZplEncoder>(new ZplEncoder());
+        builder.Services.AddSingleton<IZplEncoder>(new ZplEncoder(options.BoldMode));
         builder.Services.AddSingleton<ITextRasterizer>(new GdiTextRasterizer(options.FontFamily, options.FontFilePath));
         builder.Services.AddSingleton<IPrintTransport>(CreateTransport(options, hostLogWriter));
         builder.Services.AddSingleton<IPrinterStatusProvider>(sp =>

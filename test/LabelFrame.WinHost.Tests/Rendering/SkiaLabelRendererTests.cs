@@ -441,4 +441,33 @@ public class SkiaLabelRendererTests
         Assert.Equal(0, CountBlack(bitmap, 5, 5, 25, 2));
         Assert.True(CountBlack(bitmap, 5, 8, 25, 3) > 20, $"旧模板默认 Middle 应在兜底框中部：{CountBlack(bitmap, 5, 8, 25, 3)}");
     }
+
+    [Fact]
+    public void Bold_text_should_render_thicker_than_regular()
+    {
+        LabelDocument Doc(bool bold) => new()
+        {
+            Layout = new LabelLayout
+            {
+                Name = "bold",
+                ContractName = "bold",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 5, FontHeightMm = 4, FontWidthMm = 4, WidthMm = 40, Bold = bold },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "加粗测试" },
+        };
+
+        var regular = new SkiaLabelRenderer().RenderLabelBitmap(Doc(false), dpi: 203);
+        var bold = new SkiaLabelRenderer().RenderLabelBitmap(Doc(true), dpi: 203);
+
+        var regularInk = CountBlack(regular, 5, 5, 40, 10);
+        var boldInk = CountBlack(bold, 5, 5, 40, 10);
+        Assert.True(regularInk > 100, $"常规文本应有墨迹：{regularInk}");
+        Assert.True(boldInk > regularInk, $"加粗文本墨迹应多于常规：bold={boldInk} regular={regularInk}");
+    }
 }

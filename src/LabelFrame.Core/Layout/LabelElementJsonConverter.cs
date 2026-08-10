@@ -151,6 +151,11 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                     writer.WriteString("fitMode", text.FitMode == LabelFitMode.Overflow ? "overflow" : "shrink");
                 }
 
+                if (text.Bold)
+                {
+                    writer.WriteBoolean("bold", true);
+                }
+
                 break;
             case LabelBarcodeElement barcode:
                 writer.WriteString("sourceKey", barcode.SourceKey);

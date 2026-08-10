@@ -47,6 +47,9 @@ public sealed class LabelTextElement : LabelElement
 
     /// <summary>溢出处理方式（默认 Shrink 缩小适应；Overflow = 隐藏 / 裁剪，不缩小）。</summary>
     public LabelFitMode FitMode { get; init; } = LabelFitMode.Shrink;
+
+    /// <summary>字体加粗（默认 false；ZPL 用粗体字体变体 / 宽度放大，Skia 用 fontStyle bold）。</summary>
+    public bool Bold { get; init; }
 }
 
 /// <summary>文本垂直对齐。</summary>

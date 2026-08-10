@@ -1,3 +1,4 @@
+using LabelFrame.Core.Encoding;
 using LabelFrame.WinHost.Transport;
 
 namespace LabelFrame.WinHost;
@@ -57,6 +58,9 @@ public sealed class HostOptions
 
     /// <summary>打印输出模式（默认矢量 ZPL，可 LABELFRAME_PRINT_MODE=Image 切换整版位图）。</summary>
     public PrintMode PrintMode { get; set; } = PrintMode.Vector;
+
+    /// <summary>ZPL 文本加粗实现方式（默认 FontVariant 字体变体；WidthScale 为宽度放大兜底）。</summary>
+    public ZplBoldMode BoldMode { get; set; } = ZplBoldMode.FontVariant;
 
     /// <summary>Zebra SDK 连接类型（Transport=Zebra 时生效）。</summary>
     public ZebraTransportKind ZebraKind { get; set; } = ZebraTransportKind.Tcp;
@@ -141,6 +145,11 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_PRINT_MODE") is { } printMode)
         {
             PrintMode = Enum.Parse<PrintMode>(printMode, ignoreCase: true);
+        }
+
+        if (GetEnv("LABELFRAME_BOLD_MODE") is { } boldMode)
+        {
+            BoldMode = Enum.Parse<ZplBoldMode>(boldMode, ignoreCase: true);
         }
 
         if (GetEnv("LABELFRAME_TCP_HOST") is { } tcpHost)

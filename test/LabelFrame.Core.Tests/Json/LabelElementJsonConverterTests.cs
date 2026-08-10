@@ -281,6 +281,26 @@ public class LabelElementJsonConverterTests
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<LabelElement>(json, Options));
     }
 
+    [Fact]
+    public void Text_bold_should_write_and_round_trip_and_omit_default()
+    {
+        var bold = new LabelTextElement { SourceKey = "k", XMm = 0, YMm = 0, FontHeightMm = 5, FontWidthMm = 5, Bold = true };
+
+        var json = JsonSerializer.Serialize<LabelElement>(bold, Options);
+        var roundTrip = Assert.IsType<LabelTextElement>(JsonSerializer.Deserialize<LabelElement>(json, Options));
+
+        Assert.True(roundTrip.Bold);
+        Assert.Contains("\"bold\":true", json);
+
+        var regular = new LabelTextElement { SourceKey = "k", XMm = 0, YMm = 0, FontHeightMm = 5, FontWidthMm = 5 };
+        var regularJson = JsonSerializer.Serialize<LabelElement>(regular, Options);
+        Assert.DoesNotContain("bold", regularJson);
+
+        const string oldJson = """{"type":"text","xMm":0,"yMm":0,"sourceKey":"k","fontHeightMm":5,"fontWidthMm":5}""";
+        var old = Assert.IsType<LabelTextElement>(JsonSerializer.Deserialize<LabelElement>(oldJson, Options));
+        Assert.False(old.Bold);
+    }
+
     private static string GetTypeName(LabelElement element) => element switch
     {
         LabelTextElement => "text",

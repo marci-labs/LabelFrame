@@ -383,4 +383,62 @@ public class ZplEncoderTests
         // 契约 §4.9：新排版字段不参与 ZPL 编码，矢量输出与现状一致
         Assert.Equal(plain, withFields);
     }
+
+    [Fact]
+    public void Bold_text_should_map_to_bold_font_variant()
+    {
+        LabelDocument Doc(bool bold) => new()
+        {
+            Layout = new LabelLayout
+            {
+                Name = "bold",
+                ContractName = "bold",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 5, FontHeightMm = 3, FontWidthMm = 3, Bold = bold },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "ABC" },
+        };
+
+        var regular = new ZplEncoder().Encode(Doc(false), dpi: 203);
+        var bold = new ZplEncoder().Encode(Doc(true), dpi: 203);
+
+        // 方案 A（默认）：Bold 将内置字体 "0" 映射为粗体字体 "1"
+        Assert.Contains("^A0N,", regular);
+        Assert.Contains("^A1N,", bold);
+        Assert.DoesNotContain("^A1N,", regular);
+        Assert.DoesNotContain("^A0N,", bold);
+    }
+
+    [Fact]
+    public void Bold_width_scale_mode_should_widen_font()
+    {
+        LabelDocument Doc(bool bold) => new()
+        {
+            Layout = new LabelLayout
+            {
+                Name = "bold",
+                ContractName = "bold",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 5, FontHeightMm = 3, FontWidthMm = 2, Bold = bold },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "ABC" },
+        };
+
+        // 方案 B：3mm → 24px 高、2mm → 16px 宽；加粗宽 = 16 × 1.15 ≈ 18
+        var regular = new ZplEncoder(ZplBoldMode.WidthScale).Encode(Doc(false), dpi: 203);
+        var bold = new ZplEncoder(ZplBoldMode.WidthScale).Encode(Doc(true), dpi: 203);
+
+        Assert.Contains("^A0N,24,16", regular);
+        Assert.Contains("^A0N,24,18", bold);
+    }
 }
