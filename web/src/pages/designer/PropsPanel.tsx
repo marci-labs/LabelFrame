@@ -1,5 +1,6 @@
 // 属性面板：选中元素才显示；多选显示对齐操作；文本 / 条码 / 二维码 / 矩形等分组属性
 
+import { useEffect, useState } from 'react'
 import type { DesignElement } from '../../lib/design/types'
 import { typeLabel } from '../../lib/design/types'
 import { elementsByIds } from '../../lib/design/model'
@@ -118,6 +119,7 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
             }}
           />
           <CheckField label="自动换行" value={e.wrap === true} onSet={(v) => onChange(e.id, { wrap: v })} />
+          <CheckField label="加粗（打印更清晰）" value={e.bold === true} onSet={(v) => onChange(e.id, { bold: v })} />
           <NumField label="行间距" value={e.lineHeight ?? 1.2} onSet={(v) => onChange(e.id, { lineHeight: Math.max(1, v) })} />
           <SelectField
             label="水平对齐"
@@ -261,6 +263,9 @@ function ContentGroup({ e, onChange }: { e: DesignElement; onChange: (id: string
 }
 
 function NumField({ label, value, onSet }: { label: string; value: number; onSet: (v: number) => void }) {
+  // 受控 + 同步：切换选中元素（value 变化）时输入框跟随刷新（此前 defaultValue 只在挂载时生效，切换后残留旧元素的值）
+  const [text, setText] = useState(Number(value || 0).toFixed(1))
+  useEffect(() => setText(Number(value || 0).toFixed(1)), [value])
   return (
     <label className="num-row">
       <span>{label}</span>
@@ -268,11 +273,12 @@ function NumField({ label, value, onSet }: { label: string; value: number; onSet
         className="input"
         type="number"
         step="0.5"
-        defaultValue={Number(value || 0).toFixed(1)}
+        value={text}
+        onChange={(ev) => setText(ev.target.value)}
         onBlur={(ev) => {
           const v = parseFloat(ev.target.value)
           if (!isNaN(v) && v !== value) onSet(v)
-          else ev.target.value = Number(value || 0).toFixed(1)
+          else setText(Number(value || 0).toFixed(1))
         }}
         onKeyDown={(ev) => {
           if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur()
