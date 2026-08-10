@@ -310,34 +310,35 @@ public static class Program
                 return Results.BadRequest(new ErrorView(result.ErrorCode!, result.ErrorMessage!, result.FieldKey));
             }
 
+            var jobView = EnrichPrintInfo(JobViews.From(result.Job), result.Job!.Id, transportManager);
             return result.Created
-                ? Results.Accepted((string?)null, JobViews.From(result.Job))
-                : Results.Ok(JobViews.From(result.Job));
+                ? Results.Accepted((string?)null, jobView)
+                : Results.Ok(jobView);
         });
 
-        app.MapGet("/api/jobs/{jobId}", async (string jobId, LabelJobQueue queue, CancellationToken ct) =>
+        app.MapGet("/api/jobs/{jobId}", async (string jobId, LabelJobQueue queue, ITransportManager transportManager, CancellationToken ct) =>
         {
             var job = await queue.GetAsync(jobId, ct);
             return job is null
                 ? Results.NotFound(new ErrorView(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。"))
-                : Results.Ok(JobViews.From(job));
+                : Results.Ok(EnrichPrintInfo(JobViews.From(job), job.Id, transportManager));
         });
 
         app.MapPost("/api/jobs/{jobId}/suspend", async (string jobId, LabelJobQueue queue, CancellationToken ct) =>
-            await TransitionAsync(jobId, queue.SuspendAsync, ct));
+            await TransitionAsync(jobId, queue.SuspendAsync, transportManager, ct));
 
         app.MapPost("/api/jobs/{jobId}/resume", async (string jobId, LabelJobQueue queue, CancellationToken ct) =>
-            await TransitionAsync(jobId, queue.ResumeAsync, ct));
+            await TransitionAsync(jobId, queue.ResumeAsync, transportManager, ct));
 
         app.MapPost("/api/jobs/{jobId}/cancel", async (string jobId, LabelJobQueue queue, CancellationToken ct) =>
-            await TransitionAsync(jobId, queue.CancelAsync, ct));
+            await TransitionAsync(jobId, queue.CancelAsync, transportManager, ct));
 
-        app.MapPost("/api/jobs/{jobId}/items/{itemIndex:int}/retry", async (string jobId, int itemIndex, LabelJobQueue queue, CancellationToken ct) =>
+        app.MapPost("/api/jobs/{jobId}/items/{itemIndex:int}/retry", async (string jobId, int itemIndex, LabelJobQueue queue, ITransportManager transportManager, CancellationToken ct) =>
         {
             try
             {
                 var job = await queue.RetryItemAsync(jobId, itemIndex, ct);
-                return Results.Ok(JobViews.From(job));
+                return Results.Ok(EnrichPrintInfo(JobViews.From(job), job.Id, transportManager));
             }
             catch (LabelJobException ex) when (ex.Code == JobErrorCodes.JobNotFound)
             {
@@ -549,15 +550,35 @@ public static class Program
         return candidates.FirstOrDefault(Directory.Exists);
     }
 
+    /// <summary>Log 模拟打印：把 PNG 目录与张数附到作业视图，便于前端展示「打印图片在哪」。</summary>
+    private static JobView EnrichPrintInfo(JobView view, string jobId, ITransportManager transportManager)
+    {
+        if (transportManager.CurrentConfig.Mode != TransportMode.Log)
+        {
+            return view;
+        }
+
+        var dir = GetLogPrintDir(jobId);
+        var count = Directory.Exists(dir) ? Directory.GetFiles(dir, "*.png").Length : 0;
+        return view with { PrintImageDir = dir, PrintImageCount = count };
+    }
+
+    private static string GetLogPrintDir(string jobId) => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "LabelFrame",
+        "print",
+        jobId);
+
     private static async Task<IResult> TransitionAsync(
         string jobId,
         Func<string, CancellationToken, Task<LabelJob>> action,
+        ITransportManager transportManager,
         CancellationToken ct)
     {
         try
         {
             var job = await action(jobId, ct);
-            return Results.Ok(JobViews.From(job));
+            return Results.Ok(EnrichPrintInfo(JobViews.From(job), job.Id, transportManager));
         }
         catch (LabelJobException ex) when (ex.Code == JobErrorCodes.JobNotFound)
         {

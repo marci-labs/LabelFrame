@@ -27,7 +27,9 @@ public sealed record JobView(
     string Status,
     int TotalItems,
     int CompletedItems,
-    IReadOnlyList<JobItemView> Items);
+    IReadOnlyList<JobItemView> Items,
+    string? PrintImageDir = null,
+    int? PrintImageCount = null);
 
 /// <summary>单张标签视图。</summary>
 public sealed record JobItemView(int Index, string Status, string? ErrorCode, string? ErrorMessage);
@@ -63,14 +65,16 @@ public sealed record PushLogRequest(string? DeviceId, IReadOnlyList<string>? Lin
 /// <summary>作业与视图映射。</summary>
 public static class JobViews
 {
-    /// <summary>把作业映射为视图。</summary>
-    public static JobView From(LabelJob job) => new(
+    /// <summary>把作业映射为视图（可附带 Log 模拟打印图片目录）。</summary>
+    public static JobView From(LabelJob job, string? printImageDir = null, int? printImageCount = null) => new(
         job.Id,
         job.RequestId,
         job.Status.ToString(),
         job.Items.Count,
         job.Items.Count(i => i.Status == LabelJobItemStatus.Completed),
-        job.Items.Select(i => new JobItemView(i.Index, i.Status.ToString(), i.ErrorCode, i.ErrorMessage)).ToList());
+        job.Items.Select(i => new JobItemView(i.Index, i.Status.ToString(), i.ErrorCode, i.ErrorMessage)).ToList(),
+        printImageDir,
+        printImageCount);
 }
 
 /// <summary>连接参数（只含当前模式所需字段；未使用字段返回空 / 默认）。</summary>

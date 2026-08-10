@@ -133,6 +133,11 @@ function JobPanel({
             </div>
           )}
         </div>
+        {job.printImageDir && (
+          <div className="hint" style={{ wordBreak: 'break-all' }}>
+            模拟打印图片（Log）：{job.printImageDir}（{job.printImageCount ?? 0} 张）
+          </div>
+        )}
         <table className="table">
           <thead>
             <tr>

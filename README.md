@@ -55,7 +55,7 @@ cd web; pnpm install; pnpm build; cd ..
 产物：`artifacts\LabelFrame-0.13.0.msi`（约 10MB，x64 framework-dependent，含 WinHost + Web UI + 应用图标；安装到 `C:\Program Files\LabelFrame`）。`appsettings.json` 为独立用户配置组件：覆盖安装 / 修复不覆盖、卸载保留，升级不会丢用户配置。
 
 前置要求：目标机需安装 **.NET 10 Desktop Runtime**（x64，下载：https://dotnet.microsoft.com/download/dotnet/10.0）。安装 MSI 时会用 .NET 官方自检程序（NetCoreCheck）实时检测：已安装则直接继续（无需重启），缺失则弹出可点击的官方下载链接对话框（不自动安装）。
-打印：统一为整版位图（Skia 渲染 → `^GF` 直传打印机），与画布预览同源（迭代 15 起移除矢量 ZPL）。连接方式可在 Web 设置页 / 数据与打印页切换（Log / TCP / Windows 驱动 / Zebra，单一连接生效、先测试后生效、持久化到 %LOCALAPPDATA%\LabelFrame\connection.json），默认 Log（模拟打印，渲染图片保存到 print 目录）。调试开关开启时只出图不发送驱动（单张 PNG / 批量 zip）。
+打印：统一为整版位图（Skia 渲染 → `^GF` 直传打印机），与画布预览同源（迭代 15 起移除矢量 ZPL）。连接方式可在 Web 设置页 / 数据与打印页切换（Log / TCP / Windows 驱动 / Zebra，单一连接生效、先测试后生效、持久化到 %LOCALAPPDATA%\LabelFrame\connection.json），默认 Log（模拟打印：渲染图片保存到 `%LOCALAPPDATA%\LabelFrame\print\{jobId}\`，作业进度中会显示目录；host.log 有摘要）。调试开关开启时只出图不发送驱动（单张 PNG / 批量 zip）。
 干净电脑使用：安装 MSI → 桌面 / 开始菜单「LabelFrame」→ 双击图标 → 自动启动服务并打开浏览器（http://127.0.0.1:53960）→ 直接模板编辑与打印测试。系统托盘出现 L 图标：双击打开界面、右键可退出。
 
 辅助脚本：

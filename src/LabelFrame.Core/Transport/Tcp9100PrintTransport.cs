@@ -59,6 +59,7 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
     }
 
     /// <summary>连接测试：尝试 TCP 连接（3 秒超时），成功返回 true。</summary>
+    /// <summary>连接测试：TCP 连接（3 秒超时）+ `~HS` 主机状态探测——收到打印机响应才算成功（能连端口≠打印机就绪）。</summary>
     public async Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
     {
         using var client = new TcpClient();
@@ -76,7 +77,14 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
                 await client.ConnectAsync(_host, _port, timeoutCts.Token);
             }
 
-            return true;
+            // 打印机探测：发送 ~HS 主机状态查询，收到非空响应才算可达
+            await using var stream = client.GetStream();
+            var probe = System.Text.Encoding.UTF8.GetBytes("~HS");
+            await stream.WriteAsync(probe, timeoutCts.Token);
+            await stream.FlushAsync(timeoutCts.Token);
+            var buffer = new byte[64];
+            var read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), timeoutCts.Token);
+            return read > 0;
         }
         catch
         {

@@ -1,3 +1,4 @@
+using System.Text;
 using LabelFrame.Core.Transport;
 using LabelFrame.WinHost.Transport;
 
@@ -84,23 +85,60 @@ public class TransportManagerTests
     }
 
     [Fact]
-    public async Task Tcp_connection_test_should_detect_listener_open_and_closed()
+    public async Task Tcp_connection_test_should_require_printer_response()
     {
-        // 本地监听：开启时连接成功返回 true；关闭后连接拒绝返回 false（两向判定稳定）
+        // 迭代 15 联调反馈：能连端口 ≠ 打印机。测试必须收到 ~HS 响应才算成功。
         var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
         listener.Start();
         var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
-        try
+        var acceptTask = Task.Run(async () =>
         {
-            var open = await new Tcp9100PrintTransport("127.0.0.1", port).TestConnectionAsync();
-            Assert.True(open);
-        }
-        finally
-        {
-            listener.Stop();
-        }
+            try
+            {
+                using var client = await listener.AcceptTcpClientAsync();
+                await using var stream = client.GetStream();
+                var buffer = new byte[16];
+                await stream.ReadExactlyAsync(buffer.AsMemory(0, 3)); // 读 ~HS（3 字节）
+                await stream.WriteAsync(Encoding.UTF8.GetBytes("1,0,0,0,0,0,0,0,\n")); // 模拟打印机状态响应
+            }
+            catch
+            {
+                // 客户端提前关闭时忽略
+            }
+        });
 
-        var closed = await new Tcp9100PrintTransport("127.0.0.1", port).TestConnectionAsync();
-        Assert.False(closed);
+        var open = await new Tcp9100PrintTransport("127.0.0.1", port).TestConnectionAsync();
+        Assert.True(open, "收到 ~HS 响应的监听应判定连接成功");
+        listener.Stop();
+        await acceptTask;
+    }
+
+    [Fact]
+    public async Task Tcp_connection_test_should_fail_when_no_printer_response()
+    {
+        // 能 accept 但不响应 ~HS 的设备（如误配 IP 上的其它服务）→ 判定失败
+        var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+        var acceptTask = Task.Run(async () =>
+        {
+            try
+            {
+                using var client = await listener.AcceptTcpClientAsync();
+                await using var stream = client.GetStream();
+                var buffer = new byte[16];
+                await stream.ReadExactlyAsync(buffer.AsMemory(0, 3)); // 收 ~HS（3 字节）但不响应
+                await Task.Delay(500);
+            }
+            catch
+            {
+                // 忽略
+            }
+        });
+
+        var ok = await new Tcp9100PrintTransport("127.0.0.1", port).TestConnectionAsync();
+        Assert.False(ok, "无 ~HS 响应的监听不应判定为打印机");
+        listener.Stop();
+        await acceptTask;
     }
 }

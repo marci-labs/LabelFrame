@@ -237,3 +237,8 @@
 - 联调反馈修复：TCP 连接测试加固（IP 直连 + 本地监听开/关回归测试）；前端测试环境 storage 垫片（Node 26 下 jsdom 兼容，91 用例全绿）。
 - `appsettings.json` 保留用户配置机制沿用；`%LOCALAPPDATA%\LabelFrame\connection.json` 保存用户连接配置。
 - 产物 `LabelFrame-0.13.0.msi`（2026-08-10）：可覆盖 0.12.x / 0.11.x 安装。
+## 迭代 15 实测修复（连接测试严格化 + Log 输出可见，2026-08-10）
+
+- 连接测试升级：Tcp / Zebra 均改为「连接 + `~HS` 主机状态探测」，无打印机响应判定失败（能连端口 ≠ 打印机），失败不切换、不持久化。
+- Log 模拟打印：PNG 保存到 `%LOCALAPPDATA%\LabelFrame\print\{jobId}\`，作业视图新增 `printImageDir` / `printImageCount`，前端作业进度区显示目录与张数（此前用户找不到输出）。
+- 新增回归测试：本地监听响应 `~HS` 判定成功、无响应判定失败（两向稳定）。

@@ -301,3 +301,13 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 - **「可达」语义**：当前判定 = TCP 连接（三次握手）成功即视为可达。若目标 IP 在测试网段内存在可响应 9100 的监听（网关 / 其它设备 / 打印机），连接成功属正常；若指应用层无打印机响应，TCP 连接成功 ≠ 打印机就绪，需要进一步区分（后续可考虑发送 `~HS` 探测，本轮不做）。
 - **加固（本次合入）**：① `TestConnectionAsync` 对 IP 字面量走 `IPAddress` 直连路径（避免 DNS 差异）；② 新增回归测试：本地 `TcpListener` 开启时返回 true、关闭后返回 false，确保成功 / 失败两向判定稳定。
 - 若仍复现（目标 IP 确认无监听且 host.log 显示已切换），请提供 host.log 时间戳与目标网段说明，再以真实不可达地址复测。
+
+
+## 附八：二次审阅答复——用户实测反馈（主 agent / 后端，2026-08-10）
+
+针对用户实测（USB 打印机配 Zebra/TCP 测试通过但打印失败；LOG 模拟打印看不到输出）：
+
+1. **「连接成功」的判定升级**：原测试只验证 TCP 三次握手（能连端口 ≠ 打印机），已升级为「连接 + `~HS` 主机状态探测」——TCP 与 Zebra 都改为发送 `~HS` 并等待打印机响应，无响应判定失败（不切换、不持久化）。Windows 驱动模式仍以「能打开打印机」为准（无读回）。
+2. **LOG 输出位置与可见性**：Log 模拟打印 PNG 保存到 `%LOCALAPPDATA%\LabelFrame\print\{jobId}\label-N.png`（host.log 有摘要）。此前 UI 未提示路径，已把 `printImageDir` / `printImageCount` 附到作业视图（JobView），前端作业进度区显示「模拟打印图片（Log）：<目录>（N 张）」。
+3. **用户环境注意**：本机 `%LOCALAPPDATA%\LabelFrame\connection.json` 留存了此前保存的 WindowsDriver 连接（真实打印机配置）——当前生效连接不是 Log，因此看不到模拟打印输出；在 Web 设置页 / 数据与打印页切到 Log 即可看到 PNG。升级后旧的 Zebra/TCP 误判配置不会再被接受（~HS 探测）。
+4. 端到端验证（本机 Log 模式）：提交作业 → 响应与查询均返回 `printImageDir`，`label-1.png` 落盘（1 张）。

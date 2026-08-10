@@ -41,6 +41,10 @@ export interface JobView {
   totalItems: number
   completedItems: number
   items: JobItem[]
+  /** Log 模拟打印：PNG 目录（仅 Log 连接时有值） */
+  printImageDir?: string
+  /** Log 模拟打印：PNG 张数 */
+  printImageCount?: number
 }
 
 export interface ExcelImportResult {

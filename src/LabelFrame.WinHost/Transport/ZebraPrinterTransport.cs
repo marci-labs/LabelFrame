@@ -118,6 +118,7 @@ public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvi
     }
 
     /// <summary>连接测试：建立连接后关闭（SDK 统一处理 TCP / USB / 驱动），用于连接管理「先测试后生效」。</summary>
+    /// <summary>连接测试：建立连接 + `~HS` 主机状态探测（SDK SendAndWaitForResponse）——收到打印机响应才算成功。</summary>
     public Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -128,7 +129,13 @@ public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvi
             {
                 connection = CreateConnection();
                 connection.Open();
-                return true;
+                // ~HS 探测：2 秒内收到非空响应视为打印机就绪（能连端口 ≠ 打印机）
+                var response = connection.SendAndWaitForResponse(
+                    System.Text.Encoding.UTF8.GetBytes("~HS"),
+                    2000,
+                    256,
+                    "~HS 无响应");
+                return response is { Length: > 0 };
             }
             catch
             {
