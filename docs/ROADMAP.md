@@ -24,6 +24,7 @@
 | 12 | 模板预览值持久化 + 图片打印实验 | 🔄 进行中（后端完成，前端待实施） |
 | 13 | 文本排版与二维码参数持久化（元素契约补齐） | ✅ 已完成（用户验收待执行） |
 | 14 | 字体加粗（bold）契约 | 🔄 进行中（前后端已实施，联调验收待执行） |
+| 15 | 打印设置与会话保留 + 连接管理 + 删除 ZPL（图片打印收敛） | 📝 规格评审中（交前端 hermes 评估） |
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
@@ -412,6 +413,15 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 13（后端）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-13-SPEC.md、docs/ITERATION-13-CONTRACT.md（含 Hermes 评估结论，已通过）。按 ITERATION-13-CONTRACT.md §3 字段对照、§4 Skia 渲染语义、§7 分工实施后端：C# 模型属性（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/paddingV，VerticalAlign 默认改 Middle，PaddingHMm/PaddingVMm）、LabelElementJsonConverter 读写（非默认才写）、SkiaLabelRenderer 渲染支持、测试与验收；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+
+## 迭代 15：打印设置与会话保留 + 连接管理 + 删除 ZPL（规格评审中）
+
+**目标**：① 数据与打印页会话保留（同一标签页内切视图不丢设置、标签页间不互通）；② 前端切换连接方式（Log / TCP / Windows驱动 / Zebra，单一连接生效，先测试后生效、失败回滚、持久化）；③ 彻底删除 ZPL（Vector），打印统一整版位图（Skia + ^GF），调试独立为「只出图不发送驱动」。
+**范围**：见 docs/ITERATION-15-SPEC.md。
+**不在范围**：新传输协议（蓝牙等）实现（仅留扩展点）；WPF Studio；Server 路由既有契约（仅 JobView 增可选 debugImagePaths、SubmitJobRequest 增可选 debug）。
+**验收**：见 docs/ITERATION-15-SPEC.md §8。
+**启动命令**：
+> 继续 LabelFrame 迭代 15。先读 AGENTS.md、docs/ITERATION-15-SPEC.md（含已确认决策）；hermes 评估前端无异议后，后端实施 §3.1/§4/§5，前端实施 §3.2/§6；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 ## 迭代 14：字体加粗（bold）契约（前后端已实施，联调验收待执行）
