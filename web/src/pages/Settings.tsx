@@ -1,11 +1,13 @@
-// 设置页：后端地址 / 测试连接 / 打印机状态 / 测试打印
+// 设置页：后端地址 / 连接方式（迭代 15）/ 打印机状态 / 测试打印
 
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { PrinterStatus } from '../lib/api/types'
+import { formatTransport } from '../lib/transport'
 import { useApp } from '../state/AppContext'
 import { Icon } from '../components/Icon'
+import { TransportPanel } from '../components/TransportPanel'
 
 export function Settings() {
   const app = useApp()
@@ -16,17 +18,6 @@ export function Settings() {
   const [printerLoading, setPrinterLoading] = useState(false)
   const [testPrinting, setTestPrinting] = useState(false)
   const [printResult, setPrintResult] = useState<string | null>(null)
-  // 服务端默认打印方式（healthz，迭代 12：信息提示，不参与提交逻辑）
-  const [serverPrintMode, setServerPrintMode] = useState<'Vector' | 'Image' | null>(null)
-
-  const loadServerPrintMode = useCallback(async () => {
-    try {
-      const h = await api.healthz()
-      setServerPrintMode(h.printMode ?? null)
-    } catch {
-      setServerPrintMode(null)
-    }
-  }, [])
 
   const refreshPrinter = useCallback(async () => {
     setPrinterLoading(true)
@@ -48,22 +39,20 @@ export function Settings() {
     const ok = await app.checkConnection()
     setTestResult(
       ok
-        ? { ok: true, msg: `连接成功 · 服务：${app.transport ? '传输模式 ' + app.transport : '正常'}` }
+        ? { ok: true, msg: `连接成功 · 服务：${formatTransport(app.transportConfig) || app.transport || '正常'}` }
         : { ok: false, msg: '连接失败：请确认后端已启动，且地址格式正确（http://主机:端口）。' },
     )
     setTesting(false)
     if (ok) {
       void refreshPrinter()
-      void loadServerPrintMode()
     }
-  }, [url, app, refreshPrinter, loadServerPrintMode])
+  }, [url, app, refreshPrinter])
 
   useEffect(() => {
     if (app.connected) {
       void refreshPrinter()
-      void loadServerPrintMode()
     }
-  }, [app.connected, refreshPrinter, loadServerPrintMode])
+  }, [app.connected, refreshPrinter])
 
   const doTestPrint = async () => {
     setTestPrinting(true)
@@ -88,7 +77,7 @@ export function Settings() {
         </div>
       </div>
 
-      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 560 }}>
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 }}>
         <section className="panel">
           <div className="panel-head">后端连接</div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -112,6 +101,13 @@ export function Settings() {
               </div>
             )}
             <div className="hint">单机模式：后端为 LabelFrame WinHost 单机服务，默认 127.0.0.1:53960。地址可指向其它机器（需可访问）。</div>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">连接方式</div>
+          <div className="panel-body">
+            <TransportPanel />
           </div>
         </section>
 
@@ -147,14 +143,10 @@ export function Settings() {
               </button>
               {printResult && <span className={printResult.startsWith('测试页已发送') ? 'badge ok' : 'badge err'}>{printResult}</span>}
             </div>
-            <div className="hint">测试打印发送一张测试页（条码 LABELFRAME-TEST）。当前传输模式：{app.transport ?? '未知'}（Log 模式无需打印机）。</div>
-            {serverPrintMode && (
-              <div className="hint">
-                服务端默认打印方式：
-                <b className="mono" style={{ marginLeft: 4 }}>{serverPrintMode === 'Image' ? '图片（整版位图）' : '矢量 ZPL'}</b>
-                （数据与打印页可单独选择）
-              </div>
-            )}
+            <div className="hint">
+              测试打印发送一张测试页（条码 LABELFRAME-TEST）。当前传输模式：
+              {formatTransport(app.transportConfig) || app.transport || '未知'}（Log 模式无需打印机）。
+            </div>
           </div>
         </section>
       </div>

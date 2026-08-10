@@ -1,15 +1,20 @@
 // 数据与打印：测试数据表单 / 打印测试 / Excel 导入映射 / 批量打印 / 作业进度与失败重试
+// 迭代 15：会话草稿提升全局（模板 / 字段值 / 调试开关 / 作业进度保留；Excel 不保留）；
+// 调试模式独立开关——开：打印按钮改为后端渲染出图下载（单张 PNG / 批量 zip），不建作业不发驱动。
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
-import type { JobView, TemplatePackage, TemplateSummary } from '../lib/api/types'
+import type { JobView, SubmitJobRequest, TemplatePackage, TemplateSummary } from '../lib/api/types'
+import { downloadBlob } from '../lib/download'
 import { fromBackendElements } from '../lib/design/convert'
 import { deriveFields } from '../lib/design/fields'
 import { findDuplicateKeys, isMappingComplete, rowToData, suggestMapping } from '../lib/excel/mapping'
 import { useApp } from '../state/AppContext'
+import { mergeDraftValues } from '../state/draft'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
+import { TransportQuickSwitch } from '../components/TransportPanel'
 
 const JOB_STATUS_LABEL: Record<string, string> = {
   Pending: '排队中',
@@ -71,14 +76,28 @@ function useJobPolling(jobId: string | null) {
   return { job, error, retry }
 }
 
-function JobPanel({ job, error, retry }: { job: JobView | null; error: string | null; retry: (i: number) => Promise<boolean> }) {
+function JobPanel({
+  job,
+  error,
+  retry,
+  debugMode,
+}: {
+  job: JobView | null
+  error: string | null
+  retry: (i: number) => Promise<boolean>
+  debugMode: boolean
+}) {
   const app = useApp()
   if (!job) {
     return (
       <div className="panel">
         <div className="panel-head">作业进度</div>
         <div className="panel-body">
-          <div className="hint">提交打印后显示进度与逐张结果。</div>
+          {debugMode ? (
+            <div className="hint">调试模式：不提交作业，出图已下载。</div>
+          ) : (
+            <div className="hint">提交打印后显示进度与逐张结果。</div>
+          )}
           {error && <div className="error-text" style={{ marginTop: 6 }}>{error}</div>}
         </div>
       </div>
@@ -97,6 +116,7 @@ function JobPanel({ job, error, retry }: { job: JobView | null; error: string | 
         <span className="mono" style={{ color: 'var(--ink-3)', fontSize: 11 }}>ID {job.jobId.slice(0, 8)}</span>
       </div>
       <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {debugMode && <div className="hint">调试模式：不提交作业，出图已下载。（以下为历史作业进度）</div>}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12, color: 'var(--ink-2)' }}>
             <span>
@@ -156,32 +176,30 @@ function JobPanel({ job, error, retry }: { job: JobView | null; error: string | 
 
 export function DataPrint() {
   const app = useApp()
+  const { printDraft } = app
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
-  const [selectedName, setSelectedName] = useState('')
   const [pkg, setPkg] = useState<TemplatePackage | null>(null)
   const [loading, setLoading] = useState(false)
-  const [values, setValues] = useState<Record<string, string>>({})
-  // 打印方式：'' = 默认（服务端配置）；显式 Vector / Image 时随作业提交
-  const [printMode, setPrintMode] = useState<'' | 'Vector' | 'Image'>('')
-  // 调试：图片模式下不打印，保存实际打印位图（PNG）
-  const [debugSave, setDebugSave] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Excel 导入数据与列映射：页面局部状态（迭代 15：切页 / 刷新即丢弃，重新上传）
   const [mappingOpen, setMappingOpen] = useState(false)
   const [excel, setExcel] = useState<{ headers: string[]; rows: string[][]; file: string } | null>(null)
   const [mapping, setMapping] = useState<string[]>([])
   const [importing, setImporting] = useState(false)
 
-  const [jobId, setJobId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const { job, error: jobError, retry } = useJobPolling(jobId)
+  const { job, error: jobError, retry } = useJobPolling(printDraft.jobId)
+
+  const selectedName = printDraft.selectedName
+  const debugMode = printDraft.debugMode
 
   useEffect(() => {
     void api
       .listTemplates()
       .then((list) => {
         setTemplates(list)
-        if (list.length > 0 && !selectedName) setSelectedName(list[0].name)
+        if (list.length > 0 && !selectedName) app.setDraftSelected(list[0].name)
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : '加载模板列表失败。'))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -193,10 +211,7 @@ export function DataPrint() {
     setError(null)
     void api
       .getTemplate(selectedName)
-      .then((p) => {
-        setPkg(p)
-        setValues({ ...(p.testData ?? {}) })
-      })
+      .then((p) => setPkg(p))
       .catch((err) => setError(err instanceof ApiError ? err.message : '加载模板失败。'))
       .finally(() => setLoading(false))
   }, [selectedName])
@@ -209,17 +224,35 @@ export function DataPrint() {
     return deriveFields(fromBackendElements(pkg.layout.elements))
   }, [pkg])
 
-  const submit = async (labels: { data: Record<string, string> }[]) => {
-    if (!pkg) return
-    setSubmitting(true)
-    try {
-      const j = await api.submitJob({
+  // 显示值 = { ...testData, ...用户 dirty 的 key }（按 key 存在性合并，用户清空不被顶回）
+  const values = useMemo(() => {
+    if (!pkg) return {}
+    return mergeDraftValues(pkg.testData, printDraft.valuesByTemplate[pkg.name], printDraft.dirtyKeysByTemplate[pkg.name])
+  }, [pkg, printDraft.valuesByTemplate, printDraft.dirtyKeysByTemplate])
+
+  const setFieldValue = (key: string, value: string) => {
+    if (pkg) app.setDraftValue(pkg.name, key, value)
+  }
+
+  const buildRequest = useCallback(
+    (labels: { data: Record<string, string> }[]): SubmitJobRequest | null => {
+      if (!pkg) return null
+      return {
         requestId: crypto.randomUUID(),
         template: { name: pkg.name, contract: pkg.contract, layout: pkg.layout },
-        printMode: printMode || undefined,
         labels,
-      })
-      setJobId(j.jobId)
+      }
+    },
+    [pkg],
+  )
+
+  const submit = async (labels: { data: Record<string, string> }[]) => {
+    const req = buildRequest(labels)
+    if (!req) return
+    setSubmitting(true)
+    try {
+      const j = await api.submitJob(req)
+      app.setDraftJobId(j.jobId)
       app.setStatus(`作业已提交（${labels.length} 张，ID ${j.jobId.slice(0, 8)}）。`)
     } catch (err) {
       app.setStatus(err instanceof ApiError ? err.message : '提交作业失败。')
@@ -228,6 +261,22 @@ export function DataPrint() {
     }
   }
 
+  const downloadDebug = async (labels: { data: Record<string, string> }[], batch: boolean) => {
+    const req = buildRequest(labels)
+    if (!req) return
+    setSubmitting(true)
+    try {
+      const { blob, filename } = batch ? await api.renderImages(req) : await api.renderImage(req)
+      downloadBlob(blob, filename)
+      app.setStatus(`调试图片已下载：${filename}`)
+    } catch (err) {
+      app.setStatus(err instanceof ApiError ? err.message : '出图失败。')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  /** 调试关：打印测试（单张）提交正常作业。 */
   const testPrint = () => {
     if (!pkg || fieldKeys.length === 0) {
       app.setStatus('当前模板没有字段，请先在设计器中绑定字段填充。')
@@ -236,29 +285,16 @@ export function DataPrint() {
     void submit([{ data: { ...values } }])
   }
 
-  const saveDebugImage = async () => {
+  /** 调试开：单张出图下载（后端渲染 PNG，不建作业不发驱动）。 */
+  const debugSingle = () => {
     if (!pkg) return
-    setSubmitting(true)
-    try {
-      const { blob, filename } = await api.renderImage({
-        requestId: `render-${Date.now()}`,
-        template: { name: pkg.name, contract: pkg.contract, layout: pkg.layout },
-        labels: [{ data: { ...values } }],
-      })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
-      app.setStatus(`已保存打印图片：${filename}`)
-    } catch (err) {
-      app.setStatus(err instanceof ApiError ? err.message : '保存打印图片失败。')
-    } finally {
-      setSubmitting(false)
-    }
+    void downloadDebug([{ data: { ...values } }], false)
+  }
+
+  /** 调试关：出图预览（即时预览，不建作业）。 */
+  const previewImage = () => {
+    if (!pkg) return
+    void downloadDebug([{ data: { ...values } }], false)
   }
 
   const pickExcel = async (file: File) => {
@@ -289,8 +325,13 @@ export function DataPrint() {
     }
     const labels = excel.rows.map((row) => ({ data: rowToData(excel.headers, row, mapping) }))
     setMappingOpen(false)
-    app.setStatus(`已按映射生成 ${labels.length} 张标签，提交批量打印…`)
-    void submit(labels)
+    if (debugMode) {
+      app.setStatus(`正在渲染 ${labels.length} 张调试图片并打包下载…`)
+      void downloadDebug(labels, true)
+    } else {
+      app.setStatus(`已按映射生成 ${labels.length} 张标签，提交批量打印…`)
+      void submit(labels)
+    }
   }
 
   return (
@@ -301,8 +342,9 @@ export function DataPrint() {
           <small>测试数据 / Excel 批量打印 / 打印测试</small>
         </div>
         <div className="spacer" />
-        <select className="input" value={selectedName} onChange={(ev) => setSelectedName(ev.target.value)} style={{ minWidth: 180 }}>
+        <select className="input" value={selectedName} onChange={(ev) => app.setDraftSelected(ev.target.value)} style={{ minWidth: 180 }}>
           {templates.length === 0 && <option value="">（暂无模板）</option>}
+          {selectedName && !templates.some((t) => t.name === selectedName) && <option value={selectedName}>{selectedName}</option>}
           {templates.map((t) => (
             <option key={t.name} value={t.name}>
               {t.name}
@@ -326,6 +368,10 @@ export function DataPrint() {
         />
       </div>
 
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
+        <TransportQuickSwitch />
+      </div>
+
       {error && (
         <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12 }}>{error}</div>
       )}
@@ -346,20 +392,6 @@ export function DataPrint() {
                 <div className="hint">该模板没有字段。请在设计器中为元素绑定「字段填充」后保存。</div>
               ) : (
                 <>
-                  <label className="field" style={{ maxWidth: 300 }}>
-                    打印方式
-                    <select className="input" value={printMode} onChange={(ev) => { setPrintMode(ev.target.value as '' | 'Vector' | 'Image'); if (ev.target.value !== 'Image') setDebugSave(false) }} title="默认跟随服务端配置（appsettings PrintMode）">
-                      <option value="">默认（服务端）</option>
-                      <option value="Vector">矢量 ZPL</option>
-                      <option value="Image">图片（整版位图）</option>
-                    </select>
-                  </label>
-                  {printMode === 'Image' && (
-                    <label className="field" style={{ maxWidth: 300, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <input type="checkbox" checked={debugSave} onChange={(ev) => setDebugSave(ev.target.checked)} />
-                      调试：不打印，保存实际打印图片（PNG）
-                    </label>
-                  )}
                   {fieldKeys.map((k) => (
                     <label className="field" key={k}>
                       {k}
@@ -367,29 +399,48 @@ export function DataPrint() {
                         className="input mono"
                         value={values[k] ?? ''}
                         placeholder={`字段 ${k} 的值（打印时使用）`}
-                        onChange={(ev) => setValues((v) => ({ ...v, [k]: ev.target.value }))}
+                        onChange={(ev) => setFieldValue(k, ev.target.value)}
                       />
                     </label>
                   ))}
-                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                    <button className="btn primary" onClick={debugSave ? saveDebugImage : testPrint} disabled={submitting || !pkg}>
+                  <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    <input type="checkbox" checked={debugMode} onChange={(ev) => app.setDraftDebug(ev.target.checked)} />
+                    调试模式：只生成图片，不发送打印驱动（后端渲染）
+                  </label>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                    <button
+                      className="btn primary"
+                      onClick={debugMode ? debugSingle : testPrint}
+                      disabled={submitting || !pkg}
+                      title={debugMode ? '后端渲染当前表单为 PNG 下载，不发送打印驱动' : '提交 1 张标签作业到当前连接'}
+                    >
                       <Icon name="printer" size={13} />
-                      {submitting ? '提交中…' : debugSave ? '保存打印图片' : '打印测试（单张）'}
+                      {submitting ? '处理中…' : debugMode ? '调试出图（单张）' : '打印测试（单张）'}
                     </button>
+                    {!debugMode && (
+                      <button className="btn" onClick={previewImage} disabled={submitting || !pkg} title="后端渲染当前表单为 PNG 下载（不建作业）">
+                        <Icon name="preview" size={13} />
+                        出图预览
+                      </button>
+                    )}
                     {excel && (
                       <button className="btn" onClick={() => setMappingOpen(true)} disabled={!excel}>
                         重新映射（{excel.file}）
                       </button>
                     )}
                   </div>
-                  <div className="hint">已用模板预览值预填，可修改后打印；打印测试提交 1 张标签，默认后端 Log 传输，无需打印机。</div>
+                  <div className="hint">
+                    {debugMode
+                      ? '调试模式：出图为后端渲染的实际打印位图（同一 Skia / DPI），不提交作业、不发送打印驱动。'
+                      : '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签，默认后端 Log 传输，无需打印机。'}
+                  </div>
                 </>
               )}
             </div>
           </div>
         </div>
 
-        <JobPanel job={job} error={jobError} retry={retry} />
+        <JobPanel job={job} error={jobError} retry={retry} debugMode={debugMode} />
       </div>
 
       {mappingOpen && excel && pkg && (
@@ -401,6 +452,7 @@ export function DataPrint() {
           setMapping={setMapping}
           onCancel={() => setMappingOpen(false)}
           onConfirm={confirmMapping}
+          debugMode={debugMode}
         />
       )}
     </div>
@@ -415,6 +467,7 @@ function MappingModal({
   setMapping,
   onCancel,
   onConfirm,
+  debugMode,
 }: {
   headers: string[]
   rows: string[][]
@@ -423,6 +476,7 @@ function MappingModal({
   setMapping: (m: string[]) => void
   onCancel: () => void
   onConfirm: () => void
+  debugMode: boolean
 }) {
   const [suggested, setSuggested] = useState<string[]>([])
   useEffect(() => {
@@ -449,15 +503,16 @@ function MappingModal({
           >
             自动匹配
           </button>
-          <button className="btn primary" onClick={onConfirm} disabled={!complete || dup.length > 0}>
-            <Icon name="printer" size={13} />
-            批量打印 {rows.length} 张
+          <button className="btn primary" onClick={onConfirm} disabled={!complete || dup.length > 0} title={debugMode ? '后端渲染全部行打包 zip 下载（不建作业）' : '提交批量打印作业'}>
+            <Icon name={debugMode ? 'download' : 'printer'} size={13} />
+            {debugMode ? `下载调试图片 zip（${rows.length} 张）` : `批量打印 ${rows.length} 张`}
           </button>
         </>
       }
     >
       <div className="hint">
         每列映射到一个字段键（自动按列名匹配，可手工调整）。未映射的列不参与打印。
+        {debugMode && <span className="hint"> 调试模式：将渲染全部行打包 zip 下载，不提交作业。</span>}
         {dup.length > 0 && (
           <span className="error-text"> 重复映射：{dup.join('、')}。</span>
         )}

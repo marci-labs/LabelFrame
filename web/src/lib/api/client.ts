@@ -11,6 +11,9 @@ import type {
   SubmitJobRequest,
   TemplatePackage,
   TemplateSummary,
+  TransportApplyRequest,
+  TransportConfig,
+  TransportResult,
 } from './types'
 import { ApiError } from './types'
 import { getBaseUrl } from '../settings'
@@ -38,6 +41,30 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     // 部分端点返回纯文本（如模板导入返回模板名）
     return (await res.text()) as T
   }
+}
+
+/** 下载型端点（render-image / render-images / 模板导出）：返回 blob + Content-Disposition 文件名，错误解析 ErrorView。 */
+async function fetchBlob(path: string, init: RequestInit, fallbackName: string, failMessage: string): Promise<{ blob: Blob; filename: string }> {
+  let res: Response
+  try {
+    res = await fetch(getBaseUrl() + path, { ...init, mode: 'cors' })
+  } catch {
+    throw new ApiError('NETWORK_ERROR', `无法连接后端（${getBaseUrl()}），请检查「设置」中的地址与后端是否已启动。`)
+  }
+  if (!res.ok) {
+    let body: ApiErrorBody | null = null
+    try {
+      body = (await res.json()) as ApiErrorBody
+    } catch {
+      body = null
+    }
+    throw new ApiError(body?.code ?? 'HTTP_' + res.status, body?.message ?? `${failMessage}（HTTP ${res.status}）。`, body?.fieldKey)
+  }
+  const blob = await res.blob()
+  const disposition = res.headers.get('Content-Disposition') ?? ''
+  const match = /filename="?([^";]+)"?/.exec(disposition)
+  const filename = match?.[1] ?? fallbackName
+  return { blob, filename }
 }
 
 export const api = {
@@ -96,25 +123,35 @@ export const api = {
       body: '{}',
     }),
 
-  renderImage: async (req: SubmitJobRequest): Promise<{ blob: Blob; filename: string }> => {
-    let res: Response
-    try {
-      res = await fetch(getBaseUrl() + '/api/print/render-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(req),
-        mode: 'cors',
-      })
-    } catch {
-      throw new ApiError('NETWORK_ERROR', `无法连接后端：${getBaseUrl()}，请检查「设置」中的地址与后端是否已启动。`)
-    }
-    if (!res.ok) throw new ApiError('RENDER_IMAGE_FAILED', `保存打印图片失败（HTTP ${res.status}）。`)
-    const blob = await res.blob()
-    const disposition = res.headers.get('Content-Disposition') ?? ''
-    const match = /filename="?([^";]+)"?/.exec(disposition)
-    const filename = match?.[1] ?? 'label-print.png'
-    return { blob, filename }
-  },
+  renderImage: (req: SubmitJobRequest) => fetchBlob('/api/print/render-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  }, 'label-print.png', '出图失败'),
+
+  /** 调试批量出图：后端渲染全部标签为 PNG 打包 zip 下载（迭代 15，不建作业）。 */
+  renderImages: (req: SubmitJobRequest) => fetchBlob('/api/print/render-images', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  }, 'labels-debug.zip', '下载调试图片失败'),
+
+  getTransport: () => request<TransportConfig>('/api/transport'),
+
+  setTransport: (req: TransportApplyRequest) =>
+    request<TransportResult>('/api/transport', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    }),
+
+  /** 只测试不保存不切换（testOnly=true）。 */
+  testTransport: (req: TransportApplyRequest) =>
+    request<TransportResult>('/api/transport', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...req, testOnly: true }),
+    }),
 
   getLogs: (deviceId?: string, since?: string) => {
     const params = new URLSearchParams()
