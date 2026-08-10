@@ -212,3 +212,12 @@
 - 含迭代 14 前后端合并版：文本加粗（`bold` 契约 + ZPL 方案 A/B + Skia Embolden）+ 前端加粗设置与属性面板两项修复。
 - `appsettings.json` 保留用户配置机制沿用（独立组件 NeverOverwrite + Permanent）。
 - 产物 `LabelFrame-0.12.3.msi`（2026-08-10）：可覆盖 0.12.x / 0.11.x 安装。
+
+## 迭代 15（打印设置会话保留 + 连接管理 + 删除 ZPL，前端部分，2026-08-10）
+
+- DataPrint 会话保留（§6.1）：草稿提升全局 AppContext（`printDraft`：selectedName / valuesByTemplate + dirtyKeysByTemplate / debugMode / jobId），sessionStorage 持久化（刷新保留、标签页天然隔离；**禁 localStorage**）；values 按 **key 存在性**合并（用户主动清空的字段不被 testData 顶回）；Excel 数据与列映射不保留。
+- 连接管理 UI（§6.2）：AppContext 增 `transportConfig`（GET /api/transport），切换成功后立即用响应 config 更新全局状态；设置页「连接方式」分组（模式单选 Log / TCP / Windows 驱动 / Zebra，只显示当前模式参数，「测试连接」testOnly、「保存并应用」先测试后生效失败回滚）；DataPrint 顶部连接徽标 + 快速切换；状态栏 / 导航徽标显示 mode + 关键参数（TCP 192.168.1.50:9100 等）。
+- 调试独立（§6.3）：独立开关（默认关）——开：「调试出图（单张）」走 render-image 下载 PNG、「下载调试图片 zip（N 张）」走 render-images（全部行），不建作业不发驱动，作业进度区提示；关：「打印测试 / 批量打印」正常作业 +「出图预览」即时预览。
+- 删除（§3.2）：DataPrint / Settings 的 printMode 下拉与旧调试复选框、`Healthz.printMode` / `SubmitJobRequest.printMode` 类型。
+- api client：新增 `getTransport` / `setTransport` / `testTransport` / `renderImages`；下载型端点统一 `fetchBlob`（Content-Disposition 文件名 + ErrorView 错误解析）。
+- 测试 91 全绿（新增 27 个：draft 纯逻辑 / 连接切换交互 / 保留与调试按钮行为）；`pnpm build` / `pnpm lint` 通过。

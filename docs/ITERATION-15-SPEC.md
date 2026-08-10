@@ -275,3 +275,10 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 - 无其余修改意见；正文维持 commit 71eb445 定稿状态（仅 §6.3 增加 UX 文案说明）。
 
 **下一步**：后端按 §5 开工（删除 ZPL 链路 → 连接管理 /api/transport + connection.json → render-image/render-images → Log 模拟打印 → AndroidHost 图片打印 → 测试）；前端（hermes）按 §6 并行开工。
+
+## 附五：前端联调观察与交付说明（hermes 追加，2026-08-10）
+
+> 前端实施完成、与后端工作区实现联调后的观察记录；本节保留为记录，不视为规格正文。
+
+1. **TCP 连接测试对不可达地址判定成功（建议后端复核）**：浏览器实测 `POST /api/transport`（mode=Tcp，tcpHost=10.255.255.1:9100，不可达）返回 `ok:true` 并完成切换与持久化（connection.json 落盘）。前端按契约忠实执行（ok:true → 应用响应 config）；判定逻辑在后端——疑为 TCP 连接测试未按 §4.1 的 3 秒超时 / 失败判定执行。建议后端以真实不可达地址复核 §5.2 连接管理测试路径。
+2. 前端交付范围确认：§3.2 删除项、§4 client 类型（getTransport / setTransport / testTransport / renderImages）、§6.1-6.3 全部落地；`pnpm test` 91 全绿（新增 27 个）、`pnpm build` / `pnpm lint` 通过；与后端工作区实现联调通过（GET/POST /api/transport、render-image、render-images），徽标 / 切换 / 回滚 / 下载均实测通过。

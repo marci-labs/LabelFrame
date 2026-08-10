@@ -414,7 +414,7 @@
 **启动命令**：
 > 继续 LabelFrame 迭代 13（后端）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-13-SPEC.md、docs/ITERATION-13-CONTRACT.md（含 Hermes 评估结论，已通过）。按 ITERATION-13-CONTRACT.md §3 字段对照、§4 Skia 渲染语义、§7 分工实施后端：C# 模型属性（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/paddingV，VerticalAlign 默认改 Middle，PaddingHMm/PaddingVMm）、LabelElementJsonConverter 读写（非默认才写）、SkiaLabelRenderer 渲染支持、测试与验收；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
-## 迭代 15：打印设置与会话保留 + 连接管理 + 删除 ZPL（规格评审中）
+## 迭代 15：打印设置与会话保留 + 连接管理 + 删除 ZPL（前端已完成，后端实施中）
 
 **目标**：① 数据与打印页会话保留（同一标签页内切视图不丢设置、标签页间不互通）；② 前端切换连接方式（Log / TCP / Windows驱动 / Zebra，单一连接生效，先测试后生效、失败回滚、持久化）；③ 彻底删除 ZPL（Vector），打印统一整版位图（Skia + ^GF），调试独立为「只出图不发送驱动」。
 **范围**：见 docs/ITERATION-15-SPEC.md。
@@ -422,6 +422,13 @@
 **验收**：见 docs/ITERATION-15-SPEC.md §8。
 **启动命令**：
 > 继续 LabelFrame 迭代 15。先读 AGENTS.md、docs/ITERATION-15-SPEC.md（含已确认决策）；hermes 评估前端无异议后，后端实施 §3.1/§4/§5，前端实施 §3.2/§6；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+
+**完成记录**（2026-08-10，前端部分，hermes）：
+- §3.2 删除：DataPrint / Settings 的 printMode 下拉与旧「调试：不打印保存 PNG」复选框、`Healthz.printMode` / `SubmitJobRequest.printMode` 类型、Settings 服务端打印方式提示。
+- §6.1 会话保留：AppContext 增 `printDraft`（selectedName / valuesByTemplate + dirtyKeysByTemplate / debugMode / jobId），sessionStorage 持久化（刷新保留、标签页天然隔离，禁 localStorage）；values 加载 = testData 与用户 dirty 的 key 按 **key 存在性**合并（用户清空不被 testData 顶回）；Excel 数据与列映射不保留。
+- §6.2 连接管理 UI：AppContext 增 `transportConfig`（GET /api/transport），切换成功后立即用响应 config 更新全局状态（不依赖 healthz 10s 轮询）；设置页「连接方式」分组（模式单选 / 只显示当前模式参数 / 测试连接 testOnly / 保存并应用先测试后生效失败回滚）；DataPrint 顶部连接徽标 + 快速切换；状态栏 / 导航徽标显示 mode + 关键参数。
+- §6.3 调试独立：独立开关（默认关）与按钮文案联动（调试开 →「调试出图（单张）」/「下载调试图片 zip（N 张）」，隐藏「出图预览」；调试关 →「打印测试 / 批量打印」正常作业 +「出图预览」即时预览）；下载文件名用后端 Content-Disposition 值。
+- 测试 91 全绿（新增 27 个：draft 纯逻辑 12 + 设置页连接切换 5 + DataPrint 保留 / 调试 / 下载 10）；`pnpm build` / `pnpm lint` 通过；与后端工作区实现联调通过（/api/transport、render-image、render-images）。
 
 ---
 ## 迭代 14：字体加粗（bold）契约（前后端已实施，联调验收待执行）
