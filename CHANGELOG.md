@@ -161,3 +161,4 @@
 - 修复运行时误报缺失（2026-08-10）：检测从注册表搜索改为 WiX NetFx 扩展 DotNetCompatibilityCheck（内置官方 NetCoreCheck 自检，检查 x64 Microsoft.WindowsDesktop.App >= 10.0.0、RollForward=latestMajor）。原注册表搜索读 sharedfx 键默认值，而运行时版本号是命名值，且 32 位 MSI 读 32 位视图，导致已装 Desktop Runtime 仍提示未安装；现改为实时自检，装完运行时**无需重启**即可识别。
 - 修复托盘 P/Invoke 崩溃（0.11.1，2026-08-10）：`GetCurrentThreadId` / `GetModuleHandle` 被错误声明为从 `user32.dll` 导入（实际在 `kernel32.dll`），托盘线程启动即抛 `EntryPointNotFoundException`，未处理异常直接杀死宿主进程——这是「装完啥也不显示 / 页面打不开」的根因；已改为正确 DLL，并给托盘循环加异常保护：托盘出问题只记日志，不再让宿主退出。
 - MSI 改为 **x64 包**（0.11.1，2026-08-10）：此前 MSI 是 32 位包，`ProgramFiles64Folder` 不生效导致装到 `Program Files (x86)`；现 `wix build -arch x64`，安装到 `C:\Program Files\LabelFrame`；版本 0.11.1 支持直接覆盖已装的 0.11.0。
+- ZPL 编码器显式输出 `^PW` / `^LL`（0.11.2，2026-08-10）：按模板宽高换算点数（70×50 @203dpi → `^PW559` / `^LL400`），避免打印机沿用旧标签长度导致一张作业走多张纸；新增对应单元测试。

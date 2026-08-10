@@ -14,6 +14,8 @@ public class ZplEncoderTests
 
         const string expected =
             "^XA\n" +
+            "^PW799\n" +
+            "^LL480\n" +
             "^FO40,32^A0N,40,40^FDA-01^FS\n" +
             "^FO40,112^A0N,64,64^FDA-01-02-03^FS\n" +
             "^FO40,208^BY2,3^BCN,176,Y,N,N^FDA-01-02-03^FS\n" +
@@ -68,6 +70,34 @@ public class ZplEncoderTests
         var zpl = new ZplEncoder().Encode(document, dpi: 203);
 
         Assert.Contains("^FO80,40^A0N,32,32", zpl);
+    }
+
+    [Fact]
+    public void Encoder_should_emit_pw_and_ll_from_layout_size()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "70x50",
+                ContractName = "70x50",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "text", XMm = 0, YMm = 0, FontHeightMm = 2, FontWidthMm = 2 },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["text"] = "ok" },
+        };
+
+        var zpl = new ZplEncoder().Encode(document, dpi: 203);
+
+        // 70mm / 50mm @203dpi => 559 / 400 点
+        Assert.StartsWith("^XA", zpl);
+        Assert.Contains("^PW559", zpl);
+        Assert.Contains("^LL400", zpl);
     }
 
     [Fact]

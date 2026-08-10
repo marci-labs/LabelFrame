@@ -25,6 +25,9 @@ public sealed class ZplEncoder : IZplEncoder
         var regions = LabelLayoutResolver.IndexRegions(document.Layout);
         var sb = new StringBuilder();
         sb.AppendLine("^XA");
+        // 显式声明打印宽度与标签长度（毫米 → 点），避免打印机沿用旧的长度设置导致一张作业走多张纸
+        sb.AppendLine($"^PW{Math.Max(1, ToDots(document.Layout.WidthMm, dpi))}");
+        sb.AppendLine($"^LL{Math.Max(1, ToDots(document.Layout.HeightMm, dpi))}");
         foreach (var element in document.Layout.Elements)
         {
             AppendElement(sb, element, document.Data, document.Images, regions, dpi);
