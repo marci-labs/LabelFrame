@@ -200,3 +200,10 @@
 - MSI 升级不再覆盖用户配置：`appsettings.json` 从自动文件清单（AppFiles）中剔除，改为 `main.wxs` 中 GUID 固定的独立组件，标记 `NeverOverwrite="yes"`（升级 / 修复不覆盖）+ `Permanent="yes"`（卸载不删除）。新装仍写入默认配置；已改过的配置在后续更新中保留。
 - 说明：`appsettings.json` 属于用户数据，卸载时也会保留（与 %LOCALAPPDATA%\LabelFrame 下的数据库一致）；需要全新默认配置时可手动删除该文件后重装。
 - 产物 `LabelFrame-0.12.2.msi`（2026-08-10）：可覆盖 0.12.x / 0.11.x 安装。
+## 迭代 14（字体加粗 bold 契约，后端部分，2026-08-10）
+
+- 前端（hermes，commit ae16d0d）：属性面板「加粗（打印更清晰）」复选框 + 画布 `fontStyle:'bold'`；convert.ts 契约字段 `bold`（true 才写 / 读回 ?? false）+ 单测；属性面板数字输入受控同步、右侧面板滚动条两项修复。
+- 后端：`LabelTextElement.Bold`（bool，默认 false）+ `LabelElementJsonConverter` 写 `bold: true`（true 才写）、读回默认 false，旧模板兼容。
+- ZPL（Vector）：新增 `ZplBoldMode`（默认 `FontVariant` 方案 A：粗体字体变体映射 `"0"→"1"`；`WidthScale` 方案 B：宽度 ×1.15 放大兜底）；`ZplEncoder` 构造函数可注入模式与映射表；WinHost `HostOptions.BoldMode` + `LABELFRAME_BOLD_MODE` 环境变量可配置。
+- Skia（Image）：测量与绘制字体统一 `SKFont.Embolden = text.Bold`，换行 / shrink 度量按加粗字体计算，与前端预览一致。
+- 测试 156 全绿（新增 bold 往返/省略、ZPL 方案 A/B、Skia 加粗墨迹对比）。

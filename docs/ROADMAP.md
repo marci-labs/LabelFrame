@@ -23,6 +23,7 @@
 | 11 | 单机模式（Host 服务化 + Web Vite/TS 前端 + PDA 测试链路） | 🔄 进行中 |
 | 12 | 模板预览值持久化 + 图片打印实验 | 🔄 进行中（后端完成，前端待实施） |
 | 13 | 文本排版与二维码参数持久化（元素契约补齐） | ✅ 已完成（用户验收待执行） |
+| 14 | 字体加粗（bold）契约 | 🔄 进行中（前后端已实施，联调验收待执行） |
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
@@ -411,6 +412,17 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 13（后端）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-13-SPEC.md、docs/ITERATION-13-CONTRACT.md（含 Hermes 评估结论，已通过）。按 ITERATION-13-CONTRACT.md §3 字段对照、§4 Skia 渲染语义、§7 分工实施后端：C# 模型属性（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/paddingV，VerticalAlign 默认改 Middle，PaddingHMm/PaddingVMm）、LabelElementJsonConverter 读写（非默认才写）、SkiaLabelRenderer 渲染支持、测试与验收；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+## 迭代 14：字体加粗（bold）契约（前后端已实施，联调验收待执行）
+
+**目标**：小字号（1.8~3mm）文本打印笔画过细，提供「加粗」设置试印对比；文本元素 JSON 新增 `bold?: boolean`（true 才写 / 默认 false，旧模板兼容）。
+**范围**：
+- 前端（hermes，已提交 ae16d0d）：属性面板加粗复选框 + 画布 `fontStyle: bold`；convert.ts 字段映射 + 单测；属性面板两项修复（数字输入受控同步、右侧面板滚动条）。
+- 后端（本仓库）：`LabelTextElement.Bold` + 转换器读写；ZPL 加粗方案 A（粗体字体变体映射，默认 `"0"→"1"`，可配置 `ZplBoldMode` / `LABELFRAME_BOLD_MODE`）与方案 B（宽度放大兜底）；Skia `Embolden` 渲染与度量一致。
+**不在范围**：条码 / 二维码加粗（仅文本）；字体文件打包。
+**验收**：见 docs/ITERATION-14-SPEC.md §4.3。
+**完成记录**（2026-08-10，后端部分）：模型/转换器/ZPL/Skia 已实施，测试 156 全绿；待用户试印对比与前端联调验收。
 
 ---
 ## 迭代 12：模板预览值持久化 + 图片打印实验（规格评审中）

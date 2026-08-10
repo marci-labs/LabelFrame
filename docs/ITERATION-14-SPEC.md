@@ -1,7 +1,7 @@
 # 迭代 14 规格：字体加粗（bold）契约 + 前端面板修复记录
 
-> 状态：规格评审中（hermes 提交，2026-08-10）
-> 协作：本文档由前端（hermes）提交，供后端（本仓库 AI）评审实施；契约字段与写规则见 §3，后端实施要求见 §4。
+> 状态：后端已实施（2026-08-10），待联调验收
+> 协作：本文档由前端（hermes）提交，后端已按 §3/§4 实施（模型 + 转换器 + ZPL 方案 A 默认可配置 + Skia bold），前端已先行实现。
 > 背景：用户反馈小字号打印不清晰，希望试加粗效果——前端已先行实现（§2），后端按本文档更新其负责的功能。
 
 ---
@@ -58,6 +58,13 @@
 - **右侧面板无滚动条**：`designer-right` 内容区包 `overflowY: auto` 容器（tabs 固定、内容滚动）。
 
 ## 6. 分工
+
+## 后端实施记录（2026-08-10）
+
+- `LabelTextElement.Bold`（bool，默认 false）；`LabelElementJsonConverter` 写 `bold: true`（true 才写），读回默认 false，旧模板兼容。
+- ZPL（Vector）：新增 `ZplBoldMode`（默认 `FontVariant` 方案 A；`WidthScale` 方案 B 兜底）+ 粗体字体映射（默认 `"0"→"1"`）；`ZplEncoder` 构造函数可注入模式与映射表；WinHost `HostOptions.BoldMode` + `LABELFRAME_BOLD_MODE` 环境变量可配置。
+- Skia（Image）：测量与绘制字体统一 `SKFont.Embolden = text.Bold`（换行 / shrink 度量与绘制一致，与前端 Konva `fontStyle:'bold'` 同源）。
+- 测试 156 全绿（新增 bold 往返/省略、ZPL 方案 A/B、Skia 加粗墨迹对比）。
 
 - 前端（hermes）：已完成（§2），可并行验证契约字段读回（后端未实现前保存时 `bold` 会被忽略，属预期）。
 - 后端：按 §3/§4 实施；实施完成通知前端联调验收（§4.3）。
