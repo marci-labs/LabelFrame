@@ -184,3 +184,9 @@
 - `SkiaLabelRenderer` 渲染支持：wrap 自动换行 + 行距（lineHeight 倍数）+ 超高整体缩小（最小 1.5mm）、overflow 隐藏裁剪不缩小、fontFamily 字体族（含 CJK 系统回退）、qrEcc / qrMargin 传 ZXing、条码 displayValue 底部数值文字（条码占剩余高度）、文本 / 条码 / 二维码双边内边距内容区（= 元素框减 padding）。
 - ZPL 矢量路径不变量：新排版字段不参与 ZPL 编码，矢量输出与现状一致（新增不变量测试）。
 - 测试 152 个全绿（新增字段往返 / 省略规则 / paddingMm 兜底 / wrap 换行与超高缩小 / overflow 不缩小 / 字体族 / QR 纠错与静区 / 条码文字 / 双边内边距 / 旧模板默认 Middle / ZPL 不变量）。
+## 迭代 13（文本排版与二维码参数持久化，前后端已完成，2026-08-10）
+
+- 前端（hermes）：`convert.ts` 的 `BackendElement` 补齐 `paddingH/paddingV/fontFamily/wrap/lineHeight/fitMode/qrEcc/qrMargin/displayValue`；写方向按契约非默认才写（wrap=true、displayValue=false、verticalAlign 非 Middle、fitMode 非 shrink 等）；读回 `?? 默认`（paddingH/V ?? paddingMm 旧模板兜底）；`ElementNode.tsx` TextContent wrap=true 超高由裁剪改为整体缩小（最小 1.5mm），与后端 Skia 渲染语义一致；convert.test.ts 64 用例全绿（+7 新增）。
+- 复现验证：100×60 方案导入 → 保存 → 重开，关键差异清零（wrap / lineHeight / qrEcc / paddingV 均保留；剩余仅默认值显式化，显示一致）。
+- 文档归档：`docs/ITERATION-13-SPEC.md` / `docs/ITERATION-13-CONTRACT.md` 标记已完成；ROADMAP 迭代 13 状态更新为「已完成（用户验收待执行）」；DESIGN 决策 #47 更新为前后端完成。
+- 产物 `LabelFrame-0.12.0.msi`（2026-08-10）：含迭代 13 前后端合并版（元素契约第二批字段 + Skia 图片打印渲染 + 前端字段映射与 wrap 超高缩小），可覆盖 0.11.x 安装；用户测试验收待执行。

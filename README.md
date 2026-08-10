@@ -26,8 +26,8 @@
 - 迭代 8D（设计器交互重做：容器控件 / 设计测试分离 / 字段自动推导 / 标尺对齐 / 框选多选手柄）：已完成（界面验收待执行）。
 - 迭代 9（Excel 数据导入）：已完成（选 .xlsx → 列映射 → 批量打印）。
 - 迭代 8E/8F（Web 设计器原型 v2/v3）：视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出 / 画布留白标尺 / 真实比例 1mm=8点；`prototypes/web-designer/`，用于 UI 技术选型评估。
-- 迭代 9（Excel 导入）/ 迭代 10（MSI 安装包）：计划中。
-
+- 迭代 9（Excel 导入）/ 迭代 10（MSI 安装包）：已完成。
+- 迭代 13（文本排版与二维码参数持久化）：元素契约补齐（wrap / lineHeight / fitMode / fontFamily / qrEcc / qrMargin / displayValue / paddingH-V）+ Skia 图片打印渲染 + 前端字段映射，前后端已完成（用户验收待执行）；产物 `LabelFrame-0.12.0.msi`。
 详见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
 ## 组成
@@ -52,7 +52,7 @@ cd web; pnpm install; pnpm build; cd ..
 .\scripts\build-msi.ps1
 ```
 
-产物：`artifacts\LabelFrame-0.11.7.msi`（约 10MB，x64 framework-dependent，含 WinHost + Web UI + 应用图标；安装到 `C:\Program Files\LabelFrame`）。
+产物：`artifacts\LabelFrame-0.12.0.msi`（约 10MB，x64 framework-dependent，含 WinHost + Web UI + 应用图标；安装到 `C:\Program Files\LabelFrame`）。
 
 前置要求：目标机需安装 **.NET 10 Desktop Runtime**（x64，下载：https://dotnet.microsoft.com/download/dotnet/10.0）。安装 MSI 时会用 .NET 官方自检程序（NetCoreCheck）实时检测：已安装则直接继续（无需重启），缺失则弹出可点击的官方下载链接对话框（不自动安装）。
 打印模式：默认矢量 ZPL 指令；如想整版位图直传打印机（与画布预览所见一致，用于评估定位），把 `appsettings.json` 的 `WinHost.PrintMode` 改为 `Image`（或环境变量 `LABELFRAME_PRINT_MODE=Image`），打印作业也可临时传 `printMode` 覆盖。
