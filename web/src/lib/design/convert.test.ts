@@ -108,6 +108,43 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
       expect(j.paddingMm).toBeUndefined()
       expect(j.borderMm).toBeUndefined()
     })
+
+    it('previewValue：字段填充且 key 非空 → 写预览值（text/barcode/qrcode）', () => {
+      const t = defaultElement('Text')
+      t.mode = 'field'
+      t.key = 'location'
+      t.text = 'A-01-02'
+      expect(toBackendElement(t).previewValue).toBe('A-01-02')
+
+      const b = defaultElement('Barcode')
+      b.mode = 'field'
+      b.key = 'sku'
+      b.text = 'SKU-2026'
+      expect(toBackendElement(b).previewValue).toBe('SKU-2026')
+
+      const q = defaultElement('QrCode')
+      q.mode = 'field'
+      q.key = 'sn'
+      q.text = 'SN-001'
+      expect(toBackendElement(q).previewValue).toBe('SN-001')
+    })
+
+    it('边界 A：字段填充但 key 为空（未绑定字段）→ 不写 previewValue', () => {
+      const t = defaultElement('Text')
+      t.mode = 'field'
+      t.key = ''
+      t.text = '未绑定的预览值'
+      expect(toBackendElement(t).previewValue).toBeUndefined()
+    })
+
+    it('固定值模式 → 不写 previewValue（防回归，只写 literal）', () => {
+      const t = defaultElement('Text')
+      t.mode = 'literal'
+      t.text = '标题'
+      const j = toBackendElement(t)
+      expect(j.previewValue).toBeUndefined()
+      expect(j.literal).toBe('标题')
+    })
   })
 
   describe('fromBackendElements 读方向', () => {
@@ -158,6 +195,25 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
       expect(t.w).toBe(40)
       expect(t.h).toBeGreaterThanOrEqual(10)
     })
+
+    it('previewValue 读回：字段填充模式 text 取预览值', () => {
+      const t = first<TextElement>(fromBackendElements([
+        { type: 'text', xMm: 0, yMm: 0, sourceKey: 'location', previewValue: 'A-01-02-03' },
+      ]))
+      expect(t.mode).toBe('field')
+      expect(t.text).toBe('A-01-02-03')
+
+      const b = first<BarcodeElement>(fromBackendElements([
+        { type: 'barcode', xMm: 0, yMm: 0, sourceKey: 'sku', previewValue: 'SKU-X' },
+      ]))
+      expect(b.text).toBe('SKU-X')
+    })
+
+    it('旧模板无 previewValue → 字段填充 text 为空（向后兼容）', () => {
+      const t = first<TextElement>(fromBackendElements([{ type: 'text', xMm: 0, yMm: 0, sourceKey: 'location' }]))
+      expect(t.mode).toBe('field')
+      expect(t.text).toBe('')
+    })
   })
 
   describe('toContract / toLayout 模板顶层', () => {
@@ -204,6 +260,24 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
       expect(back.align).toBe('Right')
       expect(back.border).toBe(0.3)
       expect(back.w).toBe(45)
+      expect(back.text).toBe('A-01') // 字段填充预览值往返保留
+    })
+
+    it('条码 / 二维码字段填充预览值往返', () => {
+      const b = defaultElement('Barcode')
+      b.mode = 'field'
+      b.key = 'sku'
+      b.text = 'SKU-2026'
+      const b2 = first<BarcodeElement>(fromBackendElements([toBackendElement(b)]))
+      expect(b2.mode).toBe('field')
+      expect(b2.text).toBe('SKU-2026')
+
+      const q = defaultElement('QrCode')
+      q.mode = 'field'
+      q.key = 'sn'
+      q.text = 'SN-001'
+      const q2 = first<QrCodeElement>(fromBackendElements([toBackendElement(q)]))
+      expect(q2.text).toBe('SN-001')
     })
 
     it('条码 / 二维码 / 容器 / 线往返', () => {

@@ -9,6 +9,8 @@ export interface Healthz {
   service: string
   status: string
   transport: string
+  /** 服务端默认打印方式（迭代 12：供前端下拉显示） */
+  printMode?: 'Vector' | 'Image'
 }
 
 export interface TemplateSummary {
@@ -70,9 +72,13 @@ export interface LogEntry {
 export interface SubmitJobRequest {
   requestId: string
   template: {
+    /** 模板名（迭代 12：Image 打印时后端取模板图片资源；Vector 模式忽略） */
+    name?: string
     contract: BackendContract
     layout: BackendLayout
   }
+  /** 打印方式：缺省用服务端 PrintMode 配置（迭代 12） */
+  printMode?: 'Vector' | 'Image'
   labels: { data: Record<string, string> }[]
 }
 

@@ -18,6 +18,8 @@ export interface BackendElement {
   regionVAlign?: string
   sourceKey?: string
   literal?: string
+  /** 字段填充模式的预览值（迭代 12：仅 field 模式且 key 非空写；固定值模式不写） */
+  previewValue?: string
   fontName?: string
   fontHeightMm?: number
   fontWidthMm?: number
@@ -77,6 +79,8 @@ export function toBackendElement(e: DesignElement): BackendElement {
     case 'Text':
       base.sourceKey = e.key
       if (e.mode === 'literal' && e.text) base.literal = e.text
+      // 边界 A：字段填充且 key 非空才写预览值（未绑定字段的预览值无意义，避免读回时模式推断改变）
+      if (e.mode === 'field' && e.key && e.text) base.previewValue = e.text
       base.fontName = '0' // ZPL 字体标识（前端字体仅影响画布预览，打印字体由宿主配置）
       base.fontHeightMm = r2(e.fontH)
       base.fontWidthMm = r2(e.fontW)
@@ -86,12 +90,14 @@ export function toBackendElement(e: DesignElement): BackendElement {
     case 'Barcode':
       base.sourceKey = e.key
       if (e.mode === 'literal' && e.text) base.literal = e.text
+      if (e.mode === 'field' && e.key && e.text) base.previewValue = e.text
       base.heightMm = r2(e.h)
       base.moduleWidth = Math.max(1, Math.round(e.moduleWidth))
       break
     case 'QrCode':
       base.sourceKey = e.key
       if (e.mode === 'literal' && e.text) base.literal = e.text
+      if (e.mode === 'field' && e.key && e.text) base.previewValue = e.text
       base.sizeMm = r2(Math.max(e.w, e.h))
       break
     case 'Image':
@@ -153,7 +159,7 @@ export function fromBackendElements(list: readonly BackendElement[]): DesignElem
           valign: 'middle',
           mode,
           key: mode === 'field' ? key : '',
-          text: literal || '',
+          text: literal || (j.previewValue ?? ''), // field 模式读回预览值
           align: (j.textAlign as 'Left' | 'Center' | 'Right') || 'Left',
           fitMode: 'shrink',
         }
@@ -169,7 +175,7 @@ export function fromBackendElements(list: readonly BackendElement[]): DesignElem
           h: j.heightMm ?? 20,
           mode,
           key: mode === 'field' ? key : '',
-          text: literal || '',
+          text: literal || (j.previewValue ?? ''),
           barcodeFormat: 'CODE128',
           displayValue: true,
           moduleWidth: j.moduleWidth ?? 2,
@@ -187,7 +193,7 @@ export function fromBackendElements(list: readonly BackendElement[]): DesignElem
           h: size,
           mode,
           key: mode === 'field' ? key : '',
-          text: literal || '',
+          text: literal || (j.previewValue ?? ''),
           qrEcc: 'M',
           qrMargin: 2,
         }

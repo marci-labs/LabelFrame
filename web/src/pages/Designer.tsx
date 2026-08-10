@@ -41,7 +41,6 @@ export function Designer({ request, onClose }: DesignerProps) {
   const [pendingType, setPendingType] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [group, setGroup] = useState('默认')
-  const [testData, setTestData] = useState<Record<string, string>>({})
   const [rightTab, setRightTab] = useState<'props' | 'data'>('props')
   const [saving, setSaving] = useState(false)
   const [confirmOverwrite, setConfirmOverwrite] = useState(false)
@@ -95,7 +94,6 @@ export function Designer({ request, onClose }: DesignerProps) {
       if (pkg) {
         setName(pkg.name)
         setGroup(pkg.group || '默认')
-        setTestData({ ...(pkg.testData ?? {}) })
         initialNameRef.current = pkg.name
         contractNameRef.current = pkg.contract?.name ?? pkg.name
         contractVersionRef.current = pkg.contract?.version ?? '1'
@@ -454,8 +452,8 @@ export function Designer({ request, onClose }: DesignerProps) {
           name: finalName,
           group: group.trim() || '默认',
           contract: toContract(contractName, version, fields),
+          // 迭代 12：不传 testData——由后端从元素 previewValue 自动派生（读-改-写，旧值不丢）
           layout: toLayout(finalName, contractName, version, s.paperW, s.paperH, s.elements),
-          testData,
         }
         await api.saveTemplate(pkg)
         app.setStatus(`模板「${finalName}」已保存。`)
@@ -466,7 +464,7 @@ export function Designer({ request, onClose }: DesignerProps) {
         setSaving(false)
       }
     },
-    [app, group, onClose, request.kind, testData],
+    [app, group, onClose, request.kind],
   )
 
   const save = useCallback(() => {
@@ -491,6 +489,16 @@ export function Designer({ request, onClose }: DesignerProps) {
   }, [app, doSave, name, request.kind])
 
   const fields = useMemo(() => (state ? deriveFields(state.elements) : []), [state])
+
+  // 测试默认值只读预览：与后端 SaveAsync 派生语义一致（遍历元素，后出现覆盖先出现）
+  const previewDefaults = useMemo(() => {
+    if (!state) return null
+    const m = new Map<string, string>()
+    for (const e of state.elements) {
+      if ('mode' in e && e.mode === 'field' && e.key && e.text) m.set(e.key, e.text)
+    }
+    return m
+  }, [state])
 
   // ---------- 渲染 ----------
   return (
@@ -612,7 +620,7 @@ export function Designer({ request, onClose }: DesignerProps) {
                 属性
               </button>
               <button className={'right-tab' + (rightTab === 'data' ? ' active' : '')} onClick={() => setRightTab('data')}>
-                测试数据
+                测试默认值
               </button>
             </div>
             {rightTab === 'props' ? (
@@ -627,19 +635,19 @@ export function Designer({ request, onClose }: DesignerProps) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="group">
-                  <div className="group-title">测试数据（保存到模板，PDA / PC 测试打印共用）</div>
-                  {fields.length === 0 ? (
-                    <div className="hint">暂无字段。请为元素绑定「字段填充」后自动建立。</div>
+                  <div className="group-title">测试默认值（由元素预览值自动生成）</div>
+                  {!previewDefaults || previewDefaults.size === 0 ? (
+                    <div className="hint">暂无默认值。为「字段填充」控件设置预览值后，保存时自动生成测试默认值。</div>
                   ) : (
-                    fields.map((k) => (
-                      <label className="field" key={k} style={{ marginTop: 6 }}>
-                        {k}
-                        <input className="input mono" value={testData[k] ?? ''} placeholder={`字段 ${k} 的测试值`} onChange={(ev) => setTestData((d) => ({ ...d, [k]: ev.target.value }))} />
-                      </label>
+                    [...previewDefaults.entries()].map(([k, v]) => (
+                      <div className="field" key={k} style={{ marginTop: 6 }}>
+                        <span className="mono" style={{ minWidth: 90 }}>{k}</span>
+                        <span className="mono" style={{ color: 'var(--text-2)', wordBreak: 'break-all' }}>{v}</span>
+                      </div>
                     ))
                   )}
                   <div className="hint" style={{ marginTop: 8 }}>
-                    测试数据随模板保存；PDA 端点击模板即可用此数据测试打印，打印测试单张也可用。
+                    测试默认值由元素预览值自动生成，保存后作为打印测试 / PDA 测试默认值；保存后生效。
                   </div>
                 </div>
               </div>

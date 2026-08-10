@@ -161,6 +161,8 @@ export function DataPrint() {
   const [pkg, setPkg] = useState<TemplatePackage | null>(null)
   const [loading, setLoading] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
+  // 打印方式：'' = 默认（服务端配置）；显式 Vector / Image 时随作业提交
+  const [printMode, setPrintMode] = useState<'' | 'Vector' | 'Image'>('')
   const [error, setError] = useState<string | null>(null)
 
   const [mappingOpen, setMappingOpen] = useState(false)
@@ -211,7 +213,8 @@ export function DataPrint() {
     try {
       const j = await api.submitJob({
         requestId: crypto.randomUUID(),
-        template: { contract: pkg.contract, layout: pkg.layout },
+        template: { name: pkg.name, contract: pkg.contract, layout: pkg.layout },
+        printMode: printMode || undefined,
         labels,
       })
       setJobId(j.jobId)
@@ -316,6 +319,14 @@ export function DataPrint() {
                 <div className="hint">该模板没有字段。请在设计器中为元素绑定「字段填充」后保存。</div>
               ) : (
                 <>
+                  <label className="field" style={{ maxWidth: 300 }}>
+                    打印方式
+                    <select className="input" value={printMode} onChange={(ev) => setPrintMode(ev.target.value as '' | 'Vector' | 'Image')} title="默认跟随服务端配置（appsettings PrintMode）">
+                      <option value="">默认（服务端）</option>
+                      <option value="Vector">矢量 ZPL</option>
+                      <option value="Image">图片（整版位图）</option>
+                    </select>
+                  </label>
                   {fieldKeys.map((k) => (
                     <label className="field" key={k}>
                       {k}
@@ -338,7 +349,7 @@ export function DataPrint() {
                       </button>
                     )}
                   </div>
-                  <div className="hint">打印测试提交 1 张标签，使用上方数据；默认后端 Log 传输，无需打印机。</div>
+                  <div className="hint">已用模板预览值预填，可修改后打印；打印测试提交 1 张标签，默认后端 Log 传输，无需打印机。</div>
                 </>
               )}
             </div>
