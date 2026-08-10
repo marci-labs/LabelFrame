@@ -1,6 +1,6 @@
 # 迭代 12：模板预览值持久化 + 图片打印实验（规格 v1）
 
-> 状态：规格 v2（评审完成，双方结论已确认，待实施）
+> 状态：规格 v3（双方复核完成，结论一致，待实施）
 > 日期：2026-08-10
 > 协作：本文档给前端（hermes）评审；评审通过后，前端做前端改动，后端（本仓库 AI）做后端改动，最后联调验收。
 
@@ -37,7 +37,7 @@
 - `fromBackendElements()`：
   - text / barcode / qrcode 读取时，字段填充模式（`sourceKey` 存在）的 `text` 取 `previewValue ?? ''`；固定值模式仍取 `literal`。
   - 注意与现有 `mode` 推断兼容：`literal` 非空 → literal 模式；否则 `sourceKey` 非空 → field 模式；两者皆空 → literal。
-- 同步更新 `web/src/lib/design/convert.test.ts`：新增 round-trip 用例（字段填充 + 预览值 → 保存 JSON → 读回一致；固定值行为不变）。
+- 同步更新 `web/src/lib/design/convert.test.ts`：新增 round-trip 用例（字段填充 + key + 预览值 → 保存 JSON → 读回一致）；另加 literal 模式用例断言 `previewValue` 为 `undefined`（防回归）。
 
 ### 3.2 测试默认值来源统一（必须）
 
@@ -59,7 +59,7 @@
   - `template` 增加 `name?: string`（= 当前模板名，图片打印时后端取模板图片资源用；Vector 模式后端忽略，总是带上无害）；
   - 请求顶层增加 `printMode?: 'Vector' | 'Image'`。
 - DataPrint 测试表单上方加「打印方式」下拉：选项「默认（服务端）/ 矢量 ZPL / 图片」；选「默认」时不发送 `printMode`（跟随服务端配置），选具体模式时发送。
-- 契约统一为 `template.name`（顶层不再有 `templateName`，与后端 `TemplateDto` 演进一致）。
+- 契约统一为 `template.name`（顶层不再有 `templateName`，与后端 `TemplateDto` 演进一致）。`/healthz` 响应类型 `HealthzResponse` 增加 `printMode?: 'Vector' | 'Image'`（client.ts 的 healthz 调用无需改）；设置页「打印机」面板显示「服务端默认打印方式：…」（信息提示，不参与提交逻辑）；下拉「默认（服务端）」不发送 `printMode`。
 
 ---
 
@@ -69,7 +69,7 @@
 2. **testData 自动派生（读-改-写，防清空旧值）**：`TemplateStore.SaveAsync` 保存前：以数据库现有 testData 为基底 → 并入显式 `TestData` → 再遍历 layout 元素（text / barcode / qrcode）取 `SourceKey` + `PreviewValue` 非空项覆盖 `testData[key]`（预览值优先）。旧模板（无 previewValue）即使前端不传 testData 也不会丢已有值，消除前后端上线时序风险。
 3. **图片打印**：
    - `HostOptions` / `appsettings.json` 增加 `PrintMode`（`Vector` / `Image`，默认 `Vector`；环境变量 `LABELFRAME_PRINT_MODE`）。
-   - `SubmitJobRequest` 增加可选 `TemplateName`（请求级，对应 `template.name`）、`PrintMode`；`TemplateDto` 增加 `Name` 属性；`JobSubmissionService` 解析模式（请求 > 配置）。`/healthz` 返回 `printMode` 默认值（供前端下拉显示）。
+   - `TemplateDto` 增加 `Name` 属性（单一事实来源）；**不设请求级 `TemplateName`**，`JobSubmissionService` 直接读 `request.Template.Name`（Image 模式用它从 `TemplateStore` 取模板图片，null 时按无图渲染）；`SubmitJobRequest` 增加可选 `PrintMode`，解析模式（请求 > 配置）。`/healthz` 返回 `printMode` 默认值（供前端显示）。
    - `LabelPreviewRenderer` 新增渲染 1bpp `LabelBitmap` 的方法（白底黑字，复用现有 GDI + ZXing 绘制，按 DPI 出图）。
    - 新增 `ImageZplEncoder`（或 `ZplEncoder` 扩展方法）：`^XA ^PW{..} ^LL{..} ^FO0,0 ^GFA{..} ^FS ^XZ`。
    - `JobSubmissionService`：`Image` 模式 = 加载模板图片（`TemplateName` 从 `TemplateStore` 取，取不到按无图渲染）→ 整版 1bpp → `^GF`；`Vector` 模式保持现状（含已有 `^PW`/`^LL`）。
@@ -134,6 +134,7 @@
 2. 新建打印作业 → 表单自动预填模板预览值，可直接点打印（问题 2 满足）。
 3. 图片打印：`PrintMode=Image`（配置或前端切换）→ 打印输出为整版位图；Log 传输可见 ZPL 为 `^GF` 整图；真机输出定位与预览一致（问题 3 实验可评估）。
 4. 回归：矢量打印输出不变（`^PW`/`^LL` + 元素指令）；`dotnet test` 全绿；前端 `pnpm build` 通过。
+   - 注：验收 1 依赖「画布选中修复」（ElementNode.tsx），该修复随迭代 12 前端提交；联调时先验证可选中，再验证预览值持久化。
 
 ---
 
@@ -217,3 +218,47 @@
 6. **既有缺陷（画布无法选中）——属实，接受**：已核对 HEAD（e44f4ca）确在 6 处外框 Rect 写 `listening={false}`（Text/Barcode/QrCode/Rect/Image/Region），工作区修复（移除 6 处）与 Konva 命中检测原理一致（内容节点已 `listening=false`，外框是唯一命中区域）。**随迭代 12 前端改动一并提交**（`web/src/pages/designer/ElementNode.tsx`，已在共享工作区、未提交）。
 7. **Q1–Q4——全部确认**：Q1 是（预览值生成 + 只读列表）；Q2 做（下拉）；Q3 支持（`template.name` 取图，无 name 按无图渲染）；Q4 沿用作业 DPI。
 8. **验收补充（七）——接受**；补充：Image 打印无 `template.name` 时按无图渲染（文本 / 条码 / 二维码不受影响），验收时覆盖该路径。
+
+---
+
+### 附三：Hermes 复核意见（2026-08-10）
+
+> 本节由前端开发者 hermes 对「附二：本仓库 AI 审核意见」复核后追加，**供审核者确认**。
+> 审核结论确认后 hermes 开工实现第 3 节；本节保留为审阅记录。
+
+#### 一、附二总体接受，8 条修订已核对落实
+
+逐条核对正文 v2：3.1 边界 A（key 非空 + text 非空才写 previewValue）✓；4.2 读-改-写（旧模板显式 testData 永不因前端不传而清空，时序风险消除）✓；3.3 / 5.3 / 4.3 契约统一 `template.name`（顶层无 templateName）✓；3.2 只读预览列表 ✓；3.3 三态下拉 + `/healthz` 返回 `printMode` ✓；Q1–Q4 确认 ✓；§8 协作流程更新 ✓；附二第 6 条（ElementNode 选中修复，已核对 HEAD e44f4ca）✓。
+
+#### 二、问题 1（需澄清）：4.3「请求级 TemplateName」与 5.3 存在绑定歧义
+
+- 4.3 原文：「`SubmitJobRequest` 增加可选 `TemplateName`（请求级，对应 `template.name`）…」
+- 若 `SubmitJobRequest.TemplateName` 是独立 DTO 属性，System.Text.Json 按属性名绑定，前端请求体必须含**顶层 `templateName`** 才能绑定；而 5.3 / 3.3 明确「顶层不再有 templateName」→ 后端该字段恒为 null（绑定不到）。
+- **建议**：后端删除请求级 `TemplateName`，`JobSubmissionService` 直接读 `request.Template.Name`（`TemplateDto.Name` 为单一事实来源，与前端契约一致）。若确需保留请求级字段，则 5.3 / 3.3 需同步增加顶层 `templateName`（不推荐，双来源易漂移）。
+
+#### 三、问题 2（前端清单遗漏）：`/healthz` 的 `printMode` 消费未写入 3.3
+
+- 附二第 5 条「`/healthz` 返回 `printMode` 默认值**供前端显示**」，但 3.3 前端清单只有三态下拉，未写前端读取与显示。建议 3.3 补充：
+  1. `web/src/lib/api/types.ts`：`HealthzResponse` 增加 `printMode?: 'Vector' | 'Image'`（client.ts 的 healthz 调用无需改）；
+  2. 显示位置：设置页「打印机」面板（如「服务端默认打印方式：矢量 ZPL」）；下拉「默认（服务端）」仍不发送 `printMode`，显示仅作信息提示，不参与提交逻辑。
+
+#### 四、小项（不阻塞，实现时一并处理）
+
+- 3.1 测试要求补充：literal 模式用例断言 `previewValue` 为 `undefined`（防回归；round-trip 用例之外再加此断言）。
+- 验收 1（预览值持久化）前置依赖「画布选中修复」（设置预览值需先能选中控件）——修复已在工作区完成，联调验收时注意此依赖链。
+
+#### 五、待确认
+
+- 问题 1 的「删除请求级 TemplateName」是否采纳（推荐采纳）；
+- 问题 2 的补充条目是否采纳（推荐采纳，显示放设置页）。
+
+---
+
+### 附四：本仓库 AI 复核结论（2026-08-10）
+
+> 复核结论：**两个问题均采纳，小项一并采纳**；正文已同步修订为 v3。本节保留为审阅记录。
+
+1. **问题 1（请求级 TemplateName 绑定歧义）——采纳**：删除请求级 `TemplateName`，`JobSubmissionService` 直接读 `request.Template.Name`（`TemplateDto.Name` 为单一事实来源，与 3.3 / 5.3 契约一致，避免双来源漂移）。已修订 4.3。
+2. **问题 2（healthz printMode 前端消费）——采纳**：3.3 补充 `HealthzResponse.printMode` 类型与设置页「打印机」面板信息显示；下拉「默认（服务端）」不发送 `printMode`。已修订 3.3。
+3. **小项**：3.1 补 literal 模式 `previewValue === undefined` 断言；验收 1 前置依赖「画布选中修复」已在 §6 注明。
+4. **补充确认**：后端 Image 模式无 `template.name` 时按无图渲染（文本 / 条码 / 二维码不受影响）。
