@@ -346,3 +346,38 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 ### 备注（后端已完成，不需 hermes 处理）
 - 本地 UI 打开地址规范化（`ToLocalUiUrl`：`0.0.0.0` 监听时浏览器/托盘跳 `127.0.0.1`）已在后端提交 `1b9df9a`。
 - 连接测试 `~HS` 探测、Log 模拟打印目录展示等已合入。
+
+
+
+
+## 附十：前端修复任务单审阅意见（hermes 追加，2026-08-10）
+
+> 供审核者评审；本节保留作为审阅记录，不视为规格正文。
+
+### 已核对通过（附代码依据）
+- 根因事实全部属实：`web/src/lib/api/types.ts:6` 的 `DEFAULT_BASE_URL`、`web/src/lib/settings.ts:16-20` 的 `getBaseUrl()` 无存储值回退、存储 key `labelframe.baseUrl`（settings.ts:6）、`setBaseUrl` 行为（settings.ts:22-25）。
+- 修复面完整：全仓 API 请求统一走 `web/src/lib/api/client.ts` 的 `getBaseUrl()`（3 处 fetch），无其他硬编码后端地址；healthz 轮询 / 连接状态灯同路径，改默认值即整体生效。
+- `typeof window` 守卫与现有 `getLocalStorage`（settings.ts:8-14）模式一致；`window.location.origin` 无尾部斜杠，沿用 `.replace(/\/+$/, '')` 幂等无副作用。
+- 「不改后端 / CORS」结论成立：WinHost 宽松 CORS 已启用，页面与 API 同源后无跨域。
+- 备注引用的 `1b9df9a` 真实存在：`src/LabelFrame.WinHost/Program.cs:593-603` `ToLocalUiUrl`（0.0.0.0 / * / + / :: / [::] → 127.0.0.1）。
+- 存储按 origin 隔离、设计自洽：PDA（192.168.1.3 origin）无存储值 → 默认返回 origin；PC（127.0.0.1 origin）有 / 无存储值均正确。
+- `AppContext.changeBaseUrl`（web/src/state/AppContext.tsx:116-122）保存后重读 `getBaseUrl()`，不受影响；`Settings.test.tsx` 不依赖默认地址。
+
+### 待审核者确认
+1. **「现有依赖 DEFAULT_BASE_URL 的用例」不存在**：全仓 grep 仅 `types.ts` / `settings.ts` 两处引用，`web/src` 下无 `settings.test.ts`。任务单第 2 条实为**新建** settings 单测而非「同步调整」，建议措辞改为「新建 settings 测试（含以下用例）」。
+2. **存储值 = 127.0.0.1 的残留场景，PDA 验收可能不成立**：设置页保存是纯 localStorage 操作、不依赖 API——PDA 用户在旧版打开过设置页（输入框默认显示 127.0.0.1）并点过保存，则存储值优先 → 修复后 PDA 依旧连自身回环失败，「PDA 打开 → 已连接」验收对该类用户不成立。需拍板：
+   - 方案 A：保持「存储值优先」（简单，残留用户手动改设置页）；
+   - 方案 B：`getBaseUrl()` 加一条「存储值 == DEFAULT_BASE_URL 且 `window.location.origin` ≠ 该值 → 忽略存储值」——自动纠正明显错误配置；PC 用户（origin 即 127.0.0.1:53960）不受影响。
+3. **vitest 环境写法（不阻塞定稿，实施提示）**：默认环境 node（web/vitest.config.ts），「有 / 无存储值」两用例需 `// @vitest-environment jsdom` pragma；jsdom 下 `window.location.origin` 为 `http://localhost:3000`，断言应引用变量而非写死；`vitest.setup.ts` 的内存 Storage 桩为模块级单例跨文件共享，用例需先 `removeItem` 清 key 防污染。
+
+### 可选建议（不阻塞）
+- **localhost 打开的行为变化**：后端默认仅监听 `127.0.0.1`（`src/LabelFrame.WinHost/HostOptions.cs:26`、`packaging/appsettings.json`）。未存设置的用户若用 `http://localhost:53960` 打开页面，改后 API 请求发往 localhost（Windows 上解析优先 ::1，依赖浏览器 IPv4 回退兜底）——建议验收与文档统一用 127.0.0.1 打开。
+- `Settings.tsx:86/103` 的占位与提示文案（默认 127.0.0.1）在存储覆盖语义下仍准确，无需改；若采纳方案 B 可加一句 PDA 提示，非必须。
+- file:// 打开 dist 的开发者场景 origin 为 "null"，原本也无后端可用，忽略即可。
+
+### 待审核者确认清单
+1. 任务单第 2 条是否改为「新建 settings 测试」？
+2. 存储值 = 127.0.0.1 残留场景：选方案 A 还是方案 B（或另定）？
+3. 是否在任务单补充「验收用 127.0.0.1 打开，localhost 场景不承诺」备注？
+
+结论：任务单方向正确、事实准确、修复面完整，可照常实施；仅 #2 为影响验收成立面的决策点。
