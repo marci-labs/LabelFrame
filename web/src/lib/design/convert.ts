@@ -12,6 +12,9 @@ export interface BackendElement {
   xMm: number
   yMm: number
   paddingMm?: number
+  /** 双边内边距（迭代 13：替代单值 max 近似；旧模板无此字段时用 paddingMm 兜底） */
+  paddingH?: number
+  paddingV?: number
   borderMm?: number
   regionId?: string
   regionHAlign?: string
@@ -27,9 +30,22 @@ export interface BackendElement {
   heightMm?: number
   textAlign?: string
   verticalAlign?: string
-  heightMm?: number
+  /** 前端画布字体（迭代 13：Skia 图片打印用；矢量 ZPL 仍由 fontName 决定） */
+  fontFamily?: string
+  /** 自动换行（迭代 13：true 才写） */
+  wrap?: boolean
+  /** 行距系数（迭代 13：!= 1.2 才写） */
+  lineHeight?: number
+  /** 溢出处理（迭代 13：shrink 缩小 / overflow 隐藏裁剪；!= shrink 才写） */
+  fitMode?: 'shrink' | 'overflow'
   moduleWidth?: number
+  /** 条码底部文字（迭代 13：false 才写，默认 true） */
+  displayValue?: boolean
   sizeMm?: number
+  /** 二维码纠错级别（迭代 13：!= M 才写） */
+  qrEcc?: 'L' | 'M' | 'Q' | 'H'
+  /** 二维码静区模块数（迭代 13：!= 2 才写） */
+  qrMargin?: number
   x2Mm?: number
   y2Mm?: number
   thicknessMm?: number
@@ -71,6 +87,9 @@ export function toBackendElement(e: DesignElement): BackendElement {
   const padH = 'paddingH' in e ? (e.paddingH ?? 0) : 0
   const padV = 'paddingV' in e ? (e.paddingV ?? 0) : 0
   const pad = Math.max(padH, padV)
+  // 迭代 13：双边内边距双值写出；paddingMm 保留兼容（旧模板/后端读回兜底）
+  if (padH > 0) base.paddingH = r2(padH)
+  if (padV > 0) base.paddingV = r2(padV)
   if (pad > 0) base.paddingMm = r2(pad)
   if ((e.border ?? 0) > 0) base.borderMm = r2(e.border ?? 0)
   if (e.regionId) base.regionId = e.regionId
@@ -90,6 +109,11 @@ export function toBackendElement(e: DesignElement): BackendElement {
       if (e.h > 0) base.heightMm = r2(e.h)
       if (e.align !== 'Left') base.textAlign = e.align
       if (e.valign && e.valign !== 'middle') base.verticalAlign = e.valign === 'top' ? 'Top' : 'Bottom'
+      // 迭代 13：文本排版字段（非默认才写）
+      if (e.fontFamily && e.fontFamily !== 'Microsoft YaHei') base.fontFamily = e.fontFamily
+      if (e.wrap) base.wrap = true
+      if (e.lineHeight && e.lineHeight !== 1.2) base.lineHeight = r2(e.lineHeight)
+      if (e.fitMode && e.fitMode !== 'shrink') base.fitMode = e.fitMode
       break
     case 'Barcode':
       base.sourceKey = e.key
@@ -97,12 +121,15 @@ export function toBackendElement(e: DesignElement): BackendElement {
       if (e.mode === 'field' && e.key && e.text) base.previewValue = e.text
       base.heightMm = r2(e.h)
       base.moduleWidth = Math.max(1, Math.round(e.moduleWidth))
+      if (e.displayValue === false) base.displayValue = false
       break
     case 'QrCode':
       base.sourceKey = e.key
       if (e.mode === 'literal' && e.text) base.literal = e.text
       if (e.mode === 'field' && e.key && e.text) base.previewValue = e.text
       base.sizeMm = r2(Math.max(e.w, e.h))
+      if (e.qrEcc && e.qrEcc !== 'M') base.qrEcc = e.qrEcc
+      if (e.qrMargin !== undefined && e.qrMargin !== 2) base.qrMargin = e.qrMargin
       break
     case 'Image':
       base.sourceKey = e.key
@@ -137,8 +164,8 @@ export function fromBackendElements(list: readonly BackendElement[]): DesignElem
       x: j.xMm ?? 0,
       y: j.yMm ?? 0,
       border: j.borderMm ?? 0,
-      paddingH: j.paddingMm ?? 0,
-      paddingV: j.paddingMm ?? 0,
+      paddingH: j.paddingH ?? j.paddingMm ?? 0,
+      paddingV: j.paddingV ?? j.paddingMm ?? 0,
       regionId: j.regionId,
       regionHAlign: j.regionHAlign,
       regionVAlign: j.regionVAlign,
@@ -157,15 +184,15 @@ export function fromBackendElements(list: readonly BackendElement[]): DesignElem
           h: j.heightMm && j.heightMm > 0 ? j.heightMm : Math.max(fontH + pad * 2, 10),
           fontH,
           fontW: j.fontWidthMm ?? fontH,
-          fontFamily: 'Microsoft YaHei',
-          wrap: false,
-          lineHeight: 1.2,
+          fontFamily: j.fontFamily ?? 'Microsoft YaHei',
+          wrap: j.wrap ?? false,
+          lineHeight: j.lineHeight ?? 1.2,
           valign: (j.verticalAlign?.toLowerCase() as 'top' | 'middle' | 'bottom') || 'middle',
           mode,
           key: mode === 'field' ? key : '',
           text: literal || (j.previewValue ?? ''), // field 模式读回预览值
           align: (j.textAlign as 'Left' | 'Center' | 'Right') || 'Left',
-          fitMode: 'shrink',
+          fitMode: (j.fitMode as 'shrink' | 'overflow') ?? 'shrink',
         }
       }
       case 'barcode': {
@@ -181,7 +208,7 @@ export function fromBackendElements(list: readonly BackendElement[]): DesignElem
           key: mode === 'field' ? key : '',
           text: literal || (j.previewValue ?? ''),
           barcodeFormat: 'CODE128',
-          displayValue: true,
+          displayValue: j.displayValue ?? true,
           moduleWidth: j.moduleWidth ?? 2,
         }
       }
@@ -198,8 +225,8 @@ export function fromBackendElements(list: readonly BackendElement[]): DesignElem
           mode,
           key: mode === 'field' ? key : '',
           text: literal || (j.previewValue ?? ''),
-          qrEcc: 'M',
-          qrMargin: 2,
+          qrEcc: (j.qrEcc as 'L' | 'M' | 'Q' | 'H') ?? 'M',
+          qrMargin: j.qrMargin ?? 2,
         }
       }
       case 'image':

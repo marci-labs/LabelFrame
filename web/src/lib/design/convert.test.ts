@@ -307,4 +307,121 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
       expect(rg2.w).toBe(55)
     })
   })
+
+  describe('迭代 13 契约字段（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH-V）', () => {
+    it('写方向：默认值省略（与现有省略规则一致）', () => {
+      const t = defaultElement('Text') // fontFamily=YaHei / wrap=false / lineHeight=1.2 / fitMode=shrink
+      const tj = toBackendElement(t)
+      expect(tj.fontFamily).toBeUndefined()
+      expect(tj.wrap).toBeUndefined()
+      expect(tj.lineHeight).toBeUndefined()
+      expect(tj.fitMode).toBeUndefined()
+
+      const q = defaultElement('QrCode') // qrEcc=M / qrMargin=2
+      const qj = toBackendElement(q)
+      expect(qj.qrEcc).toBeUndefined()
+      expect(qj.qrMargin).toBeUndefined()
+
+      const b = defaultElement('Barcode') // displayValue=true
+      expect(toBackendElement(b).displayValue).toBeUndefined()
+    })
+
+    it('写方向：非默认值写出（text 全字段）', () => {
+      const t = defaultElement('Text')
+      t.fontFamily = 'SimSun'
+      t.wrap = true
+      t.lineHeight = 1.3
+      t.fitMode = 'overflow'
+      const j = toBackendElement(t)
+      expect(j.fontFamily).toBe('SimSun')
+      expect(j.wrap).toBe(true)
+      expect(j.lineHeight).toBe(1.3)
+      expect(j.fitMode).toBe('overflow')
+    })
+
+    it('写方向：qrEcc/qrMargin/displayValue 非默认写出', () => {
+      const q = defaultElement('QrCode')
+      q.qrEcc = 'H'
+      q.qrMargin = 4
+      const qj = toBackendElement(q)
+      expect(qj.qrEcc).toBe('H')
+      expect(qj.qrMargin).toBe(4)
+
+      const b = defaultElement('Barcode')
+      b.displayValue = false
+      expect(toBackendElement(b).displayValue).toBe(false)
+    })
+
+    it('写方向：双边内边距双值写出 + paddingMm 兼容保留', () => {
+      const t = defaultElement('Text')
+      t.paddingH = 2
+      t.paddingV = 1
+      const j = toBackendElement(t)
+      expect(j.paddingH).toBe(2)
+      expect(j.paddingV).toBe(1)
+      expect(j.paddingMm).toBe(2) // max 兼容
+    })
+
+    it('读回：新字段还原（text/qrcode/barcode）', () => {
+      const t = first<TextElement>(fromBackendElements([
+        { type: 'text', xMm: 0, yMm: 0, sourceKey: 'k', fontHeightMm: 4, fontFamily: 'SimSun', wrap: true, lineHeight: 1.3, fitMode: 'overflow' },
+      ]))
+      expect(t.fontFamily).toBe('SimSun')
+      expect(t.wrap).toBe(true)
+      expect(t.lineHeight).toBe(1.3)
+      expect(t.fitMode).toBe('overflow')
+
+      const q = first<QrCodeElement>(fromBackendElements([
+        { type: 'qrcode', xMm: 0, yMm: 0, sourceKey: 'k', sizeMm: 20, qrEcc: 'H', qrMargin: 4 },
+      ]))
+      expect(q.qrEcc).toBe('H')
+      expect(q.qrMargin).toBe(4)
+
+      const b = first<BarcodeElement>(fromBackendElements([
+        { type: 'barcode', xMm: 0, yMm: 0, sourceKey: 'k', heightMm: 10, displayValue: false },
+      ]))
+      expect(b.displayValue).toBe(false)
+    })
+
+    it('读回：旧模板（无新字段 / 仅 paddingMm）→ 前端默认 + paddingMm 兜底', () => {
+      const t = first<TextElement>(fromBackendElements([
+        { type: 'text', xMm: 0, yMm: 0, sourceKey: 'k', paddingMm: 1.5 },
+      ]))
+      expect(t.fontFamily).toBe('Microsoft YaHei')
+      expect(t.wrap).toBe(false)
+      expect(t.lineHeight).toBe(1.2)
+      expect(t.fitMode).toBe('shrink')
+      expect(t.paddingH).toBe(1.5)
+      expect(t.paddingV).toBe(1.5)
+    })
+
+    it('往返：全字段一致（含不对称内边距与 QR 参数）', () => {
+      const t = defaultElement('Text')
+      t.wrap = true
+      t.lineHeight = 1.3
+      t.fitMode = 'overflow'
+      t.fontFamily = 'SimSun'
+      t.paddingH = 2
+      t.paddingV = 1
+      const t2 = first<TextElement>(fromBackendElements([toBackendElement(t)]))
+      expect(t2.wrap).toBe(true)
+      expect(t2.lineHeight).toBe(1.3)
+      expect(t2.fitMode).toBe('overflow')
+      expect(t2.fontFamily).toBe('SimSun')
+      expect(t2.paddingH).toBe(2)
+      expect(t2.paddingV).toBe(1)
+
+      const q = defaultElement('QrCode')
+      q.qrEcc = 'H'
+      q.qrMargin = 4
+      const q2 = first<QrCodeElement>(fromBackendElements([toBackendElement(q)]))
+      expect(q2.qrEcc).toBe('H')
+      expect(q2.qrMargin).toBe(4)
+
+      const b = defaultElement('Barcode')
+      b.displayValue = false
+      const b2 = first<BarcodeElement>(fromBackendElements([toBackendElement(b)]))
+      expect(b2.displayValue).toBe(false)
+    })
+  })
 })
