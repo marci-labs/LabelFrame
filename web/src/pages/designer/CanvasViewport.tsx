@@ -12,6 +12,7 @@ import type { DesignElement } from '../../lib/design/types'
 import { elementById } from '../../lib/design/model'
 import { designCanvasSize, fitScale, logicToContentMm, previewCanvasSize, previewScale, PX, RULER } from '../../lib/design/geometry'
 import { computeSnap } from '../../lib/design/snapping'
+import { CORE_SHORTCUTS } from './shortcuts'
 
 export interface DesignState {
   paperW: number
@@ -496,6 +497,27 @@ export function CanvasViewport(props: CanvasViewportProps) {
           </Layer>
         </Stage>
       </div>
+      {!preview && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(29,38,51,.78)',
+            color: '#fff',
+            fontSize: 12,
+            padding: '4px 12px',
+            borderRadius: 999,
+            pointerEvents: 'none',
+            fontFamily: 'var(--font-mono)',
+            whiteSpace: 'nowrap',
+            zIndex: 2,
+          }}
+        >
+          {CORE_SHORTCUTS}
+        </div>
+      )}
       {preview && (
         <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', background: 'rgba(29,38,51,.78)', color: '#fff', fontSize: 12, padding: '4px 12px', borderRadius: 999, pointerEvents: 'none', fontFamily: 'var(--font-mono)' }}>
           {dpi} dpi 打印预览 · 中键平移 · Ctrl+滚轮缩放

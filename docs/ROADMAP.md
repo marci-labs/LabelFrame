@@ -427,7 +427,7 @@
 - Log 模拟打印：`LogPrintTransport` 只记摘要，作业层渲染 PNG 保存到 `print\{jobId}\`。
 - AndroidHost：`AndroidLabelRenderer`（Android.Graphics + ZXing）整版位图渲染 → `ZplImageEncoder`，替换 ZplEncoder（真机验收待 PDA 联调）。
 - 测试 143 全绿（Core 60 / Server 8 / Studio 25 / WinHost 50）；AndroidHost 编译通过。
-- 产物 `LabelFrame-0.13.0.msi`（2026-08-10）：含迭代 15 前后端合并版，可覆盖 0.12.x / 0.11.x 安装；用户测试验收与 PDA 联调待执行。
+- 产物 `LabelFrame-0.13.1.msi`（2026-08-10）：含迭代 15 前后端合并版，可覆盖 0.12.x / 0.11.x 安装；用户测试验收与 PDA 联调待执行。
 **启动命令**：
 > 继续 LabelFrame 迭代 15。先读 AGENTS.md、docs/ITERATION-15-SPEC.md（含已确认决策）；hermes 评估前端无异议后，后端实施 §3.1/§4/§5，前端实施 §3.2/§6；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 

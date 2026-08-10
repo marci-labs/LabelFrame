@@ -7,7 +7,7 @@ export type IconName =
   | 'plus' | 'edit' | 'trash' | 'download' | 'upload' | 'refresh'
   | 'retry' | 'test' | 'link' | 'printer' | 'clear' | 'layers'
   | 'check' | 'x' | 'search' | 'file' | 'grid' | 'zoom' | 'save'
-  | 'back' | 'preview' | 'copy' | 'clipboard' | 'alert'
+  | 'back' | 'preview' | 'copy' | 'clipboard' | 'alert' | 'keyboard'
 
 const PATHS: Record<IconName, React.ReactNode> = {
   workbench: (
@@ -104,6 +104,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   alert: <path d="M12 3 2.5 20h19zM12 9v5M12 17.5v.5" />,
+  keyboard: (
+    <>
+      <rect x="2.5" y="6" width="19" height="12.5" rx="2" />
+      <path d="M6.5 10h.01M9.5 10h.01M12.5 10h.01M15.5 10h.01M18.5 10h.01M6.5 14h11" />
+    </>
+  ),
 }
 
 interface IconProps extends SVGProps<SVGSVGElement> {

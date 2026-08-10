@@ -21,6 +21,7 @@ import { createHistory } from '../lib/design/history'
 import { r2 } from '../lib/design/geometry'
 import { exportDesign, parseDesign } from '../lib/design/format'
 import { fromBackendElements, toContract, toLayout } from '../lib/design/convert'
+import { SHORTCUT_GROUPS } from './designer/shortcuts'
 
 const snap = (s: DesignState) => JSON.stringify({ paperW: s.paperW, paperH: s.paperH, elements: s.elements })
 const parse = (s: string): DesignState => JSON.parse(s) as DesignState
@@ -44,6 +45,7 @@ export function Designer({ request, onClose }: DesignerProps) {
   const [rightTab, setRightTab] = useState<'props' | 'data'>('props')
   const [saving, setSaving] = useState(false)
   const [confirmOverwrite, setConfirmOverwrite] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const stateRef = useRef<DesignState | null>(null)
@@ -562,6 +564,10 @@ export function Designer({ request, onClose }: DesignerProps) {
           {Math.round(zoom * 100)}%
         </span>
         <span className="spacer" style={{ flex: 1 }} />
+        <button className="btn ghost" onClick={() => setShortcutsOpen(true)} title="快捷键与画布操作说明">
+          <Icon name="keyboard" size={13} />
+          快捷键
+        </button>
         <button className="btn" onClick={() => void doExportDesign()} title="Ctrl+Shift+C">
           <Icon name="clipboard" size={13} />
           导出设计
@@ -656,6 +662,41 @@ export function Designer({ request, onClose }: DesignerProps) {
             )}
           </aside>
         </div>
+      )}
+
+      {shortcutsOpen && (
+        <Modal
+          title="快捷操作"
+          onClose={() => setShortcutsOpen(false)}
+          width={520}
+          footer={
+            <button className="btn primary" onClick={() => setShortcutsOpen(false)}>
+              知道了
+            </button>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {SHORTCUT_GROUPS.map((g) => (
+              <div key={g.title}>
+                <div className="group-title" style={{ marginBottom: 4 }}>{g.title}</div>
+                <table className="table">
+                  <tbody>
+                    {g.items.map((item) => (
+                      <tr key={item.desc} style={{ cursor: 'default' }}>
+                        <td style={{ width: 240, whiteSpace: 'nowrap' }}>
+                          {item.keys.map((k) => (
+                            <kbd key={k} className="kbd">{k}</kbd>
+                          ))}
+                        </td>
+                        <td style={{ fontSize: 12 }}>{item.desc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        </Modal>
       )}
 
       {confirmOverwrite && (
