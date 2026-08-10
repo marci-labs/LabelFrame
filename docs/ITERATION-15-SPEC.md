@@ -311,3 +311,38 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 2. **LOG 输出位置与可见性**：Log 模拟打印 PNG 保存到 `%LOCALAPPDATA%\LabelFrame\print\{jobId}\label-N.png`（host.log 有摘要）。此前 UI 未提示路径，已把 `printImageDir` / `printImageCount` 附到作业视图（JobView），前端作业进度区显示「模拟打印图片（Log）：<目录>（N 张）」。
 3. **用户环境注意**：本机 `%LOCALAPPDATA%\LabelFrame\connection.json` 留存了此前保存的 WindowsDriver 连接（真实打印机配置）——当前生效连接不是 Log，因此看不到模拟打印输出；在 Web 设置页 / 数据与打印页切到 Log 即可看到 PNG。升级后旧的 Zebra/TCP 误判配置不会再被接受（~HS 探测）。
 4. 端到端验证（本机 Log 模式）：提交作业 → 响应与查询均返回 `printImageDir`，`label-1.png` 落盘（1 张）。
+
+
+## 附九：前端修复任务单（hermes 实施，2026-08-10）——PDA 远程访问失败：baseUrl 默认值写死 127.0.0.1
+
+> 后端只出文档，前端由 hermes 照此实施；实施并 push 后合入再打新 MSI（0.13.2）。
+
+### 现象
+- PDA 浏览器打开 `http://192.168.1.3:53960` 页面能正常加载，但点击「打印测试 / 批量打印」服务端无任何作业/日志。
+- PC 上打开同一页面操作正常。
+
+### 根因
+- `web/src/lib/api/types.ts`：`export const DEFAULT_BASE_URL = 'http://127.0.0.1:53960'`
+- `web/src/lib/settings.ts` `getBaseUrl()`：无存储值时返回 `DEFAULT_BASE_URL`。
+- 页面加载走浏览器地址栏（`192.168.1.3:53960`）与 SPA 内部 `fetch` 的 baseUrl 无关：PDA 上所有 API 请求发往 **PDA 自身的 127.0.0.1:53960** → 全部失败（连接状态灯显示「未连接」）。
+
+### 修复要求（前端）
+1. **`getBaseUrl()` 默认值改为页面自身来源**：
+   - 有存储值 `labelframe.baseUrl` 时仍优先（设置页覆盖行为不变，`setBaseUrl` 不变）。
+   - 无存储值时返回 `window.location.origin`（如 `http://192.168.1.3:53960`；PC 打开时即 `http://127.0.0.1:53960`，行为一致）。
+   - 需要 `typeof window !== 'undefined'` 守卫（Node 测试环境无 window 时回退 `DEFAULT_BASE_URL`）；返回前去掉尾部 `/`（沿用现有 `.replace(/\/+$/, '')`）。
+2. **测试更新**（`settings` 相关单测）：
+   - 无存储值 → 返回 `window.location.origin`；
+   - 有存储值 → 返回存储值；
+   - 无 window（Node）→ 回退 `DEFAULT_BASE_URL`；
+   - 现有依赖 `DEFAULT_BASE_URL` 的用例同步调整。
+3. **不改后端 / CORS**（WinHost 已启用宽松 CORS；页面与 API 同源后无跨域问题）。
+
+### 验收
+- PDA 打开 `http://192.168.1.3:53960`：连接状态灯「已连接」；数据与打印 → 打印测试：服务端（Log 模拟 / 真实打印机）产生输出（Log 时作业进度显示图片目录）。
+- PC 打开 `http://127.0.0.1:53960` 行为不变。
+- `pnpm test` / `pnpm build` / `pnpm lint` 全绿。
+
+### 备注（后端已完成，不需 hermes 处理）
+- 本地 UI 打开地址规范化（`ToLocalUiUrl`：`0.0.0.0` 监听时浏览器/托盘跳 `127.0.0.1`）已在后端提交 `1b9df9a`。
+- 连接测试 `~HS` 探测、Log 模拟打印目录展示等已合入。
