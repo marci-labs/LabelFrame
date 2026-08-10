@@ -221,3 +221,9 @@
 - 删除（§3.2）：DataPrint / Settings 的 printMode 下拉与旧调试复选框、`Healthz.printMode` / `SubmitJobRequest.printMode` 类型。
 - api client：新增 `getTransport` / `setTransport` / `testTransport` / `renderImages`；下载型端点统一 `fetchBlob`（Content-Disposition 文件名 + ErrorView 错误解析）。
 - 测试 91 全绿（新增 27 个：draft 纯逻辑 / 连接切换交互 / 保留与调试按钮行为）；`pnpm build` / `pnpm lint` 通过。
+
+## 迭代 15 增强（设计器快捷操作说明，2026-08-10）
+
+- 设计器画布顶部常驻核心快捷键提示条（`Ctrl+Z 撤销 · Ctrl+C/V 复制粘贴 · Delete 删除 · 中键平移 · Ctrl+滚轮缩放`），编辑模式随时可见（与预览模式提示同款视觉；预览时自动切换为预览提示）。
+- 设计器工具栏新增「快捷键」按钮，弹出完整清单：编辑（撤销重做 / 删除 / 取消放置）、剪贴板（复制粘贴 / 导出导入设计 JSON）、画布（中键平移 / Ctrl+滚轮缩放 / Shift+Ctrl 多选 / 拖拽吸附 / 手柄缩放）三组。
+- 测试 95 全绿（新增快捷键清单结构测试 4 个）。
