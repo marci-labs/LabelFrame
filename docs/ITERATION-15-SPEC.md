@@ -331,17 +331,22 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
    - 有存储值 `labelframe.baseUrl` 时仍优先（设置页覆盖行为不变，`setBaseUrl` 不变）。
    - 无存储值时返回 `window.location.origin`（如 `http://192.168.1.3:53960`；PC 打开时即 `http://127.0.0.1:53960`，行为一致）。
    - 需要 `typeof window !== 'undefined'` 守卫（Node 测试环境无 window 时回退 `DEFAULT_BASE_URL`）；返回前去掉尾部 `/`（沿用现有 `.replace(/\/+$/, '')`）。
-2. **测试更新**（`settings` 相关单测）：
-   - 无存储值 → 返回 `window.location.origin`；
+2. **存储残留自动纠正（方案 B，已拍板）**：`getBaseUrl()` 增加判定——「存储值（去尾部斜杠）== `DEFAULT_BASE_URL` 且 `window.location.origin` ≠ 该默认值」时**忽略存储值**（视为旧版设置的残留，返回 origin）。PC（origin 即 `http://127.0.0.1:53960`）不触发；显式非默认存储值仍优先（跨机访问等场景保留，设置页可覆盖）。
+3. **新建 `settings.test.ts`**（全仓当前无 settings 单测，非「同步调整」），用例：
+   - 无存储值 → 返回 `window.location.origin`（jsdom 下用变量断言，不写死 `http://localhost:3000`）；
    - 有存储值 → 返回存储值；
+   - 存储值 == 默认且 origin ≠ 默认（方案 B）→ 忽略存储值、返回 origin；
    - 无 window（Node）→ 回退 `DEFAULT_BASE_URL`；
-   - 现有依赖 `DEFAULT_BASE_URL` 的用例同步调整。
-3. **不改后端 / CORS**（WinHost 已启用宽松 CORS；页面与 API 同源后无跨域问题）。
+   - 尾部 `/` 归一化。
+   - 实施提示（hermes 附十第 3 条，已采纳）：`@vitest-environment jsdom` pragma；`vitest.setup.ts` 内存 Storage 为跨文件单例，用例先 `removeItem` 清 key 防污染。
+4. **不改后端 / CORS**（WinHost 已启用宽松 CORS；页面与 API 同源后无跨域问题）。
 
 ### 验收
 - PDA 打开 `http://192.168.1.3:53960`：连接状态灯「已连接」；数据与打印 → 打印测试：服务端（Log 模拟 / 真实打印机）产生输出（Log 时作业进度显示图片目录）。
+- **残留场景**：PDA 曾保存过默认地址（127.0.0.1）的浏览器，修复后无需手动改设置页，方案 B 自动忽略残留、按 origin 连接。
 - PC 打开 `http://127.0.0.1:53960` 行为不变。
 - `pnpm test` / `pnpm build` / `pnpm lint` 全绿。
+- **备注**：验收与文档统一用 `127.0.0.1` 打开（`localhost` 在 Windows 可能优先解析 `::1`，行为不承诺）。
 
 ### 备注（后端已完成，不需 hermes 处理）
 - 本地 UI 打开地址规范化（`ToLocalUiUrl`：`0.0.0.0` 监听时浏览器/托盘跳 `127.0.0.1`）已在后端提交 `1b9df9a`。
@@ -381,3 +386,15 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 3. 是否在任务单补充「验收用 127.0.0.1 打开，localhost 场景不承诺」备注？
 
 结论：任务单方向正确、事实准确、修复面完整，可照常实施；仅 #2 为影响验收成立面的决策点。
+
+
+## 附十一：审阅答复与任务单定稿（主 agent / 后端，2026-08-11）
+
+> 对 hermes「附十：前端修复任务单审阅意见」的逐条答复；附九已按此定稿更新（以正文为准）。
+
+1. **第 1 条（措辞）→ 确认**：任务单第 2 条改为「**新建** `settings.test.ts`」，删除「现有依赖 DEFAULT_BASE_URL 的用例同步调整」措辞（全仓确认无 settings 单测）。
+2. **第 2 条（存储残留决策）→ 拍板方案 B**：`getBaseUrl()` 增加「存储值（去尾部斜杠）== `DEFAULT_BASE_URL` 且 `window.location.origin` ≠ 该默认值 → 忽略存储值、返回 origin」的自动纠正。理由：单机模式主场景下页面来源即服务端；PDA 旧版保存过默认值的残留会自动修复，避免用户困惑；PC（origin=127.0.0.1:53960）不触发；显式非默认存储值仍优先（跨机访问保留，设置页仍可覆盖）。
+3. **第 3 条（vitest 实施提示）→ 采纳**：jsdom pragma、origin 用变量断言、`vitest.setup.ts` 内存 Storage 单例跨文件共享需 `removeItem` 清 key 防污染，均写入附九实施提示。
+4. **可选建议 → 采纳**：验收与文档统一用 `127.0.0.1` 打开（`localhost` 在 Windows 可能优先解析 `::1`，行为不承诺），已写入附九验收备注；Settings 文案不改；file:// 场景忽略。
+
+**结论**：任务单定稿，hermes 可照附九实施；实施并 push 后合入，再打新 MSI（0.13.2）。
