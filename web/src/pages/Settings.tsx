@@ -16,20 +16,17 @@ export function Settings() {
   const [printerLoading, setPrinterLoading] = useState(false)
   const [testPrinting, setTestPrinting] = useState(false)
   const [printResult, setPrintResult] = useState<string | null>(null)
+  // 服务端默认打印方式（healthz，迭代 12：信息提示，不参与提交逻辑）
+  const [serverPrintMode, setServerPrintMode] = useState<'Vector' | 'Image' | null>(null)
 
-  const testConnection = useCallback(async () => {
-    setTesting(true)
-    setTestResult(null)
-    app.changeBaseUrl(url)
-    const ok = await app.checkConnection()
-    setTestResult(
-      ok
-        ? { ok: true, msg: `连接成功 · 服务：${app.transport ? '传输模式 ' + app.transport : '正常'}` }
-        : { ok: false, msg: '连接失败：请确认后端已启动，且地址格式正确（http://主机:端口）。' },
-    )
-    setTesting(false)
-    if (ok) void refreshPrinter()
-  }, [url, app])
+  const loadServerPrintMode = useCallback(async () => {
+    try {
+      const h = await api.healthz()
+      setServerPrintMode(h.printMode ?? null)
+    } catch {
+      setServerPrintMode(null)
+    }
+  }, [])
 
   const refreshPrinter = useCallback(async () => {
     setPrinterLoading(true)
@@ -44,9 +41,29 @@ export function Settings() {
     }
   }, [])
 
+  const testConnection = useCallback(async () => {
+    setTesting(true)
+    setTestResult(null)
+    app.changeBaseUrl(url)
+    const ok = await app.checkConnection()
+    setTestResult(
+      ok
+        ? { ok: true, msg: `连接成功 · 服务：${app.transport ? '传输模式 ' + app.transport : '正常'}` }
+        : { ok: false, msg: '连接失败：请确认后端已启动，且地址格式正确（http://主机:端口）。' },
+    )
+    setTesting(false)
+    if (ok) {
+      void refreshPrinter()
+      void loadServerPrintMode()
+    }
+  }, [url, app, refreshPrinter, loadServerPrintMode])
+
   useEffect(() => {
-    if (app.connected) void refreshPrinter()
-  }, [app.connected, refreshPrinter])
+    if (app.connected) {
+      void refreshPrinter()
+      void loadServerPrintMode()
+    }
+  }, [app.connected, refreshPrinter, loadServerPrintMode])
 
   const doTestPrint = async () => {
     setTestPrinting(true)
@@ -131,6 +148,13 @@ export function Settings() {
               {printResult && <span className={printResult.startsWith('测试页已发送') ? 'badge ok' : 'badge err'}>{printResult}</span>}
             </div>
             <div className="hint">测试打印发送一张测试页（条码 LABELFRAME-TEST）。当前传输模式：{app.transport ?? '未知'}（Log 模式无需打印机）。</div>
+            {serverPrintMode && (
+              <div className="hint">
+                服务端默认打印方式：
+                <b className="mono" style={{ marginLeft: 4 }}>{serverPrintMode === 'Image' ? '图片（整版位图）' : '矢量 ZPL'}</b>
+                （数据与打印页可单独选择）
+              </div>
+            )}
           </div>
         </section>
       </div>
