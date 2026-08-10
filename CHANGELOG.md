@@ -175,3 +175,12 @@
 - 后端渲染器改为 SkiaSharp（0.11.5，2026-08-10，方案 2）：新增 `SkiaLabelRenderer`（canvas 类 2D 渲染，与前端同源规则：文本超出框宽缩小适应、左中右对齐、内边距/边框、线条/区域、ZXing 条码二维码、模板图片），图片打印与「保存打印图片」均切换；修复 GDI 渲染的 CJK / 右对齐 / 长文本缺失问题（含生僻字开头只匹配小字体、行高为负导致裁剪空矩形）。你的 70×50 模板四个字段（MaterialName / CompanyName / Specification / WarehouseName）端到端验证全部渲染。产物 `LabelFrame-0.11.5.msi`。
 - 文本垂直对齐契约与前后端同源（0.11.6，2026-08-10）：文本元素新增 `heightMm` + `verticalAlign`（Top/Middle/Bottom），前端保存时写入元素高度与垂直对齐；Skia / GDI 渲染器按框高垂直对齐绘制，修复「打印比前端预览整体偏上」（此前前端在元素框内垂直居中、后端顶部对齐，且高度未持久化）。端到端验证：MaterialName / CompanyName / WarehouseName 文字均落在框中部。产物 `LabelFrame-0.11.6.msi`。
 - 修复 0.11.6 回归（0.11.7，2026-08-10）：无 `heightMm` 的旧模板 + 1mm 内边距时，内框高（字高−2×内边距）被算成负数，裁剪区塌成 1px 导致文字几乎全部消失；现裁剪高度至少一行，旧模板恢复顶部对齐可见，新模板保持居中。产物 `LabelFrame-0.11.7.msi`。
+
+## 迭代 13（文本排版与二维码参数持久化，后端部分，2026-08-10）
+
+- 元素契约补齐第二批字段：文本 `wrap / lineHeight / fitMode / fontFamily`（默认 Microsoft YaHei）、二维码 `qrEcc / qrMargin`（默认 M / 2）、条码 `displayValue`（默认 true）、通用双边内边距 `paddingH / paddingV`（`PaddingHMm / PaddingVMm`，0=未设，缺失时回退 `paddingMm`，`paddingMm` 保留兼容）。
+- 决策 A：`VerticalAlign` 默认由 Top 改为 Middle（与前端一致）；`LabelElementJsonConverter` 写规则改「非 Middle 才写」；旧模板无 `heightMm` 时 Skia 渲染器框高兜底 = `max(字高 + 2×最大双边内边距, 10mm)`（与前端读回兜底一致）。
+- `LabelElementJsonConverter` 读写：非默认才写（wrap=true、displayValue=false、fitMode 非 shrink、lineHeight 非 1.2、fontFamily 非默认、qrEcc 非 M、qrMargin 非 2、paddingH/V >0），旧模板无新字段读回默认，无数据库迁移（layout 整块 JSON）。
+- `SkiaLabelRenderer` 渲染支持：wrap 自动换行 + 行距（lineHeight 倍数）+ 超高整体缩小（最小 1.5mm）、overflow 隐藏裁剪不缩小、fontFamily 字体族（含 CJK 系统回退）、qrEcc / qrMargin 传 ZXing、条码 displayValue 底部数值文字（条码占剩余高度）、文本 / 条码 / 二维码双边内边距内容区（= 元素框减 padding）。
+- ZPL 矢量路径不变量：新排版字段不参与 ZPL 编码，矢量输出与现状一致（新增不变量测试）。
+- 测试 152 个全绿（新增字段往返 / 省略规则 / paddingMm 兜底 / wrap 换行与超高缩小 / overflow 不缩小 / 字体族 / QR 纠错与静区 / 条码文字 / 双边内边距 / 旧模板默认 Middle / ZPL 不变量）。
