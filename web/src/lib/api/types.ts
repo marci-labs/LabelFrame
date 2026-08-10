@@ -9,8 +9,6 @@ export interface Healthz {
   service: string
   status: string
   transport: string
-  /** 服务端默认打印方式（迭代 12：供前端下拉显示） */
-  printMode?: 'Vector' | 'Image'
 }
 
 export interface TemplateSummary {
@@ -77,9 +75,45 @@ export interface SubmitJobRequest {
     contract: BackendContract
     layout: BackendLayout
   }
-  /** 打印方式：缺省用服务端 PrintMode 配置（迭代 12） */
-  printMode?: 'Vector' | 'Image'
   labels: { data: Record<string, string> }[]
+}
+
+// ── 连接管理（迭代 15：GET/POST /api/transport）──
+
+export type TransportMode = 'Log' | 'Tcp' | 'WindowsDriver' | 'Zebra'
+export type ZebraKind = 'Tcp' | 'Usb' | 'Driver'
+
+/** 传输参数：只含当前模式所需字段，未使用字段后端返回默认 / 空，前端不展示。 */
+export interface TransportParams {
+  tcpHost?: string
+  tcpPort?: number
+  printerName?: string
+  zebraKind?: ZebraKind
+  zebraUsbName?: string
+}
+
+export interface TransportConfig {
+  mode: TransportMode
+  params: TransportParams
+  availableModes?: TransportMode[]
+}
+
+/** POST /api/transport 请求体（参数平铺，testOnly 由测试连接填充）。 */
+export interface TransportApplyRequest {
+  mode: TransportMode
+  tcpHost?: string
+  tcpPort?: number
+  printerName?: string
+  zebraKind?: ZebraKind
+  zebraUsbName?: string
+  testOnly?: boolean
+}
+
+/** POST /api/transport 响应：成功与失败（200）统一返回 config = 当前生效连接。 */
+export interface TransportResult {
+  ok: boolean
+  message: string
+  config: TransportConfig
 }
 
 /** 后端错误响应（ErrorView）。 */

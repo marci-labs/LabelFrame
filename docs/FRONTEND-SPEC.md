@@ -91,6 +91,10 @@ Base：后端地址（默认 `http://127.0.0.1:53960`）。JSON 一律 camelCase
 | POST | /api/jobs/{jobId}/items/{index}/retry | - | 作业视图 |
 | GET | /api/printer/status | - | `{ isOnline, isPaperOut, isPaused, message }` |
 | POST | /api/printer/test | - | `{ sent, bytes }` |
+| POST | /api/print/render-image | `{ requestId, template, labels }`（单张） | PNG 下载（Content-Disposition 文件名） |
+| POST | /api/print/render-images | `{ requestId, template, labels }`（多张，迭代 15 调试批量） | zip 下载（内含 label-{index+1}.png） |
+| GET | /api/transport | - | `{ mode, params, availableModes }`（迭代 15 连接管理） |
+| POST | /api/transport | `{ mode, tcpHost?, tcpPort?, printerName?, zebraKind?, zebraUsbName?, testOnly? }` | `{ ok, message, config }`（200 统一返回 config = 当前生效连接；400 沿用 ErrorView） |
 | POST | /api/logs | `{ deviceId, lines: string[] }` | 200 |
 | GET | /api/logs?deviceId=&since= | - | `[{ deviceId, time, line }]`（后端暂无清空端点，本期不做清空） |
 

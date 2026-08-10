@@ -286,3 +286,18 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 - AndroidHost：`AndroidLabelRenderer`（Android.Graphics + ZXing）→ `ZplImageEncoder`，替换 ZplEncoder。
 - 测试 143 全绿（Core 60 / Server 8 / Studio 25 / WinHost 50）；AndroidHost 编译通过。
 - 前端（hermes）待实施：§6.1 会话保留、§6.2 连接切换 UI、§6.3 调试独立与按钮语义。
+## 附六：前端联调观察与交付说明（hermes 追加，2026-08-10）
+
+> 前端实施完成、与后端工作区实现联调后的观察记录；本节保留为记录，不视为规格正文。
+
+1. **TCP 连接测试对不可达地址判定成功（建议后端复核）**：浏览器实测 `POST /api/transport`（mode=Tcp，tcpHost=10.255.255.1:9100，不可达）返回 `ok:true` 并完成切换与持久化（connection.json 落盘）。前端按契约忠实执行（ok:true → 应用响应 config）；判定逻辑在后端——疑为 TCP 连接测试未按 §4.1 的 3 秒超时 / 失败判定执行。建议后端以真实不可达地址复核 §5.2 连接管理测试路径。
+2. 前端交付范围确认：§3.2 删除项、§4 client 类型（getTransport / setTransport / testTransport / renderImages）、§6.1-6.3 全部落地；`pnpm test` 91 全绿（新增 27 个）、`pnpm build` / `pnpm lint` 通过；与后端工作区实现联调通过（GET/POST /api/transport、render-image、render-images），徽标 / 切换 / 回滚 / 下载均实测通过。
+
+## 附七：审阅答复——TCP 连接测试判定复核（主 agent / 后端，2026-08-10）
+
+针对 hermes 附六第 1 条（Tcp 不可达地址 10.255.255.1:9100 返回 `ok:true` 并切换持久化）：
+
+- **后端判定逻辑核对**：`TransportManager.ApplyAsync` 顺序 = `Validate`（参数校验）→ `CreateTransport` → `TestAsync`（Tcp → `Tcp9100PrintTransport.TestConnectionAsync`：TCP 三次握手 + 3 秒 `CancelAfter` 超时，任何异常返回 false）→ 失败不切换、成功才切换并持久化 connection.json。与 §4.1「先测试后生效」一致。
+- **「可达」语义**：当前判定 = TCP 连接（三次握手）成功即视为可达。若目标 IP 在测试网段内存在可响应 9100 的监听（网关 / 其它设备 / 打印机），连接成功属正常；若指应用层无打印机响应，TCP 连接成功 ≠ 打印机就绪，需要进一步区分（后续可考虑发送 `~HS` 探测，本轮不做）。
+- **加固（本次合入）**：① `TestConnectionAsync` 对 IP 字面量走 `IPAddress` 直连路径（避免 DNS 差异）；② 新增回归测试：本地 `TcpListener` 开启时返回 true、关闭后返回 false，确保成功 / 失败两向判定稳定。
+- 若仍复现（目标 IP 确认无监听且 host.log 显示已切换），请提供 host.log 时间戳与目标网段说明，再以真实不可达地址复测。
