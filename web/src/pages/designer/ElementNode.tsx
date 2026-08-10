@@ -96,11 +96,12 @@ function TextContent({ e }: { e: TextElement }) {
   const [fs, setFs] = useState(Math.max(1, pxv(e.fontH)))
   const textRef = useRef<Konva.Text>(null)
 
-  // 单行缩小适应：measureSize 循环降字号直到放得下（与原型 applyTextFit 一致）
+  // 缩小适应：measureSize 循环降字号直到放得下（与原型 applyTextFit 一致；
+  // 迭代 13：wrap=true 换行后超高也整体缩小，与 Skia §4.4 打印语义一致，避免预览与打印不一致）
   useEffect(() => {
     const t = textRef.current
     const base = Math.max(1, pxv(e.fontH))
-    if (!t || e.wrap || e.fitMode !== 'shrink') {
+    if (!t || e.fitMode !== 'shrink') {
       setFs(base)
       return
     }
@@ -117,7 +118,7 @@ function TextContent({ e }: { e: TextElement }) {
   }, [content, wPx, hPx, e.fontH, e.wrap, e.fitMode])
 
   const align = e.align === 'Center' ? 'center' : e.align === 'Right' ? 'right' : 'left'
-  const fontSize = e.wrap || e.fitMode === 'overflow' ? Math.max(1, pxv(e.fontH)) : fs
+  const fontSize = e.fitMode === 'overflow' ? Math.max(1, pxv(e.fontH)) : fs
 
   return (
     <Group x={padH} y={padV} clipX={0} clipY={0} clipWidth={wPx} clipHeight={hPx}>
