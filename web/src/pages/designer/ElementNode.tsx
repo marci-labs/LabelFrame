@@ -19,6 +19,10 @@ interface ElementNodeProps {
   onDragEnd?: (ev: KonvaEventObject<DragEvent>) => void
 }
 
+// 含 CJK 字符检测：Konva wrap='word' 按空格分词，中文无空格永不换行 → 长文本单行溢出被 shrink 缩小（字高失真）。
+// 含 CJK 时用 'char'（逐字换行），与 Skia 打印语义（按框宽换行）一致；纯 ASCII 保持 'word'（单词不拆断）。
+const hasCjk = (s: string) => /[\u3000-\u30ff\u3400-\u9fff\uf900-\ufaff\uff00-\uffef]/.test(s)
+
 export function ElementNode({ e, editable, ox, oy, onDragStart, onDragMove, onDragEnd }: ElementNodeProps) {
   const x = ox + pxv(e.x)
   const y = oy + pxv(e.y)
@@ -98,6 +102,7 @@ function TextContent({ e }: { e: TextElement }) {
 
   // 缩小适应：measureSize 循环降字号直到放得下（与原型 applyTextFit 一致；
   // 迭代 13：wrap=true 换行后超高也整体缩小，与 Skia §4.4 打印语义一致，避免预览与打印不一致）
+  // 注意：Konva measureSize 返回单行尺寸（与 wrap 设置无关），wrap 模式需按「单行宽 ÷ 内容宽 = 行数」估算换行后的总高。
   useEffect(() => {
     const t = textRef.current
     const base = Math.max(1, pxv(e.fontH))
@@ -105,17 +110,25 @@ function TextContent({ e }: { e: TextElement }) {
       setFs(base)
       return
     }
-    let f = base
     const minFs = Math.max(1, pxv(1.5))
+    const lineH = e.lineHeight || 1.2
+    let f = base
     t.fontSize(f)
     let m = t.measureSize(content)
-    while ((m.width > wPx || m.height > hPx) && f > minFs) {
+    const fits = () => {
+      if (e.wrap) {
+        const lines = Math.max(1, Math.ceil(m.width / Math.max(1, wPx)))
+        return lines * lineH * f <= hPx
+      }
+      return m.width <= wPx && m.height <= hPx
+    }
+    while (!fits() && f > minFs) {
       f = Math.max(minFs, f - 0.5)
       t.fontSize(f)
       m = t.measureSize(content)
     }
     setFs(f)
-  }, [content, wPx, hPx, e.fontH, e.wrap, e.fitMode])
+  }, [content, wPx, hPx, e.fontH, e.wrap, e.fitMode, e.lineHeight])
 
   const align = e.align === 'Center' ? 'center' : e.align === 'Right' ? 'right' : 'left'
   const fontSize = e.fitMode === 'overflow' ? Math.max(1, pxv(e.fontH)) : fs
@@ -133,7 +146,7 @@ function TextContent({ e }: { e: TextElement }) {
         align={align}
         verticalAlign={e.valign || 'middle'}
         lineHeight={e.lineHeight || 1.2}
-        wrap={e.wrap ? 'word' : 'none'}
+        wrap={e.wrap ? (hasCjk(content) ? 'char' : 'word') : 'none'}
         ellipsis={false}
         listening={false}
         strokeScaleEnabled={false}
