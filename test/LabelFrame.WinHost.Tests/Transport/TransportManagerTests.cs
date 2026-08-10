@@ -1,3 +1,4 @@
+using LabelFrame.Core.Transport;
 using LabelFrame.WinHost.Transport;
 
 namespace LabelFrame.WinHost.Tests.Transport;
@@ -80,5 +81,26 @@ public class TransportManagerTests
         {
             File.Delete(path);
         }
+    }
+
+    [Fact]
+    public async Task Tcp_connection_test_should_detect_listener_open_and_closed()
+    {
+        // 本地监听：开启时连接成功返回 true；关闭后连接拒绝返回 false（两向判定稳定）
+        var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+        try
+        {
+            var open = await new Tcp9100PrintTransport("127.0.0.1", port).TestConnectionAsync();
+            Assert.True(open);
+        }
+        finally
+        {
+            listener.Stop();
+        }
+
+        var closed = await new Tcp9100PrintTransport("127.0.0.1", port).TestConnectionAsync();
+        Assert.False(closed);
     }
 }

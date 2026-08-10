@@ -20,3 +20,4 @@ packaging/files.wxs
 
 ## Visual Studio launch profiles
 **/Properties/launchSettings.json
+.pnpm-store/

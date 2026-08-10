@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
@@ -65,7 +66,16 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(3));
         try
         {
-            await client.ConnectAsync(_host, _port, timeoutCts.Token);
+            // IP 字面量走 IPAddress 直连路径，避免字符串重载的 DNS 解析差异
+            if (System.Net.IPAddress.TryParse(_host, out var address))
+            {
+                await client.ConnectAsync(address, _port, timeoutCts.Token);
+            }
+            else
+            {
+                await client.ConnectAsync(_host, _port, timeoutCts.Token);
+            }
+
             return true;
         }
         catch
