@@ -398,3 +398,29 @@ body { "mode": "...", "tcpHost"?, "tcpPort"?, "printerName"?, "zebraKind"?, "zeb
 4. **可选建议 → 采纳**：验收与文档统一用 `127.0.0.1` 打开（`localhost` 在 Windows 可能优先解析 `::1`，行为不承诺），已写入附九验收备注；Settings 文案不改；file:// 场景忽略。
 
 **结论**：任务单定稿，hermes 可照附九实施；实施并 push 后合入，再打新 MSI（0.13.2）。
+
+## 附十二：任务单定稿复核——dev 模式回归风险（hermes 追加，2026-08-11）
+
+> 供审核者评审；本节保留作为审阅记录，不视为规格正文。
+
+### 附十一答复落实情况（复核通过）
+- 第 1 条（新建 settings.test.ts）→ 正文第 3 条已重写，旧措辞「现有依赖 DEFAULT_BASE_URL 的用例同步调整」已删除。
+- 第 2 条（方案 B）→ 正文第 2 条判定条件与答复一致（存储值去斜杠 == DEFAULT_BASE_URL 且 origin ≠ 默认 → 忽略存储值）；验收栏已补「残留场景」项。
+- 第 3 条（vitest 提示）→ 正文第 3 条实施提示已含 jsdom pragma / origin 变量断言 / removeItem 清 key。
+- 可选建议（127.0.0.1 验收备注）→ 验收栏已补。
+- 修订质量：编号无重排、无旧措辞残留、正文与答复无歧义；附九已定稿，可照此实施。
+
+### 新发现：pnpm dev 开发模式回归（建议拍板）
+- 依据：`web/vite.config.ts` 无 `server.proxy` 配置（仅 port 5173）；`web/src/lib/api/client.ts` 全部请求走 `getBaseUrl()`。
+- 现象：dev 页面 origin = `http://localhost:5173` ≠ 默认值，方案 B + 默认改 origin 后——无存储值时返回 `localhost:5173`（API 全发往 vite dev server，无后端）；dev 下保存过 127.0.0.1 的浏览器（联调常见）方案 B 判定「存储值 == 默认且 origin ≠ 默认」→ 连存储值也被忽略，同样失败。旧行为（无存储值 → 127.0.0.1:53960 直连，宽松 CORS 放行）在 dev 下可用。
+- 影响面：验收标准只含 PDA / PC 生产场景，dev 模式不在验收内——严格按附九实施不违反验收，但迭代 15 前端交付一直用 dev 模式联调，属实际回归。
+
+### 建议方案（供拍板）
+- 方案 ①：`vite.config.ts` 加 `server.proxy = { '/api': 'http://127.0.0.1:53960' }`（dev 下同源走代理，与「页面自身来源」哲学一致；一行配置、零风险，生产不受影响——生产由 WinHost 静态托管，无 vite）。
+- 方案 ②：不加 proxy，接受 dev 模式退化（开发时手动在设置页填非默认地址，或改用 build + WinHost 联调）。
+- 方案 ③：getBaseUrl 特判 dev origin（不推荐，把 dev 逻辑写进生产代码）。
+
+### 待审核者确认清单
+1. dev 回归处理：选方案 ①（加 dev proxy，推荐）、②（接受退化）还是 ③？
+
+结论：定稿正文无需改动；仅 dev 联调链路需一个配套决策。
