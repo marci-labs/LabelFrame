@@ -480,10 +480,10 @@ public static class Program
                 {
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                     {
-                        FileName = options.ListenUrl,
+                        FileName = ToLocalUiUrl(options.ListenUrl),
                         UseShellExecute = true,
                     });
-                    HostInfo($"已尝试打开浏览器：{options.ListenUrl}");
+                    HostInfo($"已尝试打开浏览器：{ToLocalUiUrl(options.ListenUrl)}");
                 }
                 catch (Exception ex)
                 {
@@ -498,7 +498,7 @@ public static class Program
         var tray = new TrayIconService(HostInfo);
         if (options.EnableTray)
         {
-            tray.Start(options.ListenUrl, () =>
+            tray.Start(ToLocalUiUrl(options.ListenUrl), () =>
             {
                 app.Lifetime.StopApplication();
                 return Task.CompletedTask;
@@ -588,6 +588,23 @@ public static class Program
         {
             return Results.Conflict(new ErrorView(ex.Code, ex.Message));
         }
+    }
+
+    /// <summary>本地 UI 打开地址：通配监听（0.0.0.0 / * / + / [::]）规范化为 127.0.0.1，避免浏览器/托盘跳到 0.0.0.0。</summary>
+    private static string ToLocalUiUrl(string listenUrl)
+    {
+        if (!Uri.TryCreate(listenUrl, UriKind.Absolute, out var uri))
+        {
+            return listenUrl;
+        }
+
+        if (uri.Host is "0.0.0.0" or "*" or "+" or "::" or "[::]")
+        {
+            var builder = new UriBuilder(uri) { Host = "127.0.0.1" };
+            return builder.Uri.ToString();
+        }
+
+        return listenUrl;
     }
 
     private sealed class UnsupportedStatusProvider : IPrinterStatusProvider
