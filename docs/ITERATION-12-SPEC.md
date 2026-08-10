@@ -282,3 +282,4 @@
 - 契约：文本元素新增 `heightMm`（0=未指定，按字高）与 `verticalAlign`（Top/Middle/Bottom，默认 Top 兼容旧模板）；前端 `convert.ts` 已同步写入/读回。
 - 渲染：Skia / GDI 渲染器按框高与垂直对齐绘制（边框也按框高）；旧模板（无 heightMm）保持顶部对齐。
 - 注意：已保存的旧模板需在编辑器中重新保存一次，才会带上 heightMm/verticalAlign。
+- 修订（0.11.7）：无 `heightMm` 的旧模板 + 内边距时，内框高不得塌缩（裁剪高度至少一行），旧模板保持顶部对齐可见；新模板居中不变。

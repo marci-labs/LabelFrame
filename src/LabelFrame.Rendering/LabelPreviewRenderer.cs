@@ -122,6 +122,7 @@ public sealed class LabelPreviewRenderer
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
         var boxWidth = ToDots(bounds.WidthMm, dpi);
+        var hasBox = bounds.HeightMm > 0;
         var boxHeight = ToDots(bounds.HeightMm, dpi);
         var padding = ToDots(text.PaddingMm, dpi);
 
@@ -165,7 +166,9 @@ public sealed class LabelPreviewRenderer
         };
         // 未显式指定块宽时按文本实际宽度绘制，避免 1px 矩形把文字裁掉（与 ZPL 无 ^FB 行为一致）
         var drawWidth = boxWidth > 0 ? boxWidth : MeasureTextWidth(graphics, value, font);
-        var rect = new RectangleF(x + padding, y + padding, Math.Max(1, drawWidth), Math.Max(1, boxHeight - 2 * padding));
+        // 裁剪高度至少一行，避免内边距过大/无框高时塌缩
+        var rectHeight = Math.Max(fontSize, hasBox ? boxHeight - 2 * padding : 0);
+        var rect = new RectangleF(x + padding, y + padding, Math.Max(1, drawWidth), Math.Max(1, rectHeight));
         graphics.DrawString(value, font, Brushes.Black, rect, format);
         format.Dispose();
     }

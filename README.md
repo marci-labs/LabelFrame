@@ -52,7 +52,7 @@ cd web; pnpm install; pnpm build; cd ..
 .\scripts\build-msi.ps1
 ```
 
-产物：`artifacts\LabelFrame-0.11.6.msi`（约 10MB，x64 framework-dependent，含 WinHost + Web UI + 应用图标；安装到 `C:\Program Files\LabelFrame`）。
+产物：`artifacts\LabelFrame-0.11.7.msi`（约 10MB，x64 framework-dependent，含 WinHost + Web UI + 应用图标；安装到 `C:\Program Files\LabelFrame`）。
 
 前置要求：目标机需安装 **.NET 10 Desktop Runtime**（x64，下载：https://dotnet.microsoft.com/download/dotnet/10.0）。安装 MSI 时会用 .NET 官方自检程序（NetCoreCheck）实时检测：已安装则直接继续（无需重启），缺失则弹出可点击的官方下载链接对话框（不自动安装）。
 打印模式：默认矢量 ZPL 指令；如想整版位图直传打印机（与画布预览所见一致，用于评估定位），把 `appsettings.json` 的 `WinHost.PrintMode` 改为 `Image`（或环境变量 `LABELFRAME_PRINT_MODE=Image`），打印作业也可临时传 `printMode` 覆盖。

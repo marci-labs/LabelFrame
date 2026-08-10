@@ -1,6 +1,6 @@
 ﻿# 一键构建 LabelFrame MSI 安装包
 param(
-    [string]$Version = '0.11.6',
+    [string]$Version = '0.11.7',
     [string]$Runtime = 'win-x64',
     [string]$PfxPath = '',
     [string]$PfxPassword = 'LabelFrame@2026',

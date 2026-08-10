@@ -105,6 +105,32 @@ public class SkiaLabelRendererTests
     }
 
     [Fact]
+    public void Text_without_height_and_with_padding_should_render()
+    {
+        // 旧模板：无 heightMm、有 1mm 内边距（前端默认）——裁剪区不得塌缩
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "old",
+                ContractName = "old",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 10, FontHeightMm = 3, FontWidthMm = 3, WidthMm = 25, PaddingMm = 1 },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "ABCD" },
+        };
+
+        var bitmap = new SkiaLabelRenderer().RenderLabelBitmap(document, dpi: 203);
+
+        Assert.True(CountBlack(bitmap, 5, 10, 25, 15) > 100, "旧模板（无框高+内边距）文本不应消失");
+    }
+
+    [Fact]
     public void Text_with_middle_align_should_center_in_box()
     {
         var document = new LabelDocument

@@ -128,7 +128,9 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
             }
         }
 
-        var boxHeight = ToDots(bounds.HeightMm, dpi);
+        // 有框高（前端保存 heightMm）时按框高；无框高（旧模板）时按字高，避免内边距把裁剪区算成负数
+        var hasBox = bounds.HeightMm > 0;
+        var boxHeight = hasBox ? ToDots(bounds.HeightMm, dpi) : fontSize;
         if (text.BorderMm > 0 && boxWidth > 0)
         {
             using var borderPaint = new SKPaint
@@ -155,7 +157,8 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         var fm = font.Metrics;
         var lineHeight = fm.Descent - fm.Ascent; // Ascent 为负，行高 = Descent - Ascent
         var innerTop = innerY;
-        var innerH = Math.Max(1, boxHeight - 2 * padding);
+        // 裁剪高度至少一行，避免内边距过大/无框高时裁剪区塌缩导致文字消失
+        var innerH = (int)Math.Max(lineHeight, hasBox ? boxHeight - 2 * padding : 0);
         // 与前端一致：文本在元素框内按 valign 垂直对齐（Top / Middle / Bottom）
         var baseline = text.VerticalAlign switch
         {
