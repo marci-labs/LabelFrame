@@ -105,6 +105,35 @@ public class SkiaLabelRendererTests
     }
 
     [Fact]
+    public void Text_with_middle_align_should_center_in_box()
+    {
+        var document = new LabelDocument
+        {
+            Layout = new LabelLayout
+            {
+                Name = "valign",
+                ContractName = "valign",
+                ContractVersion = "1.0",
+                WidthMm = 70,
+                HeightMm = 50,
+                Elements =
+                [
+                    new LabelTextElement { SourceKey = "t", XMm = 5, YMm = 10, FontHeightMm = 3, FontWidthMm = 3, WidthMm = 25, HeightMm = 15, VerticalAlign = LabelVerticalAlign.Middle },
+                ],
+            },
+            Data = new Dictionary<string, string> { ["t"] = "ABCD" },
+        };
+
+        var bitmap = new SkiaLabelRenderer().RenderLabelBitmap(document, dpi: 203);
+
+        // 框 y=10-25mm、字高 3mm：Middle 应在中部（y≈16-19mm），顶部带几乎为空
+        var topBand = CountBlack(bitmap, 5, 10, 25, 3);
+        var midBand = CountBlack(bitmap, 5, 16, 25, 3);
+        Assert.True(midBand > 50, $"Middle 对齐文字应画在中部，midBand={midBand}");
+        Assert.True(midBand > topBand * 3, $"Middle 对齐时顶部带应远少于中部：top={topBand} mid={midBand}");
+    }
+
+    [Fact]
     public void RenderLabelBitmapPng_should_return_valid_png()
     {
         var document = new LabelDocument

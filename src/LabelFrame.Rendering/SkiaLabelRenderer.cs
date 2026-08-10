@@ -128,6 +128,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
             }
         }
 
+        var boxHeight = ToDots(bounds.HeightMm, dpi);
         if (text.BorderMm > 0 && boxWidth > 0)
         {
             using var borderPaint = new SKPaint
@@ -137,7 +138,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
                 IsAntialias = false,
                 Color = SKColors.Black,
             };
-            canvas.DrawRect(new SKRect(x, y, x + boxWidth + 2 * padding, y + fontSize + 2 * padding), borderPaint);
+            canvas.DrawRect(new SKRect(x, y, x + boxWidth + 2 * padding, y + boxHeight + 2 * padding), borderPaint);
         }
 
         if (string.IsNullOrEmpty(value))
@@ -153,7 +154,15 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         var innerY = (float)(y + padding);
         var fm = font.Metrics;
         var lineHeight = fm.Descent - fm.Ascent; // Ascent 为负，行高 = Descent - Ascent
-        var baseline = innerY - fm.Ascent; // 顶部对齐（与前端 / GDI LineAlignment.Near 一致）
+        var innerTop = innerY;
+        var innerH = Math.Max(1, boxHeight - 2 * padding);
+        // 与前端一致：文本在元素框内按 valign 垂直对齐（Top / Middle / Bottom）
+        var baseline = text.VerticalAlign switch
+        {
+            LabelVerticalAlign.Middle => innerTop + (innerH - lineHeight) / 2 - fm.Ascent,
+            LabelVerticalAlign.Bottom => innerTop + innerH - fm.Descent,
+            _ => innerTop - fm.Ascent,
+        };
         var textX = innerX;
         switch (text.TextAlign)
         {
@@ -167,7 +176,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
 
         // 裁剪到文本框，避免溢出到其他区域（与前端 overflow 隐藏一致）
         canvas.Save();
-        canvas.ClipRect(new SKRect(innerX, innerY, innerX + Math.Max(1, drawWidth), innerY + Math.Max(1, lineHeight)));
+        canvas.ClipRect(new SKRect(innerX, innerY, innerX + Math.Max(1, drawWidth), innerY + Math.Max(1, innerH)));
         canvas.DrawText(value, textX, baseline, SKTextAlign.Left, font, paint);
         canvas.Restore();
     }

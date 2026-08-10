@@ -22,7 +22,7 @@ public static class LabelLayoutResolver
         {
             case LabelTextElement text:
                 width = text.WidthMm;
-                height = text.FontHeightMm;
+                height = text.HeightMm > 0 ? text.HeightMm : text.FontHeightMm;
                 break;
             case LabelBarcodeElement barcode:
                 width = barcode.HeightMm * 2.5;

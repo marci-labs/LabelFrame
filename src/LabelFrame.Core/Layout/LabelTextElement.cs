@@ -26,4 +26,23 @@ public sealed class LabelTextElement : LabelElement
 
     /// <summary>文本块内对齐方式（默认左对齐）。</summary>
     public LabelTextAlign TextAlign { get; init; } = LabelTextAlign.Left;
+
+    /// <summary>文本块高度（毫米）；0 = 未指定（按字高）。前端编辑器会保存元素高度，用于垂直对齐。</summary>
+    public double HeightMm { get; init; }
+
+    /// <summary>垂直对齐（默认顶部，与旧模板一致；前端默认中间）。</summary>
+    public LabelVerticalAlign VerticalAlign { get; init; } = LabelVerticalAlign.Top;
+}
+
+/// <summary>文本垂直对齐。</summary>
+public enum LabelVerticalAlign
+{
+    /// <summary>顶部对齐。</summary>
+    Top,
+
+    /// <summary>垂直居中。</summary>
+    Middle,
+
+    /// <summary>底部对齐。</summary>
+    Bottom,
 }

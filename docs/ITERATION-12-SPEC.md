@@ -273,3 +273,12 @@
 - 已修复的 GDI 问题：CJK / 右对齐 / 长文本整段不绘制；生僻字开头导致只匹配小字体；行高为负导致裁剪空矩形。
 - 前端任务（hermes，待实施）：抽象 `renderLabelImage(elements, paperW, paperH, dpi, supersample)`，编辑器打印预览与联调对比共用；建议 2x 超采样提升小字清晰度；调试图改内嵌预览（不落文件）。
 - 端到端已验证：70×50 模板 MaterialName / CompanyName / Specification / WarehouseName 全部渲染。
+
+---
+
+### 附六：文本垂直对齐契约（2026-08-10，0.11.6）
+
+- 问题：打印比前端预览整体偏上——前端在元素框内垂直居中（valign=middle），后端顶部对齐，且元素高度/垂直对齐未持久化。
+- 契约：文本元素新增 `heightMm`（0=未指定，按字高）与 `verticalAlign`（Top/Middle/Bottom，默认 Top 兼容旧模板）；前端 `convert.ts` 已同步写入/读回。
+- 渲染：Skia / GDI 渲染器按框高与垂直对齐绘制（边框也按框高）；旧模板（无 heightMm）保持顶部对齐。
+- 注意：已保存的旧模板需在编辑器中重新保存一次，才会带上 heightMm/verticalAlign。

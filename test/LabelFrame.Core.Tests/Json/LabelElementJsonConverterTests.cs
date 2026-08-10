@@ -118,6 +118,21 @@ public class LabelElementJsonConverterTests
         Assert.DoesNotContain("previewValue", literalJson);
     }
     [Fact]
+    public void Text_height_and_vertical_align_should_round_trip()
+    {
+        var element = new LabelTextElement { SourceKey = "k", XMm = 5, YMm = 10, FontHeightMm = 3, FontWidthMm = 3, WidthMm = 25, HeightMm = 15, VerticalAlign = LabelVerticalAlign.Middle };
+
+        var json = JsonSerializer.Serialize<LabelElement>(element, Options);
+        var roundTrip = JsonSerializer.Deserialize<LabelElement>(json, Options);
+
+        var text = Assert.IsType<LabelTextElement>(roundTrip);
+        Assert.Equal(15, text.HeightMm);
+        Assert.Equal(LabelVerticalAlign.Middle, text.VerticalAlign);
+        Assert.Contains("\"heightMm\":15", json);
+        Assert.Contains("\"verticalAlign\":\"Middle\"", json);
+    }
+
+    [Fact]
     public void Unknown_type_should_throw_json_exception()
     {
         const string json = """{"type":"hexagon","xMm":0,"yMm":0}""";

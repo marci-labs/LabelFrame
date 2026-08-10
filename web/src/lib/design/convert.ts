@@ -24,7 +24,9 @@ export interface BackendElement {
   fontHeightMm?: number
   fontWidthMm?: number
   widthMm?: number
+  heightMm?: number
   textAlign?: string
+  verticalAlign?: string
   heightMm?: number
   moduleWidth?: number
   sizeMm?: number
@@ -85,7 +87,9 @@ export function toBackendElement(e: DesignElement): BackendElement {
       base.fontHeightMm = r2(e.fontH)
       base.fontWidthMm = r2(e.fontW)
       if (e.w > 0) base.widthMm = r2(e.w)
+      if (e.h > 0) base.heightMm = r2(e.h)
       if (e.align !== 'Left') base.textAlign = e.align
+      if (e.valign && e.valign !== 'middle') base.verticalAlign = e.valign === 'top' ? 'Top' : 'Bottom'
       break
     case 'Barcode':
       base.sourceKey = e.key
@@ -150,13 +154,13 @@ export function fromBackendElements(list: readonly BackendElement[]): DesignElem
           ...base,
           type: 'Text',
           w: j.widthMm && j.widthMm > 0 ? j.widthMm : 40,
-          h: Math.max(fontH + pad * 2, 10),
+          h: j.heightMm && j.heightMm > 0 ? j.heightMm : Math.max(fontH + pad * 2, 10),
           fontH,
           fontW: j.fontWidthMm ?? fontH,
           fontFamily: 'Microsoft YaHei',
           wrap: false,
           lineHeight: 1.2,
-          valign: 'middle',
+          valign: (j.verticalAlign?.toLowerCase() as 'top' | 'middle' | 'bottom') || 'middle',
           mode,
           key: mode === 'field' ? key : '',
           text: literal || (j.previewValue ?? ''), // field 模式读回预览值

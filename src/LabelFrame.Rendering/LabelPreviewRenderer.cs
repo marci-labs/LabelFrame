@@ -122,6 +122,7 @@ public sealed class LabelPreviewRenderer
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
         var boxWidth = ToDots(bounds.WidthMm, dpi);
+        var boxHeight = ToDots(bounds.HeightMm, dpi);
         var padding = ToDots(text.PaddingMm, dpi);
 
         // 字号：先按 fontHeightMm；若文本超过可用框宽则缩小适应（与编辑器 shrink 行为一致），最小 1.5mm
@@ -144,7 +145,7 @@ public sealed class LabelPreviewRenderer
         if (text.BorderMm > 0 && boxWidth > 0)
         {
             using var borderPen = new Pen(Color.Black, Math.Max(1, ToDots(text.BorderMm, dpi)));
-            graphics.DrawRectangle(borderPen, x, y, boxWidth + 2 * padding, fontSize + 2 * padding);
+            graphics.DrawRectangle(borderPen, x, y, boxWidth + 2 * padding, boxHeight + 2 * padding);
         }
 
         // 注意：不能用 GenericTypographic——对超出矩形需要换行的长文本会整段不绘制（GDI 实测行为）
@@ -156,10 +157,15 @@ public sealed class LabelPreviewRenderer
             LabelFrame.Core.Layout.LabelTextAlign.Right => StringAlignment.Far,
             _ => StringAlignment.Near,
         };
-        format.LineAlignment = StringAlignment.Near;
+        format.LineAlignment = text.VerticalAlign switch
+        {
+            LabelFrame.Core.Layout.LabelVerticalAlign.Middle => StringAlignment.Center,
+            LabelFrame.Core.Layout.LabelVerticalAlign.Bottom => StringAlignment.Far,
+            _ => StringAlignment.Near,
+        };
         // 未显式指定块宽时按文本实际宽度绘制，避免 1px 矩形把文字裁掉（与 ZPL 无 ^FB 行为一致）
         var drawWidth = boxWidth > 0 ? boxWidth : MeasureTextWidth(graphics, value, font);
-        var rect = new RectangleF(x + padding, y + padding, Math.Max(1, drawWidth), Math.Max(1, fontSize));
+        var rect = new RectangleF(x + padding, y + padding, Math.Max(1, drawWidth), Math.Max(1, boxHeight - 2 * padding));
         graphics.DrawString(value, font, Brushes.Black, rect, format);
         format.Dispose();
     }

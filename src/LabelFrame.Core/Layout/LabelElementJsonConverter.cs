@@ -101,9 +101,19 @@ public sealed class LabelElementJsonConverter : JsonConverter<LabelElement>
                     writer.WriteNumber("widthMm", text.WidthMm);
                 }
 
+                if (text.HeightMm > 0)
+                {
+                    writer.WriteNumber("heightMm", text.HeightMm);
+                }
+
                 if (text.TextAlign != LabelTextAlign.Left)
                 {
                     writer.WriteString("textAlign", text.TextAlign.ToString());
+                }
+
+                if (text.VerticalAlign != LabelVerticalAlign.Top)
+                {
+                    writer.WriteString("verticalAlign", text.VerticalAlign.ToString());
                 }
 
                 break;
