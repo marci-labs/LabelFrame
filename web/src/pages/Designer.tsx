@@ -624,16 +624,18 @@ export function Designer({ request, onClose }: DesignerProps) {
               </button>
             </div>
             {rightTab === 'props' ? (
-              <PropsPanel
-                elements={state.elements}
-                selected={selected}
-                viewMode={viewMode}
-                onChange={changeElement}
-                onAlign={alignSelected}
-                onDelete={deleteElements}
-              />
+              <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                <PropsPanel
+                  elements={state.elements}
+                  selected={selected}
+                  viewMode={viewMode}
+                  onChange={changeElement}
+                  onAlign={alignSelected}
+                  onDelete={deleteElements}
+                />
+              </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="group">
                   <div className="group-title">测试默认值（由元素预览值自动生成）</div>
                   {!previewDefaults || previewDefaults.size === 0 ? (

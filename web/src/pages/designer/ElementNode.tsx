@@ -139,6 +139,7 @@ function TextContent({ e }: { e: TextElement }) {
         ref={textRef}
         text={content}
         fontSize={fontSize}
+        fontStyle={e.bold ? 'bold' : 'normal'}
         fontFamily={e.fontFamily || 'Microsoft YaHei'}
         fill={e.mode === 'field' && !e.key ? '#999' : '#000'}
         width={wPx}

@@ -310,9 +310,10 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
 
   describe('迭代 13 契约字段（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH-V）', () => {
     it('写方向：默认值省略（与现有省略规则一致）', () => {
-      const t = defaultElement('Text') // fontFamily=YaHei / wrap=false / lineHeight=1.2 / fitMode=shrink
+      const t = defaultElement('Text') // fontFamily=YaHei / bold=false / wrap=false / lineHeight=1.2 / fitMode=shrink
       const tj = toBackendElement(t)
       expect(tj.fontFamily).toBeUndefined()
+      expect(tj.bold).toBeUndefined()
       expect(tj.wrap).toBeUndefined()
       expect(tj.lineHeight).toBeUndefined()
       expect(tj.fitMode).toBeUndefined()
@@ -329,11 +330,13 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
     it('写方向：非默认值写出（text 全字段）', () => {
       const t = defaultElement('Text')
       t.fontFamily = 'SimSun'
+      t.bold = true
       t.wrap = true
       t.lineHeight = 1.3
       t.fitMode = 'overflow'
       const j = toBackendElement(t)
       expect(j.fontFamily).toBe('SimSun')
+      expect(j.bold).toBe(true)
       expect(j.wrap).toBe(true)
       expect(j.lineHeight).toBe(1.3)
       expect(j.fitMode).toBe('overflow')
@@ -364,9 +367,10 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
 
     it('读回：新字段还原（text/qrcode/barcode）', () => {
       const t = first<TextElement>(fromBackendElements([
-        { type: 'text', xMm: 0, yMm: 0, sourceKey: 'k', fontHeightMm: 4, fontFamily: 'SimSun', wrap: true, lineHeight: 1.3, fitMode: 'overflow' },
+        { type: 'text', xMm: 0, yMm: 0, sourceKey: 'k', fontHeightMm: 4, fontFamily: 'SimSun', bold: true, wrap: true, lineHeight: 1.3, fitMode: 'overflow' },
       ]))
       expect(t.fontFamily).toBe('SimSun')
+      expect(t.bold).toBe(true)
       expect(t.wrap).toBe(true)
       expect(t.lineHeight).toBe(1.3)
       expect(t.fitMode).toBe('overflow')
@@ -388,6 +392,7 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
         { type: 'text', xMm: 0, yMm: 0, sourceKey: 'k', paddingMm: 1.5 },
       ]))
       expect(t.fontFamily).toBe('Microsoft YaHei')
+      expect(t.bold).toBe(false)
       expect(t.wrap).toBe(false)
       expect(t.lineHeight).toBe(1.2)
       expect(t.fitMode).toBe('shrink')
@@ -397,6 +402,7 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
 
     it('往返：全字段一致（含不对称内边距与 QR 参数）', () => {
       const t = defaultElement('Text')
+      t.bold = true
       t.wrap = true
       t.lineHeight = 1.3
       t.fitMode = 'overflow'
@@ -404,6 +410,7 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
       t.paddingH = 2
       t.paddingV = 1
       const t2 = first<TextElement>(fromBackendElements([toBackendElement(t)]))
+      expect(t2.bold).toBe(true)
       expect(t2.wrap).toBe(true)
       expect(t2.lineHeight).toBe(1.3)
       expect(t2.fitMode).toBe('overflow')

@@ -29,6 +29,8 @@ export interface TextElement extends ElementBase {
   fontH: number
   fontW: number
   fontFamily: string
+  /** 加粗（迭代 14：小字号打印不清晰，加粗提高可读性；默认 false 不写契约字段） */
+  bold: boolean
   /** 自动换行 */
   wrap: boolean
   lineHeight: number
@@ -122,7 +124,7 @@ export function defaultElement(type: ElementType, id = uid()): DesignElement {
   const base = { id, x: 5, y: 5, w: 40, h: 10, border: 0 }
   switch (type) {
     case 'Text':
-      return { ...base, type, fontH: 5, fontW: 5, fontFamily: 'Microsoft YaHei', wrap: false, lineHeight: 1.2, valign: 'middle', mode: 'literal', key: '', text: '文本', align: 'Left', paddingH: 1, paddingV: 1, fitMode: 'shrink' }
+      return { ...base, type, fontH: 5, fontW: 5, fontFamily: 'Microsoft YaHei', bold: false, wrap: false, lineHeight: 1.2, valign: 'middle', mode: 'literal', key: '', text: '文本', align: 'Left', paddingH: 1, paddingV: 1, fitMode: 'shrink' }
     case 'Barcode':
       return { ...base, y: 20, w: 50, h: 20, type, mode: 'literal', key: '', text: 'ABC-123', paddingH: 1, paddingV: 1, barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1 }
     case 'QrCode':

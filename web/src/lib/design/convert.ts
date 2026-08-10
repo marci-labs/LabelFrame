@@ -32,6 +32,8 @@ export interface BackendElement {
   verticalAlign?: string
   /** 前端画布字体（迭代 13：Skia 图片打印用；矢量 ZPL 仍由 fontName 决定） */
   fontFamily?: string
+  /** 加粗（迭代 14：true 才写；ZPL 用字体变体、Skia 用 fontStyle bold） */
+  bold?: boolean
   /** 自动换行（迭代 13：true 才写） */
   wrap?: boolean
   /** 行距系数（迭代 13：!= 1.2 才写） */
@@ -111,6 +113,7 @@ export function toBackendElement(e: DesignElement): BackendElement {
       if (e.valign && e.valign !== 'middle') base.verticalAlign = e.valign === 'top' ? 'Top' : 'Bottom'
       // 迭代 13：文本排版字段（非默认才写）
       if (e.fontFamily && e.fontFamily !== 'Microsoft YaHei') base.fontFamily = e.fontFamily
+      if (e.bold) base.bold = true
       if (e.wrap) base.wrap = true
       if (e.lineHeight && e.lineHeight !== 1.2) base.lineHeight = r2(e.lineHeight)
       if (e.fitMode && e.fitMode !== 'shrink') base.fitMode = e.fitMode
@@ -185,6 +188,7 @@ export function fromBackendElements(list: readonly BackendElement[]): DesignElem
           fontH,
           fontW: j.fontWidthMm ?? fontH,
           fontFamily: j.fontFamily ?? 'Microsoft YaHei',
+          bold: j.bold ?? false,
           wrap: j.wrap ?? false,
           lineHeight: j.lineHeight ?? 1.2,
           valign: (j.verticalAlign?.toLowerCase() as 'top' | 'middle' | 'bottom') || 'middle',
