@@ -230,3 +230,10 @@
 - 删除（§3.2）：DataPrint / Settings 的 printMode 下拉与旧调试复选框、`Healthz.printMode` / `SubmitJobRequest.printMode` 类型。
 - api client：新增 `getTransport` / `setTransport` / `testTransport` / `renderImages`；下载型端点统一 `fetchBlob`（Content-Disposition 文件名 + ErrorView 错误解析）。
 - 测试 91 全绿（新增 27 个：draft 纯逻辑 / 连接切换交互 / 保留与调试按钮行为）；`pnpm build` / `pnpm lint` 通过。
+
+## 迭代 15 打包（0.13.0，2026-08-10）
+
+- 含迭代 15 前后端合并版：彻底删除矢量 ZPL（打印统一 Skia / Android 整版位图 ^GF）；连接管理 `GET/POST /api/transport`（单一连接、先测试后生效、失败回滚、持久化 connection.json）+ Web 设置页 / 数据与打印页连接切换 UI；调试独立（单张 PNG / 批量 zip，不建作业不发驱动）；DataPrint 会话保留（同标签页切视图不丢设置、标签页间不互通）；Log 模拟打印保存 PNG；AndroidHost 图片打印。
+- 联调反馈修复：TCP 连接测试加固（IP 直连 + 本地监听开/关回归测试）；前端测试环境 storage 垫片（Node 26 下 jsdom 兼容，91 用例全绿）。
+- `appsettings.json` 保留用户配置机制沿用；`%LOCALAPPDATA%\LabelFrame\connection.json` 保存用户连接配置。
+- 产物 `LabelFrame-0.13.0.msi`（2026-08-10）：可覆盖 0.12.x / 0.11.x 安装。
