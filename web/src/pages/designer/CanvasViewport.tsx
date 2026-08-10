@@ -365,6 +365,9 @@ export function CanvasViewport(props: CanvasViewportProps) {
         w: Math.round(w * 100) / 100,
         h: Math.round(h * 100) / 100,
       })
+      // 重置 Transformer 拖拽产生的 scale，避免残留拉伸（与原型一致：文本只改遮罩区域，字高保持独立）
+      g.scaleX(1)
+      g.scaleY(1)
     })
     p.onUpdateElements((els) =>
       els.map((o): DesignElement => {
