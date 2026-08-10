@@ -115,3 +115,30 @@
 4. `wrap=true` 渲染语义：换行后若超高允许**整体缩小**（避免打印丢字）——与前端当前“不缩小、超高超框裁剪”是否可接受，或前端最终以 2x 超采样后的效果为准。
 5. 条码 `displayValue` 文字占位规则（底部文字、条码占剩余高度）。
 6. 旧模板兜底框高 10mm + 默认 Middle 的全局行为变化（决策 A）确认。
+
+
+---
+
+## 附：Hermes 评估结论（2026-08-10）
+
+> 前端 hermes 对本文档（契约 v1）评估后追加，供主 agent 知悉；**评估通过，前后端按 §7 分工并行开工**。本节保留为评估记录。
+
+### 一、结论
+
+**通过**。字段命名 / 类型 / 写规则 / 读回规则与前端 convert.ts 现有实现及迭代 13 规格完全对齐；决策 A（垂直对齐默认值统一为 Middle + 旧模板框高兜底 max(字高+2×pad,10)）解决了前后端默认值不一致，用户已拍板，无异议。
+
+### 二、§8 重点评估逐条确认
+
+1. **字段命名与类型** ✅ 无异议。前端实际默认值核对：paddingH/V=1、fitMode 类型恰为 `'shrink' | 'overflow'`、barcodeFormat 固定 CODE128、fontFamily='Microsoft YaHei'——与对照表完全一致。
+2. **写规则** ✅ 无异议（wrap=true 才写、displayValue=false 才写、verticalAlign 非 Middle 才写、fitMode 非 shrink 才写）；现有 convert.ts 的 verticalAlign 写规则（valign≠middle 才写）已与决策 A 一致，无需改。
+3. **fitMode 取值 shrink/overflow** ✅ 前端已是该枚举；overflow=隐藏裁剪语义一致（ElementNode 按 fitMode 分支渲染）。
+4. **wrap=true 超高语义——接受「整体缩小」，但需补前端联动项**（见第三节）：打印不丢字优先；前端当前 wrap=true 超高是裁剪，需同步改为整体缩小（最小 1.5mm）以保证图片打印与预览一致。**该联动不在 §7 前端分工清单内，补充之**。
+5. **条码 displayValue 占位** ✅ 可接受。前端 JsBarcode 自带底部文字并整体 fit 进框（条码+文字等比缩小），与 Skia「条码占剩余高度」为近似一致；联调对比微调，不阻塞。
+6. **决策 A 全局行为变化** ✅ 用户已确认；前端读回默认 middle 与后端默认 Middle 统一后，旧模板打印（顶部→居中）为预期行为。
+
+### 三、前端实施清单（hermes，与后端并行）
+
+1. `convert.ts`：`BackendElement` 加 `wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/paddingV`；写方向按 §3 规则；读回 `?? 默认`（`paddingH ?? paddingMm`、`paddingV ?? paddingMm`）。
+2. `convert.test.ts`：全字段往返 + 旧模板无字段兼容 + 省略规则用例（预期 57 → 70+ 用例）。
+3. **ElementNode.tsx（补充项）**：`TextContent` 的 wrap=true 分支由「超高裁剪」改为「整体缩小至能放下（最小 1.5mm）」，与 §4.4 Skia 语义一致；同时保留 overflow 分支裁剪语义。
+4. 验收：`pnpm test` / `pnpm build` 全绿；§6 验收 1 复现脚本（100×60 方案）差异清单为空。
