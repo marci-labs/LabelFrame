@@ -13,7 +13,7 @@ Thumbs.db
 Desktop.ini
 ## Build artifacts
 artifacts/
-packaging/files.wxs
+packaging/files*.wxs
 
 ## WiX local extension cache
 .wix/
