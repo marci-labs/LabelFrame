@@ -387,3 +387,10 @@
 
 - 前端（hermes，be87548）：双构建 `VITE_UI_MODE=client|server`——`build`（web/dist，Client 包）/ `build:server`（web/dist-server，插件包），`uiMode.ts` + `vite-env.d.ts` ImportMetaEnv 声明 + dev proxy 按模式分支 + vitest 显式注入；K1 `getServerBaseUrl()` server 构建恒返回同源相对路径 `''`（不读 localStorage / 机器级配置）；K2 server 构建跳过 localApi 探测、`serverMode` 恒 server 无 standalone；Server UI 菜单裁剪（移除设置与打印机相关内容，新增「在线设备」页，日志页更名「设备日志」）；在线设备页（每 5s 轮询、点击设默认目标 localStorage `labelframe.defaultTargetDeviceId` 跨页联动、离线拦截）；数据与打印在线设备选择器（仅在线可选、离线置灰显示上次心跳、默认目标优先级 用户点选 > 本机设备 > 第一台在线、提交时现拉校验在线（K3 掉线禁止提交不排队）、隐藏逐张重试表格）；客户端状态栏连接后显示本机 IP（/api/host/config.ips，多 IP 逗号分隔、过长省略 title 给全量）。前端测试 151 全绿（client / server 双分支）。
 - 打包 0.16.0：`artifacts/LabelFrame-Server-0.16.0.msi`（7.6MB）、`artifacts/LabelFrame-Client-0.16.0.msi`（14.1MB）、`artifacts/labelframe-server-webui-0.16.0.zip`（0.2MB，由 `scripts/package-server-webui.ps1` 打包 web/dist-server）；插件端到端验证：解压到插件目录 → 服务端根路径返回管理界面、静态资源与 /api 正常、`/api/server/info.uiEnabled=true`。
+
+
+## 迭代 20 打包修复（0.16.0，2026-08-11）
+
+- 修复 Client 安装报错 2732（Directory Manager not initialized）：`KillWinHost` 自定义动作引用 `SystemFolder` 目录属性，却排在 `Before=FindRelatedProducts`（CostInitialize 之前，目录管理器未初始化）；改为 `After=InstallInitialize`，与 Server 包 `StopServerService` 一致。已用详细安装日志复现（2732 于 KillWinHost 处触发）并验证修复（升级安装 Client 0.16.0 成功，KillWinHost 正常执行）。
+- 修复包内版本漂移：`main.wxs` / `main-server.wxs` 的 Package Version 硬编码 0.15.5（此前产物文件名 0.16.0 但安装后显示 0.15.5）；改为 `$(var.Version)`，打包脚本 `-d Version=$Version` 传入，避免今后再次漂移。
+- 已验证：本机 Client / Server 0.15.5 → 0.16.0 提权升级安装成功，DisplayVersion=0.16.0，Server 服务 Running；产物 `artifacts/LabelFrame-Client-0.16.0.msi`（14.1MB）、`artifacts/LabelFrame-Server-0.16.0.msi`（7.6MB）。

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame Client" Manufacturer="LabelFrame" Version="0.15.5"
+  <Package Name="LabelFrame Client" Manufacturer="LabelFrame" Version="$(var.Version)"
            UpgradeCode="EE3F2357-56CE-4C0F-AEC1-4C04B6E6BCDA" Codepage="65001">
     <SummaryInformation Description="LabelFrame 打印客户端：托管完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史）并连接本机打印机打印（安装于 Program Files\LabelFrame\Client）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
@@ -142,8 +142,10 @@
     <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramFiles%\LabelFrame\Client\appsettings.json&quot;" />
     <InstallExecuteSequence>
-      <!-- 最先结束托盘进程：覆盖升级 / 卸载前释放 exe 占用 -->
-      <Custom Action="KillWinHost" Before="FindRelatedProducts" />
+      <!-- 最先结束托盘进程：覆盖升级 / 卸载前释放 exe 占用。
+           注意：动作引用 SystemFolder 目录属性，必须排在 CostFinalize 之后（InstallInitialize 之后）
+           否则触发错误 2732「Directory Manager not initialized」（0.16.0 曾复现）。 -->
+      <Custom Action="KillWinHost" After="InstallInitialize" />
       <Custom Action="ClearDataDelFiles" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelPrintDir" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelMachineConfig" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />

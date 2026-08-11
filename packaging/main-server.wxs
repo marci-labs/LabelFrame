@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.15.5"
+  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="$(var.Version)"
            UpgradeCode="10BDDF3E-BD37-4C3A-A19E-56CA9EFE5B74" Codepage="65001">
     <SummaryInformation Description="LabelFrame 服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志（安装于 Program Files\LabelFrame\Server，无 Web UI，以 Windows 服务运行）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
