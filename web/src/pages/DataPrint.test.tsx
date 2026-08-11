@@ -3,15 +3,14 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { JobView, TemplatePackage } from '../lib/api/types'
+import type { DeviceView, JobView, TemplatePackage } from '../lib/api/types'
+import { ApiError } from '../lib/api/types'
 import { AppProvider } from '../state/AppContext'
 import { DataPrint } from './DataPrint'
 
 const mocks = vi.hoisted(() => ({
   healthz: vi.fn(),
-  getTransport: vi.fn(),
-  setTransport: vi.fn(),
-  testTransport: vi.fn(),
+  listDevices: vi.fn(),
   listTemplates: vi.fn(),
   getTemplate: vi.fn(),
   submitJob: vi.fn(),
@@ -45,6 +44,26 @@ const DONE_JOB: JobView = {
   items: [{ index: 0, status: 'Completed' }],
 }
 
+/** Server 作业视图（迭代 16：无逐张 items，只有汇总字段）。 */
+const DONE_JOB_SERVER: JobView = {
+  jobId: 'job-1',
+  requestId: 'r-1',
+  status: 'Completed',
+  totalItems: 1,
+  completedItems: 1,
+  targetDeviceId: 'device-1',
+  deviceStatus: 'Online',
+}
+
+const DEVICES: DeviceView[] = [
+  { deviceId: 'device-1', name: '仓库-1 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online' },
+  { deviceId: 'device-2', name: '仓库-2 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-10T23:00:00Z', status: 'Offline' },
+]
+
+const OFFLINE_DEVICES: DeviceView[] = [
+  { deviceId: 'device-1', name: '仓库-1 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-10T23:00:00Z', status: 'Offline' },
+]
+
 let clickSpy: ReturnType<typeof vi.spyOn>
 
 /** 模拟 DataPrint 挂载在 AppProvider 下的切 tab 行为（provider 不卸载，页面卸载重挂）。 */
@@ -62,8 +81,9 @@ beforeEach(() => {
   window.sessionStorage.clear()
   clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() })
-  mocks.healthz.mockResolvedValue({ service: 'LabelFrame.WinHost', status: 'ok', transport: 'Log' })
-  mocks.getTransport.mockResolvedValue({ mode: 'Log', params: {}, availableModes: ['Log', 'Tcp', 'WindowsDriver', 'Zebra'] })
+  mocks.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
+  // 默认单机模式（旧 WinHost 无 /api/devices → 404）：隐藏设备选择、提交不带 targetDeviceId
+  mocks.listDevices.mockRejectedValue(new ApiError('HTTP_404', 'Not Found'))
   mocks.listTemplates.mockResolvedValue([{ name: '库位标签', group: '默认', updatedAt: '2026-08-10' }])
   mocks.getTemplate.mockResolvedValue(PKG)
   mocks.submitJob.mockResolvedValue(DONE_JOB)
@@ -215,27 +235,93 @@ describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
   })
 })
 
-describe('DataPrint 顶部连接徽标与快速切换（迭代 15 §6.2）', () => {
-  it('显示当前连接徽标与模式下拉、应用按钮', async () => {
-    await renderDataPrint()
-    // 快速切换（title 定位模式下拉）
-    const quickSelect = screen.getByTitle('快速切换连接方式（应用 = 测试后生效）') as HTMLSelectElement
-    expect(quickSelect.value).toBe('Log')
-    expect(screen.getByRole('button', { name: /应用/ })).toBeTruthy()
+describe('目标设备 / 客户端选择（迭代 17）', () => {
+  /** 服务端模式：listDevices 成功返回设备列表。 */
+  async function renderServerMode(devices: DeviceView[]) {
+    mocks.listDevices.mockResolvedValue(devices)
+    render(<Harness show />)
+    await screen.findByDisplayValue('A-01')
+    // 等设备下拉出现（listDevices 异步 resolve）
+    await waitFor(() => expect(screen.getByLabelText('目标设备')).toBeTruthy())
+  }
+
+  it('服务端模式：显示设备下拉（设备名 + 在线状态），默认选中第一台在线设备', async () => {
+    await renderServerMode(DEVICES)
+    const select = screen.getByLabelText('目标设备') as HTMLSelectElement
+    expect(select.value).toBe('device-1')
+    expect(screen.getByText('仓库-1 打印电脑（在线）')).toBeTruthy()
+    expect(screen.getByText('仓库-2 打印电脑（离线）')).toBeTruthy()
   })
 
-  it('快速切换失败：提示错误且全局状态不动（回滚）', async () => {
-    mocks.setTransport.mockResolvedValue({
-      ok: false,
-      message: '连接测试失败：无法连接 10.0.0.9:9100',
-      config: { mode: 'Log', params: {} },
+  it('服务端模式提交：templateName + targetDeviceId，不带自包含 template', async () => {
+    await renderServerMode(DEVICES)
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    await waitFor(() => {
+      expect(mocks.submitJob).toHaveBeenCalledTimes(1)
     })
+    const req = mocks.submitJob.mock.calls[0][0]
+    expect(req).toMatchObject({ templateName: '库位标签', targetDeviceId: 'device-1', labels: [{ data: { location: 'A-01' } }] })
+    expect(req.template).toBeUndefined()
+  })
+
+  it('服务端模式手动切换目标设备后提交：使用所选设备 ID', async () => {
+    await renderServerMode(DEVICES)
+    fireEvent.change(screen.getByLabelText('目标设备'), { target: { value: 'device-2' } })
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    await waitFor(() => {
+      expect(mocks.submitJob).toHaveBeenCalledWith(expect.objectContaining({ targetDeviceId: 'device-2' }))
+    })
+  })
+
+  it('无设备：提示「暂无在线客户端…」且打印测试禁用', async () => {
+    await renderServerMode([])
+    expect(screen.getByText('暂无在线客户端，请先在打印电脑安装并启动 LabelFrame Client')).toBeTruthy()
+    expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(true)
+    // 调试出图不需要目标设备，仍可用
+    expect((screen.getByRole('button', { name: '出图预览' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('全部离线：不默认选中，提示选择设备；选中离线设备后可提交（排队等待）', async () => {
+    await renderServerMode(OFFLINE_DEVICES)
+    const select = screen.getByLabelText('目标设备') as HTMLSelectElement
+    expect(select.value).toBe('')
+    expect(screen.getByText(/暂无在线设备/)).toBeTruthy()
+    expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.change(select, { target: { value: 'device-1' } })
+    expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    await waitFor(() => {
+      expect(mocks.submitJob).toHaveBeenCalledWith(expect.objectContaining({ targetDeviceId: 'device-1' }))
+    })
+  })
+
+  it('单机降级（/api/devices 404）：无设备选择 UI，提交不带 templateName / targetDeviceId（自包含 template）', async () => {
     await renderDataPrint()
-    const quickSelect = screen.getByTitle('快速切换连接方式（应用 = 测试后生效）') as HTMLSelectElement
-    fireEvent.change(quickSelect, { target: { value: 'Tcp' } })
-    fireEvent.change(screen.getByLabelText('打印机 IP / 主机名'), { target: { value: '10.0.0.9' } })
-    fireEvent.click(screen.getByRole('button', { name: /应用/ }))
-    expect(await screen.findByText('连接测试失败：无法连接 10.0.0.9:9100')).toBeTruthy()
-    expect(mocks.setTransport).toHaveBeenCalledWith(expect.objectContaining({ mode: 'Tcp', tcpHost: '10.0.0.9' }))
+    expect(screen.queryByLabelText('目标设备')).toBeNull()
+    expect(screen.queryByText(/暂无在线客户端/)).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    await waitFor(() => {
+      expect(mocks.submitJob).toHaveBeenCalledTimes(1)
+    })
+    const req = mocks.submitJob.mock.calls[0][0]
+    expect(req.templateName).toBeUndefined()
+    expect(req.targetDeviceId).toBeUndefined()
+    expect(req.template).toMatchObject({ name: '库位标签', contract: PKG.contract, layout: PKG.layout })
+  })
+
+  it('Server 作业视图（无 items）：进度与目标设备可见，不渲染逐张表格', async () => {
+    mocks.listDevices.mockResolvedValue(DEVICES)
+    mocks.getJob.mockResolvedValue(DONE_JOB_SERVER)
+    render(<Harness show />)
+    await screen.findByDisplayValue('A-01')
+    await waitFor(() => expect(screen.getByLabelText('目标设备')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    expect(await screen.findByText('已完成 1 / 1 张')).toBeTruthy()
+    expect(screen.getByText(/目标设备：device-1（在线）/)).toBeTruthy()
+    // 无逐张表格，显示说明行
+    expect(screen.getByText(/服务端作业无逐张明细/)).toBeTruthy()
   })
 })

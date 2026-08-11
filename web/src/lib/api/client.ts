@@ -2,18 +2,14 @@
 
 import type {
   ApiErrorBody,
+  DeviceView,
   ExcelImportResult,
   Healthz,
   JobView,
   LogEntry,
-  PrinterStatus,
-  PrinterTestResult,
   SubmitJobRequest,
   TemplatePackage,
   TemplateSummary,
-  TransportApplyRequest,
-  TransportConfig,
-  TransportResult,
 } from './types'
 import { ApiError } from './types'
 import { getBaseUrl } from '../settings'
@@ -115,13 +111,8 @@ export const api = {
   retryJobItem: (jobId: string, index: number) =>
     request<JobView>(`/api/jobs/${encodeURIComponent(jobId)}/items/${index}/retry`, { method: 'POST' }),
 
-  printerStatus: () => request<PrinterStatus>('/api/printer/status'),
-  printerTest: () =>
-    request<PrinterTestResult>('/api/printer/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-    }),
+  /** 设备 / 客户端目录（迭代 16，Server）；404 / 失败 = 单机 WinHost，前端降级为单机模式。 */
+  listDevices: () => request<DeviceView[]>('/api/devices'),
 
   renderImage: (req: SubmitJobRequest) => fetchBlob('/api/print/render-image', {
     method: 'POST',
@@ -135,23 +126,6 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
   }, 'labels-debug.zip', '下载调试图片失败'),
-
-  getTransport: () => request<TransportConfig>('/api/transport'),
-
-  setTransport: (req: TransportApplyRequest) =>
-    request<TransportResult>('/api/transport', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req),
-    }),
-
-  /** 只测试不保存不切换（testOnly=true）。 */
-  testTransport: (req: TransportApplyRequest) =>
-    request<TransportResult>('/api/transport', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...req, testOnly: true }),
-    }),
 
   getLogs: (deviceId?: string, since?: string) => {
     const params = new URLSearchParams()

@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
-import type { JobView, SubmitJobRequest, TemplatePackage, TemplateSummary } from '../lib/api/types'
+import type { DeviceView, JobView, SubmitJobRequest, TemplatePackage, TemplateSummary } from '../lib/api/types'
 import { downloadBlob } from '../lib/download'
 import { fromBackendElements } from '../lib/design/convert'
 import { deriveFields } from '../lib/design/fields'
@@ -14,7 +14,9 @@ import { useApp } from '../state/AppContext'
 import { mergeDraftValues } from '../state/draft'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
-import { TransportQuickSwitch } from '../components/TransportPanel'
+
+/** 设备在线状态中文标签。 */
+const deviceStatusLabel = (s: string) => (s === 'Online' ? '在线' : '离线')
 
 const JOB_STATUS_LABEL: Record<string, string> = {
   Pending: '排队中',
@@ -104,7 +106,7 @@ function JobPanel({
     )
   }
   const pct = job.totalItems > 0 ? Math.round((job.completedItems / job.totalItems) * 100) : 0
-  const failed = job.items.filter((i) => i.status === 'Failed').length
+  const failed = job.items ? job.items.filter((i) => i.status === 'Failed').length : (job.failedItems ?? 0)
   return (
     <div className="panel">
       <div className="panel-head">
@@ -129,51 +131,65 @@ function JobPanel({
           </div>
           {failed > 0 && (
             <div className="hint" style={{ marginTop: 6, color: 'var(--danger)' }}>
-              有 {failed} 张打印失败，可在下方表格中单独重试。
+              有 {failed} 张打印失败。{job.items ? '可在下方表格中单独重试。' : '详见作业状态与客户端回报的失败原因。'}
             </div>
           )}
         </div>
+        {job.targetDeviceId && (
+          <div className="hint">
+            目标设备：{job.targetDeviceId}
+            {job.deviceStatus ? `（${deviceStatusLabel(job.deviceStatus)}）` : ''}
+          </div>
+        )}
         {job.printImageDir && (
           <div className="hint" style={{ wordBreak: 'break-all' }}>
             模拟打印图片（Log）：{job.printImageDir}（{job.printImageCount ?? 0} 张）
           </div>
         )}
-        <table className="table">
-          <thead>
-            <tr>
-              <th style={{ width: 50 }}>#</th>
-              <th style={{ width: 90 }}>状态</th>
-              <th>失败原因</th>
-              <th style={{ width: 90 }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {job.items.map((it) => (
-              <tr key={it.index} style={{ cursor: 'default' }}>
-                <td className="mono">{it.index + 1}</td>
-                <td>
-                  <span className={'badge ' + (it.status === 'Completed' ? 'ok' : it.status === 'Failed' ? 'err' : it.status === 'Cancelled' ? 'neutral' : 'info')}>
-                    {jobLabel(it.status)}
-                  </span>
-                </td>
-                <td style={{ color: 'var(--danger)', fontSize: 12 }}>{it.status === 'Failed' ? it.errorMessage || it.errorCode || '未知错误' : ''}</td>
-                <td>
-                  {it.status === 'Failed' && (
-                    <button
-                      className="btn sm"
-                      onClick={() => {
-                        void retry(it.index).then((ok) => ok && app.setStatus(`已重试第 ${it.index + 1} 张。`))
-                      }}
-                    >
-                      <Icon name="retry" size={12} />
-                      重试
-                    </button>
-                  )}
-                </td>
+        {job.errorMessage && (
+          <div className="hint" style={{ color: 'var(--danger)' }}>错误：{job.errorMessage}</div>
+        )}
+        {job.items && (
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: 50 }}>#</th>
+                <th style={{ width: 90 }}>状态</th>
+                <th>失败原因</th>
+                <th style={{ width: 90 }}></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {job.items.map((it) => (
+                <tr key={it.index} style={{ cursor: 'default' }}>
+                  <td className="mono">{it.index + 1}</td>
+                  <td>
+                    <span className={'badge ' + (it.status === 'Completed' ? 'ok' : it.status === 'Failed' ? 'err' : it.status === 'Cancelled' ? 'neutral' : 'info')}>
+                      {jobLabel(it.status)}
+                    </span>
+                  </td>
+                  <td style={{ color: 'var(--danger)', fontSize: 12 }}>{it.status === 'Failed' ? it.errorMessage || it.errorCode || '未知错误' : ''}</td>
+                  <td>
+                    {it.status === 'Failed' && (
+                      <button
+                        className="btn sm"
+                        onClick={() => {
+                          void retry(it.index).then((ok) => ok && app.setStatus(`已重试第 ${it.index + 1} 张。`))
+                        }}
+                      >
+                        <Icon name="retry" size={12} />
+                        重试
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {!job.items && (
+          <div className="hint">（服务端作业无逐张明细，进度见上方进度条；失败原因见作业状态。）</div>
+        )}
       </div>
     </div>
   )
@@ -195,6 +211,33 @@ export function DataPrint() {
 
   const [submitting, setSubmitting] = useState(false)
   const { job, error: jobError, retry } = useJobPolling(printDraft.jobId)
+
+  // 目标设备（迭代 17）：GET /api/devices 成功 = 服务端模式（显示选择、提交带 targetDeviceId）；
+  // 404 / 失败 = 单机 WinHost 降级（隐藏选择、提交不带 targetDeviceId）。
+  const [deviceMode, setDeviceMode] = useState<'loading' | 'server' | 'standalone'>('loading')
+  const [devices, setDevices] = useState<DeviceView[]>([])
+  const [targetDeviceId, setTargetDeviceId] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void api
+      .listDevices()
+      .then((list) => {
+        if (cancelled) return
+        setDevices(list)
+        setDeviceMode('server')
+        // 默认选中第一台在线设备（少点一次；全部离线时留空由用户选择）
+        setTargetDeviceId(list.find((d) => d.status === 'Online')?.deviceId ?? '')
+      })
+      .catch(() => {
+        if (cancelled) return
+        // 单机模式：旧 WinHost 无 /api/devices（404），或后端不可达——隐藏设备选择，正常提交
+        setDeviceMode('standalone')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const selectedName = printDraft.selectedName
   const debugMode = printDraft.debugMode
@@ -239,20 +282,38 @@ export function DataPrint() {
     if (pkg) app.setDraftValue(pkg.name, key, value)
   }
 
+  /**
+   * 拼提交请求：
+   * - job（服务端模式）：templateName 引用服务端模板库 + targetDeviceId 定向投递（自包含 template 不携带）；
+   * - job（单机降级）：自包含 template（旧 WinHost 兼容，无 templateName / targetDeviceId）；
+   * - debug 出图：自包含 template（render-image 后端要求 contract + layout，不建作业）。
+   */
   const buildRequest = useCallback(
-    (labels: { data: Record<string, string> }[]): SubmitJobRequest | null => {
+    (labels: { data: Record<string, string> }[], kind: 'job' | 'debug'): SubmitJobRequest | null => {
       if (!pkg) return null
+      if (kind === 'job' && deviceMode === 'server') {
+        return {
+          requestId: crypto.randomUUID(),
+          templateName: pkg.name,
+          targetDeviceId,
+          labels,
+        }
+      }
       return {
         requestId: crypto.randomUUID(),
         template: { name: pkg.name, contract: pkg.contract, layout: pkg.layout },
         labels,
       }
     },
-    [pkg],
+    [pkg, deviceMode, targetDeviceId],
   )
 
   const submit = async (labels: { data: Record<string, string> }[]) => {
-    const req = buildRequest(labels)
+    if (deviceMode === 'server' && !targetDeviceId) {
+      app.setStatus('请先选择目标设备（作业投递到客户端打印）。')
+      return
+    }
+    const req = buildRequest(labels, 'job')
     if (!req) return
     setSubmitting(true)
     try {
@@ -267,7 +328,7 @@ export function DataPrint() {
   }
 
   const downloadDebug = async (labels: { data: Record<string, string> }[], batch: boolean) => {
-    const req = buildRequest(labels)
+    const req = buildRequest(labels, 'debug')
     if (!req) return
     setSubmitting(true)
     try {
@@ -373,9 +434,34 @@ export function DataPrint() {
         />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
-        <TransportQuickSwitch />
-      </div>
+      {deviceMode === 'server' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
+          <span className="hint">目标设备</span>
+          <select
+            className="input"
+            aria-label="目标设备"
+            value={targetDeviceId}
+            onChange={(ev) => setTargetDeviceId(ev.target.value)}
+            style={{ minWidth: 240 }}
+            title="作业将投递到所选客户端打印"
+          >
+            {devices.length === 0 && <option value="">（暂无设备）</option>}
+            {devices.length > 0 && !targetDeviceId && <option value="">（请选择设备）</option>}
+            {devices.map((d) => (
+              <option key={d.deviceId} value={d.deviceId}>
+                {d.name}（{deviceStatusLabel(d.status)}）
+              </option>
+            ))}
+          </select>
+          {devices.length === 0 ? (
+            <span className="badge warn">暂无在线客户端，请先在打印电脑安装并启动 LabelFrame Client</span>
+          ) : targetDeviceId ? (
+            <span className="hint">提交作业将投递到所选客户端打印；客户端离线时作业排队，上线后自动领取。</span>
+          ) : (
+            <span className="badge warn">暂无在线设备，请先启动打印电脑上的 LabelFrame Client（或选择离线设备排队等待）</span>
+          )}
+        </div>
+      )}
 
       {error && (
         <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12 }}>{error}</div>
@@ -416,8 +502,14 @@ export function DataPrint() {
                     <button
                       className="btn primary"
                       onClick={debugMode ? debugSingle : testPrint}
-                      disabled={submitting || !pkg}
-                      title={debugMode ? '后端渲染当前表单为 PNG 下载，不发送打印驱动' : '提交 1 张标签作业到当前连接'}
+                      disabled={submitting || !pkg || (deviceMode === 'server' && !targetDeviceId)}
+                      title={
+                        debugMode
+                          ? '后端渲染当前表单为 PNG 下载，不发送打印驱动'
+                          : deviceMode === 'server'
+                            ? '提交 1 张标签作业到所选目标设备'
+                            : '提交 1 张标签作业到本机打印'
+                      }
                     >
                       <Icon name="printer" size={13} />
                       {submitting ? '处理中…' : debugMode ? '调试出图（单张）' : '打印测试（单张）'}
@@ -437,7 +529,9 @@ export function DataPrint() {
                   <div className="hint">
                     {debugMode
                       ? '调试模式：出图为后端渲染的实际打印位图（同一 Skia / DPI），不提交作业、不发送打印驱动。'
-                      : '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签，默认后端 Log 传输，无需打印机。'}
+                      : deviceMode === 'server'
+                        ? '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到所选目标设备（客户端离线时排队等待）。'
+                        : '已用模板预览值预填，可修改后打印；单机模式：作业提交到本机 WinHost 打印（兼容旧版单机部署）。'}
                   </div>
                 </>
               )}

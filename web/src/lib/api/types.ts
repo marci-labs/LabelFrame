@@ -8,7 +8,8 @@ export const DEFAULT_BASE_URL = 'http://127.0.0.1:53960'
 export interface Healthz {
   service: string
   status: string
-  transport: string
+  /** 传输模式（旧单机 WinHost 字段；Server 不返回，前端仅作兼容展示，可选）。 */
+  transport?: string
 }
 
 export interface TemplateSummary {
@@ -40,28 +41,32 @@ export interface JobView {
   status: string
   totalItems: number
   completedItems: number
-  items: JobItem[]
-  /** Log 模拟打印：PNG 目录（仅 Log 连接时有值） */
+  /** Server（迭代 16）：目标设备 ID 与在线状态（WinHost 不返回）。 */
+  targetDeviceId?: string
+  deviceStatus?: string
+  /** Server：失败张数与错误消息（无逐张明细）。 */
+  failedItems?: number
+  errorMessage?: string
+  /** WinHost：逐张明细（Server 不返回）。 */
+  items?: JobItem[]
+  /** Log 模拟打印：PNG 目录（仅 WinHost Log 连接时有值） */
   printImageDir?: string
   /** Log 模拟打印：PNG 张数 */
   printImageCount?: number
 }
 
+/** 设备视图（GET /api/devices；status = Online / Offline）。 */
+export interface DeviceView {
+  deviceId: string
+  name: string
+  registeredAt: string
+  lastSeenAt: string
+  status: string
+}
+
 export interface ExcelImportResult {
   headers: string[]
   rows: string[][]
-}
-
-export interface PrinterStatus {
-  isOnline: boolean
-  isPaperOut: boolean
-  isPaused: boolean
-  message: string
-}
-
-export interface PrinterTestResult {
-  sent: boolean
-  bytes: number
 }
 
 export interface LogEntry {
@@ -70,54 +75,24 @@ export interface LogEntry {
   line: string
 }
 
-/** 提交作业请求。 */
+/**
+ * 提交作业请求（迭代 16：服务端模式优先 `templateName` 引用模板库 + `targetDeviceId` 定向投递；
+ * 自包含 `template` 保留兼容——单机 WinHost / 调试出图使用）。
+ */
 export interface SubmitJobRequest {
   requestId: string
-  template: {
-    /** 模板名（迭代 12：Image 打印时后端取模板图片资源；Vector 模式忽略） */
+  /** 服务端模式：引用服务端模板库（优先于 template）。 */
+  templateName?: string
+  /** 服务端模式：目标设备（客户端）ID。 */
+  targetDeviceId?: string
+  /** 自包含模板（单机 / 兼容路径；templateName 与 template 同时存在时后端优先 templateName）。 */
+  template?: {
+    /** 模板名（WinHost 本机提交时用于加载图片资源） */
     name?: string
     contract: BackendContract
     layout: BackendLayout
   }
   labels: { data: Record<string, string> }[]
-}
-
-// ── 连接管理（迭代 15：GET/POST /api/transport）──
-
-export type TransportMode = 'Log' | 'Tcp' | 'WindowsDriver' | 'Zebra'
-export type ZebraKind = 'Tcp' | 'Usb' | 'Driver'
-
-/** 传输参数：只含当前模式所需字段，未使用字段后端返回默认 / 空，前端不展示。 */
-export interface TransportParams {
-  tcpHost?: string
-  tcpPort?: number
-  printerName?: string
-  zebraKind?: ZebraKind
-  zebraUsbName?: string
-}
-
-export interface TransportConfig {
-  mode: TransportMode
-  params: TransportParams
-  availableModes?: TransportMode[]
-}
-
-/** POST /api/transport 请求体（参数平铺，testOnly 由测试连接填充）。 */
-export interface TransportApplyRequest {
-  mode: TransportMode
-  tcpHost?: string
-  tcpPort?: number
-  printerName?: string
-  zebraKind?: ZebraKind
-  zebraUsbName?: string
-  testOnly?: boolean
-}
-
-/** POST /api/transport 响应：成功与失败（200）统一返回 config = 当前生效连接。 */
-export interface TransportResult {
-  ok: boolean
-  message: string
-  config: TransportConfig
 }
 
 /** 后端错误响应（ErrorView）。 */

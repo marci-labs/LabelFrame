@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { AppProvider, useApp } from './state/AppContext'
 import { Icon, LabelLogo } from './components/Icon'
 import type { IconName } from './components/Icon'
-import { formatTransport } from './lib/transport'
 import type { DesignerRequest, TabId } from './state/types'
 import { Workbench } from './pages/Workbench'
 import { Designer } from './pages/Designer'
@@ -62,7 +61,7 @@ function Shell() {
               </button>
             ))}
           </div>
-          <div className="nav-foot" title={app.connected ? `已连接（连接：${formatTransport(app.transportConfig) || app.transport || '未知'}）` : '未连接'}>
+          <div className="nav-foot" title={app.connected ? '已连接' : '未连接'}>
             <span className={'status-dot' + (app.connected ? ' on' : '')} />
           </div>
         </nav>
@@ -80,7 +79,7 @@ function Shell() {
       <footer className="statusbar">
         <span className={'conn' + (app.connected ? ' on' : ' off')}>
           <span className={'status-dot' + (app.connected ? ' on' : '')} />
-          {app.connected ? `已连接 · ${formatTransport(app.transportConfig) || app.transport || ''}` : '未连接'}
+          {app.connected ? '已连接' : '未连接'}
         </span>
         <span className="msg">{app.statusMsg}</span>
         <span className="meta">
