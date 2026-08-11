@@ -366,3 +366,9 @@
   - Server 停机超时从默认 30s 缩短为 5s（`HostOptions.ShutdownTimeout`），避免客户端长轮询请求拖慢服务停止 / 卸载 / 升级；
   - Client MSI 新增 `KillWinHost` 自定义动作（`taskkill /F /IM LabelFrame.WinHost.exe`，位于安装序列最前），覆盖安装 / 卸载前强制结束托盘程序，避免 exe 占用导致覆盖失败或卸载后残留进程。双 MSI 显式声明 `Codepage="65001"`，保证任意系统区域设置下中文打包。
 - 作业完成回报改为独立循环（`ServerRoutingWorker.ReportFinishedLoopAsync`，1s 周期）：本地作业终态后约 1s 内回报 Server，不再被 20s 长轮询阻塞——「已领取 → 已完成」不再延迟；新增回归测试 `Worker_should_report_finished_job_without_waiting_for_long_poll`。
+
+## 迭代 20 文档：服务端管理界面（插件式 UI）+ 设备 IP（2026-08-11）
+
+- 起草 `docs/ITERATION-20-SPEC.md`：客户端状态栏显示本机 IP；服务端可选管理界面以插件形式提供（静态前端包放入 `plugins/web-ui` 即生效，无需重启，默认仍无头）；Server UI 去除打印机相关内容，保留工作台 / 设计器，新增在线设备页，数据与打印复用并改为“在线设备选择器”发送打印测试。
+- 契约：`DeviceView.lastIp`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 可选 `targetIp`、`GET /api/host/config` 增加 `ips`、新增 `GET /api/server/info`、前端 `VITE_UI_MODE=client|server` 双构建。
+- DESIGN 决策 #61/#62/#63；ROADMAP 新增迭代 20 条目。

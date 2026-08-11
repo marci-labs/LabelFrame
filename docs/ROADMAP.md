@@ -602,6 +602,20 @@
 **启动命令**：
 > 继续 LabelFrame 迭代 19（Ubuntu 服务端部署）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md、docs/ITERATION-19-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
+## 迭代 20：服务端管理界面（插件式 UI）+ 设备 IP（进行中）
+
+**目标**：① 客户端连接服务端后，状态栏显示本机 IP（方便调试）；② 服务端提供可选管理界面——插件形式（静态前端包放入 `plugins/web-ui` 即生效，无需重启），无任何打印机相关内容，保留工作台 / 设计器，新增“在线设备”菜单，数据与打印可浏览全部在线设备并选择其一发送打印测试。
+
+**范围**：
+- 后端：设备 `last_ip` 记录与迁移、`DeviceView.lastIp`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 支持 `targetIp`；`Server.WebUiPath` + 静态托管中间件（运行时检测 + SPA fallback）、`GET /api/server/info`、插件 zip 产物、compose 卷挂载示例；WinHost `/api/host/config` 增加 `ips`。
+- 前端（hermes）：`VITE_UI_MODE=server` 构建模式（产出 `web/dist-server`）；Server UI 菜单裁剪（移除设置 / 打印机相关内容），新增在线设备页与数据与打印“在线设备选择器”；客户端状态栏显示本机 IP。
+
+**不在范围**：服务端打印机相关内容、服务端 UI 鉴权、.NET 程序集插件、作业模型变更。
+
+**验收**：设备注册 / 心跳后 `/api/devices` 含 `lastIp`；by-ip 查找与 `targetIp` 提交可用；插件目录放入后浏览器打开服务端根路径即管理界面（无需重启），移除后恢复无头；Server UI 无打印机内容、在线设备选择 → 打印测试正常；客户端状态栏显示 IP；`dotnet test` / `npm test` 全绿。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 20（服务端管理界面插件 + 设备 IP）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md、docs/ITERATION-20-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 ## 检查点：试点验收（待定）
 
 按 [REQUIREMENTS.md](REQUIREMENTS.md) §8 成功衡量执行：
