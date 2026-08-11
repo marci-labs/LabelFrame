@@ -1,9 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame Client" Manufacturer="LabelFrame" Version="0.14.0"
-           UpgradeCode="EE3F2357-56CE-4C0F-AEC1-4C04B6E6BCDA">
-    <SummaryInformation Description="LabelFrame 打印客户端：连接本机打印机并领取服务端作业打印（安装于 Program Files\LabelFrame\Client）" />
+  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.14.0"
+           UpgradeCode="10BDDF3E-BD37-4C3A-A19E-56CA9EFE5B74">
+    <SummaryInformation Description="LabelFrame 服务端：模板库 / 作业中心 / Web UI / 调试出图 / 日志（安装于 Program Files\LabelFrame\Server，不接打印机）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
@@ -42,10 +42,10 @@
     <!-- 安装目录：Program Files\LabelFrame（64 位） -->
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="LABELFRAMEROOT" Name="LabelFrame">
-      <Directory Id="INSTALLFOLDER" Name="Client">
+      <Directory Id="INSTALLFOLDER" Name="Server">
       <!-- 用户配置 appsettings.json：独立组件、GUID 固定；NeverOverwrite 升级/修复不覆盖，
            Permanent 卸载不删除，保留用户数据（新装仍写入默认配置） -->
-      <Component Id="AppSettingsFile" Guid="B0E5FE56-15B9-4373-9F93-F0C5380D0060" NeverOverwrite="yes" Permanent="yes">
+      <Component Id="AppSettingsFile" Guid="D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80" NeverOverwrite="yes" Permanent="yes">
         <File Id="AppSettingsFile" Source="$(var.PublishDir)/appsettings.json" KeyPath="yes" />
       </Component>
     </Directory>
@@ -56,9 +56,9 @@
     <StandardDirectory Id="ProgramMenuFolder">
       <Directory Id="ApplicationProgramsFolder" Name="LabelFrame">
         <Component Id="StartMenuShortcut">
-          <Shortcut Id="StartMenuShortcut" Name="LabelFrame Client"
-                    Description="启动 LabelFrame 并打开浏览器编辑模板"
-                    Target="[#WinHostExe]"
+          <Shortcut Id="StartMenuShortcut" Name="LabelFrame Server"
+                    Description="启动 LabelFrame Server 并提供模板 / 作业 Web 管理界面"
+                    Target="[#ServerExe]"
                     WorkingDirectory="INSTALLFOLDER" />
           <RemoveFolder Id="ApplicationProgramsRemove" Directory="ApplicationProgramsFolder" On="uninstall" />
           <RegistryValue Root="HKCU" Key="Software\LabelFrame" Name="startmenu" Type="integer" Value="1" KeyPath="yes" />
@@ -69,9 +69,9 @@
     <!-- 桌面快捷方式 -->
     <StandardDirectory Id="DesktopFolder">
       <Component Id="DesktopShortcut">
-        <Shortcut Id="DesktopShortcut" Name="LabelFrame Client"
-                  Description="启动 LabelFrame 并打开浏览器编辑模板"
-                  Target="[#WinHostExe]"
+        <Shortcut Id="DesktopShortcut" Name="LabelFrame Server"
+                  Description="启动 LabelFrame Server 并提供模板 / 作业 Web 管理界面"
+                  Target="[#ServerExe]"
                   WorkingDirectory="INSTALLFOLDER" />
         <RemoveFolder Id="DesktopRemove" Directory="DesktopFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\LabelFrame" Name="desktop" Type="integer" Value="1" KeyPath="yes" />

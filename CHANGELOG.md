@@ -266,3 +266,7 @@
 - 服务端（LabelFrame.Server）迁入集中能力：模板库（CRUD / 导入导出 / 预览）、作业提交支持 `templateName` 引用（pending 载荷附带模板 + 图片 base64）、调试出图（render-image / render-images，Skia）、设备日志接收与查询、Excel 导入、Web UI 静态托管（SPA fallback）；Server TFM 改 net10.0-windows（引用 Skia 渲染）。
 - 客户端（WinHost）配合：`TemplateDto` 增 `Images`（base64），提交服务优先用内联图片否则按 Name 本地加载；路由 Worker 透传 Server 附带模板；`SqliteLogStore` 移至 Core.Logs 供两端共用；单机模式保留。
 - 测试 147 全绿（Core 60 / Server 10 / Studio 25 / WinHost 52）；Server 新增 templateName 解析与模板不存在用例。
+## 迭代 16/17（服务端 / 客户端拆分，0.14.0，2026-08-11）
+
+- 前端（hermes，e161d81）：移除打印机连接 UI（连接方式 / 打印机分组、连接徽标与快速切换、transport API 与类型）；数据与打印新增目标设备选择（listDevices + targetDeviceId + templateName 提交），404/失败自动降级单机模式；JobView 适配 Server 作业视图；前端 105 用例全绿。
+- 双 MSI 打包：`LabelFrame-Server-0.14.0.msi`（→ Program Files\LabelFrame\Server，服务端，默认 0.0.0.0:53961）与 `LabelFrame-Client-0.14.0.msi`（→ Program Files\LabelFrame\Client，打印客户端，默认 ServerUrl=127.0.0.1:53961）；两包 appsettings 保留机制沿用；打包脚本 `build-msi.ps1`（Client）与 `build-server-msi.ps1`（Server），文件清单 GUID 按包加盐避免冲突。

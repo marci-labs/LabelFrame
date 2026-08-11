@@ -1,17 +1,17 @@
-﻿# 生成 WiX 文件清单（fragment wxs）：根目录文件 + web/dist（含 assets 子目录树）
+# 生成 WiX 文件清单（fragment wxs）：根目录文件 + web/dist（含 assets 子目录树）
 param(
     [string]$PublishDir = '',
-    [string]$OutFile = ''
+    [string]$OutFile = '',
+    [string]$GuidSalt = 'default'
 )
-$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 if (-not $PublishDir) { $PublishDir = Join-Path $root 'artifacts\win-x64' }
 if (-not $OutFile) { $OutFile = Join-Path $PSScriptRoot 'files.wxs' }
-if (-not (Test-Path (Join-Path $PublishDir 'LabelFrame.WinHost.exe'))) { throw 'publish dir invalid' }
+if (-not (Test-Path (Join-Path $PublishDir 'LabelFrame.WinHost.exe')) -and -not (Test-Path (Join-Path $PublishDir 'LabelFrame.Server.exe'))) { throw 'publish dir invalid' }
 
 function New-GuidFromPath([string]$rel) {
     $sha = [System.Security.Cryptography.SHA1]::Create()
-    $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($rel))
+    $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($rel + '|' + $GuidSalt))
     $b = $bytes[0..15]
     $b[7] = (($b[7] -band 0x0f) -bor 0x50)
     $b[8] = (($b[8] -band 0x3f) -bor 0x80)
@@ -76,6 +76,9 @@ foreach ($f in $allFiles) {
     }
     if ($rel -eq 'LabelFrame.WinHost.exe') {
         Add-FileLine $sb $index $guid $rel ' Id="WinHostExe"' 'f'
+        $index++
+    } elseif ($rel -eq 'LabelFrame.Server.exe') {
+        Add-FileLine $sb $index $guid $rel ' Id="ServerExe"' 'f'
         $index++
     } elseif ($rel -like 'web/dist/*') {
         $relWeb = $rel.Substring('web/dist/'.Length)

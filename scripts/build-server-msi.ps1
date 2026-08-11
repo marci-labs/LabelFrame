@@ -1,4 +1,4 @@
-﻿# 一键构建 LabelFrame Client（打印客户端）MSI 安装包（迭代 16/17：安装到 Program Files\LabelFrame\Client）
+﻿# 一键构建 LabelFrame Server（服务端）MSI 安装包（迭代 16/17：安装到 Program Files\LabelFrame\Server）
 param(
     [string]$Version = '0.14.0',
     [string]$Runtime = 'win-x64',
@@ -11,33 +11,47 @@ $root = Split-Path -Parent $PSScriptRoot
 $wix = 'C:\Program Files\WiX Toolset v7.0\bin\wix.exe'
 if (-not (Test-Path $wix)) { throw '未找到 WiX Toolset v7，请先安装。' }
 
-# 1) 发布 WinHost（Client，framework-dependent）+ 复制 web/dist
-$publishDir = Join-Path $root "artifacts\client\$Runtime"
-& (Join-Path $PSScriptRoot 'publish-winhost.ps1') -Runtime $Runtime -OutputDir (Join-Path $root 'artifacts\client')
-if (-not $?) { throw 'publish failed' }
+# 1) 发布 Server（framework-dependent）+ 复制 web/dist（前端构建产物，缺失时自动构建）
+$publishDir = Join-Path $root "artifacts\server\$Runtime"
+dotnet publish (Join-Path $root 'src\LabelFrame.Server\LabelFrame.Server.csproj') `
+    -c Release -r $Runtime -p:SelfContained=false `
+    -o $publishDir -p:DebugType=None -p:DebugSymbols=false | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Server publish failed' }
 
-# 2) 复制默认配置到发布目录（先于文件清单，确保 appsettings.json 被打包）
-Copy-Item (Join-Path $root 'packaging\appsettings.json') (Join-Path $publishDir 'appsettings.json') -Force
+$webDist = Join-Path $root 'web\dist'
+if (-not (Test-Path $webDist)) {
+    Write-Host 'web/dist missing, building frontend ...'
+    Push-Location (Join-Path $root 'web')
+    pnpm install --frozen-lockfile | Out-Null
+    pnpm build | Out-Null
+    Pop-Location
+}
+$targetWeb = Join-Path $publishDir 'web\dist'
+if (Test-Path -LiteralPath $targetWeb) { Remove-Item -LiteralPath $targetWeb -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $targetWeb | Out-Null
+Copy-Item -Path (Join-Path $webDist '*') -Destination $targetWeb -Recurse -Force
 
-# 3) 生成 WiX 文件清单（GUID 加盐 client，避免与 Server 包组件 GUID 冲突）
-$filesWxs = Join-Path $root 'packaging\files-client.wxs'
-& (Join-Path $root 'packaging\generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs -GuidSalt 'client'
+# 2) 复制服务端默认配置到发布目录（先于文件清单，确保 appsettings.json 被打包）
+Copy-Item (Join-Path $root 'packaging\appsettings-server.json') (Join-Path $publishDir 'appsettings.json') -Force
+
+# 3) 生成 WiX 文件清单（GUID 加盐 server，避免与 Client 包组件 GUID 冲突）
+$filesWxs = Join-Path $root 'packaging\files-server.wxs'
+& (Join-Path $root 'packaging\generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs -GuidSalt 'server'
 
 # 4) wix build
-$msi = Join-Path $root "artifacts\LabelFrame-Client-$Version.msi"
+$msi = Join-Path $root "artifacts\LabelFrame-Server-$Version.msi"
 $global:LASTEXITCODE = 0
 & $wix eula accept wix7 2>$null | Out-Null
-& $wix build (Join-Path $root 'packaging\main.wxs') $filesWxs -d PublishDir=$publishDir -o $msi -arch x64 -ext WixToolset.NetFx.wixext 2>&1 | Write-Host
+& $wix build (Join-Path $root 'packaging\main-server.wxs') $filesWxs -d PublishDir=$publishDir -o $msi -arch x64 -ext WixToolset.NetFx.wixext 2>&1 | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
 
-# 5) 代码签名（可选：-Sign）
+# 5) 代码签名（可选：-Sign，与 Client 同证书）
 if ($Sign) {
     if (-not $PfxPath) { $PfxPath = Join-Path $root 'artifacts\cert\labelframe.pfx' }
     if (-not (Test-Path $PfxPath)) { throw "未找到证书 $PfxPath，请先运行 scripts\create-signing-cert.ps1" }
     $signtoolPath = $env:SIGNFILE
     if (-not $signtoolPath) {
-        $found = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
-            Sort-Object FullName -Descending | Select-Object -First 1
+        $found = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
         if ($found) { $signtoolPath = $found.FullName }
     }
     if (-not $signtoolPath) {

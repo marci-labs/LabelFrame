@@ -52,11 +52,11 @@ cd web; pnpm install; pnpm build; cd ..
 .\scripts\build-msi.ps1
 ```
 
-产物：`artifacts\LabelFrame-0.13.2.msi`（约 10MB，x64 framework-dependent，含 WinHost + Web UI + 应用图标；安装到 `C:\Program Files\LabelFrame`）。`appsettings.json` 为独立用户配置组件：覆盖安装 / 修复不覆盖、卸载保留，升级不会丢用户配置。
+产物（0.14.0 起双安装包，安装目录统一在 `C:\Program Files\LabelFrame\` 下用子目录区分）：`artifacts\LabelFrame-Server-0.14.0.msi`（约 8MB）→ `C:\Program Files\LabelFrame\Server`：服务端（模板库 / 作业中心 / Web UI / 调试出图 / 日志 / Excel，不接打印机；默认监听 0.0.0.0:53961）；`artifacts\LabelFrame-Client-0.14.0.msi`（约 14MB）→ `C:\Program Files\LabelFrame\Client`：打印客户端（本机打印机连接 / 作业领取 / 托盘；默认 ServerUrl=http://127.0.0.1:53961，单机模式保留）。单机使用 = 同机安装两个包；两个包的 appsettings.json 均为独立用户配置组件（覆盖安装 / 修复不覆盖、卸载保留）。
 
 前置要求：目标机需安装 **.NET 10 Desktop Runtime**（x64，下载：https://dotnet.microsoft.com/download/dotnet/10.0）。安装 MSI 时会用 .NET 官方自检程序（NetCoreCheck）实时检测：已安装则直接继续（无需重启），缺失则弹出可点击的官方下载链接对话框（不自动安装）。
-打印：统一为整版位图（Skia 渲染 → `^GF` 直传打印机），与画布预览同源（迭代 15 起移除矢量 ZPL）。连接方式可在 Web 设置页 / 数据与打印页切换（Log / TCP / Windows 驱动 / Zebra，单一连接生效、先测试后生效、持久化到 %LOCALAPPDATA%\LabelFrame\connection.json），默认 Log（模拟打印：渲染图片保存到 `%LOCALAPPDATA%\LabelFrame\print\{jobId}\`，作业进度中会显示目录；host.log 有摘要）。调试开关开启时只出图不发送驱动（单张 PNG / 批量 zip）。
-干净电脑使用：安装 MSI → 桌面 / 开始菜单「LabelFrame」→ 双击图标 → 自动启动服务并打开浏览器（http://127.0.0.1:53960）→ 直接模板编辑与打印测试。系统托盘出现 L 图标：双击打开界面、右键可退出。
+打印：统一为整版位图（Skia 渲染 → `^GF` 直传打印机），与画布预览同源（迭代 15 起移除矢量 ZPL）。连接方式（Log / TCP / Windows 驱动 / Zebra）在**客户端本机**配置（托盘 / 本机小页面，先测试后生效、持久化 connection.json），服务端不再提供打印机连接 UI。
+干净电脑使用（单机）：安装 `LabelFrame-Server-0.14.0.msi` 与 `LabelFrame-Client-0.14.0.msi` 两个包 → 开始菜单「LabelFrame Server / LabelFrame Client」→ Server 打开浏览器（http://127.0.0.1:53961）编辑模板与提交作业；Client 托盘右键可配置打印机连接并退出。多台打印电脑：每台装 Client，设置 ServerUrl 指向服务端电脑 IP 即可。
 
 辅助脚本：
 - `scripts\generate-icon.ps1`：生成应用图标（双色 L 型，assets\labelframe.ico）。
