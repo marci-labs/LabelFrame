@@ -26,6 +26,14 @@ public static class Program
 
     public static async Task Main(string[] args)
     {
+        // 安装完成提示模式（迭代 20）：仅显示 TopMost 弹窗（MSI 原生弹窗会被 Windows 焦点策略挡到后台），
+        // 选择「立即打开」后以普通模式重启宿主；不启动 Kestrel / 托盘。
+        if (args.Contains(InstallFinishedPrompt.Flag))
+        {
+            InstallFinishedPrompt.RunAndMaybeLaunch();
+            return;
+        }
+
         // 内容根固定为程序目录，保证从任意工作目录启动都能读到 appsettings.json
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {

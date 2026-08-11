@@ -7,9 +7,6 @@
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <!-- 安装完成弹窗勾选项默认值（仅新装展示；静默安装不展示、不自动启动） -->
-    <Property Id="OPEN_NOW" Value="1" />
-
     <!-- 检测 .NET Desktop Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
     <!-- 之前的注册表搜索读不到运行时，因为版本号是命名值而非默认值，这里不再依赖注册表结构 -->
     <netfx:DotNetCompatibilityCheck Id="DotNet10RuntimeCheck"
@@ -53,30 +50,18 @@
           <Publish Event="EndDialog" Value="Return" Condition="1" />
         </Control>
       </Dialog>
-      <!-- 安装完成弹窗：确认后按勾选启动客户端并打开界面（迭代 18） -->
-      <Dialog Id="ClientFinishDlg" X="50" Y="50" Width="370" Height="170"
-              Title="LabelFrame 客户端安装完成" NoMinimize="yes">
-        <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="25" Text="LabelFrame Client 安装完成。" />
-        <Control Id="HintText" Type="Text" X="15" Y="45" Width="340" Height="30"
-                 Text="是否立即打开客户端界面？" />
-        <Control Id="OpenNowCheck" Type="CheckBox" X="15" Y="85" Width="340" Height="18"
-                 Property="OPEN_NOW" CheckBoxValue="1" Text="立即打开" />
-        <Control Id="ConfirmButton" Type="PushButton" X="280" Y="125" Width="75" Height="25"
-                 Text="确认" Default="yes">
-          <!-- 点击确认时直接执行（弹窗之后的 InstallUISequence 动作不会执行） -->
-          <Publish Event="DoAction" Value="LaunchClient" Condition="OPEN_NOW = &quot;1&quot;" />
-          <Publish Event="EndDialog" Value="Return" Condition="1" />
-        </Control>
-      </Dialog>
     </UI>
     <InstallUISequence>
       <Show Dialog="RuntimeMissingDlg" Sequence="1250"
             Condition="NOT DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
       <Show Dialog="ClearDataDlg" Sequence="1350"
             Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
-      <!-- 安装完成弹窗与启动动作：仅全新安装 -->
-      <Show Dialog="ClientFinishDlg" Sequence="6800"
-            Condition="NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT REMOVE" />
+      <!-- 安装完成 TopMost 弹窗（迭代 20）：ExecuteAction（安装执行完成）之后拉起；
+           仅全新安装（执行前记录 LAUNCH_FINISH_PROMPT）且非静默（/qn，UI 序列不执行） -->
+      <Custom Action="SetLaunchPrompt" Before="ExecuteAction"
+        Condition="NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT REMOVE" />
+      <Custom Action="LaunchFinishPrompt" After="ExecuteAction"
+        Condition="LAUNCH_FINISH_PROMPT = &quot;1&quot;" />
     </InstallUISequence>
 
     <!-- 安装目录：Program Files\LabelFrame（64 位） -->
@@ -128,9 +113,14 @@
 
     <!-- 覆盖安装 / 卸载前强制结束托盘程序（迭代 19 反馈：先停再删，避免 exe 占用导致覆盖失败或卸载后残留进程） -->
     <CustomAction Id="KillWinHost" Directory="SystemFolder" Execute="immediate" Return="ignore"
-      ExeCommand="taskkill /F /IM LabelFrame.WinHost.exe" />    <!-- 安装完成动作：勾选立即打开则启动客户端（Immediate，运行在提权的 UI 进程，以用户身份启动 GUI） -->
-    <CustomAction Id="LaunchClient" Directory="INSTALLFOLDER" Execute="immediate" Impersonate="yes" Return="ignore"
-      ExeCommand="cmd.exe /c start &quot;&quot; &quot;[#WinHostExe]&quot;" />
+      ExeCommand="taskkill /F /IM LabelFrame.WinHost.exe" />    <!-- 安装完成提示（迭代 20 优化）：MSI 原生完成弹窗会被 Windows 焦点策略挡到后台 / 任务栏闪烁，
+         改为拉起 WinHost 的安装完成模式（install-finished 参数）TopMost 弹窗（默认置前），
+         选择「立即打开」后重启宿主并打开界面 -->
+    <!-- XML 注释规则：不得包含双减号，故此处不写参数原文 -->
+    <CustomAction Id="LaunchFinishPrompt" Directory="INSTALLFOLDER" Execute="immediate" Return="ignore"
+      ExeCommand="&quot;[#WinHostExe]&quot; --install-finished" />
+    <!-- 记录「全新安装」：ExecuteAction 之后 Installed 已置真，无法再判断全新安装，故执行前用属性记录 -->
+    <CustomAction Id="SetLaunchPrompt" Property="LAUNCH_FINISH_PROMPT" Value="1" Execute="immediate" />
 
     <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；新增机器级配置 settings.json，迭代 18） -->
     <CustomAction Id="ClearDataDelFiles" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
