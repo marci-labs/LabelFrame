@@ -1,3 +1,4 @@
+﻿using System.Collections.Concurrent;
 using LabelFrame.Core.Jobs;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
@@ -7,6 +8,7 @@ namespace LabelFrame.WinHost.Routing;
 /// <summary>
 /// Server 路由 Worker：周期注册（心跳）→ 领取定向作业 → 投入本地作业队列打印 →
 /// 本地作业终态后回报 Server。未配置 ServerUrl 时不启用。
+/// 回报由独立循环负责（迭代 19 反馈）：本地作业终态后约 1s 内回报，不被长轮询等待阻塞。
 /// </summary>
 public sealed class ServerRoutingWorker : BackgroundService
 {
@@ -15,10 +17,13 @@ public sealed class ServerRoutingWorker : BackgroundService
     private readonly LabelJobQueue _queue;
     private readonly TimeSpan _interval;
     private readonly ILogger<ServerRoutingWorker> _logger;
-    private readonly Dictionary<string, string> _localToServer = [];
+    private readonly ConcurrentDictionary<string, string> _localToServer = new();
 
     /// <summary>长轮询通知超时（服务端挂起等待作业，作业到达立即唤醒）。</summary>
     public static readonly TimeSpan NotifyTimeout = TimeSpan.FromSeconds(20);
+
+    /// <summary>完成回报周期：独立于长轮询，本地作业终态后尽快回报。</summary>
+    public static readonly TimeSpan ReportInterval = TimeSpan.FromSeconds(1);
 
     /// <summary>创建路由 Worker。</summary>
     public ServerRoutingWorker(
@@ -38,41 +43,88 @@ public sealed class ServerRoutingWorker : BackgroundService
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        // 回报循环与主循环并行：主循环负责注册 / 长轮询 / 领取 / 投入队列，
+        // 回报循环每 1s 检查本地作业终态并立即回报，避免等长轮询超时（最长 20s）。
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        var reportLoop = ReportFinishedLoopAsync(linked.Token);
+        try
         {
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await _poller.RegisterAsync(stoppingToken);
-                // 长轮询等待通知：作业到达立即返回，随后立刻领取（等效推送）；超时也照常领取一次兜底
-                while (!stoppingToken.IsCancellationRequested)
+                try
                 {
-                    var signaled = await _poller.WaitForJobAsync(NotifyTimeout, stoppingToken);
-                    var jobs = await _poller.FetchPendingAsync(stoppingToken);
-                    foreach (var job in jobs)
+                    await _poller.RegisterAsync(stoppingToken);
+                    // 长轮询等待通知：作业到达立即返回，随后立刻领取（等效推送）；超时也照常领取一次兜底
+                    while (!stoppingToken.IsCancellationRequested)
                     {
-                        await HandleClaimedJobAsync(job, stoppingToken);
-                    }
+                        var signaled = await _poller.WaitForJobAsync(NotifyTimeout, stoppingToken);
+                        var jobs = await _poller.FetchPendingAsync(stoppingToken);
+                        foreach (var job in jobs)
+                        {
+                            await HandleClaimedJobAsync(job, stoppingToken);
+                        }
 
-                    await ReportFinishedAsync(stoppingToken);
-                    if (!signaled)
+                        if (!signaled)
+                        {
+                            // 超时：继续下一轮等待（连续挂起，设备在线由 notify 端点心跳维持）
+                            continue;
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Server 路由异常，稍后重试。");
+                    try
                     {
-                        // 超时：继续下一轮等待（连续挂起，设备在线由 notify 端点心跳维持）
-                        continue;
+                        await Task.Delay(_interval, stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        return;
                     }
                 }
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        }
+        finally
+        {
+            linked.Cancel();
+            try
+            {
+                await reportLoop;
+            }
+            catch (OperationCanceledException)
+            {
+                // 取消路径：回报循环已结束
+            }
+        }
+    }
+
+    /// <summary>回报循环：周期检查本地作业终态并回报 Server（不依赖长轮询）。</summary>
+    private async Task ReportFinishedLoopAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await ReportFinishedAsync(cancellationToken);
+                await Task.Delay(ReportInterval, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 return;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Server 路由异常，稍后重试。");
+                _logger.LogWarning(ex, "回报 Server 作业结果异常，稍后重试。");
                 try
                 {
-                    await Task.Delay(_interval, stoppingToken);
+                    await Task.Delay(ReportInterval, cancellationToken);
                 }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
@@ -105,7 +157,7 @@ public sealed class ServerRoutingWorker : BackgroundService
 
     private async Task ReportFinishedAsync(CancellationToken cancellationToken)
     {
-        foreach (var (localJobId, serverJobId) in _localToServer.ToList())
+        foreach (var (localJobId, serverJobId) in _localToServer.ToArray())
         {
             var local = await _queue.GetAsync(localJobId, cancellationToken);
             if (local is null || local.Status is not (LabelJobStatus.Completed or LabelJobStatus.Failed or LabelJobStatus.Cancelled))
@@ -123,7 +175,7 @@ public sealed class ServerRoutingWorker : BackgroundService
                     local.Items.Count(i => i.Status is LabelJobItemStatus.Failed or LabelJobItemStatus.Cancelled),
                     errorMessage),
                 cancellationToken);
-            _localToServer.Remove(localJobId);
+            _localToServer.TryRemove(localJobId, out _);
             _logger.LogInformation("Server 作业 {ServerJobId} 已回报：{Status}", serverJobId, status);
         }
     }
