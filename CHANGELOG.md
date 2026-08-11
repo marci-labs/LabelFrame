@@ -318,3 +318,10 @@
 - 按用户反馈简化：移除 Server 完成弹窗的「开机自启 / 立即运行」勾选项与 `sc config / net start` 自定义动作；`ServiceInstall Start=auto` + `ServiceControl Start=install`（安装即自动 + 启动），完成弹窗仅提示“服务已注册并自动启动”。
 - 实装验证：静默安装 0.15.3 后 `START_TYPE=AUTO_START`、服务 RUNNING、healthz OK。
 - 双包版本对齐 0.15.3：`LabelFrame-Server-0.15.3.msi`（7.6MB）、`LabelFrame-Client-0.15.3.msi`（14.1MB，Client 交互不变：完成弹窗仍含「立即打开」勾选）。
+
+
+## 迭代 18 前端合入与联调（0.15.3 客户端，2026-08-11）
+
+- 前端（hermes，0668d03）：F1-F7 全部完成——双 base（serverApi / localApi）、机器级配置（/api/host/config 启动加载 + 保存即生效）、恢复连接方式（TransportPanel）与打印机分组、数据与打印本机设备默认选中 + 顶部连接徽标、作业历史页（limit=100，空态按模式）、Workbench/Designer/PdaLogs 跟随 serverMode 降级；前端测试 125 全绿、build/lint 通过。
+- 后端复核：契约对齐（JobView.createdAt / HostConfig.serverUrl-deviceId-deviceName / TransportConfig / PrinterStatus 字段与后端一致）。
+- 客户端 MSI 0.15.3 重新打包（含新前端 dist index-DfhhEvBH.js）；端到端冒烟通过：Client 注册在线 → 提交作业 Pending → Completed 2/2 → Log 模拟 PNG 落盘；页面引用新 bundle。
