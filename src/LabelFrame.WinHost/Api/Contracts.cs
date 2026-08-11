@@ -1,4 +1,4 @@
-using LabelFrame.Core.Contracts;
+﻿using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Layout;
 
@@ -112,8 +112,8 @@ public sealed record TransportApplyRequest(
 /// <summary>连接切换 / 测试响应：ok + 中文消息 + 当前生效连接（失败时 config = 未变前的连接）。</summary>
 public sealed record TransportApplyResponse(bool Ok, string Message, TransportConfigDto Config);
 
-/// <summary>机器级配置响应（GET /api/host/config）。</summary>
-public sealed record HostConfigDto(string ServerUrl, string DeviceId, string DeviceName);
+/// <summary>机器级配置响应（GET /api/host/config；Ips 为本机枚举 IPv4，状态栏展示用）。</summary>
+public sealed record HostConfigDto(string ServerUrl, string DeviceId, string DeviceName, IReadOnlyList<string>? Ips = null);
 
 /// <summary>机器级配置请求（POST /api/host/config；仅 serverUrl 可写）。</summary>
 public sealed record HostConfigRequest(string? ServerUrl);

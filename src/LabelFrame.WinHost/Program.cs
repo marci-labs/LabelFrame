@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LabelFrame.Core.Encoding;
@@ -439,7 +439,7 @@ public static class Program
 
         // ---- 机器级配置（迭代 18：/api/host/config，前端读写 ServerUrl；仅回环可写）----
         app.MapGet("/api/host/config", (HostOptions options) =>
-            Results.Ok(new Api.HostConfigDto(options.ServerUrl ?? string.Empty, options.DeviceId, options.DeviceName)));
+            Results.Ok(new Api.HostConfigDto(options.ServerUrl ?? string.Empty, options.DeviceId, options.DeviceName, LocalIpAddresses.EnumerateIpv4())));
 
         app.MapPost("/api/host/config", (HttpContext context, Api.HostConfigRequest? request, HostConfigStore store, HostOptions options) =>
         {
@@ -463,7 +463,7 @@ public static class Program
             store.SaveServerUrl(serverUrl);
             options.ServerUrl = serverUrl;
             HostInfo($"机器级配置已更新：ServerUrl={serverUrl}");
-            return Results.Ok(new Api.HostConfigDto(serverUrl, options.DeviceId, options.DeviceName));
+            return Results.Ok(new Api.HostConfigDto(serverUrl, options.DeviceId, options.DeviceName, LocalIpAddresses.EnumerateIpv4()));
         });
 
         // ---- 本机服务关闭（Web UI 设置页「退出程序」用）----
