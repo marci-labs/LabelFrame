@@ -364,5 +364,5 @@
 - 安装 / 覆盖升级 / 卸载前先停止运行中的程序：
   - Server MSI 新增 `StopServerService` 自定义动作（`sc.exe stop LabelFrameServer`，安装 / 卸载均先停服务再执行 MSI 自带 StopServices / DeleteServices），避免卸载后服务仍显示运行；
   - Server 停机超时从默认 30s 缩短为 5s（`HostOptions.ShutdownTimeout`），避免客户端长轮询请求拖慢服务停止 / 卸载 / 升级；
-  - Client MSI 新增 `util:CloseApplication`（终止 `LabelFrame.WinHost.exe`），覆盖安装 / 卸载前关闭托盘程序，避免 exe 占用导致覆盖失败或卸载后残留进程（`build-msi.ps1` 引入 `WixToolset.Util.wixext`）。
+  - Client MSI 新增 `KillWinHost` 自定义动作（`taskkill /F /IM LabelFrame.WinHost.exe`，位于安装序列最前），覆盖安装 / 卸载前强制结束托盘程序，避免 exe 占用导致覆盖失败或卸载后残留进程。双 MSI 显式声明 `Codepage="65001"`，保证任意系统区域设置下中文打包。
 - 作业完成回报改为独立循环（`ServerRoutingWorker.ReportFinishedLoopAsync`，1s 周期）：本地作业终态后约 1s 内回报 Server，不再被 20s 长轮询阻塞——「已领取 → 已完成」不再延迟；新增回归测试 `Worker_should_report_finished_job_without_waiting_for_long_poll`。

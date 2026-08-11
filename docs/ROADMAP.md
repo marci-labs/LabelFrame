@@ -597,7 +597,7 @@
 **不在范围**：Linux 客户端、PDA、TLS/鉴权、高可用。
 **完成记录（2026-08-11）**：多目标框架（Rendering / Server net10.0 + net10.0-windows）、Skia Linux 原生库、平台默认数据目录、publish-server-linux.ps1 / deploy-server-ubuntu.sh / systemd 单元 / Dockerfile；测试 162 全绿；linux-x64 归档 6.7MB；Windows MSI 回归正常。
 - Docker 镜像 `labelframe-server:0.15.4` + 离线包（106MB）+ compose；容器内 healthz / SQLite / Skia 出图验证通过；Windows Client → Linux 容器跨机闭环（注册 Online、作业领取 131ms）通过。
-- 迭代 19 反馈修复（2026-08-11）：Server / Client MSI 在覆盖安装与卸载前先停止运行中的程序（Server 先 sc stop LabelFrameServer 并把停机超时缩短为 5s；Client 用 util:CloseApplication 终止 WinHost）；ServerRoutingWorker 完成回报改为独立 1s 循环，本地终态后立即回报 Server，不再被 20s 长轮询阻塞（新增回归测试）。
+- 迭代 19 反馈修复（2026-08-11）：Server / Client MSI 在覆盖安装与卸载前先停止运行中的程序（Server 先 sc stop LabelFrameServer 并把停机超时缩短为 5s；Client 用 taskkill（KillWinHost）强制结束 WinHost）；ServerRoutingWorker 完成回报改为独立 1s 循环，本地终态后立即回报 Server，不再被 20s 长轮询阻塞（新增回归测试）。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 19（Ubuntu 服务端部署）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md、docs/ITERATION-19-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
