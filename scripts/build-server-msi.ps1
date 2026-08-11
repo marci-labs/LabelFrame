@@ -1,6 +1,6 @@
 ﻿# 一键构建 LabelFrame Server（服务端）MSI 安装包（迭代 16/17：安装到 Program Files\LabelFrame\Server）
 param(
-    [string]$Version = '0.14.0',
+    [string]$Version = '0.15.0',
     [string]$Runtime = 'win-x64',
     [string]$PfxPath = '',
     [string]$PfxPassword = 'LabelFrame@2026',
@@ -11,26 +11,16 @@ $root = Split-Path -Parent $PSScriptRoot
 $wix = 'C:\Program Files\WiX Toolset v7.0\bin\wix.exe'
 if (-not (Test-Path $wix)) { throw '未找到 WiX Toolset v7，请先安装。' }
 
-# 1) 发布 Server（framework-dependent）+ 复制 web/dist（前端构建产物，缺失时自动构建）
+# 1) 发布 Server（framework-dependent，无 Web UI）
 $publishDir = Join-Path $root "artifacts\server\$Runtime"
+# 清理旧发布目录，避免残留旧 web/dist 被打包
+if (Test-Path -LiteralPath $publishDir) { Remove-Item -LiteralPath $publishDir -Recurse -Force }
 dotnet publish (Join-Path $root 'src\LabelFrame.Server\LabelFrame.Server.csproj') `
     -c Release -r $Runtime -p:SelfContained=false `
     -o $publishDir -p:DebugType=None -p:DebugSymbols=false | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Server publish failed' }
 
-$webDist = Join-Path $root 'web\dist'
-if (-not (Test-Path $webDist)) {
-    Write-Host 'web/dist missing, building frontend ...'
-    Push-Location (Join-Path $root 'web')
-    pnpm install --frozen-lockfile | Out-Null
-    pnpm build | Out-Null
-    Pop-Location
-}
-$targetWeb = Join-Path $publishDir 'web\dist'
-if (Test-Path -LiteralPath $targetWeb) { Remove-Item -LiteralPath $targetWeb -Recurse -Force }
-New-Item -ItemType Directory -Force -Path $targetWeb | Out-Null
-Copy-Item -Path (Join-Path $webDist '*') -Destination $targetWeb -Recurse -Force
-
+# 迭代 18：服务端无头化——不再打包 web/dist（Web UI 由 Client 托管）。
 # 2) 复制服务端默认配置到发布目录（先于文件清单，确保 appsettings.json 被打包）
 Copy-Item (Join-Path $root 'packaging\appsettings-server.json') (Join-Path $publishDir 'appsettings.json') -Force
 

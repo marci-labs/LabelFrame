@@ -26,7 +26,7 @@
 | 14 | 字体加粗（bold）契约 | 🔄 进行中（前后端已实施，联调验收待执行） |
 | 15 | 打印设置与会话保留 + 连接管理 + 删除 ZPL（图片打印收敛） | 🔄 进行中（前后端已完成，联调验收待执行） |
 | 16 | 服务端 / 客户端拆分（双安装包） | ✅ 已完成（0.14.0 双 MSI，用户验收待执行） |
-| 18 | 无头服务端 + 客户端 UI 回归 + Windows 服务 + 历史清理（0.15.0） | 🔄 进行中（决策与任务单已定稿，待开工） |
+| 18 | 无头服务端 + 客户端 UI 回归 + Windows 服务 + 历史清理（0.15.0） | 🔄 进行中（后端已完成并打包 0.15.0，前端 hermes 实施中） |
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
@@ -574,6 +574,11 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 18。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md（0.15 修订）、docs/ITERATION-18-SPEC.md；按范围实施后端；前端任务单交 hermes 评估后再开工；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+
+**后端完成记录（2026-08-11）**：
+- Server 无头化（移除 web/dist 托管与测试页）、Windows 服务（`UseWindowsService`，服务名 LabelFrameServer）、数据目录改 `%ProgramData%\LabelFrame\server`、历史清理后台服务（作业 30 天 / 日志 90 天 / 周期 24h，可配置）、exe 图标 labelframe.ico；`GET /api/jobs` 支持 limit（默认 100 上限 500）。
+- WinHost：机器级配置 `GET/POST /api/host/config`（serverUrl + deviceId/deviceName，持久化 `%ProgramData%\LabelFrame\Client\settings.json`，缺失 / 损坏返回默认值）；`GET /api/jobs` 本机作业列表（扩展 JobView：CreatedAt / FailedItems / ErrorMessage / TargetDeviceId=null）。
+- 双 MSI 0.15.0：Server 注册服务 + 安装完成弹窗（开机自启 / 立即运行，默认勾选，sc config / net start）；Client 安装完成弹窗（立即打开，默认勾选）；卸载清理路径含 ProgramData；测试 156 全绿（Server 13 / WinHost 58 / Core 60 / Studio 25）。
 ## 检查点：试点验收（待定）
 
 按 [REQUIREMENTS.md](REQUIREMENTS.md) §8 成功衡量执行：

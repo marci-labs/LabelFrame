@@ -181,7 +181,7 @@
   - 注册 Windows 服务 `LabelFrameServer`（默认 Manual，LocalSystem；自启动由勾选决定）；卸载停止 + 删除服务。
   - 安装完成弹窗：确认按钮 + 「开机自启（默认勾选）」「立即运行（默认勾选）」；确认时：自启勾选 → `sc config LabelFrameServer start= auto`（否则保持 manual）；立即运行勾选 → `net start LabelFrameServer`。
   - 不再包含 web/dist；程序图标使用 `assets\labelframe.ico`。
-  - 卸载清理路径同步改为 `%ProgramData%\LabelFrame\server` + `%ProgramData%\LabelFrame\Client\settings.json`（如存在）+ appsettings。
+  - 卸载清理路径同步改为 `%ProgramData%\LabelFrame\server` + appsettings（Client 机器级配置由其自身安装包清理）。
 - Client MSI：
   - 安装完成弹窗：「立即打开（默认勾选）」；确认时启动 `LabelFrame.WinHost.exe`（OpenBrowser=true 自动打开界面）。
   - 程序图标沿用 `assets\labelframe.ico`。

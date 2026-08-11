@@ -1,4 +1,4 @@
-# 生成 WiX 文件清单（fragment wxs）：根目录文件 + web/dist（含 assets 子目录树）
+﻿# 生成 WiX 文件清单（fragment wxs）：根目录文件 + web/dist（含 assets 子目录树）
 param(
     [string]$PublishDir = '',
     [string]$OutFile = '',
@@ -52,6 +52,7 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('<?xml version="1.0" encoding="utf-8"?>')
 [void]$sb.AppendLine('<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">')
 [void]$sb.AppendLine('  <Fragment>')
+if ($webFiles.Count -gt 0) {
 [void]$sb.AppendLine('    <DirectoryRef Id="INSTALLFOLDER">')
 [void]$sb.AppendLine('      <Directory Id="WebDir" Name="web">')
 [void]$sb.AppendLine('        <Directory Id="WebDistDir" Name="dist">')
@@ -61,9 +62,12 @@ foreach ($sub in $webSubDirs.Keys) {
 [void]$sb.AppendLine('        </Directory>')
 [void]$sb.AppendLine('      </Directory>')
 [void]$sb.AppendLine('    </DirectoryRef>')
+}
 
 $webSb = New-Object System.Text.StringBuilder
+if ($webFiles.Count -gt 0) {
 [void]$webSb.AppendLine('    <ComponentGroup Id="WebFiles">')
+}
 
 $index = 0
 $webIndex = 0
@@ -105,8 +109,10 @@ foreach ($f in $allFiles) {
 [void]$sb.AppendLine('    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">')
 for ($i = 0; $i -lt $index; $i++) { [void]$sb.AppendLine('      <ComponentRef Id="f' + $i + '" />') }
 [void]$sb.AppendLine('    </ComponentGroup>')
+if ($webFiles.Count -gt 0) {
 [void]$webSb.AppendLine('    </ComponentGroup>')
 [void]$sb.Append($webSb.ToString())
+}
 [void]$sb.AppendLine('  </Fragment>')
 [void]$sb.AppendLine('</Wix>')
 [System.IO.File]::WriteAllText($OutFile, $sb.ToString(), (New-Object System.Text.UTF8Encoding($false)))

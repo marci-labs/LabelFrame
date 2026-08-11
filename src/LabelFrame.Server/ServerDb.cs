@@ -241,12 +241,13 @@ public sealed class ServerDb
     }
 
     /// <summary>作业列表（按创建时间倒序）。</summary>
-    public async Task<IReadOnlyList<ServerJob>> ListJobsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ServerJob>> ListJobsAsync(int limit = 100, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
         var jobs = new List<ServerJob>();
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id FROM server_jobs ORDER BY created_at DESC, id;";
+        command.CommandText = "SELECT id FROM server_jobs ORDER BY created_at DESC, id LIMIT $limit;";
+        command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 500));
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
@@ -258,6 +259,20 @@ public sealed class ServerDb
         }
 
         return jobs;
+    }
+
+    /// <summary>删除终态（Completed / Failed）且结束 / 创建时间早于截止时间的作业（历史清理用）。</summary>
+    public async Task<int> DeleteTerminalJobsBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            DELETE FROM server_jobs
+            WHERE status IN ('Completed', 'Failed')
+              AND COALESCE(finished_at, created_at) < $cutoff;
+            """;
+        command.Parameters.AddWithValue("$cutoff", Format(cutoff));
+        return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private async Task<ServerJob?> GetJobCoreAsync(string key, bool byRequestId, CancellationToken cancellationToken)

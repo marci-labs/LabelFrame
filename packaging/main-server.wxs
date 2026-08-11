@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.14.0"
+  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.15.0"
            UpgradeCode="10BDDF3E-BD37-4C3A-A19E-56CA9EFE5B74">
-    <SummaryInformation Description="LabelFrame 服务端：模板库 / 作业中心 / Web UI / 调试出图 / 日志（安装于 Program Files\LabelFrame\Server，不接打印机）" />
+    <SummaryInformation Description="LabelFrame 服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志（安装于 Program Files\LabelFrame\Server，无 Web UI，以 Windows 服务运行）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- 安装完成弹窗勾选项默认值（仅新装展示；静默安装不展示，服务保持 manual 不自动启动） -->
+    <Property Id="AUTOSTART" Value="1" />
+    <Property Id="RUNNOW" Value="1" />
 
     <!-- 检测 .NET Desktop Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
     <!-- 之前的注册表搜索读不到运行时，因为版本号是命名值而非默认值，这里不再依赖注册表结构 -->
@@ -50,12 +54,34 @@
           <Publish Event="EndDialog" Value="Return" Condition="1" />
         </Control>
       </Dialog>
+      <!-- 安装完成弹窗：确认后按勾选设置服务自启 / 立即运行（迭代 18） -->
+      <Dialog Id="ServerFinishDlg" X="50" Y="50" Width="370" Height="210"
+              Title="LabelFrame 服务端安装完成" NoMinimize="yes">
+        <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="25" Text="LabelFrame Server 安装完成。" />
+        <Control Id="HintText" Type="Text" X="15" Y="45" Width="340" Height="30"
+                 Text="服务 LabelFrameServer 已注册。请选择启动方式：" />
+        <Control Id="AutoStartCheck" Type="CheckBox" X="15" Y="95" Width="340" Height="18"
+                 Property="AUTOSTART" CheckBoxValue="1" Text="开机自启（默认勾选）" />
+        <Control Id="RunNowCheck" Type="CheckBox" X="15" Y="118" Width="340" Height="18"
+                 Property="RUNNOW" CheckBoxValue="1" Text="立即运行（默认勾选）" />
+        <Control Id="ConfirmButton" Type="PushButton" X="280" Y="165" Width="75" Height="25"
+                 Text="确认" Default="yes">
+          <Publish Event="EndDialog" Value="Return" Condition="1" />
+        </Control>
+      </Dialog>
     </UI>
     <InstallUISequence>
       <Show Dialog="RuntimeMissingDlg" Sequence="1250"
             Condition="NOT DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
       <Show Dialog="ClearDataDlg" Sequence="1350"
             Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <!-- 安装完成弹窗与后续动作：仅全新安装（ExecuteAction=6750 之后展示，勾选项在 execute 之后由 UI 动作消费） -->
+      <Show Dialog="ServerFinishDlg" Sequence="6800"
+            Condition="NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT REMOVE" />
+      <Custom Action="SetAutoStart" Sequence="6810"
+            Condition="AUTOSTART = &quot;1&quot; AND NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT REMOVE" />
+      <Custom Action="StartServiceNow" Sequence="6820"
+            Condition="RUNNOW = &quot;1&quot; AND NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT REMOVE" />
     </InstallUISequence>
 
     <!-- 安装目录：Program Files\LabelFrame（64 位） -->
@@ -67,48 +93,39 @@
       <Component Id="AppSettingsFile" Guid="D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80" NeverOverwrite="yes" Permanent="yes">
         <File Id="AppSettingsFile" Source="$(var.PublishDir)/appsettings.json" KeyPath="yes" />
       </Component>
-    </Directory>
-    </Directory>
-    </StandardDirectory>
-
-    <!-- 开始菜单 -->
-    <StandardDirectory Id="ProgramMenuFolder">
-      <Directory Id="ApplicationProgramsFolder" Name="LabelFrame">
-        <Component Id="StartMenuShortcut">
-          <Shortcut Id="StartMenuShortcut" Name="LabelFrame Server"
-                    Description="启动 LabelFrame Server 并提供模板 / 作业 Web 管理界面"
-                    Target="[#ServerExe]"
-                    WorkingDirectory="INSTALLFOLDER" />
-          <RemoveFolder Id="ApplicationProgramsRemove" Directory="ApplicationProgramsFolder" On="uninstall" />
-          <RegistryValue Root="HKCU" Key="Software\LabelFrame" Name="startmenu" Type="integer" Value="1" KeyPath="yes" />
-        </Component>
-      </Directory>
-    </StandardDirectory>
-
-    <!-- 桌面快捷方式 -->
-    <StandardDirectory Id="DesktopFolder">
-      <Component Id="DesktopShortcut">
-        <Shortcut Id="DesktopShortcut" Name="LabelFrame Server"
-                  Description="启动 LabelFrame Server 并提供模板 / 作业 Web 管理界面"
-                  Target="[#ServerExe]"
-                  WorkingDirectory="INSTALLFOLDER" />
-        <RemoveFolder Id="DesktopRemove" Directory="DesktopFolder" On="uninstall" />
-        <RegistryValue Root="HKCU" Key="Software\LabelFrame" Name="desktop" Type="integer" Value="1" KeyPath="yes" />
+      <!-- Windows 服务注册（迭代 18）：默认 manual，自启由安装完成弹窗决定；卸载停止并删除 -->
+      <Component Id="ServerServiceComponent" Guid="1E6C9B9F-2A8E-4E4B-9C0E-9F6A7B8C9D0E">
+        <ServiceInstall Id="LabelFrameServerInstall"
+                        Name="LabelFrameServer"
+                        DisplayName="LabelFrame 服务端"
+                        Type="ownProcess"
+                        Start="demand"
+                        Account="LocalSystem"
+                        ErrorControl="normal" />
+        <ServiceControl Id="LabelFrameServerControl" Name="LabelFrameServer" Stop="both" Remove="uninstall" Wait="yes" />
+        <RegistryValue Root="HKLM" Key="Software\LabelFrame\Server" Name="service" Type="integer" Value="1" KeyPath="yes" />
       </Component>
+    </Directory>
+    </Directory>
     </StandardDirectory>
 
     <Feature Id="MainFeature" Title="LabelFrame" Level="1">
       <ComponentGroupRef Id="AppFiles" />
-      <ComponentGroupRef Id="WebFiles" />
       <ComponentRef Id="AppSettingsFile" />
-      <ComponentRef Id="StartMenuShortcut" />
-      <ComponentRef Id="DesktopShortcut" />
+      <ComponentRef Id="ServerServiceComponent" />
     </Feature>
-    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发） -->
+
+    <!-- 安装完成动作：按勾选设置自启 / 立即运行（仅全新安装；Immediate，运行在提权的 UI 进程） -->
+    <CustomAction Id="SetAutoStart" Directory="SystemFolder" Execute="immediate" Impersonate="yes" Return="ignore"
+      ExeCommand="sc.exe config LabelFrameServer start= auto" />
+    <CustomAction Id="StartServiceNow" Directory="SystemFolder" Execute="immediate" Impersonate="yes" Return="ignore"
+      ExeCommand="net.exe start LabelFrameServer" />
+
+    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；路径为 ProgramData，迭代 18） -->
     <CustomAction Id="ClearDataDelServerDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
-      ExeCommand="cmd.exe /c rmdir /s /q &quot;%LOCALAPPDATA%\LabelFrame\server&quot;" />
+      ExeCommand="cmd.exe /c rmdir /s /q &quot;%ProgramData%\LabelFrame\server&quot;" />
     <CustomAction Id="ClearDataDelServerDb" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
-      ExeCommand="cmd.exe /c del /q &quot;%LOCALAPPDATA%\LabelFrame\server.db&quot;" />
+      ExeCommand="cmd.exe /c del /q &quot;%ProgramData%\LabelFrame\server.db&quot;" />
     <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramFiles%\LabelFrame\Server\appsettings.json&quot;" />
     <InstallExecuteSequence>

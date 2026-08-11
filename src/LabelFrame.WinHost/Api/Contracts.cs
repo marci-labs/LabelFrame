@@ -23,7 +23,7 @@ public sealed record TemplateDto(LabelContract? Contract, LabelLayout? Layout)
 /// <summary>单张标签数据。</summary>
 public sealed record LabelDto(IReadOnlyDictionary<string, string>? Data);
 
-/// <summary>作业视图（API 响应）。</summary>
+/// <summary>作业视图（API 响应；CreatedAt / FailedItems / ErrorMessage / TargetDeviceId 为作业历史列表列，迭代 18 B10 扩展）。</summary>
 public sealed record JobView(
     string JobId,
     string RequestId,
@@ -32,7 +32,11 @@ public sealed record JobView(
     int CompletedItems,
     IReadOnlyList<JobItemView> Items,
     string? PrintImageDir = null,
-    int? PrintImageCount = null);
+    int? PrintImageCount = null,
+    DateTimeOffset? CreatedAt = null,
+    int? FailedItems = null,
+    string? ErrorMessage = null,
+    string? TargetDeviceId = null);
 
 /// <summary>单张标签视图。</summary>
 public sealed record JobItemView(int Index, string Status, string? ErrorCode, string? ErrorMessage);
@@ -77,7 +81,11 @@ public static class JobViews
         job.Items.Count(i => i.Status == LabelJobItemStatus.Completed),
         job.Items.Select(i => new JobItemView(i.Index, i.Status.ToString(), i.ErrorCode, i.ErrorMessage)).ToList(),
         printImageDir,
-        printImageCount);
+        printImageCount,
+        job.CreatedAt,
+        job.Items.Count(i => i.Status == LabelJobItemStatus.Failed),
+        job.Items.FirstOrDefault(i => i.Status == LabelJobItemStatus.Failed)?.ErrorMessage,
+        null);
 }
 
 /// <summary>连接参数（只含当前模式所需字段；未使用字段返回空 / 默认）。</summary>
@@ -103,3 +111,9 @@ public sealed record TransportApplyRequest(
 
 /// <summary>连接切换 / 测试响应：ok + 中文消息 + 当前生效连接（失败时 config = 未变前的连接）。</summary>
 public sealed record TransportApplyResponse(bool Ok, string Message, TransportConfigDto Config);
+
+/// <summary>机器级配置响应（GET /api/host/config）。</summary>
+public sealed record HostConfigDto(string ServerUrl, string DeviceId, string DeviceName);
+
+/// <summary>机器级配置请求（POST /api/host/config；仅 serverUrl 可写）。</summary>
+public sealed record HostConfigRequest(string? ServerUrl);

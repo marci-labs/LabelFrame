@@ -86,6 +86,13 @@ public sealed class HostOptions
     /// <summary>Web UI 静态目录（前端构建产物，为空时自动探测 web/dist）。</summary>
     public string? WebUiPath { get; set; }
 
+    /// <summary>机器级配置文件路径（默认 %ProgramData%\LabelFrame\Client\settings.json；UI 经 /api/host/config 读写）。</summary>
+    public string ConfigPath { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+        "LabelFrame",
+        "Client",
+        "settings.json");
+
     /// <summary>设备日志库路径（默认 %LOCALAPPDATA%\LabelFrame\logs.db）。</summary>
     public string LogsDbPath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -201,6 +208,11 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_HOST_LOG") is { } hostLog)
         {
             HostLogPath = hostLog;
+        }
+
+        if (GetEnv("LABELFRAME_CONFIG") is { } configPath)
+        {
+            ConfigPath = configPath;
         }
 
         if (GetEnv("LABELFRAME_OPEN_BROWSER") is { } openBrowser)

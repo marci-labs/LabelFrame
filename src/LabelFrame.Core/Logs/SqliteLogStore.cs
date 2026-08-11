@@ -114,6 +114,16 @@ public sealed class SqliteLogStore
         return entries;
     }
 
+    /// <summary>删除早于截止时间的日志（历史清理用）。</summary>
+    public async Task<int> DeleteBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM logs WHERE time < $cutoff;";
+        command.Parameters.AddWithValue("$cutoff", Format(cutoff));
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
     {
         var connection = new SqliteConnection(_connectionString);

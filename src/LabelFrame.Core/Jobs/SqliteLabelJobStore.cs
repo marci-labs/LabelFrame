@@ -186,6 +186,29 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
         return jobs;
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<LabelJob>> ListRecentAsync(int limit, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        var jobs = new List<LabelJob>();
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT id FROM jobs ORDER BY created_at DESC, id LIMIT $limit;";
+            command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 500));
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var job = await LoadJobCoreAsync(connection, reader.GetString(0), cancellationToken);
+                if (job is not null)
+                {
+                    jobs.Add(job);
+                }
+            }
+        }
+
+        return jobs;
+    }
+
     private async Task<LabelJob?> GetJobCoreAsync(string key, bool byRequestId, CancellationToken cancellationToken)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);

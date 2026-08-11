@@ -52,7 +52,16 @@ public static class Program
             }
         }
 
-        HostInfo($"LabelFrame 启动：监听 {options.ListenUrl}，连接 {transportManager.CurrentConfig.Describe()}，DPI {options.Dpi}，OpenBrowser={options.OpenBrowser}");
+        var hostConfigStore = new HostConfigStore(options.ConfigPath);
+        builder.Services.AddSingleton(hostConfigStore);
+        var machineServerUrl = hostConfigStore.LoadServerUrl();
+        if (!string.IsNullOrWhiteSpace(machineServerUrl) && !string.Equals(machineServerUrl, options.ServerUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            options.ServerUrl = machineServerUrl;
+            HostInfo($"已加载机器级配置：ServerUrl={options.ServerUrl}");
+        }
+
+        HostInfo($"LabelFrame 启动：监听 {options.ListenUrl}，连接 {transportManager.CurrentConfig.Describe()}，DPI {options.Dpi}，OpenBrowser={options.OpenBrowser}，ServerUrl={options.ServerUrl ?? "(未配置路由)"}");
 
         var store = new SqliteLabelJobStore(options.DatabasePath);
         await store.InitializeAsync();
@@ -316,6 +325,13 @@ public static class Program
                 : Results.Ok(jobView);
         });
 
+        // 作业列表（迭代 18 B10：作业历史页；单机降级用，形状与 Server 兼容）
+        app.MapGet("/api/jobs", async (int? limit, ILabelJobStore store, ITransportManager transportManager, CancellationToken ct) =>
+        {
+            var jobs = await store.ListRecentAsync(Math.Clamp(limit ?? 100, 1, 500), ct);
+            return Results.Ok(jobs.Select(j => EnrichPrintInfo(JobViews.From(j), j.Id, transportManager)));
+        });
+
         app.MapGet("/api/jobs/{jobId}", async (string jobId, LabelJobQueue queue, ITransportManager transportManager, CancellationToken ct) =>
         {
             var job = await queue.GetAsync(jobId, ct);
@@ -419,6 +435,35 @@ public static class Program
             var command = encoder.EncodeImage(bitmap, document.Layout.WidthMm, document.Layout.HeightMm, options.Dpi);
             await transportManager.CurrentTransport.SendAsync(command, ct);
             return Results.Ok(new { sent = true, bytes = System.Text.Encoding.UTF8.GetByteCount(command) });
+        });
+
+        // ---- 机器级配置（迭代 18：/api/host/config，前端读写 ServerUrl；仅回环可写）----
+        app.MapGet("/api/host/config", (HostOptions options) =>
+            Results.Ok(new Api.HostConfigDto(options.ServerUrl ?? string.Empty, options.DeviceId, options.DeviceName)));
+
+        app.MapPost("/api/host/config", (HttpContext context, Api.HostConfigRequest? request, HostConfigStore store, HostOptions options) =>
+        {
+            var remote = context.Connection.RemoteIpAddress;
+            if (remote is null || !System.Net.IPAddress.IsLoopback(remote))
+            {
+                return Results.Forbid();
+            }
+
+            if (request is null || string.IsNullOrWhiteSpace(request.ServerUrl))
+            {
+                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "缺少 serverUrl。"));
+            }
+
+            var serverUrl = request.ServerUrl.Trim().TrimEnd('/');
+            if (!Uri.TryCreate(serverUrl, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            {
+                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "serverUrl 格式不正确（http://主机:端口）。"));
+            }
+
+            store.SaveServerUrl(serverUrl);
+            options.ServerUrl = serverUrl;
+            HostInfo($"机器级配置已更新：ServerUrl={serverUrl}");
+            return Results.Ok(new Api.HostConfigDto(serverUrl, options.DeviceId, options.DeviceName));
         });
 
         // ---- 本机服务关闭（Web UI 设置页「退出程序」用）----

@@ -194,9 +194,9 @@ public sealed class ServerService
     }
 
     /// <summary>作业列表（倒序）。</summary>
-    public async Task<IReadOnlyList<ServerJobView>> ListJobsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ServerJobView>> ListJobsAsync(int limit = 100, CancellationToken cancellationToken = default)
     {
-        var jobs = await _db.ListJobsAsync(cancellationToken);
+        var jobs = await _db.ListJobsAsync(limit, cancellationToken);
         var views = new List<ServerJobView>();
         foreach (var job in jobs)
         {

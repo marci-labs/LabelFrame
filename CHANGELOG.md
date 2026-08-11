@@ -284,3 +284,15 @@
 - 客户端机器级 ServerUrl（WinHost `GET/POST /api/host/config` → `%ProgramData%\LabelFrame\Client\settings.json`）。
 - 双 MSI 安装完成弹窗：Server（开机自启 / 立即运行，默认勾选）、Client（立即打开，默认勾选）；升级不触发。
 - 规格与任务单：docs/ITERATION-18-SPEC.md；决策登记 docs/DESIGN.md #53-58；架构修订 docs/ARCHITECTURE-SPLIT.md。
+
+
+## 迭代 18 后端实施（0.15.0，2026-08-11）
+
+- Server 无头化：移除 Web UI 静态托管与测试页（/、/devices、/jobs），仅保留 /healthz 与 API；`GET /api/jobs` 支持 `?limit`（默认 100，上限 500）。
+- Server Windows 服务：`builder.Host.UseWindowsService`（服务名 LabelFrameServer，LocalSystem）；控制台模式保留供开发；exe 图标改用 labelframe.ico。
+- 数据目录改 `%ProgramData%\LabelFrame\server`（server.db / templates.db / logs.db；服务账户下 LOCALAPPDATA 不可靠）。
+- 历史数据定期清理：`DataCleanupService`（启动 60s 后按周期执行，默认 24h）删除终态作业超 `JobRetentionDays`（默认 30 天）与日志超 `LogRetentionDays`（默认 90 天）；非终态作业不删；`ServerDb.DeleteTerminalJobsBeforeAsync` + `SqliteLogStore.DeleteBeforeAsync`。
+- WinHost 机器级配置：`GET/POST /api/host/config`（serverUrl + deviceId/deviceName，仅回环可写），持久化 `%ProgramData%\LabelFrame\Client\settings.json`（缺失 / 损坏返回默认值；启动加载覆盖 ServerUrl）。
+- WinHost 作业列表：`GET /api/jobs`（limit 默认 100 上限 500），JobView 扩展 CreatedAt / FailedItems / ErrorMessage / TargetDeviceId（本机作业为 null）。
+- 双 MSI 0.15.0：Server 安装注册 Windows 服务 + 安装完成弹窗（开机自启 / 立即运行，默认勾选；按勾选 `sc config start= auto` / `net start`，升级不触发）；Client 安装完成弹窗（立即打开，默认勾选；启动客户端开界面）；Server 不再打包 web/dist；卸载清理路径含 ProgramData（Server server 目录 / Client settings.json）。
+- 测试 156 全绿（Core 60 / Server 13 / WinHost 58 / Studio 25）；产物 `LabelFrame-Server-0.15.0.msi`（7.6MB）、`LabelFrame-Client-0.15.0.msi`（14.2MB）。

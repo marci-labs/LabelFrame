@@ -5,6 +5,7 @@ using LabelFrame.Core.Templates;
 using LabelFrame.Rendering;
 using LabelFrame.Server;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -16,6 +17,8 @@ var serverOptions = new ServerOptions();
 builder.Configuration.GetSection("Server").Bind(serverOptions);
 serverOptions.ApplyEnvironmentOverrides();
 builder.WebHost.UseUrls(serverOptions.ListenUrl);
+// 迭代 18：以 Windows 服务运行（LabelFrameServer）；直接运行 exe 仍是控制台（开发用）。
+builder.Host.UseWindowsService(options => options.ServiceName = "LabelFrameServer");
 
 var db = new ServerDb(serverOptions.DatabasePath);
 await db.InitializeAsync();
@@ -36,6 +39,7 @@ builder.Services.AddSingleton(service);
 builder.Services.AddSingleton(serverOptions);
 builder.Services.AddSingleton(templateStore);
 builder.Services.AddSingleton(logStore);
+builder.Services.AddHostedService(sp => new DataCleanupService(db, logStore, serverOptions, sp.GetRequiredService<ILogger<DataCleanupService>>()));
 builder.Services.AddSingleton<ILabelBitmapRenderer>(new SkiaLabelRenderer());
 // 本地工具服务：地址由用户配置（可跨机器 / 跨端口），启用宽松 CORS
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
@@ -91,8 +95,8 @@ app.MapPost("/api/jobs", async (SubmitJobRequest? request, ServerService svc, Ca
     }
 });
 
-app.MapGet("/api/jobs", async (ServerService svc, CancellationToken ct) =>
-    Results.Ok(await svc.ListJobsAsync(ct)));
+app.MapGet("/api/jobs", async (int? limit, ServerService svc, CancellationToken ct) =>
+    Results.Ok(await svc.ListJobsAsync(limit ?? 100, ct)));
 
 app.MapGet("/api/jobs/{jobId}", async (string jobId, ServerService svc, CancellationToken ct) =>
 {
@@ -325,57 +329,11 @@ app.MapPost("/api/import/excel", async (IFormFile file, CancellationToken ct) =>
     }
 }).DisableAntiforgery();
 
-// ---- 测试入口（无业务系统也能提交打印 / 查看设备与作业）----
-app.MapGet("/", () => Results.Content(TestUi.HomePage, "text/html; charset=utf-8"));
-app.MapGet("/devices", () => Results.Content(TestUi.DevicesPage, "text/html; charset=utf-8"));
-app.MapGet("/jobs", () => Results.Content(TestUi.JobsPage, "text/html; charset=utf-8"));
-
-// ---- Web UI 静态托管（前端构建产物 web/dist，迭代 16：服务端承载全部界面）----
-var webUiPath = ResolveWebUiPath(serverOptions);
-if (webUiPath is not null)
-{
-    var fileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(webUiPath);
-    app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
-    app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider });
-    app.MapFallback(async context =>
-    {
-        var indexFile = Path.Combine(webUiPath, "index.html");
-        if (!File.Exists(indexFile))
-        {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            return;
-        }
-
-        context.Response.ContentType = "text/html; charset=utf-8";
-        await context.Response.SendFileAsync(indexFile);
-    });
-    Console.WriteLine($"[LabelFrame.Server] Web UI: {webUiPath}");
-}
-else
-{
-    Console.WriteLine("[LabelFrame.Server] 未找到 Web UI 构建产物（web/dist），仅提供 API。");
-}
+// 迭代 18：服务端无头化——不再托管 Web UI / 测试页，仅提供 API 与 /healthz。
 
 // 模板图片 base64 → 字节
 static IReadOnlyDictionary<string, byte[]> DecodeImages(IReadOnlyDictionary<string, string>? images)
     => images?.ToDictionary(kv => kv.Key, kv => System.Convert.FromBase64String(kv.Value)) ?? new Dictionary<string, byte[]>();
-
-/// <summary>解析 Web UI 静态目录：配置优先，否则探测常见位置（含仓库开发路径）。</summary>
-static string? ResolveWebUiPath(ServerOptions options)
-{
-    if (!string.IsNullOrWhiteSpace(options.WebUiPath) && Directory.Exists(options.WebUiPath))
-    {
-        return options.WebUiPath;
-    }
-
-    var candidates = new[]
-    {
-        Path.Combine(AppContext.BaseDirectory, "web", "dist"),
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "web", "dist")),
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "web", "dist")),
-    };
-    return candidates.FirstOrDefault(Directory.Exists);
-}
 
 static string FormatExcelCell(object? value) => value switch
 {
@@ -386,66 +344,3 @@ static string FormatExcelCell(object? value) => value switch
 };
 
 await app.RunAsync();
-
-internal static partial class TestUi
-{
-    private const string TemplateExample = """
-        {
-          "contract": {
-            "name": "location-label", "version": "1.0",
-            "fields": [
-              { "key": "locationCode", "displayName": "库位码", "isRequired": true, "type": "text" },
-              { "key": "zone", "displayName": "区域", "isRequired": true, "type": "text" }
-            ]
-          },
-          "layout": {
-            "name": "location-label-100x60", "contractName": "location-label", "contractVersion": "1.0",
-            "widthMm": 100, "heightMm": 60,
-            "elements": [
-              { "type": "text", "sourceKey": "zone", "xMm": 5, "yMm": 4, "fontHeightMm": 5, "fontWidthMm": 5 },
-              { "type": "barcode", "sourceKey": "locationCode", "xMm": 5, "yMm": 26, "heightMm": 22, "moduleWidth": 2 }
-            ]
-          }
-        }
-        """;
-
-    internal static readonly string HomePage = """
-        <!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>LabelFrame Server 测试入口</title></head>
-        <body><h1>LabelFrame Server 测试入口</h1>
-        <p><a href="/devices">设备目录</a> | <a href="/jobs">作业列表</a></p>
-        <form id="form">
-          <label>幂等键 requestId <input name="requestId" value="demo-1" size="40"></label><br>
-          <label>目标设备 targetDeviceId <input name="targetDeviceId" value="device-1" size="40"></label><br>
-          <label>模板 template（JSON）<br><textarea name="template" rows="18" cols="100">{TEMPLATE}</textarea></label><br>
-          <label>标签 labels（JSON）<br><textarea name="labels" rows="6" cols="100">[ { "data": { "zone": "A-01", "locationCode": "A-01-02-03" } } ]</textarea></label><br>
-          <button type="submit">提交作业</button>
-        </form>
-        <pre id="result"></pre>
-        <script>
-          document.getElementById('form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const f = new FormData(e.target);
-            const body = {
-              requestId: f.get('requestId'),
-              targetDeviceId: f.get('targetDeviceId'),
-              template: JSON.parse(f.get('template')),
-              labels: JSON.parse(f.get('labels')),
-            };
-            const res = await fetch('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-            document.getElementById('result').textContent = res.status + ' ' + (await res.text());
-          });
-        </script></body></html>
-        """.Replace("{TEMPLATE}", TemplateExample);
-
-    internal static readonly string DevicesPage = """
-        <!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>设备目录</title></head>
-        <body><h1>设备目录</h1><p><a href="/">返回</a></p><pre id="data">加载中…</pre>
-        <script>fetch('/api/devices').then(r => r.text()).then(t => document.getElementById('data').textContent = t);</script></body></html>
-        """;
-
-    internal static readonly string JobsPage = """
-        <!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>作业列表</title></head>
-        <body><h1>作业列表</h1><p><a href="/">返回</a></p><pre id="data">加载中…</pre>
-        <script>fetch('/api/jobs').then(r => r.text()).then(t => document.getElementById('data').textContent = t);</script></body></html>
-        """;
-}

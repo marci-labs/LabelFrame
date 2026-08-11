@@ -31,4 +31,7 @@ public interface ILabelJobStore
 
     /// <summary>按作业状态列出（含 Item）。</summary>
     Task<IReadOnlyList<LabelJob>> ListJobsByStatusAsync(LabelJobStatus status, CancellationToken cancellationToken = default);
+
+    /// <summary>按创建时间倒序列出最近作业（含 Item），作业历史列表用。</summary>
+    Task<IReadOnlyList<LabelJob>> ListRecentAsync(int limit, CancellationToken cancellationToken = default);
 }
