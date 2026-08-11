@@ -125,7 +125,7 @@
 | `GET/POST /api/host/config` | Client 本机 | `{ serverUrl, deviceId, deviceName }` 读写（机器级持久化；缺失 / 损坏返回默认 serverUrl） |
 | `GET/POST /api/transport`、`GET /api/printer/status`、`POST /api/printer/test` | Client 本机 | 恢复前端接入（接口 0.14 已在，未删） |
 | `GET /api/jobs` | Client 本机 | 新增（B10）：本机作业列表（可选 limit，默认 100 上限 500；扩展 JobView：CreatedAt / FailedItems / ErrorMessage，TargetDeviceId=null），作业历史单机降级用 |
-| `GET /api/jobs` | Server | 可选 `?limit=100`（默认 100），作业历史用 |
+| `GET /api/jobs` | Server | 可选 `?limit`（默认 100，上限 500），作业历史用 |
 | Server Web UI | —— | 移除 |
 
 ## 6. 验收标准（端到端）
@@ -277,3 +277,35 @@
 6. ✅ 修订质量检查：无需修改。
 
 第二轮无阻塞性异议，本文档为最终定稿。
+
+## 附四：定稿确认（hermes 追加，2026-08-11）
+
+> 供审核者评审；本节保留作为审阅记录，不视为规格正文。
+
+已拉取最终定稿提交 52e3c7c 并完整重读全文（正文 + 附 / 审核者答复 / 附二 / 附三）。附三 6 条处置全部落地，无新异议，**确认可定稿开工**；前端将以本文档最终版（含附三处置后的 §3 / §4 / §5 / §6）为实现基准。
+
+### 附三处置落实核对
+
+1. 答复 1（B10 扩展 JobView）→ §3 B10：CreatedAt / FailedItems / ErrorMessage（取首个失败项）/ TargetDeviceId=null + 前端列单一映射 ✓
+2. 答复 2（F1 HostConfig 三字段）→ §4 F1 ✓
+3. 答复 3（§6 验收 2 措辞）→ §6 验收 2「保存后立即生效、重启保持」✓
+4. 答复 4（F6 空态按模式）→ §4 F6 两模式文案 ✓
+5. 答复 5（§5 limit 上限）→ 基本落实：Client 行已补「默认 100 上限 500」；**Server 行（§5 表）仍写「可选 ?limit=100（默认 100）」未带「上限 500」**——与 B10 正文、ARCHITECTURE-SPLIT §3 不一致，但 B10 正文为后端实现依据、前端固定传 100，零影响；如需完全一致可顺手补，不阻塞。
+6. 答复 6（质量检查）→ 无修改 ✓
+
+### 修订质量检查
+
+- 编号连续无重排：B1-B10、F1-F7、附 → 附二 → 附三 ✓
+- 附录链完整保留（首轮 / 审核者答复 / 二轮 / 附三）✓
+- 作业历史页「列单一映射」所需字段两端已对齐：WinHost 扩展后与 ServerJobView 均含 CreatedAt / TargetDeviceId / FailedItems / ErrorMessage / Status / CompletedItems / TotalItems ✓（WinHost 多 Items 等字段，前端忽略；Server 多 DeviceStatus，可选展示）
+- 契约四处（B10 / §5 / ARCHITECTURE-SPLIT §3 / F6）对 GET /api/jobs 的描述一致（除上述 Server 行上限细节）✓
+
+### 结论
+
+无新异议，可定稿开工。
+
+### 非阻塞细节（实施期前端自行落实，不须回复）
+
+- 作业历史「目标设备」列显示 deviceId（默认即机器名）；如需设备展示名可复用已加载的 devices 列表映射，不新增请求。
+- 「时间」列显示本地时间格式（如 MM-dd HH:mm:ss），刷新按钮手动触发。
+- 前端 JobView 类型新增 CreatedAt / FailedItems / ErrorMessage 建议声明为可选（防御性，兼容旧后端响应）。
