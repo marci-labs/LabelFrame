@@ -79,7 +79,19 @@ cd web; pnpm install; pnpm build; cd ..
    ```
    Windows Client 设置页「服务端地址」填 `http://<Ubuntu-IP>:53961` → 测试连接 → 保存并生效；之后设备注册 / 模板 / 作业（推送通知 <1s 领取）/ 调试出图 / 日志全链路走 Ubuntu 服务端，打印仍在 Windows 本机。
 5. 配置：监听 / 数据库路径 / 历史清理保留期均可用 `LABELFRAME_SERVER_*` 环境变量覆盖（systemd 单元已设默认值）。
-6. 容器化（可选）：`docker build -f packaging/ubuntu/Dockerfile -t labelframe-server artifacts/server-linux/linux-x64`，运行映射 53961 端口。
+6. **Docker 镜像（推荐，迭代 19）**：已构建 `labelframe-server:0.15.4` 并导出离线包 `artifacts\labelframe-server-0.15.4.docker.tar`（106MB）。Ubuntu 上：
+   ```bash
+   docker load -i labelframe-server-0.15.4.docker.tar
+   # 单条命令运行（数据卷持久化 + 崩溃自动重启 + 端口映射）
+   docker run -d --name labelframe-server -p 53961:53961 \
+     -v labelframe-data:/var/lib/labelframe/server \
+     --restart unless-stopped labelframe-server:0.15.4
+   # 或 docker compose -f packaging/ubuntu/docker-compose.yml up -d
+   curl http://127.0.0.1:53961/healthz
+   sudo ufw allow 53961/tcp   # 如开启防火墙
+   ```
+   自行构建：`docker build -f packaging/ubuntu/Dockerfile -t labelframe-server:0.15.4 artifacts/server-linux/linux-x64`（基础镜像含 Skia 依赖）。
+7. 跨机使用：Windows Client 设置页「服务端地址」填 `http://<Ubuntu-IP>:53961` → 测试连接 → 保存并生效。**注意：修改服务端地址后需重启 Client**（打印 Worker 使用启动时的地址连接服务端）。
 
 辅助脚本：
 - `scripts\generate-icon.ps1`：生成应用图标（双色 L 型，assets\labelframe.ico）。

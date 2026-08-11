@@ -1,0 +1,12 @@
+services:
+  labelframe-server:
+    image: labelframe-server:0.15.4
+    container_name: labelframe-server
+    restart: unless-stopped
+    ports:
+      - "53961:53961"
+    volumes:
+      - labelframe-data:/var/lib/labelframe/server
+
+volumes:
+  labelframe-data:

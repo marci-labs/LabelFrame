@@ -343,3 +343,11 @@
 - 交付：`scripts/publish-server-linux.ps1`（framework-dependent / self-contained，tar.gz 归档）、`scripts/deploy-server-ubuntu.sh`（用户/目录/systemd 自启/防火墙提示）、`packaging/ubuntu/labelframe-server.service`、`packaging/ubuntu/Dockerfile`。
 - 测试 162 全绿；Windows Server MSI 打包回归正常；linux-x64 产物 6.7MB（归档）。
 - 跨机验证（服务端 Linux + 客户端 Windows）待真机 / 容器执行：验证清单见 docs/ITERATION-19-SPEC.md §5。
+
+
+## 迭代 19 增补：Docker 镜像交付 + 容器跨机验证（2026-08-11）
+
+- 构建 `labelframe-server:0.15.4`（aspnet:10.0 基础镜像 + libfontconfig/libfreetype/libharfbuzz Skia 依赖），导出离线包 `artifacts\labelframe-server-0.15.4.docker.tar`（106MB）；新增 `packaging/ubuntu/docker-compose.yml`（端口 + 数据卷 + 重启策略）。
+- 容器内验证（Linux）：healthz、SQLite（数据落 /var/lib/labelframe/server）、Skia 单张/批量出图全部通过（修复 Skia 缺 fontconfig 依赖）。
+- 跨机闭环验证：Windows Client 指向 Linux 容器服务端 → 设备注册 Online → 提交作业 Pending→Claimed 131ms（推送通知）。
+- 已知行为：客户端「服务端地址」修改后需重启 Client（打印 Worker 连接使用启动时地址），文档已注明。
