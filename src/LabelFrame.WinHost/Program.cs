@@ -9,7 +9,7 @@ using LabelFrame.Core.Templates;
 using LabelFrame.Core.Transport;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
-using LabelFrame.WinHost.Logs;
+using LabelFrame.Core.Logs;
 using LabelFrame.Rendering;
 using LabelFrame.WinHost.Transport;
 

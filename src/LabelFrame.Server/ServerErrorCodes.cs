@@ -17,4 +17,7 @@ public static class ServerErrorCodes
 
     /// <summary>作业状态不允许该操作。</summary>
     public const string InvalidTransition = "LF_SRV_005";
+
+    /// <summary>模板不存在。</summary>
+    public const string TemplateNotFound = "LF_SRV_006";
 }

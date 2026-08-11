@@ -1,4 +1,4 @@
-using LabelFrame.WinHost.Logs;
+using LabelFrame.Core.Logs;
 
 namespace LabelFrame.WinHost.Tests.Logs;
 

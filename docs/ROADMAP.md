@@ -25,7 +25,7 @@
 | 13 | 文本排版与二维码参数持久化（元素契约补齐） | ✅ 已完成（用户验收待执行） |
 | 14 | 字体加粗（bold）契约 | 🔄 进行中（前后端已实施，联调验收待执行） |
 | 15 | 打印设置与会话保留 + 连接管理 + 删除 ZPL（图片打印收敛） | 🔄 进行中（前后端已完成，联调验收待执行） |
-| 16 | 服务端 / 客户端拆分（双安装包） | 📝 设计已确认（ARCHITECTURE-SPLIT.md），待实施 |
+| 16 | 服务端 / 客户端拆分（双安装包） | 🔄 进行中（后端骨架完成，前端待实施） |
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
@@ -415,12 +415,17 @@
 **启动命令**：
 > 继续 LabelFrame 迭代 13（后端）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-13-SPEC.md、docs/ITERATION-13-CONTRACT.md（含 Hermes 评估结论，已通过）。按 ITERATION-13-CONTRACT.md §3 字段对照、§4 Skia 渲染语义、§7 分工实施后端：C# 模型属性（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/paddingV，VerticalAlign 默认改 Middle，PaddingHMm/PaddingVMm）、LabelElementJsonConverter 读写（非默认才写）、SkiaLabelRenderer 渲染支持、测试与验收；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
-## 迭代 16：服务端 / 客户端拆分（双安装包，设计已确认，待实施）
+## 迭代 16：服务端 / 客户端拆分（双安装包，后端骨架完成，前端待实施）
 
 **目标**：把单机 WinHost 拆分为两个部署包——服务端（模板 / 作业 / 设备投递 / Web UI / 调试出图 / 日志，无打印机依赖）与客户端（本机打印执行 / 作业领取 / 连接配置，托盘部署），多台打印 PC 共用一个服务端；保留单机模式作为旧版迁移路径。
 **范围**：见 docs/ARCHITECTURE-SPLIT.md（职责边界 / 跨端契约 / 部署 / 迁移 / 实施规划）。
 **不在范围**：PDA（延后）；云部署 / 服务端高可用；多语言。
 **验收**：见 docs/ARCHITECTURE-SPLIT.md §7 完成定义。
+**完成记录**（2026-08-11，后端骨架）：
+- Server 迁入模板库（CRUD / 导入导出 / 预览，Core.Templates）、作业提交支持 `templateName` 引用（pending 载荷附带模板 + 图片 base64）、调试出图（render-image / render-images）、日志接收（SqliteLogStore 移至 Core.Logs）、Excel 导入、Web UI 静态托管（SPA fallback）；TFM 改 net10.0-windows 以引用 Skia Rendering。
+- Client（WinHost）：TemplateDto 增 Images（base64），JobSubmissionService 优先用内联图片、否则按 Name 本地加载；路由 Worker 透传 Server 附带模板；保留单机模式。
+- 测试 147 全绿（Core 60 / Server 10 / Studio 25 / WinHost 52）；Server 新增 templateName 解析 / 模板不存在用例。
+- 前端（hermes）待实施（迭代 17）：Web UI 指向 Server（移除打印机连接项）、数据与打印新增目标设备选择。
 **启动命令**：
 > 继续 LabelFrame 迭代 16。先读 AGENTS.md、docs/ARCHITECTURE-SPLIT.md、docs/ROADMAP.md；按拆分设计实施：Server 迁入模板/作业/Web UI/调试出图/日志，Client 默认路由领取，pending 附带模板；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 

@@ -12,12 +12,15 @@ public sealed class ServerService
     private static readonly TimeSpan ClockSkew = TimeSpan.FromSeconds(2);
 
     private readonly ServerDb _db;
+    private readonly LabelFrame.Core.Templates.TemplateStore _templates;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>创建业务服务。</summary>
-    public ServerService(ServerDb db)
+    /// <param name="templates">服务端模板库（templateName 引用提交用；可为空则不启用引用）。</param>
+    public ServerService(ServerDb db, LabelFrame.Core.Templates.TemplateStore? templates = null)
     {
         _db = db;
+        _templates = templates!;
     }
 
     /// <summary>注册 / 更新设备并刷新心跳。</summary>
@@ -68,9 +71,10 @@ public sealed class ServerService
             throw new ServerException(ServerErrorCodes.InvalidRequest, "缺少 targetDeviceId（定向投递目标）。");
         }
 
-        if (request.Template?.Contract is null || request.Template.Layout is null)
+        var template = await ResolveTemplateAsync(request, cancellationToken);
+        if (template is null)
         {
-            throw new ServerException(ServerErrorCodes.InvalidRequest, "缺少 template（contract + layout）。");
+            throw new ServerException(ServerErrorCodes.InvalidRequest, "缺少 template（contract + layout）或 templateName。");
         }
 
         if (request.Labels is null || request.Labels.Count == 0)
@@ -93,7 +97,7 @@ public sealed class ServerService
             }
 
             var payloadJson = System.Text.Json.JsonSerializer.Serialize(
-                new JobPayload(request.Template, request.Labels),
+                new JobPayload(template, request.Labels),
                 RoutingJson.Options);
 
             var job = await _db.CreateJobAsync(new ServerJob
@@ -230,4 +234,35 @@ public sealed class ServerService
 
     private static bool IsOnline(Device device, DateTimeOffset now)
         => now - device.LastSeenAt <= OnlineWindow + ClockSkew;
+
+    /// <summary>解析提交模板：templateName 引用服务端模板库（含图片 base64）；否则用自包含模板。</summary>
+    private async Task<TemplateDto?> ResolveTemplateAsync(SubmitJobRequest request, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(request.TemplateName))
+        {
+            if (_templates is null)
+            {
+                throw new ServerException(ServerErrorCodes.InvalidRequest, "服务端未启用模板库，不能按 templateName 提交。");
+            }
+
+            var package = await _templates.GetAsync(request.TemplateName, cancellationToken);
+            if (package is null)
+            {
+                throw new ServerException(ServerErrorCodes.TemplateNotFound, $"模板不存在：{request.TemplateName}。");
+            }
+
+            return new TemplateDto(
+                package.Contract,
+                package.Layout,
+                package.Name,
+                package.Images.ToDictionary(kv => kv.Key, kv => System.Convert.ToBase64String(kv.Value)));
+        }
+
+        if (request.Template?.Contract is null || request.Template.Layout is null)
+        {
+            return null;
+        }
+
+        return request.Template;
+    }
 }

@@ -13,8 +13,11 @@ public sealed record SubmitJobRequest(
 /// <summary>自包含模板。</summary>
 public sealed record TemplateDto(LabelContract? Contract, LabelLayout? Layout)
 {
-    /// <summary>模板名（可选）：打印时用于从模板库加载图片资源。</summary>
+    /// <summary>模板名（可选）：本机提交时用于从本地模板库加载图片资源。</summary>
     public string? Name { get; init; }
+
+    /// <summary>模板图片资源（base64，键 → 图片字节；路由作业由 Server 附带，本机提交可省略按 Name 加载）。</summary>
+    public IReadOnlyDictionary<string, string>? Images { get; init; }
 }
 
 /// <summary>单张标签数据。</summary>

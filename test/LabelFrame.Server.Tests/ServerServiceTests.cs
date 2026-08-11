@@ -1,5 +1,6 @@
 using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Layout;
+using LabelFrame.Core.Templates;
 
 namespace LabelFrame.Server.Tests;
 
@@ -161,5 +162,82 @@ public class ServerServiceTests
         var exception = await Assert.ThrowsAsync<ServerException>(() => db.Service.SubmitJobAsync(new SubmitJobRequest("req-x", "device-1", null, null)));
 
         Assert.Equal(ServerErrorCodes.InvalidRequest, exception.Code);
+    }
+
+    [Fact]
+    public async Task Submit_job_by_template_name_should_resolve_template_with_images()
+    {
+        using var db = new TempServer();
+        await db.Service.RegisterDeviceAsync("device-1", "一号机");
+
+        var templatesPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lftpl-{Guid.NewGuid():N}.db");
+        var templates = new TemplateStore(templatesPath);
+        await templates.InitializeAsync();
+        try
+        {
+            var svc = new ServerService(db.Db, templates);
+            var png = new byte[] { 1, 2, 3 };
+            await templates.SaveAsync(new TemplatePackage
+            {
+                Name = "tpl-1",
+                Group = "默认",
+                Contract = SampleContract,
+                Layout = SampleLayout,
+                TestData = new Dictionary<string, string> { ["zone"] = "A", ["locationCode"] = "C1" },
+                Images = new Dictionary<string, byte[]> { ["logo"] = png },
+            }, CancellationToken.None);
+
+            var job = await svc.SubmitJobAsync(new SubmitJobRequest(
+                "req-tpl",
+                "device-1",
+                null,
+                new List<LabelDto> { new(new Dictionary<string, string> { ["zone"] = "A-01", ["locationCode"] = "A-01-02-03" }) },
+                "tpl-1"));
+            Assert.Equal("Pending", job.Status);
+
+            var claimed = await svc.ClaimPendingJobsAsync("device-1");
+            var payload = Assert.Single(claimed).Payload;
+            Assert.Equal("tpl-1", payload.Template.Name);
+            Assert.NotNull(payload.Template.Images);
+            Assert.Equal(System.Convert.ToBase64String(png), payload.Template.Images!["logo"]);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(templatesPath))
+            {
+                File.Delete(templatesPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Submit_job_with_unknown_template_name_should_fail()
+    {
+        using var db = new TempServer();
+        await db.Service.RegisterDeviceAsync("device-1", "一号机");
+
+        var templatesPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lftpl-{Guid.NewGuid():N}.db");
+        var templates = new TemplateStore(templatesPath);
+        await templates.InitializeAsync();
+        try
+        {
+            var svc = new ServerService(db.Db, templates);
+            var exception = await Assert.ThrowsAsync<ServerException>(() => svc.SubmitJobAsync(new SubmitJobRequest(
+                "req-x",
+                "device-1",
+                null,
+                new List<LabelDto> { new(new Dictionary<string, string>()) },
+                "no-such-template")));
+            Assert.Equal(ServerErrorCodes.TemplateNotFound, exception.Code);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(templatesPath))
+            {
+                File.Delete(templatesPath);
+            }
+        }
     }
 }

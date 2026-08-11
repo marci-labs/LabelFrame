@@ -261,3 +261,8 @@
 - 前端 baseUrl 修复（附九定稿实施）：`getBaseUrl()` 无存储值时默认返回页面自身来源（`window.location.origin`）——PDA 远程访问不再发往自身回环 127.0.0.1；方案 B 自动纠正旧版保存的默认地址残留；新增 `settings.test.ts` 5 用例；`vite.config.ts` dev proxy（`/api` + `/healthz`）配套联调。前端 100 用例全绿。
 - 后端（此前已合入）：本地 UI 打开地址规范化（`0.0.0.0` 监听时浏览器/托盘跳 127.0.0.1）、连接测试 `~HS` 探测、Log 模拟打印目录展示。
 - 产物 `LabelFrame-0.13.2.msi`（2026-08-11）：可覆盖 0.12.x / 0.11.x 安装；`appsettings.json` 保留机制沿用。
+## 迭代 16（服务端 / 客户端拆分，后端骨架，2026-08-11）
+
+- 服务端（LabelFrame.Server）迁入集中能力：模板库（CRUD / 导入导出 / 预览）、作业提交支持 `templateName` 引用（pending 载荷附带模板 + 图片 base64）、调试出图（render-image / render-images，Skia）、设备日志接收与查询、Excel 导入、Web UI 静态托管（SPA fallback）；Server TFM 改 net10.0-windows（引用 Skia 渲染）。
+- 客户端（WinHost）配合：`TemplateDto` 增 `Images`（base64），提交服务优先用内联图片否则按 Name 本地加载；路由 Worker 透传 Server 附带模板；`SqliteLogStore` 移至 Core.Logs 供两端共用；单机模式保留。
+- 测试 147 全绿（Core 60 / Server 10 / Studio 25 / WinHost 52）；Server 新增 templateName 解析与模板不存在用例。

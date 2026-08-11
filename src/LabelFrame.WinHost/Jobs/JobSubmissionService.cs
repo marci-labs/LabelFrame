@@ -110,7 +110,7 @@ public sealed class JobSubmissionService
             return new RenderResult(null, JobErrorCodes.InvalidRequest, "缺少 labels（至少一张）。", null);
         }
 
-        var images = await LoadTemplateImagesAsync(request.Template.Name, cancellationToken);
+        var images = await LoadTemplateImagesAsync(request.Template, cancellationToken);
         var items = new List<RenderItem>(request.Labels.Count);
         for (var i = 0; i < request.Labels.Count; i++)
         {
@@ -173,14 +173,20 @@ public sealed class JobSubmissionService
         }
     }
 
-    private async Task<IReadOnlyDictionary<string, byte[]>> LoadTemplateImagesAsync(string? templateName, CancellationToken cancellationToken)
+    private async Task<IReadOnlyDictionary<string, byte[]>> LoadTemplateImagesAsync(TemplateDto template, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(templateName))
+        // 路由作业由 Server 附带图片（base64）；本机提交按 Name 从本地模板库加载
+        if (template.Images is not null && template.Images.Count > 0)
+        {
+            return template.Images.ToDictionary(kv => kv.Key, kv => System.Convert.FromBase64String(kv.Value));
+        }
+
+        if (string.IsNullOrWhiteSpace(template.Name))
         {
             return new Dictionary<string, byte[]>();
         }
 
-        var package = await _templateStore.GetAsync(templateName, cancellationToken);
+        var package = await _templateStore.GetAsync(template.Name, cancellationToken);
         return package?.Images ?? new Dictionary<string, byte[]>();
     }
 }

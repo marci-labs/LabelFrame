@@ -76,3 +76,11 @@
 - PDA（延后，AndroidHost 暂不改；跨端契约变更保留其兼容性）。
 - 多语言、云部署、服务端高可用 / 负载均衡。
 - 风险：跨端契约变更影响面较大（模板 / 作业 / 渲染归属），需在迭代 16 先定接口并用测试锁定；Web UI 拆分后打印机连接入口迁移到客户端本机页面（UX 变化需在客户端小页面补体验）。
+
+
+## 迭代 16 后端实施记录（2026-08-11）
+
+- Server：模板库（Core.Templates 复用）、`templateName` 提交（pending 附带模板 + 图片 base64）、render-image / render-images（Skia）、/api/logs（Core.Logs）、/api/import/excel、Web UI 静态托管；TFM net10.0-windows。
+- Client（WinHost）：TemplateDto.Images（base64）+ JobSubmissionService 内联图片优先 + 路由 Worker 透传模板；单机模式不变。
+- 跨端契约落地：`POST /api/jobs` 支持 `templateName`；`pending` 响应 TemplateDto 含 `Name` / `Images`（base64）；`POST /api/templates...` / `/api/logs` / `/api/print/render-*` / `/api/import/excel` 归属服务端。
+- 测试 147 全绿。

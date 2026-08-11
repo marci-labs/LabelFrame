@@ -3,15 +3,20 @@ using LabelFrame.Core.Layout;
 
 namespace LabelFrame.Server;
 
-/// <summary>业务提交请求（与宿主本地 API 同构，模板自包含）。</summary>
+/// <summary>业务提交请求（模板可自包含，或引用服务端模板库 templateName）。</summary>
 public sealed record SubmitJobRequest(
     string? RequestId,
     string? TargetDeviceId,
     TemplateDto? Template,
-    IReadOnlyList<LabelDto>? Labels);
+    IReadOnlyList<LabelDto>? Labels,
+    string? TemplateName = null);
 
-/// <summary>自包含模板。</summary>
-public sealed record TemplateDto(LabelContract? Contract, LabelLayout? Layout);
+/// <summary>模板（自包含或由 templateName 解析后附带；Images 为 base64 图片资源，领取时随载荷下发）。</summary>
+public sealed record TemplateDto(
+    LabelContract? Contract,
+    LabelLayout? Layout,
+    string? Name = null,
+    IReadOnlyDictionary<string, string>? Images = null);
 
 /// <summary>单张标签数据。</summary>
 public sealed record LabelDto(IReadOnlyDictionary<string, string>? Data);
@@ -46,3 +51,15 @@ public sealed record ReportResultRequest(string? Status, int? CompletedItems, in
 
 /// <summary>错误响应。</summary>
 public sealed record ErrorView(string Code, string Message);
+/// <summary>模板提交 DTO（保存到服务端模板库）。</summary>
+public sealed record TemplatePackageDto(
+    string? Name,
+    string? Group,
+    LabelContract? Contract,
+    LabelLayout? Layout,
+    IReadOnlyDictionary<string, string>? TestData = null);
+
+/// <summary>预览请求。</summary>
+public sealed record PreviewRequest(IReadOnlyDictionary<string, string>? Data);
+/// <summary>设备日志回传请求（客户端 / PDA）。</summary>
+public sealed record PushLogRequest(string? DeviceId, IReadOnlyList<string>? Lines);

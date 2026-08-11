@@ -72,7 +72,7 @@ public sealed class ServerRoutingWorker : BackgroundService
     {
         var request = new SubmitJobRequest(
             job.RequestId,
-            new TemplateDto(job.Template.Contract, job.Template.Layout),
+            job.Template, // 透传 Server 附带模板（含 Name / Images base64）
             job.Labels);
 
         var result = await _submission.SubmitAsync(request, cancellationToken);

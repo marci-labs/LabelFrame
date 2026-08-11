@@ -1,7 +1,7 @@
 using System.Globalization;
 using Microsoft.Data.Sqlite;
 
-namespace LabelFrame.WinHost.Logs;
+namespace LabelFrame.Core.Logs;
 
 /// <summary>日志条目（PDA / 设备回传）。</summary>
 public sealed record LogEntry(string DeviceId, DateTimeOffset Time, string Line);
