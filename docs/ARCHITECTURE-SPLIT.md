@@ -84,3 +84,42 @@
 - Client（WinHost）：TemplateDto.Images（base64）+ JobSubmissionService 内联图片优先 + 路由 Worker 透传模板；单机模式不变。
 - 跨端契约落地：`POST /api/jobs` 支持 `templateName`；`pending` 响应 TemplateDto 含 `Name` / `Images`（base64）；`POST /api/templates...` / `/api/logs` / `/api/print/render-*` / `/api/import/excel` 归属服务端。
 - 测试 147 全绿。
+
+
+---
+
+## 迭代 17 前端任务单（hermes 实施，2026-08-11）
+
+> 背景：迭代 16 后端骨架已完成——服务端具备模板库 / 作业（templateName + targetDeviceId）/ 调试出图 / 日志 / Excel / Web UI 静态托管；pending 附带模板与图片。前端从「单机 WinHost 前端」调整为「服务端前端」，并兼容单机过渡。
+
+### 1. API client 与类型（web/src/lib/api）
+- `types.ts`：
+  - `SubmitJobRequest` 增加 `templateName?: string`、`targetDeviceId?: string`（自包含 `template` 保留兼容；服务端模式优先 `templateName`）。
+  - `Healthz.transport?` 保持可选（Server 不返回；无传输概念时状态灯显示「已连接」即可）。
+  - 新增 `DeviceView` 类型（deviceId / name / status）。
+  - transport 相关类型（TransportConfig / TransportApplyRequest / TransportResult）在 UI 移除后可一并清理。
+- `client.ts`：
+  - 新增 `listDevices()`（GET /api/devices）。
+  - `submitJob` 支持 `templateName` / `targetDeviceId`。
+  - 删除或停用 `getTransport` / `setTransport` / `testTransport`（连接配置迁至客户端本机）。
+  - 模板 / 调试出图 / 日志 / Excel API 路径不变（Server 同路径）。
+- 兼容降级：`listDevices()` 404 / 失败时按「单机模式」处理（隐藏设备选择、提交不带 `targetDeviceId`），保证过渡期仍可用单机 WinHost 托管。
+
+### 2. 移除打印机连接相关 UI（迁至客户端本机）
+- 设置页：删除「连接方式」分组（模式单选 / 参数 / 测试连接 / 保存并应用）与「打印机」分组（状态 / 测试打印）；保留「后端地址」与连接测试（连 Server）。
+- 数据与打印页：删除顶部连接徽标与快速切换（AppContext.transportConfig 相关）。
+- AppContext：删除 `transportConfig` / transport 状态与相关轮询（healthz 仍用于连接探测）；`formatTransport` 等工具删除。
+- 测试：Settings.test.tsx / DataPrint.test.tsx 中连接切换、徽标、回滚等用例删除或改写；新增「后端地址指向 Server」「目标设备选择」用例。
+
+### 3. 数据与打印新增「目标设备 / 客户端」选择
+- 页面加载时拉取设备列表（GET /api/devices），下拉选择目标设备（显示设备名 + 在线状态）；提交作业带 `targetDeviceId`。
+- 无设备时提示「暂无在线客户端，请先在打印电脑安装并启动 LabelFrame Client」。
+- 单机降级：设备接口不可用时隐藏设备选择、正常提交（不带 targetDeviceId）。
+
+### 4. 验收
+- Server 托管 Web UI 下：模板设计 / 保存、数据与打印选择设备 → 提交 → 进度可见；无打印机连接 UI。
+- 兼容：指向单机 WinHost（无 /api/devices）时页面仍可用（隐藏设备选择、正常提交）。
+- `pnpm test` / `pnpm build` / `pnpm lint` 全绿。
+
+### 5. 备注
+- 前端构建产物不变（由 Server 静态托管）；hermes 完成后 push，后端合入后打双 MSI（迭代 17 打包）。
