@@ -62,6 +62,32 @@ public class ServerJobPollerTests
     }
 
     [Fact]
+    public async Task WaitForJobAsync_should_query_notify_endpoint()
+    {
+        var handler = new FakeHttpMessageHandler(_ => FakeHttpMessageHandler.Json(new { hasPending = true }));
+        var poller = new ServerJobPoller(new HttpClient(handler), "http://server", "dev-1");
+
+        var signaled = await poller.WaitForJobAsync(TimeSpan.FromSeconds(20));
+
+        Assert.True(signaled);
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Equal("/api/devices/dev-1/jobs/notify", request.RequestUri!.AbsolutePath);
+        Assert.Contains("timeout=20", request.RequestUri!.Query);
+    }
+
+    [Fact]
+    public async Task WaitForJobAsync_should_return_false_on_timeout_response()
+    {
+        var handler = new FakeHttpMessageHandler(_ => FakeHttpMessageHandler.Json(new { hasPending = false }));
+        var poller = new ServerJobPoller(new HttpClient(handler), "http://server", "dev-1");
+
+        var signaled = await poller.WaitForJobAsync(TimeSpan.FromSeconds(20));
+
+        Assert.False(signaled);
+    }
+
+    [Fact]
     public async Task ReportResultAsync_should_post_result_to_correct_url()
     {
         var handler = new FakeHttpMessageHandler(_ => FakeHttpMessageHandler.Json(new { status = "Completed" }));

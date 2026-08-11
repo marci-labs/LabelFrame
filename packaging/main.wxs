@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame Client" Manufacturer="LabelFrame" Version="0.15.3"
+  <Package Name="LabelFrame Client" Manufacturer="LabelFrame" Version="0.15.4"
            UpgradeCode="EE3F2357-56CE-4C0F-AEC1-4C04B6E6BCDA">
     <SummaryInformation Description="LabelFrame 打印客户端：托管完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史）并连接本机打印机打印（安装于 Program Files\LabelFrame\Client）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
@@ -43,7 +43,7 @@
         <Control Id="HintText" Type="Text" X="15" Y="45" Width="340" Height="30"
                  Text="是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？" />
         <Control Id="ClearDataCheck" Type="CheckBox" X="15" Y="85" Width="340" Height="18"
-                 Property="CLEAR_USER_DATA" CheckBoxValue="1" Text="清除用户数据（默认不勾选）" />
+                 Property="CLEAR_USER_DATA" CheckBoxValue="1" Text="清除用户数据" />
         <Control Id="CancelButton" Type="PushButton" X="200" Y="135" Width="75" Height="25"
                  Text="取消" Cancel="yes">
           <Publish Event="EndDialog" Value="Exit" Condition="1" />
@@ -60,7 +60,7 @@
         <Control Id="HintText" Type="Text" X="15" Y="45" Width="340" Height="30"
                  Text="是否立即打开客户端界面？" />
         <Control Id="OpenNowCheck" Type="CheckBox" X="15" Y="85" Width="340" Height="18"
-                 Property="OPEN_NOW" CheckBoxValue="1" Text="立即打开（默认勾选）" />
+                 Property="OPEN_NOW" CheckBoxValue="1" Text="立即打开" />
         <Control Id="ConfirmButton" Type="PushButton" X="280" Y="125" Width="75" Height="25"
                  Text="确认" Default="yes">
           <!-- 点击确认时直接执行（弹窗之后的 InstallUISequence 动作不会执行） -->
@@ -128,7 +128,7 @@
 
     <!-- 安装完成动作：勾选立即打开则启动客户端（Immediate，运行在提权的 UI 进程，以用户身份启动 GUI） -->
     <CustomAction Id="LaunchClient" Directory="INSTALLFOLDER" Execute="immediate" Impersonate="yes" Return="ignore"
-      ExeCommand="[#WinHostExe]" />
+      ExeCommand="cmd.exe /c start &quot;&quot; &quot;[#WinHostExe]&quot;" />
 
     <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；新增机器级配置 settings.json，迭代 18） -->
     <CustomAction Id="ClearDataDelFiles" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"

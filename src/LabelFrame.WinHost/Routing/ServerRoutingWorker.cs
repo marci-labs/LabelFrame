@@ -17,6 +17,9 @@ public sealed class ServerRoutingWorker : BackgroundService
     private readonly ILogger<ServerRoutingWorker> _logger;
     private readonly Dictionary<string, string> _localToServer = [];
 
+    /// <summary>长轮询通知超时（服务端挂起等待作业，作业到达立即唤醒）。</summary>
+    public static readonly TimeSpan NotifyTimeout = TimeSpan.FromSeconds(20);
+
     /// <summary>创建路由 Worker。</summary>
     public ServerRoutingWorker(
         IServerJobPoller poller,
@@ -40,13 +43,23 @@ public sealed class ServerRoutingWorker : BackgroundService
             try
             {
                 await _poller.RegisterAsync(stoppingToken);
-                var jobs = await _poller.FetchPendingAsync(stoppingToken);
-                foreach (var job in jobs)
+                // 长轮询等待通知：作业到达立即返回，随后立刻领取（等效推送）；超时也照常领取一次兜底
+                while (!stoppingToken.IsCancellationRequested)
                 {
-                    await HandleClaimedJobAsync(job, stoppingToken);
-                }
+                    var signaled = await _poller.WaitForJobAsync(NotifyTimeout, stoppingToken);
+                    var jobs = await _poller.FetchPendingAsync(stoppingToken);
+                    foreach (var job in jobs)
+                    {
+                        await HandleClaimedJobAsync(job, stoppingToken);
+                    }
 
-                await ReportFinishedAsync(stoppingToken);
+                    await ReportFinishedAsync(stoppingToken);
+                    if (!signaled)
+                    {
+                        // 超时：继续下一轮等待（连续挂起，设备在线由 notify 端点心跳维持）
+                        continue;
+                    }
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -54,16 +67,15 @@ public sealed class ServerRoutingWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Server 轮询异常，稍后重试。");
-            }
-
-            try
-            {
-                await Task.Delay(_interval, stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
+                _logger.LogWarning(ex, "Server 路由异常，稍后重试。");
+                try
+                {
+                    await Task.Delay(_interval, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    return;
+                }
             }
         }
     }

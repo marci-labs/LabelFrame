@@ -13,14 +13,17 @@ public sealed class ServerService
 
     private readonly ServerDb _db;
     private readonly LabelFrame.Core.Templates.TemplateStore _templates;
+    private readonly PendingJobNotifier? _notifier;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>创建业务服务。</summary>
     /// <param name="templates">服务端模板库（templateName 引用提交用；可为空则不启用引用）。</param>
-    public ServerService(ServerDb db, LabelFrame.Core.Templates.TemplateStore? templates = null)
+    /// <param name="notifier">待领取作业通知器（长轮询推送用；为空则不通知）。</param>
+    public ServerService(ServerDb db, LabelFrame.Core.Templates.TemplateStore? templates = null, PendingJobNotifier? notifier = null)
     {
         _db = db;
         _templates = templates!;
+        _notifier = notifier;
     }
 
     /// <summary>注册 / 更新设备并刷新心跳。</summary>
@@ -48,6 +51,17 @@ public sealed class ServerService
         {
             _gate.Release();
         }
+    }
+
+    /// <summary>刷新设备心跳（长轮询通知端点用作在线保活）。设备未注册时抛出 DeviceNotFound。</summary>
+    public async Task TouchDeviceAsync(string deviceId, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        if (await _db.GetDeviceAsync(deviceId, cancellationToken) is null)
+        {
+            throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
+        }
+
+        await _db.TouchDeviceAsync(deviceId, now, cancellationToken);
     }
 
     /// <summary>设备目录（含在线状态）。</summary>
@@ -110,6 +124,7 @@ public sealed class ServerService
                 TotalItems = request.Labels.Count,
                 PayloadJson = payloadJson,
             }, cancellationToken);
+            _notifier?.Notify(request.TargetDeviceId);
             return await ToJobViewAsync(job!, cancellationToken);
         }
         finally

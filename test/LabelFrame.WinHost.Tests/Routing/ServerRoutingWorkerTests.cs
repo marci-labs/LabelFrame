@@ -39,6 +39,17 @@ public class ServerRoutingWorkerTests
             return Task.FromResult<IReadOnlyList<ServerJobPayload>>(batch);
         }
 
+        public async Task<bool> WaitForJobAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+        {
+            if (_pending.Count > 0)
+            {
+                return true;
+            }
+
+            await Task.Delay(20, cancellationToken);
+            return false;
+        }
+
         public Task ReportResultAsync(string jobId, ServerJobResult result, CancellationToken cancellationToken = default)
         {
             Reported.Add((jobId, result));

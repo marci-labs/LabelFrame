@@ -78,6 +78,17 @@ public sealed class ServerJobPoller : IServerJobPoller
             .ToList();
     }
 
+    /// <summary>长轮询等待本设备待领取作业；服务端在作业到达时立即返回 hasPending=true，否则超时返回 false。</summary>
+    public async Task<bool> WaitForJobAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        var seconds = (int)Math.Clamp(timeout.TotalSeconds, 1, 30);
+        var response = await _http.GetAsync($"{_serverUrl}/api/devices/{_deviceId}/jobs/notify?timeout={seconds}", cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadFromJsonAsync<NotifyResult>(_json, cancellationToken);
+        return body?.HasPending ?? false;
+    }
+
     /// <summary>回报作业结果。</summary>
     public async Task ReportResultAsync(string jobId, ServerJobResult result, CancellationToken cancellationToken = default)
     {
@@ -95,3 +106,6 @@ public sealed class ServerJobPoller : IServerJobPoller
         response.EnsureSuccessStatusCode();
     }
 }
+
+/// <summary>长轮询通知响应。</summary>
+internal sealed record NotifyResult(bool HasPending);

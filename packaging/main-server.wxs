@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.15.3"
+  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.15.4"
            UpgradeCode="10BDDF3E-BD37-4C3A-A19E-56CA9EFE5B74">
     <SummaryInformation Description="LabelFrame 服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志（安装于 Program Files\LabelFrame\Server，无 Web UI，以 Windows 服务运行）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
@@ -40,7 +40,7 @@
         <Control Id="HintText" Type="Text" X="15" Y="45" Width="340" Height="30"
                  Text="是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？" />
         <Control Id="ClearDataCheck" Type="CheckBox" X="15" Y="85" Width="340" Height="18"
-                 Property="CLEAR_USER_DATA" CheckBoxValue="1" Text="清除用户数据（默认不勾选）" />
+                 Property="CLEAR_USER_DATA" CheckBoxValue="1" Text="清除用户数据" />
         <Control Id="CancelButton" Type="PushButton" X="200" Y="135" Width="75" Height="25"
                  Text="取消" Cancel="yes">
           <Publish Event="EndDialog" Value="Exit" Condition="1" />

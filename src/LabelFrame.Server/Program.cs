@@ -26,7 +26,8 @@ var templateStore = new TemplateStore(serverOptions.TemplatesDbPath);
 await templateStore.InitializeAsync();
 var logStore = new SqliteLogStore(serverOptions.LogsDbPath);
 await logStore.InitializeAsync();
-var service = new ServerService(db, templateStore);
+var notifier = new PendingJobNotifier();
+var service = new ServerService(db, templateStore, notifier);
 
 builder.Services.ConfigureHttpJsonOptions(json =>
 {
@@ -36,6 +37,7 @@ builder.Services.ConfigureHttpJsonOptions(json =>
 });
 builder.Services.AddSingleton(db);
 builder.Services.AddSingleton(service);
+builder.Services.AddSingleton(notifier);
 builder.Services.AddSingleton(serverOptions);
 builder.Services.AddSingleton(templateStore);
 builder.Services.AddSingleton(logStore);
@@ -111,6 +113,22 @@ app.MapGet("/api/jobs/{jobId}", async (string jobId, ServerService svc, Cancella
 });
 
 // ---- 设备领取 / 回报 ----
+// 长轮询通知（迭代 18 联调反馈）：作业到达立即返回 hasPending=true（等效推送）；同时刷新心跳保活。
+app.MapGet("/api/devices/{deviceId}/jobs/notify", async (string deviceId, int? timeout, ServerService svc, PendingJobNotifier notifier, CancellationToken ct) =>
+{
+    try
+    {
+        var seconds = Math.Clamp(timeout ?? 20, 1, 30);
+        await svc.TouchDeviceAsync(deviceId, DateTimeOffset.UtcNow, ct);
+        var hasPending = await notifier.WaitAsync(deviceId, TimeSpan.FromSeconds(seconds), ct);
+        return Results.Ok(new { hasPending });
+    }
+    catch (ServerException ex)
+    {
+        return Results.NotFound(new ErrorView(ex.Code, ex.Message));
+    }
+});
+
 app.MapGet("/api/devices/{deviceId}/jobs/pending", async (string deviceId, ServerService svc, CancellationToken ct) =>
 {
     try

@@ -9,6 +9,9 @@ public interface IServerJobPoller
     /// <summary>领取本设备的定向作业。</summary>
     Task<IReadOnlyList<ServerJobPayload>> FetchPendingAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>长轮询等待本设备出现待领取作业（服务端挂起，作业到达立即返回；超时返回 false）。</summary>
+    Task<bool> WaitForJobAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
+
     /// <summary>回报作业结果。</summary>
     Task ReportResultAsync(string jobId, ServerJobResult result, CancellationToken cancellationToken = default);
 }
