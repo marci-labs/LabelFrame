@@ -394,3 +394,10 @@
 - 修复 Client 安装报错 2732（Directory Manager not initialized）：`KillWinHost` 自定义动作引用 `SystemFolder` 目录属性，却排在 `Before=FindRelatedProducts`（CostInitialize 之前，目录管理器未初始化）；改为 `After=InstallInitialize`，与 Server 包 `StopServerService` 一致。已用详细安装日志复现（2732 于 KillWinHost 处触发）并验证修复（升级安装 Client 0.16.0 成功，KillWinHost 正常执行）。
 - 修复包内版本漂移：`main.wxs` / `main-server.wxs` 的 Package Version 硬编码 0.15.5（此前产物文件名 0.16.0 但安装后显示 0.15.5）；改为 `$(var.Version)`，打包脚本 `-d Version=$Version` 传入，避免今后再次漂移。
 - 已验证：本机 Client / Server 0.15.5 → 0.16.0 提权升级安装成功，DisplayVersion=0.16.0，Server 服务 Running；产物 `artifacts/LabelFrame-Client-0.16.0.msi`（14.1MB）、`artifacts/LabelFrame-Server-0.16.0.msi`（7.6MB）。
+
+
+## 迭代 20 收尾：Docker 0.16.0 + 安装完成弹窗优化 + 未来规划（2026-08-12）
+
+- Docker 交付 0.16.0：镜像 `labelframe-server:0.16.0`（393MB，基础镜像 aspnet:10.0 + Skia 依赖）、离线包 `artifacts/labelframe-server-0.16.0.docker.tar`（105.9MB）；`docker-compose.yml` 升级镜像标签并默认挂载插件目录 `./plugins/web-ui:/var/lib/labelframe/server/plugins/web-ui`（README 已写明挂载目录与操作：解压 `labelframe-server-webui-0.16.0.zip` 到该目录即生效、移除即无头）；容器内验证 healthz / `/api/server/info`（uiEnabled）/ 插件页面 200 全部通过。
+- Client 安装完成弹窗优化：MSI 原生完成弹窗会被 Windows 焦点策略挡到后台 / 任务栏闪烁——改为安装完成后拉起 WinHost 的 `--install-finished` TopMost 弹窗（默认置前，勾选「立即打开」重启宿主并打开界面）；修复弹窗「确认」点击后不关闭、进程挂起的问题（Application.Run 非模态下 DialogResult 不自动关闭，改为 ShowDialog + 显式 Close，重启宿主用 CreateProcess）；弹窗仅全新安装且非静默（/qn）时出现；已实测全新安装弹窗 TopMost 出现、安装成功。
+- 未来规划（仅文档，不实施）：打印机连接方式插件化——把 Log / TCP9100 / Windows 驱动 / Zebra SDK 抽象为传输插件（接口 + 注册表按需装配），第三方厂商可自研接入；见 ROADMAP 待需求 / DESIGN 未决问题。
