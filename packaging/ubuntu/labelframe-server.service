@@ -13,6 +13,7 @@ Environment=LABELFRAME_SERVER_LISTEN=http://0.0.0.0:53961
 Environment=LABELFRAME_SERVER_DB=/var/lib/labelframe/server/server.db
 Environment=LABELFRAME_SERVER_TEMPLATES_DB=/var/lib/labelframe/server/templates.db
 Environment=LABELFRAME_SERVER_LOGS_DB=/var/lib/labelframe/server/logs.db
+Environment=LABELFRAME_SERVER_LOG_FILE=/var/lib/labelframe/logs/server.log
 Restart=on-failure
 RestartSec=3
 LimitNOFILE=65536

@@ -41,6 +41,9 @@ public sealed class ServerOptions
     /// <summary>历史清理周期（小时）。</summary>
     public int CleanupIntervalHours { get; set; } = 24;
 
+    /// <summary>文本日志文件路径（为空不写文件；Linux 部署挂载到宿主机查看，迭代 19）。</summary>
+    public string? LogFilePath { get; set; }
+
     /// <summary>应用 LABELFRAME_SERVER_* 环境变量覆盖。</summary>
     public void ApplyEnvironmentOverrides()
     {
@@ -82,6 +85,11 @@ public sealed class ServerOptions
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_CLEANUP_INTERVAL_HOURS") is { } hours && int.TryParse(hours, out var intervalHours))
         {
             CleanupIntervalHours = intervalHours;
+        }
+
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_LOG_FILE") is { } logFile)
+        {
+            LogFilePath = logFile;
         }
     }
 }

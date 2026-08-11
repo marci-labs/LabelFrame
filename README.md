@@ -90,6 +90,7 @@ cd web; pnpm install; pnpm build; cd ..
    curl http://127.0.0.1:53961/healthz
    sudo ufw allow 53961/tcp   # 如开启防火墙
    ```
+   **日志查看**：文本日志写到挂载目录 `./logs/server.log`（compose 默认）或宿主机 `/opt/store/labelframe/logs/server.log`（生产推荐），`tail -f` 即可；数据（server.db / templates.db / logs.db）在数据卷 `/var/lib/labelframe/server`。
    自行构建：`docker build -f packaging/ubuntu/Dockerfile -t labelframe-server:0.15.4 artifacts/server-linux/linux-x64`（基础镜像含 Skia 依赖）。
 7. 跨机使用：Windows Client 设置页「服务端地址」填 `http://<Ubuntu-IP>:53961` → 测试连接 → 保存并生效。**注意：修改服务端地址后需重启 Client**（打印 Worker 使用启动时的地址连接服务端）。
 

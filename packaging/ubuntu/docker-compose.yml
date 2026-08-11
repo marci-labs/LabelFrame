@@ -7,6 +7,19 @@ services:
       - "53961:53961"
     volumes:
       - labelframe-data:/var/lib/labelframe/server
+      - ./logs:/var/lib/labelframe/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1024M"
+        max-file: "1"
+    environment:
+      - TZ=Asia/Shanghai
+      - LABELFRAME_SERVER_LISTEN=http://0.0.0.0:53961
+      - LABELFRAME_SERVER_DB=/var/lib/labelframe/server/server.db
+      - LABELFRAME_SERVER_TEMPLATES_DB=/var/lib/labelframe/server/templates.db
+      - LABELFRAME_SERVER_LOGS_DB=/var/lib/labelframe/server/logs.db
+      - LABELFRAME_SERVER_LOG_FILE=/var/lib/labelframe/logs/server.log
 
 volumes:
   labelframe-data:

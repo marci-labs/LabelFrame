@@ -351,3 +351,10 @@
 - 容器内验证（Linux）：healthz、SQLite（数据落 /var/lib/labelframe/server）、Skia 单张/批量出图全部通过（修复 Skia 缺 fontconfig 依赖）。
 - 跨机闭环验证：Windows Client 指向 Linux 容器服务端 → 设备注册 Online → 提交作业 Pending→Claimed 131ms（推送通知）。
 - 已知行为：客户端「服务端地址」修改后需重启 Client（打印 Worker 连接使用启动时地址），文档已注明。
+
+
+## 迭代 19 增补：服务端文本日志 + 日志目录挂载（2026-08-11）
+
+- 新增 `LABELFRAME_SERVER_LOG_FILE` 环境变量：设置后服务端把 ILogger 输出追加写入 UTF-8 文本文件（极简 FileLoggerProvider，含时间/级别/分类）。
+- Docker compose / systemd 默认挂载日志目录并启用：容器 `/var/lib/labelframe/logs` → 宿主机目录（compose 默认 `./logs`，生产建议 `/opt/store/labelframe/logs`），`tail -f server.log` 直接查看。
+- 已重建 `labelframe-server:0.15.4` 镜像与离线包 `labelframe-server-0.15.4.docker.tar`（容器内验证：日志落盘宿主机挂载点）。

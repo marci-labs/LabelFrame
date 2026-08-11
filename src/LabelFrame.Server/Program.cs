@@ -16,6 +16,10 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 var serverOptions = new ServerOptions();
 builder.Configuration.GetSection("Server").Bind(serverOptions);
 serverOptions.ApplyEnvironmentOverrides();
+if (!string.IsNullOrWhiteSpace(serverOptions.LogFilePath))
+{
+    builder.Logging.AddProvider(new FileLoggerProvider(serverOptions.LogFilePath));
+}
 builder.WebHost.UseUrls(serverOptions.ListenUrl);
 #if WINDOWS
 // 迭代 18：以 Windows 服务运行（LabelFrameServer）；直接运行 exe 仍是控制台（开发用）。
