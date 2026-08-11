@@ -381,3 +381,9 @@
 - 插件交付：`scripts/package-server-webui.ps1` 把 `web/dist-server` 打包为 `artifacts/labelframe-server-webui-<version>.zip`；Docker compose 增加可选卷挂载示例（`./plugins/web-ui`）。
 - WinHost：`GET /api/host/config` 响应增加 `ips`（本机启用网卡的 IPv4 列表，过滤回环 / 隧道，去重；状态栏展示用）。
 - 测试 176 全绿（Core 60 / Server 29 / Studio 25 / WinHost 62，新增迁移 / by-ip / targetIp / IP 规范化 / 插件开关 / ips 枚举用例）；端到端冒烟通过（lastIp 记录、by-ip、targetIp 解析、插件放入即托管、移除恢复无头、插件启用时 API 不受影响）。
+
+
+## 迭代 20 前端合入与打包（0.16.0，2026-08-11）
+
+- 前端（hermes，be87548）：双构建 `VITE_UI_MODE=client|server`——`build`（web/dist，Client 包）/ `build:server`（web/dist-server，插件包），`uiMode.ts` + `vite-env.d.ts` ImportMetaEnv 声明 + dev proxy 按模式分支 + vitest 显式注入；K1 `getServerBaseUrl()` server 构建恒返回同源相对路径 `''`（不读 localStorage / 机器级配置）；K2 server 构建跳过 localApi 探测、`serverMode` 恒 server 无 standalone；Server UI 菜单裁剪（移除设置与打印机相关内容，新增「在线设备」页，日志页更名「设备日志」）；在线设备页（每 5s 轮询、点击设默认目标 localStorage `labelframe.defaultTargetDeviceId` 跨页联动、离线拦截）；数据与打印在线设备选择器（仅在线可选、离线置灰显示上次心跳、默认目标优先级 用户点选 > 本机设备 > 第一台在线、提交时现拉校验在线（K3 掉线禁止提交不排队）、隐藏逐张重试表格）；客户端状态栏连接后显示本机 IP（/api/host/config.ips，多 IP 逗号分隔、过长省略 title 给全量）。前端测试 151 全绿（client / server 双分支）。
+- 打包 0.16.0：`artifacts/LabelFrame-Server-0.16.0.msi`（7.6MB）、`artifacts/LabelFrame-Client-0.16.0.msi`（14.1MB）、`artifacts/labelframe-server-webui-0.16.0.zip`（0.2MB，由 `scripts/package-server-webui.ps1` 打包 web/dist-server）；插件端到端验证：解压到插件目录 → 服务端根路径返回管理界面、静态资源与 /api 正常、`/api/server/info.uiEnabled=true`。
