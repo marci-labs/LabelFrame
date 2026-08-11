@@ -333,3 +333,13 @@
 - 客户端安装完成弹窗无法关闭：`LaunchClient` 改为 `cmd /c start` 非阻塞启动（msiexec 不再等待 GUI 进程退出）。
 - 弹窗文字去掉「（默认勾选）」「（默认不勾选）」括号说明。
 - 测试 162 全绿（Server 17 / WinHost 60 / Core 60 / Studio 25）；产物 `LabelFrame-Server-0.15.4.msi`（7.6MB）、`LabelFrame-Client-0.15.4.msi`（14.1MB）。
+
+
+## 迭代 19：Ubuntu 服务端部署 + 跨机验证（2026-08-11，进行中）
+
+- Rendering / Server 多目标框架 `net10.0;net10.0-windows`：GDI 预览（LabelPreviewRenderer）仅 Windows（#if WINDOWS）；Server `UseWindowsService` / 应用图标 / WindowsServices 包仅 Windows；Linux 用 systemd。
+- SkiaSharp Linux 原生库：新增 `SkiaSharp.NativeAssets.Linux`（net10.0）；发布产物含 `libSkiaSharp.so` / `libe_sqlite3.so`。
+- Server 数据目录按平台默认：Windows `%ProgramData%\LabelFrame\server` / Linux `/var/lib/labelframe/server`；`LABELFRAME_SERVER_*` 覆盖。
+- 交付：`scripts/publish-server-linux.ps1`（framework-dependent / self-contained，tar.gz 归档）、`scripts/deploy-server-ubuntu.sh`（用户/目录/systemd 自启/防火墙提示）、`packaging/ubuntu/labelframe-server.service`、`packaging/ubuntu/Dockerfile`。
+- 测试 162 全绿；Windows Server MSI 打包回归正常；linux-x64 产物 6.7MB（归档）。
+- 跨机验证（服务端 Linux + 客户端 Windows）待真机 / 容器执行：验证清单见 docs/ITERATION-19-SPEC.md §5。

@@ -1,3 +1,5 @@
+#if WINDOWS
+// 迭代 19：GDI 预览仅 Windows（System.Drawing）；Linux 服务端使用 Skia 渲染。
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -382,3 +384,4 @@ public sealed class LabelPreviewRenderer
     private static int ToDots(double mm, int dpi)
         => Math.Max(0, (int)Math.Round(mm / 25.4 * dpi, MidpointRounding.AwayFromZero));
 }
+#endif

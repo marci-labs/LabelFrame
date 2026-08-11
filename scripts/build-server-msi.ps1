@@ -16,7 +16,7 @@ $publishDir = Join-Path $root "artifacts\server\$Runtime"
 # 清理旧发布目录，避免残留旧 web/dist 被打包
 if (Test-Path -LiteralPath $publishDir) { Remove-Item -LiteralPath $publishDir -Recurse -Force }
 dotnet publish (Join-Path $root 'src\LabelFrame.Server\LabelFrame.Server.csproj') `
-    -c Release -r $Runtime -p:SelfContained=false `
+    -c Release -f net10.0-windows -r $Runtime -p:SelfContained=false `
     -o $publishDir -p:DebugType=None -p:DebugSymbols=false | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Server publish failed' }
 

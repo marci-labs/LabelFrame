@@ -1,0 +1,21 @@
+[Unit]
+Description=LabelFrame Server（模板库 / 作业中心 / 设备投递 / 调试出图 / 日志）
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=labelframe
+Group=labelframe
+WorkingDirectory=/opt/labelframe/server
+ExecStart=/opt/labelframe/server/LabelFrame.Server
+Environment=LABELFRAME_SERVER_LISTEN=http://0.0.0.0:53961
+Environment=LABELFRAME_SERVER_DB=/var/lib/labelframe/server/server.db
+Environment=LABELFRAME_SERVER_TEMPLATES_DB=/var/lib/labelframe/server/templates.db
+Environment=LABELFRAME_SERVER_LOGS_DB=/var/lib/labelframe/server/logs.db
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

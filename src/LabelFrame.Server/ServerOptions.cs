@@ -6,11 +6,13 @@ public sealed class ServerOptions
     /// <summary>默认监听地址（本机）。</summary>
     public const string DefaultListenUrl = "http://127.0.0.1:53961";
 
-    /// <summary>默认数据目录（%ProgramData%\LabelFrame\server；Windows 服务以 LocalSystem 运行时 LOCALAPPDATA 指向系统账户目录，不可靠）。</summary>
-    public static string DefaultDataDirectory => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-        "LabelFrame",
-        "server");
+    /// <summary>
+    /// 默认数据目录：Windows %ProgramData%\LabelFrame\server（服务账户下 LOCALAPPDATA 不可靠）；
+    /// Linux /var/lib/labelframe/server（迭代 19，systemd 部署约定）；LABELFRAME_SERVER_* 环境变量优先。
+    /// </summary>
+    public static string DefaultDataDirectory => OperatingSystem.IsWindows()
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "LabelFrame", "server")
+        : "/var/lib/labelframe/server";
 
     /// <summary>默认数据库路径（%ProgramData%\LabelFrame\server\server.db）。</summary>
     public static string DefaultDatabasePath => Path.Combine(DefaultDataDirectory, "server.db");

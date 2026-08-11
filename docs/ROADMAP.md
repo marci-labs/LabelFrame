@@ -27,7 +27,7 @@
 | 15 | 打印设置与会话保留 + 连接管理 + 删除 ZPL（图片打印收敛） | 🔄 进行中（前后端已完成，联调验收待执行） |
 | 16 | 服务端 / 客户端拆分（双安装包） | ✅ 已完成（0.14.0 双 MSI，用户验收待执行） |
 | 18 | 无头服务端 + 客户端 UI 回归 + Windows 服务 + 历史清理 + 推送通知（0.15.4） | 🔄 进行中（前后端已完成，0.15.4 双包已打包，联调验收待执行） |
-| 19 | Ubuntu 服务端部署 + 跨机验证（服务端 Linux / 客户端 Windows） | 🔄 进行中（规格已定稿，待实施） |
+| 19 | Ubuntu 服务端部署 + 跨机验证（服务端 Linux / 客户端 Windows） | 🔄 进行中（多目标与发布物已完成，跨机验证待执行） |
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
@@ -595,6 +595,7 @@
 - 跨机验证：Windows Client 指向 Ubuntu Server 全链路；本机可用 Docker/WSL 模拟 Linux 服务端，否则交付真机验证清单。
 
 **不在范围**：Linux 客户端、PDA、TLS/鉴权、高可用。
+**完成记录（2026-08-11）**：多目标框架（Rendering / Server net10.0 + net10.0-windows）、Skia Linux 原生库、平台默认数据目录、publish-server-linux.ps1 / deploy-server-ubuntu.sh / systemd 单元 / Dockerfile；测试 162 全绿；linux-x64 归档 6.7MB；Windows MSI 回归正常。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 19（Ubuntu 服务端部署）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md、docs/ITERATION-19-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。

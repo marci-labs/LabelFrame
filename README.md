@@ -58,6 +58,29 @@ cd web; pnpm install; pnpm build; cd ..
 打印：统一为整版位图（Skia 渲染 → `^GF` 直传打印机），与画布预览同源（迭代 15 起移除矢量 ZPL）。连接方式（Log / TCP / Windows 驱动 / Zebra）在**客户端设置页**配置（先测试后生效、持久化 connection.json），服务端无打印机连接 UI；服务端地址为机器级配置（`%ProgramData%\LabelFrame\Client\settings.json`，经 `/api/host/config` 读写）。
 干净电脑使用（单机）：安装 `LabelFrame-Server-0.15.0.msi` 与 `LabelFrame-Client-0.15.0.msi` 两个包。Server 装完弹窗（开机自启 / 立即运行，默认勾选）→ 服务随系统自启；Client 装完弹窗（立即打开，默认勾选）→ 浏览器打开 **http://127.0.0.1:53960** 进入完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史）。多台打印电脑：每台装 Client，在设置页把服务端地址指向服务端电脑 IP 即可（机器级配置，同机浏览器一致）。
 
+## Ubuntu 服务端部署（迭代 19，服务端 Linux + 客户端 Windows）
+
+1. 发布 linux-x64 包（需 .NET SDK；Windows 上执行）：
+   ```powershell
+   .\scripts\publish-server-linux.ps1            # framework-dependent
+   .\scripts\publish-server-linux.ps1 -SelfContained   # 免运行时包
+   ```
+   产物：`artifacts\labelframe-server-0.15.4-linux-x64.tar.gz`。
+2. Ubuntu（22.04 / 24.04）安装运行时（framework-dependent 时需要）：https://dotnet.microsoft.com/download/dotnet/10.0（ASP.NET Core Runtime）。
+3. 上传归档后部署（root / sudo）：
+   ```bash
+   sudo bash scripts/deploy-server-ubuntu.sh labelframe-server-0.15.4-linux-x64.tar.gz
+   ```
+   脚本会：建 `labelframe` 用户 → 解压到 `/opt/labelframe/server` → 数据目录 `/var/lib/labelframe/server` → 安装并启动 systemd 服务 `labelframe-server`（自启 + 崩溃重启）。
+4. 验证与跨机使用：
+   ```bash
+   curl http://127.0.0.1:53961/healthz        # {"service":"LabelFrame.Server","status":"ok"}
+   sudo ufw allow 53961/tcp                   # 如开启防火墙
+   ```
+   Windows Client 设置页「服务端地址」填 `http://<Ubuntu-IP>:53961` → 测试连接 → 保存并生效；之后设备注册 / 模板 / 作业（推送通知 <1s 领取）/ 调试出图 / 日志全链路走 Ubuntu 服务端，打印仍在 Windows 本机。
+5. 配置：监听 / 数据库路径 / 历史清理保留期均可用 `LABELFRAME_SERVER_*` 环境变量覆盖（systemd 单元已设默认值）。
+6. 容器化（可选）：`docker build -f packaging/ubuntu/Dockerfile -t labelframe-server artifacts/server-linux/linux-x64`，运行映射 53961 端口。
+
 辅助脚本：
 - `scripts\generate-icon.ps1`：生成应用图标（双色 L 型，assets\labelframe.ico）。
 - `scripts\create-signing-cert.ps1`：生成自签名代码签名证书（openssl + .NET 重封装）；`scripts\build-msi.ps1 -Sign` 签名 MSI（需本机有 signtool，或用环境变量 SIGNFILE 指定）。正式分发建议购买商业代码签名证书。

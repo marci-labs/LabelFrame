@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
-    <ApplicationIcon>..\..\assets\labelframe.ico</ApplicationIcon>
+    <!-- 迭代 19：net10.0（Linux systemd）/ net10.0-windows（Windows 服务） -->
+    <TargetFrameworks>net10.0;net10.0-windows</TargetFrameworks>
+    <ApplicationIcon Condition="'$(TargetFramework)' == 'net10.0-windows'">..\..\assets\labelframe.ico</ApplicationIcon>
     <RootNamespace>LabelFrame.Server</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
@@ -13,8 +14,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.4" />
-    <!-- 迭代 18：Windows 服务托管（UseWindowsService） -->
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
+    <!-- 迭代 18/19：Windows 服务托管（UseWindowsService，仅 Windows） -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0-windows'" />
     <PackageReference Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.6" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.6" />
   </ItemGroup>
