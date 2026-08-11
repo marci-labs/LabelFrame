@@ -320,6 +320,7 @@
 - B5：`ServerDb.DeleteTerminalJobsBeforeAsync` + `SqliteLogStore.DeleteBeforeAsync` + `DataCleanupService`（JobRetentionDays=30 / LogRetentionDays=90 / CleanupIntervalHours=24 + LABELFRAME_SERVER_* 覆盖）；测试覆盖清理、非终态保留、配置解析。
 - B6：WinHost `GET/POST /api/host/config`（serverUrl + deviceId/deviceName，回环可写，持久化 ProgramData settings.json，缺失 / 损坏返回默认值，启动加载覆盖 ServerUrl）；HostConfigStore + 测试。
 - B7：Server MSI 注册服务（Start=demand，LocalSystem）+ 完成弹窗（AUTOSTART/RUNNOW 默认 1）+ `sc config` / `net start` 自定义动作（仅新装）；移除 Server 桌面 / 开始菜单快捷方式（服务部署下会与端口冲突）。
+- 修复 0.15.1：ServiceInstall / ServiceControl 移入 `LabelFrame.Server.exe` 所在组件（generate-files.ps1 生成），修复 0.15.0 服务未注册问题。
 - B8：Client MSI 完成弹窗（OPEN_NOW 默认 1）+ LaunchClient 自定义动作；卸载清理新增 `%ProgramData%\LabelFrame\Client\settings.json`。
 - B10：Server `GET /api/jobs` 支持 limit；WinHost 新增 `GET /api/jobs`（扩展 JobView：CreatedAt / FailedItems / ErrorMessage / TargetDeviceId=null）。
 - 验证：`dotnet test` 156 全绿；双 MSI 数据库校验（服务表 / 弹窗 / 动作 / 序列 / 清理路径）；冒烟——Server 无头启动（GET / 404、/api/jobs 空、ProgramData 落盘）、Client 机器级配置读写、作业列表、Web UI 页面可达。

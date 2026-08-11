@@ -2,7 +2,9 @@
 param(
     [string]$PublishDir = '',
     [string]$OutFile = '',
-    [string]$GuidSalt = 'default'
+    [string]$GuidSalt = 'default',
+    [string]$ServerServiceName = '',
+    [string]$ServerServiceDisplayName = ''
 )
 $root = Split-Path -Parent $PSScriptRoot
 if (-not $PublishDir) { $PublishDir = Join-Path $root 'artifacts\win-x64' }
@@ -18,13 +20,14 @@ function New-GuidFromPath([string]$rel) {
     return [Guid]::Parse([BitConverter]::ToString($b).Replace('-', '')).ToString().ToUpperInvariant()
 }
 
-function Add-FileLine([System.Text.StringBuilder]$sb, [int]$idx, [string]$guid, [string]$rel, [string]$fileId, [string]$prefix) {
+function Add-FileLine([System.Text.StringBuilder]$sb, [int]$idx, [string]$guid, [string]$rel, [string]$fileId, [string]$prefix, [string]$extra = '') {
     $ext = [System.IO.Path]::GetExtension($rel)
     if ($ext.Length -gt 0) { $ext = $ext.Substring(1) }
     if ($ext.Length -gt 3) { $ext = $ext.Substring(0, 3) }
     $shortName = ('LF{0:D6}.{1}' -f $idx, $ext.ToUpperInvariant())
     [void]$sb.AppendLine('      <Component Id="' + $prefix + $idx + '" Guid="' + $guid + '">')
     [void]$sb.AppendLine('        <File' + $fileId + ' ShortName="' + $shortName + '" Source="$(var.PublishDir)/' + $rel + '" />')
+    if ($extra) { [void]$sb.Append($extra) }
     [void]$sb.AppendLine('      </Component>')
 }
 
@@ -82,7 +85,11 @@ foreach ($f in $allFiles) {
         Add-FileLine $sb $index $guid $rel ' Id="WinHostExe"' 'f'
         $index++
     } elseif ($rel -eq 'LabelFrame.Server.exe') {
-        Add-FileLine $sb $index $guid $rel ' Id="ServerExe"' 'f'
+        $serviceXml = ''
+        if ($ServerServiceName) {
+            $serviceXml = "`n        <ServiceInstall Id=`"LabelFrameServerInstall`" Name=`"$ServerServiceName`" DisplayName=`"$ServerServiceDisplayName`" Type=`"ownProcess`" Start=`"demand`" Account=`"LocalSystem`" ErrorControl=`"normal`" />`n        <ServiceControl Id=`"LabelFrameServerControl`" Name=`"$ServerServiceName`" Stop=`"both`" Remove=`"uninstall`" Wait=`"yes`" />`n"
+        }
+        Add-FileLine $sb $index $guid $rel ' Id="ServerExe"' 'f' $serviceXml
         $index++
     } elseif ($rel -like 'web/dist/*') {
         $relWeb = $rel.Substring('web/dist/'.Length)

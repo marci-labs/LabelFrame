@@ -579,6 +579,7 @@
 - Server 无头化（移除 web/dist 托管与测试页）、Windows 服务（`UseWindowsService`，服务名 LabelFrameServer）、数据目录改 `%ProgramData%\LabelFrame\server`、历史清理后台服务（作业 30 天 / 日志 90 天 / 周期 24h，可配置）、exe 图标 labelframe.ico；`GET /api/jobs` 支持 limit（默认 100 上限 500）。
 - WinHost：机器级配置 `GET/POST /api/host/config`（serverUrl + deviceId/deviceName，持久化 `%ProgramData%\LabelFrame\Client\settings.json`，缺失 / 损坏返回默认值）；`GET /api/jobs` 本机作业列表（扩展 JobView：CreatedAt / FailedItems / ErrorMessage / TargetDeviceId=null）。
 - 双 MSI 0.15.0：Server 注册服务 + 安装完成弹窗（开机自启 / 立即运行，默认勾选，sc config / net start）；Client 安装完成弹窗（立即打开，默认勾选）；卸载清理路径含 ProgramData；测试 156 全绿（Server 13 / WinHost 58 / Core 60 / Studio 25）。
+- 修复 0.15.1：ServiceInstall 移入 exe 组件（服务二进制须为组件 KeyPath），解决 0.15.0 安装后服务未注册；产物升级 0.15.1。
 ## 检查点：试点验收（待定）
 
 按 [REQUIREMENTS.md](REQUIREMENTS.md) §8 成功衡量执行：

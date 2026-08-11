@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.15.0"
+  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.15.1"
            UpgradeCode="10BDDF3E-BD37-4C3A-A19E-56CA9EFE5B74">
     <SummaryInformation Description="LabelFrame 服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志（安装于 Program Files\LabelFrame\Server，无 Web UI，以 Windows 服务运行）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
@@ -93,18 +93,7 @@
       <Component Id="AppSettingsFile" Guid="D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80" NeverOverwrite="yes" Permanent="yes">
         <File Id="AppSettingsFile" Source="$(var.PublishDir)/appsettings.json" KeyPath="yes" />
       </Component>
-      <!-- Windows 服务注册（迭代 18）：默认 manual，自启由安装完成弹窗决定；卸载停止并删除 -->
-      <Component Id="ServerServiceComponent" Guid="1E6C9B9F-2A8E-4E4B-9C0E-9F6A7B8C9D0E">
-        <ServiceInstall Id="LabelFrameServerInstall"
-                        Name="LabelFrameServer"
-                        DisplayName="LabelFrame 服务端"
-                        Type="ownProcess"
-                        Start="demand"
-                        Account="LocalSystem"
-                        ErrorControl="normal" />
-        <ServiceControl Id="LabelFrameServerControl" Name="LabelFrameServer" Stop="both" Remove="uninstall" Wait="yes" />
-        <RegistryValue Root="HKLM" Key="Software\LabelFrame\Server" Name="service" Type="integer" Value="1" KeyPath="yes" />
-      </Component>
+      <!-- Windows 服务注册（迭代 18）：ServiceInstall 由 generate-files.ps1 放入 LabelFrame.Server.exe 所在组件（服务二进制须为组件 KeyPath）；自启由安装完成弹窗决定 -->
     </Directory>
     </Directory>
     </StandardDirectory>
@@ -112,7 +101,6 @@
     <Feature Id="MainFeature" Title="LabelFrame" Level="1">
       <ComponentGroupRef Id="AppFiles" />
       <ComponentRef Id="AppSettingsFile" />
-      <ComponentRef Id="ServerServiceComponent" />
     </Feature>
 
     <!-- 安装完成动作：按勾选设置自启 / 立即运行（仅全新安装；Immediate，运行在提权的 UI 进程） -->

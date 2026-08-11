@@ -296,3 +296,11 @@
 - WinHost 作业列表：`GET /api/jobs`（limit 默认 100 上限 500），JobView 扩展 CreatedAt / FailedItems / ErrorMessage / TargetDeviceId（本机作业为 null）。
 - 双 MSI 0.15.0：Server 安装注册 Windows 服务 + 安装完成弹窗（开机自启 / 立即运行，默认勾选；按勾选 `sc config start= auto` / `net start`，升级不触发）；Client 安装完成弹窗（立即打开，默认勾选；启动客户端开界面）；Server 不再打包 web/dist；卸载清理路径含 ProgramData（Server server 目录 / Client settings.json）。
 - 测试 156 全绿（Core 60 / Server 13 / WinHost 58 / Studio 25）；产物 `LabelFrame-Server-0.15.0.msi`（7.6MB）、`LabelFrame-Client-0.15.0.msi`（14.2MB）。
+
+
+## 修复：Server 安装未注册 Windows 服务（0.15.1，2026-08-11）
+
+- 根因：`ServiceInstall` 放在只有注册表 KeyPath 的独立组件，Windows Installer 拿不到服务二进制路径，服务创建被跳过（其余文件正常安装）。
+- 修复：`ServiceInstall / ServiceControl` 移入 `LabelFrame.Server.exe` 所在组件（服务二进制 = 组件 KeyPath）；`generate-files.ps1` 新增 `-ServerServiceName / -ServerServiceDisplayName` 参数。
+- 版本升至 0.15.1（MajorUpgrade 可覆盖已装的 0.15.0）；产物 `LabelFrame-Server-0.15.1.msi`（7.6MB）、`LabelFrame-Client-0.15.1.msi`（14.2MB）。
+- 覆盖升级（0.15.0 → 0.15.1）不弹完成弹窗、不自动启动，服务注册为手动启动，可 `net start LabelFrameServer` 或服务管理器启动；全新安装仍弹完成弹窗（默认自启 + 立即运行）。

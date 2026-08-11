@@ -1,6 +1,6 @@
 ﻿# 一键构建 LabelFrame Server（服务端）MSI 安装包（迭代 16/17：安装到 Program Files\LabelFrame\Server）
 param(
-    [string]$Version = '0.15.0',
+    [string]$Version = '0.15.1',
     [string]$Runtime = 'win-x64',
     [string]$PfxPath = '',
     [string]$PfxPassword = 'LabelFrame@2026',
@@ -26,7 +26,7 @@ Copy-Item (Join-Path $root 'packaging\appsettings-server.json') (Join-Path $publ
 
 # 3) 生成 WiX 文件清单（GUID 加盐 server，避免与 Client 包组件 GUID 冲突）
 $filesWxs = Join-Path $root 'packaging\files-server.wxs'
-& (Join-Path $root 'packaging\generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs -GuidSalt 'server'
+& (Join-Path $root 'packaging\generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs -GuidSalt 'server' -ServerServiceName 'LabelFrameServer' -ServerServiceDisplayName 'LabelFrame 服务端'
 
 # 4) wix build
 $msi = Join-Path $root "artifacts\LabelFrame-Server-$Version.msi"
