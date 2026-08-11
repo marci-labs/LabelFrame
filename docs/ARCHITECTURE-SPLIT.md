@@ -1,4 +1,4 @@
-# LabelFrame 服务端 / 客户端拆分设计
+﻿# LabelFrame 服务端 / 客户端拆分设计
 
 > 状态：设计已确认（2026-08-11，用户拍板 6 项决策），待实施
 > 修订（2026-08-11，迭代 18 用户拍板）：**决策 1 反转**——Web UI 不再由服务端托管，客户端托管完整 UI；服务端无头化并以 Windows 服务部署；详见文末「0.15 架构修订（迭代 18）」。
@@ -194,3 +194,11 @@
 - 后端（本仓库维护者）：文档、Server 无头化 + Windows 服务 + 图标、数据目录 ProgramData、历史清理、双 MSI 弹窗与自定义动作、WinHost `/api/host/config`、打包 0.15.0、测试。
 - 前端（hermes）：API 客户端双 base（Server / 本机）、恢复连接方式与打印机 UI、后端地址改机器级配置、作业历史页、数据与打印保持目标设备选择。
 - 详细任务与验收见 `docs/ITERATION-18-SPEC.md`。
+
+
+## 迭代 20 服务端管理界面插件（2026-08-11）
+
+- 默认服务端仍无头（不推翻决策 #53）；管理界面以“静态前端包目录”插件提供：`Server.WebUiPath` 指向插件目录（Windows `%ProgramData%\LabelFrame\server\plugins\web-ui`；Linux `/var/lib/labelframe/server/plugins/web-ui`；`LABELFRAME_SERVER_WEB_UI` 覆盖，为空 = 显式禁用）。
+- 托管语义：每次请求运行时检测目录（放入 `index.html` 即托管、移除即无头，无需重启）；SPA fallback 不拦截 `/api/*` 与 `/healthz`；目录创建失败降级无头，不影响 API。
+- 契约增量：`GET /api/server/info`（`{ listenUrl, uiEnabled, version }`）供调试 / Server UI 探测；`DeviceView.lastIp`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 可选 `targetIp`、`GET /api/host/config` 增加 `ips`。
+- 前端双构建：`VITE_UI_MODE=client|server` 产出 `web/dist`（Client 包）与 `web/dist-server`（插件包，由 `scripts/package-server-webui.ps1` 打包为 `labelframe-server-webui-<version>.zip`）。

@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 本文件记录每个迭代的变更。
 
@@ -372,3 +372,12 @@
 - 起草 `docs/ITERATION-20-SPEC.md`：客户端状态栏显示本机 IP；服务端可选管理界面以插件形式提供（静态前端包放入 `plugins/web-ui` 即生效，无需重启，默认仍无头）；Server UI 去除打印机相关内容，保留工作台 / 设计器，新增在线设备页，数据与打印复用并改为“在线设备选择器”发送打印测试。
 - 契约：`DeviceView.lastIp`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 可选 `targetIp`、`GET /api/host/config` 增加 `ips`、新增 `GET /api/server/info`、前端 `VITE_UI_MODE=client|server` 双构建。
 - DESIGN 决策 #61/#62/#63；ROADMAP 新增迭代 20 条目。
+
+
+## 迭代 20 后端实施（0.16.0，2026-08-11）
+
+- 设备 IP 记录与查找：`devices` 表新增 `last_ip`（旧库 ALTER TABLE 迁移，已存在列静默跳过）；设备注册 / 心跳（notify / pending）从 `RemoteIpAddress` 记录 / 刷新来源 IP，IPv4-mapped IPv6（`::ffff:a.b.c.d`）统一为 IPv4 文本（MapToIPv4）；`DeviceView.lastIp`；新增 `GET /api/devices/by-ip/{ip}`（忽略大小写，未找到 404）；`POST /api/jobs` 支持可选 `targetIp`（与 `targetDeviceId` 二选一，同时提供时 `targetDeviceId` 优先，按 IP 未找到 404）。
+- 服务端管理界面插件（默认仍无头，不推翻决策 #53）：`Server.WebUiPath`（默认 Windows `%ProgramData%\LabelFrame\server\plugins\web-ui` / Linux `/var/lib/labelframe/server/plugins/web-ui`，`LABELFRAME_SERVER_WEB_UI` 覆盖、为空显式禁用）；静态托管中间件启动确保目录存在（创建失败降级无头不崩），每次请求运行时检测——放入 `index.html` 即托管（UseDefaultFiles + UseStaticFiles + SPA fallback），移除即恢复无头；fallback 不拦截 `/api/*` 与 `/healthz`；新增 `GET /api/server/info`（`listenUrl / uiEnabled / version`）。
+- 插件交付：`scripts/package-server-webui.ps1` 把 `web/dist-server` 打包为 `artifacts/labelframe-server-webui-<version>.zip`；Docker compose 增加可选卷挂载示例（`./plugins/web-ui`）。
+- WinHost：`GET /api/host/config` 响应增加 `ips`（本机启用网卡的 IPv4 列表，过滤回环 / 隧道，去重；状态栏展示用）。
+- 测试 176 全绿（Core 60 / Server 29 / Studio 25 / WinHost 62，新增迁移 / by-ip / targetIp / IP 规范化 / 插件开关 / ips 枚举用例）；端到端冒烟通过（lastIp 记录、by-ip、targetIp 解析、插件放入即托管、移除恢复无头、插件启用时 API 不受影响）。

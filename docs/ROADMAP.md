@@ -1,4 +1,4 @@
-# LabelFrame 路线图
+﻿# LabelFrame 路线图
 
 > 状态总览与迭代计划。每个迭代一条「启动命令」，复制给 AI 执行；完成即更新状态与 CHANGELOG。
 > 设计细节见 [DESIGN.md](DESIGN.md)，需求见 [REQUIREMENTS.md](REQUIREMENTS.md)。
@@ -613,6 +613,8 @@
 **不在范围**：服务端打印机相关内容、服务端 UI 鉴权、.NET 程序集插件、作业模型变更。
 
 **验收**：设备注册 / 心跳后 `/api/devices` 含 `lastIp`；by-ip 查找与 `targetIp` 提交可用；插件目录放入后浏览器打开服务端根路径即管理界面（无需重启），移除后恢复无头；Server UI 无打印机内容、在线设备选择 → 打印测试正常；客户端状态栏显示 IP；`dotnet test` / `npm test` 全绿。
+
+**进度（2026-08-11，后端）**：后端已完成——设备 `last_ip` 列与旧库迁移、注册/心跳记录来源 IP（统一 IPv4 文本 MapToIPv4）、`DeviceView.lastIp`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 支持 `targetIp`（`targetDeviceId` 优先）；`Server.WebUiPath` 插件式静态托管（启动确保目录存在，放入 index.html 即托管、移除即无头）+ `GET /api/server/info`（listenUrl / uiEnabled / version）+ 插件 zip 打包脚本 `scripts/package-server-webui.ps1` + compose 卷挂载示例；WinHost `/api/host/config` 增加 `ips`（本机 IPv4 枚举，过滤回环）。测试 176 全绿（Core 60 / Server 29 / Studio 25 / WinHost 62）+ 端到端冒烟（lastIp 记录 / by-ip / targetIp 解析 / 插件放入即托管 / 移除恢复无头）。待前端（hermes）按最终版实施。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 20（服务端管理界面插件 + 设备 IP）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md、docs/ITERATION-20-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。

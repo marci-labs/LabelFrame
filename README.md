@@ -1,4 +1,4 @@
-# LabelFrame
+﻿# LabelFrame
 
 面向仓库场景的标签打印框架：模板契约 + 打印服务 + 设备宿主（PC / PDA）。
 
@@ -35,11 +35,19 @@
 | 项目 | 说明 |
 |---|---|
 | `LabelFrame.Core` | 契约 / 版式模型、数据校验、ZPL 编码、作业队列（迭代 1 起实现） |
-| `LabelFrame.Server` | 无头服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志（迭代 3 起实现；迭代 18 起以 Windows 服务运行、不再提供 Web UI） |
+| `LabelFrame.Server` | 无头服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志（迭代 3 起实现；迭代 18 起以 Windows 服务运行、默认不提供 Web UI；迭代 20 起可选管理界面插件 `plugins/web-ui`） |
 | `LabelFrame.WinHost` | Windows 打印宿主（迭代 2 起实现） |
 | `LabelFrame.Studio` | Windows 模板工具：管理 / 导入导出 / 预览 / 测试打印（迭代 7 起实现） |
 | `LabelFrame.AndroidHost` | Android / PDA 打印宿主（迭代 5 起实现） |
 
+
+## 服务端管理界面（可选插件，迭代 20）
+
+默认服务端保持无头（仅 /healthz + API）；需要时把前端 server 构建产物（`web/dist-server`）解压到插件目录即生效——放进去无需重启、移除即恢复无头：
+- Windows：`%ProgramData%\LabelFrame\server\plugins\web-ui`
+- Linux：`/var/lib/labelframe/server/plugins/web-ui`
+
+打包：`scripts/package-server-webui.ps1`（先由前端产出 `web/dist-server`，产物 `artifacts/labelframe-server-webui-<version>.zip`）；Docker compose 已含可选卷挂载示例（`./plugins/web-ui`）。
 
 ## 安装包（迭代 10）
 
