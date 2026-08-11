@@ -27,6 +27,7 @@
 | 15 | 打印设置与会话保留 + 连接管理 + 删除 ZPL（图片打印收敛） | 🔄 进行中（前后端已完成，联调验收待执行） |
 | 16 | 服务端 / 客户端拆分（双安装包） | ✅ 已完成（0.14.0 双 MSI，用户验收待执行） |
 | 18 | 无头服务端 + 客户端 UI 回归 + Windows 服务 + 历史清理 + 推送通知（0.15.4） | 🔄 进行中（前后端已完成，0.15.4 双包已打包，联调验收待执行） |
+| 19 | Ubuntu 服务端部署 + 跨机验证（服务端 Linux / 客户端 Windows） | 🔄 进行中（规格已定稿，待实施） |
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
@@ -583,6 +584,21 @@
 - 修复 0.15.2：安装完成弹窗动作改为按钮 DoAction 触发（sc config / net start / 启动客户端），解决弹窗后动作不执行导致服务未自启/未运行；产物升级 0.15.2。
 - 简化 0.15.3：Server 服务注册即自动 + 安装时启动（ServiceInstall Start=auto + ServiceControl Start=install），完成弹窗仅提示；双包版本 0.15.3。
 - 0.15.4：Server 长轮询通知（notify 端点，作业到达立即唤醒客户端，等效推送）；客户端安装弹窗改为非阻塞启动（cmd /c start）；弹窗文字去掉括号说明；双包版本 0.15.4。
+## 迭代 19：Ubuntu 服务端部署 + 跨机验证（进行中）
+
+**目标**：服务端可部署到 Ubuntu（systemd），Windows Client 通过 HTTP 指向 Linux Server，验证跨机全链路（设备注册 / 模板库 / 作业 / 推送通知 / 调试出图 / 日志 / 历史清理）。
+
+**范围**：
+- Rendering / Server 多目标框架（`net10.0;net10.0-windows`）；Windows 专属代码（GDI 预览、UseWindowsService、图标、WindowsServices 包）条件编译。
+- Server 数据目录按平台默认（Linux `/var/lib/labelframe/server`）；`LABELFRAME_SERVER_*` 环境变量覆盖。
+- 发布脚本 `scripts/publish-server-linux.ps1`（framework-dependent / self-contained）；systemd 单元 + Ubuntu 部署脚本；可选 Dockerfile。
+- 跨机验证：Windows Client 指向 Ubuntu Server 全链路；本机可用 Docker/WSL 模拟 Linux 服务端，否则交付真机验证清单。
+
+**不在范围**：Linux 客户端、PDA、TLS/鉴权、高可用。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 19（Ubuntu 服务端部署）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md、docs/ITERATION-19-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+
 ## 检查点：试点验收（待定）
 
 按 [REQUIREMENTS.md](REQUIREMENTS.md) §8 成功衡量执行：

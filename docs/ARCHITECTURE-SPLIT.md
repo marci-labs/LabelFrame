@@ -58,7 +58,8 @@
 
 - 双 MSI：`LabelFrame-Server-x.y.z.msi` / `LabelFrame-Client-x.y.z.msi`，同版本号（首个拆分版建议 0.14.0）。
 - 前置：.NET 10 Desktop Runtime（与现状一致）。
-- 服务端：Windows 服务（自启，可选）或控制台；客户端：托盘程序、开机自启（沿用现有托盘实现）。
+- 服务端：Windows 服务（0.15 起，自启 + 安装时启动）或 Ubuntu systemd（迭代 19 起）；客户端：Windows 托盘程序、开机自启（沿用现有托盘实现）。
+- 服务端数据目录按平台默认：Windows `%ProgramData%\LabelFrame\server`；Linux `/var/lib/labelframe/server`（`LABELFRAME_SERVER_*` 环境变量优先）。
 - `appsettings.json` 保留机制、`connection.json` 连接持久化沿用。
 
 ## 6. 单机模式与迁移
