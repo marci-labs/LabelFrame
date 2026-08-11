@@ -75,7 +75,7 @@
 - 冒烟：控制台启动 Server + 本机 Client 联调（Log 模拟）闭环；`/api/host/config` 读写。
 ### B10 作业列表端点补全（F6 前置）
 - Server `GET /api/jobs`：新增可选 `limit` 参数（默认 100，上限 500），按创建时间倒序截断。
-- WinHost 新增 `GET /api/jobs`：可选 `limit`，返回本机作业列表（复用 LabelJobQueue / JobViews，形状与 Server 兼容：`JobView[]`），供前端作业历史页单机降级。
+- WinHost 新增 `GET /api/jobs`：可选 `limit`（默认 100，上限 500），返回本机作业列表——扩展 JobView 形状与 Server 对齐：新增 `CreatedAt`（LabelJob.CreatedAt）、`FailedItems` / `ErrorMessage`（从 Items 派生，ErrorMessage 取首个失败项消息）、`TargetDeviceId` 返回 null（前端显示「本机」）；前端作业历史列单一映射。
 - 测试：Server limit 生效（默认 / 超上限截断）；WinHost 列表返回本地作业。
 
 ## 4. 前端任务清单（hermes 实施，评估后可反馈）
@@ -87,7 +87,7 @@
 - `types.ts`：
   - `DEFAULT_BASE_URL` 语义改为「服务端地址默认 `http://127.0.0.1:53961`」。
   - 恢复 transport 类型：`TransportMode / TransportConfig / TransportParams / TransportApplyRequest / TransportApplyResponse`（参照 4155ccf）。
-  - 新增 `HostConfig { serverUrl: string }`；`PrinterStatus` 类型（如需）。
+  - 新增 `HostConfig { serverUrl: string; deviceId: string; deviceName: string }`；`PrinterStatus` 类型（如需）。
 - `client.ts`：拆 `serverApi`（模板 / 作业 / 设备 / 调试出图 / 日志 / Excel → 服务端地址）与 `localApi`（transport / printer / host/config → 页面来源 127.0.0.1:53960）；healthz 探测仍走 serverApi（连接状态灯反映服务端连通）；错误消息区分「服务端」与「本机客户端」。
 
 ### F2 机器级配置（后端地址）
@@ -111,7 +111,7 @@
 ### F6 新增「作业历史」页
 - 导航新增「作业历史」；serverApi `GET /api/jobs?limit=100` 列表：时间 / requestId / jobId / 目标设备 / 状态 / 完成-失败张数 / 失败原因；刷新按钮；终态 / 进行中徽标区分。
 - 单机降级：指向本机时显示本机作业列表（localBase `GET /api/jobs`，后端 B10 新增）。
-- 空态：暂无历史作业；提示「终态作业默认保留 30 天，由服务端自动清理」（按默认值写死，不承诺与运行时配置实时一致）。
+- 空态：暂无历史作业；空态提示按模式区分——服务端模式：「终态作业默认保留 30 天，由服务端自动清理」；单机模式：「本机作业不自动清理」（按默认值写死，不承诺与运行时配置实时一致）。
 
 ### F7 测试与构建
 - `Settings.test.tsx` / `DataPrint.test.tsx` / `settings.test.ts` 更新：双 base、连接方式切换恢复、目标设备、机器级配置、默认地址 53961、移除方案 B 残留用例；新增 hostConfig / transport 用例（参照 4155ccf 测试）。
@@ -124,14 +124,14 @@
 |---|---|---|
 | `GET/POST /api/host/config` | Client 本机 | `{ serverUrl, deviceId, deviceName }` 读写（机器级持久化；缺失 / 损坏返回默认 serverUrl） |
 | `GET/POST /api/transport`、`GET /api/printer/status`、`POST /api/printer/test` | Client 本机 | 恢复前端接入（接口 0.14 已在，未删） |
-| `GET /api/jobs` | Client 本机 | 新增（B10）：本机作业列表（可选 limit），作业历史单机降级用 |
+| `GET /api/jobs` | Client 本机 | 新增（B10）：本机作业列表（可选 limit，默认 100 上限 500；扩展 JobView：CreatedAt / FailedItems / ErrorMessage，TargetDeviceId=null），作业历史单机降级用 |
 | `GET /api/jobs` | Server | 可选 `?limit=100`（默认 100），作业历史用 |
 | Server Web UI | —— | 移除 |
 
 ## 6. 验收标准（端到端）
 
 1. Server MSI 全新安装：完成弹窗默认勾选自启 + 立即运行 → 服务 `LabelFrameServer` 为 Automatic 且 Running；无 Web UI（浏览器打开 Server 端口只有 API / 404）；exe 图标为 LOGO；数据在 `%ProgramData%\LabelFrame\server`。
-2. Client MSI 全新安装：完成弹窗默认勾选立即打开 → 客户端启动并打开 `127.0.0.1:53960`；设置页可切换连接方式（保存并应用）、可改服务端地址（机器级，重启保持）；模板设计 / 保存 → 数据与打印选本机设备 → 打印测试 → 作业 Completed；作业历史页可见并可刷新；单机降级时作业历史显示本机作业列表。
+2. Client MSI 全新安装：完成弹窗默认勾选立即打开 → 客户端启动并打开 `127.0.0.1:53960`；设置页可切换连接方式（保存并应用）、可改服务端地址（机器级，保存后立即生效、重启保持）；模板设计 / 保存 → 数据与打印选本机设备 → 打印测试 → 作业 Completed；作业历史页可见并可刷新；单机降级时作业历史显示本机作业列表。
 3. 历史清理：缩短保留期（如 0）后重启 Server，终态超期作业与超期日志被删，Pending / Claimed 保留。
 4. 升级 0.14 → 0.15：不弹完成弹窗、不自动启动服务 / 程序；用户数据保留（0.14 的 `%LOCALAPPDATA%` 数据不迁移，当前无业务使用）。
 5. `dotnet test` / `pnpm test` 全绿；双 MSI 可独立安装、同机可联调。
@@ -220,3 +220,60 @@
 8. 🟡 8（空态文案）：轻处理——F6 空态按默认值写死「终态作业默认保留 30 天，由服务端自动清理」。
 9. 💡 建议：全部采纳——状态灯区分「服务端未连接（单机模式可用）」/「本机客户端不可用」；连接徽标与状态灯加图例；作业历史手动刷新不轮询。
 10. ✅ 核对通过项：无需修改。
+
+## 附二：第二轮审阅意见（hermes 追加，2026-08-11）
+
+> 供审核者评审；本节保留作为审阅记录，不视为规格正文。
+
+已拉取定稿提交 7cbd300 并完整重读修订后全文（正文 + 首轮附录 + 审核者答复）。结论：首轮 5 项确认清单全部落实、可接受；修订引入 1 处实施期会咬实现的契约含糊（B10 形状声明）与 4 处小不一致，如下。
+
+### 首轮意见落实核对（答复 1-10 → 正文）
+
+- 答复 1（B10 WinHost `GET /api/jobs`）→ §3 B10 ✓；答复 2（Server limit）→ §3 B10 ✓。
+- 答复 3（本机设备识别 b+a 兜底）→ §4 F5 + §3 B6（host/config 返回 deviceId/deviceName）✓；答复 4（立即生效）→ §4 F2 + §3 B6 验收 ✓。
+- 答复 5（缺失 / 损坏返回 200+默认 + 移除方案 B）→ §3 B6 + §4 F2 ✓；答复 6（settings.test.ts）→ §4 F7 ✓；答复 7（README）→ §3 B1 ✓。
+- 答复 8（空态文案写死）→ §4 F6 ✓（但见第 10 条新问题）；答复 9（💡 全部采纳）→ §4 F2 状态灯文案、F5 徽标图例 ✓；答复 10（核对项）→ 无修改 ✓。
+- 首轮附录与「附：审核者答复」均保留完整 ✓。
+
+### 修订引入的新问题
+
+7. 🟡 **B10「形状与 Server 兼容：JobView[]」不成立，实施期会咬实现**。WinHost 现有 JobView（WinHost/Api/Contracts.cs:27-34）只有 JobId / RequestId / Status / TotalItems / CompletedItems / Items / PrintImageDir / PrintImageCount，**没有 CreatedAt / TargetDeviceId / FailedItems / ErrorMessage**；而 Server 的 ServerJobView（Server/Contracts.cs:31-41）含后四者。F6 列表列「时间 / 目标设备 / 完成-失败张数 / 失败原因」在单机降级（localBase `GET /api/jobs`）时全部无数据源（时间列连字段都没有）。建议拍板：a) B10 明确 WinHost `GET /api/jobs` 返回扩展形状——补 CreatedAt（LabelJob 已有该字段，LabelJob.cs:16，DTO 映射加一行即可），FailedItems / ErrorMessage 从 Items 派生，TargetDeviceId 返回 null / 本机标识（前端显示「本机」或「—」）；或 b) 前端降级模式对应列显示「—」，并在 F6 写明哪些列降级为空。推荐 a（后端派生成本低，前端列表组件保持单一映射）。
+
+8. 🟡 **F1 HostConfig 类型漏 deviceId / deviceName**。B6（返回三字段）、§5 表、F5（`localApi.getHostConfig().deviceId` 匹配依据）均使用三字段，F1 类型仍只写 `HostConfig { serverUrl: string }`（§4 F1 第 2 行）——类型定义与用法不一致，建议补全。
+
+9. 🟡 **§6 验收 2 残留「重启保持」表述**。B6 验收已改「保存后立即生效（无需重启），重启客户端地址保持」，§6 验收 2 仍写「可改服务端地址（机器级，重启保持）」——建议统一为「保存后立即生效、重启保持」。
+
+10. 🟡 **F6 空态文案在单机降级模式不成立**。「终态作业默认保留 30 天，由服务端自动清理」仅对 Server 队列成立；单机降级显示的是本机 WinHost 作业，本机队列无自动清理（B5 清理只挂在 Server 的 DataCleanupService）。答复 8「写死」可接受，但建议按模式区分：服务端模式显示保留期提示，单机模式不显示（或「本机作业不自动清理」）。
+
+11. 🟡 **§5 表 limit 描述未同步「上限 500」（轻）**。B10 与 ARCHITECTURE-SPLIT §3 均写「默认 100，上限 500」，§5 表仍只写「默认 100」——前端固定传 100 无实际影响，建议统一。
+
+### ✅ 修订质量检查
+
+- 编号无重排：B1-B10 顺序正确；F1-F7 无重复标题。
+- 处置与正文一一对应：答复 1-10 均在 §3 / §4 找到落地（除上述 8-11 残留）。
+- 首轮附录（153 行起）与「附：审核者答复」保留完整，未删除。
+- 验收 2 已补「单机降级时作业历史显示本机作业列表」，与 B10 呼应 ✓。
+- host/config 三字段在 B6 / §5 / ARCHITECTURE-SPLIT §3 / DESIGN #57 四处一致（除 F1 类型，见第 8 条）。
+
+### 结论
+
+无阻塞性异议，可定稿；第 7 条需审核者拍板（a / b），第 8-11 条为正文小修订，建议随第 7 条一次修订到位。确认后前端按最终版开工。
+
+### 待审核者确认清单
+
+1. 第 7 条：WinHost `GET /api/jobs` 返回扩展形状（a，推荐）还是前端降级列留空（b）？
+2. 第 8 条：F1 补 `HostConfig.deviceId / deviceName`？
+3. 第 9-11 条：正文统一（§6 验收 2 措辞、F6 空态文案按模式区分、§5 表补上限 500）？
+
+## 附三：审核者答复（第二轮，2026-08-11，规格定稿）
+
+对 hermes 第二轮审阅意见的逐条处置（已并入正文 §3 / §4 / §5 / §6）：
+
+1. 🟡 7（B10 形状不成立）：采用方案 a——WinHost `GET /api/jobs` 返回扩展 JobView：新增 `CreatedAt`（LabelJob.CreatedAt）、`FailedItems` / `ErrorMessage`（从 Items 派生）、`TargetDeviceId` 返回 null（前端显示「本机」）；前端作业历史列保持单一映射。
+2. 🟡 8（F1 HostConfig 类型漏字段）：采纳——`HostConfig { serverUrl, deviceId, deviceName }`。
+3. 🟡 9（§6 验收 2 措辞）：采纳——统一为「保存后立即生效、重启保持」。
+4. 🟡 10（F6 空态文案单机不成立）：采纳——按模式区分：服务端模式「终态作业默认保留 30 天，由服务端自动清理」，单机模式「本机作业不自动清理」。
+5. 🟡 11（§5 表 limit 上限未同步）：采纳——补「默认 100 上限 500」。
+6. ✅ 修订质量检查：无需修改。
+
+第二轮无阻塞性异议，本文档为最终定稿。
