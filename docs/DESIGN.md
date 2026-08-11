@@ -182,3 +182,4 @@ flowchart LR
 - Studio 2.0 实时预览依赖本地渲染（共享库 `LabelFrame.Rendering`，GDI + ZXing），与打印端同坐标/同解析；拖拽节流刷新。字体渲染差异（GDI vs 打印机）以真机抽查为准（未决）。
 - Web 前端增强字段与后端契约的差距（hermes 交付报告决策 #6，已由迭代 13 解决，2026-08-10）：文本 `wrap / lineHeight / valign / fitMode / fontFamily`、条码 `displayValue / 码制`、二维码 `qrEcc / qrMargin` 等前端属性已通过迭代 13 契约扩展补齐后端字段（决策 #47，后端已实施）；`barcodeFormat` 固定 CODE128 不持久化；前端 convert.ts 字段映射已完成（commit 8294bef），文档已归档，用户测试验收待执行。
 - 其他业务应用按 IP 查找设备并触发打印（用户提出，已排期迭代 20，决策 #61/#62/#63）：服务端记录设备 `last_ip`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 支持 `targetIp`；业务系统用 deviceId（或 targetIp）+ templateName + labels 提交作业，服务端路由到对应客户端打印（PDA / PC 只要本机跑客户端服务即无差异）。IP 为便捷查找而非身份（DHCP / NAT / VPN 会变化，deviceId 仍是稳定键）；服务端不做打印机直连，「后端打印」= 后端触发、客户端执行（详见 docs/ITERATION-20-SPEC.md）。
+- 迭代 20 Server UI「仅在线设备可选」的提交竞态（K3，2026-08-11）：已拍板前端提交时现拉校验在线（掉线提示并禁止提交、作业不排队），属尽力而为，选择与提交之间仍有极小竞态窗口；如需彻底消除，需后端在 `SubmitJobAsync` 原子校验设备在线（离线即拒绝），将改变「设备离线作业暂存排队」语义（决策 #22），待后续迭代评估（未决）。
