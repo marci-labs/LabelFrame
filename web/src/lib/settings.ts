@@ -1,4 +1,6 @@
-// 设置持久化（sessionStorage 之外的浏览器存储）：后端地址。
+// 设置持久化（sessionStorage 之外的浏览器存储）：服务端地址 localStorage 兜底。
+// 迭代 18（F2）：serverBase 优先级 = 机器级配置（GET /api/host/config）> localStorage 兜底 > 默认 127.0.0.1:53961；
+// 移除迭代 15 方案 B 残留检测（比较基准已随 DEFAULT_BASE_URL 变更失效）。
 // 显式 window.localStorage + typeof 守卫：Node 26 实验性全局 localStorage 会遮蔽 jsdom 注入版。
 
 import { DEFAULT_BASE_URL } from './api/types'
@@ -13,20 +15,14 @@ function getLocalStorage(): Storage | null {
   }
 }
 
+/** localStorage 兜底的服务端地址（无存储值返回默认 127.0.0.1:53961）。 */
 export function getBaseUrl(): string {
   const storage = getLocalStorage()
   const v = storage ? storage.getItem(KEY) : null
-  const origin = typeof window !== 'undefined' ? window.location.origin : null
   if (v && v.trim()) {
-    const cleaned = v.trim().replace(/\/+$/, '')
-    // 方案 B（迭代 15 附九第 2 条）：旧版保存的默认地址（127.0.0.1）在非本机页面来源下视为残留，忽略并返回页面来源
-    if (origin && cleaned === DEFAULT_BASE_URL && origin !== DEFAULT_BASE_URL) {
-      return origin
-    }
-    return cleaned
+    return v.trim().replace(/\/+$/, '')
   }
-  // 无存储值：默认返回页面自身来源（PDA 远程访问等场景）；Node 环境（无 window）回退默认地址
-  return origin ?? DEFAULT_BASE_URL
+  return DEFAULT_BASE_URL
 }
 
 export function setBaseUrl(url: string): void {

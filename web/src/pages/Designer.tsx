@@ -3,7 +3,7 @@
 // 状态：stateRef 为同步真相（事件回调内先更新再 setState），历史为快照式。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { api } from '../lib/api/client'
+import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { TemplatePackage } from '../lib/api/types'
 import type { DesignerRequest } from '../state/types'
@@ -33,6 +33,9 @@ interface DesignerProps {
 
 export function Designer({ request, onClose }: DesignerProps) {
   const app = useApp()
+  const { serverMode } = app
+  /** 业务 API 跟随模式：服务端 = serverApi（模板中心）；单机降级 = localApi（本机 WinHost 模板库）。 */
+  const biz = serverMode === 'server' ? serverApi : localApi
   const [state, setState] = useState<DesignState | null>(null)
   const [selected, setSelected] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'fit' | 'preview'>('fit')
@@ -108,7 +111,7 @@ export function Designer({ request, onClose }: DesignerProps) {
       return
     }
     let alive = true
-    void api
+    void biz
       .getTemplate(request.name!)
       .then((pkg) => {
         if (!alive) return
@@ -457,7 +460,7 @@ export function Designer({ request, onClose }: DesignerProps) {
           // 迭代 12：不传 testData——由后端从元素 previewValue 自动派生（读-改-写，旧值不丢）
           layout: toLayout(finalName, contractName, version, s.paperW, s.paperH, s.elements),
         }
-        await api.saveTemplate(pkg)
+        await biz.saveTemplate(pkg)
         app.setStatus(`模板「${finalName}」已保存。`)
         onClose()
       } catch (err) {
@@ -466,7 +469,7 @@ export function Designer({ request, onClose }: DesignerProps) {
         setSaving(false)
       }
     },
-    [app, group, onClose, request.kind],
+    [app, biz, group, onClose, request.kind],
   )
 
   const save = useCallback(() => {
@@ -478,7 +481,7 @@ export function Designer({ request, onClose }: DesignerProps) {
     const isNew = request.kind === 'new'
     const renamed = !isNew && trimmed !== initialNameRef.current
     if (isNew || renamed) {
-      void api
+      void biz
         .listTemplates()
         .then((list) => {
           if (list.some((t) => t.name === trimmed)) setConfirmOverwrite(true)
@@ -488,7 +491,7 @@ export function Designer({ request, onClose }: DesignerProps) {
     } else {
       void doSave(trimmed)
     }
-  }, [app, doSave, name, request.kind])
+  }, [app, biz, doSave, name, request.kind])
 
   const fields = useMemo(() => (state ? deriveFields(state.elements) : []), [state])
 

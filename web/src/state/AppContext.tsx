@@ -1,10 +1,14 @@
-// 全局 UI 状态：连接状态（healthz）、DataPrint 会话草稿、状态栏消息、日志
-// 迭代 17：移除连接管理（transportConfig / transport，迁至客户端本机）；healthz 仅用于连接探测。
+// 全局 UI 状态：连接状态（服务端 healthz + serverMode）、本机连接（transportConfig）、机器级配置、
+// DataPrint 会话草稿、状态栏消息、日志
+// 迭代 18（F2）：serverBase 优先级 = 机器级配置（GET /api/host/config）> localStorage 兜底 > 默认 127.0.0.1:53961；
+// 启动加载机器级配置后立即生效；保存服务端地址 = setHostConfig + 内存更新 + 重新探测（无需重启）。
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { api } from '../lib/api/client'
+import { localApi, serverApi, setServerBaseUrl } from '../lib/api/client'
+import type { TransportConfig } from '../lib/api/types'
 import { getBaseUrl, setBaseUrl as persistBaseUrl } from '../lib/settings'
+import { probeHealthz } from '../lib/api/client'
 import type { PrintDraft, StorageLike } from './draft'
 import { applyDraftValue, loadPrintDraft, savePrintDraft } from './draft'
 
@@ -13,9 +17,21 @@ export interface LogLine {
   msg: string
 }
 
+/** 业务 API 模式：server = 服务端（模板 / 作业中心）；standalone = 单机降级（本机 WinHost 全套 API）。 */
+export type ServerMode = 'unknown' | 'server' | 'standalone'
+
 interface AppContextValue {
   connected: boolean
+  /** 生效中的服务端地址（机器级配置 / localStorage 兜底 / 默认）。 */
   baseUrl: string
+  /** 业务 API 模式（healthz 探测服务端地址得出）。 */
+  serverMode: ServerMode
+  /** 本机 Client 的 deviceId（机器级配置；旧客户端为 null，F5 回退第一台在线）。 */
+  hostDeviceId: string | null
+  /** healthz 的传输模式（旧字段，兼容展示兜底）。 */
+  transport: string | null
+  /** GET /api/transport 结果（mode + params，本机连接），切换成功后立即更新。 */
+  transportConfig: TransportConfig | null
   statusMsg: string
   logs: LogLine[]
   drawerOpen: boolean
@@ -24,10 +40,14 @@ interface AppContextValue {
   setDrawerOpen: (open: boolean) => void
   log: (msg: string) => void
   setStatus: (msg: string) => void
-  /** 探测后端连接（healthz）。 */
+  /** 探测服务端连接（healthz，5s 超时）。 */
   checkConnection: () => Promise<boolean>
-  /** 更新后端地址并重新探测。 */
-  changeBaseUrl: (url: string) => void
+  /** 探测任意地址的 /healthz（设置页「测试连接」用输入值，不保存）。 */
+  checkUrl: (url: string) => Promise<boolean>
+  /** 保存服务端地址（机器级配置持久化 + 立即生效 + 重新探测）；旧客户端回退 localStorage。 */
+  changeBaseUrl: (url: string) => Promise<boolean>
+  /** 连接切换成功后立即用响应 config 更新全局状态（不依赖 healthz 轮询）。 */
+  applyTransportConfig: (cfg: TransportConfig) => void
   clearLogs: () => void
   setDraftSelected: (name: string) => void
   setDraftValue: (template: string, key: string, value: string) => void
@@ -50,7 +70,11 @@ function getSessionStorage(): StorageLike | undefined {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [baseUrl, setBaseUrlState] = useState(getBaseUrl())
+  const [serverMode, setServerMode] = useState<ServerMode>('unknown')
   const [connected, setConnected] = useState(false)
+  const [hostDeviceId, setHostDeviceId] = useState<string | null>(null)
+  const [transport, setTransport] = useState<string | null>(null)
+  const [transportConfig, setTransportConfig] = useState<TransportConfig | null>(null)
   const [statusMsg, setStatusMsg] = useState('就绪')
   const [logs, setLogs] = useState<LogLine[]>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -79,11 +103,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (pendingRef.current) return pendingRef.current
     pendingRef.current = (async () => {
       try {
-        await api.healthz()
+        await serverApi.healthz()
         setConnected(true)
+        setServerMode('server')
         return true
       } catch {
         setConnected(false)
+        setServerMode('standalone')
         return false
       } finally {
         pendingRef.current = null
@@ -92,14 +118,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return pendingRef.current
   }, [])
 
+  const checkUrl = useCallback((url: string): Promise<boolean> => probeHealthz(url), [])
+
+  // 启动：读机器级配置（serverUrl 优先）→ 本机连接配置 → 探测服务端
+  useEffect(() => {
+    let on = true
+    void localApi
+      .getHostConfig()
+      .then((cfg) => {
+        if (!on) return
+        setServerBaseUrl(cfg.serverUrl)
+        setBaseUrlState(cfg.serverUrl)
+        setHostDeviceId(cfg.deviceId ?? null)
+        setStatus(`已读取本机配置：服务端 ${cfg.serverUrl}。`)
+      })
+      .catch(() => {
+        if (!on) return
+        // 旧客户端（0.14 无 /api/host/config）：回退 localStorage 兜底（getBaseUrl 已含默认值）
+        setStatus('本机配置接口不可用，使用浏览器本地保存的服务端地址。')
+      })
+      .finally(() => {
+        if (on) void checkConnection()
+      })
+    void localApi
+      .getTransport()
+      .then((cfg) => {
+        if (!on) return
+        setTransportConfig(cfg)
+        setTransport(cfg.mode)
+      })
+      .catch(() => {
+        // 旧客户端无 /api/transport：忽略，保持现状
+      })
+    return () => {
+      on = false
+    }
+  }, [checkConnection, setStatus])
+
   const changeBaseUrl = useCallback(
-    (url: string) => {
-      persistBaseUrl(url)
-      setBaseUrlState(getBaseUrl())
-      void checkConnection()
+    async (url: string): Promise<boolean> => {
+      const cleaned = url.trim().replace(/\/+$/, '')
+      try {
+        await localApi.setHostConfig({ serverUrl: cleaned })
+        // 立即生效：内存更新（机器级配置为唯一事实来源；localStorage 仅兜底）→ 重新探测 → 页面随 baseUrl 重拉
+        setServerBaseUrl(cleaned)
+        setBaseUrlState(cleaned)
+        persistBaseUrl(cleaned)
+        setStatus(`服务端地址已保存并生效：${cleaned}`)
+        void checkConnection()
+        return true
+      } catch {
+        // 旧客户端 / 无本机配置接口：回退浏览器本地保存
+        setServerBaseUrl(cleaned)
+        setBaseUrlState(cleaned)
+        persistBaseUrl(cleaned)
+        setStatus('本机配置接口不可用，已使用浏览器本地保存。')
+        void checkConnection()
+        return false
+      }
     },
-    [checkConnection],
+    [checkConnection, setStatus],
   )
+
+  const applyTransportConfig = useCallback((cfg: TransportConfig) => {
+    setTransportConfig(cfg)
+    setTransport(cfg.mode)
+  }, [])
 
   const clearLogs = useCallback(() => setLogs([]), [])
 
@@ -123,6 +207,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => ({
       connected,
       baseUrl,
+      serverMode,
+      hostDeviceId,
+      transport,
+      transportConfig,
       statusMsg,
       logs,
       drawerOpen,
@@ -131,7 +219,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       log,
       setStatus,
       checkConnection,
+      checkUrl,
       changeBaseUrl,
+      applyTransportConfig,
       clearLogs,
       setDraftSelected,
       setDraftValue,
@@ -141,6 +231,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       connected,
       baseUrl,
+      serverMode,
+      hostDeviceId,
+      transport,
+      transportConfig,
       statusMsg,
       logs,
       drawerOpen,
@@ -148,7 +242,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       log,
       setStatus,
       checkConnection,
+      checkUrl,
       changeBaseUrl,
+      applyTransportConfig,
       clearLogs,
       setDraftSelected,
       setDraftValue,

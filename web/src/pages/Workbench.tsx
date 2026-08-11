@@ -1,7 +1,8 @@
 // 工作台：模板列表（分组过滤）/ 新建 / 编辑 / 删除 / 导出 / 导入
+// 迭代 18：业务 API 跟随模式——服务端 = serverApi（模板中心）；单机降级 = localApi（本机 WinHost 模板库）。
 
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '../lib/api/client'
+import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { TemplateSummary } from '../lib/api/types'
 import { useApp } from '../state/AppContext'
@@ -11,6 +12,9 @@ import { Modal } from '../components/Modal'
 
 export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRequest) => void }) {
   const app = useApp()
+  const { serverMode } = app
+  /** 业务 API 跟随模式（unknown 时不拉取，待探测完成）。 */
+  const biz = serverMode === 'server' ? serverApi : localApi
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
   const [groups, setGroups] = useState<string[]>([])
   const [group, setGroup] = useState('')
@@ -23,7 +27,7 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
     setLoading(true)
     setError(null)
     try {
-      const list = await api.listTemplates()
+      const list = await biz.listTemplates()
       setTemplates(list)
       setGroups([...new Set(list.map((t) => t.group))].sort())
     } catch (err) {
@@ -31,11 +35,12 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [biz])
 
   useEffect(() => {
+    if (serverMode === 'unknown') return
     void load()
-  }, [load])
+  }, [serverMode, load])
 
   const filtered = group ? templates.filter((t) => t.group === group) : templates
 
@@ -43,7 +48,7 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
     if (!deleting) return
     setBusy('delete')
     try {
-      await api.deleteTemplate(deleting.name)
+      await biz.deleteTemplate(deleting.name)
       app.setStatus(`已删除模板「${deleting.name}」。`)
       setDeleting(null)
       void load()
@@ -57,7 +62,7 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
   const doExport = async (t: TemplateSummary) => {
     setBusy(t.name)
     try {
-      const { blob, filename } = await api.exportTemplate(t.name)
+      const { blob, filename } = await biz.exportTemplate(t.name)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -77,7 +82,7 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
   const doImport = async (file: File) => {
     setBusy('import')
     try {
-      const name = await api.importTemplate(file)
+      const name = await biz.importTemplate(file)
       app.setStatus(`已导入模板「${name}」。`)
       void load()
     } catch (err) {
@@ -129,10 +134,10 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
       )}
 
       <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
-        {loading ? (
+        {loading || serverMode === 'unknown' ? (
           <div className="empty">
             <Icon name="refresh" />
-            <div className="empty-title">加载中…</div>
+            <div className="empty-title">{serverMode === 'unknown' ? '正在探测连接…' : '加载中…'}</div>
           </div>
         ) : templates.length === 0 ? (
           <div className="empty">

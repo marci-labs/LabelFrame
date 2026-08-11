@@ -1,9 +1,13 @@
 // API 契约 DTO（docs/FRONTEND-SPEC.md §4，与后端实现对齐）
+// 迭代 18（F1）：双 base——serverApi（服务端地址）/ localApi（页面来源 = 本机 LabelFrame Client）。
 
 import type { BackendContract, BackendElement, BackendLayout } from '../design/convert'
 
-/** 后端地址（设置页配置，默认 127.0.0.1:53960）。 */
-export const DEFAULT_BASE_URL = 'http://127.0.0.1:53960'
+/** 服务端地址默认值（迭代 18：语义改为「服务端地址」，默认 127.0.0.1:53961）。 */
+export const DEFAULT_BASE_URL = 'http://127.0.0.1:53961'
+
+/** 本机客户端（WinHost）默认地址：localApi 无 window（Node 环境）时的回退。 */
+export const DEFAULT_LOCAL_BASE_URL = 'http://127.0.0.1:53960'
 
 export interface Healthz {
   service: string
@@ -47,6 +51,8 @@ export interface JobView {
   /** Server：失败张数与错误消息（无逐张明细）。 */
   failedItems?: number
   errorMessage?: string
+  /** 迭代 18（B10）：WinHost 扩展 JobView 与 Server 对齐——创建时间（作业历史「时间」列；防御性声明为可选）。 */
+  createdAt?: string
   /** WinHost：逐张明细（Server 不返回）。 */
   items?: JobItem[]
   /** Log 模拟打印：PNG 目录（仅 WinHost Log 连接时有值） */
@@ -93,6 +99,68 @@ export interface SubmitJobRequest {
     layout: BackendLayout
   }
   labels: { data: Record<string, string> }[]
+}
+
+// ── 连接管理（迭代 15 §6.2 恢复，迭代 18：全部走 localApi，接口 0.14 已在未删）──
+
+export type TransportMode = 'Log' | 'Tcp' | 'WindowsDriver' | 'Zebra'
+export type ZebraKind = 'Tcp' | 'Usb' | 'Driver'
+
+/** 传输参数：只含当前模式所需字段，未使用字段后端返回默认 / 空，前端不展示。 */
+export interface TransportParams {
+  tcpHost?: string
+  tcpPort?: number
+  printerName?: string
+  zebraKind?: ZebraKind
+  zebraUsbName?: string
+}
+
+export interface TransportConfig {
+  mode: TransportMode
+  params: TransportParams
+  availableModes?: TransportMode[]
+}
+
+/** POST /api/transport 请求体（参数平铺，testOnly 由测试连接填充）。 */
+export interface TransportApplyRequest {
+  mode: TransportMode
+  tcpHost?: string
+  tcpPort?: number
+  printerName?: string
+  zebraKind?: ZebraKind
+  zebraUsbName?: string
+  testOnly?: boolean
+}
+
+/** POST /api/transport 响应：成功与失败（200）统一返回 config = 当前生效连接。 */
+export interface TransportResult {
+  ok: boolean
+  message: string
+  config: TransportConfig
+}
+
+// ── 本机客户端（迭代 18 F1/F2：GET/POST /api/host/config，机器级持久化）──
+
+/** 机器级配置（B6：settings.json 缺失 / 损坏时 GET 返回 200 + 默认 serverUrl）。
+ *  GET 响应含 deviceId / deviceName；POST 只更新 serverUrl（deviceId / deviceName 由客户端自身提供，后端忽略请求体中的值）。 */
+export interface HostConfig {
+  serverUrl: string
+  deviceId?: string
+  deviceName?: string
+}
+
+/** GET /api/printer/status（迭代 15 恢复，F4）。 */
+export interface PrinterStatus {
+  isOnline: boolean
+  isPaperOut: boolean
+  isPaused: boolean
+  message: string
+}
+
+/** POST /api/printer/test 响应。 */
+export interface PrinterTestResult {
+  sent: boolean
+  bytes: number
 }
 
 /** 后端错误响应（ErrorView）。 */

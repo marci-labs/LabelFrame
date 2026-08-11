@@ -9,12 +9,14 @@ import { Workbench } from './pages/Workbench'
 import { Designer } from './pages/Designer'
 import { DataPrint } from './pages/DataPrint'
 import { PdaLogs } from './pages/PdaLogs'
+import { JobHistory } from './pages/JobHistory'
 import { Settings } from './pages/Settings'
 
 const TABS: { id: TabId; label: string; icon: IconName }[] = [
   { id: 'workbench', label: '工作台', icon: 'workbench' },
   { id: 'designer', label: '设计器', icon: 'designer' },
   { id: 'data', label: '数据与打印', icon: 'data' },
+  { id: 'jobs', label: '作业历史', icon: 'history' },
   { id: 'logs', label: 'PDA 日志', icon: 'logs' },
   { id: 'settings', label: '设置', icon: 'settings' },
 ]
@@ -61,7 +63,7 @@ function Shell() {
               </button>
             ))}
           </div>
-          <div className="nav-foot" title={app.connected ? '已连接' : '未连接'}>
+          <div className="nav-foot" title={app.connected ? '服务端已连接' : '服务端未连接（单机模式可用）'}>
             <span className={'status-dot' + (app.connected ? ' on' : '')} />
           </div>
         </nav>
@@ -71,6 +73,7 @@ function Shell() {
           {tab === 'designer' && designerReq && <Designer key={designerReq.name ?? 'new'} request={designerReq} onClose={closeDesigner} />}
           {tab === 'designer' && !designerReq && <DesignerEmpty onNew={() => openDesigner({ kind: 'new' })} />}
           {tab === 'data' && <DataPrint />}
+          {tab === 'jobs' && <JobHistory />}
           {tab === 'logs' && <PdaLogs />}
           {tab === 'settings' && <Settings />}
         </main>
@@ -79,7 +82,7 @@ function Shell() {
       <footer className="statusbar">
         <span className={'conn' + (app.connected ? ' on' : ' off')}>
           <span className={'status-dot' + (app.connected ? ' on' : '')} />
-          {app.connected ? '已连接' : '未连接'}
+          {app.connected ? '服务端已连接' : '服务端未连接（单机模式可用）'}
         </span>
         <span className="msg">{app.statusMsg}</span>
         <span className="meta">

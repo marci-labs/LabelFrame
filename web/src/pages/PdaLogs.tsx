@@ -1,14 +1,19 @@
 // PDA 日志页：设备 / 时间 / 内容，每 5 秒轮询
+// 迭代 18：业务 API 跟随模式——服务端 = serverApi（日志中心）；单机降级 = localApi（本机 WinHost 日志）。
 
 import { useEffect, useState } from 'react'
-import { api } from '../lib/api/client'
+import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { LogEntry } from '../lib/api/types'
+import { useApp } from '../state/AppContext'
 import { Icon } from '../components/Icon'
 
 const POLL_MS = 5000
 
 export function PdaLogs() {
+  const { serverMode } = useApp()
+  /** 业务 API 跟随模式（unknown 时不轮询，待探测完成）。 */
+  const biz = serverMode === 'server' ? serverApi : localApi
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [devices, setDevices] = useState<string[]>([])
   const [filter, setFilter] = useState('')
@@ -16,6 +21,7 @@ export function PdaLogs() {
   const [running, setRunning] = useState(true)
 
   useEffect(() => {
+    if (serverMode === 'unknown') return
     let stopped = false
     let timer: ReturnType<typeof setTimeout> | null = null
 
@@ -23,7 +29,7 @@ export function PdaLogs() {
       try {
         // 全量拉取（后端返回 id DESC 最新在前，上限 500 条）；
         // 数据量小、5 秒一次，比 since 增量更可靠（避免时间戳边界重复/遗漏）
-        const list = await api.getLogs(filter || undefined)
+        const list = await biz.getLogs(filter || undefined)
         if (!stopped) {
           setLogs(list)
           setError(null)
@@ -40,7 +46,7 @@ export function PdaLogs() {
       stopped = true
       if (timer) clearTimeout(timer)
     }
-  }, [filter, running]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filter, running, serverMode, biz]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 设备下拉：从当前日志推导
   useEffect(() => {

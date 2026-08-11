@@ -3,9 +3,10 @@
 // 调试模式独立开关——开：打印按钮改为后端渲染出图下载（单张 PNG / 批量 zip），不建作业不发驱动。
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api } from '../lib/api/client'
+import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { DeviceView, JobView, SubmitJobRequest, TemplatePackage, TemplateSummary } from '../lib/api/types'
+import { formatTransport } from '../lib/transport'
 import { downloadBlob } from '../lib/download'
 import { fromBackendElements } from '../lib/design/convert'
 import { deriveFields } from '../lib/design/fields'
@@ -31,8 +32,8 @@ const JOB_STATUS_LABEL: Record<string, string> = {
 const jobLabel = (s: string) => JOB_STATUS_LABEL[s] ?? s
 const isTerminal = (s: string) => s === 'Completed' || s === 'Failed' || s === 'Cancelled'
 
-/** 作业轮询（1.5s，终端状态停止）。 */
-function useJobPolling(jobId: string | null) {
+/** 作业轮询（1.5s，终端状态停止）；API 跟随模式（服务端 / 单机降级）。 */
+function useJobPolling(jobId: string | null, biz: typeof serverApi) {
   const [job, setJob] = useState<JobView | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,7 +43,7 @@ function useJobPolling(jobId: string | null) {
     let timer: ReturnType<typeof setTimeout> | null = null
     const tick = async () => {
       try {
-        const j = await api.getJob(jobId)
+        const j = await biz.getJob(jobId)
         if (stopped) return
         setJob(j)
         setError(null)
@@ -58,13 +59,13 @@ function useJobPolling(jobId: string | null) {
       stopped = true
       if (timer) clearTimeout(timer)
     }
-  }, [jobId])
+  }, [jobId, biz])
 
   const retry = useCallback(
     async (index: number): Promise<boolean> => {
       if (!jobId) return false
       try {
-        const j = await api.retryJobItem(jobId, index)
+        const j = await biz.retryJobItem(jobId, index)
         setJob(j)
         return true
       } catch (err) {
@@ -72,7 +73,7 @@ function useJobPolling(jobId: string | null) {
         return false
       }
     },
-    [jobId],
+    [jobId, biz],
   )
 
   return { job, error, retry }
@@ -210,30 +211,36 @@ export function DataPrint() {
   const [importing, setImporting] = useState(false)
 
   const [submitting, setSubmitting] = useState(false)
-  const { job, error: jobError, retry } = useJobPolling(printDraft.jobId)
 
-  // 目标设备（迭代 17）：GET /api/devices 成功 = 服务端模式（显示选择、提交带 targetDeviceId）；
+  // 目标设备（迭代 17/18 F5）：GET /api/devices 成功 = 服务端模式（显示选择、提交带 targetDeviceId）；
   // 404 / 失败 = 单机 WinHost 降级（隐藏选择、提交不带 targetDeviceId）。
+  // 迭代 18：默认选中本机设备（机器级配置 deviceId 匹配在线列表），未命中回退第一台在线。
   const [deviceMode, setDeviceMode] = useState<'loading' | 'server' | 'standalone'>('loading')
   const [devices, setDevices] = useState<DeviceView[]>([])
   const [targetDeviceId, setTargetDeviceId] = useState('')
 
+  /** 业务 API 跟随模式：服务端 = serverApi（模板 / 作业中心）；单机降级 = localApi（本机 WinHost 全套 API）。 */
+  const biz = deviceMode === 'server' ? serverApi : localApi
+  const { job, error: jobError, retry } = useJobPolling(printDraft.jobId, biz)
+
   useEffect(() => {
     let cancelled = false
-    void api
-      .listDevices()
-      .then((list) => {
+    void Promise.all([serverApi.listDevices().catch(() => null), localApi.getHostConfig().catch(() => null)]).then(
+      ([list, cfg]) => {
         if (cancelled) return
-        setDevices(list)
-        setDeviceMode('server')
-        // 默认选中第一台在线设备（少点一次；全部离线时留空由用户选择）
-        setTargetDeviceId(list.find((d) => d.status === 'Online')?.deviceId ?? '')
-      })
-      .catch(() => {
-        if (cancelled) return
-        // 单机模式：旧 WinHost 无 /api/devices（404），或后端不可达——隐藏设备选择，正常提交
-        setDeviceMode('standalone')
-      })
+        if (list) {
+          setDevices(list)
+          setDeviceMode('server')
+          const online = list.filter((d) => d.status === 'Online')
+          // 本机设备优先（hostConfig.deviceId 匹配），未命中回退第一台在线（少点一次；全部离线时留空由用户选择）
+          const mine = cfg ? online.find((d) => d.deviceId === cfg.deviceId) : undefined
+          setTargetDeviceId(mine?.deviceId ?? online[0]?.deviceId ?? '')
+        } else {
+          // 单机模式：旧 WinHost 无 /api/devices（404），或服务端不可达——隐藏设备选择，正常提交
+          setDeviceMode('standalone')
+        }
+      },
+    )
     return () => {
       cancelled = true
     }
@@ -243,26 +250,27 @@ export function DataPrint() {
   const debugMode = printDraft.debugMode
 
   useEffect(() => {
-    void api
+    if (deviceMode === 'loading') return
+    void biz
       .listTemplates()
       .then((list) => {
         setTemplates(list)
         if (list.length > 0 && !selectedName) app.setDraftSelected(list[0].name)
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : '加载模板列表失败。'))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [deviceMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!selectedName) return
     setLoading(true)
     setPkg(null)
     setError(null)
-    void api
+    void biz
       .getTemplate(selectedName)
       .then((p) => setPkg(p))
       .catch((err) => setError(err instanceof ApiError ? err.message : '加载模板失败。'))
       .finally(() => setLoading(false))
-  }, [selectedName])
+  }, [selectedName, deviceMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 契约字段键：contract.fields 优先，空则从版式推导
   const fieldKeys = useMemo(() => {
@@ -317,7 +325,7 @@ export function DataPrint() {
     if (!req) return
     setSubmitting(true)
     try {
-      const j = await api.submitJob(req)
+      const j = await biz.submitJob(req)
       app.setDraftJobId(j.jobId)
       app.setStatus(`作业已提交（${labels.length} 张，ID ${j.jobId.slice(0, 8)}）。`)
     } catch (err) {
@@ -332,7 +340,7 @@ export function DataPrint() {
     if (!req) return
     setSubmitting(true)
     try {
-      const { blob, filename } = batch ? await api.renderImages(req) : await api.renderImage(req)
+      const { blob, filename } = batch ? await biz.renderImages(req) : await biz.renderImage(req)
       downloadBlob(blob, filename)
       app.setStatus(`调试图片已下载：${filename}`)
     } catch (err) {
@@ -367,7 +375,7 @@ export function DataPrint() {
     setImporting(true)
     setError(null)
     try {
-      const r = await api.importExcel(file)
+      const r = await biz.importExcel(file)
       if (r.headers.length === 0) {
         app.setStatus('Excel 未读取到表头（第一行作为表头）。')
         return
@@ -432,6 +440,24 @@ export function DataPrint() {
             ev.target.value = ''
           }}
         />
+      </div>
+
+      {/* 连接状态徽标（迭代 18 F5）：本机连接（Client 传输方式）与服务端连通（模板 / 作业中心）各自含义 */}
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}
+        title="本机连接：LabelFrame Client 的打印机连接方式（数据来自本机）；服务端连通：模板库 / 作业队列所在 Server"
+      >
+        <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          本机连接
+          <span className="badge">{formatTransport(app.transportConfig) || app.transport || '未知'}</span>
+        </span>
+        <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          服务端
+          <span className={'conn' + (app.connected ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span className={'status-dot' + (app.connected ? ' on' : '')} />
+            {app.connected ? '已连接' : '未连接（单机模式可用）'}
+          </span>
+        </span>
       </div>
 
       {deviceMode === 'server' && (

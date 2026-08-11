@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 // 迭代 15 §5.4：draft 保留（切 tab / 刷新 / 标签页隔离 / Excel 不保留）+ 调试开关下按钮行为与下载（单张 PNG / zip）
+// 迭代 18 F5：双 base（serverApi / localApi 跟随 deviceMode）+ 本机设备默认选中（hostConfig.deviceId 匹配）+ 单机降级守门
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -9,19 +10,40 @@ import { AppProvider } from '../state/AppContext'
 import { DataPrint } from './DataPrint'
 
 const mocks = vi.hoisted(() => ({
-  healthz: vi.fn(),
-  listDevices: vi.fn(),
-  listTemplates: vi.fn(),
-  getTemplate: vi.fn(),
-  submitJob: vi.fn(),
-  getJob: vi.fn(),
-  retryJobItem: vi.fn(),
-  importExcel: vi.fn(),
-  renderImage: vi.fn(),
-  renderImages: vi.fn(),
+  server: {
+    healthz: vi.fn(),
+    listDevices: vi.fn(),
+    listTemplates: vi.fn(),
+    getTemplate: vi.fn(),
+    submitJob: vi.fn(),
+    getJob: vi.fn(),
+    retryJobItem: vi.fn(),
+    importExcel: vi.fn(),
+    renderImage: vi.fn(),
+    renderImages: vi.fn(),
+  },
+  local: {
+    healthz: vi.fn(),
+    listDevices: vi.fn(),
+    listTemplates: vi.fn(),
+    getTemplate: vi.fn(),
+    submitJob: vi.fn(),
+    getJob: vi.fn(),
+    retryJobItem: vi.fn(),
+    importExcel: vi.fn(),
+    renderImage: vi.fn(),
+    renderImages: vi.fn(),
+    getHostConfig: vi.fn(),
+    getTransport: vi.fn(),
+    setHostConfig: vi.fn(),
+    setTransport: vi.fn(),
+    testTransport: vi.fn(),
+    getPrinterStatus: vi.fn(),
+    testPrinter: vi.fn(),
+  },
 }))
 
-vi.mock('../lib/api/client', () => ({ api: mocks }))
+vi.mock('../lib/api/client', () => ({ serverApi: mocks.server, localApi: mocks.local, setServerBaseUrl: vi.fn() }))
 
 const PKG: TemplatePackage = {
   name: '库位标签',
@@ -60,6 +82,13 @@ const DEVICES: DeviceView[] = [
   { deviceId: 'device-2', name: '仓库-2 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-10T23:00:00Z', status: 'Offline' },
 ]
 
+/** 两台在线 + 一台离线：验证「本机设备优先于第一台在线」。 */
+const THREE_DEVICES: DeviceView[] = [
+  { deviceId: 'pc-a', name: 'A 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online' },
+  { deviceId: 'pc-b', name: 'B 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online' },
+  { deviceId: 'pc-c', name: 'C 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-10T23:00:00Z', status: 'Offline' },
+]
+
 const OFFLINE_DEVICES: DeviceView[] = [
   { deviceId: 'device-1', name: '仓库-1 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-10T23:00:00Z', status: 'Offline' },
 ]
@@ -81,16 +110,26 @@ beforeEach(() => {
   window.sessionStorage.clear()
   clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() })
-  mocks.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
-  // 默认单机模式（旧 WinHost 无 /api/devices → 404）：隐藏设备选择、提交不带 targetDeviceId
-  mocks.listDevices.mockRejectedValue(new ApiError('HTTP_404', 'Not Found'))
-  mocks.listTemplates.mockResolvedValue([{ name: '库位标签', group: '默认', updatedAt: '2026-08-10' }])
-  mocks.getTemplate.mockResolvedValue(PKG)
-  mocks.submitJob.mockResolvedValue(DONE_JOB)
-  mocks.getJob.mockResolvedValue(DONE_JOB)
-  mocks.importExcel.mockResolvedValue({ headers: ['Location'], rows: [['X-01'], ['Y-02']] })
-  mocks.renderImage.mockResolvedValue({ blob: new Blob(['png']), filename: 'label-1.png' })
-  mocks.renderImages.mockResolvedValue({ blob: new Blob(['zip']), filename: 'labels-debug.zip' })
+  mocks.server.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
+  mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'device-1', deviceName: '仓库-1 打印电脑' })
+  mocks.local.getTransport.mockResolvedValue({ mode: 'Log', params: {} })
+  // 默认单机模式（旧 WinHost 无 /api/devices → 404）：隐藏设备选择、提交不带 targetDeviceId；业务 API 走 localApi
+  mocks.server.listDevices.mockRejectedValue(new ApiError('HTTP_404', 'Not Found'))
+  mocks.local.listTemplates.mockResolvedValue([{ name: '库位标签', group: '默认', updatedAt: '2026-08-10' }])
+  mocks.local.getTemplate.mockResolvedValue(PKG)
+  mocks.local.submitJob.mockResolvedValue(DONE_JOB)
+  mocks.local.getJob.mockResolvedValue(DONE_JOB)
+  mocks.local.importExcel.mockResolvedValue({ headers: ['Location'], rows: [['X-01'], ['Y-02']] })
+  mocks.local.renderImage.mockResolvedValue({ blob: new Blob(['png']), filename: 'label-1.png' })
+  mocks.local.renderImages.mockResolvedValue({ blob: new Blob(['zip']), filename: 'labels-debug.zip' })
+  // 服务端模式各方法默认就绪（渲染后由用例覆盖 listDevices 的 mock）
+  mocks.server.listTemplates.mockResolvedValue([{ name: '库位标签', group: '默认', updatedAt: '2026-08-10' }])
+  mocks.server.getTemplate.mockResolvedValue(PKG)
+  mocks.server.submitJob.mockResolvedValue(DONE_JOB)
+  mocks.server.getJob.mockResolvedValue(DONE_JOB)
+  mocks.server.importExcel.mockResolvedValue({ headers: ['Location'], rows: [['X-01'], ['Y-02']] })
+  mocks.server.renderImage.mockResolvedValue({ blob: new Blob(['png']), filename: 'label-1.png' })
+  mocks.server.renderImages.mockResolvedValue({ blob: new Blob(['zip']), filename: 'labels-debug.zip' })
 })
 
 afterEach(() => {
@@ -151,7 +190,7 @@ describe('DataPrint 会话保留（迭代 15 §6.1）', () => {
     // 导入 Excel → 映射弹窗
     fireEvent.change(document.getElementById('excelFile')!, { target: { files: [new File(['x'], 'data.xlsx')] } })
     await screen.findByText('列映射（2 行数据）')
-    expect(screen.getByRole('button', { name: /重新映射（data\.xlsx）/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '重新映射（data.xlsx）' })).toBeTruthy()
 
     // 切走再切回：Excel 状态丢弃（无重新映射按钮、无弹窗）
     rerender(<Harness show={false} />)
@@ -173,15 +212,15 @@ describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
     // 打印测试 → 正常作业
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     await waitFor(() => {
-      expect(mocks.submitJob).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: { location: 'A-01' } }] }))
+      expect(mocks.local.submitJob).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: { location: 'A-01' } }] }))
     })
     // 作业进度出现（jobId 保留链路）
     expect(await screen.findByText('已完成 1 / 1 张')).toBeTruthy()
-    expect(mocks.renderImage).not.toHaveBeenCalled()
+    expect(mocks.local.renderImage).not.toHaveBeenCalled()
 
     // 出图预览 → render-image 下载，不建作业
     fireEvent.click(screen.getByRole('button', { name: '出图预览' }))
-    await waitFor(() => expect(mocks.renderImage).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mocks.local.renderImage).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
   })
 
@@ -198,9 +237,9 @@ describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
     // 单张出图 → render-image 下载 PNG，不提交作业
     fireEvent.click(screen.getByRole('button', { name: '调试出图（单张）' }))
     await waitFor(() => {
-      expect(mocks.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: { location: 'A-01' } }] }))
+      expect(mocks.local.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: { location: 'A-01' } }] }))
     })
-    expect(mocks.submitJob).not.toHaveBeenCalled()
+    expect(mocks.local.submitJob).not.toHaveBeenCalled()
     await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
   })
 
@@ -212,11 +251,11 @@ describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '下载调试图片 zip（2 张）' }))
     await waitFor(() => {
-      expect(mocks.renderImages).toHaveBeenCalledWith(
+      expect(mocks.local.renderImages).toHaveBeenCalledWith(
         expect.objectContaining({ labels: [{ data: { location: 'X-01' } }, { data: { location: 'Y-02' } }] }),
       )
     })
-    expect(mocks.submitJob).not.toHaveBeenCalled()
+    expect(mocks.local.submitJob).not.toHaveBeenCalled()
     await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('labels-debug.zip'))
   })
 
@@ -227,41 +266,61 @@ describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '批量打印 2 张' }))
     await waitFor(() => {
-      expect(mocks.submitJob).toHaveBeenCalledWith(
+      expect(mocks.local.submitJob).toHaveBeenCalledWith(
         expect.objectContaining({ labels: [{ data: { location: 'X-01' } }, { data: { location: 'Y-02' } }] }),
       )
     })
-    expect(mocks.renderImages).not.toHaveBeenCalled()
+    expect(mocks.local.renderImages).not.toHaveBeenCalled()
   })
 })
 
-describe('目标设备 / 客户端选择（迭代 17）', () => {
+describe('目标设备 / 客户端选择（迭代 17/18 F5）', () => {
   /** 服务端模式：listDevices 成功返回设备列表。 */
   async function renderServerMode(devices: DeviceView[]) {
-    mocks.listDevices.mockResolvedValue(devices)
+    mocks.server.listDevices.mockResolvedValue(devices)
     render(<Harness show />)
     await screen.findByDisplayValue('A-01')
     // 等设备下拉出现（listDevices 异步 resolve）
     await waitFor(() => expect(screen.getByLabelText('目标设备')).toBeTruthy())
   }
 
-  it('服务端模式：显示设备下拉（设备名 + 在线状态），默认选中第一台在线设备', async () => {
+  it('服务端模式：显示设备下拉（设备名 + 在线状态），默认选中本机设备（hostConfig.deviceId 匹配）', async () => {
     await renderServerMode(DEVICES)
     const select = screen.getByLabelText('目标设备') as HTMLSelectElement
+    // 本机 deviceId=device-1 在线 → 选中本机
     expect(select.value).toBe('device-1')
     expect(screen.getByText('仓库-1 打印电脑（在线）')).toBeTruthy()
     expect(screen.getByText('仓库-2 打印电脑（离线）')).toBeTruthy()
   })
 
-  it('服务端模式提交：templateName + targetDeviceId，不带自包含 template', async () => {
+  it('多台在线：本机设备优先（deviceId=pc-b → 选中 pc-b，而非第一台 pc-a）', async () => {
+    mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'pc-b', deviceName: 'B 打印电脑' })
+    await renderServerMode(THREE_DEVICES)
+    expect((screen.getByLabelText('目标设备') as HTMLSelectElement).value).toBe('pc-b')
+  })
+
+  it('本机设备未命中（不在列表）：回退第一台在线设备', async () => {
+    mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'pc-x', deviceName: 'X' })
+    await renderServerMode(THREE_DEVICES)
+    expect((screen.getByLabelText('目标设备') as HTMLSelectElement).value).toBe('pc-a')
+  })
+
+  it('本机设备是离线设备：回退第一台在线设备', async () => {
+    mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'device-2', deviceName: '仓库-2 打印电脑' })
+    await renderServerMode(DEVICES)
+    expect((screen.getByLabelText('目标设备') as HTMLSelectElement).value).toBe('device-1')
+  })
+
+  it('服务端模式提交：templateName + targetDeviceId 走 serverApi；localApi 不提交（双 base 守门）', async () => {
     await renderServerMode(DEVICES)
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     await waitFor(() => {
-      expect(mocks.submitJob).toHaveBeenCalledTimes(1)
+      expect(mocks.server.submitJob).toHaveBeenCalledTimes(1)
     })
-    const req = mocks.submitJob.mock.calls[0][0]
+    const req = mocks.server.submitJob.mock.calls[0][0]
     expect(req).toMatchObject({ templateName: '库位标签', targetDeviceId: 'device-1', labels: [{ data: { location: 'A-01' } }] })
     expect(req.template).toBeUndefined()
+    expect(mocks.local.submitJob).not.toHaveBeenCalled()
   })
 
   it('服务端模式手动切换目标设备后提交：使用所选设备 ID', async () => {
@@ -269,7 +328,7 @@ describe('目标设备 / 客户端选择（迭代 17）', () => {
     fireEvent.change(screen.getByLabelText('目标设备'), { target: { value: 'device-2' } })
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     await waitFor(() => {
-      expect(mocks.submitJob).toHaveBeenCalledWith(expect.objectContaining({ targetDeviceId: 'device-2' }))
+      expect(mocks.server.submitJob).toHaveBeenCalledWith(expect.objectContaining({ targetDeviceId: 'device-2' }))
     })
   })
 
@@ -292,28 +351,32 @@ describe('目标设备 / 客户端选择（迭代 17）', () => {
     expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     await waitFor(() => {
-      expect(mocks.submitJob).toHaveBeenCalledWith(expect.objectContaining({ targetDeviceId: 'device-1' }))
+      expect(mocks.server.submitJob).toHaveBeenCalledWith(expect.objectContaining({ targetDeviceId: 'device-1' }))
     })
   })
 
-  it('单机降级（/api/devices 404）：无设备选择 UI，提交不带 templateName / targetDeviceId（自包含 template）', async () => {
+  it('单机降级（/api/devices 404）：无设备选择 UI，模板列表走 localApi，提交自包含 template 走 localApi（双 base 守门）', async () => {
     await renderDataPrint()
     expect(screen.queryByLabelText('目标设备')).toBeNull()
     expect(screen.queryByText(/暂无在线客户端/)).toBeNull()
+    // 模板列表来自本机（standalone → localApi）
+    expect(mocks.local.listTemplates).toHaveBeenCalled()
+    expect(mocks.server.listTemplates).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     await waitFor(() => {
-      expect(mocks.submitJob).toHaveBeenCalledTimes(1)
+      expect(mocks.local.submitJob).toHaveBeenCalledTimes(1)
     })
-    const req = mocks.submitJob.mock.calls[0][0]
+    const req = mocks.local.submitJob.mock.calls[0][0]
     expect(req.templateName).toBeUndefined()
     expect(req.targetDeviceId).toBeUndefined()
     expect(req.template).toMatchObject({ name: '库位标签', contract: PKG.contract, layout: PKG.layout })
+    expect(mocks.server.submitJob).not.toHaveBeenCalled()
   })
 
   it('Server 作业视图（无 items）：进度与目标设备可见，不渲染逐张表格', async () => {
-    mocks.listDevices.mockResolvedValue(DEVICES)
-    mocks.getJob.mockResolvedValue(DONE_JOB_SERVER)
+    mocks.server.listDevices.mockResolvedValue(DEVICES)
+    mocks.server.getJob.mockResolvedValue(DONE_JOB_SERVER)
     render(<Harness show />)
     await screen.findByDisplayValue('A-01')
     await waitFor(() => expect(screen.getByLabelText('目标设备')).toBeTruthy())
@@ -323,5 +386,23 @@ describe('目标设备 / 客户端选择（迭代 17）', () => {
     expect(screen.getByText(/目标设备：device-1（在线）/)).toBeTruthy()
     // 无逐张表格，显示说明行
     expect(screen.getByText(/服务端作业无逐张明细/)).toBeTruthy()
+  })
+})
+
+describe('连接状态徽标（迭代 18 F5）', () => {
+  it('显示本机连接方式与服务端连通状态（图例区分）', async () => {
+    await renderDataPrint()
+    expect(screen.getByText('本机连接')).toBeTruthy()
+    expect(screen.getByText('服务端')).toBeTruthy()
+    // 本机连接徽标：来自 localApi.getTransport（Log 模式）
+    expect(screen.getByText('LOG')).toBeTruthy()
+    // 服务端连通（healthz 成功）→ 已连接
+    expect(screen.getByText('已连接')).toBeTruthy()
+  })
+
+  it('服务端不可达（healthz 失败）：徽标显示「未连接（单机模式可用）」', async () => {
+    mocks.server.healthz.mockRejectedValue(new Error('down'))
+    await renderDataPrint()
+    expect(await screen.findByText('未连接（单机模式可用）')).toBeTruthy()
   })
 })

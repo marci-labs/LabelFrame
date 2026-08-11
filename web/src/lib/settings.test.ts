@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-// settings 单测（迭代 15 附九定稿）：getBaseUrl 默认值改页面自身来源 + 方案 B 残留自动纠正。
+// settings 单测（迭代 18 F2 重写）：serverBase 兜底 = localStorage > 默认 127.0.0.1:53961；
+// 移除迭代 15 方案 B 残留检测（比较基准已随 DEFAULT_BASE_URL 变更失效）。
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_BASE_URL } from './api/types'
 import { getBaseUrl, setBaseUrl } from './settings'
@@ -15,19 +16,21 @@ afterEach(() => {
   localStorage.removeItem(KEY)
 })
 
-describe('getBaseUrl 默认值（页面自身来源）', () => {
-  it('无存储值 → 返回 window.location.origin', () => {
-    expect(getBaseUrl()).toBe(window.location.origin)
+describe('getBaseUrl（localStorage 兜底，默认服务端地址）', () => {
+  it('无存储值 → 默认 127.0.0.1:53961（与页面来源无关）', () => {
+    expect(getBaseUrl()).toBe(DEFAULT_BASE_URL)
+    expect(DEFAULT_BASE_URL).toBe('http://127.0.0.1:53961')
   })
 
-  it('有存储值（非默认）→ 返回存储值', () => {
-    setBaseUrl('http://192.168.1.3:53960')
-    expect(getBaseUrl()).toBe('http://192.168.1.3:53960')
+  it('有存储值 → 返回存储值（机器级配置不可用时的兜底）', () => {
+    setBaseUrl('http://192.168.1.3:53961')
+    expect(getBaseUrl()).toBe('http://192.168.1.3:53961')
   })
 
-  it('方案 B：存储值 == 默认且 origin ≠ 默认 → 忽略存储值、返回 origin', () => {
-    setBaseUrl(DEFAULT_BASE_URL)
-    expect(getBaseUrl()).toBe(window.location.origin)
+  it('存储值等于默认值（旧版残留 53960 已不是默认）→ 原样返回存储值', () => {
+    // 迭代 15 方案 B 已移除：非本机来源不再忽略旧默认值
+    setBaseUrl('http://127.0.0.1:53960')
+    expect(getBaseUrl()).toBe('http://127.0.0.1:53960')
   })
 
   it('无 window（Node）→ 回退 DEFAULT_BASE_URL', () => {
@@ -36,7 +39,7 @@ describe('getBaseUrl 默认值（页面自身来源）', () => {
   })
 
   it('尾部 / 归一化', () => {
-    setBaseUrl('http://192.168.1.3:53960/')
-    expect(getBaseUrl()).toBe('http://192.168.1.3:53960')
+    setBaseUrl('http://192.168.1.3:53961/')
+    expect(getBaseUrl()).toBe('http://192.168.1.3:53961')
   })
 })

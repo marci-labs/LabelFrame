@@ -3,7 +3,7 @@
 import type { SVGProps } from 'react'
 
 export type IconName =
-  | 'workbench' | 'designer' | 'data' | 'logs' | 'settings'
+  | 'workbench' | 'designer' | 'data' | 'logs' | 'settings' | 'history'
   | 'plus' | 'edit' | 'trash' | 'download' | 'upload' | 'refresh'
   | 'retry' | 'test' | 'link' | 'printer' | 'clear' | 'layers'
   | 'check' | 'x' | 'search' | 'file' | 'grid' | 'zoom' | 'save'
@@ -39,6 +39,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <circle cx="12" cy="12" r="3" />
       <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
+    </>
+  ),
+  history: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 7v5l3.5 2" />
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
