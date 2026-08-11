@@ -1,15 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.15.2"
+  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.15.3"
            UpgradeCode="10BDDF3E-BD37-4C3A-A19E-56CA9EFE5B74">
     <SummaryInformation Description="LabelFrame 服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志（安装于 Program Files\LabelFrame\Server，无 Web UI，以 Windows 服务运行）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
-
-    <!-- 安装完成弹窗勾选项默认值（仅新装展示；静默安装不展示，服务保持 manual 不自动启动） -->
-    <Property Id="AUTOSTART" Value="1" />
-    <Property Id="RUNNOW" Value="1" />
 
     <!-- 检测 .NET Desktop Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
     <!-- 之前的注册表搜索读不到运行时，因为版本号是命名值而非默认值，这里不再依赖注册表结构 -->
@@ -54,21 +50,14 @@
           <Publish Event="EndDialog" Value="Return" Condition="1" />
         </Control>
       </Dialog>
-      <!-- 安装完成弹窗：确认后按勾选设置服务自启 / 立即运行（迭代 18） -->
-      <Dialog Id="ServerFinishDlg" X="50" Y="50" Width="370" Height="210"
+      <!-- 安装完成弹窗（迭代 18 简化）：服务注册即自动 + 安装时启动，仅提示 -->
+      <Dialog Id="ServerFinishDlg" X="50" Y="50" Width="370" Height="140"
               Title="LabelFrame 服务端安装完成" NoMinimize="yes">
         <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="25" Text="LabelFrame Server 安装完成。" />
-        <Control Id="HintText" Type="Text" X="15" Y="45" Width="340" Height="30"
-                 Text="服务 LabelFrameServer 已注册。请选择启动方式：" />
-        <Control Id="AutoStartCheck" Type="CheckBox" X="15" Y="95" Width="340" Height="18"
-                 Property="AUTOSTART" CheckBoxValue="1" Text="开机自启（默认勾选）" />
-        <Control Id="RunNowCheck" Type="CheckBox" X="15" Y="118" Width="340" Height="18"
-                 Property="RUNNOW" CheckBoxValue="1" Text="立即运行（默认勾选）" />
-        <Control Id="ConfirmButton" Type="PushButton" X="280" Y="165" Width="75" Height="25"
+        <Control Id="HintText" Type="Text" X="15" Y="45" Width="340" Height="40"
+                 Text="服务 LabelFrameServer 已注册并自动启动。" />
+        <Control Id="ConfirmButton" Type="PushButton" X="280" Y="100" Width="75" Height="25"
                  Text="确认" Default="yes">
-          <!-- 点击确认时直接执行（弹窗之后的 InstallUISequence 动作不会执行） -->
-          <Publish Event="DoAction" Value="SetAutoStart" Condition="AUTOSTART = &quot;1&quot;" />
-          <Publish Event="DoAction" Value="StartServiceNow" Condition="RUNNOW = &quot;1&quot;" />
           <Publish Event="EndDialog" Value="Return" Condition="1" />
         </Control>
       </Dialog>
@@ -101,12 +90,6 @@
       <ComponentGroupRef Id="AppFiles" />
       <ComponentRef Id="AppSettingsFile" />
     </Feature>
-
-    <!-- 安装完成动作：按勾选设置自启 / 立即运行（仅全新安装；Immediate，运行在提权的 UI 进程） -->
-    <CustomAction Id="SetAutoStart" Directory="SystemFolder" Execute="immediate" Impersonate="yes" Return="ignore"
-      ExeCommand="sc.exe config LabelFrameServer start= auto" />
-    <CustomAction Id="StartServiceNow" Directory="SystemFolder" Execute="immediate" Impersonate="yes" Return="ignore"
-      ExeCommand="net.exe start LabelFrameServer" />
 
     <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；路径为 ProgramData，迭代 18） -->
     <CustomAction Id="ClearDataDelServerDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"

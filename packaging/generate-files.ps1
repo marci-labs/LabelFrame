@@ -87,7 +87,7 @@ foreach ($f in $allFiles) {
     } elseif ($rel -eq 'LabelFrame.Server.exe') {
         $serviceXml = ''
         if ($ServerServiceName) {
-            $serviceXml = "`n        <ServiceInstall Id=`"LabelFrameServerInstall`" Name=`"$ServerServiceName`" DisplayName=`"$ServerServiceDisplayName`" Type=`"ownProcess`" Start=`"demand`" Account=`"LocalSystem`" ErrorControl=`"normal`" />`n        <ServiceControl Id=`"LabelFrameServerControl`" Name=`"$ServerServiceName`" Stop=`"both`" Remove=`"uninstall`" Wait=`"yes`" />`n"
+            $serviceXml = "`n        <ServiceInstall Id=`"LabelFrameServerInstall`" Name=`"$ServerServiceName`" DisplayName=`"$ServerServiceDisplayName`" Type=`"ownProcess`" Start=`"auto`" Account=`"LocalSystem`" ErrorControl=`"normal`" />`n        <ServiceControl Id=`"LabelFrameServerControl`" Name=`"$ServerServiceName`" Start=`"install`" Stop=`"both`" Remove=`"uninstall`" Wait=`"yes`" />`n"
         }
         Add-FileLine $sb $index $guid $rel ' Id="ServerExe"' 'f' $serviceXml
         $index++

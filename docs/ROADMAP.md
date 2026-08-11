@@ -581,6 +581,7 @@
 - 双 MSI 0.15.0：Server 注册服务 + 安装完成弹窗（开机自启 / 立即运行，默认勾选，sc config / net start）；Client 安装完成弹窗（立即打开，默认勾选）；卸载清理路径含 ProgramData；测试 156 全绿（Server 13 / WinHost 58 / Core 60 / Studio 25）。
 - 修复 0.15.1：ServiceInstall 移入 exe 组件（服务二进制须为组件 KeyPath），解决 0.15.0 安装后服务未注册；产物升级 0.15.1。
 - 修复 0.15.2：安装完成弹窗动作改为按钮 DoAction 触发（sc config / net start / 启动客户端），解决弹窗后动作不执行导致服务未自启/未运行；产物升级 0.15.2。
+- 简化 0.15.3：Server 服务注册即自动 + 安装时启动（ServiceInstall Start=auto + ServiceControl Start=install），完成弹窗仅提示；双包版本 0.15.3。
 ## 检查点：试点验收（待定）
 
 按 [REQUIREMENTS.md](REQUIREMENTS.md) §8 成功衡量执行：

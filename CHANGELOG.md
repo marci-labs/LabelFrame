@@ -311,3 +311,10 @@
 - 现象：0.15.1 全新安装后服务已注册，但 StartType=Manual 且从未启动（弹窗点确认后后续 InstallUISequence 动作不执行——最后一个对话框 EndDialog 后序列结束）。
 - 修复：改为弹窗「确认」按钮点击时通过 `DoAction` 直接触发：Server（SetAutoStart → sc config start= auto；StartServiceNow → net start）、Client（LaunchClient）；移除 InstallUISequence 中的尾部 Custom 动作。
 - 版本升至 0.15.2；产物 `LabelFrame-Server-0.15.2.msi`（7.6MB）、`LabelFrame-Client-0.15.2.msi`（14.1MB）。
+
+
+## 简化：Server 服务安装改为“注册即自动 + 安装时启动”，完成弹窗仅提示（0.15.3，2026-08-11）
+
+- 按用户反馈简化：移除 Server 完成弹窗的「开机自启 / 立即运行」勾选项与 `sc config / net start` 自定义动作；`ServiceInstall Start=auto` + `ServiceControl Start=install`（安装即自动 + 启动），完成弹窗仅提示“服务已注册并自动启动”。
+- 实装验证：静默安装 0.15.3 后 `START_TYPE=AUTO_START`、服务 RUNNING、healthz OK。
+- 双包版本对齐 0.15.3：`LabelFrame-Server-0.15.3.msi`（7.6MB）、`LabelFrame-Client-0.15.3.msi`（14.1MB，Client 交互不变：完成弹窗仍含「立即打开」勾选）。

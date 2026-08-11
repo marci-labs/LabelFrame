@@ -1,6 +1,6 @@
 ﻿# 一键构建 LabelFrame Server（服务端）MSI 安装包（迭代 16/17：安装到 Program Files\LabelFrame\Server）
 param(
-    [string]$Version = '0.15.2',
+    [string]$Version = '0.15.3',
     [string]$Runtime = 'win-x64',
     [string]$PfxPath = '',
     [string]$PfxPassword = 'LabelFrame@2026',
