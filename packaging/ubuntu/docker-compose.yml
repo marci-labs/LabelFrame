@@ -1,6 +1,6 @@
 services:
   labelframe-server:
-    image: labelframe-server:0.15.4
+    image: labelframe-server:0.16.0
     container_name: labelframe-server
     restart: unless-stopped
     ports:
@@ -8,8 +8,9 @@ services:
     volumes:
       - labelframe-data:/var/lib/labelframe/server
       - ./logs:/var/lib/labelframe/logs
-      # 可选：服务端管理界面插件（迭代 20）——把 web/dist-server 解压到 ./plugins/web-ui 后放进去即生效、移除即无头
-      # - ./plugins/web-ui:/var/lib/labelframe/server/plugins/web-ui
+      # 服务端管理界面插件（迭代 20）：把 labelframe-server-webui-<version>.zip 解压到 ./plugins/web-ui
+      # （即容器内 /var/lib/labelframe/server/plugins/web-ui），放进去即生效、移除即无头；不启用可注释掉本行
+      - ./plugins/web-ui:/var/lib/labelframe/server/plugins/web-ui
     logging:
       driver: "json-file"
       options:

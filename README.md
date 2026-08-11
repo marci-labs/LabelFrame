@@ -41,6 +41,21 @@
 | `LabelFrame.AndroidHost` | Android / PDA 打印宿主（迭代 5 起实现） |
 
 
+## Docker 部署（服务端管理界面插件挂载）
+
+Docker 镜像 `labelframe-server:0.16.0`（离线包 `artifacts/labelframe-server-0.16.0.docker.tar`，`docker load` 导入）默认无头；
+需要管理界面时，把插件文件放进**挂载目录**即可（无需重启容器）：
+
+- **容器内挂载目录（即 Server 的插件目录）**：`/var/lib/labelframe/server/plugins/web-ui`
+- **宿主机目录（compose 默认）**：`./plugins/web-ui`
+
+操作：
+1. 解压 `labelframe-server-webui-0.16.0.zip` 到宿主机 `./plugins/web-ui`（zip 内的 index.html 等文件直接放该目录下）；
+2. `docker compose up -d`（`packaging/ubuntu/docker-compose.yml` 已默认挂载该目录）；
+3. 浏览器访问 `http://<服务器IP>:53961` 打开管理界面；移除该目录内容即恢复无头。
+
+Windows 裸机部署同理：解压到 `%ProgramData%\LabelFrame\server\plugins\web-ui`。
+
 ## 服务端管理界面（可选插件，迭代 20）
 
 默认服务端保持无头（仅 /healthz + API）；需要时把前端 server 构建产物（`web/dist-server`）解压到插件目录即生效——放进去无需重启、移除即恢复无头：
