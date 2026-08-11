@@ -160,11 +160,12 @@
 
 | 接口 | 归属 | 说明 |
 |---|---|---|
-| `GET/POST /api/host/config` | Client 本机（127.0.0.1:53960） | 机器级配置：`{ serverUrl }` 读写（持久化 ProgramData） |
+| `GET/POST /api/host/config` | Client 本机（127.0.0.1:53960） | 机器级配置：`{ serverUrl, deviceId, deviceName }` 读写（持久化 ProgramData；缺失 / 损坏返回默认 serverUrl） |
 | `GET /api/transport`、`POST /api/transport` | Client 本机 | 连接方式配置（恢复前端接入，接口 0.14 已存在未删） |
 | `GET /api/printer/status`、`POST /api/printer/test` | Client 本机 | 打印机状态 / 测试页（恢复前端接入） |
 | Server Web UI 静态托管 | —— | 移除（不再提供界面） |
-| `GET /api/jobs` | Server | 新增可选 `limit` 参数（默认 100），供「作业历史」页使用 |
+| `GET /api/jobs` | Server | 新增可选 `limit` 参数（默认 100，上限 500），供「作业历史」页使用 |
+| `GET /api/jobs` | Client 本机 | 新增（迭代 18 B10）：本机作业列表（可选 limit），作业历史单机降级用 |
 
 ### 4. 历史清理设计（Server）
 

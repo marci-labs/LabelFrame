@@ -24,6 +24,7 @@
 - `Program.cs`：删除 Web UI 静态托管（`ResolveWebUiPath` / `UseStaticFiles` / SPA fallback）与测试页（`/`、`/devices`、`/jobs` 的 HTML）；保留 `/healthz` 与全部 API。
 - `ServerOptions`：移除 `WebUiPath`（或保留但不再使用，代码注释说明）。
 - `scripts/build-server-msi.ps1`：不再复制 web/dist 到发布目录。
+- `README.md`：更新部署说明（Server 无 Web UI；访问入口为 Client 127.0.0.1:53960）。
 - 验收：Server 发布目录无 web 目录；`GET /` 返回 404（仅 API 与 /healthz 可用）；`/healthz` 正常。
 
 ### B2 Server 图标
@@ -50,10 +51,10 @@
 
 ### B6 Client 机器级配置
 - `HostOptions`：新增 `ConfigPath`（默认 `%ProgramData%\LabelFrame\Client\settings.json`）+ `LABELFRAME_CONFIG` 覆盖。
-- `Program.cs`：启动时读取 settings.json 的 `serverUrl` → 覆盖 / 回填 `ServerUrl`（建议 settings.json 优先，因 UI 可写，实现时注释说明）；新增 `GET /api/host/config` 返回 `{ serverUrl }`、`POST /api/host/config` 更新并持久化（创建目录、临时文件后原子替换）。
+- `Program.cs`：启动时读取 settings.json 的 `serverUrl` → 覆盖 / 回填 `ServerUrl`（建议 settings.json 优先，因 UI 可写，实现时注释说明）；新增 `GET /api/host/config` 返回 `{ serverUrl, deviceId, deviceName }`（settings.json 缺失 / 损坏时返回 200 + 默认 serverUrl）、`POST /api/host/config` 更新并持久化（创建目录、临时文件后原子替换）。
 - `main.wxs` 卸载清理：Client 清理新增 `%ProgramData%\LabelFrame\Client\settings.json`。
-- 测试：config 读写、文件持久化、启动加载、坏文件兜底（用默认值）。
-- 验收：设置页改服务端地址 → 重启客户端 → 地址保持；另一浏览器打开同一客户端也是新地址。
+- 测试：config 读写、文件持久化、启动加载、坏文件兜底（缺失 / 损坏返回默认值）。
+- 验收：设置页改服务端地址 → 保存后立即生效（无需重启），重启客户端地址保持；另一浏览器打开同一客户端也是新地址；settings.json 缺失 / 损坏时 GET 返回 200 + 默认 serverUrl。
 
 ### B7 Server MSI（服务 + 完成弹窗）
 - `ServiceInstall`：Name=`LabelFrameServer`、DisplayName、Type=ownProcess、Start=manual、Account=LocalSystem、ErrorControl=normal；`ServiceControl` Stop=both、Remove=uninstall（升级不删）。
@@ -72,6 +73,10 @@
 - `dotnet test` 全绿（预期新增 Server 清理 / WinHost config 用例）；Client 包仍含 web/dist（build-msi.ps1 复制）。
 - MSI 数据库只读验证：服务安装表、完成弹窗控件、自定义动作与序列、清理路径。
 - 冒烟：控制台启动 Server + 本机 Client 联调（Log 模拟）闭环；`/api/host/config` 读写。
+### B10 作业列表端点补全（F6 前置）
+- Server `GET /api/jobs`：新增可选 `limit` 参数（默认 100，上限 500），按创建时间倒序截断。
+- WinHost 新增 `GET /api/jobs`：可选 `limit`，返回本机作业列表（复用 LabelJobQueue / JobViews，形状与 Server 兼容：`JobView[]`），供前端作业历史页单机降级。
+- 测试：Server limit 生效（默认 / 超上限截断）；WinHost 列表返回本地作业。
 
 ## 4. 前端任务清单（hermes 实施，评估后可反馈）
 
@@ -86,9 +91,9 @@
 - `client.ts`：拆 `serverApi`（模板 / 作业 / 设备 / 调试出图 / 日志 / Excel → 服务端地址）与 `localApi`（transport / printer / host/config → 页面来源 127.0.0.1:53960）；healthz 探测仍走 serverApi（连接状态灯反映服务端连通）；错误消息区分「服务端」与「本机客户端」。
 
 ### F2 机器级配置（后端地址）
-- App 启动：`localApi.getHostConfig()` → `serverUrl` 作为 serverBase；失败（旧客户端 / 无 API）回退现有 localStorage 逻辑（`getBaseUrl`），设置页提示「本机配置接口不可用，使用浏览器本地保存」。
-- 设置页「后端地址」保存：调 `localApi.setHostConfig({ serverUrl })`（成功后写 localStorage 兜底）；「测试连接」探测 serverBase `/healthz`。
-- 连接状态灯：反映服务端连通（serverBase healthz）。
+- serverBase 优先级：机器级配置（`localApi.getHostConfig().serverUrl`）> localStorage 兜底 > 默认 `http://127.0.0.1:53961`；App 启动先取机器级配置，失败（旧客户端 / 无 API）回退 localStorage；`settings.ts` 移除方案 B 残留检测（比较基准已失效），默认地址改 53961。
+- 设置页「后端地址」保存：调 `localApi.setHostConfig({ serverUrl })`，**立即生效**——更新内存 serverBase → 重新探测 → 重拉当前页数据（实现可用整页刷新，sessionStorage 草稿不丢）；「测试连接」探测 serverBase `/healthz`；localStorage 仅作无本地 API 时兜底。
+- 连接状态灯：反映服务端连通；单机模式（serverBase 不可达）显示「服务端未连接（单机模式可用）」，与「本机客户端不可用」区分。
 
 ### F3 恢复「连接方式」分组（设置页）
 - 恢复 4155ccf 的实现：模式单选 Log / TCP / Windows 驱动 / Zebra；只显示当前模式参数；「测试连接」（testOnly，不生效）；「保存并应用」（先测试后生效、失败回滚）；当前模式展示。
@@ -99,17 +104,17 @@
 - Log / 无打印机时按后端返回展示（Log 模拟无状态）。
 
 ### F5 数据与打印
-- 保持目标设备选择（serverApi `/api/devices`），默认选中本机在线 Client；提交 `templateName + targetDeviceId` 到 serverApi。
+- 保持目标设备选择（serverApi `/api/devices`），默认选中**本机设备**：用 `localApi.getHostConfig().deviceId` 匹配列表，命中则选中，否则回退第一台在线；提交 `templateName + targetDeviceId` 到 serverApi。
 - 单机降级保留：serverBase 不可达且与页面来源一致（或 `/api/devices` 404）→ 隐藏设备选择、自包含模板提交到 localBase。
-- 顶部连接徽标可选恢复（展示本机连接方式，数据来自 localApi）。
+- 顶部连接徽标可选恢复（展示本机连接方式，数据来自 localApi）；与状态灯并存时用图例 / 文案标明「本机连接」与「服务端连通」各自含义。
 
 ### F6 新增「作业历史」页
 - 导航新增「作业历史」；serverApi `GET /api/jobs?limit=100` 列表：时间 / requestId / jobId / 目标设备 / 状态 / 完成-失败张数 / 失败原因；刷新按钮；终态 / 进行中徽标区分。
-- 单机降级：指向本机时显示本机作业列表（localBase `GET /api/jobs`）。
-- 空态：暂无历史作业；提示「终态作业默认保留 30 天后自动清理」（文案与服务端配置一致）。
+- 单机降级：指向本机时显示本机作业列表（localBase `GET /api/jobs`，后端 B10 新增）。
+- 空态：暂无历史作业；提示「终态作业默认保留 30 天，由服务端自动清理」（按默认值写死，不承诺与运行时配置实时一致）。
 
 ### F7 测试与构建
-- `Settings.test.tsx` / `DataPrint.test.tsx` 更新：双 base、连接方式切换恢复、目标设备、机器级配置；新增 hostConfig / transport 用例（参照 4155ccf 测试）。
+- `Settings.test.tsx` / `DataPrint.test.tsx` / `settings.test.ts` 更新：双 base、连接方式切换恢复、目标设备、机器级配置、默认地址 53961、移除方案 B 残留用例；新增 hostConfig / transport 用例（参照 4155ccf 测试）。
 - 新增作业历史页用例（列表渲染 / 空态 / 降级）。
 - `pnpm test` / `pnpm build` / `pnpm lint` 全绿。
 
@@ -117,15 +122,16 @@
 
 | 接口 | 归属 | 说明 |
 |---|---|---|
-| `GET/POST /api/host/config` | Client 本机 | `{ serverUrl }` 读写（机器级持久化） |
+| `GET/POST /api/host/config` | Client 本机 | `{ serverUrl, deviceId, deviceName }` 读写（机器级持久化；缺失 / 损坏返回默认 serverUrl） |
 | `GET/POST /api/transport`、`GET /api/printer/status`、`POST /api/printer/test` | Client 本机 | 恢复前端接入（接口 0.14 已在，未删） |
+| `GET /api/jobs` | Client 本机 | 新增（B10）：本机作业列表（可选 limit），作业历史单机降级用 |
 | `GET /api/jobs` | Server | 可选 `?limit=100`（默认 100），作业历史用 |
 | Server Web UI | —— | 移除 |
 
 ## 6. 验收标准（端到端）
 
 1. Server MSI 全新安装：完成弹窗默认勾选自启 + 立即运行 → 服务 `LabelFrameServer` 为 Automatic 且 Running；无 Web UI（浏览器打开 Server 端口只有 API / 404）；exe 图标为 LOGO；数据在 `%ProgramData%\LabelFrame\server`。
-2. Client MSI 全新安装：完成弹窗默认勾选立即打开 → 客户端启动并打开 `127.0.0.1:53960`；设置页可切换连接方式（保存并应用）、可改服务端地址（机器级，重启保持）；模板设计 / 保存 → 数据与打印选本机设备 → 打印测试 → 作业 Completed；作业历史页可见并可刷新。
+2. Client MSI 全新安装：完成弹窗默认勾选立即打开 → 客户端启动并打开 `127.0.0.1:53960`；设置页可切换连接方式（保存并应用）、可改服务端地址（机器级，重启保持）；模板设计 / 保存 → 数据与打印选本机设备 → 打印测试 → 作业 Completed；作业历史页可见并可刷新；单机降级时作业历史显示本机作业列表。
 3. 历史清理：缩短保留期（如 0）后重启 Server，终态超期作业与超期日志被删，Pending / Claimed 保留。
 4. 升级 0.14 → 0.15：不弹完成弹窗、不自动启动服务 / 程序；用户数据保留（0.14 的 `%LOCALAPPDATA%` 数据不迁移，当前无业务使用）。
 5. `dotnet test` / `pnpm test` 全绿；双 MSI 可独立安装、同机可联调。
@@ -141,5 +147,76 @@
 ## 8. 开工协作流程
 
 1. 本文档 + ARCHITECTURE-SPLIT（0.15 修订）+ DESIGN（决策 #53-58）+ ROADMAP 已提交（本次）。
-2. 用户将前端任务清单（§4）交 hermes 评估；hermes 反馈问题 → 本文档修订定稿。
+2. hermes 审阅意见已并入正文（处置见文末「附：审核者答复」），本文档为定稿。
 3. 两端无意见后：后端按 §3 开工；前端按 §4 开工（hermes 自行提交）。
+
+## 附：审阅意见（hermes 追加，2026-08-11）
+
+> 供审核者评审；本节保留作为审阅记录，不视为规格正文。
+
+已对照真实代码核对：后端路由与 DTO（Server / WinHost Program.cs、Contracts.cs）、前端工作区当前实现（client.ts / settings.ts / types.ts / DataPrint / Settings / AppContext）、F1 参照物 4155ccf、ARCHITECTURE-SPLIT 0.15 修订。总体结论：任务单方向可实施，前端无阻塞性异议；发现 1 个关键缺口（后端任务单缺条目）与若干规格空白，确认后即可定稿开工。
+
+### 🔴 关键缺口
+
+1. **F6 单机降级路径的端点在后端不存在**。F6 写「单机降级：指向本机时显示本机作业列表（localBase `GET /api/jobs`）」，但 WinHost 当前只有 `POST /api/jobs` 与 `GET /api/jobs/{jobId}`（WinHost/Program.cs:300、319），**没有 `GET /api/jobs` 列表端点**；后端任务清单 §3（B1-B9）也没有新增该端点的条目。前端按 F6 实施后，单机降级时作业历史页必然 404。需拍板：a) B 清单补「WinHost 新增 `GET /api/jobs`（可选 limit，返回与 Server 兼容的列表形状）」；或 b) 删 F6 降级路径，明确降级时作业历史页显示「服务端模式下可用」。（Server 侧 `GET /api/jobs` 存在，Server/Program.cs:94，响应 `ServerJobView[]` 字段齐全，服务端路径无问题。）
+
+### 🟡 规格空白与不一致
+
+2. **`GET /api/jobs` 的 `limit` 参数无后端实施条目**。契约增量（§5 与 ARCHITECTURE-SPLIT §3）声明「可选 ?limit=100（默认 100）」，但 Server 当前实现无 limit 绑定（Server/Program.cs:94 直接 `ListJobsAsync(ct)`，全量返回），后端任务清单 B1-B9 无对应条目，后端很可能漏做；漏做则前端传参被忽略、作业多时全量响应。建议 B 清单补一条。
+
+3. **F5「默认选中本机在线 Client」缺识别机制**。DataPrint 当前实现是「默认选中第一台在线设备」（DataPrint.tsx:234-236）；WinHost 的 DeviceId 默认 = `Environment.MachineName`（HostOptions.cs:60），浏览器无法获取本机机器名，多台 Client 在线时前端无从判定「本机」。建议：a) 保持「第一台在线」（等于现状，F5 表述改为「默认选中在线设备」）；或 b) 本机 DeviceId 随 `/api/host/config` 或 healthz 返回，前端比对 devices 列表。
+
+4. **F2 保存后 serverBase 切换语义未定义**。B6 验收「设置页改服务端地址 → 重启客户端 → 地址保持」暗示重启才生效；但 F2 描述「保存 → setHostConfig → 写 localStorage 兜底 → 测试连接」——若保存后内存 serverBase 不切换，「测试连接」与后续请求仍走旧地址，体验分裂；若立即切换，需定义「已加载数据（模板列表等）是否重拉」。需明确：保存后立即更新内存 serverBase 并重载 / 或明确提示「重启客户端后生效」。
+
+5. **机器级配置回退链路的默认值语义需明确**。全新安装的 Client 没有 settings.json：若 `GET /api/host/config` 返回 404（或网络错），前端回退 getBaseUrl → 页面来源（127.0.0.1:53960）→ serverApi 指向本机 WinHost，模板 / 作业走单机队列，与决策 2「模板 / 作业仍以服务端为中心」相悖；若返回 200 + 默认 serverUrl（127.0.0.1:53961），则全新安装默认连 Server（与决策一致）。B6 测试有「坏文件兜底（用默认值）」暗示缺失也返回默认值，但规格未明示——建议明确「settings.json 不存在 / 损坏 → 200 返回默认 serverUrl」，并在 B6 验收补一句。另：`DEFAULT_BASE_URL` 53960→53961 后，settings.ts 方案 B 残留检测（`cleaned === DEFAULT_BASE_URL` 视为旧默认残留并忽略，settings.ts:22-24）的比较基准失效——localStorage 旧值 53960 不再等于新默认，非本机来源下将返回 53960（0.15 中这是合法的本机 Client 地址，作为 serverApi 回退值会把请求打到本机）。F2 实施时需重审该逻辑（或删除——0.15 起 serverApi 以机器级配置为主、localStorage 仅兜底）。
+
+6. **F7 测试清单漏 `settings.test.ts`**。DEFAULT_BASE_URL 变更 + 双 base 拆分直接影响 `web/src/lib/settings.test.ts`（方案 B 用例按 DEFAULT_BASE_URL 断言）与 settings.ts 本身；F7 只列了 Settings.test.tsx / DataPrint.test.tsx。建议补「settings.test.ts 同步更新」。
+
+7. **README 活文档残留**。README.md:55、59 仍描述「Server：…Web UI…打开浏览器 http://127.0.0.1:53961 编辑模板与提交作业」——0.15 无头化后该路径不存在；B1 只删代码未列文档更新，「全链路无残留」类检查会卡。建议 B 清单补「README 更新（Server 无 UI、访问入口改 Client 127.0.0.1:53960）」。
+
+8. **F6 空态文案与可配置保留期脱节（轻）**。「终态作业默认保留 30 天后自动清理」写死 30，用户改 `JobRetentionDays` 后文案失真；且规格 F6 要求「文案与服务端配置一致」但没有取配置的途径，前后自相矛盾。可接受（按默认值写死、措辞改「默认保留 30 天」），或服务端配置经某端点暴露给前端——不阻塞定稿。
+
+### 🟢 待决策（需审核者 / 用户拍板）
+
+- 第 1 条 a / b 方案；第 3 条 a / b 方案；第 4 条「立即生效重载」vs「重启生效」。
+
+### 💡 可选建议
+
+- F1 状态灯语义：单机模式（serverBase 不可达）下连接状态灯恒红，建议文案区分「服务端未连接（单机模式可用）」与「本机客户端不可用」，避免误导（F2 已要求错误消息区分，状态灯同理）。
+- F5 顶部连接徽标（可选恢复）与状态灯并存时有两个状态源（本机 transport vs 服务端连通），建议图例 / 文案标明各自含义。
+- 作业历史页刷新采用手动按钮（F6 已定）即可，不必轮询——与既有作业视图一致。
+
+### ✅ 已核对通过项（附依据，无需修改）
+
+- 契约增量 §5 接口真实存在或已规划新增：WinHost `/api/transport`（Program.cs:269、272）、`/api/printer/status`（:396）、`/api/printer/test`（:399）0.14 保留未删；`/api/host/config` 当前不存在，属 B6 新增，核对无误。
+- WinHost 静态托管保留（Program.cs:445-465，webUiPath 非空时启用）——决策 1「客户端托管完整 Web UI」后端无需恢复托管，0.15 Client MSI 继续带 web/dist（B9）即可闭环。
+- F1 参照物 4155ccf 存在（前端工作区 git log --all），TransportMode / TransportConfig / TransportApplyRequest / TransportResult / PrinterStatus 类型与 TransportPanel.tsx（305 行）可完整参照恢复。
+- 前端 JobView 类型已含 Server 兼容形状（targetDeviceId / deviceStatus / failedItems / errorMessage 可选），作业历史页复用无契约障碍。
+- DataPrint 降级逻辑（listDevices 404 / 失败 → standalone 自包含提交）与 F5「单机降级保留」一致。
+- AppContext healthz 探测存在（AppContext.tsx:82），F1「healthz 走 serverApi」改造点明确。
+- 错误响应 ErrorView（{code, message}）与前端 ApiError 解析已对齐。
+- ServerJobView 字段（JobId / RequestId / TargetDeviceId / Status / CreatedAt / TotalItems / CompletedItems / FailedItems / ErrorMessage / DeviceStatus）与 F6 列表列完全匹配（见第 1 条）。
+- B1/B3/B4/B5/B7/B8 为纯后端 / MSI 改动，与前端契约无交叉；升级不触发弹窗（NOT UPGRADINGPRODUCTCODE AND NOT REMOVE）与验收 4 一致。
+
+### 待审核者确认清单
+
+1. 第 1 条：WinHost 补 `GET /api/jobs`（a）还是删 F6 降级路径（b）？
+2. 第 3 条：保持「第一台在线」（a）还是暴露本机 deviceId（b）？
+3. 第 4 条：保存后立即生效重载（a）还是提示重启生效（b）？
+4. 第 5 条：确认「settings.json 缺失 / 损坏 → GET /api/host/config 返回 200 + 默认 serverUrl」；F2 实施时重审方案 B 残留检测。
+5. 第 6、7 条：是否补入任务清单（settings.test.ts、README 更新）？
+
+## 附：审核者答复（2026-08-11，规格定稿）
+
+对 hermes 审阅意见的逐条处置（已并入正文 §3 / §4 / §5）：
+
+1. 🔴 1（WinHost 缺 `GET /api/jobs`）：采用方案 a——新增 B10：WinHost `GET /api/jobs`（可选 limit，形状与 Server 兼容），F6 单机降级保留。
+2. 🟡 2（Server limit 漏实现）：采纳——B10：Server `GET /api/jobs` 支持 `?limit`（默认 100，上限 500）。
+3. 🟡 3（本机设备识别）：采用 b + a 兜底——`/api/host/config` 返回 `deviceId / deviceName`，F5 优先选中本机设备，未命中回退第一台在线。
+4. 🟡 4（保存生效语义）：采用 a——保存后立即生效：更新内存 serverBase → 重新探测 → 重拉当前页数据（可整页刷新，session 草稿不丢）。
+5. 🟡 5（回退默认值语义）：确认——settings.json 缺失 / 损坏 → `GET /api/host/config` 返回 200 + 默认 serverUrl（127.0.0.1:53961）；`settings.ts` 移除方案 B 残留检测。
+6. 🟡 6（测试清单）：采纳——F7 补 `settings.test.ts`。
+7. 🟡 7（README 残留）：采纳——B1 补 README 更新。
+8. 🟡 8（空态文案）：轻处理——F6 空态按默认值写死「终态作业默认保留 30 天，由服务端自动清理」。
+9. 💡 建议：全部采纳——状态灯区分「服务端未连接（单机模式可用）」/「本机客户端不可用」；连接徽标与状态灯加图例；作业历史手动刷新不轮询。
+10. ✅ 核对通过项：无需修改。
