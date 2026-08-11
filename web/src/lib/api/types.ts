@@ -68,6 +68,8 @@ export interface DeviceView {
   registeredAt: string
   lastSeenAt: string
   status: string
+  /** 迭代 20：服务端记录的服务端所见来源 IP（注册 / 心跳刷新，IPv4 文本；旧设备可能为空）。 */
+  lastIp?: string | null
 }
 
 export interface ExcelImportResult {
@@ -147,6 +149,8 @@ export interface HostConfig {
   serverUrl: string
   deviceId?: string
   deviceName?: string
+  /** 迭代 20：本机 IPv4 列表（枚举网卡、过滤回环；多 IP 状态栏逗号分隔显示全部）。 */
+  ips?: string[]
 }
 
 /** GET /api/printer/status（迭代 15 恢复，F4）。 */

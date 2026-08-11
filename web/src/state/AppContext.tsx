@@ -9,6 +9,7 @@ import { localApi, serverApi, setServerBaseUrl } from '../lib/api/client'
 import type { TransportConfig } from '../lib/api/types'
 import { getBaseUrl, setBaseUrl as persistBaseUrl } from '../lib/settings'
 import { probeHealthz } from '../lib/api/client'
+import { isServerUi } from '../lib/uiMode'
 import type { PrintDraft, StorageLike } from './draft'
 import { applyDraftValue, loadPrintDraft, savePrintDraft } from './draft'
 
@@ -17,7 +18,8 @@ export interface LogLine {
   msg: string
 }
 
-/** 业务 API 模式：server = 服务端（模板 / 作业中心）；standalone = 单机降级（本机 WinHost 全套 API）。 */
+/** 业务 API 模式：server = 服务端（模板 / 作业中心）；standalone = 单机降级（本机 WinHost 全套 API）。
+ *  迭代 20（K2）：server 构建下恒为 'server'，无 standalone 分支。 */
 export type ServerMode = 'unknown' | 'server' | 'standalone'
 
 interface AppContextValue {
@@ -26,8 +28,12 @@ interface AppContextValue {
   baseUrl: string
   /** 业务 API 模式（healthz 探测服务端地址得出）。 */
   serverMode: ServerMode
-  /** 本机 Client 的 deviceId（机器级配置；旧客户端为 null，F5 回退第一台在线）。 */
+  /** 本机 Client 的 deviceId（机器级配置；旧客户端为 null，F5 回退第一台在线；server 构建恒 null）。 */
   hostDeviceId: string | null
+  /** 迭代 20：本机 Client 枚举的 IPv4 列表（/api/host/config.ips，客户端状态栏显示；server 构建恒空）。 */
+  hostIps: string[]
+  /** 迭代 20（Y2）：数据与打印「默认目标设备」（在线设备页点选，localStorage 持久化，跨页联动；client 构建不消费）。 */
+  defaultTargetDeviceId: string | null
   /** healthz 的传输模式（旧字段，兼容展示兜底）。 */
   transport: string | null
   /** GET /api/transport 结果（mode + params，本机连接），切换成功后立即更新。 */
@@ -40,6 +46,8 @@ interface AppContextValue {
   setDrawerOpen: (open: boolean) => void
   log: (msg: string) => void
   setStatus: (msg: string) => void
+  /** 迭代 20：设置数据与打印默认目标设备（localStorage 持久化；仅 server 构建使用）。 */
+  setDefaultTargetDeviceId: (id: string | null) => void
   /** 探测服务端连接（healthz，5s 超时）。 */
   checkConnection: () => Promise<boolean>
   /** 探测任意地址的 /healthz（设置页「测试连接」用输入值，不保存）。 */
@@ -59,6 +67,29 @@ const AppContext = createContext<AppContextValue | null>(null)
 
 const MAX_LOGS = 300
 
+/** 迭代 20（Y2）：数据与打印「默认目标设备」localStorage 键（在线设备页点选持久化，跨页联动）。 */
+const DEFAULT_TARGET_KEY = 'labelframe.defaultTargetDeviceId'
+
+function readDefaultTargetDevice(): string | null {
+  try {
+    const v = typeof window !== 'undefined' ? window.localStorage.getItem(DEFAULT_TARGET_KEY) : null
+    return v && v.trim() ? v.trim() : null
+  } catch {
+    return null
+  }
+}
+
+function persistDefaultTargetDevice(id: string | null): void {
+  try {
+    const storage = typeof window !== 'undefined' ? window.localStorage : null
+    if (!storage) return
+    if (id) storage.setItem(DEFAULT_TARGET_KEY, id)
+    else storage.removeItem(DEFAULT_TARGET_KEY)
+  } catch {
+    // 隐私模式等容错：忽略
+  }
+}
+
 /** 会话存储（sessionStorage）：显式 window 访问 + 守卫（Node 26 实验性全局 / 隐私模式容错）。 */
 function getSessionStorage(): StorageLike | undefined {
   try {
@@ -69,10 +100,12 @@ function getSessionStorage(): StorageLike | undefined {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [baseUrl, setBaseUrlState] = useState(getBaseUrl())
+  const [baseUrl, setBaseUrlState] = useState(() => (isServerUi ? '' : getBaseUrl()))
   const [serverMode, setServerMode] = useState<ServerMode>('unknown')
   const [connected, setConnected] = useState(false)
   const [hostDeviceId, setHostDeviceId] = useState<string | null>(null)
+  const [hostIps, setHostIps] = useState<string[]>([])
+  const [defaultTargetDeviceId, setDefaultTargetDeviceIdState] = useState<string | null>(() => (isServerUi ? readDefaultTargetDevice() : null))
   const [transport, setTransport] = useState<string | null>(null)
   const [transportConfig, setTransportConfig] = useState<TransportConfig | null>(null)
   const [statusMsg, setStatusMsg] = useState('就绪')
@@ -109,7 +142,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return true
       } catch {
         setConnected(false)
-        setServerMode('standalone')
+        // 迭代 20（K2）：server 构建无单机降级——探测失败仍保持 server 模式（页面用 serverApi 拉数据），仅置未连接。
+        setServerMode(isServerUi ? 'server' : 'standalone')
         return false
       } finally {
         pendingRef.current = null
@@ -121,8 +155,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const checkUrl = useCallback((url: string): Promise<boolean> => probeHealthz(url), [])
 
   // 启动：读机器级配置（serverUrl 优先）→ 本机连接配置 → 探测服务端
+  // 迭代 20（K2）：server 构建由服务端托管、无本机 Client——跳过 localApi 探测（getHostConfig / getTransport），
+  // 直接探测服务端 healthz；serverMode 恒 'server'、无 standalone 分支。client 构建保持现状。
   useEffect(() => {
     let on = true
+    if (isServerUi) {
+      void checkConnection()
+      return () => {
+        on = false
+      }
+    }
     void localApi
       .getHostConfig()
       .then((cfg) => {
@@ -130,6 +172,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setServerBaseUrl(cfg.serverUrl)
         setBaseUrlState(cfg.serverUrl)
         setHostDeviceId(cfg.deviceId ?? null)
+        setHostIps(cfg.ips ?? [])
         setStatus(`已读取本机配置：服务端 ${cfg.serverUrl}。`)
       })
       .catch(() => {
@@ -187,6 +230,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const clearLogs = useCallback(() => setLogs([]), [])
 
+  /** 迭代 20（Y2）：设置默认目标设备（localStorage 持久化；在线设备页点选，数据与打印初始化消费）。 */
+  const setDefaultTargetDeviceId = useCallback((id: string | null) => {
+    persistDefaultTargetDevice(id)
+    setDefaultTargetDeviceIdState(id)
+  }, [])
+
   const setDraftSelected = useCallback((name: string) => {
     setPrintDraft((d) => ({ ...d, selectedName: name }))
   }, [])
@@ -209,6 +258,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       baseUrl,
       serverMode,
       hostDeviceId,
+      hostIps,
+      defaultTargetDeviceId,
       transport,
       transportConfig,
       statusMsg,
@@ -218,6 +269,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDrawerOpen,
       log,
       setStatus,
+      setDefaultTargetDeviceId,
       checkConnection,
       checkUrl,
       changeBaseUrl,
@@ -233,6 +285,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       baseUrl,
       serverMode,
       hostDeviceId,
+      hostIps,
+      defaultTargetDeviceId,
       transport,
       transportConfig,
       statusMsg,
@@ -241,6 +295,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       printDraft,
       log,
       setStatus,
+      setDefaultTargetDeviceId,
       checkConnection,
       checkUrl,
       changeBaseUrl,

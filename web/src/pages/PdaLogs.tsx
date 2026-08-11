@@ -6,6 +6,7 @@ import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { LogEntry } from '../lib/api/types'
 import { useApp } from '../state/AppContext'
+import { isServerUi } from '../lib/uiMode'
 import { Icon } from '../components/Icon'
 
 const POLL_MS = 5000
@@ -64,8 +65,9 @@ export function PdaLogs() {
     <div className="page">
       <div className="page-head">
         <div className="page-title">
-          PDA 日志
-          <small>PDA 打印测试日志回传，实时查看分析</small>
+          {/* 迭代 20（Y5）：Server 版命名「设备日志」（集中查看全部设备日志）；client 版保持「PDA 日志」 */}
+          {isServerUi ? '设备日志' : 'PDA 日志'}
+          <small>{isServerUi ? '全部设备日志集中查看（每 5 秒自动刷新）' : 'PDA 打印测试日志回传，实时查看分析'}</small>
         </div>
         <div className="spacer" />
         <select className="input" value={filter} onChange={(ev) => { setFilter(ev.target.value); setLogs([]) }}>

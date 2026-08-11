@@ -13,11 +13,21 @@ import { deriveFields } from '../lib/design/fields'
 import { findDuplicateKeys, isMappingComplete, rowToData, suggestMapping } from '../lib/excel/mapping'
 import { useApp } from '../state/AppContext'
 import { mergeDraftValues } from '../state/draft'
+import { isServerUi } from '../lib/uiMode'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 
 /** 设备在线状态中文标签。 */
 const deviceStatusLabel = (s: string) => (s === 'Online' ? '在线' : '离线')
+
+/** 离线原因（选择器置灰时显示上次心跳时间）。 */
+function formatLastSeen(iso?: string): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
 
 const JOB_STATUS_LABEL: Record<string, string> = {
   Pending: '排队中',
@@ -84,11 +94,14 @@ function JobPanel({
   error,
   retry,
   debugMode,
+  canRetry,
 }: {
   job: JobView | null
   error: string | null
   retry: (i: number) => Promise<boolean>
   debugMode: boolean
+  /** 迭代 20（G4）：server 构建无逐张 retry 端点——隐藏逐张失败重试表格（Server 作业本就无 items，强制隐藏兜底）。 */
+  canRetry: boolean
 }) {
   const app = useApp()
   if (!job) {
@@ -132,7 +145,7 @@ function JobPanel({
           </div>
           {failed > 0 && (
             <div className="hint" style={{ marginTop: 6, color: 'var(--danger)' }}>
-              有 {failed} 张打印失败。{job.items ? '可在下方表格中单独重试。' : '详见作业状态与客户端回报的失败原因。'}
+              有 {failed} 张打印失败。{job.items && canRetry ? '可在下方表格中单独重试。' : '详见作业状态与客户端回报的失败原因。'}
             </div>
           )}
         </div>
@@ -150,7 +163,7 @@ function JobPanel({
         {job.errorMessage && (
           <div className="hint" style={{ color: 'var(--danger)' }}>错误：{job.errorMessage}</div>
         )}
-        {job.items && (
+        {job.items && canRetry && (
           <table className="table">
             <thead>
               <tr>
@@ -215,16 +228,44 @@ export function DataPrint() {
   // 目标设备（迭代 17/18 F5）：GET /api/devices 成功 = 服务端模式（显示选择、提交带 targetDeviceId）；
   // 404 / 失败 = 单机 WinHost 降级（隐藏选择、提交不带 targetDeviceId）。
   // 迭代 18：默认选中本机设备（机器级配置 deviceId 匹配在线列表），未命中回退第一台在线。
+  // 迭代 20（K2）：server 构建恒服务端模式——设备列表拉取成功即 'server'（失败也保持 'server'，无 standalone 分支）。
   const [deviceMode, setDeviceMode] = useState<'loading' | 'server' | 'standalone'>('loading')
   const [devices, setDevices] = useState<DeviceView[]>([])
   const [targetDeviceId, setTargetDeviceId] = useState('')
 
-  /** 业务 API 跟随模式：服务端 = serverApi（模板 / 作业中心）；单机降级 = localApi（本机 WinHost 全套 API）。 */
-  const biz = deviceMode === 'server' ? serverApi : localApi
+  /** 业务 API 跟随模式：服务端 = serverApi（模板 / 作业中心）；单机降级 = localApi（本机 WinHost 全套 API）。
+   *  迭代 20：server 构建恒 serverApi（Server UI 由服务端托管，无本机 Client）。 */
+  const biz = isServerUi ? serverApi : deviceMode === 'server' ? serverApi : localApi
   const { job, error: jobError, retry } = useJobPolling(printDraft.jobId, biz)
 
   useEffect(() => {
     let cancelled = false
+    if (isServerUi) {
+      // 迭代 20（K1/K2/Y2）：server 构建不探测本机（无 getHostConfig / getTransport）；
+      // 进入页面拉取一次设备列表（无需轮询，提交前另有现拉校验）；
+      // 默认目标优先级 = 用户点选（localStorage labelframe.defaultTargetDeviceId，须在线）> 第一台在线。
+      serverApi
+        .listDevices()
+        .then((list) => {
+          if (cancelled) return
+          setDevices(list)
+          setDeviceMode('server')
+          const online = list.filter((d) => d.status === 'Online')
+          const saved =
+            app.defaultTargetDeviceId && online.some((d) => d.deviceId === app.defaultTargetDeviceId)
+              ? app.defaultTargetDeviceId
+              : ''
+          setTargetDeviceId(saved || online[0]?.deviceId || '')
+        })
+        .catch((err) => {
+          if (cancelled) return
+          setDeviceMode('server')
+          setError(err instanceof ApiError ? err.message : '加载设备列表失败。')
+        })
+      return () => {
+        cancelled = true
+      }
+    }
     void Promise.all([serverApi.listDevices().catch(() => null), localApi.getHostConfig().catch(() => null)]).then(
       ([list, cfg]) => {
         if (cancelled) return
@@ -244,7 +285,7 @@ export function DataPrint() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedName = printDraft.selectedName
   const debugMode = printDraft.debugMode
@@ -321,15 +362,38 @@ export function DataPrint() {
       app.setStatus('请先选择目标设备（作业投递到客户端打印）。')
       return
     }
-    const req = buildRequest(labels, 'job')
-    if (!req) return
     setSubmitting(true)
     try {
+      // 迭代 20（K3，仅 server 构建）：提交时现拉 GET /api/devices 核对所选设备在线——
+      // 不复用进入页面时的缓存列表（设备中途掉线后缓存校验形同虚设）；掉线提示并禁止提交、作业不排队。
+      // client 构建保持现状（可选离线设备排队）。
+      if (isServerUi) {
+        try {
+          const fresh = await serverApi.listDevices()
+          const dev = fresh.find((d) => d.deviceId === targetDeviceId)
+          if (!dev || dev.status !== 'Online') {
+            setDevices(fresh)
+            const msg = '所选设备已离线或不存在，无法提交（作业不会排队）。请重新选择在线设备。'
+            setError(msg)
+            app.setStatus(msg)
+            return
+          }
+        } catch (err) {
+          const msg = err instanceof ApiError ? err.message : '校验设备在线状态失败，无法提交。'
+          setError(msg)
+          app.setStatus(msg)
+          return
+        }
+      }
+      const req = buildRequest(labels, 'job')
+      if (!req) return
       const j = await biz.submitJob(req)
       app.setDraftJobId(j.jobId)
       app.setStatus(`作业已提交（${labels.length} 张，ID ${j.jobId.slice(0, 8)}）。`)
     } catch (err) {
-      app.setStatus(err instanceof ApiError ? err.message : '提交作业失败。')
+      const msg = err instanceof ApiError ? err.message : '提交作业失败。'
+      setError(msg)
+      app.setStatus(msg)
     } finally {
       setSubmitting(false)
     }
@@ -442,23 +506,26 @@ export function DataPrint() {
         />
       </div>
 
-      {/* 连接状态徽标（迭代 18 F5）：本机连接（Client 传输方式）与服务端连通（模板 / 作业中心）各自含义 */}
-      <div
-        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}
-        title="本机连接：LabelFrame Client 的打印机连接方式（数据来自本机）；服务端连通：模板库 / 作业队列所在 Server"
-      >
-        <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          本机连接
-          <span className="badge">{formatTransport(app.transportConfig) || app.transport || '未知'}</span>
-        </span>
-        <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          服务端
-          <span className={'conn' + (app.connected ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span className={'status-dot' + (app.connected ? ' on' : '')} />
-            {app.connected ? '已连接' : '未连接（单机模式可用）'}
+      {/* 连接状态徽标（迭代 18 F5）：本机连接（Client 传输方式）与服务端连通（模板 / 作业中心）各自含义。
+          迭代 20：server 构建隐藏（本机连接 = 打印机相关内容；服务端连通状态在底部状态栏已显示） */}
+      {!isServerUi && (
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}
+          title="本机连接：LabelFrame Client 的打印机连接方式（数据来自本机）；服务端连通：模板库 / 作业队列所在 Server"
+        >
+          <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            本机连接
+            <span className="badge">{formatTransport(app.transportConfig) || app.transport || '未知'}</span>
           </span>
-        </span>
-      </div>
+          <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            服务端
+            <span className={'conn' + (app.connected ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span className={'status-dot' + (app.connected ? ' on' : '')} />
+              {app.connected ? '已连接' : '未连接（单机模式可用）'}
+            </span>
+          </span>
+        </div>
+      )}
 
       {deviceMode === 'server' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
@@ -469,22 +536,23 @@ export function DataPrint() {
             value={targetDeviceId}
             onChange={(ev) => setTargetDeviceId(ev.target.value)}
             style={{ minWidth: 240 }}
-            title="作业将投递到所选客户端打印"
+            title={isServerUi ? '作业将投递到所选在线设备执行打印（仅在线设备可选）' : '作业将投递到所选客户端打印'}
           >
             {devices.length === 0 && <option value="">（暂无设备）</option>}
             {devices.length > 0 && !targetDeviceId && <option value="">（请选择设备）</option>}
             {devices.map((d) => (
-              <option key={d.deviceId} value={d.deviceId}>
+              <option key={d.deviceId} value={d.deviceId} disabled={isServerUi && d.status !== 'Online'} title={isServerUi && d.status !== 'Online' ? `离线（上次心跳 ${formatLastSeen(d.lastSeenAt)}）` : undefined}>
                 {d.name}（{deviceStatusLabel(d.status)}）
+                {isServerUi && d.status !== 'Online' ? ` · 上次心跳 ${formatLastSeen(d.lastSeenAt)}` : ''}
               </option>
             ))}
           </select>
           {devices.length === 0 ? (
-            <span className="badge warn">暂无在线客户端，请先在打印电脑安装并启动 LabelFrame Client</span>
+            <span className="badge warn">{isServerUi ? '暂无设备，请先在打印电脑安装并启动 LabelFrame Client' : '暂无在线客户端，请先在打印电脑安装并启动 LabelFrame Client'}</span>
           ) : targetDeviceId ? (
-            <span className="hint">提交作业将投递到所选客户端打印；客户端离线时作业排队，上线后自动领取。</span>
+            <span className="hint">{isServerUi ? '仅在线设备可选；提交时将再次校验所选设备在线状态。' : '提交作业将投递到所选客户端打印；客户端离线时作业排队，上线后自动领取。'}</span>
           ) : (
-            <span className="badge warn">暂无在线设备，请先启动打印电脑上的 LabelFrame Client（或选择离线设备排队等待）</span>
+            <span className="badge warn">{isServerUi ? '暂无在线设备，仅在线设备可选' : '暂无在线设备，请先启动打印电脑上的 LabelFrame Client（或选择离线设备排队等待）'}</span>
           )}
         </div>
       )}
@@ -533,7 +601,9 @@ export function DataPrint() {
                         debugMode
                           ? '后端渲染当前表单为 PNG 下载，不发送打印驱动'
                           : deviceMode === 'server'
-                            ? '提交 1 张标签作业到所选目标设备'
+                            ? isServerUi
+                              ? '提交 1 张标签作业到所选在线设备（由该设备客户端执行打印）'
+                              : '提交 1 张标签作业到所选目标设备'
                             : '提交 1 张标签作业到本机打印'
                       }
                     >
@@ -556,7 +626,9 @@ export function DataPrint() {
                     {debugMode
                       ? '调试模式：出图为后端渲染的实际打印位图（同一 Skia / DPI），不提交作业、不发送打印驱动。'
                       : deviceMode === 'server'
-                        ? '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到所选目标设备（客户端离线时排队等待）。'
+                        ? isServerUi
+                          ? '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到所选在线设备（仅在线设备可选，由设备客户端执行打印）。'
+                          : '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到所选目标设备（客户端离线时排队等待）。'
                         : '已用模板预览值预填，可修改后打印；单机模式：作业提交到本机 WinHost 打印（兼容旧版单机部署）。'}
                   </div>
                 </>
@@ -565,7 +637,7 @@ export function DataPrint() {
           </div>
         </div>
 
-        <JobPanel job={job} error={jobError} retry={retry} debugMode={debugMode} />
+        <JobPanel job={job} error={jobError} retry={retry} debugMode={debugMode} canRetry={!isServerUi} />
       </div>
 
       {mappingOpen && excel && pkg && (

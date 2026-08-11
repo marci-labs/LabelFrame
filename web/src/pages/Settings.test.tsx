@@ -29,6 +29,8 @@ vi.mock('../lib/api/client', () => ({
   setServerBaseUrl: vi.fn(),
   probeHealthz: mocks.probeHealthz,
 }))
+// 迭代 20：本文件为 client 构建语义用例，显式注入 client 分支（VITE_UI_MODE=server 整仓测试时保持稳定）
+vi.mock('../lib/uiMode', () => ({ UI_MODE: 'client', isServerUi: false }))
 
 function renderSettings() {
   return render(

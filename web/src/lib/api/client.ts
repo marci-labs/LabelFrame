@@ -23,17 +23,22 @@ import type {
 } from './types'
 import { ApiError, DEFAULT_LOCAL_BASE_URL } from './types'
 import { getBaseUrl } from '../settings'
+import { UI_MODE } from '../uiMode'
 
 // ── base 解析 ──
 
-let serverBaseUrl = getBaseUrl()
+// 迭代 20（K1）：server 构建下 serverApi base 固定同源相对路径（''，不读 localStorage / 机器级配置）——
+// Server UI 由服务端托管，同源即可访问 API；局域网其他机器访问 http://<服务端IP>:53961 时避免回环地址
+// 错连到访问者本机、或 localStorage 残留旧值错连到客户端 WinHost。client 构建保持现状。
+let serverBaseUrl = UI_MODE === 'server' ? '' : getBaseUrl()
 
-/** 更新服务端地址（AppContext 机器级配置加载 / 保存后调用，模块级即时生效）。 */
+/** 更新服务端地址（AppContext 机器级配置加载 / 保存后调用，模块级即时生效；server 构建下不调用）。 */
 export function setServerBaseUrl(url: string): void {
   serverBaseUrl = url.trim().replace(/\/+$/, '')
 }
 
 export function getServerBaseUrl(): string {
+  if (UI_MODE === 'server') return ''
   return serverBaseUrl
 }
 
