@@ -1,13 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
   <Package Name="LabelFrame Client" Manufacturer="LabelFrame" Version="0.15.5"
-           UpgradeCode="EE3F2357-56CE-4C0F-AEC1-4C04B6E6BCDA">
+           UpgradeCode="EE3F2357-56CE-4C0F-AEC1-4C04B6E6BCDA" Codepage="65001">
     <SummaryInformation Description="LabelFrame 打印客户端：托管完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史）并连接本机打印机打印（安装于 Program Files\LabelFrame\Client）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
-    <!-- 覆盖安装 / 卸载前关闭托盘程序（迭代 19 反馈：避免 exe 占用导致覆盖失败或卸载后残留进程） -->
-    <util:CloseApplication Id="CloseWinHost" Target="LabelFrame.WinHost.exe" CloseMessage="no" TerminateProcess="0" RebootPrompt="no" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <!-- 安装完成弹窗勾选项默认值（仅新装展示；静默安装不展示、不自动启动） -->
@@ -129,7 +126,9 @@
       <ComponentRef Id="DesktopShortcut" />
     </Feature>
 
-    <!-- 安装完成动作：勾选立即打开则启动客户端（Immediate，运行在提权的 UI 进程，以用户身份启动 GUI） -->
+    <!-- 覆盖安装 / 卸载前强制结束托盘程序（迭代 19 反馈：先停再删，避免 exe 占用导致覆盖失败或卸载后残留进程） -->
+    <CustomAction Id="KillWinHost" Directory="SystemFolder" Execute="immediate" Return="ignore"
+      ExeCommand="taskkill /F /IM LabelFrame.WinHost.exe" />    <!-- 安装完成动作：勾选立即打开则启动客户端（Immediate，运行在提权的 UI 进程，以用户身份启动 GUI） -->
     <CustomAction Id="LaunchClient" Directory="INSTALLFOLDER" Execute="immediate" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c start &quot;&quot; &quot;[#WinHostExe]&quot;" />
 
@@ -143,6 +142,8 @@
     <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramFiles%\LabelFrame\Client\appsettings.json&quot;" />
     <InstallExecuteSequence>
+      <!-- 最先结束托盘进程：覆盖升级 / 卸载前释放 exe 占用 -->
+      <Custom Action="KillWinHost" Before="FindRelatedProducts" />
       <Custom Action="ClearDataDelFiles" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelPrintDir" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelMachineConfig" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
