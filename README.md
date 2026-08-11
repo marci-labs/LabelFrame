@@ -52,7 +52,7 @@ cd web; pnpm install; pnpm build; cd ..
 .\scripts\build-msi.ps1
 ```
 
-产物（0.14.0 起双安装包，安装目录统一在 `C:\Program Files\LabelFrame\` 下用子目录区分）：`artifacts\LabelFrame-Server-0.14.0.msi`（约 8MB）→ `C:\Program Files\LabelFrame\Server`：服务端（模板库 / 作业中心 / Web UI / 调试出图 / 日志 / Excel，不接打印机；默认监听 0.0.0.0:53961）；`artifacts\LabelFrame-Client-0.14.0.msi`（约 14MB）→ `C:\Program Files\LabelFrame\Client`：打印客户端（本机打印机连接 / 作业领取 / 托盘；默认 ServerUrl=http://127.0.0.1:53961，单机模式保留）。单机使用 = 同机安装两个包；两个包的 appsettings.json 均为独立用户配置组件（覆盖安装 / 修复不覆盖、卸载保留）。
+产物（0.14.0 起双安装包，安装目录统一在 `C:\Program Files\LabelFrame\` 下用子目录区分）：`artifacts\LabelFrame-Server-0.14.0.msi`（约 8MB）→ `C:\Program Files\LabelFrame\Server`：服务端（模板库 / 作业中心 / Web UI / 调试出图 / 日志 / Excel，不接打印机；默认监听 0.0.0.0:53961）；`artifacts\LabelFrame-Client-0.14.0.msi`（约 14MB）→ `C:\Program Files\LabelFrame\Client`：打印客户端（本机打印机连接 / 作业领取 / 托盘；默认 ServerUrl=http://127.0.0.1:53961，单机模式保留）。单机使用 = 同机安装两个包；两个包的 appsettings.json 均为独立用户配置组件（覆盖安装 / 修复不覆盖、卸载保留）。卸载时会询问是否清除用户数据（默认不勾选；勾选则删除本程序产生的模板 / 作业 / 日志 / 连接与打印配置），覆盖升级不触发清理。
 
 前置要求：目标机需安装 **.NET 10 Desktop Runtime**（x64，下载：https://dotnet.microsoft.com/download/dotnet/10.0）。安装 MSI 时会用 .NET 官方自检程序（NetCoreCheck）实时检测：已安装则直接继续（无需重启），缺失则弹出可点击的官方下载链接对话框（不自动安装）。
 打印：统一为整版位图（Skia 渲染 → `^GF` 直传打印机），与画布预览同源（迭代 15 起移除矢量 ZPL）。连接方式（Log / TCP / Windows 驱动 / Zebra）在**客户端本机**配置（托盘 / 本机小页面，先测试后生效、持久化 connection.json），服务端不再提供打印机连接 UI。

@@ -270,3 +270,9 @@
 
 - 前端（hermes，e161d81）：移除打印机连接 UI（连接方式 / 打印机分组、连接徽标与快速切换、transport API 与类型）；数据与打印新增目标设备选择（listDevices + targetDeviceId + templateName 提交），404/失败自动降级单机模式；JobView 适配 Server 作业视图；前端 105 用例全绿。
 - 双 MSI 打包：`LabelFrame-Server-0.14.0.msi`（→ Program Files\LabelFrame\Server，服务端，默认 0.0.0.0:53961）与 `LabelFrame-Client-0.14.0.msi`（→ Program Files\LabelFrame\Client，打印客户端，默认 ServerUrl=127.0.0.1:53961）；两包 appsettings 保留机制沿用；打包脚本 `build-msi.ps1`（Client）与 `build-server-msi.ps1`（Server），文件清单 GUID 按包加盐避免冲突。
+## 打包增强：卸载询问清除用户数据（0.14.0，2026-08-11）
+
+- 两个 MSI 卸载时弹出确认对话框「清除用户数据（默认不勾选）」；勾选则删除本程序产生的数据：
+  - Client：`%LOCALAPPDATA%\LabelFrame\` 下 jobs.db / templates.db / logs.db / host.log / connection.json / print 目录 + 安装目录 appsettings.json；
+  - Server：`%LOCALAPPDATA%\LabelFrame\server\` 目录 + server.db + 安装目录 appsettings.json。
+- 仅手动卸载触发（条件 `REMOVE=ALL AND NOT UPGRADINGPRODUCTCODE`），覆盖升级不会清数据；静默卸载不弹窗、默认保留。
