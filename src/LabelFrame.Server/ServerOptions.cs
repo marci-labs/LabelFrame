@@ -1,4 +1,4 @@
-namespace LabelFrame.Server;
+﻿namespace LabelFrame.Server;
 
 /// <summary>Server 配置：监听地址、数据库路径与历史清理保留期。</summary>
 public sealed class ServerOptions
@@ -43,6 +43,15 @@ public sealed class ServerOptions
 
     /// <summary>文本日志文件路径（为空不写文件；Linux 部署挂载到宿主机查看，迭代 19）。</summary>
     public string? LogFilePath { get; set; }
+
+    /// <summary>产品版本（随迭代版本号更新；打包脚本 -Version 需保持一致）。</summary>
+    public const string ProductVersion = "0.16.0";
+
+    /// <summary>默认服务端管理界面插件目录（Windows %ProgramData%\LabelFrame\server\plugins\web-ui；Linux /var/lib/labelframe/server/plugins/web-ui）。</summary>
+    public static string DefaultWebUiPath => Path.Combine(DefaultDataDirectory, "plugins", "web-ui");
+
+    /// <summary>服务端管理界面插件目录（目录存在即托管、放进去即时生效；为空 / 目录不存在 = 无头，不推翻决策 #53）。</summary>
+    public string? WebUiPath { get; set; } = DefaultWebUiPath;
 
     /// <summary>应用 LABELFRAME_SERVER_* 环境变量覆盖。</summary>
     public void ApplyEnvironmentOverrides()
@@ -90,6 +99,12 @@ public sealed class ServerOptions
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_LOG_FILE") is { } logFile)
         {
             LogFilePath = logFile;
+        }
+
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_WEB_UI") is { } webUi)
+        {
+            // 环境变量为空 = 显式不启用插件；非空覆盖默认插件目录
+            WebUiPath = string.IsNullOrWhiteSpace(webUi) ? null : webUi;
         }
     }
 }

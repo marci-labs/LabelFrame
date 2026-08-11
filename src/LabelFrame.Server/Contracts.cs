@@ -1,4 +1,4 @@
-using LabelFrame.Core.Contracts;
+﻿using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Layout;
 
 namespace LabelFrame.Server;
@@ -9,7 +9,8 @@ public sealed record SubmitJobRequest(
     string? TargetDeviceId,
     TemplateDto? Template,
     IReadOnlyList<LabelDto>? Labels,
-    string? TemplateName = null);
+    string? TemplateName = null,
+    string? TargetIp = null);
 
 /// <summary>模板（自包含或由 templateName 解析后附带；Images 为 base64 图片资源，领取时随载荷下发）。</summary>
 public sealed record TemplateDto(
@@ -25,7 +26,13 @@ public sealed record LabelDto(IReadOnlyDictionary<string, string>? Data);
 public sealed record RegisterDeviceRequest(string? DeviceId, string? Name);
 
 /// <summary>设备视图。</summary>
-public sealed record DeviceView(string DeviceId, string Name, DateTimeOffset RegisteredAt, DateTimeOffset LastSeenAt, string Status);
+public sealed record DeviceView(
+    string DeviceId,
+    string Name,
+    DateTimeOffset RegisteredAt,
+    DateTimeOffset LastSeenAt,
+    string Status,
+    string? LastIp = null);
 
 /// <summary>作业视图。</summary>
 public sealed record ServerJobView(

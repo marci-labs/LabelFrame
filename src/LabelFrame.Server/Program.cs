@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using LabelFrame.Core.Documents;
 using LabelFrame.Core.Logs;
 using LabelFrame.Core.Templates;
@@ -59,10 +59,38 @@ var app = builder.Build();
 
 app.UseCors();
 
+// ---- 服务端管理界面插件（迭代 20）：静态前端包目录，目录存在即托管、移除即无头 ----
+// 中间件常驻注册（FileProvider 指向插件目录）；目录出现 / 移除即时生效，无需重启。
+if (!string.IsNullOrWhiteSpace(serverOptions.WebUiPath))
+{
+    // PhysicalFileProvider 要求根目录存在：启动时确保插件目录存在（空目录仍为无头，放入 index.html 即生效）；
+    // 目录创建失败（如权限不足）降级为无头，不影响 API 启动。
+    try
+    {
+        Directory.CreateDirectory(serverOptions.WebUiPath);
+        var pluginFileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(serverOptions.WebUiPath);
+        app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = pluginFileProvider });
+        app.UseStaticFiles(new StaticFileOptions { FileProvider = pluginFileProvider });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[LabelFrame] 插件目录初始化失败（{serverOptions.WebUiPath}）：{ex.Message}，保持无头。");
+    }
+}
+
 app.MapGet("/healthz", () => Results.Ok(new { service = "LabelFrame.Server", status = "ok" }));
 
+// ---- 服务端信息（迭代 20：调试 / Server UI 探测用）----
+app.MapGet("/api/server/info", (ServerOptions options) =>
+    Results.Ok(new
+    {
+        listenUrl = options.ListenUrl,
+        uiEnabled = ServerPluginUi.IsEnabled(options.WebUiPath),
+        version = ServerOptions.ProductVersion,
+    }));
+
 // ---- 设备注册 / 目录 ----
-app.MapPost("/api/devices", async (RegisterDeviceRequest? request, ServerService svc, CancellationToken ct) =>
+app.MapPost("/api/devices", async (RegisterDeviceRequest? request, HttpContext context, ServerService svc, CancellationToken ct) =>
 {
     if (request is null)
     {
@@ -71,7 +99,7 @@ app.MapPost("/api/devices", async (RegisterDeviceRequest? request, ServerService
 
     try
     {
-        return Results.Ok(await svc.RegisterDeviceAsync(request.DeviceId, request.Name, ct));
+        return Results.Ok(await svc.RegisterDeviceAsync(request.DeviceId, request.Name, ServerService.NormalizeRemoteIp(context.Connection.RemoteIpAddress), ct));
     }
     catch (ServerException ex)
     {
@@ -81,6 +109,14 @@ app.MapPost("/api/devices", async (RegisterDeviceRequest? request, ServerService
 
 app.MapGet("/api/devices", async (ServerService svc, CancellationToken ct) =>
     Results.Ok(await svc.ListDevicesAsync(ct)));
+
+app.MapGet("/api/devices/by-ip/{ip}", async (string ip, ServerService svc, CancellationToken ct) =>
+{
+    var device = await svc.FindDeviceByIpAsync(ip, ct);
+    return device is null
+        ? Results.NotFound(new ErrorView(ServerErrorCodes.DeviceNotFound, $"按 IP 未找到设备：{ip}。"))
+        : Results.Ok(device);
+});
 
 // ---- 作业提交 / 查询 ----
 app.MapPost("/api/jobs", async (SubmitJobRequest? request, ServerService svc, CancellationToken ct) =>
@@ -122,12 +158,12 @@ app.MapGet("/api/jobs/{jobId}", async (string jobId, ServerService svc, Cancella
 
 // ---- 设备领取 / 回报 ----
 // 长轮询通知（迭代 18 联调反馈）：作业到达立即返回 hasPending=true（等效推送）；同时刷新心跳保活。
-app.MapGet("/api/devices/{deviceId}/jobs/notify", async (string deviceId, int? timeout, ServerService svc, PendingJobNotifier notifier, CancellationToken ct) =>
+app.MapGet("/api/devices/{deviceId}/jobs/notify", async (string deviceId, int? timeout, HttpContext context, ServerService svc, PendingJobNotifier notifier, CancellationToken ct) =>
 {
     try
     {
         var seconds = Math.Clamp(timeout ?? 20, 1, 30);
-        await svc.TouchDeviceAsync(deviceId, DateTimeOffset.UtcNow, ct);
+        await svc.TouchDeviceAsync(deviceId, DateTimeOffset.UtcNow, ServerService.NormalizeRemoteIp(context.Connection.RemoteIpAddress), ct);
         var hasPending = await notifier.WaitAsync(deviceId, TimeSpan.FromSeconds(seconds), ct);
         return Results.Ok(new { hasPending });
     }
@@ -137,11 +173,11 @@ app.MapGet("/api/devices/{deviceId}/jobs/notify", async (string deviceId, int? t
     }
 });
 
-app.MapGet("/api/devices/{deviceId}/jobs/pending", async (string deviceId, ServerService svc, CancellationToken ct) =>
+app.MapGet("/api/devices/{deviceId}/jobs/pending", async (string deviceId, HttpContext context, ServerService svc, CancellationToken ct) =>
 {
     try
     {
-        return Results.Ok(await svc.ClaimPendingJobsAsync(deviceId, ct));
+        return Results.Ok(await svc.ClaimPendingJobsAsync(deviceId, ServerService.NormalizeRemoteIp(context.Connection.RemoteIpAddress), ct));
     }
     catch (ServerException ex)
     {
@@ -368,5 +404,19 @@ static string FormatExcelCell(object? value) => value switch
     IFormattable f => f.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
     _ => value.ToString() ?? string.Empty,
 };
+
+// ---- SPA fallback（插件）：仅非 /api/* 与 /healthz 的路径回退 index.html；插件未启用保持 404 ----
+app.MapFallback(async context =>
+{
+    var indexFile = ServerPluginUi.ResolveIndexFile(serverOptions.WebUiPath, context.Request.Path.Value ?? string.Empty);
+    if (indexFile is null)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    context.Response.ContentType = "text/html; charset=utf-8";
+    await context.Response.SendFileAsync(indexFile);
+});
 
 await app.RunAsync();

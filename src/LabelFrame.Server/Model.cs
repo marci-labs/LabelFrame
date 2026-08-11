@@ -1,4 +1,4 @@
-namespace LabelFrame.Server;
+﻿namespace LabelFrame.Server;
 
 /// <summary>设备在线状态。</summary>
 public enum DeviceStatus
@@ -24,6 +24,9 @@ public sealed class Device
 
     /// <summary>最近心跳时间（UTC），由注册 / 轮询刷新。</summary>
     public DateTimeOffset LastSeenAt { get; set; }
+
+    /// <summary>服务端看到的来源 IP（IPv4 文本，注册 / 心跳时刷新；可为空）。</summary>
+    public string? LastIp { get; set; }
 }
 
 /// <summary>Server 作业状态。</summary>

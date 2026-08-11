@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.Data.Sqlite;
 using SQLitePCL;
 
@@ -12,7 +12,8 @@ public sealed class ServerDb
             id            TEXT PRIMARY KEY,
             name          TEXT NOT NULL,
             registered_at TEXT NOT NULL,
-            last_seen_at  TEXT NOT NULL
+            last_seen_at  TEXT NOT NULL,
+            last_ip       TEXT NULL
         );
 
         CREATE TABLE IF NOT EXISTS server_jobs (
@@ -69,6 +70,43 @@ public sealed class ServerDb
         await using var command = connection.CreateCommand();
         command.CommandText = CreateTablesSql;
         await command.ExecuteNonQueryAsync(cancellationToken);
+
+        await MigrateDevicesLastIpAsync(connection, cancellationToken);
+    }
+
+    /// <summary>旧库兼容迁移：devices 表缺少 last_ip 列时补列（已存在则跳过；失败静默忽略，不影响启动）。</summary>
+    private static async Task MigrateDevicesLastIpAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        var hasLastIp = false;
+        await using (var probe = connection.CreateCommand())
+        {
+            probe.CommandText = "PRAGMA table_info(devices);";
+            await using var reader = await probe.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                if (string.Equals(reader.GetString(1), "last_ip", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasLastIp = true;
+                    break;
+                }
+            }
+        }
+
+        if (hasLastIp)
+        {
+            return;
+        }
+
+        try
+        {
+            await using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE devices ADD COLUMN last_ip TEXT NULL;";
+            await alter.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch
+        {
+            // 已存在列等竞态 / 约束差异：静默忽略，保持旧库可启动
+        }
     }
 
     /// <summary>注册 / 更新设备并刷新心跳。</summary>
@@ -77,27 +115,30 @@ public sealed class ServerDb
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO devices (id, name, registered_at, last_seen_at)
-            VALUES ($id, $name, $registeredAt, $lastSeenAt)
+            INSERT INTO devices (id, name, registered_at, last_seen_at, last_ip)
+            VALUES ($id, $name, $registeredAt, $lastSeenAt, $lastIp)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
-                last_seen_at = excluded.last_seen_at;
+                last_seen_at = excluded.last_seen_at,
+                last_ip = excluded.last_ip;
             """;
         command.Parameters.AddWithValue("$id", device.Id);
         command.Parameters.AddWithValue("$name", device.Name);
         command.Parameters.AddWithValue("$registeredAt", Format(device.RegisteredAt));
         command.Parameters.AddWithValue("$lastSeenAt", Format(device.LastSeenAt));
+        command.Parameters.AddWithValue("$lastIp", (object?)device.LastIp ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
         return device;
     }
 
     /// <summary>刷新设备心跳。</summary>
-    public async Task TouchDeviceAsync(string deviceId, DateTimeOffset now, CancellationToken cancellationToken = default)
+    public async Task TouchDeviceAsync(string deviceId, DateTimeOffset now, string? lastIp = null, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE devices SET last_seen_at = $now WHERE id = $id;";
+        command.CommandText = "UPDATE devices SET last_seen_at = $now, last_ip = $lastIp WHERE id = $id;";
         command.Parameters.AddWithValue("$now", Format(now));
+        command.Parameters.AddWithValue("$lastIp", (object?)lastIp ?? DBNull.Value);
         command.Parameters.AddWithValue("$id", deviceId);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
@@ -107,7 +148,7 @@ public sealed class ServerDb
     {
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id, name, registered_at, last_seen_at FROM devices WHERE id = $id LIMIT 1;";
+        command.CommandText = "SELECT id, name, registered_at, last_seen_at, last_ip FROM devices WHERE id = $id LIMIT 1;";
         command.Parameters.AddWithValue("$id", deviceId);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -121,6 +162,7 @@ public sealed class ServerDb
             Name = reader.GetString(1),
             RegisteredAt = Parse(reader.GetString(2)),
             LastSeenAt = Parse(reader.GetString(3)),
+            LastIp = reader.IsDBNull(4) ? null : reader.GetString(4),
         };
     }
 
@@ -130,7 +172,7 @@ public sealed class ServerDb
         await using var connection = await OpenAsync(cancellationToken);
         var devices = new List<Device>();
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id, name, registered_at, last_seen_at FROM devices ORDER BY registered_at;";
+        command.CommandText = "SELECT id, name, registered_at, last_seen_at, last_ip FROM devices ORDER BY registered_at;";
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
@@ -140,6 +182,7 @@ public sealed class ServerDb
                 Name = reader.GetString(1),
                 RegisteredAt = Parse(reader.GetString(2)),
                 LastSeenAt = Parse(reader.GetString(3)),
+                LastIp = reader.IsDBNull(4) ? null : reader.GetString(4),
             });
         }
 
@@ -147,6 +190,30 @@ public sealed class ServerDb
     }
 
     /// <summary>创建作业；requestId 已存在时返回已有作业。</summary>
+    /// <summary>按 last_ip 精确查找设备（忽略大小写；未找到返回 null）。</summary>
+    public async Task<Device?> FindDeviceByIpAsync(string ip, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT id, name, registered_at, last_seen_at, last_ip FROM devices WHERE last_ip = $ip COLLATE NOCASE LIMIT 1;";
+        command.Parameters.AddWithValue("$ip", ip);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return new Device
+        {
+            Id = reader.GetString(0),
+            Name = reader.GetString(1),
+            RegisteredAt = Parse(reader.GetString(2)),
+            LastSeenAt = Parse(reader.GetString(3)),
+            LastIp = reader.IsDBNull(4) ? null : reader.GetString(4),
+        };
+    }
+
+
     public async Task<ServerJob?> CreateJobAsync(ServerJob job, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);

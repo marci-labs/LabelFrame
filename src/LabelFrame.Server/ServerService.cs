@@ -1,4 +1,4 @@
-namespace LabelFrame.Server;
+﻿namespace LabelFrame.Server;
 
 /// <summary>
 /// Server 业务服务：设备注册 / 心跳、作业定向投递（宿主轮询领取）、结果回报、集中查询。
@@ -27,7 +27,7 @@ public sealed class ServerService
     }
 
     /// <summary>注册 / 更新设备并刷新心跳。</summary>
-    public async Task<DeviceView> RegisterDeviceAsync(string? deviceId, string? name, CancellationToken cancellationToken = default)
+    public async Task<DeviceView> RegisterDeviceAsync(string? deviceId, string? name, string? lastIp = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(deviceId))
         {
@@ -44,6 +44,7 @@ public sealed class ServerService
                 Name = string.IsNullOrWhiteSpace(name) ? deviceId : name,
                 RegisteredAt = now,
                 LastSeenAt = now,
+                LastIp = NormalizeIpText(lastIp),
             }, cancellationToken);
             return ToView(device, now);
         }
@@ -54,14 +55,14 @@ public sealed class ServerService
     }
 
     /// <summary>刷新设备心跳（长轮询通知端点用作在线保活）。设备未注册时抛出 DeviceNotFound。</summary>
-    public async Task TouchDeviceAsync(string deviceId, DateTimeOffset now, CancellationToken cancellationToken = default)
+    public async Task TouchDeviceAsync(string deviceId, DateTimeOffset now, string? lastIp = null, CancellationToken cancellationToken = default)
     {
         if (await _db.GetDeviceAsync(deviceId, cancellationToken) is null)
         {
             throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
         }
 
-        await _db.TouchDeviceAsync(deviceId, now, cancellationToken);
+        await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken);
     }
 
     /// <summary>设备目录（含在线状态）。</summary>
@@ -72,6 +73,20 @@ public sealed class ServerService
         return devices.Select(d => ToView(d, now)).ToList();
     }
 
+    /// <summary>按 last_ip 精确查找设备（忽略大小写；未找到返回 null）。</summary>
+    public async Task<DeviceView?> FindDeviceByIpAsync(string ip, CancellationToken cancellationToken = default)
+    {
+        var normalized = NormalizeIpText(ip);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var device = await _db.FindDeviceByIpAsync(normalized, cancellationToken);
+        return device is null ? null : ToView(device, now);
+    }
+
     /// <summary>提交作业（幂等 requestId）；目标设备未注册时拒绝。</summary>
     public async Task<ServerJobView> SubmitJobAsync(SubmitJobRequest request, CancellationToken cancellationToken = default)
     {
@@ -80,9 +95,23 @@ public sealed class ServerService
             throw new ServerException(ServerErrorCodes.InvalidRequest, "缺少 requestId（幂等键）。");
         }
 
-        if (string.IsNullOrWhiteSpace(request.TargetDeviceId))
+        // 目标设备解析：targetDeviceId 优先；未提供时按 targetIp 查找（找不到 404）。
+        var targetDeviceId = request.TargetDeviceId;
+        if (string.IsNullOrWhiteSpace(targetDeviceId))
         {
-            throw new ServerException(ServerErrorCodes.InvalidRequest, "缺少 targetDeviceId（定向投递目标）。");
+            if (string.IsNullOrWhiteSpace(request.TargetIp))
+            {
+                throw new ServerException(ServerErrorCodes.InvalidRequest, "缺少 targetDeviceId / targetIp（定向投递目标）。");
+            }
+
+            var normalizedIp = NormalizeIpText(request.TargetIp) ?? request.TargetIp;
+            var byIp = await _db.FindDeviceByIpAsync(normalizedIp, cancellationToken);
+            if (byIp is null)
+            {
+                throw new ServerException(ServerErrorCodes.DeviceNotFound, $"按 IP 未找到设备：{request.TargetIp}。");
+            }
+
+            targetDeviceId = byIp.Id;
         }
 
         var template = await ResolveTemplateAsync(request, cancellationToken);
@@ -99,9 +128,9 @@ public sealed class ServerService
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (await _db.GetDeviceAsync(request.TargetDeviceId, cancellationToken) is null)
+            if (await _db.GetDeviceAsync(targetDeviceId, cancellationToken) is null)
             {
-                throw new ServerException(ServerErrorCodes.DeviceNotFound, $"目标设备未注册：{request.TargetDeviceId}。");
+                throw new ServerException(ServerErrorCodes.DeviceNotFound, $"目标设备未注册：{targetDeviceId}。");
             }
 
             var existing = await _db.GetJobByRequestIdAsync(request.RequestId, cancellationToken);
@@ -118,13 +147,13 @@ public sealed class ServerService
             {
                 Id = Guid.NewGuid().ToString("N"),
                 RequestId = request.RequestId,
-                TargetDeviceId = request.TargetDeviceId,
+                TargetDeviceId = targetDeviceId,
                 Status = ServerJobStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow,
                 TotalItems = request.Labels.Count,
                 PayloadJson = payloadJson,
             }, cancellationToken);
-            _notifier?.Notify(request.TargetDeviceId);
+            _notifier?.Notify(targetDeviceId);
             return await ToJobViewAsync(job!, cancellationToken);
         }
         finally
@@ -134,7 +163,7 @@ public sealed class ServerService
     }
 
     /// <summary>设备领取作业：刷新心跳并把该设备的 Pending 作业置为 Claimed。</summary>
-    public async Task<IReadOnlyList<ClaimedJob>> ClaimPendingJobsAsync(string deviceId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ClaimedJob>> ClaimPendingJobsAsync(string deviceId, string? lastIp = null, CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
         try
@@ -145,7 +174,7 @@ public sealed class ServerService
             }
 
             var now = DateTimeOffset.UtcNow;
-            await _db.TouchDeviceAsync(deviceId, now, cancellationToken);
+            await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken);
             var jobs = await _db.ClaimPendingJobsAsync(deviceId, now, limit: 10, cancellationToken);
             return jobs.Select(job => new ClaimedJob(
                 job.Id,
@@ -245,10 +274,41 @@ public sealed class ServerService
         device.Name,
         device.RegisteredAt,
         device.LastSeenAt,
-        IsOnline(device, now) ? DeviceStatus.Online.ToString() : DeviceStatus.Offline.ToString());
+        IsOnline(device, now) ? DeviceStatus.Online.ToString() : DeviceStatus.Offline.ToString(),
+        device.LastIp);
 
     private static bool IsOnline(Device device, DateTimeOffset now)
         => now - device.LastSeenAt <= OnlineWindow + ClockSkew;
+
+    /// <summary>规范化来源 IP：IPv4-mapped IPv6（::ffff:a.b.c.d）统一为 IPv4 文本；其余原样。</summary>
+    public static string? NormalizeRemoteIp(System.Net.IPAddress? address)
+    {
+        if (address is null)
+        {
+            return null;
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            return address.MapToIPv4().ToString();
+        }
+
+        return address.ToString();
+    }
+
+    /// <summary>规范化 IP 文本：可解析的 IP 按 NormalizeRemoteIp 处理；解析失败原样返回（查找不命中）。</summary>
+    public static string? NormalizeIpText(string? ip)
+    {
+        if (string.IsNullOrWhiteSpace(ip))
+        {
+            return null;
+        }
+
+        var trimmed = ip.Trim();
+        return System.Net.IPAddress.TryParse(trimmed, out var address)
+            ? NormalizeRemoteIp(address)
+            : trimmed;
+    }
 
     /// <summary>解析提交模板：templateName 引用服务端模板库（含图片 base64）；否则用自包含模板。</summary>
     private async Task<TemplateDto?> ResolveTemplateAsync(SubmitJobRequest request, CancellationToken cancellationToken)
