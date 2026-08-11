@@ -25,6 +25,7 @@
 | 13 | 文本排版与二维码参数持久化（元素契约补齐） | ✅ 已完成（用户验收待执行） |
 | 14 | 字体加粗（bold）契约 | 🔄 进行中（前后端已实施，联调验收待执行） |
 | 15 | 打印设置与会话保留 + 连接管理 + 删除 ZPL（图片打印收敛） | 🔄 进行中（前后端已完成，联调验收待执行） |
+| 16 | 服务端 / 客户端拆分（双安装包） | 📝 设计已确认（ARCHITECTURE-SPLIT.md），待实施 |
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
@@ -414,6 +415,16 @@
 **启动命令**：
 > 继续 LabelFrame 迭代 13（后端）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-13-SPEC.md、docs/ITERATION-13-CONTRACT.md（含 Hermes 评估结论，已通过）。按 ITERATION-13-CONTRACT.md §3 字段对照、§4 Skia 渲染语义、§7 分工实施后端：C# 模型属性（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/paddingV，VerticalAlign 默认改 Middle，PaddingHMm/PaddingVMm）、LabelElementJsonConverter 读写（非默认才写）、SkiaLabelRenderer 渲染支持、测试与验收；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
+## 迭代 16：服务端 / 客户端拆分（双安装包，设计已确认，待实施）
+
+**目标**：把单机 WinHost 拆分为两个部署包——服务端（模板 / 作业 / 设备投递 / Web UI / 调试出图 / 日志，无打印机依赖）与客户端（本机打印执行 / 作业领取 / 连接配置，托盘部署），多台打印 PC 共用一个服务端；保留单机模式作为旧版迁移路径。
+**范围**：见 docs/ARCHITECTURE-SPLIT.md（职责边界 / 跨端契约 / 部署 / 迁移 / 实施规划）。
+**不在范围**：PDA（延后）；云部署 / 服务端高可用；多语言。
+**验收**：见 docs/ARCHITECTURE-SPLIT.md §7 完成定义。
+**启动命令**：
+> 继续 LabelFrame 迭代 16。先读 AGENTS.md、docs/ARCHITECTURE-SPLIT.md、docs/ROADMAP.md；按拆分设计实施：Server 迁入模板/作业/Web UI/调试出图/日志，Client 默认路由领取，pending 附带模板；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
 ## 迭代 15：打印设置与会话保留 + 连接管理 + 删除 ZPL（前后端已完成，联调验收待执行）
 
 **目标**：① 数据与打印页会话保留（同一标签页内切视图不丢设置、标签页间不互通）；② 前端切换连接方式（Log / TCP / Windows驱动 / Zebra，单一连接生效，先测试后生效、失败回滚、持久化）；③ 彻底删除 ZPL（Vector），打印统一整版位图（Skia + ^GF），调试独立为「只出图不发送驱动」。
