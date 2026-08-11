@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.15.4"
+  <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="0.15.5"
            UpgradeCode="10BDDF3E-BD37-4C3A-A19E-56CA9EFE5B74">
     <SummaryInformation Description="LabelFrame 服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志（安装于 Program Files\LabelFrame\Server，无 Web UI，以 Windows 服务运行）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
@@ -91,6 +91,9 @@
       <ComponentRef Id="AppSettingsFile" />
     </Feature>
 
+    <!-- 卸载 / 覆盖安装前停止服务（迭代 19 反馈：先停再删，避免服务残留运行态导致卸载后仍显示运行） -->
+    <CustomAction Id="StopServerService" Directory="SystemFolder" Execute="deferred" Impersonate="no" Return="ignore"
+      ExeCommand="sc.exe stop LabelFrameServer" />
     <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；路径为 ProgramData，迭代 18） -->
     <CustomAction Id="ClearDataDelServerDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
       ExeCommand="cmd.exe /c rmdir /s /q &quot;%ProgramData%\LabelFrame\server&quot;" />
@@ -99,6 +102,8 @@
     <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramFiles%\LabelFrame\Server\appsettings.json&quot;" />
     <InstallExecuteSequence>
+      <!-- 先停服务，再执行 MSI 自带的 StopServices / DeleteServices（安装 / 卸载均生效） -->
+      <Custom Action="StopServerService" After="InstallInitialize" />
       <Custom Action="ClearDataDelServerDir" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelServerDb" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelAppSettings" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />

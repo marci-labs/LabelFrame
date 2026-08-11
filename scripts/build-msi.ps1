@@ -1,6 +1,6 @@
 ﻿# 一键构建 LabelFrame Client（打印客户端）MSI 安装包（迭代 16/17：安装到 Program Files\LabelFrame\Client）
 param(
-    [string]$Version = '0.15.4',
+    [string]$Version = '0.15.5',
     [string]$Runtime = 'win-x64',
     [string]$PfxPath = '',
     [string]$PfxPassword = 'LabelFrame@2026',
@@ -27,7 +27,7 @@ $filesWxs = Join-Path $root 'packaging\files-client.wxs'
 $msi = Join-Path $root "artifacts\LabelFrame-Client-$Version.msi"
 $global:LASTEXITCODE = 0
 & $wix eula accept wix7 2>$null | Out-Null
-& $wix build (Join-Path $root 'packaging\main.wxs') $filesWxs -d PublishDir=$publishDir -o $msi -arch x64 -ext WixToolset.NetFx.wixext 2>&1 | Write-Host
+& $wix build (Join-Path $root 'packaging\main.wxs') $filesWxs -d PublishDir=$publishDir -o $msi -arch x64 -ext WixToolset.NetFx.wixext -ext WixToolset.Util.wixext 2>&1 | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
 
 # 5) 代码签名（可选：-Sign）

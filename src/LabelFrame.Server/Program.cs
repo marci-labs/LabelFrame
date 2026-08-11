@@ -21,6 +21,8 @@ if (!string.IsNullOrWhiteSpace(serverOptions.LogFilePath))
     builder.Logging.AddProvider(new FileLoggerProvider(serverOptions.LogFilePath));
 }
 builder.WebHost.UseUrls(serverOptions.ListenUrl);
+// 迭代 19 反馈：缩短停机超时（默认 30s），避免客户端长轮询请求拖慢 Windows 服务停止 / 卸载 / 升级。
+builder.Host.ConfigureHostOptions(options => options.ShutdownTimeout = TimeSpan.FromSeconds(5));
 #if WINDOWS
 // 迭代 18：以 Windows 服务运行（LabelFrameServer）；直接运行 exe 仍是控制台（开发用）。
 builder.Host.UseWindowsService(options => options.ServiceName = "LabelFrameServer");

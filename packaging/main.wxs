@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
      xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
-  <Package Name="LabelFrame Client" Manufacturer="LabelFrame" Version="0.15.4"
+  <Package Name="LabelFrame Client" Manufacturer="LabelFrame" Version="0.15.5"
            UpgradeCode="EE3F2357-56CE-4C0F-AEC1-4C04B6E6BCDA">
     <SummaryInformation Description="LabelFrame 打印客户端：托管完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史）并连接本机打印机打印（安装于 Program Files\LabelFrame\Client）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
+    <!-- 覆盖安装 / 卸载前关闭托盘程序（迭代 19 反馈：避免 exe 占用导致覆盖失败或卸载后残留进程） -->
+    <util:CloseApplication Id="CloseWinHost" Target="LabelFrame.WinHost.exe" CloseMessage="no" TerminateProcess="0" RebootPrompt="no" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <!-- 安装完成弹窗勾选项默认值（仅新装展示；静默安装不展示、不自动启动） -->
