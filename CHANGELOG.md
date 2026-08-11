@@ -276,3 +276,11 @@
   - Client：`%LOCALAPPDATA%\LabelFrame\` 下 jobs.db / templates.db / logs.db / host.log / connection.json / print 目录 + 安装目录 appsettings.json；
   - Server：`%LOCALAPPDATA%\LabelFrame\server\` 目录 + server.db + 安装目录 appsettings.json。
 - 仅手动卸载触发（条件 `REMOVE=ALL AND NOT UPGRADINGPRODUCTCODE`），覆盖升级不会清数据；静默卸载不弹窗、默认保留。
+
+## 迭代 18（决策与规格，进行中，2026-08-11）
+
+- 架构修订（0.15.0）：服务端默认不提供界面（移除 web/dist 托管），客户端（WinHost 127.0.0.1:53960）托管完整 Web UI；模板 / 作业 / 设备投递仍以服务端为中心，作业走服务端队列。
+- 服务端 Windows 服务部署（`LabelFrameServer`，LocalSystem）；数据目录默认改 `%ProgramData%\LabelFrame\server`；历史数据定期清理（作业默认保留 30 天、日志默认保留 90 天，可配置，非终态作业不删）。
+- 客户端机器级 ServerUrl（WinHost `GET/POST /api/host/config` → `%ProgramData%\LabelFrame\Client\settings.json`）。
+- 双 MSI 安装完成弹窗：Server（开机自启 / 立即运行，默认勾选）、Client（立即打开，默认勾选）；升级不触发。
+- 规格与任务单：docs/ITERATION-18-SPEC.md；决策登记 docs/DESIGN.md #53-58；架构修订 docs/ARCHITECTURE-SPLIT.md。

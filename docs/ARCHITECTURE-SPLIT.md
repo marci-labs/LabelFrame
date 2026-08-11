@@ -1,6 +1,7 @@
 # LabelFrame 服务端 / 客户端拆分设计
 
 > 状态：设计已确认（2026-08-11，用户拍板 6 项决策），待实施
+> 修订（2026-08-11，迭代 18 用户拍板）：**决策 1 反转**——Web UI 不再由服务端托管，客户端托管完整 UI；服务端无头化并以 Windows 服务部署；详见文末「0.15 架构修订（迭代 18）」。
 > 协作：本文档定义拆分后的职责边界、跨端契约、部署形态与迁移路径；实施按 ROADMAP 迭代排期（建议迭代 16 / 17）。
 > 背景：PDA 联调延后（暂无蓝牙 / IP 打印机，打印以 PC + USB 为主）；当前单机 WinHost = 服务 + 打印 + Web UI 一体，拆分为「服务端集中部署」与「客户端打印部署」两个安装包。
 
@@ -123,3 +124,70 @@
 
 ### 5. 备注
 - 前端构建产物不变（由 Server 静态托管）；hermes 完成后 push，后端合入后打双 MSI（迭代 17 打包）。
+
+---
+
+## 0.15 架构修订（迭代 18，2026-08-11 用户拍板）
+
+> 背景：0.14 双包验收中，用户发现客户端没有可用的界面（打印机连接配置等被移除），要求恢复「客户端完整界面、服务端无头」的体验，同时保留服务端集中部署的价值。以下修订覆盖 §2 决策 1 及 §3 职责边界，后续以本节为准。
+
+### 1. 修订决策
+
+1. **UI 归属反转（修订决策 1）**：服务端**默认不提供界面**（不再打包 / 托管 web/dist，仅保留 `/healthz` 与 API）；**客户端托管完整 Web UI**（模板设计 / 数据与打印 / 日志 / 设置 / 作业历史），由 WinHost 在 `127.0.0.1:53960` 提供。
+2. **服务端保持无头后端**：模板中心 / 作业中心 / 设备投递 / 调试出图 / 日志 / Excel 仍在 Server；客户端 UI 是这些能力的前台。
+3. **作业仍走服务端队列**：客户端 UI 提交作业（含本机打印测试）→ Server（targetDeviceId = 本机或其他在线设备）→ 客户端 Worker 领取打印 → 回报；打印机「测试页」仍走本机 `/api/printer/test` 直发驱动。
+4. **服务端以 Windows 服务部署**（0.15 起）：安装时注册服务 `LabelFrameServer`（LocalSystem）；安装完成弹窗含「开机自启（默认勾选）/ 立即运行（默认勾选）」，按勾选执行 `sc config start= auto` / `net start`；升级不触发弹窗与启动；卸载停止并删除服务。
+5. **服务端数据目录改为 `%ProgramData%\LabelFrame\server`**（`server.db / templates.db / logs.db`）：服务账户下 `%LOCALAPPDATA%` 指向系统账户目录，不可靠；当前无业务使用，无需迁移旧数据。
+6. **客户端「服务端地址」改为机器级配置**：WinHost 新增 `GET/POST /api/host/config`，持久化到 `%ProgramData%\LabelFrame\Client\settings.json`；前端读写它，localStorage 仅作无本地 API 时的兜底。
+7. **历史数据定期清理（Server）**：后台任务定期删除终态（Completed / Failed）且超过保留期的作业，以及超过保留期的设备日志；默认作业保留 30 天、日志保留 90 天，可在 appsettings 配置；非终态作业（Pending / Claimed）永不自动删除。
+8. **客户端安装完成弹窗**：含「立即打开（默认勾选）」，勾选则启动客户端并打开界面；升级不触发。
+9. **版本 0.15.0**：双 MSI 同版本。
+
+### 2. 修订后的职责边界
+
+#### 服务端（LabelFrame.Server，无头 + Windows 服务）
+- 模板中心 / 作业中心 / 设备投递 / 调试出图（Skia）/ 日志 / Excel（与 0.14 相同，仅移除 Web UI 静态托管与测试页）。
+- Windows 服务：`LabelFrameServer`，LocalSystem，数据目录 `%ProgramData%\LabelFrame\server`。
+- 历史清理后台任务（作业 / 日志保留期）。
+
+#### 客户端（LabelFrame.WinHost，完整 UI + 打印执行）
+- 托管完整 Web UI（web/dist，`127.0.0.1:53960`）：工作台 / 设计器 / 数据与打印 / 日志 / 设置 / 作业历史。
+- 本机 API：连接方式（`/api/transport`）、打印机状态 / 测试页（`/api/printer/*`）、机器级配置（`/api/host/config`）、宿主控制（`/api/host/shutdown`）、健康检查（`/healthz`）。
+- 打印执行 / 作业领取 / 回报（不变）；ServerUrl 从机器级配置读取。
+- 单机降级保留：ServerUrl 指向本机 WinHost 时按单机模式使用。
+
+### 3. 跨端契约增量（相对 0.14）
+
+| 接口 | 归属 | 说明 |
+|---|---|---|
+| `GET/POST /api/host/config` | Client 本机（127.0.0.1:53960） | 机器级配置：`{ serverUrl }` 读写（持久化 ProgramData） |
+| `GET /api/transport`、`POST /api/transport` | Client 本机 | 连接方式配置（恢复前端接入，接口 0.14 已存在未删） |
+| `GET /api/printer/status`、`POST /api/printer/test` | Client 本机 | 打印机状态 / 测试页（恢复前端接入） |
+| Server Web UI 静态托管 | —— | 移除（不再提供界面） |
+| `GET /api/jobs` | Server | 新增可选 `limit` 参数（默认 100），供「作业历史」页使用 |
+
+### 4. 历史清理设计（Server）
+
+- 后台 `BackgroundService`：启动延迟 60 秒后执行，之后按 `CleanupIntervalHours`（默认 24h）周期执行。
+- 作业：删除 `status IN (Completed, Failed)` 且 `COALESCE(finished_at, created_at) < now - JobRetentionDays`（默认 30 天）的记录。
+- 日志：删除 `time < now - LogRetentionDays`（默认 90 天）的记录。
+- 配置（appsettings `Server` 节 / `LABELFRAME_SERVER_*`）：`JobRetentionDays`、`LogRetentionDays`、`CleanupIntervalHours`。
+- 非终态作业不删除（离线暂存语义）。
+
+### 5. 安装包行为（0.15.0）
+
+- Server MSI：
+  - 注册 Windows 服务 `LabelFrameServer`（默认 Manual，LocalSystem；自启动由勾选决定）；卸载停止 + 删除服务。
+  - 安装完成弹窗：确认按钮 + 「开机自启（默认勾选）」「立即运行（默认勾选）」；确认时：自启勾选 → `sc config LabelFrameServer start= auto`（否则保持 manual）；立即运行勾选 → `net start LabelFrameServer`。
+  - 不再包含 web/dist；程序图标使用 `assets\labelframe.ico`。
+  - 卸载清理路径同步改为 `%ProgramData%\LabelFrame\server` + `%ProgramData%\LabelFrame\Client\settings.json`（如存在）+ appsettings。
+- Client MSI：
+  - 安装完成弹窗：「立即打开（默认勾选）」；确认时启动 `LabelFrame.WinHost.exe`（OpenBrowser=true 自动打开界面）。
+  - 程序图标沿用 `assets\labelframe.ico`。
+- 升级（MajorUpgrade）：不弹完成弹窗、不启动服务 / 程序、不改服务启动类型。
+
+### 6. 迭代 18 任务划分
+
+- 后端（本仓库维护者）：文档、Server 无头化 + Windows 服务 + 图标、数据目录 ProgramData、历史清理、双 MSI 弹窗与自定义动作、WinHost `/api/host/config`、打包 0.15.0、测试。
+- 前端（hermes）：API 客户端双 base（Server / 本机）、恢复连接方式与打印机 UI、后端地址改机器级配置、作业历史页、数据与打印保持目标设备选择。
+- 详细任务与验收见 `docs/ITERATION-18-SPEC.md`。
