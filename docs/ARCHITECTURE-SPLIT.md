@@ -35,7 +35,7 @@
 
 ### 3.2 客户端（LabelFrame.Client，演进 WinHost）
 - **打印执行**：本机打印机连接（WindowsDriver / TCP / Zebra / Log）、Skia 渲染 → `ZplImageEncoder`（^GF）、打印 Worker。
-- **作业领取**：轮询 Server `GET /api/devices/{deviceId}/jobs/pending` → 本地渲染打印 → 回报 `result`；领取响应附带模板数据（contract + layout + testData + images）。
+- **作业领取**：长轮询通知（`GET /api/devices/{deviceId}/jobs/notify`，作业到达立即唤醒）→ 领取 `GET /api/devices/{deviceId}/jobs/pending` → 本地渲染打印 → 回报 `result`；领取响应附带模板数据（contract + layout + testData + images）。
 - **本地能力**：打印机状态 / 测试页、连接方式配置（本机小页面 + 托盘）、本机日志。
 - **可选**：本机直连 `POST /api/jobs`（单机兼容，无 Server 时局域网直连打印）。
 - 部署：托盘程序（开机自启）；不托管 Web UI、不自动开浏览器。
@@ -46,6 +46,7 @@
 |---|---|
 | `POST /api/devices` | 设备注册 / 心跳（沿用） |
 | `GET /api/devices/{deviceId}/jobs/pending` | 领取作业；**响应附带模板**（contract + layout + testData + images）与 labels |
+| `GET /api/devices/{deviceId}/jobs/notify?timeout=N` | 长轮询通知（迭代 18 联调反馈）：作业到达立即返回 hasPending=true，等效推送；同时刷新心跳保活 |
 | `POST /api/devices/{deviceId}/jobs/{jobId}/result` | 结果回报（成功 / 失败 + 原因）（沿用） |
 | `POST /api/jobs` | 作业提交：`{ requestId, templateName, labels[], targetDeviceId? }`（新增 templateName 引用；自包含模板保留兼容） |
 | `GET/POST/DELETE /api/templates...` | 模板库（从 WinHost 迁入 Server） |

@@ -125,6 +125,7 @@
 | `GET/POST /api/host/config` | Client 本机 | `{ serverUrl, deviceId, deviceName }` 读写（机器级持久化；缺失 / 损坏返回默认 serverUrl） |
 | `GET/POST /api/transport`、`GET /api/printer/status`、`POST /api/printer/test` | Client 本机 | 恢复前端接入（接口 0.14 已在，未删） |
 | `GET /api/jobs` | Client 本机 | 新增（B10）：本机作业列表（可选 limit，默认 100 上限 500；扩展 JobView：CreatedAt / FailedItems / ErrorMessage，TargetDeviceId=null），作业历史单机降级用 |
+| `GET /api/devices/{deviceId}/jobs/notify?timeout=N` | Server | 长轮询通知：作业到达立即返回 hasPending=true（等效推送）；同时刷新心跳保活 |
 | `GET /api/jobs` | Server | 可选 `?limit`（默认 100，上限 500），作业历史用 |
 | Server Web UI | —— | 移除 |
 
@@ -326,3 +327,11 @@
 - B8：Client MSI 完成弹窗（OPEN_NOW 默认 1）+ LaunchClient 自定义动作；卸载清理新增 `%ProgramData%\LabelFrame\Client\settings.json`。
 - B10：Server `GET /api/jobs` 支持 limit；WinHost 新增 `GET /api/jobs`（扩展 JobView：CreatedAt / FailedItems / ErrorMessage / TargetDeviceId=null）。
 - 验证：`dotnet test` 156 全绿；双 MSI 数据库校验（服务表 / 弹窗 / 动作 / 序列 / 清理路径）；冒烟——Server 无头启动（GET / 404、/api/jobs 空、ProgramData 落盘）、Client 机器级配置读写、作业列表、Web UI 页面可达。
+
+
+## 附六：0.15.4 联调反馈修复（2026-08-11）
+
+- 推送等效：新增 `GET /api/devices/{deviceId}/jobs/notify?timeout=N`（Server 长轮询，作业到达立即返回；同时刷新心跳）；WinHost `ServerRoutingWorker` 改为「注册 → 长轮询等待 → 立即领取 → 回报」，网络异常回退间隔重试；`IServerJobPoller.WaitForJobAsync`。打印从“提交→最多等 5s 轮询”变为“提交→<1s 唤醒领取”。
+- 客户端安装弹窗修复：`LaunchClient` 改用 `cmd.exe /c start "" "[#WinHostExe]"` 非阻塞启动（此前 msiexec 等待 GUI 进程退出导致弹窗无法关闭）。
+- 弹窗文字简化：去掉「（默认勾选）」「（默认不勾选）」括号说明。
+- 测试 162 全绿（新增 PendingJobNotifier 4 个 + WaitForJobAsync 2 个）；产物 0.15.4。

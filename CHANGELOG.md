@@ -325,3 +325,11 @@
 - 前端（hermes，0668d03）：F1-F7 全部完成——双 base（serverApi / localApi）、机器级配置（/api/host/config 启动加载 + 保存即生效）、恢复连接方式（TransportPanel）与打印机分组、数据与打印本机设备默认选中 + 顶部连接徽标、作业历史页（limit=100，空态按模式）、Workbench/Designer/PdaLogs 跟随 serverMode 降级；前端测试 125 全绿、build/lint 通过。
 - 后端复核：契约对齐（JobView.createdAt / HostConfig.serverUrl-deviceId-deviceName / TransportConfig / PrinterStatus 字段与后端一致）。
 - 客户端 MSI 0.15.3 重新打包（含新前端 dist index-DfhhEvBH.js）；端到端冒烟通过：Client 注册在线 → 提交作业 Pending → Completed 2/2 → Log 模拟 PNG 落盘；页面引用新 bundle。
+
+
+## 0.15.4：推送等效 + 客户端弹窗关闭修复 + 弹窗文字简化（2026-08-11）
+
+- 服务端推送（长轮询通知）：`GET /api/devices/{deviceId}/jobs/notify?timeout=N`——作业入队立即返回 hasPending=true（等效推送），同时刷新设备心跳；客户端 `ServerRoutingWorker` 改为长轮询等待 → 立即领取，打印等待从最多 5s 轮询降为 <1s；网络异常回退间隔重试。
+- 客户端安装完成弹窗无法关闭：`LaunchClient` 改为 `cmd /c start` 非阻塞启动（msiexec 不再等待 GUI 进程退出）。
+- 弹窗文字去掉「（默认勾选）」「（默认不勾选）」括号说明。
+- 测试 162 全绿（Server 17 / WinHost 60 / Core 60 / Studio 25）；产物 `LabelFrame-Server-0.15.4.msi`（7.6MB）、`LabelFrame-Client-0.15.4.msi`（14.1MB）。
