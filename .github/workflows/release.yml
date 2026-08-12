@@ -118,6 +118,13 @@ jobs:
       - name: 安装 WiX Toolset
         run: dotnet tool install --global wix --version ${{ env.WIX_VERSION }}
 
+      - name: 安装 WiX 扩展（NetFx）
+        shell: pwsh
+        run: |
+          $wix = Join-Path $HOME '.dotnet\tools\wix.exe'
+          & $wix extension add -g WixToolset.NetFx.wixext/${{ env.WIX_VERSION }}
+          if ($LASTEXITCODE -ne 0) { throw 'wix extension add 失败' }
+
       # 注意：upload-artifact 上传的是 dist 目录内容，下载路径要对应 web/dist 与 web/dist-server
       - name: 下载前端产物
         uses: actions/download-artifact@v4
