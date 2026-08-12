@@ -32,7 +32,7 @@
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
 | 20 | 服务端管理界面（插件式 UI）+ 设备 IP | 🔄 进行中（联调冒烟待执行） |
-| 21 | 自动化发布（ghcr + GitHub Release + MSI 签名通道） | 🔄 进行中 |
+| 21 | 自动化发布（ghcr + GitHub Release + MSI 签名通道） | ✅ 已完成（v0.17.0 自动发布成功；ghcr 包公开待办） |
 | 检查点 | 试点验收（成功衡量） | 待定 |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计） | 待定 |
 
@@ -634,7 +634,7 @@
 
 **验收**：推送 `v*` tag 后 CI 全流程通过；`docker pull ghcr.io/marci-labs/labelframe-server:<版本>` 可用；Release 附件含双 MSI、插件 zip、linux-x64 归档；MSI 有 Secret 时签名、无 Secret 时跳过；`dotnet test` / 前端双模式测试全绿。
 
-**进度（2026-08-12）**：方案已定（tag 版本号 / ghcr 组织 `marci-labs` / Release 不含 docker 离线包 / 签名走 Secret 可选通道）；组织已创建；gh CLI token 待重新登录；工作流与脚本改造实施中。
+**进度（2026-08-12）**：方案已定并实施完成——仓库已转移至组织 `marci-labs` 并转公开；推送 `v0.17.0` tag 后 CI 全流程通过（测试 / 双 MSI / 插件 zip / Linux 归档 / ghcr 镜像 / GitHub Release 附件），首次自动发布成功。实施中修复：CI 环境相关测试稳定性（TCP 状态测试同步等待、Skia 渲染阈值放宽、设备列表测试时区无关化、SQLitePCLRaw 测试进程 ModuleInitializer + SqliteLogStore 自初始化）；WiX 打包链（dotnet tool 版 WiX 7 + NetFx 扩展 + OSMF EULA）；artifact 下载路径对齐；插件打包步骤 `$?` 判断。**待办**：ghcr 包可见性设为 Public（需 `write:packages` 权限或网页手动）；`docker pull` 匿名拉取验证；MSI 签名 Secret 可随时补充（有则自动签名）。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 21（自动化发布）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；仓库内容不得出现公司 / 业务线品牌字样。

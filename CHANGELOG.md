@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 21（自动化发布）— 2026-08-12
+
+- **首次自动发布成功（v0.17.0）**：推送 `v0.17.0` tag 后 CI 全流程通过——dotnet + 前端双模式测试 → 打包 `LabelFrame-Server-0.17.0.msi` / `LabelFrame-Client-0.17.0.msi` / `labelframe-server-webui-0.17.0.zip` / `labelframe-server-0.17.0-linux-x64.tar.gz` → 推送 `ghcr.io/marci-labs/labelframe-server:0.17.0` 与 `:latest` → 创建 GitHub Release（附件齐全）。
+- 仓库已转移至组织 `marci-labs` 并转为公开；本地 remote 同步更新。
+- CI 稳定性修复：TCP 状态测试改为服务端就绪同步 + 放宽超时；Skia 渲染测试阈值放宽（CJK 字体环境差异）；设备列表测试日期断言时区无关化；SQLitePCLRaw 在测试进程用 `[ModuleInitializer]` 确定性初始化（Server / WinHost / Core 测试）+ `SqliteLogStore` 构造时自行 `SqliteSupport.EnsureInitialized()`（不再依赖宿主先初始化）。
+- 打包链修复：WiX 用 dotnet tool 版并安装 NetFx 扩展 + 先接受 OSMF EULA（WIX7015）；artifact 下载路径对齐 `web/dist` 与 `web/dist-server`；插件打包步骤改用 `$?` 判断（脚本内无原生命令时 `LASTEXITCODE` 为空）。
+- 待办：ghcr 包可见性设 Public（需 `write:packages` 权限）；MSI 签名 Secret 可随时补充（有则自动签名）。
+
 ## 迭代 21（自动化发布）— 2026-08-12（进行中）
 
 - 新增 GitHub Actions 发布流水线 `.github/workflows/release.yml`：推送 `v*` tag 自动测试、打包（Server / Client MSI、管理界面插件 zip、linux-x64 归档）、构建并推送 ghcr.io Docker 镜像、创建 GitHub Release。

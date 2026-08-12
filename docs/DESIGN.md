@@ -128,6 +128,7 @@ flowchart LR
 
 | 64 | 发布渠道与自动化发布（迭代 21，2026-08-12） | 镜像发布到 ghcr.io（组织 `marci-labs`），安装包走 GitHub Release；推送 `v*` tag 触发 GitHub Actions 自动完成测试 / 打包 / 推镜像 / 建 Release；版本号唯一来源 = tag；Release 不含 docker 离线包（镜像在 ghcr 拉取，离线包保留本地脚本按需导出） | 无需单独申请镜像仓库、无拉取限流；发版动作收敛为打 tag；ghcr 新包首次需手动设为 Public |
 | 65 | MSI 签名过渡（迭代 21，2026-08-12） | 先用自签证书 + GitHub Secret（`MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD`）走通签名链路：Secret 存在即签名、不存在则跳过；脚本不再含明文默认密码；正式对外分发再购 OV 证书 | 公开下载仍可能 SmartScreen 提示未知发布者；内网 / 域环境可推受信任根消除警告 |
+| 66 | CI 测试环境确定性（迭代 21，2026-08-12） | 测试进程用 `[ModuleInitializer]` 一次性初始化 SQLitePCLRaw；SQLite 存储类自行 `EnsureInitialized()`（幂等）；测试避免依赖本机时区 / 字体 / 端口时序（设备列表日期断言改为任意 MM-dd、Skia 阈值取「有墨迹」级别、TCP 状态测试加就绪同步） | CI（UTC / 不同字体 / 高负载并行）下稳定通过；生产代码不再依赖宿主先初始化 SQLite provider |
 - 业界参考：Figma（视口缩放 + 参考线）、BarTender Auto-Fit（文本适应多模式）、Cleverence Label（Shrink to fit + 最小字高）、Konva snapping 库（参考线吸附）。
 - 原型 v3（2026-08-09）：画布 = 输入尺寸 + 四周 10mm 留白，标尺以 mm 覆盖全画布并跟随画布；画布平移 clamp 不越界；「实际大小」= 1mm=8 点（203dpi 打印比例）；文本溢出新增「不限制高度」；修复 HTML5 拖入坐标（改用 clientX/Y 几何换算，不依赖 Konva 指针状态）。
 - 原型 v3 核心修复（2026-08-09 第二轮）：stage 尺寸 = 逻辑尺寸 × 比例尺（Konva stage.scale 不改变 canvas 容器尺寸，原实现放大时内容被裁剪导致元素不可见 / 网格范围异常）；标尺 0 点与画布左缘对齐（左上角空块布局）；「适应窗口 / 实际大小」统一为同一比例尺的两个预设（设计时按点处理，需要真实比例时再换算点与 mm）。
@@ -190,3 +191,5 @@ flowchart LR
 
 - 自签证书公开分发限制（2026-08-12）：自签证书无法消除公开下载的 SmartScreen「未知发布者」提示，仅内网 / 域环境（推送受信任根）有效；正式对外分发待购买 OV 代码签名证书后接入（未决）。
 - ghcr 包可见性：新容器包默认私有，首次发布后需手动设为 Public / 跟随仓库可见性（运维项，2026-08-12 未决）。
+
+- CI 测试偶发失败的根因（2026-08-12）：① SQLitePCLRaw provider 初始化依赖首次使用顺序（并行测试类竞态）→ 测试进程 ModuleInitializer + 存储类自初始化；② 时区 / 字体 / 端口时序差异 → 断言改环境无关。已修复并纳入迭代 21 完成记录。
