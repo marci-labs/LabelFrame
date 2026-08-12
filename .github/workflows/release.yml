@@ -173,8 +173,9 @@ jobs:
       - name: 打包管理界面插件
         shell: pwsh
         run: |
+          # 脚本内无原生命令，LASTEXITCODE 为空值，用 $? 判断
           & .\scripts\package-server-webui.ps1 -Version $env:VERSION
-          if ($LASTEXITCODE -ne 0) { throw '插件包打包失败' }
+          if (-not $?) { throw '插件包打包失败' }
 
       - name: 发布 Server（linux-x64）并归档
         shell: pwsh
