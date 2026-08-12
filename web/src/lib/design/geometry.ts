@@ -51,3 +51,50 @@ export function logicToContentMm(x: number, y: number, preview: boolean): { x: n
 export function fitScale(viewportW: number, viewportH: number, canvasW: number, canvasH: number): number {
   return Math.max(0.05, Math.min((viewportW - 32) / canvasW, (viewportH - 32) / canvasH))
 }
+
+/**
+ * 视口 client 坐标 → 画布逻辑坐标（含页面缩放修正）。
+ *
+ * 背景：canvas 的 `getBoundingClientRect()` 会随浏览器页面缩放（Windows 显示缩放 125% 等）
+ * 同比放大，而 `clientWidth` 不变——两者比值即页面缩放因子，必须先除掉，
+ * 否则 `clientX - rect.left` 得到的偏移被放大，换算出的元素落点偏出（实测 125% 下偏差 ~35%）。
+ * Konva 内部 `_getContentPosition` 正是用 `rect.width / clientWidth` 做此修正（getPointerPosition 已内置）；
+ * 本函数把同一修正暴露给不走 Konva 指针的事件路径（HTML5 DnD 拖放、原生 click）。
+ */
+export interface ViewportToLogicArgs {
+  clientX: number
+  clientY: number
+  /** canvas 的 getBoundingClientRect()（随页面缩放）。 */
+  rect: { left: number; top: number; width: number; height: number }
+  /** canvas 的 clientWidth / clientHeight（不随页面缩放）。 */
+  clientWidth: number
+  clientHeight: number
+  /** stage 平移。 */
+  stageX: number
+  stageY: number
+  /** stage 缩放。 */
+  scaleX: number
+  scaleY: number
+}
+
+/** 视口 client 坐标 → 画布逻辑坐标。 */
+export function viewportToLogic(args: ViewportToLogicArgs): { x: number; y: number } {
+  // clientWidth 为 0（如未布局）时无法测量缩放，按 1 处理；不能用 `|| 1`——rect.width/0 是 Infinity（truthy）不会兜住
+  const zoomX = args.clientWidth > 0 ? args.rect.width / args.clientWidth : 1
+  const zoomY = args.clientHeight > 0 ? args.rect.height / args.clientHeight : 1
+  return {
+    x: ((args.clientX - args.rect.left) / zoomX - args.stageX) / args.scaleX,
+    y: ((args.clientY - args.rect.top) / zoomY - args.stageY) / args.scaleY,
+  }
+}
+
+/**
+ * Konva `getPointerPosition()` → 画布逻辑坐标。
+ * Konva 指针已内置页面缩放修正（返回 canvas CSS 像素系），只需扣除 stage 平移并除以 stage 缩放。
+ */
+export function pointerToLogic(ptr: { x: number; y: number }, stageX: number, stageY: number, scaleX: number, scaleY: number): { x: number; y: number } {
+  return {
+    x: (ptr.x - stageX) / scaleX,
+    y: (ptr.y - stageY) / scaleY,
+  }
+}

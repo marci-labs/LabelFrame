@@ -10,7 +10,7 @@ import type { KonvaEventObject } from 'konva/lib/Node'
 import { ElementNode } from './ElementNode'
 import type { DesignElement } from '../../lib/design/types'
 import { elementById } from '../../lib/design/model'
-import { designCanvasSize, fitScale, logicToContentMm, previewCanvasSize, previewScale, PX, RULER } from '../../lib/design/geometry'
+import { designCanvasSize, fitScale, logicToContentMm, pointerToLogic, previewCanvasSize, previewScale, PX, RULER, viewportToLogic } from '../../lib/design/geometry'
 import { computeSnap } from '../../lib/design/snapping'
 import { CORE_SHORTCUTS } from './shortcuts'
 
@@ -196,8 +196,11 @@ export function CanvasViewport(props: CanvasViewportProps) {
     if (!el) {
       if (p.pendingType) {
         const ptr = ev.target.getStage()?.getPointerPosition()
-        if (ptr) {
-          const pos = logicToContentMm(ptr.x - stageRef.current!.x(), ptr.y - stageRef.current!.y(), false)
+        const stage = stageRef.current
+        if (ptr && stage) {
+          // 指针 → 逻辑：Konva 指针为 canvas CSS 像素（已内置页面缩放修正），须除 stage.scale 才是逻辑坐标
+          const logic = pointerToLogic(ptr, stage.x(), stage.y(), stage.scaleX(), stage.scaleY())
+          const pos = logicToContentMm(logic.x, logic.y, false)
           p.onAddElement(p.pendingType, pos.x, pos.y)
         }
         return
@@ -269,13 +272,21 @@ export function CanvasViewport(props: CanvasViewportProps) {
     const type = ev.dataTransfer.getData('text/plain')
     if (!type || p.viewMode === 'preview') return
     const dom = stageRef.current?.container()
-    if (!dom) return
-    const rect = dom.getBoundingClientRect()
-    const sx = stageRef.current!.scaleX()
-    const sy = stageRef.current!.scaleY()
-    const logicX = (ev.clientX - rect.left - stageRef.current!.x()) / sx
-    const logicY = (ev.clientY - rect.top - stageRef.current!.y()) / sy
-    const pos = logicToContentMm(logicX, logicY, false)
+    const stage = stageRef.current
+    if (!dom || !stage) return
+    // client → 逻辑：含页面缩放修正（rect.width/clientWidth），DnD 事件不经过 Konva 指针
+    const logic = viewportToLogic({
+      clientX: ev.clientX,
+      clientY: ev.clientY,
+      rect: dom.getBoundingClientRect(),
+      clientWidth: dom.clientWidth,
+      clientHeight: dom.clientHeight,
+      stageX: stage.x(),
+      stageY: stage.y(),
+      scaleX: stage.scaleX(),
+      scaleY: stage.scaleY(),
+    })
+    const pos = logicToContentMm(logic.x, logic.y, false)
     p.onAddElement(type, pos.x, pos.y)
   }
 
