@@ -27,7 +27,7 @@
 
 ## 其他约束
 
-- 不推 tag（除非将来有发布流程并明确要求）。
-- 不修改发布 / CI 工作流（迭代 0 不涉及 CI）。
+- 发布流程（迭代 21 起）：发版 = 更新 ROADMAP / CHANGELOG 后推送 `v*` tag（如 `v0.17.0`），由 GitHub Actions 自动构建发布——Server Docker 镜像推 ghcr.io、PC 安装包（Server / Client MSI、插件 zip、Linux 归档）上传 GitHub Release；除发版 tag 外不推其他 tag。
+- 非 CI 迭代不修改发布 / CI 工作流（`.github/workflows/`）。
 - 文档与注释使用中文；代码标识符使用英文。
 - 涉及跨迭代的公共契约（模板包格式、打印 API、作业模型）变更，必须先讨论并更新文档，再改代码。

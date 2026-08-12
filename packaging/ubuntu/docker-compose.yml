@@ -1,6 +1,8 @@
 services:
   labelframe-server:
-    image: labelframe-server:0.16.0
+        # 默认从 ghcr.io 拉取；本地调试可覆盖：
+    #   LABELFRAME_IMAGE=labelframe-server LABELFRAME_VERSION=0.16.0 docker compose up -d
+    image: ${LABELFRAME_IMAGE:-ghcr.io/marci-labs/labelframe-server}:${LABELFRAME_VERSION:-latest}
     container_name: labelframe-server
     restart: unless-stopped
     ports:

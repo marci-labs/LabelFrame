@@ -1,15 +1,18 @@
 ﻿# 一键构建 LabelFrame Client（打印客户端）MSI 安装包（迭代 16/17：安装到 Program Files\LabelFrame\Client）
 param(
-    [string]$Version = '0.15.5',
+    [string]$Version = '0.16.0',
     [string]$Runtime = 'win-x64',
+    [string]$WixPath = '',
     [string]$PfxPath = '',
-    [string]$PfxPassword = 'LabelFrame@2026',
+    [string]$PfxPassword = $env:MSI_SIGN_PASSWORD,
     [switch]$Sign
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$wix = 'C:\Program Files\WiX Toolset v7.0\bin\wix.exe'
-if (-not (Test-Path $wix)) { throw '未找到 WiX Toolset v7，请先安装。' }
+$wix = $WixPath
+if (-not $wix) { $wix = $env:WIX_PATH }
+if (-not $wix) { $wix = 'C:\Program Files\WiX Toolset v7.0\bin\wix.exe' }
+if (-not (Test-Path $wix)) { throw "未找到 WiX（$wix），请安装 WiX Toolset v7 或通过 -WixPath 指定 wix.exe。" }
 
 # 1) 发布 WinHost（Client，framework-dependent）+ 复制 web/dist
 $publishDir = Join-Path $root "artifacts\client\$Runtime"
@@ -32,6 +35,7 @@ if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
 
 # 5) 代码签名（可选：-Sign）
 if ($Sign) {
+    if (-not $PfxPassword) { throw '未提供签名密码：请用 -PfxPassword 或设置环境变量 MSI_SIGN_PASSWORD。' }
     if (-not $PfxPath) { $PfxPath = Join-Path $root 'artifacts\cert\labelframe.pfx' }
     if (-not (Test-Path $PfxPath)) { throw "未找到证书 $PfxPath，请先运行 scripts\create-signing-cert.ps1" }
     $signtoolPath = $env:SIGNFILE

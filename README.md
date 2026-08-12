@@ -43,7 +43,7 @@
 
 ## Docker 部署（服务端管理界面插件挂载）
 
-Docker 镜像 `labelframe-server:0.16.0`（离线包 `artifacts/labelframe-server-0.16.0.docker.tar`，`docker load` 导入）默认无头；
+Docker 镜像 `ghcr.io/marci-labs/labelframe-server`（离线包 `artifacts/labelframe-server-0.16.0.docker.tar`，`docker load` 导入）默认无头；
 需要管理界面时，把插件文件放进**挂载目录**即可（无需重启容器）：
 
 - **容器内挂载目录（即 Server 的插件目录）**：`/var/lib/labelframe/server/plugins/web-ui`
@@ -55,6 +55,21 @@ Docker 镜像 `labelframe-server:0.16.0`（离线包 `artifacts/labelframe-serve
 3. 浏览器访问 `http://<服务器IP>:53961` 打开管理界面；移除该目录内容即恢复无头。
 
 Windows 裸机部署同理：解压到 `%ProgramData%\LabelFrame\server\plugins\web-ui`。
+
+## 自动化发布（迭代 21）
+
+仓库已接入 GitHub Actions 自动发布（`.github/workflows/release.yml`），发新版本只需两步：
+
+1. 更新 `docs/ROADMAP.md` 与 `CHANGELOG.md`，提交推送；
+2. 打 tag 推送：`git tag v0.17.0 && git push origin v0.17.0`。
+
+CI 自动完成：构建测试 → 打包（Server / Client MSI、管理界面插件 zip、Linux 归档）→ 推送 Docker 镜像到 ghcr.io → 创建 GitHub Release（附件含安装包）。
+
+- **Docker 镜像**：`docker pull ghcr.io/marci-labs/labelframe-server:0.17.0`（`latest` tag 指向最新版；镜像默认无头，管理界面插件按上文挂载）。
+- **安装包**：GitHub Release 页面下载：https://github.com/marci-labs/LabelFrame/releases
+- **MSI 签名说明**：仓库配置 `MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD` 两个 Secret 时，MSI 会自动用该证书签名（当前为自签证书过渡方案，公开下载仍可能提示「未知发布者 / SmartScreen」，内网部署可把自签根证书加入受信任根消除警告；正式对外分发建议后续购买 OV 代码签名证书）；未配置 Secret 时跳过签名、正常发布。
+- **本地覆盖**：compose 默认拉取 ghcr 镜像，可用环境变量覆盖（本地构建镜像调试）：`LABELFRAME_IMAGE=labelframe-server LABELFRAME_VERSION=0.16.0 docker compose up -d`。
+- 打包脚本：CI 通过 `-WixPath` 指定 WiX（dotnet tool 版）；签名密码从环境变量 `MSI_SIGN_PASSWORD` 读取，仓库内不再有明文默认密码。
 
 ## 服务端管理界面（可选插件，迭代 20）
 
@@ -78,6 +93,7 @@ cd web; pnpm install; pnpm build; cd ..
 产物（0.14.0 起双安装包，安装目录统一在 `C:\Program Files\LabelFrame\` 下用子目录区分）：`artifacts\LabelFrame-Server-0.15.0.msi` → `C:\Program Files\LabelFrame\Server`：无头服务端（模板库 / 作业中心 / 设备投递 / 调试出图 / 日志 / Excel，不接打印机、**不提供 Web UI**，安装为 Windows 服务 `LabelFrameServer`，默认监听 0.0.0.0:53961，数据在 `%ProgramData%\LabelFrame\server`）；`artifacts\LabelFrame-Client-0.15.0.msi`（约 14MB）→ `C:\Program Files\LabelFrame\Client`：打印客户端（**托管完整界面**：模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史；默认 ServerUrl=http://127.0.0.1:53961，单机模式保留）。单机使用 = 同机安装两个包；两个包的 appsettings.json 均为独立用户配置组件（覆盖安装 / 修复不覆盖、卸载保留）。卸载时会询问是否清除用户数据（默认不勾选；勾选则删除本程序产生的模板 / 作业 / 日志 / 连接与打印配置 / 机器级配置），覆盖升级不触发清理。
 
 前置要求：目标机需安装 **.NET 10 Desktop Runtime**（x64，下载：https://dotnet.microsoft.com/download/dotnet/10.0）。安装 MSI 时会用 .NET 官方自检程序（NetCoreCheck）实时检测：已安装则直接继续（无需重启），缺失则弹出可点击的官方下载链接对话框（不自动安装）。
+公开下载的 MSI 若未使用受信任商业证书签名，Windows 可能提示「未知发布者 / Windows 已保护你的电脑」，点「仍要运行」即可；内网部署可把自签根证书加入受信任根消除提示（见「自动化发布」）。
 打印：统一为整版位图（Skia 渲染 → `^GF` 直传打印机），与画布预览同源（迭代 15 起移除矢量 ZPL）。连接方式（Log / TCP / Windows 驱动 / Zebra）在**客户端设置页**配置（先测试后生效、持久化 connection.json），服务端无打印机连接 UI；服务端地址为机器级配置（`%ProgramData%\LabelFrame\Client\settings.json`，经 `/api/host/config` 读写）。
 干净电脑使用（单机）：安装 `LabelFrame-Server-0.15.0.msi` 与 `LabelFrame-Client-0.15.0.msi` 两个包。Server 装完弹窗（开机自启 / 立即运行，默认勾选）→ 服务随系统自启；Client 装完弹窗（立即打开，默认勾选）→ 浏览器打开 **http://127.0.0.1:53960** 进入完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史）。多台打印电脑：每台装 Client，在设置页把服务端地址指向服务端电脑 IP 即可（机器级配置，同机浏览器一致）。
 

@@ -4,10 +4,11 @@
 #  - 正式分发：需购买商业代码签名证书（OV/EV），本脚本仅用于开发验证。
 param(
     [string]$PfxPath = '',
-    [string]$Password = 'LabelFrame@2026',
+    [string]$Password = '',
     [switch]$InstallTrusted
 )
 $ErrorActionPreference = 'Stop'
+if (-not $Password) { throw '未提供证书密码：请用 -Password 或设置环境变量 MSI_SIGN_PASSWORD。' }
 $root = Split-Path -Parent $PSScriptRoot
 if (-not $PfxPath) { $PfxPath = Join-Path $root 'artifacts\cert\labelframe.pfx' }
 $certDir = Split-Path -Parent $PfxPath

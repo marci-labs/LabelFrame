@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 21（自动化发布）— 2026-08-12（进行中）
+
+- 新增 GitHub Actions 发布流水线 `.github/workflows/release.yml`：推送 `v*` tag 自动测试、打包（Server / Client MSI、管理界面插件 zip、linux-x64 归档）、构建并推送 ghcr.io Docker 镜像、创建 GitHub Release。
+- 版本号单一来源：git tag（`v0.17.0` → `0.17.0`），另支持手动触发。
+- 打包脚本：新增 `-WixPath` 参数（CI 用 dotnet tool 版 WiX 7.0.0）；MSI 签名证书改走 GitHub Secret（`MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD`），有则签名、无则跳过；移除脚本内明文默认密码。
+- compose 默认拉取 `ghcr.io/marci-labs/labelframe-server`（`LABELFRAME_VERSION` / `LABELFRAME_IMAGE` 可覆盖）。
+- 组织 `marci-labs` 已创建；仓库公开化 / 转移组织待执行。
+
 ## 迭代 0（奠基）— 2026-08-08
 
 - 建立文档体系：README（愿景）、AGENTS、DESIGN、REQUIREMENTS、ROADMAP、CHANGELOG。

@@ -31,6 +31,8 @@
 | 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
 | 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 10 | MSI 安装包 | ✅ 已完成 |
+| 20 | 服务端管理界面（插件式 UI）+ 设备 IP | 🔄 进行中（联调冒烟待执行） |
+| 21 | 自动化发布（ghcr + GitHub Release + MSI 签名通道） | 🔄 进行中 |
 | 检查点 | 试点验收（成功衡量） | 待定 |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计） | 待定 |
 
@@ -618,6 +620,25 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 20（服务端管理界面插件 + 设备 IP）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md、docs/ITERATION-20-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+## 迭代 21：自动化发布（进行中）
+
+**目标**：发新版本时全自动——测试 → 打包 PC 端安装包（Server / Client MSI、管理界面插件 zip、Linux 归档）→ 构建并推送 Server 端 Docker 镜像（ghcr.io）→ 创建 GitHub Release。
+
+**范围**：
+- `.github/workflows/release.yml`：推送 `v*` tag 触发（另支持手动指定版本号）；版本号单一来源 = tag；测试（dotnet + 前端 client / server 双模式）→ 打包 → ghcr 推送（`:版本` + `:latest`）→ Release 附件。
+- 打包脚本：新增 `-WixPath`（CI 用 dotnet tool 版 WiX 7.0.0）；MSI 签名证书改走 GitHub Secret（`MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD`），有则签名、无则跳过；移除脚本内明文默认密码。
+- compose 默认指向 `ghcr.io/marci-labs/labelframe-server`（`LABELFRAME_VERSION` / `LABELFRAME_IMAGE` 可覆盖）；README 补充自动发布与拉取说明。
+- 仓库转公开并转移到组织 `marci-labs`（GitHub 侧操作，gh 辅助）。
+
+**不在范围**：PDA（AndroidHost）构建与发布（真机验收通过后再排期）；Docker 多架构（arm64）；正式商业代码签名证书购买（后续迭代）。
+
+**验收**：推送 `v*` tag 后 CI 全流程通过；`docker pull ghcr.io/marci-labs/labelframe-server:<版本>` 可用；Release 附件含双 MSI、插件 zip、linux-x64 归档；MSI 有 Secret 时签名、无 Secret 时跳过；`dotnet test` / 前端双模式测试全绿。
+
+**进度（2026-08-12）**：方案已定（tag 版本号 / ghcr 组织 `marci-labs` / Release 不含 docker 离线包 / 签名走 Secret 可选通道）；组织已创建；gh CLI token 待重新登录；工作流与脚本改造实施中。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 21（自动化发布）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；仓库内容不得出现公司 / 业务线品牌字样。
+
 ## 检查点：试点验收（待定）
 
 按 [REQUIREMENTS.md](REQUIREMENTS.md) §8 成功衡量执行：

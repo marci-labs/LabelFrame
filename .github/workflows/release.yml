@@ -1,0 +1,244 @@
+# LabelFrame 自动发布流水线（迭代 21）
+# 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
+# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Linux 归档）→ 推送 ghcr.io 镜像 → 创建 GitHub Release。
+# MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '要发布的版本号（如 0.17.0）；tag 触发时自动从 tag 解析'
+        required: false
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '24'
+  PNPM_VERSION: '11.10.0'
+  WIX_VERSION: '7.0.0'
+
+jobs:
+  version:
+    name: 解析版本号
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            V="${GITHUB_REF_NAME#v}"
+          else
+            V="${{ inputs.version }}"
+          fi
+          if [ -z "$V" ]; then
+            echo "::error::无法确定版本号（tag 触发请推 v*，手动触发请填 version）"
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: 测试与前端构建
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: dotnet restore
+        run: dotnet restore LabelFrame.slnx
+      - name: dotnet build
+        run: dotnet build LabelFrame.slnx -c Release --no-restore
+      - name: dotnet test
+        run: dotnet test LabelFrame.slnx -c Release --no-build --no-restore
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: 前端依赖
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      - name: 前端 lint
+        working-directory: web
+        run: pnpm lint
+      - name: 前端测试（client 模式）
+        working-directory: web
+        run: pnpm test
+      - name: 前端测试（server 模式）
+        working-directory: web
+        env:
+          VITE_UI_MODE: server
+        run: pnpm test
+      - name: 前端构建（client）
+        working-directory: web
+        run: pnpm build
+      - name: 前端构建（server）
+        working-directory: web
+        run: pnpm build:server
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist-server
+          path: web/dist-server
+          if-no-files-found: error
+
+  package:
+    name: 打包安装包（MSI / 插件 / Linux 归档）
+    needs: [version, test]
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 安装 WiX Toolset
+        run: dotnet tool install --global wix --version ${{ env.WIX_VERSION }}
+
+      - name: 下载前端产物
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web
+      - name: 下载服务端 UI 产物
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist-server
+          path: web
+
+      - name: 准备签名证书（可选）
+        shell: pwsh
+        run: |
+          if ($env:MSI_SIGN_CERT_BASE64) {
+            New-Item -ItemType Directory -Force -Path artifacts/cert | Out-Null
+            [IO.File]::WriteAllBytes('artifacts/cert/labelframe.pfx', [Convert]::FromBase64String($env:MSI_SIGN_CERT_BASE64))
+            Write-Host 'MSI 将使用配置的证书签名'
+          } else {
+            Write-Host '未配置 MSI_SIGN_CERT_BASE64，本次发布跳过 MSI 签名'
+          }
+
+      - name: 打包 Client MSI
+        shell: pwsh
+        run: |
+          $sign = @()
+          if (Test-Path 'artifacts/cert/labelframe.pfx') {
+            $sign = @('-Sign', '-PfxPath', 'artifacts/cert/labelframe.pfx', '-PfxPassword', $env:MSI_SIGN_PASSWORD)
+          }
+          & .\scripts\build-msi.ps1 -Version $env:VERSION -WixPath (Join-Path $HOME '.dotnet\tools\wix.exe') @sign
+          if ($LASTEXITCODE -ne 0) { throw 'Client MSI 打包失败' }
+
+      - name: 打包 Server MSI
+        shell: pwsh
+        run: |
+          $sign = @()
+          if (Test-Path 'artifacts/cert/labelframe.pfx') {
+            $sign = @('-Sign', '-PfxPath', 'artifacts/cert/labelframe.pfx', '-PfxPassword', $env:MSI_SIGN_PASSWORD)
+          }
+          & .\scripts\build-server-msi.ps1 -Version $env:VERSION -WixPath (Join-Path $HOME '.dotnet\tools\wix.exe') @sign
+          if ($LASTEXITCODE -ne 0) { throw 'Server MSI 打包失败' }
+
+      - name: 打包管理界面插件
+        shell: pwsh
+        run: |
+          & .\scripts\package-server-webui.ps1 -Version $env:VERSION
+          if ($LASTEXITCODE -ne 0) { throw '插件包打包失败' }
+
+      - name: 发布 Server（linux-x64）并归档
+        shell: pwsh
+        run: |
+          & .\scripts\publish-server-linux.ps1 -Version $env:VERSION
+          if ($LASTEXITCODE -ne 0) { throw 'Linux 归档失败' }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: |
+            artifacts/LabelFrame-Server-*.msi
+            artifacts/LabelFrame-Client-*.msi
+            artifacts/labelframe-server-webui-*.zip
+            artifacts/labelframe-server-*-linux-x64.tar.gz
+          if-no-files-found: error
+
+  docker:
+    name: Docker 镜像（ghcr.io）
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      IMAGE: ghcr.io/${{ github.repository_owner }}/labelframe-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 发布 Server（linux-x64）
+        run: |
+          dotnet publish src/LabelFrame.Server/LabelFrame.Server.csproj \
+            -c Release -f net10.0 -r linux-x64 -p:SelfContained=false \
+            -o artifacts/server-linux/linux-x64 -p:DebugType=None -p:DebugSymbols=false
+      - name: 写入默认配置
+        run: cp packaging/appsettings-server.json artifacts/server-linux/linux-x64/appsettings.json
+
+      - name: 登录 ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 构建并推送镜像
+        run: |
+          docker build -f packaging/ubuntu/Dockerfile -t "$IMAGE:$VERSION" -t "$IMAGE:latest" artifacts/server-linux/linux-x64
+          docker push "$IMAGE:$VERSION"
+          docker push "$IMAGE:latest"
+
+  release:
+    name: 创建 GitHub Release
+    needs: [version, package, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载发布附件
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: release
+
+      - name: 创建 Release（v${{ needs.version.outputs.version }}）
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: LabelFrame v${{ needs.version.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            release/LabelFrame-Server-*.msi
+            release/LabelFrame-Client-*.msi
+            release/labelframe-server-webui-*.zip
+            release/labelframe-server-*-linux-x64.tar.gz
