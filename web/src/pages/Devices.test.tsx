@@ -65,7 +65,8 @@ describe('在线设备页：列表渲染', () => {
     expect(screen.getByText('192.168.1.5')).toBeTruthy()
     expect(screen.getByText('在线')).toBeTruthy()
     // 最近心跳 = 本地时区 MM-dd HH:mm:ss（2026-08-11T01:00:00Z 按本地时区展示；两台设备可能同一天）
-    expect(screen.getAllByText(/08-11 \d{2}:00:00/).length).toBeGreaterThanOrEqual(2)
+    // 最近心跳 = 本地时区 MM-dd HH:mm:ss；两台设备分钟均为 00，任意时区（UTC / UTC+8）都各自匹配一条
+    expect(screen.getAllByText(/\d{2}-\d{2} \d{2}:00:00/).length).toBeGreaterThanOrEqual(2)
     // 离线设备
     expect(screen.getByText('仓库-2 打印电脑')).toBeTruthy()
     expect(screen.getByText('离线')).toBeTruthy()
