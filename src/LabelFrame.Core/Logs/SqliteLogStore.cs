@@ -1,4 +1,5 @@
 using System.Globalization;
+using LabelFrame.Core.Jobs;
 using Microsoft.Data.Sqlite;
 
 namespace LabelFrame.Core.Logs;
@@ -31,7 +32,8 @@ public sealed class SqliteLogStore
             DefaultTimeout = 5,
             Pooling = true,
         }.ToString();
-        // SQLite provider 由宿主（WinHost 启动时）初始化
+        // SQLite provider 自行初始化（幂等，避免依赖宿主/调用方先初始化）
+        SqliteSupport.EnsureInitialized();
     }
 
     /// <summary>建表。</summary>
