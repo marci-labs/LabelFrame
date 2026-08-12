@@ -122,6 +122,8 @@ jobs:
         shell: pwsh
         run: |
           $wix = Join-Path $HOME '.dotnet\tools\wix.exe'
+          # WiX v7 任何命令前都需先接受 OSMF EULA
+          & $wix eula accept wix7 2>$null | Out-Null
           & $wix extension add -g WixToolset.NetFx.wixext/${{ env.WIX_VERSION }}
           if ($LASTEXITCODE -ne 0) { throw 'wix extension add 失败' }
 
