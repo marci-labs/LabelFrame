@@ -561,7 +561,7 @@ export function DataPrint() {
         <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12 }}>{error}</div>
       )}
 
-      <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 12, alignItems: 'start' }}>
+      <div className="grid-2" style={{ flex: 1, overflow: 'auto', padding: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="panel">
             <div className="panel-head">

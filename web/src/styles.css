@@ -156,6 +156,17 @@ body {
 .page-title small { font-size: 11px; font-weight: 400; color: var(--ink-3); }
 .page-head .spacer { flex: 1; }
 
+/* 双列网格（数据与打印页）：窄屏（<960px）降为单列，避免两列被压扁 */
+.grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .grid-2 { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ---------- 按钮 ---------- */
 .btn {
   display: inline-flex;

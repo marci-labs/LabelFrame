@@ -234,7 +234,7 @@ export function TransportPanel() {
         <TransportParamsEditor mode={form.mode} params={form.params} setParam={form.setParam} />
       </div>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button className="btn" onClick={() => void run(true)} disabled={busy !== null}>
           <Icon name="link" size={13} />
           {busy === 'test' ? '测试中…' : '测试连接'}

@@ -87,7 +87,8 @@ export function Settings() {
         </div>
       </div>
 
-      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 }}>
+      {/* 迭代 21+：内容容器与其他页面对齐——flex:1 + overflowY:auto，低屏高可滚动（此前被 .page overflow:hidden 裁剪，小分辨率看不到「打印机」卡片）；minWidth:0 防长文本（%ProgramData% 路径）撑破 */}
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 }}>
         <section className="panel">
           <div className="panel-head">服务端地址</div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -95,7 +96,7 @@ export function Settings() {
               服务端地址
               <input className="input mono" value={url} onChange={(ev) => setUrl(ev.target.value)} placeholder="http://127.0.0.1:53961" spellCheck={false} />
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <button className="btn" onClick={() => void testConnection()} disabled={testing}>
                 <Icon name="link" size={13} />
                 {testing ? '测试中…' : '测试连接'}
@@ -159,7 +160,7 @@ export function Settings() {
             ) : (
               <div className="hint">{printerLoading ? '读取中…' : '未获取到状态（本机客户端可能不支持状态查询，或尚未连接）。'}</div>
             )}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <button className="btn" onClick={() => void doTestPrint()} disabled={testPrinting}>
                 <Icon name="test" size={13} />
                 {testPrinting ? '发送中…' : '测试打印'}
