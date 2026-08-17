@@ -29,7 +29,8 @@
 - 迭代 9（Excel 导入）/ 迭代 10（MSI 安装包）：已完成。
 - 迭代 13（文本排版与二维码参数持久化）：元素契约补齐（wrap / lineHeight / fitMode / fontFamily / qrEcc / qrMargin / displayValue / paddingH-V）+ Skia 图片打印渲染 + 前端字段映射，前后端已完成（用户验收待执行）；产物 `LabelFrame-0.13.2.msi`。
 - 迭代 22（打印测试体验 + 传输插件化 + 客户端下载分发）：✅ 已完成（2026-08-17）——下载 Excel 模板 / 客户端仅本机打印测试 / 作业历史按设备可见；传输插件化（统一接口 + 参数模型 + 注册表 + 外部 DLL 目录加载，卸载 = 删文件 + 重启生效）；客户端下载分发（`client-packages` + Server UI「客户端下载」+ 客户端设置「更新与安装包」）；本地 0.18.0 测试包。
-- 迭代 23（客户端插件分发：上传服务端 + 客户端安装 / 卸载）：🔄 进行中（2026-08-17 后端完成——独立 `plugin-packages` 目录 + `/api/plugin-packages` + `/api/plugins` 安装卸载 API + 字节加载修复 Windows 文件锁；前端待 hermes 实施）。
+- 迭代 23（客户端插件分发：上传服务端 + 客户端安装 / 卸载）：✅ 已完成（2026-08-17）——插件包上传服务端（独立 `plugin-packages` 目录 + `/api/plugin-packages` + Server UI「插件管理」页）、客户端设置「插件管理」浏览安装 / 卸载（下载 → 三层校验 → 解压到 `plugins/<pluginId>/` → 重启生效；卸载 = 删目录 → 重启生效；外部插件字节加载修复 Windows 文件锁；坏 DLL 加载失败原因结构化透出 `loadError`）；本地 0.19.0 测试包。
+- 迭代 24（Niimbot 蓝牙打印机传输插件实现 + 真机测试）：📋 下一轮（2026-08-17 用户提出，范围会话中细化）。
 详见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
 ## 组成

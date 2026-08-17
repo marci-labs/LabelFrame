@@ -34,8 +34,8 @@
 | 20 | 服务端管理界面（插件式 UI）+ 设备 IP | ✅ 已完成（2026-08-17 联调冒烟通过） |
 | 21 | 自动化发布（ghcr + GitHub Release + MSI 签名通道） | ✅ 已完成（v0.17.0 自动发布成功；ghcr 包已公开） |
 | 22 | 打印测试体验 + 传输插件化 + 客户端下载分发 | ✅ 已完成（2026-08-17 迭代结束，本地 0.18.0 测试包验收） |
-| 23 | 客户端插件分发——上传服务端 + 客户端安装 / 卸载 | 🔄 进行中（后端完成，前端重做中） |
-| 24 | 精成打印机传输插件实现 + 真机测试 | 📋 下一轮之后（承接 22/23 插件机制与分发） |
+| 23 | 客户端插件分发——上传服务端 + 客户端安装 / 卸载 | ✅ 已完成（2026-08-17 前端完成 + loadError 补充 + 0.19.0 打包验收） |
+| 24 | Niimbot 蓝牙打印机传输插件实现 + 真机测试 | 📋 下一轮（2026-08-17 用户提出，范围会话中细化） |
 | 25 | Android PDA 宿主（AndroidHost） | 📋 延后（PDA 事项延后，再排期） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
@@ -686,24 +686,28 @@
 
 **完成记录（2026-08-17，用户确认定稿后实施）**：
 - 前后端按规格实施完成 + 端到端联调冒烟通过（16 步）：上传 .lfplugin → 服务端列表元数据 → 客户端安装（重启前 loaded=false）→ 重启后装配 / loaded=true → 配置启用 → 卸载 → 重启后消失 → 卸载当前连接插件后重启回退 log → Server 删除插件包；字节加载修复 Windows 文件锁（决策 #73）。
-- 前端：待 hermes 独立实施（主 Agent 代跑提交已回滚；任务书 docs/ITERATION-23-FRONTEND-TASK.md）。
-- 后端：Core（插件包读取 / zip-slip / 子目录扫描 / 字节加载 / 防覆盖）/ WinHost（/api/plugins 安装卸载）+ Server（/api/plugin-packages）+ docker-compose 挂载；dotnet 259 全绿。
-- 文档：CHANGELOG、DESIGN（决策 #72/#73 + 未决更新）、迭代 23 规格（附五实施与联调记录）。
+- 前端（hermes 重做完成，4dcdbce）：任务书（含评审附一 + 主 Agent 拍板附二）定稿后实施——Server UI「插件管理」页 + 客户端设置「插件管理」卡片 + 插件包 API + 64MB 预检纯函数；web 212 用例全绿（双模式）。
+- 后端：Core（插件包读取 / zip-slip / 子目录扫描 / 字节加载 / 防覆盖）/ WinHost（/api/plugins 安装卸载）+ Server（/api/plugin-packages）+ docker-compose 挂载；loadError 结构化补充（LoadWithErrors 透出，8172299/fa8e5f0）；dotnet 265 全绿（Core 108 / Server 45 / WinHost 87 / Studio 25）。
+- 打包：本地 0.19.0 测试包（Client / Server MSI + webui 插件 zip + 示例 .lfplugin 合法/坏包）打包验收；ServerOptions 版本号同步 0.19.0。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 23（客户端插件分发：上传服务端 + 客户端安装 / 卸载）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-23-SPEC.md；按规格实施（后端 = 主 Agent、前端 = hermes，前端以契约为准、接口未就绪用 mock / 测试替身并注明假设，不修改对方范围文件）；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
-## 迭代 24：精成打印机传输插件实现 + 真机测试（下一轮之后）
+## 迭代 24：Niimbot 蓝牙打印机传输插件实现 + 真机测试（下一轮，范围会话中细化）
 
-**目标**：基于迭代 22 的传输插件机制（与迭代 23 的分发机制），实现精成打印机的传输插件并真机测试。
+**目标**：基于迭代 22 传输插件机制（+ 迭代 23 分发闭环），实现 Niimbot（小标蓝牙热敏标签打印机）的传输插件并真机测试——填补需求 P1「蓝牙传输」缺口（迭代 6 曾因蓝牙受阻，本轮以插件方式补上）。
 
 **范围**（承接迭代 22 / 23，会话中细化）：
-- 按插件接口实现精成打印机传输插件（连接 / 发送 / 状态 / 测试），参数模型独立。
-- 打包 / 装载 / 注册表装配，配置指定插件与参数即启用（可经迭代 23 分发安装）。
-- 真机（精成打印机）验收：连接、打印、状态、异常恢复。
+- 调研 Niimbot 打印机通信协议（BLE 特征 / 指令集），按 `ITransportPlugin` 接口实现传输插件（连接 / 发送 / 状态 / 测试），参数模型独立（蓝牙设备名 / 地址等）。
+- 打包 / 装载 / 注册表装配，配置指定插件与参数即启用（可经迭代 23 分发安装：`.lfplugin` 上传服务端 → 客户端安装 → 重启生效）。
+- 真机（Niimbot 打印机）验收：连接、打印、状态、异常恢复。
+
+**不在范围**：精成打印机插件（顺延，待用户确认需求）；PDA / AndroidHost（延后至迭代 25）；运行时热卸载 / 热替换（未决）。
+
+**验收**：会话中定稿后按 DoD 执行；`dotnet build` / `dotnet test` 与 web `pnpm test` 全绿；真机联调冒烟后按 DoD 收尾。
 
 **启动命令**：
-> 继续 LabelFrame 迭代 24（精成打印机传输插件）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+> 继续 LabelFrame 迭代 24（Niimbot 蓝牙打印机传输插件）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-23-SPEC.md；先调研 Niimbot 协议并讨论定稿范围（蓝牙方案 / 参数模型 / 真机验收方式），再按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
 ## 迭代 25：Android PDA 宿主（AndroidHost，延后）
 

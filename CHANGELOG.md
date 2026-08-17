@@ -3,6 +3,14 @@
 本文件记录每个迭代的变更。
 
 
+
+## 迭代 23 收尾：前端重做完成 + loadError 补充 + 0.19.0 打包 — 2026-08-17
+
+- **前端重做完成（hermes，4dcdbce）**：按任务书 docs/ITERATION-23-FRONTEND-TASK.md（含 hermes 评审附一 + 主 Agent 拍板附二）实施——`types.ts` / `client.ts` 插件包 API（serverApi.list/upload/delete/downloadPluginPackage + localApi.listInstalledPlugins/installPlugin/uninstallPlugin + pluginPackageDownloadUrl）；`pluginLimits.ts` 64MB 预检纯函数；Server UI「插件管理」页（invalid 红标+原因）；客户端设置「插件管理」卡片（可用插件四态 + 覆盖安装确认 + 已安装四态徽标 + manual 只读 + 旧版本 404 区分）；TabId 增 plugin-packages + puzzle 图标；web 212 用例全绿（双模式）。
+- **loadError 结构化补充（前端评审三.1 拍板）**：`PluginDirectoryLoader.LoadWithErrors` 透出逐 DLL 失败原因 → `PluginInstaller.ListInstalled` 合并输出 `loadError`（package 按目录 / manual 按路径匹配）；端到端实证坏 DLL 包 loaded=false + loadError=Bad IL format.；dotnet 265 全绿。
+- **0.19.0 本地测试包**：Client / Server MSI + `labelframe-server-webui-0.19.0.zip` + 示例 `.lfplugin`（合法 `labelframe-transport-sample-1.0.0.lfplugin` / 坏 DLL 演示包）打包验收；ServerOptions 版本号同步 0.19.0。
+- **迭代 24 主题调整（用户提出）**：下一轮改为「Niimbot 蓝牙打印机传输插件实现 + 真机测试」（补需求 P1 蓝牙缺口）；精成打印机顺延。
+
 ## 迭代 23 客户端插件分发实施完成 — 2026-08-17
 
 - **范围定稿（2026-08-17 用户拍板决策 1A-7A，规格 [docs/ITERATION-23-SPEC.md](docs/ITERATION-23-SPEC.md)）**：插件包上传服务端（zip + 根 manifest.json + 插件 DLL，后缀 `.lfplugin`；独立 `plugin-packages` 目录 + `/api/plugin-packages`）；客户端安装（设置页「插件管理」卡片浏览服务端可用插件 → 下载 → 三层校验 → 解压到 `plugins/<pluginId>/` → 重启生效）；客户端卸载（删目录 → 重启生效，热卸载仍不做）；包大小上限 64MB；不做签名（局域网无鉴权模型）；与「更新与安装包」UI 并列。
