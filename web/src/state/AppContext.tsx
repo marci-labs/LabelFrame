@@ -30,6 +30,8 @@ interface AppContextValue {
   serverMode: ServerMode
   /** 本机 Client 的 deviceId（机器级配置；旧客户端为 null，F5 回退第一台在线；server 构建恒 null）。 */
   hostDeviceId: string | null
+  /** 迭代 22：本机设备名称（机器级配置 deviceName，客户端状态栏 / DataPrint 目标标签显示；server 构建恒 null）。 */
+  hostDeviceName: string | null
   /** 迭代 20：本机 Client 枚举的 IPv4 列表（/api/host/config.ips，客户端状态栏显示；server 构建恒空）。 */
   hostIps: string[]
   /** 迭代 20（Y2）：数据与打印「默认目标设备」（在线设备页点选，localStorage 持久化，跨页联动；client 构建不消费）。 */
@@ -104,6 +106,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [serverMode, setServerMode] = useState<ServerMode>('unknown')
   const [connected, setConnected] = useState(false)
   const [hostDeviceId, setHostDeviceId] = useState<string | null>(null)
+  const [hostDeviceName, setHostDeviceName] = useState<string | null>(null)
   const [hostIps, setHostIps] = useState<string[]>([])
   const [defaultTargetDeviceId, setDefaultTargetDeviceIdState] = useState<string | null>(() => (isServerUi ? readDefaultTargetDevice() : null))
   const [transport, setTransport] = useState<string | null>(null)
@@ -172,6 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setServerBaseUrl(cfg.serverUrl)
         setBaseUrlState(cfg.serverUrl)
         setHostDeviceId(cfg.deviceId ?? null)
+        setHostDeviceName(cfg.deviceName ?? null)
         setHostIps(cfg.ips ?? [])
         setStatus(`已读取本机配置：服务端 ${cfg.serverUrl}。`)
       })
@@ -258,6 +262,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       baseUrl,
       serverMode,
       hostDeviceId,
+      hostDeviceName,
       hostIps,
       defaultTargetDeviceId,
       transport,
@@ -285,6 +290,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       baseUrl,
       serverMode,
       hostDeviceId,
+      hostDeviceName,
       hostIps,
       defaultTargetDeviceId,
       transport,

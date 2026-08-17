@@ -93,7 +93,8 @@ describe('作业历史页（迭代 18 F6）', () => {
     expect(screen.getByText(/3\/3/)).toBeTruthy()
     expect(screen.getByText('打印机缺纸')).toBeTruthy()
     // 双 base 守门：服务端模式走 serverApi
-    expect(mocks.server.getJobs).toHaveBeenCalledWith(100)
+    // 迭代 22 §2.1：客户端构建在服务端模式下传本机 deviceId（只看自己的作业）
+    expect(mocks.server.getJobs).toHaveBeenCalledWith(100, 'device-1')
     expect(mocks.local.getJobs).not.toHaveBeenCalled()
   })
 
@@ -124,10 +125,16 @@ describe('作业历史页（迭代 18 F6）', () => {
   it('单机降级（healthz 失败 → standalone）：列表走 localApi，空态文案为本机不自动清理', async () => {
     mocks.server.healthz.mockRejectedValue(new Error('down'))
     renderJobHistory()
-    // 等 serverMode 探测完成 → standalone → localApi.getJobs
-    await waitFor(() => expect(mocks.local.getJobs).toHaveBeenCalledWith(100))
+    // 等 serverMode 探测完成 → standalone → localApi.getJobs（本机历史无需 deviceId 过滤）
+    await waitFor(() => expect(mocks.local.getJobs).toHaveBeenCalledWith(100, undefined))
     expect(mocks.server.getJobs).not.toHaveBeenCalled()
     expect(await screen.findByText('已完成')).toBeTruthy()
+  })
+
+  it('客户端构建服务端模式：本机无 deviceId（旧客户端）时不传过滤参数（看本机全部）', async () => {
+    mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961' })
+    renderJobHistory()
+    await waitFor(() => expect(mocks.server.getJobs).toHaveBeenCalledWith(100, undefined))
   })
 
   it('单机降级空态：本机作业不自动清理文案', async () => {

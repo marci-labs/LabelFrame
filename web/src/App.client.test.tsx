@@ -108,3 +108,18 @@ describe('client 构建：状态栏本机 IP（迭代 20 G3）', () => {
     expect(screen.queryByText(/Server 管理界面/)).toBeNull()
   })
 })
+
+describe('client 构建：状态栏本机设备名称（迭代 22 §2.1）', () => {
+  it('服务端已连接时显示「本机：{deviceName}」（与本机 IP 并列）', async () => {
+    render(<App />)
+    expect(await screen.findByText(/本机：PC-1/)).toBeTruthy()
+    expect(screen.getByText(/本机 IP：192\.168\.1\.5, 10\.0\.0\.8/)).toBeTruthy()
+  })
+
+  it('无 deviceName（旧客户端）：不显示本机名称段，本机 IP 仍显示', async () => {
+    mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'PC-1', ips: ['192.168.1.5'] })
+    render(<App />)
+    expect(await screen.findByText(/本机 IP：192\.168\.1\.5/)).toBeTruthy()
+    expect(screen.queryByText(/本机：/)).toBeNull()
+  })
+})

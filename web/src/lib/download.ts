@@ -10,3 +10,17 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+/** 文件大小人类可读（B / KB / MB / GB；迭代 22 安装包列表共用）。 */
+export function formatSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '—'
+  if (bytes < 1024) return `${bytes} B`
+  const units = ['KB', 'MB', 'GB']
+  let v = bytes
+  let i = -1
+  do {
+    v /= 1024
+    i += 1
+  } while (v >= 1024 && i < units.length - 1)
+  return `${v.toFixed(v >= 100 ? 0 : 1)} ${units[i]}`
+}

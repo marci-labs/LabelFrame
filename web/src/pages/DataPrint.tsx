@@ -42,8 +42,9 @@ const JOB_STATUS_LABEL: Record<string, string> = {
 const jobLabel = (s: string) => JOB_STATUS_LABEL[s] ?? s
 const isTerminal = (s: string) => s === 'Completed' || s === 'Failed' || s === 'Cancelled'
 
-/** 作业轮询（1.5s，终端状态停止）；API 跟随模式（服务端 / 单机降级）。 */
-function useJobPolling(jobId: string | null, biz: typeof serverApi) {
+/** 作业轮询（1.5s，终端状态停止）；API 跟随模式（服务端 / 单机降级）。
+ *  参数用 Pick 而非 typeof serverApi：client 构建降级直连时传 localApi（无 client-packages 方法），仅需 getJob / retryJobItem。 */
+function useJobPolling(jobId: string | null, biz: Pick<typeof serverApi, 'getJob' | 'retryJobItem'>) {
   const [job, setJob] = useState<JobView | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -229,14 +230,21 @@ export function DataPrint() {
   // 404 / 失败 = 单机 WinHost 降级（隐藏选择、提交不带 targetDeviceId）。
   // 迭代 18：默认选中本机设备（机器级配置 deviceId 匹配在线列表），未命中回退第一台在线。
   // 迭代 20（K2）：server 构建恒服务端模式——设备列表拉取成功即 'server'（失败也保持 'server'，无 standalone 分支）。
+  // 迭代 22（决策 1A）：客户端构建目标设备固定本机——routeMode 判定本机路由——
+  //   本机已注册且在线 → 'server'（作业经服务端投递，服务端历史可见）；本机未注册 / 离线 → 'direct'（降级本机直连，作业仅本机历史）。
   const [deviceMode, setDeviceMode] = useState<'loading' | 'server' | 'standalone'>('loading')
+  const [routeMode, setRouteMode] = useState<'loading' | 'server' | 'direct'>('loading')
+  /** 迭代 22：本机是否已注册到服务端（deviceId 出现在设备列表）——区分「未注册 / 离线」两种降级提示。 */
+  const [hostInList, setHostInList] = useState(false)
   const [devices, setDevices] = useState<DeviceView[]>([])
   const [targetDeviceId, setTargetDeviceId] = useState('')
 
   /** 业务 API 跟随模式：服务端 = serverApi（模板 / 作业中心）；单机降级 = localApi（本机 WinHost 全套 API）。
    *  迭代 20：server 构建恒 serverApi（Server UI 由服务端托管，无本机 Client）。 */
   const biz = isServerUi ? serverApi : deviceMode === 'server' ? serverApi : localApi
-  const { job, error: jobError, retry } = useJobPolling(printDraft.jobId, biz)
+  /** 提交 / 作业轮询 API：client 构建服务端模式下降级直连（routeMode 'direct'）时走 localApi（本机 WinHost 直接打印）。 */
+  const submitBiz = isServerUi ? serverApi : deviceMode === 'server' && routeMode === 'server' ? serverApi : localApi
+  const { job, error: jobError, retry } = useJobPolling(printDraft.jobId, submitBiz)
 
   useEffect(() => {
     let cancelled = false
@@ -250,6 +258,8 @@ export function DataPrint() {
           if (cancelled) return
           setDevices(list)
           setDeviceMode('server')
+          setRouteMode('server')
+          setHostInList(true)
           const online = list.filter((d) => d.status === 'Online')
           const saved =
             app.defaultTargetDeviceId && online.some((d) => d.deviceId === app.defaultTargetDeviceId)
@@ -260,6 +270,8 @@ export function DataPrint() {
         .catch((err) => {
           if (cancelled) return
           setDeviceMode('server')
+          setRouteMode('server')
+          setHostInList(true)
           setError(err instanceof ApiError ? err.message : '加载设备列表失败。')
         })
       return () => {
@@ -276,9 +288,15 @@ export function DataPrint() {
           // 本机设备优先（hostConfig.deviceId 匹配），未命中回退第一台在线（少点一次；全部离线时留空由用户选择）
           const mine = cfg ? online.find((d) => d.deviceId === cfg.deviceId) : undefined
           setTargetDeviceId(mine?.deviceId ?? online[0]?.deviceId ?? '')
+          // 迭代 22（决策 1A）：客户端构建目标固定本机——本机已注册且在线 → 服务端路由；
+          // 未注册（无 deviceId 或不在列表）/ 离线 → 降级本机直连（提交走本机 WinHost，作业仅本机历史）
+          const mineAny = cfg?.deviceId ? list.find((d) => d.deviceId === cfg.deviceId) : undefined
+          setHostInList(Boolean(mineAny))
+          setRouteMode(mineAny && mineAny.status === 'Online' ? 'server' : 'direct')
         } else {
           // 单机模式：旧 WinHost 无 /api/devices（404），或服务端不可达——隐藏设备选择，正常提交
           setDeviceMode('standalone')
+          setRouteMode('direct')
         }
       },
     )
@@ -334,18 +352,30 @@ export function DataPrint() {
   /**
    * 拼提交请求：
    * - job（服务端模式）：templateName 引用服务端模板库 + targetDeviceId 定向投递（自包含 template 不携带）；
-   * - job（单机降级）：自包含 template（旧 WinHost 兼容，无 templateName / targetDeviceId）；
+   *   - server 构建：targetDeviceId = 所选在线设备；
+   *   - client 构建（迭代 22 决策 1A）：目标固定本机——本机在线走服务端路由，targetDeviceId = 本机 deviceId；
+   * - job（降级直连 / 单机）：自包含 template（本机 WinHost 直接打印，旧 WinHost 无 templateName / targetDeviceId）；
    * - debug 出图：自包含 template（render-image 后端要求 contract + layout，不建作业）。
    */
   const buildRequest = useCallback(
     (labels: { data: Record<string, string> }[], kind: 'job' | 'debug'): SubmitJobRequest | null => {
       if (!pkg) return null
-      if (kind === 'job' && deviceMode === 'server') {
-        return {
-          requestId: crypto.randomUUID(),
-          templateName: pkg.name,
-          targetDeviceId,
-          labels,
+      if (kind === 'job') {
+        if (isServerUi) {
+          return {
+            requestId: crypto.randomUUID(),
+            templateName: pkg.name,
+            targetDeviceId,
+            labels,
+          }
+        }
+        if (deviceMode === 'server' && routeMode === 'server') {
+          return {
+            requestId: crypto.randomUUID(),
+            templateName: pkg.name,
+            targetDeviceId: app.hostDeviceId ?? undefined,
+            labels,
+          }
         }
       }
       return {
@@ -354,11 +384,11 @@ export function DataPrint() {
         labels,
       }
     },
-    [pkg, deviceMode, targetDeviceId],
+    [pkg, deviceMode, routeMode, targetDeviceId, app.hostDeviceId],
   )
 
   const submit = async (labels: { data: Record<string, string> }[]) => {
-    if (deviceMode === 'server' && !targetDeviceId) {
+    if (isServerUi && !targetDeviceId) {
       app.setStatus('请先选择目标设备（作业投递到客户端打印）。')
       return
     }
@@ -387,7 +417,7 @@ export function DataPrint() {
       }
       const req = buildRequest(labels, 'job')
       if (!req) return
-      const j = await biz.submitJob(req)
+      const j = await submitBiz.submitJob(req)
       app.setDraftJobId(j.jobId)
       app.setStatus(`作业已提交（${labels.length} 张，ID ${j.jobId.slice(0, 8)}）。`)
     } catch (err) {
@@ -433,6 +463,30 @@ export function DataPrint() {
   const previewImage = () => {
     if (!pkg) return
     void downloadDebug([{ data: { ...values } }], false)
+  }
+
+  const [excelTplBusy, setExcelTplBusy] = useState(false)
+
+  /** 下载 Excel 模板（迭代 22 §2.1）：按当前模板契约字段（显示名表头）+ testData（示例行）生成 xlsx，直接套用导入。 */
+  const downloadExcelTemplate = async () => {
+    if (!pkg) return
+    setExcelTplBusy(true)
+    try {
+      const fields = pkg.contract.fields ?? []
+      const columns = fields.map((f) => ({ key: f.key, displayName: f.displayName || f.key }))
+      const sampleRow: Record<string, string> = {}
+      for (const f of fields) {
+        const v = pkg.testData?.[f.key]
+        if (v !== undefined && v !== null) sampleRow[f.key] = v
+      }
+      const { blob, filename } = await biz.excelTemplate(columns, sampleRow)
+      downloadBlob(blob, filename)
+      app.setStatus(`Excel 模板已下载：${filename}`)
+    } catch (err) {
+      app.setStatus(err instanceof ApiError ? err.message : '生成 Excel 模板失败。')
+    } finally {
+      setExcelTplBusy(false)
+    }
   }
 
   const pickExcel = async (file: File) => {
@@ -489,6 +543,10 @@ export function DataPrint() {
             </option>
           ))}
         </select>
+        <button className="btn" onClick={() => void downloadExcelTemplate()} disabled={!pkg || fieldKeys.length === 0 || excelTplBusy} title={!pkg || fieldKeys.length === 0 ? '当前模板没有字段，无法生成 Excel 模板' : '按当前模板契约字段 + 示例值生成 xlsx，可直接套用 Excel 导入做打印测试'}>
+          <Icon name="download" size={13} />
+          {excelTplBusy ? '生成中…' : '下载 Excel 模板'}
+        </button>
         <button className="btn" onClick={() => document.getElementById('excelFile')?.click()} disabled={!pkg || importing || submitting}>
           <Icon name="upload" size={13} />
           Excel 导入
@@ -530,29 +588,51 @@ export function DataPrint() {
       {deviceMode === 'server' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
           <span className="hint">目标设备</span>
-          <select
-            className="input"
-            aria-label="目标设备"
-            value={targetDeviceId}
-            onChange={(ev) => setTargetDeviceId(ev.target.value)}
-            style={{ minWidth: 240 }}
-            title={isServerUi ? '作业将投递到所选在线设备执行打印（仅在线设备可选）' : '作业将投递到所选客户端打印'}
-          >
-            {devices.length === 0 && <option value="">（暂无设备）</option>}
-            {devices.length > 0 && !targetDeviceId && <option value="">（请选择设备）</option>}
-            {devices.map((d) => (
-              <option key={d.deviceId} value={d.deviceId} disabled={isServerUi && d.status !== 'Online'} title={isServerUi && d.status !== 'Online' ? `离线（上次心跳 ${formatLastSeen(d.lastSeenAt)}）` : undefined}>
-                {d.name}（{deviceStatusLabel(d.status)}）
-                {isServerUi && d.status !== 'Online' ? ` · 上次心跳 ${formatLastSeen(d.lastSeenAt)}` : ''}
-              </option>
-            ))}
-          </select>
-          {devices.length === 0 ? (
-            <span className="badge warn">{isServerUi ? '暂无设备，请先在打印电脑安装并启动 LabelFrame Client' : '暂无在线客户端，请先在打印电脑安装并启动 LabelFrame Client'}</span>
-          ) : targetDeviceId ? (
-            <span className="hint">{isServerUi ? '仅在线设备可选；提交时将再次校验所选设备在线状态。' : '提交作业将投递到所选客户端打印；客户端离线时作业排队，上线后自动领取。'}</span>
+          {isServerUi ? (
+            <>
+              <select
+                className="input"
+                aria-label="目标设备"
+                value={targetDeviceId}
+                onChange={(ev) => setTargetDeviceId(ev.target.value)}
+                style={{ minWidth: 240 }}
+                title="作业将投递到所选在线设备执行打印（仅在线设备可选）"
+              >
+                {devices.length === 0 && <option value="">（暂无设备）</option>}
+                {devices.length > 0 && !targetDeviceId && <option value="">（请选择设备）</option>}
+                {devices.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId} disabled={d.status !== 'Online'} title={d.status !== 'Online' ? `离线（上次心跳 ${formatLastSeen(d.lastSeenAt)}）` : undefined}>
+                    {d.name}（{deviceStatusLabel(d.status)}）
+                    {d.status !== 'Online' ? ` · 上次心跳 ${formatLastSeen(d.lastSeenAt)}` : ''}
+                  </option>
+                ))}
+              </select>
+              {devices.length === 0 ? (
+                <span className="badge warn">暂无设备，请先在打印电脑安装并启动 LabelFrame Client</span>
+              ) : targetDeviceId ? (
+                <span className="hint">仅在线设备可选；提交时将再次校验所选设备在线状态。</span>
+              ) : (
+                <span className="badge warn">暂无在线设备，仅在线设备可选</span>
+              )}
+            </>
           ) : (
-            <span className="badge warn">{isServerUi ? '暂无在线设备，仅在线设备可选' : '暂无在线设备，请先启动打印电脑上的 LabelFrame Client（或选择离线设备排队等待）'}</span>
+            // 迭代 22（决策 1A）：客户端构建目标设备固定本机——只显示本机标签，无设备选择器；
+            // 本机未注册 / 离线时降级本机直连并提示原因
+            <>
+              <span className="badge ok" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="printer" size={12} />
+                本机（{app.hostDeviceName || app.hostDeviceId || '未知'}）
+              </span>
+              {routeMode === 'server' ? (
+                <span className="hint">本机已注册且在线：作业经服务端投递（服务端可见本机作业）。</span>
+              ) : (
+                <span className="badge warn">
+                  {!hostInList
+                    ? '本机未注册到服务端：已降级为本机直连打印（作业仅本机历史）。'
+                    : '本机设备当前离线：已降级为本机直连打印（作业仅本机历史）。'}
+                </span>
+              )}
+            </>
           )}
         </div>
       )}
@@ -596,15 +676,17 @@ export function DataPrint() {
                     <button
                       className="btn primary"
                       onClick={debugMode ? debugSingle : testPrint}
-                      disabled={submitting || !pkg || (deviceMode === 'server' && !targetDeviceId)}
+                      disabled={submitting || !pkg || (isServerUi && !targetDeviceId)}
                       title={
                         debugMode
                           ? '后端渲染当前表单为 PNG 下载，不发送打印驱动'
-                          : deviceMode === 'server'
-                            ? isServerUi
-                              ? '提交 1 张标签作业到所选在线设备（由该设备客户端执行打印）'
-                              : '提交 1 张标签作业到所选目标设备'
-                            : '提交 1 张标签作业到本机打印'
+                          : isServerUi
+                            ? '提交 1 张标签作业到所选在线设备（由该设备客户端执行打印）'
+                            : deviceMode === 'server'
+                              ? routeMode === 'server'
+                                ? '提交 1 张标签作业到本机（经服务端投递）'
+                                : '本机未注册或离线：提交 1 张标签到本机直连打印'
+                              : '提交 1 张标签作业到本机打印'
                       }
                     >
                       <Icon name="printer" size={13} />
@@ -625,11 +707,13 @@ export function DataPrint() {
                   <div className="hint">
                     {debugMode
                       ? '调试模式：出图为后端渲染的实际打印位图（同一 Skia / DPI），不提交作业、不发送打印驱动。'
-                      : deviceMode === 'server'
-                        ? isServerUi
-                          ? '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到所选在线设备（仅在线设备可选，由设备客户端执行打印）。'
-                          : '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到所选目标设备（客户端离线时排队等待）。'
-                        : '已用模板预览值预填，可修改后打印；单机模式：作业提交到本机 WinHost 打印（兼容旧版单机部署）。'}
+                      : isServerUi
+                        ? '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到所选在线设备（仅在线设备可选，由设备客户端执行打印）。'
+                        : deviceMode === 'server'
+                          ? routeMode === 'server'
+                            ? '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到本机（经服务端投递，服务端可见本机作业）。'
+                            : '已用模板预览值预填，可修改后打印；本机未注册或离线，已降级为本机直连打印（作业仅本机历史）。'
+                          : '已用模板预览值预填，可修改后打印；单机模式：作业提交到本机 WinHost 打印（兼容旧版单机部署）。'}
                   </div>
                 </>
               )}

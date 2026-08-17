@@ -1,9 +1,11 @@
 // 设置页（迭代 18 F2-F4）：服务端地址（机器级配置，保存即生效）+ 连接方式（本机 Client）+ 打印机状态 / 测试打印
+// 迭代 22 §2.3：新增「更新与安装包」卡片——列出服务端可用客户端安装包（下载指向 {serverBaseUrl}/api/client-packages/{file}）；单机模式提示需先连接服务端。
 
 import { useCallback, useEffect, useState } from 'react'
-import { localApi } from '../lib/api/client'
+import { clientPackageDownloadUrl, localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
-import type { PrinterStatus } from '../lib/api/types'
+import type { ClientPackageInfo, PrinterStatus } from '../lib/api/types'
+import { formatSize } from '../lib/download'
 import { formatTransport } from '../lib/transport'
 import { useApp } from '../state/AppContext'
 import { Icon } from '../components/Icon'
@@ -20,6 +22,36 @@ export function Settings() {
   const [printerLoading, setPrinterLoading] = useState(false)
   const [testPrinting, setTestPrinting] = useState(false)
   const [printResult, setPrintResult] = useState<string | null>(null)
+
+  // 迭代 22 §2.3：更新与安装包——服务端可达时拉取安装包列表；不可达提示需先连接服务端
+  const [packages, setPackages] = useState<ClientPackageInfo[] | null>(null)
+  const [packagesError, setPackagesError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!app.connected) {
+      setPackages(null)
+      setPackagesError(null)
+      return
+    }
+    let on = true
+    serverApi
+      .listClientPackages()
+      .then((list) => {
+        if (on) {
+          setPackages(list)
+          setPackagesError(null)
+        }
+      })
+      .catch((err) => {
+        if (on) {
+          setPackages([])
+          setPackagesError(err instanceof ApiError ? err.message : '获取安装包列表失败。')
+        }
+      })
+    return () => {
+      on = false
+    }
+  }, [app.connected])
 
   const refreshPrinter = useCallback(async () => {
     setPrinterLoading(true)
@@ -173,7 +205,75 @@ export function Settings() {
             </div>
           </div>
         </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            更新与安装包
+            <span className="spacer" style={{ flex: 1 }} />
+            <span className={'conn' + (app.connected ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span className={'status-dot' + (app.connected ? ' on' : '')} />
+              {app.connected ? '服务端已连接' : '单机模式'}
+            </span>
+          </div>
+          <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {!app.connected ? (
+              <div className="hint">
+                当前未连接服务端（单机模式）。安装包由服务端统一分发，请先在上方「服务端地址」中连接服务端后查看可用安装包。
+              </div>
+            ) : packages === null ? (
+              <div className="hint">加载安装包列表…</div>
+            ) : packages.length === 0 ? (
+              <div className="hint">
+                {packagesError ? `获取安装包列表失败：${packagesError}` : '服务端暂无客户端安装包。可在服务端管理界面「客户端下载」页上传后，从此处下载更新。'}
+              </div>
+            ) : (
+              <>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>文件名</th>
+                      <th style={{ width: 110 }}>大小</th>
+                      <th style={{ width: 140 }}>修改时间</th>
+                      <th style={{ width: 90 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {packages.map((p) => (
+                      <tr key={p.fileName} style={{ cursor: 'default' }}>
+                        <td className="mono" style={{ fontSize: 12, wordBreak: 'break-all' }}>
+                          {p.fileName}
+                        </td>
+                        <td className="mono" style={{ fontSize: 12 }}>
+                          {formatSize(p.sizeBytes)}
+                        </td>
+                        <td className="mono" style={{ fontSize: 12 }}>
+                          {formatPackageTime(p.modifiedAt)}
+                        </td>
+                        <td>
+                          <a className="btn sm" href={clientPackageDownloadUrl(p.fileName)} title={`从服务端下载 ${p.fileName}`}>
+                            <Icon name="download" size={12} />
+                            下载
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="hint">下载安装包后请自行运行安装（LabelFrame 客户端不自动升级）。安装包由服务端分发：{app.baseUrl}。</div>
+              </>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   )
+}
+
+/** 修改时间：本地时间 MM-dd HH:mm。 */
+function formatPackageTime(iso?: string): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }

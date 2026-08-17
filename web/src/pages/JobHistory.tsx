@@ -6,6 +6,7 @@ import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { JobView } from '../lib/api/types'
 import { useApp } from '../state/AppContext'
+import { isServerUi } from '../lib/uiMode'
 import { Icon } from '../components/Icon'
 
 const JOB_STATUS_LABEL: Record<string, string> = {
@@ -39,11 +40,15 @@ export function JobHistory() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // 迭代 22 §2.1：作业历史可见性——客户端构建在服务端模式下传本机 deviceId（只看自己的作业）；
+  // 服务端构建不传（看全部）；单机降级看本机历史本就不传。
+  const deviceFilter = isServerUi || serverMode !== 'server' ? undefined : (app.hostDeviceId ?? undefined)
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const list = await biz.getJobs(100)
+      const list = await biz.getJobs(100, deviceFilter)
       setJobs(list)
     } catch (err) {
       setJobs([])
@@ -51,7 +56,7 @@ export function JobHistory() {
     } finally {
       setLoading(false)
     }
-  }, [biz])
+  }, [biz, deviceFilter])
 
   useEffect(() => {
     if (serverMode === 'unknown') return

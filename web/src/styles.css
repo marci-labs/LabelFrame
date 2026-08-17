@@ -181,6 +181,7 @@ body {
   border-radius: var(--radius);
   cursor: pointer;
   white-space: nowrap;
+  text-decoration: none;
   transition: background 120ms, border-color 120ms, color 120ms, transform 60ms;
 }
 .btn:hover { background: var(--bg); border-color: #c3ccd6; }

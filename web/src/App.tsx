@@ -15,6 +15,7 @@ import { Devices } from './pages/Devices'
 import { PdaLogs } from './pages/PdaLogs'
 import { JobHistory } from './pages/JobHistory'
 import { Settings } from './pages/Settings'
+import { ClientPackages } from './pages/ClientPackages'
 
 const TABS: { id: TabId; label: string; icon: IconName }[] = isServerUi
   ? [
@@ -23,6 +24,8 @@ const TABS: { id: TabId; label: string; icon: IconName }[] = isServerUi
       { id: 'data', label: '数据与打印', icon: 'data' },
       { id: 'devices', label: '在线设备', icon: 'grid' },
       { id: 'jobs', label: '作业历史', icon: 'history' },
+      // 迭代 22 §2.3：Server UI「客户端下载」页（安装包列表 / 上传 / 下载 / 删除）
+      { id: 'packages', label: '客户端下载', icon: 'download' },
       // 迭代 20（Y5）：Server 版命名「设备日志」（集中查看全部设备日志）；client 版保持「PDA 日志」
       { id: 'logs', label: '设备日志', icon: 'logs' },
     ]
@@ -95,6 +98,7 @@ function Shell() {
           {tab === 'data' && <DataPrint />}
           {tab === 'devices' && <Devices />}
           {tab === 'jobs' && <JobHistory />}
+          {tab === 'packages' && <ClientPackages />}
           {tab === 'logs' && <PdaLogs />}
           {tab === 'settings' && <Settings />}
         </main>
@@ -121,6 +125,8 @@ function Shell() {
                   本机 IP：{truncateIps(app.hostIps)}
                 </span>
               )}
+              {/* 迭代 22 §2.1：客户端状态栏显示本机设备名称（/api/host/config.deviceName，与本机 IP 并列） */}
+              {app.connected && app.hostDeviceName && <span className="mono">本机：{app.hostDeviceName}</span>}
             </>
           )}
           <button className="btn sm ghost" onClick={() => app.setDrawerOpen(!app.drawerOpen)}>

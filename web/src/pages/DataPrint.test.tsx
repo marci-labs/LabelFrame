@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
     getJob: vi.fn(),
     retryJobItem: vi.fn(),
     importExcel: vi.fn(),
+    excelTemplate: vi.fn(),
     renderImage: vi.fn(),
     renderImages: vi.fn(),
   },
@@ -31,6 +32,7 @@ const mocks = vi.hoisted(() => ({
     getJob: vi.fn(),
     retryJobItem: vi.fn(),
     importExcel: vi.fn(),
+    excelTemplate: vi.fn(),
     renderImage: vi.fn(),
     renderImages: vi.fn(),
     getHostConfig: vi.fn(),
@@ -84,17 +86,6 @@ const DEVICES: DeviceView[] = [
   { deviceId: 'device-2', name: '仓库-2 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-10T23:00:00Z', status: 'Offline' },
 ]
 
-/** 两台在线 + 一台离线：验证「本机设备优先于第一台在线」。 */
-const THREE_DEVICES: DeviceView[] = [
-  { deviceId: 'pc-a', name: 'A 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online' },
-  { deviceId: 'pc-b', name: 'B 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online' },
-  { deviceId: 'pc-c', name: 'C 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-10T23:00:00Z', status: 'Offline' },
-]
-
-const OFFLINE_DEVICES: DeviceView[] = [
-  { deviceId: 'device-1', name: '仓库-1 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-10T23:00:00Z', status: 'Offline' },
-]
-
 let clickSpy: ReturnType<typeof vi.spyOn>
 
 /** 模拟 DataPrint 挂载在 AppProvider 下的切 tab 行为（provider 不卸载，页面卸载重挂）。 */
@@ -122,6 +113,7 @@ beforeEach(() => {
   mocks.local.submitJob.mockResolvedValue(DONE_JOB)
   mocks.local.getJob.mockResolvedValue(DONE_JOB)
   mocks.local.importExcel.mockResolvedValue({ headers: ['Location'], rows: [['X-01'], ['Y-02']] })
+  mocks.local.excelTemplate.mockResolvedValue({ blob: new Blob(['xlsx']), filename: 'excel-template.xlsx' })
   mocks.local.renderImage.mockResolvedValue({ blob: new Blob(['png']), filename: 'label-1.png' })
   mocks.local.renderImages.mockResolvedValue({ blob: new Blob(['zip']), filename: 'labels-debug.zip' })
   // 服务端模式各方法默认就绪（渲染后由用例覆盖 listDevices 的 mock）
@@ -130,6 +122,7 @@ beforeEach(() => {
   mocks.server.submitJob.mockResolvedValue(DONE_JOB)
   mocks.server.getJob.mockResolvedValue(DONE_JOB)
   mocks.server.importExcel.mockResolvedValue({ headers: ['Location'], rows: [['X-01'], ['Y-02']] })
+  mocks.server.excelTemplate.mockResolvedValue({ blob: new Blob(['xlsx']), filename: 'excel-template.xlsx' })
   mocks.server.renderImage.mockResolvedValue({ blob: new Blob(['png']), filename: 'label-1.png' })
   mocks.server.renderImages.mockResolvedValue({ blob: new Blob(['zip']), filename: 'labels-debug.zip' })
 })
@@ -276,44 +269,26 @@ describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
   })
 })
 
-describe('目标设备 / 客户端选择（迭代 17/18 F5）', () => {
-  /** 服务端模式：listDevices 成功返回设备列表。 */
-  async function renderServerMode(devices: DeviceView[]) {
+describe('目标设备固定本机（迭代 22 决策 1A）', () => {
+  /** 服务端模式：listDevices 成功 + 本机 hostConfig（deviceId / deviceName 可覆盖）。 */
+  async function renderServerMode(devices: DeviceView[], host: { deviceId?: string; deviceName?: string } = { deviceId: 'device-1', deviceName: '仓库-1 打印电脑' }) {
     mocks.server.listDevices.mockResolvedValue(devices)
+    mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', ...host })
     render(<Harness show />)
     await screen.findByDisplayValue('A-01')
-    // 等设备下拉出现（listDevices 异步 resolve）
-    await waitFor(() => expect(screen.getByLabelText('目标设备')).toBeTruthy())
+    // 等本机目标标签出现（listDevices 异步 resolve）
+    await waitFor(() => expect(screen.getByText(/^本机（/)).toBeTruthy())
   }
 
-  it('服务端模式：显示设备下拉（设备名 + 在线状态），默认选中本机设备（hostConfig.deviceId 匹配）', async () => {
+  it('本机已注册且在线：只显示「本机（{deviceName}）」标签，无设备选择器', async () => {
     await renderServerMode(DEVICES)
-    const select = screen.getByLabelText('目标设备') as HTMLSelectElement
-    // 本机 deviceId=device-1 在线 → 选中本机
-    expect(select.value).toBe('device-1')
-    expect(screen.getByText('仓库-1 打印电脑（在线）')).toBeTruthy()
-    expect(screen.getByText('仓库-2 打印电脑（离线）')).toBeTruthy()
+    expect(screen.getByText('本机（仓库-1 打印电脑）')).toBeTruthy()
+    expect(screen.getByText(/本机已注册且在线：作业经服务端投递/)).toBeTruthy()
+    // 客户端构建不再有设备选择器
+    expect(screen.queryByLabelText('目标设备')).toBeNull()
   })
 
-  it('多台在线：本机设备优先（deviceId=pc-b → 选中 pc-b，而非第一台 pc-a）', async () => {
-    mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'pc-b', deviceName: 'B 打印电脑' })
-    await renderServerMode(THREE_DEVICES)
-    expect((screen.getByLabelText('目标设备') as HTMLSelectElement).value).toBe('pc-b')
-  })
-
-  it('本机设备未命中（不在列表）：回退第一台在线设备', async () => {
-    mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'pc-x', deviceName: 'X' })
-    await renderServerMode(THREE_DEVICES)
-    expect((screen.getByLabelText('目标设备') as HTMLSelectElement).value).toBe('pc-a')
-  })
-
-  it('本机设备是离线设备：回退第一台在线设备', async () => {
-    mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'device-2', deviceName: '仓库-2 打印电脑' })
-    await renderServerMode(DEVICES)
-    expect((screen.getByLabelText('目标设备') as HTMLSelectElement).value).toBe('device-1')
-  })
-
-  it('服务端模式提交：templateName + targetDeviceId 走 serverApi；localApi 不提交（双 base 守门）', async () => {
+  it('本机在线提交：templateName + targetDeviceId=本机 deviceId 走 serverApi；localApi 不提交（双 base 守门）', async () => {
     await renderServerMode(DEVICES)
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     await waitFor(() => {
@@ -325,42 +300,61 @@ describe('目标设备 / 客户端选择（迭代 17/18 F5）', () => {
     expect(mocks.local.submitJob).not.toHaveBeenCalled()
   })
 
-  it('服务端模式手动切换目标设备后提交：使用所选设备 ID', async () => {
-    await renderServerMode(DEVICES)
-    fireEvent.change(screen.getByLabelText('目标设备'), { target: { value: 'device-2' } })
+  it('本机设备离线：降级本机直连并提示原因；提交自包含 template 走 localApi', async () => {
+    await renderServerMode(DEVICES, { deviceId: 'device-2', deviceName: '仓库-2 打印电脑' })
+    expect(screen.getByText('本机（仓库-2 打印电脑）')).toBeTruthy()
+    expect(screen.getByText(/本机设备当前离线：已降级为本机直连打印/)).toBeTruthy()
+
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     await waitFor(() => {
-      expect(mocks.server.submitJob).toHaveBeenCalledWith(expect.objectContaining({ targetDeviceId: 'device-2' }))
+      expect(mocks.local.submitJob).toHaveBeenCalledTimes(1)
     })
+    const req = mocks.local.submitJob.mock.calls[0][0]
+    expect(req.templateName).toBeUndefined()
+    expect(req.targetDeviceId).toBeUndefined()
+    expect(req.template).toMatchObject({ name: '库位标签', contract: PKG.contract, layout: PKG.layout })
+    expect(mocks.server.submitJob).not.toHaveBeenCalled()
   })
 
-  it('无设备：提示「暂无在线客户端…」且打印测试禁用', async () => {
+  it('本机未注册（deviceId 不在服务端列表）：降级本机直连并提示未注册', async () => {
+    await renderServerMode(DEVICES, { deviceId: 'pc-x', deviceName: '未注册电脑' })
+    expect(screen.getByText(/本机未注册到服务端：已降级为本机直连打印/)).toBeTruthy()
+    // 提交走本机直连（localApi）
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    await waitFor(() => expect(mocks.local.submitJob).toHaveBeenCalledTimes(1))
+    expect(mocks.server.submitJob).not.toHaveBeenCalled()
+  })
+
+  it('旧客户端无 deviceId：降级本机直连并提示未注册', async () => {
+    await renderServerMode(DEVICES, { deviceId: undefined, deviceName: undefined })
+    expect(screen.getByText('本机（未知）')).toBeTruthy()
+    expect(screen.getByText(/本机未注册到服务端：已降级为本机直连打印/)).toBeTruthy()
+  })
+
+  it('服务端模式无设备（空列表）：本机未注册降级直连，打印测试仍可用', async () => {
     await renderServerMode([])
-    expect(screen.getByText('暂无在线客户端，请先在打印电脑安装并启动 LabelFrame Client')).toBeTruthy()
-    expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(true)
-    // 调试出图不需要目标设备，仍可用
-    expect((screen.getByRole('button', { name: '出图预览' }) as HTMLButtonElement).disabled).toBe(false)
-  })
-
-  it('全部离线：不默认选中，提示选择设备；选中离线设备后可提交（排队等待）', async () => {
-    await renderServerMode(OFFLINE_DEVICES)
-    const select = screen.getByLabelText('目标设备') as HTMLSelectElement
-    expect(select.value).toBe('')
-    expect(screen.getByText(/暂无在线设备/)).toBeTruthy()
-    expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(true)
-
-    fireEvent.change(select, { target: { value: 'device-1' } })
+    expect(screen.getByText(/本机未注册到服务端/)).toBeTruthy()
     expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(false)
-    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
-    await waitFor(() => {
-      expect(mocks.server.submitJob).toHaveBeenCalledWith(expect.objectContaining({ targetDeviceId: 'device-1' }))
-    })
   })
 
-  it('单机降级（/api/devices 404）：无设备选择 UI，模板列表走 localApi，提交自包含 template 走 localApi（双 base 守门）', async () => {
+  it('Server 作业视图（无 items）：进度与目标设备可见，不渲染逐张表格', async () => {
+    mocks.server.listDevices.mockResolvedValue(DEVICES)
+    mocks.server.getJob.mockResolvedValue(DONE_JOB_SERVER)
+    render(<Harness show />)
+    await screen.findByDisplayValue('A-01')
+    await waitFor(() => expect(screen.getByText(/^本机（/)).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    expect(await screen.findByText('已完成 1 / 1 张')).toBeTruthy()
+    expect(screen.getByText(/目标设备：device-1（在线）/)).toBeTruthy()
+    // 无逐张表格，显示说明行
+    expect(screen.getByText(/服务端作业无逐张明细/)).toBeTruthy()
+  })
+
+  it('单机降级（/api/devices 404）：无目标设备 UI，模板列表走 localApi，提交自包含 template 走 localApi（双 base 守门）', async () => {
     await renderDataPrint()
+    expect(screen.queryByText(/^本机（/)).toBeNull()
     expect(screen.queryByLabelText('目标设备')).toBeNull()
-    expect(screen.queryByText(/暂无在线客户端/)).toBeNull()
     // 模板列表来自本机（standalone → localApi）
     expect(mocks.local.listTemplates).toHaveBeenCalled()
     expect(mocks.server.listTemplates).not.toHaveBeenCalled()
@@ -375,19 +369,32 @@ describe('目标设备 / 客户端选择（迭代 17/18 F5）', () => {
     expect(req.template).toMatchObject({ name: '库位标签', contract: PKG.contract, layout: PKG.layout })
     expect(mocks.server.submitJob).not.toHaveBeenCalled()
   })
+})
 
-  it('Server 作业视图（无 items）：进度与目标设备可见，不渲染逐张表格', async () => {
-    mocks.server.listDevices.mockResolvedValue(DEVICES)
-    mocks.server.getJob.mockResolvedValue(DONE_JOB_SERVER)
+describe('下载 Excel 模板（迭代 22 §2.1）', () => {
+  it('点击「下载 Excel 模板」：按契约字段 + testData 生成请求并下载 xlsx', async () => {
+    mocks.local.excelTemplate.mockResolvedValue({ blob: new Blob(['xlsx']), filename: '库位标签.xlsx' })
+    await renderDataPrint()
+    fireEvent.click(screen.getByRole('button', { name: /下载 Excel 模板/ }))
+    await waitFor(() => {
+      expect(mocks.local.excelTemplate).toHaveBeenCalledWith(
+        [{ key: 'location', displayName: '库位' }],
+        { location: 'A-01' },
+      )
+    })
+    await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('库位标签.xlsx'))
+  })
+
+  it('模板无契约字段：按钮禁用', async () => {
+    mocks.local.getTemplate.mockResolvedValue({
+      ...PKG,
+      contract: { ...PKG.contract, fields: [] },
+      layout: { ...PKG.layout, elements: [] },
+    })
     render(<Harness show />)
-    await screen.findByDisplayValue('A-01')
-    await waitFor(() => expect(screen.getByLabelText('目标设备')).toBeTruthy())
-
-    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
-    expect(await screen.findByText('已完成 1 / 1 张')).toBeTruthy()
-    expect(screen.getByText(/目标设备：device-1（在线）/)).toBeTruthy()
-    // 无逐张表格，显示说明行
-    expect(screen.getByText(/服务端作业无逐张明细/)).toBeTruthy()
+    // 无字段模板：测试数据区提示无字段，无示例值输入框；等模板加载后按钮禁用
+    await waitFor(() => expect(screen.getByText(/该模板没有字段/)).toBeTruthy())
+    expect((screen.getByRole('button', { name: /下载 Excel 模板/ }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
 

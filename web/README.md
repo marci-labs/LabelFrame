@@ -25,8 +25,9 @@ pnpm build:server
 或使用 cross-env：`cross-env VITE_UI_MODE=server pnpm build:server`。
 
 `VITE_UI_MODE=server` 构建（Server UI）：API 走同源相对路径（`getServerBaseUrl()` 返回 `''`，
-不读 localStorage / 机器级配置）；菜单移除设置页与一切打印机相关内容，新增「在线设备」页；
-数据与打印的目标设备改为在线设备选择器（仅在线可选，提交前现拉校验）；无单机降级分支。
+不读 localStorage / 机器级配置）；菜单移除设置页与一切打印机相关内容，新增「在线设备」页与
+「客户端下载」页（迭代 22：安装包列表 / 上传 / 下载 / 删除）；数据与打印的目标设备改为在线设备
+选择器（仅在线可选，提交前现拉校验）；无单机降级分支。
 
 dev 联调：vite dev（:5173）的 proxy 按模式分支——server 模式指向 `http://127.0.0.1:53961`（服务端），
 client 模式指向 `http://127.0.0.1:53960`（本机 Client），覆盖 `/api` 与 `/healthz`。

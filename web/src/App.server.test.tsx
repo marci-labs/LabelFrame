@@ -25,6 +25,9 @@ const mocks = vi.hoisted(() => ({
     renderImage: vi.fn(),
     renderImages: vi.fn(),
     getLogs: vi.fn(),
+    listClientPackages: vi.fn(),
+    uploadClientPackage: vi.fn(),
+    deleteClientPackage: vi.fn(),
   },
   local: {
     healthz: vi.fn(),
@@ -59,6 +62,7 @@ vi.mock('./lib/api/client', () => ({
   localApi: mocks.local,
   setServerBaseUrl: vi.fn(),
   probeHealthz: mocks.probeHealthz,
+  clientPackageDownloadUrl: (fileName: string) => `/api/client-packages/${encodeURIComponent(fileName)}`,
 }))
 
 vi.mock('./lib/uiMode', () => ({ UI_MODE: 'server', isServerUi: true }))
@@ -72,6 +76,7 @@ beforeEach(() => {
   mocks.server.listDevices.mockResolvedValue([
     { deviceId: 'device-1', name: '仓库-1 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online', lastIp: '192.168.1.5' },
   ])
+  mocks.server.listClientPackages.mockResolvedValue([])
   mocks.local.listTemplates.mockResolvedValue([])
 })
 
@@ -80,7 +85,7 @@ afterEach(() => {
 })
 
 describe('server 构建：菜单裁剪（迭代 20 §2.2 / Y5）', () => {
-  it('含 在线设备 / 设备日志 / 工作台 / 设计器 / 数据与打印 / 作业历史；不含 设置 / PDA 日志', async () => {
+  it('含 在线设备 / 设备日志 / 客户端下载 / 工作台 / 设计器 / 数据与打印 / 作业历史；不含 设置 / PDA 日志', async () => {
     render(<App />)
     expect(await screen.findByRole('button', { name: '在线设备' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '设备日志' })).toBeTruthy()
@@ -88,6 +93,8 @@ describe('server 构建：菜单裁剪（迭代 20 §2.2 / Y5）', () => {
     expect(screen.getByRole('button', { name: '设计器' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '数据与打印' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '作业历史' })).toBeTruthy()
+    // 迭代 22 §2.3：Server UI「客户端下载」页入口
+    expect(screen.getByRole('button', { name: '客户端下载' })).toBeTruthy()
     // 设置页与 PDA 日志（client 版命名）不存在
     expect(screen.queryByRole('button', { name: '设置' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'PDA 日志' })).toBeNull()
@@ -118,5 +125,21 @@ describe('server 构建：在线设备页入口', () => {
     fireEvent.click(await screen.findByRole('button', { name: '在线设备' }))
     expect(await screen.findByText('device-1')).toBeTruthy()
     expect(screen.getByText('192.168.1.5')).toBeTruthy()
+  })
+})
+
+describe('server 构建：客户端下载页入口（迭代 22 §2.3）', () => {
+  it('点击「客户端下载」tab：列表 / 上传 / 刷新按钮齐全（GET /api/client-packages）', async () => {
+    mocks.server.listClientPackages.mockResolvedValue([
+      { fileName: 'LabelFrame.Client-0.18.0.msi', sizeBytes: 2 * 1024 * 1024, modifiedAt: '2026-08-17T10:00:00Z', url: '/api/client-packages/LabelFrame.Client-0.18.0.msi' },
+    ])
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: '客户端下载' }))
+    expect(await screen.findByText('LabelFrame.Client-0.18.0.msi')).toBeTruthy()
+    expect(screen.getByText('2.0 MB')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '上传安装包' })).toBeTruthy()
+    // 下载链接（server 构建同源相对路径）
+    const link = screen.getByRole('link', { name: /下载/ })
+    expect(link.getAttribute('href')).toBe('/api/client-packages/LabelFrame.Client-0.18.0.msi')
   })
 })

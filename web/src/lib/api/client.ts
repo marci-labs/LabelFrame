@@ -6,6 +6,7 @@
 
 import type {
   ApiErrorBody,
+  ClientPackageInfo,
   DeviceView,
   ExcelImportResult,
   Healthz,
@@ -157,6 +158,19 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
       return request<ExcelImportResult>('/api/import/excel', { method: 'POST', body: form })
     },
 
+    /** 下载 Excel 模板（迭代 22：Server 与 WinHost 都实现）——按契约字段 + testData 生成 xlsx 供直接套用导入。 */
+    excelTemplate: (columns: { key: string; displayName: string }[], sampleRow: Record<string, string>) =>
+      fetchBlob(
+        '/api/import/excel-template',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ columns, sampleRow }),
+        },
+        'excel-template.xlsx',
+        '生成 Excel 模板失败',
+      ),
+
     submitJob: (req: SubmitJobRequest) =>
       request<JobView>('/api/jobs', {
         method: 'POST',
@@ -167,8 +181,12 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
     retryJobItem: (jobId: string, index: number) =>
       request<JobView>(`/api/jobs/${encodeURIComponent(jobId)}/items/${index}/retry`, { method: 'POST' }),
 
-    /** 作业历史（迭代 18 F6 / B10）：默认 100、上限 500，倒序。 */
-    getJobs: (limit = 100) => request<JobView[]>(`/api/jobs?limit=${limit}`),
+    /** 作业历史（迭代 18 F6 / B10）：默认 100、上限 500，倒序；迭代 22：可选 deviceId 过滤（客户端 UI 传本机 ID 只看自己）。 */
+    getJobs: (limit = 100, deviceId?: string) => {
+      const params = new URLSearchParams({ limit: String(limit) })
+      if (deviceId) params.set('deviceId', deviceId)
+      return request<JobView[]>(`/api/jobs?${params.toString()}`)
+    },
 
     /** 设备 / 客户端目录（迭代 16，Server）；404 / 失败 = 单机 WinHost，前端降级为单机模式。 */
     listDevices: () => request<DeviceView[]>('/api/devices'),
@@ -198,8 +216,26 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
   }
 }
 
-/** 服务端 API（模板 / 作业 / 设备 / 日志 / Excel / 调试出图 / healthz → 服务端地址）。 */
-export const serverApi = makeBusinessApi(getServerBaseUrl, '服务端')
+const serverRequest = makeRequest(getServerBaseUrl, '服务端')
+
+/** 服务端 API（模板 / 作业 / 设备 / 日志 / Excel / 调试出图 / healthz → 服务端地址；迭代 22：+ 客户端安装包）。 */
+export const serverApi = {
+  ...makeBusinessApi(getServerBaseUrl, '服务端'),
+
+  // ── 客户端下载分发（迭代 22 §5.4：仅 Server 实现；路径穿越防护在后端）──
+  listClientPackages: () => serverRequest<ClientPackageInfo[]>('/api/client-packages'),
+  uploadClientPackage: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return serverRequest<ClientPackageInfo[]>('/api/client-packages', { method: 'POST', body: form })
+  },
+  deleteClientPackage: (fileName: string) => serverRequest<void>(`/api/client-packages/${encodeURIComponent(fileName)}`, { method: 'DELETE' }),
+}
+
+/** 客户端安装包下载 URL（Server UI 与客户端设置「更新与安装包」共用；server 构建下 base 为空 = 同源相对路径）。 */
+export function clientPackageDownloadUrl(fileName: string): string {
+  return `${getServerBaseUrl()}/api/client-packages/${encodeURIComponent(fileName)}`
+}
 
 const localRequest = makeRequest(getLocalBaseUrl, '本机客户端')
 
