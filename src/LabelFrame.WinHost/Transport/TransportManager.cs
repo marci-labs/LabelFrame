@@ -1,4 +1,5 @@
 using LabelFrame.Core.Transport;
+using LabelFrame.Core.Transport.Plugins;
 
 namespace LabelFrame.WinHost.Transport;
 
@@ -22,34 +23,40 @@ public interface ITransportManager
 }
 
 /// <summary>
-/// 连接管理器实现：启动时按 connection.json &gt; appsettings / 环境变量 &gt; 默认 Log 初始化；
-/// 同一时间只有单一连接生效；切换成功才持久化到 %LOCALAPPDATA%\LabelFrame\connection.json（用户可写）。
+/// 连接管理器实现（迭代 22 传输插件化，决策 #67-69）：启动时按 connection.json &gt; appsettings / 环境变量 &gt; 默认 Log 初始化；
+/// 同一时间只有单一连接生效；配置 pluginId + params 经传输插件注册表装配（内置 + 外部 DLL）；
+/// 切换成功才持久化到 %LOCALAPPDATA%\LabelFrame\connection.json（新格式，旧格式自动迁移）。
 /// </summary>
 public sealed class TransportManager : ITransportManager
 {
+    private readonly ITransportPluginRegistry _registry;
+    private readonly ITransportPluginContext _context;
     private readonly TextWriter _hostLogWriter;
     private TransportConfig _config;
     private IPrintTransport _transport;
 
     /// <summary>创建连接管理器。</summary>
+    /// <param name="registry">传输插件注册表（内置 + 外部 DLL 已装配）。</param>
+    /// <param name="context">插件上下文（宿主日志 + 数据目录）。</param>
+    /// <param name="options">宿主配置（默认传输 / 参数）。</param>
+    /// <param name="hostLogWriter">宿主日志写入器。</param>
     /// <param name="configFilePath">connection.json 路径（默认 %LOCALAPPDATA%\\LabelFrame\\connection.json；测试可注入临时路径）。</param>
-    public TransportManager(HostOptions options, TextWriter hostLogWriter, string? configFilePath = null)
+    public TransportManager(
+        ITransportPluginRegistry registry,
+        ITransportPluginContext context,
+        HostOptions options,
+        TextWriter hostLogWriter,
+        string? configFilePath = null)
     {
+        _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _hostLogWriter = hostLogWriter ?? throw new ArgumentNullException(nameof(hostLogWriter));
         ConfigFilePath = configFilePath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "LabelFrame",
             "connection.json");
 
-        var baseConfig = new TransportConfig
-        {
-            Mode = options.Transport,
-            TcpHost = options.TcpHost,
-            TcpPort = options.TcpPort,
-            PrinterName = options.PrinterName,
-            ZebraKind = options.ZebraKind,
-            ZebraUsbName = options.ZebraUsbName,
-        };
+        var baseConfig = BuildBaseConfig(options);
         _config = LoadPersisted(baseConfig);
         _transport = CreateTransport(_config);
     }
@@ -67,6 +74,13 @@ public sealed class TransportManager : ITransportManager
     public async Task<TransportChangeResult> ApplyAsync(TransportConfig config, bool testOnly, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(config);
+        // 旧格式（Mode + 平铺参数）→ 迁移为 pluginId + params（决策 #69）；再同步旧字段供兼容消费
+        if (config.Params.Count == 0 && config.Mode != TransportMode.Log)
+        {
+            config.MigrateFromLegacy();
+        }
+
+        config.SyncLegacyFields();
 
         var validationMessage = Validate(config);
         if (validationMessage is not null)
@@ -92,79 +106,123 @@ public sealed class TransportManager : ITransportManager
 
         if (testOnly)
         {
-            return new TransportChangeResult(true, $"连接测试成功：{config.Describe()}。", _config);
+            return new TransportChangeResult(true, $"连接测试成功：{Describe(config)}。", _config);
         }
 
         _config = config;
         _transport = candidate;
         Persist(_config);
-        return new TransportChangeResult(true, $"已切换为 {_config.Describe()}。", _config);
+        return new TransportChangeResult(true, $"已切换为 {Describe(_config)}。", _config);
     }
 
-    /// <summary>参数校验，返回错误消息（null = 通过）。</summary>
-    private static string? Validate(TransportConfig config) => config.Mode switch
+    /// <summary>按插件参数规格校验：插件存在、必填、Int / Select 取值。</summary>
+    private string? Validate(TransportConfig config)
     {
-        TransportMode.Tcp or TransportMode.Zebra when config.ZebraKind == ZebraTransportKind.Tcp => ValidateHostPort(config),
-        TransportMode.WindowsDriver => string.IsNullOrWhiteSpace(config.PrinterName)
-            ? "必须指定 Windows 打印机名（printerName）。"
-            : null,
-        TransportMode.Zebra when config.ZebraKind == ZebraTransportKind.Driver => string.IsNullOrWhiteSpace(config.PrinterName)
-            ? "Zebra 驱动模式必须指定打印机名（printerName）。"
-            : null,
-        TransportMode.Zebra when config.ZebraKind == ZebraTransportKind.Usb => null,
-        TransportMode.Log => null,
-        _ => $"不支持的连接方式：{config.Mode}。",
-    };
-
-    private static string? ValidateHostPort(TransportConfig config)
-    {
-        if (string.IsNullOrWhiteSpace(config.TcpHost))
+        var plugin = _registry.GetPlugin(config.PluginId);
+        if (plugin is null)
         {
-            return "必须指定打印机地址（tcpHost）。";
+            return $"传输插件不存在：{config.PluginId}。";
         }
 
-        if (config.TcpPort is < 1 or > 65535)
+        foreach (var spec in plugin.Parameters)
         {
-            return "端口必须在 1-65535 之间（tcpPort）。";
+            var present = config.Params.TryGetValue(spec.Key, out var rawValue) && !string.IsNullOrWhiteSpace(rawValue);
+            if (spec.Required && !present)
+            {
+                return $"缺少必填参数：{spec.Label}（{spec.Key}）。";
+            }
+
+            if (!present)
+            {
+                continue;
+            }
+
+            switch (spec.Type)
+            {
+                case TransportParameterType.Int:
+                    if (!int.TryParse(rawValue, out _))
+                    {
+                        return $"参数「{spec.Label}」必须是整数。";
+                    }
+
+                    break;
+                case TransportParameterType.Select when spec.Options is { Count: > 0 }:
+                    if (!spec.Options.Any(o => string.Equals(o.Value, rawValue, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        return $"参数「{spec.Label}」取值无效：{rawValue}。";
+                    }
+
+                    break;
+            }
         }
 
         return null;
     }
 
-    /// <summary>连接测试：Tcp / Zebra / Windows 驱动按各自方式探测；Log 恒成功。</summary>
+    /// <summary>连接测试：传输实例实现 ITestableTransport 才测试（内置全部实现；外部插件可选实现）。</summary>
     private static async Task<string?> TestAsync(IPrintTransport transport, CancellationToken cancellationToken)
     {
-        switch (transport)
+        if (transport is not ITestableTransport testable)
         {
-            case Tcp9100PrintTransport tcp:
-                return await tcp.TestConnectionAsync(cancellationToken)
-                    ? null
-                    : "连接测试失败：无法连接打印机（超时或地址不可达）。";
-            case RawPrinterTransport raw:
-                return raw.TestConnection()
-                    ? null
-                    : "连接测试失败：无法打开打印机（请检查打印机名是否与系统一致、驱动是否已安装）。";
-            case ZebraPrinterTransport zebra:
-                return await zebra.TestConnectionAsync(cancellationToken)
-                    ? null
-                    : "连接测试失败：Zebra 打印机不可达（请检查连接方式与地址）。";
-            case LogPrintTransport:
-                return null;
-            default:
-                return null;
+            return null;
+        }
+
+        try
+        {
+            return await testable.TestAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            return $"连接测试异常：{ex.Message}";
         }
     }
 
-    /// <summary>按配置创建传输实例。</summary>
-    private IPrintTransport CreateTransport(TransportConfig config) => config.Mode switch
+    /// <summary>按配置经注册表创建传输实例。</summary>
+    private IPrintTransport CreateTransport(TransportConfig config)
+        => _registry.CreateTransport(config.PluginId, new TransportPluginParameters(config.Params), _context);
+
+    /// <summary>连接展示文本（状态栏 / 徽标）：插件 Describe 优先，未知插件回退 ID。</summary>
+    private string Describe(TransportConfig config)
+        => _registry.Describe(config.PluginId, new TransportPluginParameters(config.Params));
+
+    /// <summary>由 HostOptions（appsettings / 环境变量）构造基础配置（pluginId + params）。</summary>
+    private static TransportConfig BuildBaseConfig(HostOptions options)
     {
-        // 复用宿主日志写入器（同一文件不能再开第二个写入器，否则文件锁导致写入被静默丢弃）
-        TransportMode.Log => new LogPrintTransport(_hostLogWriter),
-        TransportMode.Tcp => new Tcp9100PrintTransport(config.TcpHost, config.TcpPort),
-        TransportMode.WindowsDriver => new RawPrinterTransport(config.PrinterName),
-        TransportMode.Zebra => new ZebraPrinterTransport(config.ZebraKind, config.TcpHost, config.TcpPort, config.PrinterName, config.ZebraUsbName),
-        _ => throw new InvalidOperationException($"不支持的传输模式：{config.Mode}。"),
-    };
+        var config = new TransportConfig { PluginId = TransportConfig.MapModeToPluginId(options.Transport) };
+        switch (options.Transport)
+        {
+            case TransportMode.Tcp:
+                config.Params["host"] = options.TcpHost;
+                config.Params["port"] = options.TcpPort.ToString();
+                break;
+            case TransportMode.WindowsDriver:
+                config.Params["printerName"] = options.PrinterName;
+                break;
+            case TransportMode.Zebra:
+                config.Params["kind"] = options.ZebraKind.ToString();
+                if (options.ZebraKind == ZebraTransportKind.Tcp)
+                {
+                    config.Params["host"] = options.TcpHost;
+                    config.Params["port"] = options.TcpPort.ToString();
+                }
+                else if (options.ZebraKind == ZebraTransportKind.Driver)
+                {
+                    config.Params["printerName"] = options.PrinterName;
+                }
+                else if (!string.IsNullOrWhiteSpace(options.ZebraUsbName))
+                {
+                    config.Params["usbName"] = options.ZebraUsbName;
+                }
+
+                break;
+            case TransportMode.Log:
+            default:
+                break;
+        }
+
+        config.SyncLegacyFields();
+        return config;
+    }
 
     private TransportConfig LoadPersisted(TransportConfig baseConfig)
     {
@@ -182,23 +240,19 @@ public sealed class TransportManager : ITransportManager
                 return baseConfig;
             }
 
-            // connection.json 优先级最高：存在即以它为当前连接（缺失字段回退 baseConfig）
-            if (persisted.Mode == TransportMode.Tcp || (persisted.Mode == TransportMode.Zebra && persisted.ZebraKind == ZebraTransportKind.Tcp))
+            // connection.json 优先级最高：存在即以它为当前连接（同插件缺失参数回退 baseConfig）
+            if (string.Equals(persisted.PluginId, baseConfig.PluginId, StringComparison.OrdinalIgnoreCase))
             {
-                persisted.TcpHost = string.IsNullOrWhiteSpace(persisted.TcpHost) ? baseConfig.TcpHost : persisted.TcpHost;
-                persisted.TcpPort = persisted.TcpPort is < 1 or > 65535 ? baseConfig.TcpPort : persisted.TcpPort;
+                foreach (var kv in baseConfig.Params)
+                {
+                    if (!persisted.Params.ContainsKey(kv.Key))
+                    {
+                        persisted.Params[kv.Key] = kv.Value;
+                    }
+                }
             }
 
-            if (string.IsNullOrWhiteSpace(persisted.PrinterName))
-            {
-                persisted.PrinterName = baseConfig.PrinterName;
-            }
-
-            if (string.IsNullOrWhiteSpace(persisted.ZebraUsbName))
-            {
-                persisted.ZebraUsbName = baseConfig.ZebraUsbName;
-            }
-
+            persisted.SyncLegacyFields();
             return persisted;
         }
         catch (Exception)

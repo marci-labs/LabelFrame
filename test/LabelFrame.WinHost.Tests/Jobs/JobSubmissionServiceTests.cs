@@ -8,6 +8,7 @@ using LabelFrame.Rendering;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
 using LabelFrame.WinHost.Transport;
+using LabelFrame.WinHost.Tests.Transport;
 
 namespace LabelFrame.WinHost.Tests.Jobs;
 
@@ -24,7 +25,7 @@ public class JobSubmissionServiceTests
         var templates = new TemplateStore(templatesDb);
         templates.InitializeAsync().GetAwaiter().GetResult();
 
-        var transportManager = new TransportManager(new HostOptions { Transport = TransportMode.Log }, TextWriter.Null);
+        var transportManager = TestTransportRegistry.CreateManager(new HostOptions { Transport = TransportMode.Log });
         var service = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, transportManager, TextWriter.Null);
         return (service, store, templates);
     }

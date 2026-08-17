@@ -7,6 +7,7 @@ using LabelFrame.Rendering;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
 using LabelFrame.WinHost.Transport;
+using LabelFrame.WinHost.Tests.Transport;
 using LabelFrame.WinHost.Routing;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -72,7 +73,7 @@ public class ServerRoutingWorkerTests
             var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
             var templates = new TemplateStore(templatesDb);
             await templates.InitializeAsync();
-            var submission = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, new TransportManager(new HostOptions { Transport = TransportMode.Log }, TextWriter.Null), TextWriter.Null);
+            var submission = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, TestTransportRegistry.CreateManager(new HostOptions { Transport = TransportMode.Log }), TextWriter.Null);
 
             var poller = new FakePoller();
             var payload = new ServerJobPayload(
@@ -137,7 +138,7 @@ public class ServerRoutingWorkerTests
             var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
             var templates = new TemplateStore(templatesDb);
             await templates.InitializeAsync();
-            var submission = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, new TransportManager(new HostOptions { Transport = TransportMode.Log }, TextWriter.Null), TextWriter.Null);
+            var submission = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, TestTransportRegistry.CreateManager(new HostOptions { Transport = TransportMode.Log }), TextWriter.Null);
 
             var poller = new FakePoller
             {

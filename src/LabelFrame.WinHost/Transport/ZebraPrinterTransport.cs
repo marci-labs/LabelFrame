@@ -22,7 +22,7 @@ public enum ZebraTransportKind
 /// Zebra 官方 Link-OS SDK 传输：统一处理 TCP / USB / Windows 驱动连接，
 /// 发送 ZPL 指令；异常统一转换为中文 InvalidOperationException。
 /// </summary>
-public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvider
+public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvider, LabelFrame.Core.Transport.Plugins.ITestableTransport
 {
     private readonly ZebraTransportKind _kind;
     private readonly string _address;
@@ -116,6 +116,10 @@ public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvi
 
         return printers[0].GetConnection();
     }
+
+    /// <inheritdoc />
+    public Task<string?> TestAsync(CancellationToken cancellationToken = default)
+        => TestConnectionAsync(cancellationToken).ContinueWith(t => t.Result ? null : "连接测试失败：Zebra 打印机不可达（请检查连接方式与地址）。", cancellationToken);
 
     /// <summary>连接测试：建立连接后关闭（SDK 统一处理 TCP / USB / 驱动），用于连接管理「先测试后生效」。</summary>
     /// <summary>连接测试：建立连接 + `~HS` 主机状态探测（SDK SendAndWaitForResponse）——收到打印机响应才算成功。</summary>

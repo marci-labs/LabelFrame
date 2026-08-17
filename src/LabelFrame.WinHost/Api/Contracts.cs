@@ -1,4 +1,4 @@
-﻿using LabelFrame.Core.Contracts;
+using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Layout;
 
@@ -88,31 +88,60 @@ public static class JobViews
         null);
 }
 
-/// <summary>连接参数（只含当前模式所需字段；未使用字段返回空 / 默认）。</summary>
-public sealed record TransportParamsDto(
-    string TcpHost,
-    int TcpPort,
-    string PrinterName,
-    string ZebraKind,
-    string ZebraUsbName);
+/// <summary>传输插件参数规格（前端动态表单渲染用；迭代 22）。</summary>
+public sealed record TransportPluginParameterDto(
+    string Key,
+    string Label,
+    string Type,
+    bool Required,
+    string? DefaultValue,
+    IReadOnlyList<TransportParameterOptionDto>? Options,
+    string? Hint);
 
-/// <summary>连接状态（GET /api/transport 与 POST 响应共用）。</summary>
-public sealed record TransportConfigDto(string Mode, TransportParamsDto Params, IReadOnlyList<string> AvailableModes);
+/// <summary>Select 参数枚举项。</summary>
+public sealed record TransportParameterOptionDto(string Value, string? Label);
 
-/// <summary>连接切换 / 测试请求（POST /api/transport）。</summary>
+/// <summary>已装配传输插件描述（GET /api/transport.availablePlugins 与 /api/transport/plugins）。</summary>
+public sealed record TransportPluginDescriptorDto(
+    string Id,
+    string DisplayName,
+    string? Description,
+    IReadOnlyList<TransportPluginParameterDto> Parameters,
+    bool IsExternal = false,
+    string? AssemblyPath = null);
+
+/// <summary>连接状态（GET /api/transport 与 POST 响应共用；迭代 22：pluginId + params 字典 + displayText + availablePlugins，旧字段 mode / availableModes 保留兼容）。</summary>
+public sealed record TransportConfigDto(
+    string PluginId,
+    string DisplayName,
+    string DisplayText,
+    IReadOnlyDictionary<string, string> Params,
+    IReadOnlyList<TransportPluginDescriptorDto> AvailablePlugins,
+    string Mode,
+    IReadOnlyList<string> AvailableModes);
+
+/// <summary>连接切换 / 测试请求（POST /api/transport；迭代 22：pluginId + params 字典优先，旧字段 mode + 平铺参数兼容）。</summary>
 public sealed record TransportApplyRequest(
-    string? Mode,
-    string? TcpHost,
-    int? TcpPort,
-    string? PrinterName,
-    string? ZebraKind,
-    string? ZebraUsbName,
-    bool? TestOnly);
+    string? PluginId,
+    IReadOnlyDictionary<string, string>? Params,
+    bool? TestOnly,
+    string? Mode = null,
+    string? TcpHost = null,
+    int? TcpPort = null,
+    string? PrinterName = null,
+    string? ZebraKind = null,
+    string? ZebraUsbName = null);
 
 /// <summary>连接切换 / 测试响应：ok + 中文消息 + 当前生效连接（失败时 config = 未变前的连接）。</summary>
 public sealed record TransportApplyResponse(bool Ok, string Message, TransportConfigDto Config);
 
-/// <summary>机器级配置响应（GET /api/host/config；Ips 为本机枚举 IPv4，状态栏展示用）。</summary>
+/// <summary>Excel 模板生成请求（POST /api/import/excel-template；columns 顺序即表头，sampleRow 示例行）。</summary>
+public sealed record ExcelTemplateRequest(IReadOnlyList<ExcelTemplateColumnDto>? Columns, IReadOnlyDictionary<string, string>? SampleRow);
+
+/// <summary>Excel 模板列。</summary>
+public sealed record ExcelTemplateColumnDto(string? Key, string? DisplayName);
+
+/// <summary>机器级配置响应（GET /api/host/config；Ips 为本机枚举 IPv4，状态栏展示用）。</summary>/// <summary>机器级配置响应（GET /api/host/config；Ips 为本机枚举 IPv4，状态栏展示用）。</summary>
 public sealed record HostConfigDto(string ServerUrl, string DeviceId, string DeviceName, IReadOnlyList<string>? Ips = null);
 
 /// <summary>机器级配置请求（POST /api/host/config；仅 serverUrl 可写）。</summary>

@@ -99,6 +99,13 @@ public sealed class HostOptions
         "LabelFrame",
         "logs.db");
 
+    /// <summary>外部传输插件目录（默认 %ProgramData%\\LabelFrame\\Client\\plugins；启动时扫描 *.dll，决策 #68）。</summary>
+    public string PluginsPath { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+        "LabelFrame",
+        "Client",
+        "plugins");
+
     /// <summary>Log 传输 / 宿主日志文件路径（默认 %LOCALAPPDATA%\LabelFrame\host.log）。</summary>
     public string HostLogPath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -218,6 +225,11 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_OPEN_BROWSER") is { } openBrowser)
         {
             OpenBrowser = openBrowser is "1" or "true" or "True";
+        }
+
+        if (GetEnv("LABELFRAME_PLUGINS") is { } plugins)
+        {
+            PluginsPath = plugins;
         }
 
         if (GetEnv("LABELFRAME_TRAY") is { } tray)

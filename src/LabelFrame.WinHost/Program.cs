@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LabelFrame.Core.Encoding;
@@ -7,6 +7,8 @@ using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Layout;
 using LabelFrame.Core.Templates;
 using LabelFrame.Core.Transport;
+using LabelFrame.Core.Transport.Plugins;
+using LabelFrame.Core.Excel;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
 using LabelFrame.Core.Logs;
@@ -46,7 +48,26 @@ public static class Program
         builder.WebHost.UseUrls(options.ListenUrl);
 
         var hostLogWriter = OpenHostLogWriter(options);
-        var transportManager = new TransportManager(options, hostLogWriter);
+
+        // 迭代 22 传输插件化（决策 #67-69）：注册表 = Core 内置（log / tcp9100）+ WinHost 内置（winspool / zebra）+ 外部 DLL 目录扫描
+        var transportRegistry = new TransportPluginRegistry();
+        foreach (var plugin in BuiltinTransportPlugins.CreateCorePlugins())
+        {
+            transportRegistry.Register(plugin);
+        }
+
+        transportRegistry.Register(new WinspoolTransportPlugin());
+        transportRegistry.Register(new ZebraTransportPlugin());
+        var pluginContext = new TransportPluginContext(
+            hostLogWriter,
+            Path.GetDirectoryName(HostOptions.DefaultDatabasePath) ?? string.Empty);
+        foreach (var (plugin, assemblyPath) in PluginDirectoryLoader.Load(options.PluginsPath, hostLogWriter))
+        {
+            transportRegistry.Register(plugin, isExternal: true, assemblyPath: assemblyPath);
+            HostInfo($"已加载外部传输插件：{plugin.Id}（{plugin.DisplayName}，来自 {assemblyPath}）");
+        }
+
+        var transportManager = new TransportManager(transportRegistry, pluginContext, options, hostLogWriter);
         void HostInfo(string message)
         {
             try
@@ -69,7 +90,7 @@ public static class Program
             HostInfo($"已加载机器级配置：ServerUrl={options.ServerUrl}");
         }
 
-        HostInfo($"LabelFrame 启动：监听 {options.ListenUrl}，连接 {transportManager.CurrentConfig.Describe()}，DPI {options.Dpi}，OpenBrowser={options.OpenBrowser}，ServerUrl={options.ServerUrl ?? "(未配置路由)"}");
+        HostInfo($"LabelFrame 启动：监听 {options.ListenUrl}，连接 {transportRegistry.Describe(transportManager.CurrentConfig.PluginId, new TransportPluginParameters(transportManager.CurrentConfig.Params))}，DPI {options.Dpi}，OpenBrowser={options.OpenBrowser}，ServerUrl={options.ServerUrl ?? "(未配置路由)"}");
 
         var store = new SqliteLabelJobStore(options.DatabasePath);
         await store.InitializeAsync();
@@ -86,6 +107,7 @@ public static class Program
         builder.Services.AddSingleton<ILabelJobStore>(store);
         builder.Services.AddSingleton(queue);
         builder.Services.AddSingleton<ITransportManager>(transportManager);
+        builder.Services.AddSingleton<ITransportPluginRegistry>(transportRegistry);
         builder.Services.AddSingleton<ZplImageEncoder>();
         builder.Services.AddSingleton<IPrinterStatusProvider>(sp =>
             sp.GetRequiredService<ITransportManager>().CurrentTransport as IPrinterStatusProvider ?? new UnsupportedStatusProvider());
@@ -283,35 +305,82 @@ public static class Program
         });
 
         // ---- 连接管理（迭代 15）：查询 / 切换 / 测试；单一连接生效，先测试后生效 ----
-        app.MapGet("/api/transport", (ITransportManager transportManager) =>
-            Results.Ok(ToTransportConfigDto(transportManager.CurrentConfig)));
+                // ---- 连接管理（迭代 22 传输插件化：pluginId + params + availablePlugins spec；旧字段 mode / availableModes 保留兼容）----
+        app.MapGet("/api/transport", (ITransportManager transportManager, ITransportPluginRegistry registry) =>
+            Results.Ok(ToTransportConfigDto(transportManager.CurrentConfig, registry)));
 
-        app.MapPost("/api/transport", async (Api.TransportApplyRequest? request, ITransportManager transportManager, CancellationToken ct) =>
+        // 已装配传输插件列表（含来源：内置 / 外部 DLL；排障用）
+        app.MapGet("/api/transport/plugins", (ITransportPluginRegistry registry) =>
+            Results.Ok(registry.ListPlugins().Select(ToTransportPluginDescriptorDto)));
+
+        app.MapPost("/api/transport", async (Api.TransportApplyRequest? request, ITransportManager transportManager, ITransportPluginRegistry registry, CancellationToken ct) =>
         {
-            if (request is null || string.IsNullOrWhiteSpace(request.Mode))
+            if (request is null)
             {
-                return Results.BadRequest(new ErrorView("LF_TRANSPORT_INVALID", "缺少连接方式（mode）。"));
+                return Results.BadRequest(new ErrorView("LF_TRANSPORT_INVALID", "请求体不能为空。"));
             }
 
-            if (!Enum.TryParse<TransportMode>(request.Mode, ignoreCase: true, out var mode))
+            TransportConfig config;
+            if (!string.IsNullOrWhiteSpace(request.PluginId))
             {
-                return Results.BadRequest(new ErrorView("LF_TRANSPORT_INVALID", $"不支持的连接方式：{request.Mode}。"));
+                // 新格式：pluginId + params 字典
+                config = new TransportConfig
+                {
+                    PluginId = request.PluginId,
+                    Params = request.Params is null
+                        ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        : new Dictionary<string, string>(request.Params, StringComparer.OrdinalIgnoreCase),
+                };
             }
-
-            var config = new TransportConfig
+            else if (!string.IsNullOrWhiteSpace(request.Mode))
             {
-                Mode = mode,
-                TcpHost = request.TcpHost ?? transportManager.CurrentConfig.TcpHost,
-                TcpPort = request.TcpPort ?? transportManager.CurrentConfig.TcpPort,
-                PrinterName = request.PrinterName ?? transportManager.CurrentConfig.PrinterName,
-                ZebraKind = request.ZebraKind is not null && Enum.TryParse<ZebraTransportKind>(request.ZebraKind, ignoreCase: true, out var zebraKind)
-                    ? zebraKind
-                    : transportManager.CurrentConfig.ZebraKind,
-                ZebraUsbName = request.ZebraUsbName ?? transportManager.CurrentConfig.ZebraUsbName,
-            };
+                // 旧格式兼容：mode + 平铺参数 → 迁移为 pluginId + params（决策 #69）
+                if (!Enum.TryParse<TransportMode>(request.Mode, ignoreCase: true, out var mode))
+                {
+                    return Results.BadRequest(new ErrorView("LF_TRANSPORT_INVALID", $"不支持的连接方式：{request.Mode}。"));
+                }
+
+                config = new TransportConfig
+                {
+                    Mode = mode,
+                    TcpHost = request.TcpHost ?? transportManager.CurrentConfig.TcpHost,
+                    TcpPort = request.TcpPort ?? transportManager.CurrentConfig.TcpPort,
+                    PrinterName = request.PrinterName ?? transportManager.CurrentConfig.PrinterName,
+                    ZebraKind = request.ZebraKind is not null && Enum.TryParse<ZebraTransportKind>(request.ZebraKind, ignoreCase: true, out var zebraKind)
+                        ? zebraKind
+                        : transportManager.CurrentConfig.ZebraKind,
+                    ZebraUsbName = request.ZebraUsbName ?? transportManager.CurrentConfig.ZebraUsbName,
+                };
+                config.MigrateFromLegacy();
+            }
+            else
+            {
+                return Results.BadRequest(new ErrorView("LF_TRANSPORT_INVALID", "缺少 pluginId 或 mode。"));
+            }
 
             var result = await transportManager.ApplyAsync(config, request.TestOnly ?? false, ct);
-            return Results.Ok(new TransportApplyResponse(result.Ok, result.Message, ToTransportConfigDto(result.Config)));
+            return Results.Ok(new TransportApplyResponse(result.Ok, result.Message, ToTransportConfigDto(result.Config, registry)));
+        });
+
+        // ---- 下载 Excel 模板（迭代 22 §2.1：契约字段 + testData 生成 xlsx，直接套用导入做打印测试）----
+        app.MapPost("/api/import/excel-template", (Api.ExcelTemplateRequest? request) =>
+        {
+            if (request is null || request.Columns is null || request.Columns.Count == 0)
+            {
+                return Results.BadRequest(new ErrorView("LF_EXCEL_INVALID", "缺少模板列（columns）。"));
+            }
+
+            var columns = request.Columns
+                .Where(c => !string.IsNullOrWhiteSpace(c.Key))
+                .Select(c => new ExcelTemplateColumn(c.Key!, string.IsNullOrWhiteSpace(c.DisplayName) ? c.Key! : c.DisplayName!))
+                .ToList();
+            if (columns.Count == 0)
+            {
+                return Results.BadRequest(new ErrorView("LF_EXCEL_INVALID", "缺少有效的模板列（key）。"));
+            }
+
+            var bytes = ExcelTemplateWriter.CreateTemplate(columns, request.SampleRow);
+            return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "excel-template.xlsx");
         });
 
         app.MapPost("/api/jobs", async (SubmitJobRequest? request, JobSubmissionService service, CancellationToken ct) =>
@@ -686,13 +755,33 @@ public static class Program
     }
 
     /// <summary>TransportConfig → API DTO（params 含全部字段，前端只展示当前模式所需）。</summary>
-    private static TransportConfigDto ToTransportConfigDto(TransportConfig config) => new(
-        config.Mode.ToString(),
-        new TransportParamsDto(
-            config.TcpHost,
-            config.TcpPort,
-            config.PrinterName,
-            config.ZebraKind.ToString(),
-            config.ZebraUsbName),
-        new[] { "Log", "Tcp", "WindowsDriver", "Zebra" });
+    /// <summary>TransportConfig → API DTO（迭代 22：pluginId + params 字典 + displayText + availablePlugins；旧字段 mode / availableModes 保留兼容）。</summary>
+    private static TransportConfigDto ToTransportConfigDto(TransportConfig config, ITransportPluginRegistry registry)
+    {
+        var plugin = registry.GetPlugin(config.PluginId);
+        return new TransportConfigDto(
+            config.PluginId,
+            plugin?.DisplayName ?? config.PluginId,
+            registry.Describe(config.PluginId, new TransportPluginParameters(config.Params)),
+            new Dictionary<string, string>(config.Params, StringComparer.OrdinalIgnoreCase),
+            registry.ListPlugins().Select(ToTransportPluginDescriptorDto).ToList(),
+            config.Mode.ToString(),
+            new[] { "Log", "Tcp", "WindowsDriver", "Zebra" });
+    }
+
+    /// <summary>插件描述 → API DTO（参数规格按 TransportParameterSpec 平铺）。</summary>
+    private static TransportPluginDescriptorDto ToTransportPluginDescriptorDto(TransportPluginDescriptor plugin) => new(
+        plugin.Id,
+        plugin.DisplayName,
+        plugin.Description,
+        plugin.Parameters.Select(p => new TransportPluginParameterDto(
+            p.Key,
+            p.Label,
+            p.Type.ToString(),
+            p.Required,
+            p.DefaultValue,
+            p.Options?.Select(o => new TransportParameterOptionDto(o.Value, o.Label)).ToList(),
+            p.Hint)).ToList(),
+        plugin.IsExternal,
+        plugin.AssemblyPath);
 }

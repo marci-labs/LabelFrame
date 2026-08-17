@@ -10,7 +10,8 @@ public class TransportManagerTests
     {
         var options = new HostOptions { Transport = defaultMode, TcpHost = "127.0.0.1", TcpPort = 9100, PrinterName = "Test Printer" };
         var path = configFilePath ?? System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfconn-{Guid.NewGuid():N}.json");
-        return (new TransportManager(options, TextWriter.Null, path), path);
+        var manager = TestTransportRegistry.CreateManager(options, path);
+        return (manager, path);
     }
 
     [Fact]
@@ -19,7 +20,7 @@ public class TransportManagerTests
         var (manager, _) = Create();
         var result = await manager.ApplyAsync(new TransportConfig { Mode = TransportMode.Tcp, TcpHost = "", TcpPort = 9100 }, testOnly: false);
         Assert.False(result.Ok);
-        Assert.Contains("tcpHost", result.Message);
+        Assert.Contains("host", result.Message);
         Assert.Equal(TransportMode.Log, manager.CurrentConfig.Mode);
     }
 

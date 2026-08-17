@@ -8,7 +8,7 @@ namespace LabelFrame.WinHost.Transport;
 /// Windows 驱动（USB / 已安装打印机）raw 传输：通过 winspool 以 RAW 数据类型
 /// 把 ZPL 指令直接发给打印机驱动，不经过打印预览。
 /// </summary>
-public sealed class RawPrinterTransport : IPrintTransport, IPrinterStatusProvider
+public sealed class RawPrinterTransport : IPrintTransport, IPrinterStatusProvider, LabelFrame.Core.Transport.Plugins.ITestableTransport
 {
     private readonly string _printerName;
 
@@ -33,6 +33,12 @@ public sealed class RawPrinterTransport : IPrintTransport, IPrinterStatusProvide
         SendCore(command);
         return Task.CompletedTask;
     }
+
+    /// <inheritdoc />
+    public Task<string?> TestAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(TestConnection()
+            ? null
+            : "连接测试失败：无法打开打印机（请检查打印机名是否与系统一致、驱动是否已安装）。");
 
     /// <summary>连接测试：按名打开打印机（成功即关闭），用于连接管理「先测试后生效」。</summary>
     public bool TestConnection()
