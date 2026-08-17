@@ -146,10 +146,9 @@
 
 ---
 
-## 附三：前端评审意见（hermes，2026-08-17）
+## 附三：前端评审意见（代评参考，2026-08-17；前端重做由 hermes 独立评审）
 
-> 评审对象：规格初稿（§2.2/§2.3、§3 决策 1/3/7、§5.2、§7）。已核对现有前端（client.ts / types.ts / App.tsx / Settings.tsx / ClientPackages.tsx 及测试 / uiMode.ts / state/types.ts / Icon.tsx），并确认 Server 与 WinHost CORS 均为宽松策略（AllowAnyOrigin/Header/Method，无 credentials）。
-> 总体结论：规格方向可落地，无架构性障碍。7 个问题项均已并入正文（标记「hermes 附三」）。
+> 状态（2026-08-17 修订）：本表为**主 Agent 代评（子代理）**产物——7 项意见已并入正文（UI / 契约细节仍有效），但因前端由用户指定 hermes 独立实施，代跑前端提交已回滚（git revert 9faae3a），**前端评审与实施以 docs/ITERATION-23-FRONTEND-TASK.md 为准**；hermes 的评估意见（任务书 §4）将回填本附，替换代评版。
 
 | # | 意见 | 处理 |
 |---|---|---|
@@ -194,7 +193,7 @@
 > 供审核者参考；不视为规格正文。阶段二按定稿实施完成，端到端联调冒烟通过。
 
 - **后端（主 Agent）**：Core（`PluginPackageManifest` / `PluginPackageReader` / `PluginPackageLimits` / `SafeFileName` / `PluginProbe`；`PluginDirectoryLoader` 平铺 + 子目录扫描 + 字节加载；`RegisterExternal` 防内置覆盖）；WinHost（`PluginInstaller` + `/api/plugins/installed|install|uninstall` + Kestrel 64MB）；Server（`PluginPackagesService` + `/api/plugin-packages` 4 端点 + `ServerOptions.PluginPackagesPath` + docker-compose 挂载）。
-- **前端（hermes，9faae3a）**：types / client（serverApi + localApi + downloadPluginPackage + pluginPackageDownloadUrl + 64MB 预检）；`PluginPackages.tsx`（Server UI 插件管理页）；`Settings.tsx` 插件管理卡片；App.tsx 菜单 + TabId + puzzle 图标；测试 +28 用例。
-- **联调冒烟（16 步全过）**：上传 .lfplugin → 服务端列表元数据 → 客户端安装（重启前 loaded=false）→ 重启后装配 / loaded=true → 配置启用（SAMPLE(SMOKE)）→ 卸载 → 重启后消失 → 卸载当前连接插件后重启回退 log → Server 删除插件包。
+- **前端（待 hermes 实施）**：代跑提交 9faae3a 已回滚；前端任务书 docs/ITERATION-23-FRONTEND-TASK.md（契约 §2、清单 §5、待评估设计点 §4）。
+- **联调冒烟（16 步全过，API 层）**：上传 .lfplugin → 服务端列表元数据 → 客户端安装（重启前 loaded=false）→ 重启后装配 / loaded=true → 配置启用（SAMPLE(SMOKE)）→ 卸载 → 重启后消失 → 卸载当前连接插件后重启回退 log → Server 删除插件包。前端 UI 联调待 hermes 实施后执行。
 - **关键发现（规格 §9 风险实证并修复）**：Windows 下 `LoadFromAssemblyPath` 会锁已加载插件 DLL，导致「卸载 = 删除文件 + 重启生效」对已加载插件永远失败（重启又加载）；改为字节加载（`LoadFromStream`）后不锁文件——卸载 / 覆盖安装立即成功，运行中进程用内存镜像、重启按新文件装配（决策 #73）。副作用：插件 `Assembly.Location` 为空，自定位资源改用 `ITransportPluginContext.DataDirectory`（文档已注明）。
 - **测试基线**：dotnet 259 全绿（Core 104 / Server 45 / WinHost 85 / Studio 25）；web 207 全绿（22 文件）。
