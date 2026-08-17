@@ -14,11 +14,10 @@
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
     <RuntimeIdentifiers>android-arm64;android-arm;android-x64</RuntimeIdentifiers>
-    <NoWarn>$(NoWarn);NU1903</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.6" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.13" />
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 
