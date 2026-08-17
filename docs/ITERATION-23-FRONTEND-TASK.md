@@ -156,7 +156,7 @@
    - `PluginDirectoryLoader` 增加失败信息透出（逐 DLL 的 dll 路径 + 异常消息；如新增 `LoadWithErrors` 或扩展返回值），WinHost 启动装配时把失败记录到注册表 / `PluginInstaller`（如 `LastLoadErrors: { dllPath → message }`）；
    - `PluginInstaller.ListInstalled` 合并输出：package / manual 行若对应 DLL 在 LastLoadErrors 中 → `loaded=false, loadError=<原因>`；
    - 前端无需等待该后端补充（err 分支照做）；补充后「加载失败 err + 原因」徽标在真实数据可触发，验收「加载失败」格可真实验证。
-   - 实施时机：由用户安排（可在 hermes 前端实施前或并行；后端小改 + 测试）。
+   - ✅ **已实施（2026-08-17，提交 8172299 / fa8e5f0 / d5b3c3c）**：`PluginDirectoryLoader.LoadWithErrors` 透出逐 DLL 失败原因 → `PluginInstaller.ListInstalled` 合并到 `loadError`；dotnet 265 全绿；端到端验证坏 DLL 包 `loaded=false` + `loadError=Bad IL format.`、好包 `loaded=true` 无错误。
 2. **64MB 边界 413 接受现状**：不改后端；前端预检文案写「最大约 64MB」或阈值留 1KB 余量；恰好 64MB 的包即使通过业务检查也会被 Kestrel 413 拦截，前端 413 兜底走 makeRequest 现有 `HTTP_413` 文案即可。
 3. **覆盖安装边界确认**：已安装列表加载失败时仍允许安装（后端覆盖语义兜底），confirm 文案退化为「将安装」；invalid 服务端条目（pluginId 为空）不参与覆盖判重。
 
