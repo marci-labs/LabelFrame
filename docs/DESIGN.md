@@ -176,9 +176,9 @@ flowchart LR
 - SQLitePCLRaw 漏洞公告（GHSA-2m69-gcr7-jv3q，SQLite 原生库）：已升级 2.1.13 修复（2026-08-17，Core / Server / AndroidHost 同步升级，移除 NU1903 抑制，176 测试全绿）。
 - Zebra 模式要求 Win10+（Windows SDK 10.0.26100 投影）；Win7/8 只能用 TCP9100 / winspool raw 传输（未决）。
 - Server 暂存作业无过期策略：设备长期离线时作业堆积，需人工处理（迭代 3 暂定，后续可加过期/通知）。
-- Android PDA 宿主：迭代 5 曾因未装 .NET Android workload 受阻；2026-08-17 已排入迭代 22（下个迭代）——安装 workload 后实施（本地 HTTP / JS 桥、TCP9100、注册轮询复用），真机验收。
+- Android PDA 宿主：迭代 5 曾因未装 .NET Android workload 受阻；2026-08-17 排入迭代 22 后又因新需求延后至迭代 24——安装 workload 后实施（本地 HTTP / JS 桥、TCP9100、注册轮询复用），真机验收。
 - Zebra SDK 3.0.3355 的 PrinterStatus 无公开状态字段；`~HS` 字段映射基于常见文档实现，均待真实设备联调确认（未决）。
-- AndroidHost 构建依赖：.NET Android workload、Android SDK 36、JDK 17（本机已配齐）；Android 16 起要求 16KB 页，SQLitePCLRaw 已升 2.1.13（2026-08-17），libe_sqlite3 的 16KB 适配待迭代 22 真机构建验证（未决）。
+- AndroidHost 构建依赖：.NET Android workload、Android SDK 36、JDK 17（本机已配齐）；Android 16 起要求 16KB 页，SQLitePCLRaw 已升 2.1.13（2026-08-17），libe_sqlite3 的 16KB 适配待迭代 24 真机构建验证（未决）。
 - Android 12+ 后台启动前台服务受限，开机自启需用户在系统设置允许；厂商 ROM 保活差异（真机验收时确认）。
 - Studio V2 画布编辑暂不提供「所见即所得」的真实条码渲染（占位框 + WinHost 预览确认），如需画布内真实条码再引入 ZXing 本地渲染（未决）。
 - Excel 导入（迭代 9）拟用 `TemplateFrame.Excel.Simple`（决策 #32）：其为第三方包，构建需联网还原 `DocumentFormat.OpenXml 3.3.0`；版本 / 表名约定在实施时定稿（未决）。
@@ -186,7 +186,7 @@ flowchart LR
 - Studio 2.0 实时预览依赖本地渲染（共享库 `LabelFrame.Rendering`，GDI + ZXing），与打印端同坐标/同解析；拖拽节流刷新。字体渲染差异（GDI vs 打印机）以真机抽查为准（未决）。
 - Web 前端增强字段与后端契约的差距（hermes 交付报告决策 #6，已由迭代 13 解决，2026-08-10）：文本 `wrap / lineHeight / valign / fitMode / fontFamily`、条码 `displayValue / 码制`、二维码 `qrEcc / qrMargin` 等前端属性已通过迭代 13 契约扩展补齐后端字段（决策 #47，后端已实施）；`barcodeFormat` 固定 CODE128 不持久化；前端 convert.ts 字段映射已完成（commit 8294bef），文档已归档，用户测试验收待执行。
 - 其他业务应用按 IP 查找设备并触发打印（用户提出，已排期迭代 20，决策 #61/#62/#63）：服务端记录设备 `last_ip`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 支持 `targetIp`；业务系统用 deviceId（或 targetIp）+ templateName + labels 提交作业，服务端路由到对应客户端打印（PDA / PC 只要本机跑客户端服务即无差异）。IP 为便捷查找而非身份（DHCP / NAT / VPN 会变化，deviceId 仍是稳定键）；服务端不做打印机直连，「后端打印」= 后端触发、客户端执行（详见 docs/ITERATION-20-SPEC.md）。
-- 打印机连接方式插件化（未来规划，2026-08-12，暂不实施）：把连接方式（Log / TCP9100 / Windows 驱动 / Zebra SDK）抽象为传输插件——统一接口（连接 / 发送 / 状态 / 测试）+ 注册表按需装配（配置指定插件与参数即启用，不编译进主程序）；第三方厂商可自研插件接入（TSPL / CPCL、蓝牙、云打印等）。与现有 `ITransport` 兼容演进，参数模型独立，日志 / 状态上报复用现有通道；新厂商接入时先列计划再排期。
+- 传输插件化（2026-08-17 已排入迭代 22，本轮实施）：把连接方式（Log / TCP9100 / Windows 驱动 / Zebra SDK）抽象为传输插件——统一接口（连接 / 发送 / 状态 / 测试）+ 注册表按需装配（配置指定插件与参数即启用，不编译进主程序）；第三方厂商可自研插件接入（TSPL / CPCL、蓝牙、云打印等）。与现有 `ITransport` 兼容演进，参数模型独立，日志 / 状态上报复用现有通道；新厂商接入时先列计划再排期。
 - 迭代 20 Server UI「仅在线设备可选」的提交竞态（K3，2026-08-11）：已拍板前端提交时现拉校验在线（掉线提示并禁止提交、作业不排队），属尽力而为，选择与提交之间仍有极小竞态窗口；如需彻底消除，需后端在 `SubmitJobAsync` 原子校验设备在线（离线即拒绝），将改变「设备离线作业暂存排队」语义（决策 #22），待后续迭代评估（未决）。
 
 - 自签证书公开分发限制（2026-08-12）：自签证书无法消除公开下载的 SmartScreen「未知发布者」提示，仅内网 / 域环境（推送受信任根）有效；正式对外分发待购买 OV 代码签名证书后接入（未决）。
