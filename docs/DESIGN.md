@@ -169,16 +169,16 @@ flowchart LR
 - net48 版 WinHost 的技术细节（HttpListener、netstandard2.0 约束），有需求再展开。
 - 打印计数 / 库存联动：默认不做；如需，考虑事件接口（未决）。
 - ZPL 文本转义策略：`^FD` 数据中的 `^` / `~` / `_` 用 `^FH` 十六进制转义；中文文本迭代 1 直通，迭代 2 位图化（^GF）后不再依赖内置字体（迭代 2 展开）。
-- 契约字段格式（Pattern）校验：迭代 1 仅存元数据未执行，需排期（未决）。
+- 契约字段格式（Pattern）校验：迭代 1 仅存元数据未执行；2026-08-17 列为未来事项（现阶段不处理，有真实需求再排）。
 - 内嵌中文字体文件：迭代 2 实现「优先加载内嵌/本地字体、回退系统字体（微软雅黑）」的机制；实际字体文件（开源中文 TTF，体积较大）待与用户确认后加入资源（未决）。
 - `^GF` 数据量：中文一行按 1bpp 十六进制展开约每字 1KB+，迭代 2 先不做压缩；如需优化（^GF 二进制/压缩模式、字库缓存）再排期（未决）。
 - TCP 9100 无法感知打印机缺纸/卡纸，迭代 2 以「发送异常 → 挂起」近似；真实缺纸语义待真实设备联调（迭代 2 验收时确认）。
-- SQLitePCLRaw 2.1.6 存在已知漏洞公告（GHSA-2m69-gcr7-jv3q，SQLite 原生库）；离线环境暂固定该版本并在 Core.csproj 抑制 NU1903，联网后升级（如 2.1.10+）（未决）。
+- SQLitePCLRaw 漏洞公告（GHSA-2m69-gcr7-jv3q，SQLite 原生库）：已升级 2.1.13 修复（2026-08-17，Core / Server / AndroidHost 同步升级，移除 NU1903 抑制，176 测试全绿）。
 - Zebra 模式要求 Win10+（Windows SDK 10.0.26100 投影）；Win7/8 只能用 TCP9100 / winspool raw 传输（未决）。
 - Server 暂存作业无过期策略：设备长期离线时作业堆积，需人工处理（迭代 3 暂定，后续可加过期/通知）。
-- Android 迭代 5 受阻：当前环境未安装 .NET Android workload（`dotnet workload list` 为空），无法编译 / 验证 AndroidHost；已完成架构设计（本地 HTTP / JS 桥、TCP9100、注册轮询复用），待安装 workload 后实施（未决）。
+- Android PDA 宿主：迭代 5 曾因未装 .NET Android workload 受阻；2026-08-17 已排入迭代 22（下个迭代）——安装 workload 后实施（本地 HTTP / JS 桥、TCP9100、注册轮询复用），真机验收。
 - Zebra SDK 3.0.3355 的 PrinterStatus 无公开状态字段；`~HS` 字段映射基于常见文档实现，均待真实设备联调确认（未决）。
-- AndroidHost 构建依赖：.NET Android workload、Android SDK 36、JDK 17（本机已配齐）；Android 16 起要求 16KB 页，SQLitePCLRaw 2.1.6 的 libe_sqlite3.so 不满足（XA0141 警告），联网升级后处理（未决）。
+- AndroidHost 构建依赖：.NET Android workload、Android SDK 36、JDK 17（本机已配齐）；Android 16 起要求 16KB 页，SQLitePCLRaw 已升 2.1.13（2026-08-17），libe_sqlite3 的 16KB 适配待迭代 22 真机构建验证（未决）。
 - Android 12+ 后台启动前台服务受限，开机自启需用户在系统设置允许；厂商 ROM 保活差异（真机验收时确认）。
 - Studio V2 画布编辑暂不提供「所见即所得」的真实条码渲染（占位框 + WinHost 预览确认），如需画布内真实条码再引入 ZXing 本地渲染（未决）。
 - Excel 导入（迭代 9）拟用 `TemplateFrame.Excel.Simple`（决策 #32）：其为第三方包，构建需联网还原 `DocumentFormat.OpenXml 3.3.0`；版本 / 表名约定在实施时定稿（未决）。

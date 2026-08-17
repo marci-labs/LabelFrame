@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 21 收尾 + 状态盘点 — 2026-08-17
+
+- **SQLitePCLRaw 升级 2.1.6 → 2.1.13**：修复 GHSA-2m69-gcr7-jv3q（SQLite 原生库漏洞）；Core / Server / AndroidHost 三项目同步升级，移除 NU1903 抑制；构建 0 警告 0 错误，测试 176 全绿。
+- **验收状态确认（用户）**：真实打印机验收通过（迭代 2 / 3 / 4、13、14、15）；Studio 界面验收通过（迭代 7 / 8 / 8B / 8C / 8D）；双包 / 无头服务端联调完成（迭代 16 / 18 / 19 / 20）；试点验收通过（扫码枪 50 张 + 连续 100 张压力验证，含重启 / 断网）——ROADMAP 状态表已更新。
+- **迭代 12 关闭**：前端 renderLabelImage 按用户决定取消（不再实施）；后端 previewValue / PrintMode 图片打印能力保留。
+- **契约字段 Pattern 校验**：列为未来事项（现阶段不处理）。
+- **Android PDA 宿主**：排入迭代 22（下个迭代，2026-08-17）。
+- **MSI 签名 Secret**：暂无证书，保持可选（有则自动签名、无则跳过）。
+
 ## 迭代 21（自动化发布）— 2026-08-12
 
 - **首次自动发布成功（v0.17.0）**：推送 `v0.17.0` tag 后 CI 全流程通过——dotnet + 前端双模式测试 → 打包 `LabelFrame-Server-0.17.0.msi` / `LabelFrame-Client-0.17.0.msi` / `labelframe-server-webui-0.17.0.zip` / `labelframe-server-0.17.0-linux-x64.tar.gz` → 推送 `ghcr.io/marci-labs/labelframe-server:0.17.0` 与 `:latest` → 创建 GitHub Release（附件齐全）。
@@ -9,6 +18,15 @@
 - CI 稳定性修复：TCP 状态测试改为服务端就绪同步 + 放宽超时；Skia 渲染测试阈值放宽（CJK 字体环境差异）；设备列表测试日期断言时区无关化；SQLitePCLRaw 在测试进程用 `[ModuleInitializer]` 确定性初始化（Server / WinHost / Core 测试）+ `SqliteLogStore` 构造时自行 `SqliteSupport.EnsureInitialized()`（不再依赖宿主先初始化）。
 - 打包链修复：WiX 用 dotnet tool 版并安装 NetFx 扩展 + 先接受 OSMF EULA（WIX7015）；artifact 下载路径对齐 `web/dist` 与 `web/dist-server`；插件打包步骤改用 `$?` 判断（脚本内无原生命令时 `LASTEXITCODE` 为空）。
 - 待办（2026-08-15 更新）：ghcr 包已设为 Public 并通过匿名 `docker pull ghcr.io/marci-labs/labelframe-server:0.17.0` 验证（注意：组织包可见性不支持 REST API 修改，须先由组织管理员在「组织设置 → Packages」允许公开包，再在包设置页改为 Public）；MSI 签名 Secret 可随时补充（有则自动签名，可选）。
+
+## 迭代 21 收尾 + 状态盘点 — 2026-08-17
+
+- **SQLitePCLRaw 升级 2.1.6 → 2.1.13**：修复 GHSA-2m69-gcr7-jv3q（SQLite 原生库漏洞）；Core / Server / AndroidHost 三项目同步升级，移除 NU1903 抑制；构建 0 警告 0 错误，测试 176 全绿。
+- **验收状态确认（用户）**：真实打印机验收通过（迭代 2 / 3 / 4、13、14、15）；Studio 界面验收通过（迭代 7 / 8 / 8B / 8C / 8D）；双包 / 无头服务端联调完成（迭代 16 / 18 / 19 / 20）；试点验收通过（扫码枪 50 张 + 连续 100 张压力验证，含重启 / 断网）——ROADMAP 状态表已更新。
+- **迭代 12 关闭**：前端 renderLabelImage 按用户决定取消（不再实施）；后端 previewValue / PrintMode 图片打印能力保留。
+- **契约字段 Pattern 校验**：列为未来事项（现阶段不处理）。
+- **Android PDA 宿主**：排入迭代 22（下个迭代，2026-08-17）。
+- **MSI 签名 Secret**：暂无证书，保持可选（有则自动签名、无则跳过）。
 
 ## 迭代 21（自动化发布）— 2026-08-12（进行中）
 
