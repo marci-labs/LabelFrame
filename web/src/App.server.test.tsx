@@ -28,11 +28,6 @@ const mocks = vi.hoisted(() => ({
     listClientPackages: vi.fn(),
     uploadClientPackage: vi.fn(),
     deleteClientPackage: vi.fn(),
-    // 迭代 23：插件管理页
-    listPluginPackages: vi.fn(),
-    uploadPluginPackage: vi.fn(),
-    deletePluginPackage: vi.fn(),
-    downloadPluginPackage: vi.fn(),
   },
   local: {
     healthz: vi.fn(),
@@ -68,8 +63,6 @@ vi.mock('./lib/api/client', () => ({
   setServerBaseUrl: vi.fn(),
   probeHealthz: mocks.probeHealthz,
   clientPackageDownloadUrl: (fileName: string) => `/api/client-packages/${encodeURIComponent(fileName)}`,
-  pluginPackageDownloadUrl: (fileName: string) => `/api/plugin-packages/${encodeURIComponent(fileName)}`,
-  pluginPackageSizeError: (sizeBytes: number) => (sizeBytes > 64 * 1024 * 1024 ? '插件包超过 64MB 大小上限，无法上传 / 安装。' : null),
 }))
 
 vi.mock('./lib/uiMode', () => ({ UI_MODE: 'server', isServerUi: true }))
@@ -84,7 +77,6 @@ beforeEach(() => {
     { deviceId: 'device-1', name: '仓库-1 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online', lastIp: '192.168.1.5' },
   ])
   mocks.server.listClientPackages.mockResolvedValue([])
-  mocks.server.listPluginPackages.mockResolvedValue([])
   mocks.local.listTemplates.mockResolvedValue([])
 })
 
@@ -149,20 +141,5 @@ describe('server 构建：客户端下载页入口（迭代 22 §2.3）', () => 
     // 下载链接（server 构建同源相对路径）
     const link = screen.getByRole('link', { name: /下载/ })
     expect(link.getAttribute('href')).toBe('/api/client-packages/LabelFrame.Client-0.18.0.msi')
-  })
-})
-describe('server 构建：插件管理页入口（迭代 23 §7.3）', () => {
-  it('点击「插件管理」tab：列表 / 上传按钮齐全（GET /api/plugin-packages）', async () => {
-    mocks.server.listPluginPackages.mockResolvedValue([
-      { fileName: 'sample.lfplugin', pluginId: 'sample', name: '示例插件', version: '1.0.0', sizeBytes: 4096, modifiedAt: '2026-08-17T10:00:00Z', valid: true },
-    ])
-    render(<App />)
-    fireEvent.click(await screen.findByRole('button', { name: '插件管理' }))
-    expect(await screen.findByText('示例插件')).toBeTruthy()
-    expect(screen.getByText('sample')).toBeTruthy()
-    expect(screen.getByRole('button', { name: '上传插件包' })).toBeTruthy()
-    // 下载链接（server 构建同源相对路径）
-    const link = screen.getByRole('link', { name: /下载/ })
-    expect(link.getAttribute('href')).toBe('/api/plugin-packages/sample.lfplugin')
   })
 })

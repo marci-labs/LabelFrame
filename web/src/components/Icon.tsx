@@ -7,7 +7,7 @@ export type IconName =
   | 'plus' | 'edit' | 'trash' | 'download' | 'upload' | 'refresh'
   | 'retry' | 'test' | 'link' | 'printer' | 'clear' | 'layers'
   | 'check' | 'x' | 'search' | 'file' | 'grid' | 'zoom' | 'save'
-  | 'back' | 'preview' | 'copy' | 'clipboard' | 'alert' | 'keyboard' | 'puzzle'
+  | 'back' | 'preview' | 'copy' | 'clipboard' | 'alert' | 'keyboard'
 
 const PATHS: Record<IconName, React.ReactNode> = {
   workbench: (
@@ -115,10 +115,6 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <rect x="2.5" y="6" width="19" height="12.5" rx="2" />
       <path d="M6.5 10h.01M9.5 10h.01M12.5 10h.01M15.5 10h.01M18.5 10h.01M6.5 14h11" />
     </>
-  ),
-  // 迭代 23：插件管理（拼图块——四边各一个凸头，线条风格）
-  puzzle: (
-    <path d="M14 3v2.5a2.5 2.5 0 0 1-4 0V3H5v6h2.5a2.5 2.5 0 0 1 0 4H5v8h6v-2.5a2.5 2.5 0 0 1 4 0V21h6v-6h-2.5a2.5 2.5 0 0 1 0-4H21V3z" />
   ),
 }
 

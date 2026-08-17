@@ -3,17 +3,14 @@
 // mock 覆盖组件树用到的全部 client 方法（含 AppContext 启动链：getHostConfig / getTransport / healthz）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { AppProvider } from '../state/AppContext'
 import { Settings } from './Settings'
-import { ApiError } from '../lib/api/types'
 
 const mocks = vi.hoisted(() => ({
   server: {
     healthz: vi.fn(),
     listClientPackages: vi.fn(),
-    listPluginPackages: vi.fn(),
-    downloadPluginPackage: vi.fn(),
   },
   local: {
     getHostConfig: vi.fn(),
@@ -23,9 +20,6 @@ const mocks = vi.hoisted(() => ({
     getPrinterStatus: vi.fn(),
     testPrinter: vi.fn(),
     setHostConfig: vi.fn(),
-    listInstalledPlugins: vi.fn(),
-    installPlugin: vi.fn(),
-    uninstallPlugin: vi.fn(),
   },
   probeHealthz: vi.fn(),
 }))
@@ -36,8 +30,6 @@ vi.mock('../lib/api/client', () => ({
   setServerBaseUrl: vi.fn(),
   probeHealthz: mocks.probeHealthz,
   clientPackageDownloadUrl: (fileName: string) => `http://127.0.0.1:53961/api/client-packages/${encodeURIComponent(fileName)}`,
-  pluginPackageDownloadUrl: (fileName: string) => `http://127.0.0.1:53961/api/plugin-packages/${encodeURIComponent(fileName)}`,
-  pluginPackageSizeError: (sizeBytes: number) => (sizeBytes > 64 * 1024 * 1024 ? '插件包超过 64MB 大小上限，无法上传 / 安装。' : null),
 }))
 // 迭代 20：本文件为 client 构建语义用例，显式注入 client 分支（VITE_UI_MODE=server 整仓测试时保持稳定）
 vi.mock('../lib/uiMode', () => ({ UI_MODE: 'client', isServerUi: false }))
@@ -64,8 +56,6 @@ beforeEach(() => {
   window.sessionStorage.clear()
   mocks.server.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
   mocks.server.listClientPackages.mockResolvedValue([])
-  mocks.server.listPluginPackages.mockResolvedValue([])
-  mocks.server.downloadPluginPackage.mockResolvedValue({ blob: new Blob(['x']), filename: 'sample.lfplugin' })
   mocks.local.getHostConfig.mockResolvedValue(HOST_CONFIG)
   mocks.local.getTransport.mockResolvedValue({ mode: 'Log', params: {} })
   mocks.local.setTransport.mockResolvedValue({ ok: true, message: '已切换到 TCP。', config: { mode: 'Tcp', params: { tcpHost: '192.168.1.50', tcpPort: 9100 } } })
@@ -73,9 +63,6 @@ beforeEach(() => {
   mocks.local.getPrinterStatus.mockResolvedValue({ isOnline: true, isPaperOut: false, isPaused: false, message: '就绪' })
   mocks.local.testPrinter.mockResolvedValue({ sent: true, bytes: 128 })
   mocks.local.setHostConfig.mockResolvedValue(undefined)
-  mocks.local.listInstalledPlugins.mockResolvedValue([])
-  mocks.local.installPlugin.mockResolvedValue({ ok: true, message: '安装成功，重启客户端后生效。' })
-  mocks.local.uninstallPlugin.mockResolvedValue({ ok: true, message: '卸载成功，重启客户端后生效。' })
   mocks.probeHealthz.mockResolvedValue(true)
 })
 
@@ -232,125 +219,8 @@ describe('更新与安装包（迭代 22 §2.3）', () => {
   it('单机模式（服务端不可达）：提示需先连接服务端，不调 listClientPackages', async () => {
     mocks.server.healthz.mockRejectedValue(new Error('down'))
     renderSettings()
-    expect(await screen.findByText(/当前未连接服务端（单机模式）。安装包由服务端统一分发/)).toBeTruthy()
-    expect(screen.getByText(/请先在上方「服务端地址」中连接服务端后查看可用安装包/)).toBeTruthy()
+    expect(await screen.findByText(/当前未连接服务端（单机模式）/)).toBeTruthy()
+    expect(screen.getByText(/请先在上方「服务端地址」中连接服务端/)).toBeTruthy()
     expect(mocks.server.listClientPackages).not.toHaveBeenCalled()
-  })
-})
-describe('插件管理（迭代 23 §2.2/§7.4）', () => {
-  const PKGS = [
-    { fileName: 'sample.lfplugin', pluginId: 'sample', name: '示例插件', version: '1.0.0', sizeBytes: 4096, modifiedAt: '2026-08-17T10:00:00Z', valid: true },
-    { fileName: 'broken.lfplugin', pluginId: undefined, name: undefined, version: undefined, sizeBytes: 128, modifiedAt: '2026-08-17T09:00:00Z', valid: false, invalidReason: '缺少根 manifest.json' },
-  ]
-  const INSTALLED = [
-    { pluginId: 'pkg-a', name: '包插件A', version: '1.0.0', loaded: true, source: 'package' as const },
-    { pluginId: 'pkg-b', name: '包插件B', version: '2.0.0', loaded: false, source: 'package' as const },
-    { pluginId: 'pkg-c', name: '坏插件', version: '0.1.0', loaded: false, loadError: '缺少依赖：X.dll', source: 'package' as const },
-    { pluginId: 'manual-a', name: '手动插件', version: '1.0.0', loaded: true, source: 'manual' as const },
-  ]
-  const installedSample = { pluginId: 'sample', name: '示例插件', version: '0.9.0', loaded: true, source: 'package' as const }
-
-  it('服务端可用插件列表渲染：名称/版本/pluginId/大小；invalid 条目红标 + 原因且安装按钮不可用', async () => {
-    mocks.server.listPluginPackages.mockResolvedValue(PKGS)
-    renderSettings()
-    expect(await screen.findByText('示例插件')).toBeTruthy()
-    expect(screen.getByText('sample')).toBeTruthy()
-    expect(screen.getByText('4.0 KB')).toBeTruthy()
-    expect(screen.getByText('解析失败')).toBeTruthy()
-    expect(screen.getByText('缺少根 manifest.json')).toBeTruthy()
-    // 仅 valid 行有「安装」按钮（invalid 行只显示红标）
-    const installBtns = screen.getAllByRole('button', { name: /^安装$/ })
-    expect(installBtns.length).toBe(1)
-  })
-
-  it('安装流程：下载 blob → installPlugin(File 保留服务端文件名) → 提示重启生效 + 刷新已安装列表', async () => {
-    mocks.server.listPluginPackages.mockResolvedValue([PKGS[0]])
-    renderSettings()
-    fireEvent.click(await screen.findByRole('button', { name: /^安装$/ }))
-    await waitFor(() => expect(mocks.server.downloadPluginPackage).toHaveBeenCalledWith('sample.lfplugin'))
-    await waitFor(() => expect(mocks.local.installPlugin).toHaveBeenCalledTimes(1))
-    const file = mocks.local.installPlugin.mock.calls[0][0] as File
-    expect(file.name).toBe('sample.lfplugin')
-    expect(await screen.findByText(/安装成功，重启客户端后生效/)).toBeTruthy()
-    // 初始加载一次 + 安装成功后刷新一次
-    await waitFor(() => expect(mocks.local.listInstalledPlugins).toHaveBeenCalledTimes(2))
-  })
-
-  it('覆盖安装：已安装同 pluginId 时弹确认；取消不安装、确认后安装', async () => {
-    mocks.server.listPluginPackages.mockResolvedValue([PKGS[0]])
-    mocks.local.listInstalledPlugins.mockResolvedValue([installedSample])
-    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => false)
-    renderSettings()
-    fireEvent.click(await screen.findByRole('button', { name: /^安装$/ }))
-    expect(confirmSpy).toHaveBeenCalled()
-    expect(mocks.local.installPlugin).not.toHaveBeenCalled()
-    confirmSpy.mockImplementation(() => true)
-    fireEvent.click(screen.getByRole('button', { name: /^安装$/ }))
-    await waitFor(() => expect(mocks.local.installPlugin).toHaveBeenCalledTimes(1))
-    confirmSpy.mockRestore()
-  })
-
-  it('64MB 预检：超过上限不下载不安装，提示中文原因', async () => {
-    mocks.server.listPluginPackages.mockResolvedValue([{ ...PKGS[0], sizeBytes: 64 * 1024 * 1024 + 1 }])
-    renderSettings()
-    fireEvent.click(await screen.findByRole('button', { name: /^安装$/ }))
-    expect(await screen.findByText(/超过 64MB 大小上限/)).toBeTruthy()
-    expect(mocks.server.downloadPluginPackage).not.toHaveBeenCalled()
-    expect(mocks.local.installPlugin).not.toHaveBeenCalled()
-  })
-
-  it('单机模式：可用插件区提示需先连接服务端，已安装区仍渲染（本机接口）', async () => {
-    mocks.server.healthz.mockRejectedValue(new Error('down'))
-    mocks.local.listInstalledPlugins.mockResolvedValue([installedSample])
-    renderSettings()
-    expect(await screen.findByText(/插件包由服务端统一分发，请先在上方「服务端地址」中连接服务端/)).toBeTruthy()
-    expect(mocks.server.listPluginPackages).not.toHaveBeenCalled()
-    // 已安装区始终渲染：徽标 + 卸载按钮
-    expect(await screen.findByText('已加载')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /卸载/ })).toBeTruthy()
-  })
-
-  it('已安装区四态徽标：已加载 / 待重启生效 / 加载失败（原因）/ 手动放置且无卸载按钮', async () => {
-    mocks.local.listInstalledPlugins.mockResolvedValue(INSTALLED)
-    renderSettings()
-    expect(await screen.findByText('已加载')).toBeTruthy()
-    expect(screen.getByText('待重启生效')).toBeTruthy()
-    expect(screen.getByText('加载失败')).toBeTruthy()
-    expect(screen.getByText('缺少依赖：X.dll')).toBeTruthy()
-    expect(screen.getByText('手动放置')).toBeTruthy()
-    // 3 个 package 行可卸载，manual 行无卸载按钮
-    expect(screen.getAllByRole('button', { name: /卸载/ }).length).toBe(3)
-  })
-
-  it('卸载：确认后调用 uninstallPlugin(pluginId) + 提示 + 刷新；取消不调用', async () => {
-    mocks.local.listInstalledPlugins.mockResolvedValue([installedSample])
-    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => true)
-    renderSettings()
-    fireEvent.click(await screen.findByRole('button', { name: /卸载/ }))
-    await waitFor(() => expect(mocks.local.uninstallPlugin).toHaveBeenCalledWith('sample'))
-    expect(await screen.findByText(/卸载成功，重启客户端后生效/)).toBeTruthy()
-    await waitFor(() => expect(mocks.local.listInstalledPlugins).toHaveBeenCalledTimes(2))
-    confirmSpy.mockImplementation(() => false)
-    fireEvent.click(screen.getByRole('button', { name: /卸载/ }))
-    expect(mocks.local.uninstallPlugin).toHaveBeenCalledTimes(1)
-    confirmSpy.mockRestore()
-  })
-
-  it('已安装区旧客户端 404：显示「当前客户端版本不支持插件管理」防御提示', async () => {
-    mocks.local.listInstalledPlugins.mockRejectedValue(new ApiError('HTTP_404', 'Not Found'))
-    renderSettings()
-    expect(await screen.findByText(/当前客户端版本不支持插件管理/)).toBeTruthy()
-  })
-
-  it('可用插件区旧服务端 404：与「单机模式不可达」区分展示', async () => {
-    mocks.server.listPluginPackages.mockRejectedValue(new ApiError('HTTP_404', 'Not Found'))
-    renderSettings()
-    expect(await screen.findByText(/服务端不支持插件管理（旧版本），请升级服务端/)).toBeTruthy()
-  })
-
-  it('已安装区加载失败：显示错误信息', async () => {
-    mocks.local.listInstalledPlugins.mockRejectedValue(new Error('boom'))
-    renderSettings()
-    expect(await screen.findByText(/获取已安装插件失败/)).toBeTruthy()
   })
 })
