@@ -10,6 +10,12 @@
 - **Server（权限边界 + 分发）**：`GET /api/jobs?deviceId=` 过滤（客户端只看自己的作业、服务端看全部）；`client-packages` 目录 + 列表 / 上传 / 下载 / 删除 API（文件名路径穿越防护，`LABELFRAME_SERVER_CLIENT_PACKAGES` 可覆盖）；`docker-compose.yml` 挂载 `./client-packages`。
 - **测试**：214 全绿（Core 78 / Server 37 / WinHost 74 / Studio 25，新增插件注册表 / 参数模型 / 目录加载器（示例插件 DLL 项目）/ Excel 生成 / TransportConfig 迁移 / 插件切换 / deviceId 过滤 / client-packages 用例）；web 178 全绿。
 - **端到端冒烟通过**：上传 / 列表 / 下载 / 删除 client-packages、路径穿越 404、Server/WinHost excel-template（xlsx 200）、jobs 按 deviceId 过滤、/api/transport（availablePlugins + displayText + 外部 sample 插件可装配可测试）、切换失败保留当前连接、旧格式 mode 兼容。
+## 迭代 22 联调收尾：后端缺陷修复 — 2026-08-17
+
+- **修复（附四 §三）外部插件删除后宿主启动崩溃**：connection.json 仍引用已删除的外部插件 DLL（决策 2A「卸载 = 删除文件 + 重启生效」）时，`TransportManager.LoadPersisted` 检测插件不在注册表 → 回退默认连接（log）+ host.log 警告，宿主正常启动、不再抛「传输插件不存在」退出；新增回归用例（Startup_should_fall_back_to_log_when_persisted_plugin_missing）。
+- **healthz 透出插件信息**：响应新增 `pluginId` / `displayText`（精确反映当前插件；旧字段 `transport` 保留兼容），前端联调观察项落实。
+- 前端联调修复（hermes，54e77c9）：Excel 列映射按显示名自动匹配、插件参数全量字符串序列化（修复 HTTP 400）、null 默认值不显示字面量——web 179 用例全绿。
+- 测试：dotnet 215 全绿（Core 78 / Server 37 / WinHost 75 / Studio 25）；web 179 全绿。
 ## 迭代 22 规划：范围定稿 + 后端 / 前端分工 — 2026-08-17
 
 - **范围定稿（用户拍板）**：打印测试体验（下载 Excel 模板、客户端仅本机打印测试、显示本机设备名、作业历史按设备可见）+ 传输插件化（统一接口 / 参数模型 / 注册表按需装配）+ 客户端下载分发（服务端 `client-packages` 目录 + 上传下载 API + 管理界面 + 客户端设置默认从服务端获取）。
@@ -42,6 +48,12 @@
 - **Server（权限边界 + 分发）**：`GET /api/jobs?deviceId=` 过滤（客户端只看自己的作业、服务端看全部）；`client-packages` 目录 + 列表 / 上传 / 下载 / 删除 API（文件名路径穿越防护，`LABELFRAME_SERVER_CLIENT_PACKAGES` 可覆盖）；`docker-compose.yml` 挂载 `./client-packages`。
 - **测试**：214 全绿（Core 78 / Server 37 / WinHost 74 / Studio 25，新增插件注册表 / 参数模型 / 目录加载器（示例插件 DLL 项目）/ Excel 生成 / TransportConfig 迁移 / 插件切换 / deviceId 过滤 / client-packages 用例）；web 178 全绿。
 - **端到端冒烟通过**：上传 / 列表 / 下载 / 删除 client-packages、路径穿越 404、Server/WinHost excel-template（xlsx 200）、jobs 按 deviceId 过滤、/api/transport（availablePlugins + displayText + 外部 sample 插件可装配可测试）、切换失败保留当前连接、旧格式 mode 兼容。
+## 迭代 22 联调收尾：后端缺陷修复 — 2026-08-17
+
+- **修复（附四 §三）外部插件删除后宿主启动崩溃**：connection.json 仍引用已删除的外部插件 DLL（决策 2A「卸载 = 删除文件 + 重启生效」）时，`TransportManager.LoadPersisted` 检测插件不在注册表 → 回退默认连接（log）+ host.log 警告，宿主正常启动、不再抛「传输插件不存在」退出；新增回归用例（Startup_should_fall_back_to_log_when_persisted_plugin_missing）。
+- **healthz 透出插件信息**：响应新增 `pluginId` / `displayText`（精确反映当前插件；旧字段 `transport` 保留兼容），前端联调观察项落实。
+- 前端联调修复（hermes，54e77c9）：Excel 列映射按显示名自动匹配、插件参数全量字符串序列化（修复 HTTP 400）、null 默认值不显示字面量——web 179 用例全绿。
+- 测试：dotnet 215 全绿（Core 78 / Server 37 / WinHost 75 / Studio 25）；web 179 全绿。
 ## 迭代 22 规划：范围定稿 + 后端 / 前端分工 — 2026-08-17
 
 - **范围定稿（用户拍板）**：打印测试体验（下载 Excel 模板、客户端仅本机打印测试、显示本机设备名、作业历史按设备可见）+ 传输插件化（统一接口 / 参数模型 / 注册表按需装配）+ 客户端下载分发（服务端 `client-packages` 目录 + 上传下载 API + 管理界面 + 客户端设置默认从服务端获取）。

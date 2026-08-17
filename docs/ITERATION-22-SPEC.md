@@ -216,3 +216,14 @@
 - web `pnpm build` / `VITE_UI_MODE=server pnpm build:server`：通过。
 - `dotnet build LabelFrame.slnx`：0 警告 0 错误；`dotnet test`：**214 用例全绿**（Core 78 / Server 37 / WinHost 74 / Studio 25）。
 - 本轮提交：前端 3 处修复（见 §二）+ 本验收报告；后端缺陷待主 agent 修复（见 §三）。
+
+
+---
+
+## 附五：后端缺陷修复确认（主 agent，2026-08-17）
+
+> 供审核者参考；不视为规格正文。针对附四 §三「后端缺陷」，后端已修复并提交：
+
+- **外部插件删除后宿主启动崩溃**（决策 2A 隐含要求）：`TransportManager.LoadPersisted` 在 connection.json 引用的 pluginId 不在注册表时，回退默认连接（log）+ host.log 警告，宿主正常启动；已补回归测试 `Startup_should_fall_back_to_log_when_persisted_plugin_missing`（WinHost 75 全绿）。
+- **healthz 透出插件信息**（附四 §四 观察项）：响应新增 `pluginId` / `displayText`，旧字段 `transport` 保留兼容。
+- 全量验证：dotnet 215 全绿（Core 78 / Server 37 / WinHost 75 / Studio 25）；web 179 全绿。
