@@ -33,9 +33,10 @@
 | 10 | MSI 安装包 | ✅ 已完成 |
 | 20 | 服务端管理界面（插件式 UI）+ 设备 IP | ✅ 已完成（2026-08-17 联调冒烟通过） |
 | 21 | 自动化发布（ghcr + GitHub Release + MSI 签名通道） | ✅ 已完成（v0.17.0 自动发布成功；ghcr 包已公开） |
-| 22 | 打印测试体验 + 传输插件化 + 客户端下载分发 | 🔄 联调完成（8 项场景全过，后端缺陷已修复）；待用户验收 / 发版 |
-| 23 | 精成打印机传输插件实现 + 真机测试 | 📋 下一轮（承接迭代 22 插件机制） |
-| 24 | Android PDA 宿主（AndroidHost） | 📋 延后（PDA 事项延后，再排期） |
+| 22 | 打印测试体验 + 传输插件化 + 客户端下载分发 | ✅ 已完成（2026-08-17 迭代结束，本地 0.18.0 测试包验收） |
+| 23 | 客户端插件分发——上传服务端 + 客户端安装 / 卸载 | 📋 下一轮（范围会话中细化） |
+| 24 | 精成打印机传输插件实现 + 真机测试 | 📋 下一轮之后（承接 22/23 插件机制与分发） |
+| 25 | Android PDA 宿主（AndroidHost） | 📋 延后（PDA 事项延后，再排期） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -643,7 +644,7 @@
 **启动命令**：
 > 继续 LabelFrame 迭代 21（自动化发布）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；仓库内容不得出现公司 / 业务线品牌字样。
 
-## 迭代 22：打印测试体验 + 传输插件化 + 客户端下载分发（本轮，前后端已实现，联调中）
+## 迭代 22：打印测试体验 + 传输插件化 + 客户端下载分发（已完成）
 
 **目标**：围绕「易用性 / 权限边界 / 插件化 / 分发」四项收口——打印测试更好上手、客户端与服务的边界明确、传输方式插件化、客户端安装包由服务端分发。
 
@@ -652,31 +653,53 @@
 - 权限边界：客户端只能选择本机做打印测试（决策 1A：本机在线走服务端路由、未注册 / 离线降级本机直连并提示）；服务端可自由选设备打印测试。
 - 客户端显示本机设备名称（状态栏 + DataPrint 目标标签）。
 - 作业历史可见性：`GET /api/jobs?deviceId=` 过滤——客户端只看自己的作业历史，服务端看全部。
-- 传输插件化（决策 2A）：本轮完成插件机制——统一接口（`ITransportPlugin` → `IPrintTransport` / `IPrinterStatusProvider` / `ITestableTransport`）、参数模型（`TransportParameterSpec` / `TransportPluginParameters`）、注册表按需装配（内置 log / tcp9100 / winspool / zebra + 外部 DLL 目录扫描）；卸载 = 删除文件 + 重启生效（运行时热卸载记未决）；`connection.json` 新格式兼容旧配置；下一轮（迭代 23）实现具体厂商插件（如精成打印机）并测试。
+- 传输插件化（决策 2A）：统一接口（`ITransportPlugin` → `IPrintTransport` / `IPrinterStatusProvider` / `ITestableTransport`）、参数模型（`TransportParameterSpec` / `TransportPluginParameters`）、注册表按需装配（内置 log / tcp9100 / winspool / zebra + 外部 DLL 目录扫描）；卸载 = 删除文件 + 重启生效（运行时热卸载记未决）；`connection.json` 新格式兼容旧配置。
 - 客户端下载分发（决策 3A）：服务端 `client-packages` 目录 + 上传 / 下载 / 删除 API；Server UI 新增「客户端下载」页；客户端设置「更新与安装包」默认从服务端获取；Ubuntu / Docker 允许挂载 `client-packages` 卷。
 - Excel 模板生成放 Core 共享（决策 4A：`LabelFrame.Core.Excel`，复用 `TemplateFrame.Excel.Simple` 写能力）。
 
-**进展（2026-08-17 追加）**：前后端联调完成——8 项场景全过（下载 Excel 模板 → 导入批量打印、客户端仅本机、作业历史按设备、安装包上传下载删除 + 路径穿越、传输插件含外部 DLL 装载 / 卸载、契约核对、Docker 挂载）；前端 3 处修复（Excel 列映射按显示名、插件参数字符串序列化、null 默认值，hermes 54e77c9）；后端缺陷修复（外部插件删除后重启回退默认连接，附四 §三）。
+**完成记录（2026-08-17，用户确认迭代结束）**：
+- 前后端实现 + 联调完成——8 项场景全过（下载 Excel 模板 → 导入批量打印、客户端仅本机、作业历史按设备、安装包上传下载删除 + 路径穿越、传输插件含外部 DLL 装载 / 卸载、契约核对、Docker 挂载）。
+- 前端联调修复（hermes 54e77c9）：Excel 列映射按显示名自动匹配、插件参数全量字符串序列化（修复 HTTP 400）、null 默认值不显示字面量；剪贴板降级修复（d6d1b3e）。
+- 后端缺陷修复（293e593）：外部插件删除后重启回退默认连接（决策 2A 卸载语义）+ healthz 透出 pluginId / displayText（规格附五）。
+- 测试：dotnet 215 全绿（Core 78 / Server 37 / WinHost 75 / Studio 25）；web 179 全绿；本地 0.18.0 测试包（Client / Server MSI + 管理界面插件 zip）打包验收。
 
-**不在范围**：具体厂商打印机插件实现（迭代 23）；PDA（AndroidHost，延后至迭代 24）；传输插件运行时热卸载 / 热替换（未决）；客户端自动升级（仅提供服务端下载）。
+**不在范围**：具体厂商打印机插件实现（迭代 24）；PDA（AndroidHost，延后至迭代 25）；传输插件运行时热卸载 / 热替换（未决）；客户端自动升级（仅提供服务端下载）。
 
-**验收**：`dotnet build` / `dotnet test` 与 web `pnpm test` 全绿；联调冒烟（下载 Excel 模板 → 导入批量打印、客户端仅本机、作业历史按设备过滤、安装包上传下载删除、插件加载卸载）后按 DoD 执行。
+**验收**：`dotnet build` / `dotnet test` 与 web `pnpm test` 全绿；联调冒烟（下载 Excel 模板 → 导入批量打印、客户端仅本机、作业历史按设备过滤、安装包上传下载删除、插件加载卸载）后按 DoD 执行。✅ 已满足。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 22（打印测试体验 + 传输插件化 + 客户端下载分发）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；本轮先与用户讨论定稿范围与插件化方案（插件如何加载 / 卸载 / 使用、统一接口与参数模型、服务端下载分发流程），再按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
-## 迭代 23：精成打印机传输插件实现 + 真机测试（下一轮）
 
-**目标**：基于迭代 22 的传输插件机制，实现精成打印机的传输插件并真机测试。
+## 迭代 23：客户端插件分发——上传服务端 + 客户端安装 / 卸载（下一轮，范围会话中细化）
 
-**范围**（承接迭代 22 插件机制，会话中细化）：
+**目标**：把迭代 22 的传输插件机制做成可分发闭环——插件包可上传到服务端，客户端在界面里选择安装 / 卸载已安装的插件。
+
+**待讨论范围**（2026-08-17 用户提出，会话中定稿）：
+- 传输插件包上传服务端：插件包格式（zip 含插件 DLL + manifest？）、存放目录与 API（复用 / 扩展 `client-packages`，或独立插件目录），Server UI 管理入口。
+- 客户端安装：设置页（或新「插件」页）浏览服务端可用插件 → 选择安装（下载 → 放入插件目录 → 重启生效），可查看已安装插件与状态。
+- 客户端卸载：已安装插件可卸载（删除文件 → 重启生效；与决策 2A 一致；运行时热卸载仍不做，除非需求变化）。
+- 插件包版本 / 校验（哈希 / 签名）与安装覆盖策略；与「更新与安装包」（迭代 22）的 UI 归并或并列。
+
+**不在范围**：具体厂商插件实现（精成打印机顺延至迭代 24）；运行时热卸载 / 热替换（未决）。
+
+**验收**：会话中定稿后按 DoD 执行。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 23（客户端插件分发：上传服务端 + 客户端安装 / 卸载）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；先与用户讨论定稿范围（插件包格式、上传 / 安装 / 卸载流程、与 client-packages 的关系），再按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+
+## 迭代 24：精成打印机传输插件实现 + 真机测试（下一轮之后）
+
+**目标**：基于迭代 22 的传输插件机制（与迭代 23 的分发机制），实现精成打印机的传输插件并真机测试。
+
+**范围**（承接迭代 22 / 23，会话中细化）：
 - 按插件接口实现精成打印机传输插件（连接 / 发送 / 状态 / 测试），参数模型独立。
-- 打包 / 装载 / 注册表装配，配置指定插件与参数即启用。
+- 打包 / 装载 / 注册表装配，配置指定插件与参数即启用（可经迭代 23 分发安装）。
 - 真机（精成打印机）验收：连接、打印、状态、异常恢复。
 
 **启动命令**：
-> 继续 LabelFrame 迭代 23（精成打印机传输插件）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+> 继续 LabelFrame 迭代 24（精成打印机传输插件）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
-## 迭代 24：Android PDA 宿主（AndroidHost，延后）
+## 迭代 25：Android PDA 宿主（AndroidHost，延后）
 
 **目标**：交付可真机使用的 Android PDA 宿主——本地 HTTP / JS 桥、TCP9100 打印、复用 Server 注册 / 轮询链路；真机验收通过后再纳入自动发布。
 
@@ -692,8 +715,7 @@
 **验收**：真机（PDA）完成设备注册与端到端打印；现有 `dotnet build` / `dotnet test` 保持全绿。
 
 **启动命令**：
-> 继续 LabelFrame 迭代 24（Android PDA 宿主）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
-
+> 继续 LabelFrame 迭代 25（Android PDA 宿主）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 ## 检查点：试点验收（已完成）
 
 按 [REQUIREMENTS.md](REQUIREMENTS.md) §8 成功衡量执行：

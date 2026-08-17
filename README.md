@@ -28,6 +28,8 @@
 - 迭代 8E/8F（Web 设计器原型 v2/v3）：视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出 / 画布留白标尺 / 真实比例 1mm=8点；`prototypes/web-designer/`，用于 UI 技术选型评估。
 - 迭代 9（Excel 导入）/ 迭代 10（MSI 安装包）：已完成。
 - 迭代 13（文本排版与二维码参数持久化）：元素契约补齐（wrap / lineHeight / fitMode / fontFamily / qrEcc / qrMargin / displayValue / paddingH-V）+ Skia 图片打印渲染 + 前端字段映射，前后端已完成（用户验收待执行）；产物 `LabelFrame-0.13.2.msi`。
+- 迭代 22（打印测试体验 + 传输插件化 + 客户端下载分发）：✅ 已完成（2026-08-17）——下载 Excel 模板 / 客户端仅本机打印测试 / 作业历史按设备可见；传输插件化（统一接口 + 参数模型 + 注册表 + 外部 DLL 目录加载，卸载 = 删文件 + 重启生效）；客户端下载分发（`client-packages` + Server UI「客户端下载」+ 客户端设置「更新与安装包」）；本地 0.18.0 测试包。
+- 迭代 23（客户端插件分发：上传服务端 + 客户端安装 / 卸载）：📋 下一轮。
 详见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
 ## 组成
