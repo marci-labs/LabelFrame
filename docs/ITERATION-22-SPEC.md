@@ -161,3 +161,58 @@
 4. **POST /api/import/excel-template**：响应建议带 Content-Disposition: attachment; filename=...（前端解析文件名，否则回退 excel-template.xlsx）；请求体 { columns: [{ key, displayName }], sampleRow: { key: value } } 按契约。
 5. **POST /api/client-packages**：multipart 字段名 file；文件名路径穿越防护与 404 语义按规格（前端删除 / 下载均 encodeURIComponent 文件名）。
 6. **GET /api/host/config**：确认返回 deviceName（非空），客户端状态栏与 DataPrint 本机标签依赖该字段；旧客户端无此字段时前端显示「未知」并降级直连。
+
+---
+
+## 附四：迭代 22 联调验收报告（hermes 前端实施方，2026-08-17）
+
+> 本节由前端开发者 hermes 联调验收后追加，供审核者（主 agent）确认；验收环境：临时数据目录（%TEMP%\lf-e2e，未污染本机真实数据）、测试 Server 127.0.0.1:53961、测试 WinHost 127.0.0.1:53962（设备 lf-e2e-client / E2E测试本机，与生产客户端 53960 隔离）。
+
+### 一、验证结果清单（按任务 §8 验收逐项）
+
+| # | 场景 | 结果 | 证据 |
+|---|---|---|---|
+| 1 | 下载 Excel 模板 → 导入 → 批量打印 | ✅ | 客户端与服务端 POST /api/import/excel-template 均返回 xlsx（Content-Disposition 含文件名，表头=显示名、第二行=testData 示例值）；UI 全链路：下载 → Excel 导入 → 列映射自动匹配 → 批量打印 1 张 → 作业已完成 1/1（服务端可见） |
+| 2 | 权限边界 | ✅ | 客户端 UI 目标设备只显示「本机（E2E测试本机）」、无设备选择器；本机在线提示「作业经服务端投递」；停掉测试 Server 后 UI 自动降级单机模式并提示（状态栏「服务端未连接（单机模式可用）」）；服务端 UI 目标设备为在线设备选择器（离线设备禁用，提交前现拉校验） |
+| 3 | 作业历史可见性 | ✅ | GET /api/jobs?deviceId= 过滤精确（本机 1 条 / 另一设备 1 条 / 不传 2 条）；客户端 UI 作业历史只显示本机 2 条（lf-e2e-client），服务端 UI 显示全部 3 条（含 lf-e2e-client-2 排队中作业） |
+| 4 | 客户端状态栏 | ✅ | 「本机：E2E测试本机」与本机 IP 并列显示（/api/host/config.deviceName） |
+| 5 | 传输插件 | ✅ | 设置页「连接方式」按 availablePlugins 动态渲染（文本/数字/开关/下拉 spec 驱动）；切换先测试后生效、失败提示且不切换（当前生效连接保持 LOG）；内置 4 插件 + 外部 sample 加载（isExternal=true，GET /api/transport/plugins 返回 5 个）；删除 sample dll 重启后消失（4 个）；坏 dll 不影响宿主启动（日志记录「传输插件加载失败（BadPlugin.dll）：Bad IL format」）；重启后按 connection.json 恢复插件配置 |
+| 6 | 客户端下载分发 | ✅ | 上传（multipart 字段 file）→ 列表（fileName/sizeBytes/modifiedAt/url）→ 下载（octet-stream + Content-Disposition）→ 删除（200，磁盘消失，再下载 404）；目录直放文件出现在列表；路径穿越拒绝（..%2f / ../ / ..%5c 均 404）；删除不存在 404；服务端 UI「客户端下载」页列表/上传/删除可用；客户端设置「更新与安装包」列出服务端安装包与下载链接 |
+| 7 | 契约核对（附三 §三 6 项） | ✅ | GET /api/transport 同时含 pluginId/displayName/params(字典)/displayText/availablePlugins，options 为 {value,label?}[]（zebra kind），旧字段 mode/availableModes 保留；POST 失败返回 200 + {ok:false,message,config=当前生效连接}；excel-template 返回 Content-Disposition attachment 含文件名；client-packages 上传字段名 file；/api/host/config 返回 deviceName |
+| 8 | Ubuntu/Docker | ✅ | 本地构建 linux-x64 镜像 + docker run 挂载 ./client-packages：容器内 API 上传 → 文件落盘宿主机挂载目录；宿主机直放文件 → 容器列表可见；下载内容一致 |
+
+### 二、前端缺陷（联调发现，本轮已修复并补测试）
+
+1. **Excel 导入列映射自动匹配失效**（web/src/lib/excel/mapping.ts + pages/DataPrint.tsx）
+   - 实际：下载的 Excel 模板表头为契约字段**显示名**（规格 §5.2），suggestMapping 只按字段**键**归一化匹配 → 中文显示名（库位码）匹配不上英文键（locationCode），三列全部「— 不映射 —」、自动匹配按钮禁用、批量打印不可用。
+   - 期望：显示名表头应自动映射到字段键。
+   - 修复：MappingField 支持 {key, displayName}，suggestMapping 同时按键与显示名匹配；DataPrint 传契约字段（含显示名）给映射弹窗，选项显示「显示名（键）」；无契约字段（版式推导）时仍按键匹配（兼容）。新增 mapping.test.ts 用例（按显示名匹配 + 键兼容）。
+2. **插件参数提交 HTTP 400**（web/src/components/TransportPanel.tsx）
+   - 实际：Int/Bool 参数前端发数字/布尔（如 {"port":9100}），后端 TransportApplyRequest.Params 为 `IReadOnlyDictionary<string,string>` → 模型绑定失败 400（无错误体），UI 显示「请求失败（HTTP 400）」而非后端错误信息。
+   - 期望：参数按字符串提交，失败时展示后端 ok:false + message。
+   - 修复：buildRequest 插件模式把所有参数值序列化为字符串（Bool → "true"/"false"）。UI 复测：TCP 9100 测试连接显示「连接测试失败：无法连接打印机（超时或地址不可达）。」
+3. **String 参数默认值显示字面量 "null"**（web/src/lib/transport.ts + lib/api/types.ts）
+   - 实际：后端 defaultValue 为 null（如 tcp9100 host）时 specDefaultValue 返回 String(null)="null"，输入框显示 "null"。
+   - 期望：显示为空。
+   - 修复：null/undefined → ''；TransportParameterSpec.defaultValue 类型补 `| null`。新增 transport.test.ts 用例。
+
+### 三、后端缺陷（只记录，未改后端代码）
+
+1. **外部插件删除后宿主启动崩溃**（违反决策 2A「卸载 = 删除插件目录文件 + 重启生效」）
+   - 复现：设置页/API 切换到外部插件 sample → 从插件目录删除 LabelFrame.TransportPlugin.Sample.dll → 重启 WinHost → **启动崩溃退出**（未捕获异常：`System.InvalidOperationException: 传输插件不存在：sample`，TransportManager.CreateTransport → TransportPluginRegistry.CreateTransport，Program.cs:70）。
+   - 实际：宿主直接退出（exit 127），服务不可用。
+   - 期望：插件缺失时回退默认传输（如 log）+ 日志警告，宿主正常启动，插件列表不再包含该插件。
+   - 位置：src/LabelFrame.WinHost/Transport/TransportManager.cs（LoadPersisted 已处理参数缺失回退与 JSON 损坏，未处理插件 id 不在注册表）；src/LabelFrame.Core/Transport/Plugins/TransportPluginRegistry.cs:40 抛异常。
+   - 契约归属：后端（WinHost 健壮性缺口；附三 §三 未见此场景约束，属规格「卸载 = 删除文件 + 重启生效」的隐含要求）。
+
+### 四、其他观察（非阻断）
+
+- healthz 响应的 `transport` 字段在切换插件后仍显示 "Log"（旧字段，未跟随当前插件）；前端不依赖该字段，不影响功能；如需精确可让 healthz 透出 displayText。
+- 服务端 UI 无打印机/传输相关页面（规格如此）；client-packages 上传无鉴权（规格已记录风险）。
+
+### 五、测试与构建
+
+- web `pnpm test`：**179 用例全绿**（20 文件；迭代 22 前端原 178 + 本轮新增 1 用例、1 断言）。
+- web `pnpm build` / `VITE_UI_MODE=server pnpm build:server`：通过。
+- `dotnet build LabelFrame.slnx`：0 警告 0 错误；`dotnet test`：**214 用例全绿**（Core 78 / Server 37 / WinHost 74 / Studio 25）。
+- 本轮提交：前端 3 处修复（见 §二）+ 本验收报告；后端缺陷待主 agent 修复（见 §三）。
