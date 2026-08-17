@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Microsoft.Data.Sqlite;
 using SQLitePCL;
 
@@ -308,13 +308,21 @@ public sealed class ServerDb
     }
 
     /// <summary>作业列表（按创建时间倒序）。</summary>
-    public async Task<IReadOnlyList<ServerJob>> ListJobsAsync(int limit = 100, CancellationToken cancellationToken = default)
+    /// <summary>作业列表（按创建时间倒序；迭代 22：可选 deviceId 过滤——客户端只看自己的作业，服务端 UI 不传看全部）。</summary>
+    public async Task<IReadOnlyList<ServerJob>> ListJobsAsync(int limit = 100, string? deviceId = null, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
         var jobs = new List<ServerJob>();
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id FROM server_jobs ORDER BY created_at DESC, id LIMIT $limit;";
+        command.CommandText = string.IsNullOrWhiteSpace(deviceId)
+            ? "SELECT id FROM server_jobs ORDER BY created_at DESC, id LIMIT $limit;"
+            : "SELECT id FROM server_jobs WHERE target_device_id = $deviceId ORDER BY created_at DESC, id LIMIT $limit;";
         command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 500));
+        if (!string.IsNullOrWhiteSpace(deviceId))
+        {
+            command.Parameters.AddWithValue("$deviceId", deviceId);
+        }
+
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {

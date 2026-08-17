@@ -20,4 +20,7 @@ public static class ServerErrorCodes
 
     /// <summary>模板不存在。</summary>
     public const string TemplateNotFound = "LF_SRV_006";
+
+    /// <summary>客户端安装包不存在。</summary>
+    public const string ClientPackageNotFound = "LF_SRV_007";
 }

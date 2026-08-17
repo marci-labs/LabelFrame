@@ -1,4 +1,4 @@
-﻿namespace LabelFrame.Server;
+namespace LabelFrame.Server;
 
 /// <summary>Server 配置：监听地址、数据库路径与历史清理保留期。</summary>
 public sealed class ServerOptions
@@ -46,6 +46,12 @@ public sealed class ServerOptions
 
     /// <summary>产品版本（随迭代版本号更新；打包脚本 -Version 需保持一致）。</summary>
     public const string ProductVersion = "0.16.0";
+
+    /// <summary>客户端安装包目录（迭代 22 §2.3：服务端统一分发客户端安装包；Windows %ProgramData%\\LabelFrame\\server\\client-packages；Linux /var/lib/labelframe/server/client-packages）。</summary>
+    public static string DefaultClientPackagesPath => Path.Combine(DefaultDataDirectory, "client-packages");
+
+    /// <summary>客户端安装包目录（存在即列出；目录直放文件或经 API 上传都支持，决策 #71）。</summary>
+    public string ClientPackagesPath { get; set; } = DefaultClientPackagesPath;
 
     /// <summary>默认服务端管理界面插件目录（Windows %ProgramData%\LabelFrame\server\plugins\web-ui；Linux /var/lib/labelframe/server/plugins/web-ui）。</summary>
     public static string DefaultWebUiPath => Path.Combine(DefaultDataDirectory, "plugins", "web-ui");
@@ -99,6 +105,11 @@ public sealed class ServerOptions
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_LOG_FILE") is { } logFile)
         {
             LogFilePath = logFile;
+        }
+
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_CLIENT_PACKAGES") is { } clientPackages)
+        {
+            ClientPackagesPath = string.IsNullOrWhiteSpace(clientPackages) ? DefaultClientPackagesPath : clientPackages;
         }
 
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_WEB_UI") is { } webUi)

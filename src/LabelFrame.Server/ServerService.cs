@@ -1,4 +1,4 @@
-﻿namespace LabelFrame.Server;
+namespace LabelFrame.Server;
 
 /// <summary>
 /// Server 业务服务：设备注册 / 心跳、作业定向投递（宿主轮询领取）、结果回报、集中查询。
@@ -237,10 +237,10 @@ public sealed class ServerService
         return await ToJobViewAsync(job, cancellationToken);
     }
 
-    /// <summary>作业列表（倒序）。</summary>
-    public async Task<IReadOnlyList<ServerJobView>> ListJobsAsync(int limit = 100, CancellationToken cancellationToken = default)
+    /// <summary>作业列表（倒序；迭代 22：可选 deviceId 过滤——客户端只看自己的作业，服务端 UI 不传看全部）。</summary>
+    public async Task<IReadOnlyList<ServerJobView>> ListJobsAsync(int limit = 100, string? deviceId = null, CancellationToken cancellationToken = default)
     {
-        var jobs = await _db.ListJobsAsync(limit, cancellationToken);
+        var jobs = await _db.ListJobsAsync(limit, deviceId, cancellationToken);
         var views = new List<ServerJobView>();
         foreach (var job in jobs)
         {

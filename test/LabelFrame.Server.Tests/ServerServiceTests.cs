@@ -240,4 +240,36 @@ public class ServerServiceTests
             }
         }
     }
+
+    [Fact]
+    public async Task List_jobs_with_device_id_should_filter_by_target_device()
+    {
+        using var db = new TempServer();
+        await db.Service.RegisterDeviceAsync("device-1", "一号机");
+        await db.Service.RegisterDeviceAsync("device-2", "二号机");
+        await db.Service.SubmitJobAsync(CreateRequest("req-1", "device-1"));
+        await db.Service.SubmitJobAsync(CreateRequest("req-2", "device-2"));
+        await db.Service.SubmitJobAsync(CreateRequest("req-3", "device-1"));
+
+        var all = await db.Service.ListJobsAsync(100);
+        var onlyMine = await db.Service.ListJobsAsync(100, "device-1");
+
+        Assert.Equal(3, all.Count);
+        Assert.Equal(2, onlyMine.Count);
+        Assert.All(onlyMine, j => Assert.Equal("device-1", j.TargetDeviceId));
+        Assert.Contains(onlyMine, j => j.RequestId == "req-1");
+        Assert.Contains(onlyMine, j => j.RequestId == "req-3");
+        Assert.DoesNotContain(onlyMine, j => j.RequestId == "req-2");
+    }
+
+    [Fact]
+    public async Task List_jobs_without_device_id_should_return_all()
+    {
+        using var db = new TempServer();
+        await db.Service.RegisterDeviceAsync("device-1", "一号机");
+        await db.Service.SubmitJobAsync(CreateRequest("req-all-1", "device-1"));
+
+        var jobs = await db.Service.ListJobsAsync(100);
+        Assert.Single(jobs);
+    }
 }

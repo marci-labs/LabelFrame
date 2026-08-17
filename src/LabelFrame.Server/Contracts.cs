@@ -1,4 +1,4 @@
-﻿using LabelFrame.Core.Contracts;
+using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Layout;
 
 namespace LabelFrame.Server;
@@ -68,5 +68,10 @@ public sealed record TemplatePackageDto(
 
 /// <summary>预览请求。</summary>
 public sealed record PreviewRequest(IReadOnlyDictionary<string, string>? Data);
+/// <summary>Excel 模板生成请求（迭代 22 §2.1：columns 顺序即表头，sampleRow 示例行）。</summary>
+public sealed record ExcelTemplateRequest(IReadOnlyList<ExcelTemplateColumnDto>? Columns, IReadOnlyDictionary<string, string>? SampleRow);
+
+/// <summary>Excel 模板列。</summary>
+public sealed record ExcelTemplateColumnDto(string? Key, string? DisplayName);
 /// <summary>设备日志回传请求（客户端 / PDA）。</summary>
 public sealed record PushLogRequest(string? DeviceId, IReadOnlyList<string>? Lines);

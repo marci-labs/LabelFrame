@@ -13,6 +13,9 @@ services:
       # 服务端管理界面插件（迭代 20）：把 labelframe-server-webui-<version>.zip 解压到 ./plugins/web-ui
       # （即容器内 /var/lib/labelframe/server/plugins/web-ui），放进去即生效、移除即无头；不启用可注释掉本行
       - ./plugins/web-ui:/var/lib/labelframe/server/plugins/web-ui
+      # 客户端安装包目录（迭代 22 §2.3）：宿主机 ./client-packages 即容器内 /var/lib/labelframe/server/client-packages——
+      # 管理员把客户端 MSI 放进去（或经管理界面「客户端下载」上传），客户端设置页即可从服务端下载更新；不启用可注释掉本行
+      - ./client-packages:/var/lib/labelframe/server/client-packages
     logging:
       driver: "json-file"
       options:

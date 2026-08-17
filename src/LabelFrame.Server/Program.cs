@@ -1,5 +1,6 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using LabelFrame.Core.Documents;
+using LabelFrame.Core.Excel;
 using LabelFrame.Core.Logs;
 using LabelFrame.Core.Templates;
 using LabelFrame.Rendering;
@@ -36,6 +37,7 @@ var logStore = new SqliteLogStore(serverOptions.LogsDbPath);
 await logStore.InitializeAsync();
 var notifier = new PendingJobNotifier();
 var service = new ServerService(db, templateStore, notifier);
+var clientPackages = new ClientPackagesService(serverOptions.ClientPackagesPath);
 
 builder.Services.ConfigureHttpJsonOptions(json =>
 {
@@ -49,6 +51,7 @@ builder.Services.AddSingleton(notifier);
 builder.Services.AddSingleton(serverOptions);
 builder.Services.AddSingleton(templateStore);
 builder.Services.AddSingleton(logStore);
+builder.Services.AddSingleton(clientPackages);
 builder.Services.AddHostedService(sp => new DataCleanupService(db, logStore, serverOptions, sp.GetRequiredService<ILogger<DataCleanupService>>()));
 builder.Services.AddSingleton<ILabelBitmapRenderer>(new SkiaLabelRenderer());
 // 本地工具服务：地址由用户配置（可跨机器 / 跨端口），启用宽松 CORS
@@ -141,8 +144,8 @@ app.MapPost("/api/jobs", async (SubmitJobRequest? request, ServerService svc, Ca
     }
 });
 
-app.MapGet("/api/jobs", async (int? limit, ServerService svc, CancellationToken ct) =>
-    Results.Ok(await svc.ListJobsAsync(limit ?? 100, ct)));
+app.MapGet("/api/jobs", async (int? limit, string? deviceId, ServerService svc, CancellationToken ct) =>
+    Results.Ok(await svc.ListJobsAsync(limit ?? 100, deviceId, ct)));
 
 app.MapGet("/api/jobs/{jobId}", async (string jobId, ServerService svc, CancellationToken ct) =>
 {
@@ -349,6 +352,70 @@ app.MapPost("/api/print/render-images", async (SubmitJobRequest? request, ILabel
     return Results.File(stream.ToArray(), "application/zip", zipName);
 });
 
+// ---- 客户端下载分发（迭代 22 §2.3 / §5.4，决策 #71：服务端统一分发客户端安装包）----
+app.MapGet("/api/client-packages", (ClientPackagesService svc) => Results.Ok(svc.List()));
+
+app.MapPost("/api/client-packages", async (IFormFile file, ClientPackagesService svc, CancellationToken ct) =>
+{
+    if (file is null || file.Length == 0)
+    {
+        return Results.BadRequest(new ErrorView(ServerErrorCodes.InvalidRequest, "请选择要上传的安装包文件。"));
+    }
+
+    try
+    {
+        var view = await svc.SaveAsync(file.FileName, file.OpenReadStream(), ct);
+        return Results.Ok(view);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new ErrorView(ServerErrorCodes.InvalidRequest, $"上传失败：{ex.Message}"));
+    }
+}).DisableAntiforgery();
+
+app.MapGet("/api/client-packages/{fileName}", (string fileName, ClientPackagesService svc) =>
+{
+    var path = svc.GetDownloadPath(fileName);
+    if (path is null)
+    {
+        return Results.NotFound(new ErrorView(ServerErrorCodes.ClientPackageNotFound, "安装包不存在。"));
+    }
+
+    return Results.File(path, "application/octet-stream", Path.GetFileName(path));
+});
+
+app.MapDelete("/api/client-packages/{fileName}", (string fileName, ClientPackagesService svc) =>
+{
+    var view = svc.Get(fileName);
+    if (view is null)
+    {
+        return Results.NotFound(new ErrorView(ServerErrorCodes.ClientPackageNotFound, "安装包不存在。"));
+    }
+
+    svc.Delete(fileName);
+    return Results.Ok(new { deleted = view.FileName });
+});
+
+// ---- 下载 Excel 模板（迭代 22 §2.1：契约字段 + testData 生成 xlsx，直接套用导入做打印测试）----
+app.MapPost("/api/import/excel-template", (ExcelTemplateRequest? request) =>
+{
+    if (request is null || request.Columns is null || request.Columns.Count == 0)
+    {
+        return Results.BadRequest(new ErrorView(ServerErrorCodes.InvalidRequest, "缺少模板列（columns）。"));
+    }
+
+    var columns = request.Columns
+        .Where(c => !string.IsNullOrWhiteSpace(c.Key))
+        .Select(c => new LabelFrame.Core.Excel.ExcelTemplateColumn(c.Key!, string.IsNullOrWhiteSpace(c.DisplayName) ? c.Key! : c.DisplayName!))
+        .ToList();
+    if (columns.Count == 0)
+    {
+        return Results.BadRequest(new ErrorView(ServerErrorCodes.InvalidRequest, "缺少有效的模板列（key）。"));
+    }
+
+    var bytes = ExcelTemplateWriter.CreateTemplate(columns, request.SampleRow);
+    return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "excel-template.xlsx");
+});
 // ---- 设备日志（客户端 / PDA 回传，服务端集中查看）----
 app.MapPost("/api/logs", async (PushLogRequest? request, SqliteLogStore logs, CancellationToken ct) =>
 {
