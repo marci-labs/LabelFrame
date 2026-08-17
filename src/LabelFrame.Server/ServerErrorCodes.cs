@@ -23,4 +23,7 @@ public static class ServerErrorCodes
 
     /// <summary>客户端安装包不存在。</summary>
     public const string ClientPackageNotFound = "LF_SRV_007";
+
+    /// <summary>传输插件包不存在。</summary>
+    public const string PluginPackageNotFound = "LF_SRV_008";
 }

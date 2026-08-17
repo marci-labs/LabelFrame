@@ -50,6 +50,11 @@ public sealed class ServerOptions
     /// <summary>客户端安装包目录（迭代 22 §2.3：服务端统一分发客户端安装包；Windows %ProgramData%\\LabelFrame\\server\\client-packages；Linux /var/lib/labelframe/server/client-packages）。</summary>
     public static string DefaultClientPackagesPath => Path.Combine(DefaultDataDirectory, "client-packages");
 
+    /// <summary>传输插件包目录（迭代 23 决策 2A：插件包上传服务端独立目录；Windows %ProgramData%\LabelFrame\server\plugin-packages；Linux /var/lib/labelframe/server/plugin-packages）。</summary>
+    public static string DefaultPluginPackagesPath => Path.Combine(DefaultDataDirectory, "plugin-packages");
+
+    /// <summary>传输插件包目录（存在即列出；目录直放文件或经 API 上传都支持，上传时解析 manifest 展示元数据）。</summary>
+    public string PluginPackagesPath { get; set; } = DefaultPluginPackagesPath;
     /// <summary>客户端安装包目录（存在即列出；目录直放文件或经 API 上传都支持，决策 #71）。</summary>
     public string ClientPackagesPath { get; set; } = DefaultClientPackagesPath;
 
@@ -107,6 +112,10 @@ public sealed class ServerOptions
             LogFilePath = logFile;
         }
 
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_PLUGIN_PACKAGES") is { } pluginPackages)
+        {
+            PluginPackagesPath = string.IsNullOrWhiteSpace(pluginPackages) ? DefaultPluginPackagesPath : pluginPackages;
+        }
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_CLIENT_PACKAGES") is { } clientPackages)
         {
             ClientPackagesPath = string.IsNullOrWhiteSpace(clientPackages) ? DefaultClientPackagesPath : clientPackages;

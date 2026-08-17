@@ -1,0 +1,159 @@
+using LabelFrame.Core.IO;
+using LabelFrame.Core.Transport.Plugins.Package;
+
+namespace LabelFrame.Server;
+
+/// <summary>插件包视图（GET /api/plugin-packages 列表项；invalid 条目元数据字段缺失，仅文件信息有效）。</summary>
+public sealed record PluginPackageView(
+    string FileName,
+    string? PluginId,
+    string? Name,
+    string? Version,
+    string? Description,
+    long SizeBytes,
+    DateTimeOffset ModifiedAt,
+    string Url,
+    bool Valid,
+    string? InvalidReason);
+
+/// <summary>
+/// 服务端插件包目录服务（迭代 23 §2.1 / §5.1，决策 2A）：独立 plugin-packages 目录 + /api/plugin-packages——
+/// 上传 / 列表时只读 zip 根 manifest.json 展示插件元数据（不解压不加载）；zip / manifest 解析失败 → valid:false + 原因，仍列出便于管理删除；
+/// 文件名一律拒绝路径分隔符 / .. / 非法字符（路径穿越防护，共享 Core <see cref="SafeFileName"/>）。
+/// </summary>
+public sealed class PluginPackagesService
+{
+    private readonly string _directory;
+
+    /// <summary>创建服务（目录不存在自动创建）。</summary>
+    public PluginPackagesService(string directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            throw new ArgumentException("插件包目录不能为空。", nameof(directory));
+        }
+
+        _directory = directory;
+        Directory.CreateDirectory(directory);
+    }
+
+    /// <summary>插件包列表（按修改时间倒序；每个 zip 即时解析 manifest，失败记 valid:false + 原因，v1 不做缓存）。</summary>
+    public IReadOnlyList<PluginPackageView> List()
+        => Directory.GetFiles(_directory)
+            .Select(ToView)
+            .OrderByDescending(v => v.ModifiedAt)
+            .ToList();
+
+    /// <summary>
+    /// 保存上传的插件包：先读入内存（64MB 上限）并校验 zip + 根 manifest + 必填字段（zip-slip），
+    /// 校验通过才落盘（覆盖同名文件）；非法包直接拒绝（400），不留下 invalid 文件。
+    /// </summary>
+    public async Task<PluginPackageView> SaveAsync(string? fileName, Stream content, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var safeName = SafeFileName.Normalize(fileName)
+            ?? throw new InvalidDataException("文件名无效（只允许普通文件名，不允许路径 / 特殊字符）。");
+
+        using var buffer = new MemoryStream();
+        await content.CopyToAsync(buffer, cancellationToken);
+        if (buffer.Length == 0)
+        {
+            throw new InvalidDataException("插件包为空。");
+        }
+
+        if (buffer.Length > PluginPackageLimits.MaxBytes)
+        {
+            throw new InvalidDataException($"插件包超过大小上限（{PluginPackageLimits.Display}）。");
+        }
+
+        var bytes = buffer.ToArray();
+        _ = PluginPackageReader.Read(bytes); // 非法抛 InvalidDataException（中文原因）
+
+        var path = Path.Combine(_directory, safeName);
+        await using (var stream = File.Create(path))
+        {
+            await stream.WriteAsync(bytes, cancellationToken);
+        }
+
+        return ToView(path);
+    }
+
+    /// <summary>取插件包视图（不存在 / 文件名非法返回 null）。</summary>
+    public PluginPackageView? Get(string fileName)
+    {
+        var path = Resolve(fileName);
+        return path is null ? null : ToView(path);
+    }
+
+    /// <summary>取下载文件路径（不存在 / 文件名非法返回 null）。</summary>
+    public string? GetDownloadPath(string fileName) => Resolve(fileName);
+
+    /// <summary>删除插件包（不存在 / 文件名非法返回 false）。</summary>
+    public bool Delete(string fileName)
+    {
+        var path = Resolve(fileName);
+        if (path is null)
+        {
+            return false;
+        }
+
+        File.Delete(path);
+        return true;
+    }
+
+    private string? Resolve(string fileName)
+    {
+        var safeName = SafeFileName.Normalize(fileName);
+        if (safeName is null)
+        {
+            return null;
+        }
+
+        var path = Path.Combine(_directory, safeName);
+        return File.Exists(path) ? path : null;
+    }
+
+    private PluginPackageView ToView(string path)
+    {
+        var info = new FileInfo(path);
+        byte[] bytes;
+        try
+        {
+            bytes = File.ReadAllBytes(path);
+        }
+        catch (Exception ex)
+        {
+            return InvalidView(path, info, $"读取失败：{ex.Message}");
+        }
+
+        if (PluginPackageReader.TryRead(bytes, out var content, out var error))
+        {
+            return new PluginPackageView(
+                info.Name,
+                content!.Manifest.PluginId,
+                content.Manifest.Name,
+                content.Manifest.Version,
+                content.Manifest.Description,
+                info.Length,
+                info.LastWriteTimeUtc,
+                $"/api/plugin-packages/{Uri.EscapeDataString(info.Name)}",
+                Valid: true,
+                InvalidReason: null);
+        }
+
+        return InvalidView(path, info, error ?? "插件包无效。");
+    }
+
+    private static PluginPackageView InvalidView(string path, FileInfo info, string reason)
+        => new(
+            info.Name,
+            null,
+            null,
+            null,
+            null,
+            info.Length,
+            info.LastWriteTimeUtc,
+            $"/api/plugin-packages/{Uri.EscapeDataString(info.Name)}",
+            Valid: false,
+            reason);
+}

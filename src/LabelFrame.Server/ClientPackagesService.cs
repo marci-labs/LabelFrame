@@ -1,3 +1,5 @@
+using LabelFrame.Core.IO;
+
 namespace LabelFrame.Server;
 
 /// <summary>客户端安装包视图（GET /api/client-packages 列表项）。</summary>
@@ -6,7 +8,7 @@ public sealed record ClientPackageView(string FileName, long SizeBytes, DateTime
 /// <summary>
 /// 客户端安装包目录服务（迭代 22 §2.3 / §5.4，决策 #71）：
 /// 服务端统一分发客户端安装包——目录直放文件与页面上传都支持；文件名一律拒绝路径分隔符 / .. / 非法字符（路径穿越防护），
-/// 只允许普通文件名（无子目录）。
+/// 只允许普通文件名（无子目录）。文件名规范化共享 Core <see cref="SafeFileName"/>（迭代 23 提取）。
 /// </summary>
 public sealed class ClientPackagesService
 {
@@ -35,7 +37,7 @@ public sealed class ClientPackagesService
     public async Task<ClientPackageView> SaveAsync(string? fileName, Stream content, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(content);
-        var safeName = NormalizeFileName(fileName)
+        var safeName = SafeFileName.Normalize(fileName)
             ?? throw new InvalidOperationException("文件名无效（只允许普通文件名，不允许路径 / 特殊字符）。");
 
         var path = Path.Combine(_directory, safeName);
@@ -72,7 +74,7 @@ public sealed class ClientPackagesService
 
     private string? Resolve(string fileName)
     {
-        var safeName = NormalizeFileName(fileName);
+        var safeName = SafeFileName.Normalize(fileName);
         if (safeName is null)
         {
             return null;
@@ -90,27 +92,5 @@ public sealed class ClientPackagesService
             info.Length,
             info.LastWriteTimeUtc,
             $"/api/client-packages/{Uri.EscapeDataString(info.Name)}");
-    }
-
-    /// <summary>文件名规范化：仅允许普通文件名（拒绝路径分隔符 / .. / 非法字符，路径穿越防护）。</summary>
-    private static string? NormalizeFileName(string? fileName)
-    {
-        if (string.IsNullOrWhiteSpace(fileName))
-        {
-            return null;
-        }
-
-        var name = fileName.Trim();
-        if (name is "." or ".." || name.Contains('/') || name.Contains('\\'))
-        {
-            return null;
-        }
-
-        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-        {
-            return null;
-        }
-
-        return name;
     }
 }

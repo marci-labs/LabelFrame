@@ -16,6 +16,9 @@ services:
       # 客户端安装包目录（迭代 22 §2.3）：宿主机 ./client-packages 即容器内 /var/lib/labelframe/server/client-packages——
       # 管理员把客户端 MSI 放进去（或经管理界面「客户端下载」上传），客户端设置页即可从服务端下载更新；不启用可注释掉本行
       - ./client-packages:/var/lib/labelframe/server/client-packages
+      # 传输插件包目录（迭代 23 §5.3）：宿主机 ./plugin-packages 即容器内 /var/lib/labelframe/server/plugin-packages——
+      # 管理员把 .lfplugin 插件包放进去（或经管理界面「插件管理」上传），客户端「设置 → 插件管理」即可安装；不启用可注释掉本行
+      - ./plugin-packages:/var/lib/labelframe/server/plugin-packages
     logging:
       driver: "json-file"
       options:
