@@ -13,16 +13,9 @@ Currently, two official plugins are available:
 
 - `pnpm build` —— 客户端界面产物 `web/dist`（由 LabelFrame Client / WinHost 托管，默认模式）。
 - `pnpm build:server` —— 服务端管理界面插件产物 `web/dist-server`（放入服务端插件目录
-  `%ProgramData%\LabelFrame\server\plugins\web-ui` 即生效，无需重启）。
-
-Windows 下构建 server 产物需先设置环境变量（git-bash / cmd 不识别 PowerShell 语法）：
-
-```powershell
-$env:VITE_UI_MODE = 'server'
-pnpm build:server
-```
-
-或使用 cross-env：`cross-env VITE_UI_MODE=server pnpm build:server`。
+  `%ProgramData%\LabelFrame\server\plugins\web-ui` 即生效，无需重启）。脚本已内联
+  `cross-env VITE_UI_MODE=server`，任何环境直接执行即可（无需手动设置环境变量）；早期版本（0.17 及以前）
+  需要先设置 `VITE_UI_MODE=server` 再构建，CI 曾因漏设该变量把 client 产物打进 server 插件包（迭代 22 已修复并加产物自检）。
 
 `VITE_UI_MODE=server` 构建（Server UI）：API 走同源相对路径（`getServerBaseUrl()` 返回 `''`，
 不读 localStorage / 机器级配置）；菜单移除设置页与一切打印机相关内容，新增「在线设备」页与

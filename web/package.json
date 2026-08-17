@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:server": "tsc -b && vite build --outDir dist-server",
+    "build:server": "tsc -b && cross-env VITE_UI_MODE=server vite build --outDir dist-server",
     "lint": "oxlint",
     "test": "vitest run",
     "preview": "vite preview"
@@ -28,6 +28,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
+    "cross-env": "^10.1.0",
     "jsdom": "^30.0.1",
     "oxlint": "^1.75.0",
     "typescript": "~6.0.2",

@@ -89,7 +89,23 @@ jobs:
         run: pnpm build
       - name: 前端构建（server）
         working-directory: web
+        env:
+          VITE_UI_MODE: server
         run: pnpm build:server
+      - name: 前端产物自检（双模式区分，迭代 22 修复）
+        working-directory: web
+        shell: pwsh
+        run: |
+          # 防止 VITE_UI_MODE 未生效导致 dist-server 打成 client 模式
+          # （Server 管理界面会错误显示「本机未注册 / 降级直连」与设置 / PDA 日志页）
+          $clientJs = (Get-ChildItem 'dist/assets/*.js' | Select-Object -First 1).FullName
+          $client = Get-Content $clientJs -Raw
+          if ($client -notmatch 'PDA 日志') { throw 'dist 缺少 client 页面特征（PDA 日志），client 构建异常' }
+          $serverJs = (Get-ChildItem 'dist-server/assets/*.js' | Select-Object -First 1).FullName
+          $server = Get-Content $serverJs -Raw
+          if ($server -match '本机未注册到服务端') { throw 'dist-server 为 client 模式产物：VITE_UI_MODE 未生效，请检查 build:server' }
+          if ($server -notmatch '客户端下载') { throw 'dist-server 缺少 server 页面特征（客户端下载），server 构建异常' }
+          Write-Host "双模式产物自检通过：dist=client（$([IO.Path]::GetFileName($clientJs))）、dist-server=server（$([IO.Path]::GetFileName($serverJs))）"
 
       - uses: actions/upload-artifact@v4
         with:
