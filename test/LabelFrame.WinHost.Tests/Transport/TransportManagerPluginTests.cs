@@ -78,6 +78,34 @@ public class TransportManagerPluginTests
         Assert.False(File.Exists(path));
     }
 
+
+    [Fact]
+    public void Startup_should_fall_back_to_log_when_persisted_plugin_missing()
+    {
+        // 决策 2A：卸载外部插件 = 删除 DLL + 重启生效——connection.json 仍引用已删除插件时宿主必须正常启动（回退默认连接 + 日志警告）
+        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfconn-{Guid.NewGuid():N}.json");
+        System.IO.File.WriteAllText(path, """{"PluginId":"ghost-plugin","Params":{"x":"1"}}""");
+        try
+        {
+            var options = new HostOptions { Transport = TransportMode.Log, TcpHost = "127.0.0.1", TcpPort = 9100, PrinterName = "Test Printer" };
+            var registry = TestTransportRegistry.Create();
+            var log = new StringWriter();
+            var manager = new TransportManager(
+                registry,
+                new TransportPluginContext(log, System.IO.Path.GetTempPath()),
+                options,
+                log,
+                path);
+
+            Assert.Equal("log", manager.CurrentConfig.PluginId);
+            Assert.Equal(TransportMode.Log, manager.CurrentConfig.Mode);
+            Assert.Contains("ghost-plugin", log.ToString());
+        }
+        finally
+        {
+            System.IO.File.Delete(path);
+        }
+    }
     private static (TransportManager Manager, string ConfigPath) Create()
     {
         var options = new HostOptions { Transport = TransportMode.Log, TcpHost = "127.0.0.1", TcpPort = 9100, PrinterName = "Test Printer" };

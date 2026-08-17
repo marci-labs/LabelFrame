@@ -154,8 +154,16 @@ public static class Program
 
         app.UseCors();
 
-        app.MapGet("/healthz", (ITransportManager transportManager) =>
-            Results.Ok(new { service = "LabelFrame.WinHost", status = "ok", transport = transportManager.CurrentConfig.Mode.ToString() }));
+        app.MapGet("/healthz", (ITransportManager transportManager, ITransportPluginRegistry registry) =>
+            Results.Ok(new
+            {
+                service = "LabelFrame.WinHost",
+                status = "ok",
+                // 旧字段：连接方式（兼容旧前端徽标）；迭代 22 新增 pluginId / displayText 精确透出当前插件
+                transport = transportManager.CurrentConfig.Mode.ToString(),
+                pluginId = transportManager.CurrentConfig.PluginId,
+                displayText = registry.Describe(transportManager.CurrentConfig.PluginId, new TransportPluginParameters(transportManager.CurrentConfig.Params)),
+            }));
 
         // ---- 模板管理（单机 CRUD + 导入导出 + 预览）----
         app.MapPost("/api/templates", async (Api.TemplatePackageDto? dto, TemplateStore templateStore, CancellationToken ct) =>

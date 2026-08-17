@@ -240,6 +240,14 @@ public sealed class TransportManager : ITransportManager
                 return baseConfig;
             }
 
+            // 连接配置引用的传输插件已不存在（外部插件 DLL 被删除后重启，决策 2A「卸载 = 删除文件 + 重启生效」）：
+            // 回退默认连接并记录日志，宿主正常启动，不因缺失插件崩溃。
+            if (_registry.GetPlugin(persisted.PluginId) is null)
+            {
+                _hostLogWriter.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 连接配置引用的传输插件不存在（{persisted.PluginId}），已回退默认连接 {Describe(baseConfig)}。");
+                return baseConfig;
+            }
+
             // connection.json 优先级最高：存在即以它为当前连接（同插件缺失参数回退 baseConfig）
             if (string.Equals(persisted.PluginId, baseConfig.PluginId, StringComparison.OrdinalIgnoreCase))
             {
