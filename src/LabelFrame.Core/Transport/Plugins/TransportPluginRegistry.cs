@@ -24,6 +24,29 @@ public sealed class TransportPluginRegistry : ITransportPluginRegistry
             plugin);
     }
 
+    /// <summary>
+    /// 注册外部插件（迭代 23 决策 6A）：外部插件不允许覆盖内置 / 非外部插件 ID——
+    /// 冲突时记录日志并跳过（返回 false），避免误装 / 恶意包覆盖内置功能。
+    /// </summary>
+    public bool RegisterExternal(ITransportPlugin plugin, string? assemblyPath, TextWriter hostLog)
+    {
+        ArgumentNullException.ThrowIfNull(plugin);
+        ArgumentNullException.ThrowIfNull(hostLog);
+        if (string.IsNullOrWhiteSpace(plugin.Id))
+        {
+            throw new ArgumentException("插件 ID 不能为空。", nameof(plugin));
+        }
+
+        if (_plugins.TryGetValue(plugin.Id, out var existing) && !existing.Descriptor.IsExternal)
+        {
+            hostLog.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 外部传输插件 {plugin.Id}（{plugin.DisplayName}）与内置插件 ID 冲突，已跳过（决策 6A）。");
+            return false;
+        }
+
+        Register(plugin, isExternal: true, assemblyPath: assemblyPath);
+        return true;
+    }
+
     /// <inheritdoc />
     public IReadOnlyList<TransportPluginDescriptor> ListPlugins()
         => _plugins.Values.Select(p => p.Descriptor).ToList();
