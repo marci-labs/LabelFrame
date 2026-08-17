@@ -8,6 +8,7 @@ using LabelFrame.Core.Layout;
 using LabelFrame.Core.Templates;
 using LabelFrame.Core.Transport;
 using LabelFrame.Core.Transport.Plugins;
+using LabelFrame.Core.Transport.Plugins.Package;
 using LabelFrame.Core.Excel;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
@@ -46,6 +47,11 @@ public static class Program
         builder.Configuration.GetSection("WinHost").Bind(options);
         options.ApplyEnvironmentOverrides();
         builder.WebHost.UseUrls(options.ListenUrl);
+        // 迭代 23（决策 5A）：插件包上传端点大小上限 64MB（Kestrel 默认约 30MB，超出会返回 413 且无错误体）
+        builder.WebHost.ConfigureKestrel(kestrel =>
+        {
+            kestrel.Limits.MaxRequestBodySize = PluginPackageLimits.MaxBytes;
+        });
 
         var hostLogWriter = OpenHostLogWriter(options);
 
@@ -63,8 +69,11 @@ public static class Program
             Path.GetDirectoryName(HostOptions.DefaultDatabasePath) ?? string.Empty);
         foreach (var (plugin, assemblyPath) in PluginDirectoryLoader.Load(options.PluginsPath, hostLogWriter))
         {
-            transportRegistry.Register(plugin, isExternal: true, assemblyPath: assemblyPath);
-            HostInfo($"已加载外部传输插件：{plugin.Id}（{plugin.DisplayName}，来自 {assemblyPath}）");
+            // 决策 6A：外部插件不允许覆盖内置插件 ID（冲突时 RegisterExternal 记日志跳过）
+            if (transportRegistry.RegisterExternal(plugin, assemblyPath, hostLogWriter))
+            {
+                HostInfo($"已加载外部传输插件：{plugin.Id}（{plugin.DisplayName}，来自 {assemblyPath}）");
+            }
         }
 
         var transportManager = new TransportManager(transportRegistry, pluginContext, options, hostLogWriter);
@@ -108,6 +117,10 @@ public static class Program
         builder.Services.AddSingleton(queue);
         builder.Services.AddSingleton<ITransportManager>(transportManager);
         builder.Services.AddSingleton<ITransportPluginRegistry>(transportRegistry);
+        builder.Services.AddSingleton(sp => new Transport.PluginInstaller(
+            options.PluginsPath,
+            sp.GetRequiredService<ITransportPluginRegistry>(),
+            hostLogWriter));
         builder.Services.AddSingleton<ZplImageEncoder>();
         builder.Services.AddSingleton<IPrinterStatusProvider>(sp =>
             sp.GetRequiredService<ITransportManager>().CurrentTransport as IPrinterStatusProvider ?? new UnsupportedStatusProvider());
@@ -369,6 +382,57 @@ public static class Program
             var result = await transportManager.ApplyAsync(config, request.TestOnly ?? false, ct);
             return Results.Ok(new TransportApplyResponse(result.Ok, result.Message, ToTransportConfigDto(result.Config, registry)));
         });
+
+        // ---- 插件安装 / 卸载（迭代 23 §5.2：插件包上传服务端 → 客户端下载安装 / 卸载；安装 / 卸载 = 写文件 + 重启生效）----
+        app.MapGet("/api/plugins/installed", (Transport.PluginInstaller installer) => Results.Ok(installer.ListInstalled()));
+
+        app.MapPost("/api/plugins/install", async (IFormFile file, Transport.PluginInstaller installer, CancellationToken ct) =>
+        {
+            if (file is null || file.Length == 0)
+            {
+                return Results.BadRequest(new ErrorView("LF_PLUGIN_INVALID", "请选择要安装的插件包。"));
+            }
+
+            try
+            {
+                var view = await installer.InstallAsync(file.OpenReadStream(), file.FileName, ct);
+                return Results.Ok(new { ok = true, message = $"插件「{view.Name} {view.Version}」已安装，重启客户端后生效。", plugin = view });
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return Results.BadRequest(new ErrorView("LF_PLUGIN_BUSY", ex.Message));
+            }
+            catch (InvalidDataException ex)
+            {
+                return Results.BadRequest(new ErrorView("LF_PLUGIN_INVALID", $"插件包无效：{ex.Message}"));
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new ErrorView("LF_PLUGIN_INSTALL_FAILED", $"安装失败：{ex.Message}"));
+            }
+        }).DisableAntiforgery();
+
+        app.MapPost("/api/plugins/uninstall", (Api.UninstallPluginRequest? request, Transport.PluginInstaller installer) =>
+        {
+            if (request is null || string.IsNullOrWhiteSpace(request.PluginId))
+            {
+                return Results.BadRequest(new ErrorView("LF_PLUGIN_INVALID", "缺少插件 ID。"));
+            }
+
+            try
+            {
+                installer.Uninstall(request.PluginId);
+                return Results.Ok(new { ok = true, message = $"插件「{request.PluginId}」已卸载，重启客户端后生效。" });
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return Results.BadRequest(new ErrorView("LF_PLUGIN_BUSY", ex.Message));
+            }
+            catch (InvalidDataException ex)
+            {
+                return Results.BadRequest(new ErrorView("LF_PLUGIN_INVALID", ex.Message));
+            }
+        }).DisableAntiforgery();
 
         // ---- 下载 Excel 模板（迭代 22 §2.1：契约字段 + testData 生成 xlsx，直接套用导入做打印测试）----
         app.MapPost("/api/import/excel-template", (Api.ExcelTemplateRequest? request) =>

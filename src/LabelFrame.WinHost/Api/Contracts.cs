@@ -146,3 +146,6 @@ public sealed record HostConfigDto(string ServerUrl, string DeviceId, string Dev
 
 /// <summary>机器级配置请求（POST /api/host/config；仅 serverUrl 可写）。</summary>
 public sealed record HostConfigRequest(string? ServerUrl);
+
+/// <summary>卸载插件请求（POST /api/plugins/uninstall，迭代 23 §5.2）。</summary>
+public sealed record UninstallPluginRequest(string? PluginId);
