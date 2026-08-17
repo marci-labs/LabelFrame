@@ -4,12 +4,13 @@
 // 两分支均用 vi.doMock('../lib/uiMode') 显式注入（不依赖进程 env），任何 VITE_UI_MODE 环境下结果稳定。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { getServerBaseUrl as GetServerBaseUrlFn, setServerBaseUrl as SetServerBaseUrlFn } from './client'
+import type { getServerBaseUrl as GetServerBaseUrlFn, pluginPackageDownloadUrl as PluginPackageDownloadUrlFn, setServerBaseUrl as SetServerBaseUrlFn } from './client'
 import { setBaseUrl } from '../settings'
 
 type ClientModule = {
   getServerBaseUrl: typeof GetServerBaseUrlFn
   setServerBaseUrl: typeof SetServerBaseUrlFn
+  pluginPackageDownloadUrl: typeof PluginPackageDownloadUrlFn
 }
 
 const KEY = 'labelframe.baseUrl'
@@ -50,6 +51,11 @@ describe('client 构建（VITE_UI_MODE=client）：getServerBaseUrl 保持现状
     mod.setServerBaseUrl('http://192.168.1.9:53961')
     expect(mod.getServerBaseUrl()).toBe('http://192.168.1.9:53961')
   })
+
+  it('pluginPackageDownloadUrl：client 构建拼接 {serverBaseUrl}/api/plugin-packages/{fileName}（encodeURIComponent）', async () => {
+    const mod = await loadClient('client')
+    expect(mod.pluginPackageDownloadUrl('Sample Plugin v1.lfplugin')).toBe('http://127.0.0.1:53961/api/plugin-packages/Sample%20Plugin%20v1.lfplugin')
+  })
 })
 
 describe('server 构建（K1）：getServerBaseUrl 恒同源相对路径', () => {
@@ -68,5 +74,10 @@ describe('server 构建（K1）：getServerBaseUrl 恒同源相对路径', () =>
     const mod = await loadClient('server')
     mod.setServerBaseUrl('http://192.168.1.9:53961')
     expect(mod.getServerBaseUrl()).toBe('')
+  })
+
+  it('pluginPackageDownloadUrl：server 构建同源相对路径', async () => {
+    const mod = await loadClient('server')
+    expect(mod.pluginPackageDownloadUrl('a b.lfplugin')).toBe('/api/plugin-packages/a%20b.lfplugin')
   })
 })

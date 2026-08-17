@@ -11,10 +11,14 @@ import type {
   ExcelImportResult,
   Healthz,
   HostConfig,
+  InstalledPluginInfo,
   JobView,
   LogEntry,
   PrinterStatus,
   PrinterTestResult,
+  PluginInstallResult,
+  PluginPackageInfo,
+  PluginUninstallResult,
   SubmitJobRequest,
   TemplatePackage,
   TemplateSummary,
@@ -217,6 +221,7 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
 }
 
 const serverRequest = makeRequest(getServerBaseUrl, '服务端')
+const serverFetchBlob = makeFetchBlob(getServerBaseUrl, '服务端')
 
 /** 服务端 API（模板 / 作业 / 设备 / 日志 / Excel / 调试出图 / healthz → 服务端地址；迭代 22：+ 客户端安装包）。 */
 export const serverApi = {
@@ -230,11 +235,36 @@ export const serverApi = {
     return serverRequest<ClientPackageInfo[]>('/api/client-packages', { method: 'POST', body: form })
   },
   deleteClientPackage: (fileName: string) => serverRequest<void>(`/api/client-packages/${encodeURIComponent(fileName)}`, { method: 'DELETE' }),
+
+  // ── 客户端插件分发（迭代 23 §5.1：仅 Server 实现；plugin-packages 独立目录 + API）──
+  listPluginPackages: () => serverRequest<PluginPackageInfo[]>('/api/plugin-packages'),
+  uploadPluginPackage: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return serverRequest<PluginPackageInfo>('/api/plugin-packages', { method: 'POST', body: form })
+  },
+  deletePluginPackage: (fileName: string) => serverRequest<void>(`/api/plugin-packages/${encodeURIComponent(fileName)}`, { method: 'DELETE' }),
+  /** 下载插件包（客户端「插件管理」安装流程：blob → POST 本机 WinHost；错误语义与 renderImage 等下载端点一致）。 */
+  downloadPluginPackage: (fileName: string) =>
+    serverFetchBlob(`/api/plugin-packages/${encodeURIComponent(fileName)}`, {}, fileName, '下载插件包失败'),
 }
 
 /** 客户端安装包下载 URL（Server UI 与客户端设置「更新与安装包」共用；server 构建下 base 为空 = 同源相对路径）。 */
 export function clientPackageDownloadUrl(fileName: string): string {
   return `${getServerBaseUrl()}/api/client-packages/${encodeURIComponent(fileName)}`
+}
+
+/** 插件包下载 URL（Server UI「插件管理」下载与客户端「插件管理」安装共用；server 构建下 base 为空 = 同源相对路径）。 */
+export function pluginPackageDownloadUrl(fileName: string): string {
+  return `${getServerBaseUrl()}/api/plugin-packages/${encodeURIComponent(fileName)}`
+}
+
+/** 插件包大小上限（迭代 23 §2.2/§5：Server 上传与 WinHost 安装均 64MB；前端预检同值，避免 413 无错误体）。 */
+export const PLUGIN_PACKAGE_MAX_BYTES = 64 * 1024 * 1024
+
+/** 插件包大小预检：超过 64MB 返回中文提示，否则 null（上传 / 安装前调用）。 */
+export function pluginPackageSizeError(sizeBytes: number): string | null {
+  return sizeBytes > PLUGIN_PACKAGE_MAX_BYTES ? '插件包超过 64MB 大小上限，无法上传 / 安装。' : null
 }
 
 const localRequest = makeRequest(getLocalBaseUrl, '本机客户端')
@@ -269,6 +299,20 @@ export const localApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cfg),
+    }),
+  // ── 客户端插件安装 / 卸载（迭代 23 §5.2：WinHost 本机接口；失败 400 ErrorView → ApiError）──
+  listInstalledPlugins: () => localRequest<InstalledPluginInfo[]>('/api/plugins/installed'),
+  /** 安装插件包（multipart file 字段；file 由调用方以 new File([blob], fileName) 构造，保留服务端列表项的原始文件名）。 */
+  installPlugin: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return localRequest<PluginInstallResult>('/api/plugins/install', { method: 'POST', body: form })
+  },
+  uninstallPlugin: (pluginId: string) =>
+    localRequest<PluginUninstallResult>('/api/plugins/uninstall', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pluginId }),
     }),
 }
 
