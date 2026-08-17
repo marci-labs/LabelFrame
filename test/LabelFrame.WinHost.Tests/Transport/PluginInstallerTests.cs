@@ -248,6 +248,59 @@ public class PluginInstallerTests
         }
     }
 
+    [Fact]
+    public void List_should_report_load_error_for_broken_package_dll()
+    {
+        // 场景：manifest 正常但 DLL 损坏（启动加载失败），lastLoadErrors 透出原因（迭代 23 附二拍板）
+        var dir = Path.Combine(Path.GetTempPath(), $"lfinstall-{Guid.NewGuid():N}");
+        var registry = TestTransportRegistry.Create();
+        var packageDir = Path.Combine(dir, "sample");
+        Directory.CreateDirectory(packageDir);
+        var brokenDll = Path.Combine(packageDir, "LabelFrame.TransportPlugin.Sample.dll");
+        try
+        {
+            File.WriteAllText(Path.Combine(packageDir, "manifest.json"), """{"pluginId":"sample","name":"示例插件","version":"1.0.0"}""");
+            File.WriteAllText(brokenDll, "not a real assembly");
+
+            var installer = new PluginInstaller(dir, registry, TextWriter.Null,
+                new Dictionary<string, string> { [brokenDll] = "测试加载失败原因：缺依赖" });
+
+            var pkg = Assert.Single(installer.ListInstalled());
+            Assert.Equal("package", pkg.Source);
+            Assert.False(pkg.Loaded);
+            Assert.Contains("测试加载失败原因：缺依赖", pkg.LoadError);
+        }
+        finally
+        {
+            TryDeleteDirectory(dir);
+        }
+    }
+
+    [Fact]
+    public void List_should_report_load_error_for_broken_manual_dll()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"lfinstall-{Guid.NewGuid():N}");
+        var registry = TestTransportRegistry.Create();
+        Directory.CreateDirectory(dir);
+        var manualDll = Path.Combine(dir, "broken-manual.dll");
+        try
+        {
+            File.WriteAllText(manualDll, "garbage");
+
+            var installer = new PluginInstaller(dir, registry, TextWriter.Null,
+                new Dictionary<string, string> { [manualDll] = "测试加载失败原因：非托管依赖缺失" });
+
+            var manual = Assert.Single(installer.ListInstalled());
+            Assert.Equal("manual", manual.Source);
+            Assert.False(manual.Loaded);
+            Assert.Contains("测试加载失败原因：非托管依赖缺失", manual.LoadError);
+        }
+        finally
+        {
+            TryDeleteDirectory(dir);
+        }
+    }
+
     private static void TryDeleteDirectory(string dir)
     {
         try
