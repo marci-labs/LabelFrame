@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 22 后端实施完成 — 2026-08-17
+
+- **Core（传输插件机制，决策 #67-69）**：`LabelFrame.Core.Transport.Plugins`——统一接口 `ITransportPlugin`（Id / DisplayName / Description / Parameters / Describe / Create）+ 传输实例继续用 `IPrintTransport` / `IPrinterStatusProvider` / 新增 `ITestableTransport`（连接测试）；参数模型 `TransportParameterSpec` / `TransportPluginParameters` / `ITransportPluginContext`；注册表 `ITransportPluginRegistry`（内置 log / tcp9100 + WinHost 内置 winspool / zebra + 外部 DLL 目录扫描）；`PluginDirectoryLoader`（collectible ALC，单插件失败只记日志，卸载 = 删文件 + 重启生效）。
+- **Core（Excel 模板生成，决策 4A）**：`LabelFrame.Core.Excel.ExcelTemplateWriter`（复用 `TemplateFrame.Excel.Simple` 写能力）→ `POST /api/import/excel-template`（Server 与 WinHost 都实现，契约字段 + testData 生成 xlsx）。
+- **WinHost（传输插件化）**：`connection.json` 新格式 `{ pluginId, params }` + 旧格式自动迁移（`Mode` / `TcpHost` 等 → pluginId + params）；`TransportManager` 改走注册表装配（校验 / 测试 / 切换 / 持久化）；`GET/POST /api/transport` 扩展（pluginId / displayText / availablePlugins spec，旧字段 mode / availableModes 保留兼容）+ 新增 `GET /api/transport/plugins`；`LABELFRAME_PLUGINS` 插件目录（默认 `%ProgramData%\LabelFrame\Client\plugins`）。
+- **Server（权限边界 + 分发）**：`GET /api/jobs?deviceId=` 过滤（客户端只看自己的作业、服务端看全部）；`client-packages` 目录 + 列表 / 上传 / 下载 / 删除 API（文件名路径穿越防护，`LABELFRAME_SERVER_CLIENT_PACKAGES` 可覆盖）；`docker-compose.yml` 挂载 `./client-packages`。
+- **测试**：214 全绿（Core 78 / Server 37 / WinHost 74 / Studio 25，新增插件注册表 / 参数模型 / 目录加载器（示例插件 DLL 项目）/ Excel 生成 / TransportConfig 迁移 / 插件切换 / deviceId 过滤 / client-packages 用例）；web 178 全绿。
+- **端到端冒烟通过**：上传 / 列表 / 下载 / 删除 client-packages、路径穿越 404、Server/WinHost excel-template（xlsx 200）、jobs 按 deviceId 过滤、/api/transport（availablePlugins + displayText + 外部 sample 插件可装配可测试）、切换失败保留当前连接、旧格式 mode 兼容。
 ## 迭代 22 规划：范围定稿 + 后端 / 前端分工 — 2026-08-17
 
 - **范围定稿（用户拍板）**：打印测试体验（下载 Excel 模板、客户端仅本机打印测试、显示本机设备名、作业历史按设备可见）+ 传输插件化（统一接口 / 参数模型 / 注册表按需装配）+ 客户端下载分发（服务端 `client-packages` 目录 + 上传下载 API + 管理界面 + 客户端设置默认从服务端获取）。
@@ -26,6 +34,14 @@
 - 打包链修复：WiX 用 dotnet tool 版并安装 NetFx 扩展 + 先接受 OSMF EULA（WIX7015）；artifact 下载路径对齐 `web/dist` 与 `web/dist-server`；插件打包步骤改用 `$?` 判断（脚本内无原生命令时 `LASTEXITCODE` 为空）。
 - 待办（2026-08-15 更新）：ghcr 包已设为 Public 并通过匿名 `docker pull ghcr.io/marci-labs/labelframe-server:0.17.0` 验证（注意：组织包可见性不支持 REST API 修改，须先由组织管理员在「组织设置 → Packages」允许公开包，再在包设置页改为 Public）；MSI 签名 Secret 可随时补充（有则自动签名，可选）。
 
+## 迭代 22 后端实施完成 — 2026-08-17
+
+- **Core（传输插件机制，决策 #67-69）**：`LabelFrame.Core.Transport.Plugins`——统一接口 `ITransportPlugin`（Id / DisplayName / Description / Parameters / Describe / Create）+ 传输实例继续用 `IPrintTransport` / `IPrinterStatusProvider` / 新增 `ITestableTransport`（连接测试）；参数模型 `TransportParameterSpec` / `TransportPluginParameters` / `ITransportPluginContext`；注册表 `ITransportPluginRegistry`（内置 log / tcp9100 + WinHost 内置 winspool / zebra + 外部 DLL 目录扫描）；`PluginDirectoryLoader`（collectible ALC，单插件失败只记日志，卸载 = 删文件 + 重启生效）。
+- **Core（Excel 模板生成，决策 4A）**：`LabelFrame.Core.Excel.ExcelTemplateWriter`（复用 `TemplateFrame.Excel.Simple` 写能力）→ `POST /api/import/excel-template`（Server 与 WinHost 都实现，契约字段 + testData 生成 xlsx）。
+- **WinHost（传输插件化）**：`connection.json` 新格式 `{ pluginId, params }` + 旧格式自动迁移（`Mode` / `TcpHost` 等 → pluginId + params）；`TransportManager` 改走注册表装配（校验 / 测试 / 切换 / 持久化）；`GET/POST /api/transport` 扩展（pluginId / displayText / availablePlugins spec，旧字段 mode / availableModes 保留兼容）+ 新增 `GET /api/transport/plugins`；`LABELFRAME_PLUGINS` 插件目录（默认 `%ProgramData%\LabelFrame\Client\plugins`）。
+- **Server（权限边界 + 分发）**：`GET /api/jobs?deviceId=` 过滤（客户端只看自己的作业、服务端看全部）；`client-packages` 目录 + 列表 / 上传 / 下载 / 删除 API（文件名路径穿越防护，`LABELFRAME_SERVER_CLIENT_PACKAGES` 可覆盖）；`docker-compose.yml` 挂载 `./client-packages`。
+- **测试**：214 全绿（Core 78 / Server 37 / WinHost 74 / Studio 25，新增插件注册表 / 参数模型 / 目录加载器（示例插件 DLL 项目）/ Excel 生成 / TransportConfig 迁移 / 插件切换 / deviceId 过滤 / client-packages 用例）；web 178 全绿。
+- **端到端冒烟通过**：上传 / 列表 / 下载 / 删除 client-packages、路径穿越 404、Server/WinHost excel-template（xlsx 200）、jobs 按 deviceId 过滤、/api/transport（availablePlugins + displayText + 外部 sample 插件可装配可测试）、切换失败保留当前连接、旧格式 mode 兼容。
 ## 迭代 22 规划：范围定稿 + 后端 / 前端分工 — 2026-08-17
 
 - **范围定稿（用户拍板）**：打印测试体验（下载 Excel 模板、客户端仅本机打印测试、显示本机设备名、作业历史按设备可见）+ 传输插件化（统一接口 / 参数模型 / 注册表按需装配）+ 客户端下载分发（服务端 `client-packages` 目录 + 上传下载 API + 管理界面 + 客户端设置默认从服务端获取）。

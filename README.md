@@ -1,4 +1,4 @@
-﻿# LabelFrame
+# LabelFrame
 
 面向仓库场景的标签打印框架：模板契约 + 打印服务 + 设备宿主（PC / PDA）。
 
@@ -162,6 +162,30 @@ dotnet run --project src\LabelFrame.WinHost
 - `GET /api/jobs/{jobId}`：进度与逐张状态。
 - `POST /api/jobs/{jobId}/suspend|resume|cancel`：挂起 / 恢复 / 取消。
 
+## 传输插件与客户端分发（迭代 22）
+
+### 传输插件化（WinHost）
+
+连接方式抽象为**传输插件**：统一接口（发送 / 状态 / 测试）+ 参数模型（前端按 spec 动态渲染表单）+ 注册表按需装配。
+内置插件：`log`（模拟打印）、`tcp9100`（TCP 9100）、`winspool`（Windows 驱动）、`zebra`（Zebra Link-OS SDK）。
+
+- **外部插件**：把厂商自研插件 DLL 放进插件目录 `%ProgramData%\LabelFrame\Client\plugins`（`LABELFRAME_PLUGINS` 可覆盖）→ 重启客户端即出现在可用插件列表，配置指定 `pluginId + params` 即启用；单个插件加载失败只记日志、不影响宿主启动。**卸载 = 删除插件文件 + 重启生效**（运行时热卸载见 DESIGN 未决）。
+- **配置**：`%LOCALAPPDATA%\LabelFrame\connection.json` 新格式 `{ "pluginId": "tcp9100", "params": { "host": "...", "port": "9100" } }`；旧格式（`Mode` / `TcpHost` 等）自动迁移，老配置零改动。
+- **API**：`GET /api/transport`（pluginId / displayText / availablePlugins spec）、`POST /api/transport`（pluginId + params，先测试后生效）、`GET /api/transport/plugins`（已装配插件列表）。
+- **下载 Excel 模板**：数据与打印页「下载 Excel 模板」→ `POST /api/import/excel-template`（Server 与客户端都实现），按契约字段 + testData 生成 xlsx，可直接套用 Excel 导入做打印测试。
+
+### 客户端下载分发（Server）
+
+- **安装包目录**：`client-packages`（Windows `%ProgramData%\LabelFrame\server\client-packages`；Linux `/var/lib/labelframe/server/client-packages`；`LABELFRAME_SERVER_CLIENT_PACKAGES` 可覆盖）。目录直放文件或经管理界面「客户端下载」页上传都支持。
+- **API**：`GET /api/client-packages`（列表）、`POST /api/client-packages`（上传）、`GET /api/client-packages/{file}`（下载）、`DELETE /api/client-packages/{file}`（删除）；文件名只允许普通文件名（路径穿越防护）。
+- **客户端更新**：设置页「更新与安装包」列出服务端可用安装包，下载默认从服务端地址获取（不自动升级，下载后自行运行安装）。
+- **Docker**：`docker-compose.yml` 已挂载 `./client-packages:/var/lib/labelframe/server/client-packages`，宿主机放入安装包即对局域网客户端可下载。
+
+### 权限边界与作业历史（迭代 22）
+
+- 客户端（本机界面）打印测试目标固定**本机**：本机已注册且在线 → 经服务端路由（作业进服务端历史）；本机未注册 / 离线 → 降级本机直连并提示原因。服务端管理界面可自由选在线设备打印测试。
+- 客户端状态栏显示本机设备名称（`/api/host/config.deviceName`）。
+- 作业历史：客户端只看自己的作业（`GET /api/jobs?deviceId={本机}`），服务端 UI 看全部。
 ## Studio 使用（迭代 7）
 
 ```powershell
