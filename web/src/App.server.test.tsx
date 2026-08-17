@@ -28,6 +28,10 @@ const mocks = vi.hoisted(() => ({
     listClientPackages: vi.fn(),
     uploadClientPackage: vi.fn(),
     deleteClientPackage: vi.fn(),
+    listPluginPackages: vi.fn(),
+    uploadPluginPackage: vi.fn(),
+    deletePluginPackage: vi.fn(),
+    downloadPluginPackage: vi.fn(),
   },
   local: {
     healthz: vi.fn(),
@@ -63,6 +67,7 @@ vi.mock('./lib/api/client', () => ({
   setServerBaseUrl: vi.fn(),
   probeHealthz: mocks.probeHealthz,
   clientPackageDownloadUrl: (fileName: string) => `/api/client-packages/${encodeURIComponent(fileName)}`,
+  pluginPackageDownloadUrl: (fileName: string) => `/api/plugin-packages/${encodeURIComponent(fileName)}`,
 }))
 
 vi.mock('./lib/uiMode', () => ({ UI_MODE: 'server', isServerUi: true }))
@@ -77,6 +82,7 @@ beforeEach(() => {
     { deviceId: 'device-1', name: '仓库-1 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online', lastIp: '192.168.1.5' },
   ])
   mocks.server.listClientPackages.mockResolvedValue([])
+  mocks.server.listPluginPackages.mockResolvedValue([])
   mocks.local.listTemplates.mockResolvedValue([])
 })
 
@@ -85,7 +91,7 @@ afterEach(() => {
 })
 
 describe('server 构建：菜单裁剪（迭代 20 §2.2 / Y5）', () => {
-  it('含 在线设备 / 设备日志 / 客户端下载 / 工作台 / 设计器 / 数据与打印 / 作业历史；不含 设置 / PDA 日志', async () => {
+  it('含 在线设备 / 设备日志 / 客户端下载 / 插件管理 / 工作台 / 设计器 / 数据与打印 / 作业历史；不含 设置 / PDA 日志', async () => {
     render(<App />)
     expect(await screen.findByRole('button', { name: '在线设备' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '设备日志' })).toBeTruthy()
@@ -95,6 +101,8 @@ describe('server 构建：菜单裁剪（迭代 20 §2.2 / Y5）', () => {
     expect(screen.getByRole('button', { name: '作业历史' })).toBeTruthy()
     // 迭代 22 §2.3：Server UI「客户端下载」页入口
     expect(screen.getByRole('button', { name: '客户端下载' })).toBeTruthy()
+    // 迭代 23 §5.4：Server UI「插件管理」页入口（与「客户端下载」并列）
+    expect(screen.getByRole('button', { name: '插件管理' })).toBeTruthy()
     // 设置页与 PDA 日志（client 版命名）不存在
     expect(screen.queryByRole('button', { name: '设置' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'PDA 日志' })).toBeNull()
@@ -141,5 +149,24 @@ describe('server 构建：客户端下载页入口（迭代 22 §2.3）', () => 
     // 下载链接（server 构建同源相对路径）
     const link = screen.getByRole('link', { name: /下载/ })
     expect(link.getAttribute('href')).toBe('/api/client-packages/LabelFrame.Client-0.18.0.msi')
+  })
+})
+
+describe('server 构建：插件管理页入口（迭代 23 §5.4）', () => {
+  it('点击「插件管理」tab：列表 / 上传 / 刷新按钮齐全（GET /api/plugin-packages；invalid 红标）', async () => {
+    mocks.server.listPluginPackages.mockResolvedValue([
+      { fileName: 'sample-1.0.0.lfplugin', pluginId: 'sample', name: '示例插件', version: '1.0.0', sizeBytes: 2048, modifiedAt: '2026-08-17T10:00:00Z', valid: true },
+      { fileName: 'broken.lfplugin', sizeBytes: 1024, modifiedAt: '2026-08-17T09:00:00Z', valid: false, invalidReason: 'manifest 缺少 pluginId' },
+    ])
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: '插件管理' }))
+    expect(await screen.findByText('示例插件')).toBeTruthy()
+    expect(screen.getByText('sample')).toBeTruthy()
+    expect(screen.getByText('无效')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '上传插件包' })).toBeTruthy()
+    // 下载链接（server 构建同源相对路径；两行各一个）
+    const links = screen.getAllByRole('link', { name: /下载/ })
+    expect(links[0].getAttribute('href')).toBe('/api/plugin-packages/sample-1.0.0.lfplugin')
+    expect(links[1].getAttribute('href')).toBe('/api/plugin-packages/broken.lfplugin')
   })
 })

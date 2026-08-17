@@ -10,6 +10,7 @@ import { setBaseUrl } from '../settings'
 type ClientModule = {
   getServerBaseUrl: typeof GetServerBaseUrlFn
   setServerBaseUrl: typeof SetServerBaseUrlFn
+  pluginPackageDownloadUrl: typeof import('./client')['pluginPackageDownloadUrl']
 }
 
 const KEY = 'labelframe.baseUrl'
@@ -68,5 +69,17 @@ describe('server 构建（K1）：getServerBaseUrl 恒同源相对路径', () =>
     const mod = await loadClient('server')
     mod.setServerBaseUrl('http://192.168.1.9:53961')
     expect(mod.getServerBaseUrl()).toBe('')
+  })
+})
+
+describe('pluginPackageDownloadUrl（迭代 23 §2.1：与 clientPackageDownloadUrl 同模式）', () => {
+  it('client 构建：绝对 URL（默认 127.0.0.1:53961 + 路径编码）', async () => {
+    const mod = await loadClient('client')
+    expect(mod.pluginPackageDownloadUrl('sample-1.0.0.lfplugin')).toBe('http://127.0.0.1:53961/api/plugin-packages/sample-1.0.0.lfplugin')
+  })
+
+  it('server 构建：同源相对路径', async () => {
+    const mod = await loadClient('server')
+    expect(mod.pluginPackageDownloadUrl('sample-1.0.0.lfplugin')).toBe('/api/plugin-packages/sample-1.0.0.lfplugin')
   })
 })

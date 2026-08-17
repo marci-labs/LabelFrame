@@ -206,6 +206,55 @@ export interface ClientPackageInfo {
   url?: string
 }
 
+// ── 迭代 23：客户端插件分发（服务端 plugin-packages + 客户端 /api/plugins 安装 / 卸载）──
+
+/** 服务端插件包列表项（GET /api/plugin-packages；invalid 条目元数据字段缺失，仅文件信息有效）。 */
+export interface PluginPackageInfo {
+  fileName: string
+  /** 元数据可空——invalid 条目解析失败时缺失，前端显示「—」。 */
+  pluginId?: string
+  name?: string
+  version?: string
+  description?: string
+  sizeBytes: number
+  modifiedAt: string
+  /** 下载 URL（后端恒提供；前端也可按 {serverBaseUrl}/api/plugin-packages/{fileName} 自行构造）。 */
+  url?: string
+  /** zip / manifest 解析是否成功；false = invalid 条目（仍可删除、不可安装）。 */
+  valid: boolean
+  invalidReason?: string
+}
+
+/** 已安装插件（GET /api/plugins/installed，WinHost；source 决定可卸载性）。 */
+export interface InstalledPluginInfo {
+  pluginId: string
+  name: string
+  version: string
+  description?: string
+  /** 注册表已装配（与 /api/transport/plugins 交集）；false = 待重启生效 / 加载失败 / 未装配。 */
+  loaded: boolean
+  /** 非空 = 加载失败原因（坏 DLL / 缺依赖 / manifest 解析失败）；loaded=false 且为空 = 待重启生效 / 未装配。 */
+  loadError?: string
+  /** 安装包所属子目录名（source=package 时有值）。 */
+  packageDir?: string
+  /** "package" = 安装包（可卸载）；"manual" = 平铺手动 DLL（只读）。 */
+  source: 'package' | 'manual'
+  installedAt?: string
+}
+
+/** POST /api/plugins/install 成功响应。 */
+export interface PluginInstallResult {
+  ok: boolean
+  message: string
+  plugin: InstalledPluginInfo
+}
+
+/** POST /api/plugins/uninstall 成功响应。 */
+export interface PluginUninstallResult {
+  ok: boolean
+  message: string
+}
+
 // ── 本机客户端（迭代 18 F1/F2：GET/POST /api/host/config，机器级持久化）──
 
 /** 机器级配置（B6：settings.json 缺失 / 损坏时 GET 返回 200 + 默认 serverUrl）。

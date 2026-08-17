@@ -16,6 +16,7 @@ import { PdaLogs } from './pages/PdaLogs'
 import { JobHistory } from './pages/JobHistory'
 import { Settings } from './pages/Settings'
 import { ClientPackages } from './pages/ClientPackages'
+import { PluginPackages } from './pages/PluginPackages'
 
 const TABS: { id: TabId; label: string; icon: IconName }[] = isServerUi
   ? [
@@ -26,6 +27,8 @@ const TABS: { id: TabId; label: string; icon: IconName }[] = isServerUi
       { id: 'jobs', label: '作业历史', icon: 'history' },
       // 迭代 22 §2.3：Server UI「客户端下载」页（安装包列表 / 上传 / 下载 / 删除）
       { id: 'packages', label: '客户端下载', icon: 'download' },
+      // 迭代 23 §5.4：Server UI「插件管理」页（插件包列表 / 上传 / 下载 / 删除，与「客户端下载」并列）
+      { id: 'plugin-packages', label: '插件管理', icon: 'puzzle' },
       // 迭代 20（Y5）：Server 版命名「设备日志」（集中查看全部设备日志）；client 版保持「PDA 日志」
       { id: 'logs', label: '设备日志', icon: 'logs' },
     ]
@@ -99,6 +102,7 @@ function Shell() {
           {tab === 'devices' && <Devices />}
           {tab === 'jobs' && <JobHistory />}
           {tab === 'packages' && <ClientPackages />}
+          {tab === 'plugin-packages' && <PluginPackages />}
           {tab === 'logs' && <PdaLogs />}
           {tab === 'settings' && <Settings />}
         </main>

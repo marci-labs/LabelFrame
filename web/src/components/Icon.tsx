@@ -8,6 +8,7 @@ export type IconName =
   | 'retry' | 'test' | 'link' | 'printer' | 'clear' | 'layers'
   | 'check' | 'x' | 'search' | 'file' | 'grid' | 'zoom' | 'save'
   | 'back' | 'preview' | 'copy' | 'clipboard' | 'alert' | 'keyboard'
+  | 'puzzle'
 
 const PATHS: Record<IconName, React.ReactNode> = {
   workbench: (
@@ -114,6 +115,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <rect x="2.5" y="6" width="19" height="12.5" rx="2" />
       <path d="M6.5 10h.01M9.5 10h.01M12.5 10h.01M15.5 10h.01M18.5 10h.01M6.5 14h11" />
+    </>
+  ),
+  // 迭代 23：拼图块（插件管理页菜单图标）
+  puzzle: (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="2.5" />
+      <path d="M10 4V2.5a1.5 1.5 0 0 1 3 0V4" />
+      <path d="M20 10h1.5a1.5 1.5 0 0 1 0 3H20" />
     </>
   ),
 }
