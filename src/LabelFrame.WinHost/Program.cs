@@ -67,7 +67,8 @@ public static class Program
         var pluginContext = new TransportPluginContext(
             hostLogWriter,
             Path.GetDirectoryName(HostOptions.DefaultDatabasePath) ?? string.Empty);
-        foreach (var (plugin, assemblyPath) in PluginDirectoryLoader.Load(options.PluginsPath, hostLogWriter))
+        var pluginLoad = PluginDirectoryLoader.LoadWithErrors(options.PluginsPath, hostLogWriter);
+        foreach (var (plugin, assemblyPath) in pluginLoad.Plugins)
         {
             // 决策 6A：外部插件不允许覆盖内置插件 ID（冲突时 RegisterExternal 记日志跳过）
             if (transportRegistry.RegisterExternal(plugin, assemblyPath, hostLogWriter))
@@ -120,7 +121,9 @@ public static class Program
         builder.Services.AddSingleton(sp => new Transport.PluginInstaller(
             options.PluginsPath,
             sp.GetRequiredService<ITransportPluginRegistry>(),
-            hostLogWriter));
+            hostLogWriter,
+            // 迭代 23 附二拍板：启动装配时的加载失败透出（已安装列表「加载失败 err + 原因」）
+            pluginLoad.Errors.ToDictionary(e => e.AssemblyPath, e => e.Error, StringComparer.OrdinalIgnoreCase)));
         builder.Services.AddSingleton<ZplImageEncoder>();
         builder.Services.AddSingleton<IPrinterStatusProvider>(sp =>
             sp.GetRequiredService<ITransportManager>().CurrentTransport as IPrinterStatusProvider ?? new UnsupportedStatusProvider());

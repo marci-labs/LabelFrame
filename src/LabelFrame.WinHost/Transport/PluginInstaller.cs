@@ -27,13 +27,16 @@ public sealed class PluginInstaller
     private readonly string _pluginsPath;
     private readonly ITransportPluginRegistry _registry;
     private readonly TextWriter _hostLog;
+    private readonly IReadOnlyDictionary<string, string> _lastLoadErrors;
 
     /// <summary>创建安装服务（插件目录不存在自动创建）。</summary>
-    public PluginInstaller(string pluginsPath, ITransportPluginRegistry registry, TextWriter hostLog)
+    public PluginInstaller(string pluginsPath, ITransportPluginRegistry registry, TextWriter hostLog,
+        IReadOnlyDictionary<string, string>? lastLoadErrors = null)
     {
         _pluginsPath = pluginsPath ?? throw new ArgumentNullException(nameof(pluginsPath));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _hostLog = hostLog ?? throw new ArgumentNullException(nameof(hostLog));
+        _lastLoadErrors = lastLoadErrors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -62,13 +65,14 @@ public sealed class PluginInstaller
             {
                 var manifest = PluginPackageManifest.Parse(File.ReadAllText(manifestPath));
                 var loaded = IsLoadedFrom(dir, manifest.PluginId);
+                var loadError = loaded ? null : FindLoadError(dir);
                 views.Add(new InstalledPluginView(
                     manifest.PluginId,
                     manifest.Name,
                     manifest.Version,
                     manifest.Description,
                     loaded,
-                    LoadError: null,
+                    LoadError: loadError,
                     dirName,
                     Source: "package",
                     Directory.GetCreationTimeUtc(dir)));
@@ -99,7 +103,7 @@ public sealed class PluginInstaller
                 "?",
                 null,
                 descriptor is not null,
-                LoadError: null,
+                LoadError: descriptor is not null ? null : (_lastLoadErrors.TryGetValue(dll, out var msg) ? msg : null),
                 PackageDir: null,
                 Source: "manual",
                 File.GetLastWriteTimeUtc(dll)));
@@ -241,6 +245,9 @@ public sealed class PluginInstaller
         _hostLog.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 已卸载插件包：{pluginId}（重启后生效）。");
     }
 
+    /// <summary>取目录内首个加载失败的 DLL 错误消息（未加载时透出启动期 loadError，迭代 23 附二拍板）。</summary>
+    private string? FindLoadError(string dir)
+        => _lastLoadErrors.FirstOrDefault(kv => kv.Key.StartsWith(dir, StringComparison.OrdinalIgnoreCase)).Value;
     /// <summary>插件是否从指定目录加载（注册表描述 AssemblyPath 位于该目录下且 id 匹配）。</summary>
     private bool IsLoadedFrom(string dir, string pluginId)
     {
