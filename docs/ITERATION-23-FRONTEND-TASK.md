@@ -85,3 +85,82 @@
 
 - 规格：docs/ITERATION-23-SPEC.md（§5 后端契约 / §7 前端拆分 / §8 验收 / §9 风险）
 - 现有前端：web/src/pages/Settings.tsx（「更新与安装包」卡片）、web/src/pages/ClientPackages.tsx（Server UI 客户端下载页）、web/src/lib/api/client.ts + types.ts、web/src/App.tsx、web/src/lib/uiMode.ts
+
+## 附：审阅意见（hermes 追加，2026-08-17）
+
+> 供审核者（主 Agent）评审；本节保留作为审阅记录，不视为任务书正文。按任务书 §0.1，本评估意见即本轮前端评审记录，主 Agent 可并入规格附三（替换代评版）。
+> 核对基准：任务书 §2 契约 ↔ 后端已提交代码（5953b9f / 035af2a / 653d03c / 03dc04e）+ 前端现状（web/src 现有实现与测试）。
+
+### 一、契约核对结果（对照后端真实代码，逐条）
+
+✅ 全部通过，依据如下：
+
+| 任务书条目 | 核对结果 | 依据 |
+|---|---|---|
+| §2.1 GET /api/plugin-packages 列表形状 | ✅ 一致 | Server Program.cs:405；PluginPackagesService.cs:7-17 `PluginPackageView`（fileName / pluginId? / name? / version? / description? / sizeBytes / modifiedAt / url / valid / invalidReason?） |
+| §2.1 POST 上传（file / 200 / 400 / 64MB） | ✅ 一致 | Program.cs:407-421；SaveAsync 校验 zip + manifest + 64MB（PluginPackagesService.cs:51-79）；Kestrel 64MB（Program.cs:27） |
+| §2.1 GET 下载 / DELETE | ✅ 一致 | Program.cs:429-450（octet-stream + Content-Disposition；404 ErrorView；DELETE 200 `{deleted}`） |
+| §2.2 GET /api/plugins/installed 形状 | ✅ 一致 | WinHost Program.cs:387；PluginInstaller.cs:8-17 `InstalledPluginView`（pluginId / name / version / description? / loaded / loadError? / packageDir? / source / installedAt?） |
+| §2.2 POST install（200 `{ok,message,plugin}` / 400） | ✅ 一致 | Program.cs:389-412；错误码 LF_PLUGIN_INVALID / LF_PLUGIN_BUSY / LF_PLUGIN_INSTALL_FAILED；DisableAntiforgery；Kestrel 64MB（Program.cs:53） |
+| §2.2 POST uninstall（`{pluginId}` → 200 `{ok,message}` / 400） | ✅ 一致 | Program.cs:415-434；Contracts.cs:151 `UninstallPluginRequest(string? PluginId)` |
+| ErrorView `{code,message,fieldKey?}` | ✅ 一致 | Contracts.cs:45 |
+| CORS AllowAnyOrigin/Header/Method | ✅ 一致 | Server Program.cs:63-68；WinHost Program.cs:144-168 |
+| manual 只读（后端亦拒绝卸载） | ✅ 双保险 | PluginInstaller.cs:227-230（无 manifest → 「手动放置…不支持界面卸载」） |
+| 覆盖安装无版本比较 | ✅ 一致 | PluginInstaller.cs:163-187（删旧目录 → Move；文件锁 → LF_PLUGIN_BUSY 重启重试） |
+| 列表按修改时间倒序 | ✅ 一致 | PluginPackagesService.cs:41-45（OrderByDescending(ModifiedAt)） |
+| 上传成功返回体前端不依赖 | ✅ 一致 | POST 返回视图，前端上传后重拉列表（与 ClientPackages 同构） |
+
+### 二、设计点评估（任务书 §4，逐条结论）
+
+1. **安装中转 —— ✅ 可行，维持**。WinHost 的 ServerUrl（路由用）与 UI 服务端地址（机器级 settings.json）确为两套；前端中转使「服务端地址」只存在于浏览器层，WinHost 对分发机制零认知。替代方案「WinHost 直连下载（POST `{serverUrl, fileName}`）」若要避免地址不一致，必须前端显式传 serverUrl 且后端新增「URL 拉流 → 安装」逻辑——后端已完成 multipart 路径，改造成本高、收益低；64MB blob 内存 + localhost 上传完全可行（代价 = 双向传输，局域网可接受）。如未来要省流量再评估直连，本轮不做。
+2. **UI 位置 —— ✅ 可行**。与决策 7A 一致：Server UI「插件管理」页与「客户端下载」并列（App.tsx server TABS + TabId 增 `plugin-packages`）；客户端设置卡片置于「更新与安装包」之下。两端入口独立、无重叠。
+3. **已安装状态语义 —— 🔴 后端缺口，建议补结构化 loadError**（详见三.1）。
+4. **manual 只读 —— ✅ 可行**。后端 Uninstall 对无 manifest 目录同样拒绝（双保险）。注意 manual 行 version 后端恒为「?」（PluginInstaller.cs:99/103），前端显示「—」即可。
+5. **旧版本防御 —— ✅ 可行，注意判定实现**：非 2xx 且响应体非 JSON 时 makeRequest 抛 `ApiError("HTTP_404", ...)`（client.ts:64-71）——必须用 `err.code === "HTTP_404"` 判定旧版本，不能依赖 message。「服务端可达但旧版」与「单机不可达」用 `app.connected` 区分（与现有「更新与安装包」卡片同构，Settings.tsx:30-54）；建议按四象限实现（WinHost 旧/新 × Server 旧/新），两个区独立判定。
+6. **覆盖安装 —— ✅ 可行**。confirm「将覆盖 x → y」的 x / y = 已安装 version / 服务端 version；invalid 服务端条目（pluginId 为空）不参与判重。💡 边界：已安装列表加载失败时建议仍允许安装（后端覆盖语义兜底），文案退化为「将安装」。
+7. **64MB 预检 —— ✅ 可行**。按 `sizeBytes > 64MB` 阻止并提示；上传页按 `file.size` 同规则。注意恰好 64MB 的边界 + multipart 开销（见三.2）。
+
+### 三、发现的问题
+
+1. **🔴 设计点 3 实锤：loadError 结构化缺口**（规格 §5.2 声称的语义后端未实现）：
+   - 证据：`ListInstalled` 对 manifest 有效的 package 行 LoadError 恒为 null（PluginInstaller.cs:65-74）；manual 行恒为 null（:96-105）；唯一非空场景 = manifest 解析失败（:84）。
+   - 后果：坏 DLL（缺依赖 / 损坏）加载失败只进 host.log（PluginDirectoryLoader.cs:51-57 catch 写日志后继续），不进 API → 重启后 UI 显示「待重启生效」（warn）且永不变化；「加载失败 err + 原因」徽标在真实数据下永远无法触发（前端只能在 mock 里测到），规格 §8 验收「加载失败」格无法真实验证。
+   - 建议（待拍板）：**后端补结构化 loadError**——PluginDirectoryLoader.Load 把逐 DLL 失败原因（dll 路径 + 异常消息）并入返回值（或注册表记 LastLoadErrors），ListInstalled 合并输出；改造成本低（加载器一处 + 列表合并一处）。前端实现不依赖此拍板（err 分支照做），差异仅在真实数据能否触发。
+   - 若不补：前端将「loaded=false 无错误」显示文案改为「未加载（重启后生效 / 加载失败，详见客户端日志）」，验收中「加载失败 err + 原因」格标记为仅单测覆盖。
+2. **🟡 恰好 64MB 边界：Kestrel 计 multipart 整包开销 → 413 无 ErrorView**。业务检查是 `length > MaxBytes` 严格拒绝（PluginPackageLimits.cs:8；PluginPackagesService.cs:64 / PluginInstaller.cs:126），恰好 64MB 的包可通过业务检查，但 multipart 上传体 = 文件 + boundary 开销（约 1KB）会超 Kestrel 限制 → 413（无 ErrorView 体，makeRequest 兜底 `HTTP_413`「请求失败（HTTP 413）」）。影响低（现实插件包远小于 64MB）：前端预检按 `> 64MB` 阻止（与后端一致），413 兜底文案可接受，无需改后端。💡 可选：预检阈值留 1KB 余量或提示写「最大约 64MB」。
+3. **🟡 Server 上传失败错误码为 LF_SRV_002（非 LF_PLUGIN_*）**：任务书 §2.1 未列上传错误码，正确（LF_PLUGIN_* 仅 WinHost 安装 / 卸载）；前端统一按 ErrorView.message 展示即可，无需后端改。
+4. **💡 图标**：IconName 现无拼图风格图标（Icon.tsx:5-10）；server TABS 中 `grid` 已被「在线设备」占用（App.tsx:25），不建议复用（两 tab 同图标易混）；建议新增 `puzzle` 图标（IconName union + PATHS + 组件），或复用 `file`。实施期前端自行落实，不阻塞定稿。
+5. **💡 64MB 预检抽纯函数**：预检逻辑建议导出为纯函数（常量 + `assertUnderLimit(sizeBytes)`），便于单测——jsdom 里构造 64MB+ 的 File 成本高（ArrayBuffer 分配），组件测试用 mock 小文件 + 纯函数单测覆盖阈值即可。
+6. **✅ 其余已核对通过（无需修改）**：任务书 §5.1 类型字段与后端 record 一致（`url` 实际恒有值，声明可选即可）；§5.2 `downloadPluginPackage` 复用 makeFetchBlob 与现有 exportTemplate / excelTemplate 同构（client.ts:135-148 / 162-172）；安装成功提示直接展示后端 message（已含「重启客户端后生效」，Program.cs:397）；`pluginPackageDownloadUrl` 与 clientPackageDownloadUrl 同模式（client.ts:236-238）、server 构建同源相对路径语义一致；§5.7 测试清单与现有测试文件结构匹配（Settings.test.tsx mock 工厂 / ClientPackages.test.tsx / App.server.test.tsx / client.test.ts 双构建）。
+
+### 四、待审核者确认清单
+
+1. 设计点 3：是否补后端结构化 loadError？（推荐补，改造成本低、诊断价值高；若不补请确认前端合并显示文案方案）
+2. 64MB 边界 413：接受 makeRequest 现有 `HTTP_413` 兜底即可？（默认接受，无需改后端）
+3. 覆盖安装「已安装列表加载失败时仍允许安装」的边界行为：确认？（默认按二.6 实现）
+
+---
+
+## 附二：主 Agent 意见（2026-08-17，对前端审阅意见的核查与拍板）
+
+> 供 hermes 与实施参考；本节是主 Agent 对前端评审意见的核查结论与三项拍板，追加在任务书末尾（用户确认后）。
+
+### 一、核查结论
+
+- 前端评审意见逐条对照后端真实代码（PluginInstaller.cs / PluginDirectoryLoader.cs / Server·WinHost Program.cs / PluginPackagesService.cs）核实：**总体真实、准确**——契约核对表 12 项全部一致；设计点 1/2/4/5/6/7 结论成立（含「旧版本用 HTTP_404 判定」「manual version 恒为 ?」等细节）；三.1 / 三.2 / 三.3 三个问题均属实。
+- 一处定性修正：三.1 称「规格 §5.2 声称的语义后端未实现」——更准确为「规格未覆盖该增强点」：§5.2 只定义了 loadError 非空时的含义，未承诺为所有加载失败填充；结论（缺口真实、建议补）不变。
+
+### 二、拍板（2026-08-17 用户确认三项）
+
+1. **补后端结构化 loadError**（采纳前端三.1 推荐）：
+   - `PluginDirectoryLoader` 增加失败信息透出（逐 DLL 的 dll 路径 + 异常消息；如新增 `LoadWithErrors` 或扩展返回值），WinHost 启动装配时把失败记录到注册表 / `PluginInstaller`（如 `LastLoadErrors: { dllPath → message }`）；
+   - `PluginInstaller.ListInstalled` 合并输出：package / manual 行若对应 DLL 在 LastLoadErrors 中 → `loaded=false, loadError=<原因>`；
+   - 前端无需等待该后端补充（err 分支照做）；补充后「加载失败 err + 原因」徽标在真实数据可触发，验收「加载失败」格可真实验证。
+   - 实施时机：由用户安排（可在 hermes 前端实施前或并行；后端小改 + 测试）。
+2. **64MB 边界 413 接受现状**：不改后端；前端预检文案写「最大约 64MB」或阈值留 1KB 余量；恰好 64MB 的包即使通过业务检查也会被 Kestrel 413 拦截，前端 413 兜底走 makeRequest 现有 `HTTP_413` 文案即可。
+3. **覆盖安装边界确认**：已安装列表加载失败时仍允许安装（后端覆盖语义兜底），confirm 文案退化为「将安装」；invalid 服务端条目（pluginId 为空）不参与覆盖判重。
+
+### 三、前端按此实施（无阻塞）
+
+- 任务书 §5 清单照常实施；loadError 分支照写（后端补充后返回真实原因，前端代码不变，仅数据可触发）。
+- 其余 💡 建议（puzzle 图标、64MB 预检抽纯函数、上传按 file.size 同规则预检）由前端自行落实。
