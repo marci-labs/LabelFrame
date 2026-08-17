@@ -90,7 +90,13 @@ function useTransportForm() {
   /** 拼 POST /api/transport 请求体：插件模式 = pluginId + params 字典；旧模式 = mode + 平铺参数（空值省略）。 */
   const buildRequest = useCallback((): TransportApplyRequest => {
     if (pluginMode) {
-      return { pluginId, params: pluginParams }
+      // 后端 params 字典为 string→string（TransportApplyRequest.Params 类型），Int / Bool 必须序列化为字符串（联调修复）
+      const serialized: PluginParams = {}
+      for (const [k, v] of Object.entries(pluginParams)) {
+        if (v === undefined || v === null) continue
+        serialized[k] = typeof v === 'boolean' ? (v ? 'true' : 'false') : String(v)
+      }
+      return { pluginId, params: serialized }
     }
     const req: TransportApplyRequest = { mode }
     if (mode === 'Tcp') {

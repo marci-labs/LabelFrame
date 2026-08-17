@@ -11,6 +11,7 @@ import { downloadBlob } from '../lib/download'
 import { fromBackendElements } from '../lib/design/convert'
 import { deriveFields } from '../lib/design/fields'
 import { findDuplicateKeys, isMappingComplete, rowToData, suggestMapping } from '../lib/excel/mapping'
+import type { MappingField } from '../lib/excel/mapping'
 import { useApp } from '../state/AppContext'
 import { mergeDraftValues } from '../state/draft'
 import { isServerUi } from '../lib/uiMode'
@@ -339,6 +340,16 @@ export function DataPrint() {
     return deriveFields(fromBackendElements(pkg.layout.elements))
   }, [pkg])
 
+  // 列映射建议用字段（键 + 显示名）：表头为显示名（下载的 Excel 模板）时也能自动匹配（迭代 22 联调修复）
+  const mappingFields = useMemo(() => {
+    if (!pkg) return []
+    const fromContract = (pkg.contract.fields ?? [])
+      .map((f) => ({ key: f.key, displayName: f.displayName }))
+      .filter((f) => f.key)
+    if (fromContract.length > 0) return fromContract
+    return deriveFields(fromBackendElements(pkg.layout.elements)).map((key) => ({ key }))
+  }, [pkg])
+
   // 显示值 = { ...testData, ...用户 dirty 的 key }（按 key 存在性合并，用户清空不被顶回）
   const values = useMemo(() => {
     if (!pkg) return {}
@@ -499,7 +510,7 @@ export function DataPrint() {
         return
       }
       setExcel({ headers: r.headers, rows: r.rows, file: file.name })
-      setMapping(suggestMapping(r.headers, fieldKeys))
+      setMapping(suggestMapping(r.headers, mappingFields))
       setMappingOpen(true)
     } catch (err) {
       app.setStatus(err instanceof ApiError ? err.message : 'Excel 解析失败。')
@@ -728,7 +739,7 @@ export function DataPrint() {
         <MappingModal
           headers={excel.headers}
           rows={excel.rows}
-          keys={fieldKeys}
+          keys={mappingFields}
           mapping={mapping}
           setMapping={setMapping}
           onCancel={() => setMappingOpen(false)}
@@ -752,7 +763,7 @@ function MappingModal({
 }: {
   headers: string[]
   rows: string[][]
-  keys: string[]
+  keys: MappingField[]
   mapping: string[]
   setMapping: (m: string[]) => void
   onCancel: () => void
@@ -815,11 +826,15 @@ function MappingModal({
               <td>
                 <select className="input" style={{ width: '100%' }} value={mapping[i] ?? ''} onChange={(ev) => setMapping(mapping.map((m, j) => (j === i ? ev.target.value : m)))}>
                   <option value="">— 不映射 —</option>
-                  {keys.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
+                  {keys.map((f) => {
+                    const key = typeof f === 'string' ? f : f.key
+                    const label = typeof f === 'string' || !f.displayName ? key : `${f.displayName}（${key}）`
+                    return (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    )
+                  })}
                 </select>
               </td>
               <td className="mono" style={{ color: 'var(--ink-2)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

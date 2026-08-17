@@ -13,6 +13,17 @@ describe('mapping Excel 列映射建议', () => {
     expect(suggestMapping(['Location', 'SKU', '数量', '备注'], keys)).toEqual(['location', 'sku', '数量', ''])
   })
 
+  it('按显示名自动匹配（下载的 Excel 模板表头 = 显示名，迭代 22）', () => {
+    const fields = [
+      { key: 'locationCode', displayName: '库位码' },
+      { key: 'zone', displayName: '区域' },
+      { key: 'remark', displayName: '备注' },
+    ]
+    expect(suggestMapping(['库位码', '区域', '备注'], fields)).toEqual(['locationCode', 'zone', 'remark'])
+    // 表头 = 键本身也兼容
+    expect(suggestMapping(['locationCode', '区域'], fields)).toEqual(['locationCode', 'zone'])
+  })
+
   it('无匹配列返回空串（需手工映射）', () => {
     expect(suggestMapping(['备注'], ['location'])).toEqual([''])
   })

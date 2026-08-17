@@ -115,6 +115,7 @@ describe('spec 解析（兼容后端两种序列化）', () => {
     expect(specDefaultValue({ key: 'k', label: 'l', type: 'Int' })).toBe(0)
     expect(specDefaultValue({ key: 'k', label: 'l', type: 'Bool' })).toBe(false)
     expect(specDefaultValue({ key: 'k', label: 'l', type: 'String' })).toBe('')
+    expect(specDefaultValue({ key: 'k', label: 'l', type: 'String', defaultValue: null })).toBe('') // 后端 defaultValue:null 不显示字面量 "null"
   })
 
   it('defaultPluginParams：全部参数按 spec 默认值生成', () => {

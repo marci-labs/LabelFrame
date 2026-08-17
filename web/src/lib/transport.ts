@@ -99,8 +99,9 @@ export function specDefaultValue(spec: TransportParameterSpec): PluginParamValue
       return specOptions(spec)[0]?.value ?? ''
     }
     default: {
+      if (dv === null || dv === undefined) return ''
       if (typeof dv === 'string') return dv
-      return dv === undefined ? '' : String(dv)
+      return String(dv)
     }
   }
 }

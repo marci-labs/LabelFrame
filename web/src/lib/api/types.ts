@@ -136,8 +136,8 @@ export interface TransportParameterSpec {
   label: string
   type: TransportParameterType
   required?: boolean
-  /** 默认值（Bool / Int 可能以字符串序列化，前端按 type 防御解析）。 */
-  defaultValue?: string | number | boolean
+  /** 默认值（Bool / Int 可能以字符串序列化，前端按 type 防御解析；后端缺省为 null）。 */
+  defaultValue?: string | number | boolean | null
   /** Select 枚举：`{ value, label? }[]` 或 `string[]` 均可。 */
   options?: TransportParameterOption[] | string[]
   /** 输入提示 / 占位说明 */

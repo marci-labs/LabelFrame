@@ -5,14 +5,23 @@ export function normalizeName(s: string): string {
   return s.trim().toLowerCase().replace(/[\s_\-]+/g, '')
 }
 
+/** 参与列映射建议的字段：可直接给键，或带显示名（表头为显示名时可自动匹配，迭代 22 联调修复）。 */
+export type MappingField = string | { key: string; displayName?: string }
+
 /**
  * 为每个 Excel 表头列建议字段键。
  * @param headers Excel 表头（原样）
- * @param keys 契约字段键（推导结果）
+ * @param fields 契约字段（键 + 可选显示名）；表头为显示名（下载的 Excel 模板第一行）时按显示名匹配
  * @returns 与 headers 等长的数组：匹配到的键或 ''（需手工映射）
  */
-export function suggestMapping(headers: readonly string[], keys: readonly string[]): string[] {
-  const keyMap = new Map(keys.map((k) => [normalizeName(k), k]))
+export function suggestMapping(headers: readonly string[], fields: readonly MappingField[]): string[] {
+  const keyMap = new Map<string, string>()
+  for (const f of fields) {
+    const key = typeof f === 'string' ? f : f.key
+    if (!key) continue
+    keyMap.set(normalizeName(key), key)
+    if (typeof f !== 'string' && f.displayName) keyMap.set(normalizeName(f.displayName), key)
+  }
   return headers.map((h) => keyMap.get(normalizeName(h)) ?? '')
 }
 
