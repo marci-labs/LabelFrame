@@ -20,6 +20,7 @@ import { deriveFields } from '../lib/design/fields'
 import { createHistory } from '../lib/design/history'
 import { r2 } from '../lib/design/geometry'
 import { exportDesign, parseDesign } from '../lib/design/format'
+import { capturePasteOnce, copyText, readClipboardText } from '../lib/clipboard'
 import { fromBackendElements, toContract, toLayout } from '../lib/design/convert'
 import { SHORTCUT_GROUPS } from './designer/shortcuts'
 
@@ -330,35 +331,31 @@ export function Designer({ request, onClose }: DesignerProps) {
     app.setStatus(`已粘贴 ${copies.length} 个元素（偏移 5mm）。`)
   }, [app, commit])
 
-  // ---------- 设计 JSON 导入 / 导出（剪贴板，prompt 兜底） ----------
+  // ---------- 设计 JSON 导入 / 导出（剪贴板，多级降级；迭代 22 修复：不再弹 prompt 重复复制） ----------
   const doExportDesign = useCallback(async () => {
     const s = stateRef.current
     if (!s) return
     const text = exportDesign(s.paperW, s.paperH, s.elements)
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text)
-        app.setStatus(`设计已复制到剪贴板（${s.elements.length} 个元素），可用「导入设计」恢复。`)
-        return
-      } catch {
-        // 走 prompt 兜底
-      }
+    if (await copyText(text)) {
+      app.setStatus(`设计已复制到剪贴板（${s.elements.length} 个元素），可用「导入设计」恢复。`)
+      return
     }
+    // 终极兜底：浏览器完全禁用剪贴板时展示代码供手动复制
     const input = window.prompt('复制以下设计代码（Ctrl+C），可用「导入设计」恢复：', text)
     if (input !== null) app.setStatus('已生成设计代码。')
   }, [app])
 
   const doImportDesign = useCallback(async () => {
-    let text = ''
-    if (navigator.clipboard?.readText) {
-      try {
-        text = await navigator.clipboard.readText()
-      } catch {
-        text = ''
+    let text = await readClipboardText()
+    if (!text) {
+      // 读取权限不可用：聚焦隐藏输入，用户按一次 Ctrl+V 即完成（Esc / 超时取消）
+      app.setStatus('剪贴板读取不可用：请按 Ctrl+V 粘贴设计代码（Esc 取消）。')
+      text = await capturePasteOnce()
+      if (!text) {
+        app.setStatus('已取消导入设计。')
+        return
       }
     }
-    if (!text) text = window.prompt('请粘贴设计代码：') ?? ''
-    if (!text) return
     try {
       const d = parseDesign(text)
       commit({ paperW: d.paperW, paperH: d.paperH, elements: d.elements })
