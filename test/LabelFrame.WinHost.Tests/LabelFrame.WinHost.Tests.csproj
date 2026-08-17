@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\LabelFrame.WinHost\LabelFrame.WinHost.csproj" />
     <ProjectReference Include="..\..\src\LabelFrame.Rendering\LabelFrame.Rendering.csproj" />
+    <ProjectReference Include="..\LabelFrame.TransportPlugin.Sample\LabelFrame.TransportPlugin.Sample.csproj" />
   </ItemGroup>
 
 </Project>
