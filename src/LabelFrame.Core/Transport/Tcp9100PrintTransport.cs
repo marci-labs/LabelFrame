@@ -8,7 +8,7 @@ namespace LabelFrame.Core.Transport;
 /// TCP 9100 打印传输：连接打印机 IP 的 9100 端口并发送指令（Zebra 等网络打印机）。
 /// 状态查询：发送 ~HS 主机状态查询并做基础解析。
 /// </summary>
-public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvider
+public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvider, LabelFrame.Core.Transport.Plugins.ITestableTransport
 {
     private readonly string _host;
     private readonly int _port;
@@ -58,7 +58,12 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
         }
     }
 
-    /// <summary>连接测试：尝试 TCP 连接（3 秒超时），成功返回 true。</summary>
+    /// <summary>ITestableTransport：连接测试（~HS 探测），成功返回 null，失败返回中文错误消息。</summary>
+    public async Task<string?> TestAsync(CancellationToken cancellationToken = default)
+        => await TestConnectionAsync(cancellationToken)
+            ? null
+            : "连接测试失败：无法连接打印机（超时或地址不可达）。";
+
     /// <summary>连接测试：TCP 连接（3 秒超时）+ `~HS` 主机状态探测——收到打印机响应才算成功（能连端口≠打印机就绪）。</summary>
     public async Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
     {

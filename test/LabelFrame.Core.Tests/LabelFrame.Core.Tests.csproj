@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\LabelFrame.Core\LabelFrame.Core.csproj" />
+    <ProjectReference Include="..\LabelFrame.TransportPlugin.Sample\LabelFrame.TransportPlugin.Sample.csproj" />
   </ItemGroup>
 
 </Project>
