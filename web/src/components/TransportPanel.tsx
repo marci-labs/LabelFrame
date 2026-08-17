@@ -1,28 +1,67 @@
 // 连接方式（迭代 15 §6.2 恢复，迭代 18 F3）：设置页完整面板 + DataPrint 顶部快速切换。
+// 迭代 22：传输插件化——后端 availablePlugins（spec 驱动）存在时按插件目录动态渲染参数表单；
+// 旧后端（无 availablePlugins）回退内置 4 模式（Log / Tcp / WindowsDriver / Zebra）。
 // 交互：先测试后生效（非 testOnly 后端先测试再切换持久化）；失败返回当前连接、前端全局状态不动。
-// 全部走 localApi（本机 Client 127.0.0.1:53960 / 页面来源）。
+// 全部走 localApi（本机 Client 127.0.0.1:53960 / 页面来源）。连接徽标优先后端 displayText。
 
 import { useCallback, useEffect, useState } from 'react'
 import { localApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
-import type { TransportApplyRequest, TransportMode, TransportParams, ZebraKind } from '../lib/api/types'
-import { ALL_TRANSPORT_MODES, MODE_LABELS, ZEBRA_KIND_LABELS, defaultParams, formatTransport } from '../lib/transport'
+import type { PluginParams, PluginParamValue, TransportApplyRequest, TransportMode, TransportParams, TransportPluginInfo, ZebraKind } from '../lib/api/types'
+import {
+  ALL_TRANSPORT_MODES,
+  MODE_LABELS,
+  ZEBRA_KIND_LABELS,
+  defaultParams,
+  defaultPluginParams,
+  effectivePluginId,
+  formatTransport,
+  pluginParamsFromConfig,
+  specDefaultValue,
+  specOptions,
+} from '../lib/transport'
 import { useApp } from '../state/AppContext'
 import { Icon } from './Icon'
 
-/** 表单状态：当前候选模式 + 参数（只维护当前生效方式的参数，切换模式丢弃其它模式输入）。 */
+/** 表单状态：插件模式（新后端）维护 pluginId + 参数字典；旧模式维护 mode + 平铺参数。
+ *  只维护当前生效方式的参数，切换插件 / 模式丢弃其它输入。 */
 function useTransportForm() {
   const { transportConfig } = useApp()
+  const plugins = transportConfig?.availablePlugins ?? []
+  const pluginMode = plugins.length > 0
+
   const [mode, setMode] = useState<TransportMode>(transportConfig?.mode ?? 'Log')
   const [params, setParams] = useState<TransportParams>(() => defaultParams(transportConfig?.mode ?? 'Log', transportConfig))
+  const [pluginId, setPluginId] = useState<string>(() => {
+    if (plugins.length > 0) {
+      const cur = effectivePluginId(transportConfig)
+      return plugins.some((p) => p.id === cur) ? cur : plugins[0].id
+    }
+    return ''
+  })
+  const [pluginParams, setPluginParams] = useState<PluginParams>(() => {
+    if (plugins.length === 0) return {}
+    const cur = effectivePluginId(transportConfig)
+    const p = plugins.find((x) => x.id === cur) ?? plugins[0]
+    return pluginParamsFromConfig(p, transportConfig)
+  })
   const [touched, setTouched] = useState(false)
 
   // 后端探测 / 连接测试刷新全局配置后，表单与当前生效连接同步（未手动编辑过时）；用户编辑后不再覆盖
   useEffect(() => {
-    const cur = transportConfig?.mode ?? 'Log'
-    if (!touched && mode !== cur) {
-      setMode(cur)
-      setParams(defaultParams(cur, transportConfig))
+    if (touched) return
+    const list = transportConfig?.availablePlugins ?? []
+    if (list.length > 0) {
+      const cur = effectivePluginId(transportConfig)
+      const p = list.find((x) => x.id === cur) ?? list[0]
+      setPluginId(p.id)
+      setPluginParams(pluginParamsFromConfig(p, transportConfig))
+    } else {
+      const cur = transportConfig?.mode ?? 'Log'
+      if (mode !== cur) {
+        setMode(cur)
+        setParams(defaultParams(cur, transportConfig))
+      }
     }
   }, [transportConfig]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -37,8 +76,22 @@ function useTransportForm() {
     setParams((p) => ({ ...p, [key]: value }))
   }, [])
 
-  /** 拼 POST /api/transport 请求体（参数平铺，空值省略）。 */
+  const switchPlugin = (p: TransportPluginInfo) => {
+    setTouched(true)
+    setPluginId(p.id)
+    setPluginParams(defaultPluginParams(p))
+  }
+
+  const setPluginParam = useCallback((key: string, value: PluginParamValue) => {
+    setTouched(true)
+    setPluginParams((p) => ({ ...p, [key]: value }))
+  }, [])
+
+  /** 拼 POST /api/transport 请求体：插件模式 = pluginId + params 字典；旧模式 = mode + 平铺参数（空值省略）。 */
   const buildRequest = useCallback((): TransportApplyRequest => {
+    if (pluginMode) {
+      return { pluginId, params: pluginParams }
+    }
     const req: TransportApplyRequest = { mode }
     if (mode === 'Tcp') {
       req.tcpHost = params.tcpHost?.trim() || undefined
@@ -57,12 +110,12 @@ function useTransportForm() {
       }
     }
     return req
-  }, [mode, params])
+  }, [pluginMode, pluginId, pluginParams, mode, params])
 
-  return { mode, params, switchMode, setParam, buildRequest }
+  return { pluginMode, plugins, pluginId, pluginParams, mode, params, switchMode, setParam, switchPlugin, setPluginParam, buildRequest }
 }
 
-/** 当前模式参数输入区（Log 无参数）。 */
+/** 旧模式参数输入区（Log 无参数）。 */
 export function TransportParamsEditor({
   mode,
   params,
@@ -183,7 +236,83 @@ export function TransportParamsEditor({
   )
 }
 
-/** 设置页完整面板：当前生效连接 + 模式单选 + 参数 + 测试连接 / 保存并应用。 */
+/** 插件参数输入区（迭代 22）：按 TransportParameterSpec 动态渲染——String 文本 / Int 数字 / Bool 开关 / Select 下拉。 */
+export function TransportPluginParamsEditor({
+  plugin,
+  params,
+  setParam,
+}: {
+  plugin: TransportPluginInfo
+  params: PluginParams
+  setParam: (key: string, value: PluginParamValue) => void
+}) {
+  if (plugin.parameters.length === 0) {
+    return <div className="hint">{plugin.description ? `${plugin.description}（无参数）。` : '该插件无参数。'}</div>
+  }
+  return (
+    <>
+      {plugin.parameters.map((spec) => {
+        const value = params[spec.key]
+        if (spec.type === 'Bool') {
+          return (
+            <label key={spec.key} className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, margin: 0 }} title={spec.hint}>
+              <input type="checkbox" checked={value === true || value === 'true'} onChange={(ev) => setParam(spec.key, ev.target.checked)} />
+              {spec.label}
+              {spec.required && <span style={{ color: 'var(--danger)' }}>*</span>}
+            </label>
+          )
+        }
+        if (spec.type === 'Select') {
+          const options = specOptions(spec)
+          return (
+            <label key={spec.key} className="field" style={{ maxWidth: 220 }} title={spec.hint}>
+              {spec.label}
+              {spec.required && <span style={{ color: 'var(--danger)' }}> *</span>}
+              <select className="input" value={String(value ?? specDefaultValue(spec))} onChange={(ev) => setParam(spec.key, ev.target.value)}>
+                {options.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )
+        }
+        if (spec.type === 'Int') {
+          return (
+            <label key={spec.key} className="field" style={{ maxWidth: 140 }} title={spec.hint}>
+              {spec.label}
+              {spec.required && <span style={{ color: 'var(--danger)' }}> *</span>}
+              <input
+                className="input mono"
+                type="number"
+                min={0}
+                max={65535}
+                value={value === undefined || value === '' ? '' : String(value)}
+                onChange={(ev) => setParam(spec.key, ev.target.value === '' ? '' : Number(ev.target.value))}
+              />
+            </label>
+          )
+        }
+        return (
+          <label key={spec.key} className="field" style={{ maxWidth: 260 }} title={spec.hint}>
+            {spec.label}
+            {spec.required && <span style={{ color: 'var(--danger)' }}> *</span>}
+            <input
+              className="input mono"
+              value={String(value ?? '')}
+              onChange={(ev) => setParam(spec.key, ev.target.value)}
+              placeholder={spec.hint}
+              spellCheck={false}
+            />
+          </label>
+        )
+      })}
+    </>
+  )
+}
+
+/** 设置页完整面板：当前生效连接 + 插件 / 模式选择 + 参数 + 测试连接 / 保存并应用。 */
 export function TransportPanel() {
   const app = useApp()
   const form = useTransportForm()
@@ -211,6 +340,8 @@ export function TransportPanel() {
     }
   }
 
+  const currentPlugin = form.plugins.find((p) => p.id === form.pluginId) ?? form.plugins[0]
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -221,18 +352,36 @@ export function TransportPanel() {
         {!app.transportConfig && <span className="hint">（旧版客户端无连接管理端点，仅显示健康检查模式）</span>}
       </div>
 
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        {ALL_TRANSPORT_MODES.map((m) => (
-          <label key={m} className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, margin: 0 }}>
-            <input type="radio" name="transport-mode" checked={form.mode === m} onChange={() => form.switchMode(m)} />
-            {MODE_LABELS[m]}
-          </label>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <TransportParamsEditor mode={form.mode} params={form.params} setParam={form.setParam} />
-      </div>
+      {form.pluginMode ? (
+        <>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            {form.plugins.map((p) => (
+              <label key={p.id} className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, margin: 0 }}>
+                <input type="radio" name="transport-plugin" checked={form.pluginId === p.id} onChange={() => form.switchPlugin(p)} />
+                {p.displayName}
+              </label>
+            ))}
+          </div>
+          {currentPlugin?.description && <div className="hint">{currentPlugin.description}</div>}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            {currentPlugin && <TransportPluginParamsEditor plugin={currentPlugin} params={form.pluginParams} setParam={form.setPluginParam} />}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            {ALL_TRANSPORT_MODES.map((m) => (
+              <label key={m} className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, margin: 0 }}>
+                <input type="radio" name="transport-mode" checked={form.mode === m} onChange={() => form.switchMode(m)} />
+                {MODE_LABELS[m]}
+              </label>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <TransportParamsEditor mode={form.mode} params={form.params} setParam={form.setParam} />
+          </div>
+        </>
+      )}
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button className="btn" onClick={() => void run(true)} disabled={busy !== null}>
@@ -251,7 +400,7 @@ export function TransportPanel() {
   )
 }
 
-/** DataPrint 顶部快速切换：当前连接徽标 + 模式下拉 + 参数内联 + 应用（测试+生效）。 */
+/** DataPrint 顶部快速切换：当前连接徽标 + 插件 / 模式下拉 + 参数内联 + 应用（测试+生效）。 */
 export function TransportQuickSwitch() {
   const app = useApp()
   const form = useTransportForm()
@@ -276,26 +425,48 @@ export function TransportQuickSwitch() {
     }
   }
 
-  const modes = app.transportConfig?.availableModes ?? ALL_TRANSPORT_MODES
+  const currentPlugin = form.plugins.find((p) => p.id === form.pluginId) ?? form.plugins[0]
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       <span className={'conn' + (app.connected ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         <span className={'status-dot' + (app.connected ? ' on' : '')} />
         {formatTransport(app.transportConfig) || app.transport || '未连接'}
       </span>
-      <select
-        className="input"
-        value={form.mode}
-        onChange={(ev) => form.switchMode(ev.target.value as TransportMode)}
-        title="快速切换连接方式（应用 = 测试后生效）"
-      >
-        {modes.map((m) => (
-          <option key={m} value={m}>
-            {MODE_LABELS[m]}
-          </option>
-        ))}
-      </select>
-      <TransportParamsEditor mode={form.mode} params={form.params} setParam={form.setParam} />
+      {form.pluginMode ? (
+        <select
+          className="input"
+          value={form.pluginId}
+          onChange={(ev) => {
+            const p = form.plugins.find((x) => x.id === ev.target.value)
+            if (p) form.switchPlugin(p)
+          }}
+          title="快速切换传输插件（应用 = 测试后生效）"
+        >
+          {form.plugins.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.displayName}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <select
+          className="input"
+          value={form.mode}
+          onChange={(ev) => form.switchMode(ev.target.value as TransportMode)}
+          title="快速切换连接方式（应用 = 测试后生效）"
+        >
+          {(app.transportConfig?.availableModes ?? ALL_TRANSPORT_MODES).map((m) => (
+            <option key={m} value={m}>
+              {MODE_LABELS[m]}
+            </option>
+          ))}
+        </select>
+      )}
+      {form.pluginMode ? (
+        currentPlugin && <TransportPluginParamsEditor plugin={currentPlugin} params={form.pluginParams} setParam={form.setPluginParam} />
+      ) : (
+        <TransportParamsEditor mode={form.mode} params={form.params} setParam={form.setParam} />
+      )}
       <button className="btn sm" onClick={() => void apply()} disabled={busy}>
         <Icon name="link" size={12} />
         {busy ? '应用中…' : '应用'}
