@@ -2,6 +2,17 @@
 
 本文件记录每个迭代的变更。
 
+
+## 迭代 23 客户端插件分发实施完成 — 2026-08-17
+
+- **范围定稿（2026-08-17 用户拍板决策 1A-7A，规格 [docs/ITERATION-23-SPEC.md](docs/ITERATION-23-SPEC.md)）**：插件包上传服务端（zip + 根 manifest.json + 插件 DLL，后缀 `.lfplugin`；独立 `plugin-packages` 目录 + `/api/plugin-packages`）；客户端安装（设置页「插件管理」卡片浏览服务端可用插件 → 下载 → 三层校验 → 解压到 `plugins/<pluginId>/` → 重启生效）；客户端卸载（删目录 → 重启生效，热卸载仍不做）；包大小上限 64MB；不做签名（局域网无鉴权模型）；与「更新与安装包」UI 并列。
+- **Core（插件包 + 加载演进）**：`Transport/Plugins/Package/`——`PluginPackageManifest`（pluginId/name/version 必填 + 可选 description/author/minHostVersion）+ `PluginPackageReader`（zip 读取：根 manifest 校验 / zip-slip 防护 / 安全解压）+ `PluginPackageLimits`（64MB）；`PluginDirectoryLoader` 演进——平铺 + 子目录扫描（`plugins/<pluginId>/` 安装包，决策 3A）+ **字节加载（LoadFromStream，不锁 Windows DLL）**；注册表 `RegisterExternal`（外部插件禁止覆盖内置插件 ID，决策 6A）；`PluginProbe`（安装预检：临时 collectible ALC 字节加载发现插件并核对 id）；`SafeFileName`（由 ClientPackagesService 提取共享的文件名规范化，防路径穿越）。
+- **WinHost（插件安装 / 卸载 API）**：`PluginInstaller` 服务（安装三层校验 / 覆盖安装 / 卸载 / 已安装列表合并注册表 loaded 状态）+ `GET /api/plugins/installed`、`POST /api/plugins/install`（multipart）、`POST /api/plugins/uninstall`（失败统一 400 ErrorView）；Kestrel `MaxRequestBodySize` 64MB；卸载当前连接引用插件后重启回退默认连接（复用迭代 22 附五兜底）。
+- **Server（插件包 API）**：`PluginPackagesService` + `GET/POST/GET/DELETE /api/plugin-packages`（列表含元数据与 valid/invalid 状态、上传即校验、路径穿越防护）；`ServerOptions.PluginPackagesPath` + `LABELFRAME_SERVER_PLUGIN_PACKAGES`；Kestrel 64MB；`docker-compose.yml` 挂载 `./plugin-packages`。
+- **前端（hermes，9faae3a）**：`serverApi.listPluginPackages / uploadPluginPackage / deletePluginPackage / downloadPluginPackage` + `localApi.listInstalledPlugins / installPlugin / uninstallPlugin` + `pluginPackageDownloadUrl`（64MB 预检）；Server UI 新增「插件管理」页（列表 / 上传 / 下载 / 删除，invalid 红标原因）；客户端设置页新增「插件管理」卡片（服务端可用插件安装区 + 已安装插件状态 / 卸载区，四态徽标、覆盖确认、单机模式语义、旧版本 404 防御提示）；TabId 增 `plugin-packages` + puzzle 图标。
+- **测试**：dotnet 259 全绿（Core 104 / Server 45 / WinHost 85 / Studio 25，新增插件包读取 / zip-slip / 安全解压 / SafeFileName / 注册表防覆盖 / 加载器子目录 / PluginInstaller 安装卸载覆盖 / plugin-packages 上传删除路径穿越大小上限）；web 207 全绿（22 文件，+28 用例）。
+- **端到端联调冒烟通过（16 步）**：上传 .lfplugin → 服务端列表元数据 → 客户端安装（重启前 loaded=false）→ 重启后装配 / loaded=true → 配置启用（SAMPLE(SMOKE)）→ 卸载成功（**字节加载修复 Windows 文件锁**，决策 #73）→ 重启后消失 → 卸载当前连接插件后重启回退 log（附五兜底）→ Server 删除插件包。
+- **关键决策（DESIGN #72/#73）**：插件包分发闭环（格式 / 目录 / 校验 / 覆盖 / UI 并列）；外部插件字节加载（`LoadFromStream` 不锁文件，「卸载 = 删除文件 + 重启生效」在 Windows 下真正可用；插件 `Assembly.Location` 为空，自定位资源改用上下文数据目录）。
 ## 迭代 22 后端实施完成 — 2026-08-17
 
 - **Core（传输插件机制，决策 #67-69）**：`LabelFrame.Core.Transport.Plugins`——统一接口 `ITransportPlugin`（Id / DisplayName / Description / Parameters / Describe / Create）+ 传输实例继续用 `IPrintTransport` / `IPrinterStatusProvider` / 新增 `ITestableTransport`（连接测试）；参数模型 `TransportParameterSpec` / `TransportPluginParameters` / `ITransportPluginContext`；注册表 `ITransportPluginRegistry`（内置 log / tcp9100 + WinHost 内置 winspool / zebra + 外部 DLL 目录扫描）；`PluginDirectoryLoader`（collectible ALC，单插件失败只记日志，卸载 = 删文件 + 重启生效）。

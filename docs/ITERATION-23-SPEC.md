@@ -186,3 +186,15 @@
 | 9 | 卸载当前连接引用插件 → 重启回退默认连接：迭代 22 附五 `TransportManager.LoadPersisted` 已实现，直接复用 | 已并入 §2.3 / §5.2（兜底确认） |
 | 10 | 依赖核对：Core 已有 `System.IO.Compression` zip 能力（模板包复用，不新增依赖）；Kestrel `MaxRequestBodySize` 需在 Server 与 WinHost 两处配置 | 已并入 §6.2/§6.3 / §9 |
 | 11 | docker-compose 现有 client-packages 挂载模式可照搬扩展 plugin-packages | 已并入 §5.3 / §6.3 |
+
+---
+
+## 附五：实施与联调验收记录（主 Agent + hermes，2026-08-17）
+
+> 供审核者参考；不视为规格正文。阶段二按定稿实施完成，端到端联调冒烟通过。
+
+- **后端（主 Agent）**：Core（`PluginPackageManifest` / `PluginPackageReader` / `PluginPackageLimits` / `SafeFileName` / `PluginProbe`；`PluginDirectoryLoader` 平铺 + 子目录扫描 + 字节加载；`RegisterExternal` 防内置覆盖）；WinHost（`PluginInstaller` + `/api/plugins/installed|install|uninstall` + Kestrel 64MB）；Server（`PluginPackagesService` + `/api/plugin-packages` 4 端点 + `ServerOptions.PluginPackagesPath` + docker-compose 挂载）。
+- **前端（hermes，9faae3a）**：types / client（serverApi + localApi + downloadPluginPackage + pluginPackageDownloadUrl + 64MB 预检）；`PluginPackages.tsx`（Server UI 插件管理页）；`Settings.tsx` 插件管理卡片；App.tsx 菜单 + TabId + puzzle 图标；测试 +28 用例。
+- **联调冒烟（16 步全过）**：上传 .lfplugin → 服务端列表元数据 → 客户端安装（重启前 loaded=false）→ 重启后装配 / loaded=true → 配置启用（SAMPLE(SMOKE)）→ 卸载 → 重启后消失 → 卸载当前连接插件后重启回退 log → Server 删除插件包。
+- **关键发现（规格 §9 风险实证并修复）**：Windows 下 `LoadFromAssemblyPath` 会锁已加载插件 DLL，导致「卸载 = 删除文件 + 重启生效」对已加载插件永远失败（重启又加载）；改为字节加载（`LoadFromStream`）后不锁文件——卸载 / 覆盖安装立即成功，运行中进程用内存镜像、重启按新文件装配（决策 #73）。副作用：插件 `Assembly.Location` 为空，自定位资源改用 `ITransportPluginContext.DataDirectory`（文档已注明）。
+- **测试基线**：dotnet 259 全绿（Core 104 / Server 45 / WinHost 85 / Studio 25）；web 207 全绿（22 文件）。

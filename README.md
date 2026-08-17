@@ -29,7 +29,7 @@
 - 迭代 9（Excel 导入）/ 迭代 10（MSI 安装包）：已完成。
 - 迭代 13（文本排版与二维码参数持久化）：元素契约补齐（wrap / lineHeight / fitMode / fontFamily / qrEcc / qrMargin / displayValue / paddingH-V）+ Skia 图片打印渲染 + 前端字段映射，前后端已完成（用户验收待执行）；产物 `LabelFrame-0.13.2.msi`。
 - 迭代 22（打印测试体验 + 传输插件化 + 客户端下载分发）：✅ 已完成（2026-08-17）——下载 Excel 模板 / 客户端仅本机打印测试 / 作业历史按设备可见；传输插件化（统一接口 + 参数模型 + 注册表 + 外部 DLL 目录加载，卸载 = 删文件 + 重启生效）；客户端下载分发（`client-packages` + Server UI「客户端下载」+ 客户端设置「更新与安装包」）；本地 0.18.0 测试包。
-- 迭代 23（客户端插件分发：上传服务端 + 客户端安装 / 卸载）：📋 下一轮。
+- 迭代 23（客户端插件分发：上传服务端 + 客户端安装 / 卸载）：✅ 已完成（2026-08-17）——插件包上传服务端（独立 `plugin-packages` 目录 + `/api/plugin-packages` + Server UI「插件管理」页）、客户端设置「插件管理」浏览安装 / 卸载（下载 → 三层校验 → 解压到 `plugins/<pluginId>/` → 重启生效；卸载 = 删目录 → 重启生效；外部插件字节加载修复 Windows 文件锁）。
 详见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
 ## 组成
@@ -188,6 +188,14 @@ dotnet run --project src\LabelFrame.WinHost
 - 客户端（本机界面）打印测试目标固定**本机**：本机已注册且在线 → 经服务端路由（作业进服务端历史）；本机未注册 / 离线 → 降级本机直连并提示原因。服务端管理界面可自由选在线设备打印测试。
 - 客户端状态栏显示本机设备名称（`/api/host/config.deviceName`）。
 - 作业历史：客户端只看自己的作业（`GET /api/jobs?deviceId={本机}`），服务端 UI 看全部。
+### 插件包分发（迭代 23）
+
+- **插件包格式**：`.lfplugin`（zip：根 `manifest.json`——pluginId / name / version 必填 + 可选 description / author / minHostVersion + 插件 DLL）。
+- **服务端**：独立 `plugin-packages` 目录（Windows `%ProgramData%\LabelFrame\server\plugin-packages`；Linux `/var/lib/labelframe/server/plugin-packages`；`LABELFRAME_SERVER_PLUGIN_PACKAGES` 可覆盖）+ `GET /api/plugin-packages`（列表含元数据与 valid 状态）/ `POST`（上传，zip + manifest 校验、64MB 上限）/ `GET /{fileName}`（下载）/ `DELETE`（删除）；Server UI 新增「插件管理」页（与「客户端下载」并列）；Docker 挂载 `./plugin-packages`。
+- **客户端安装 / 卸载**：设置页「插件管理」卡片（与「更新与安装包」并列）浏览服务端可用插件 → 安装（下载 → 三层校验 [zip + manifest / 内置插件 id 拒绝 / 临时 ALC 预检核对插件 id] → 解压到 `%ProgramData%\LabelFrame\Client\plugins\<pluginId>\`）→ **重启客户端生效**；可查看已安装插件与状态（已加载 / 待重启 / 加载失败 / 手动放置）；已安装插件可卸载（删目录 → 重启生效）。运行时热卸载 / 热替换不做（见 DESIGN 未决）。
+- **API（WinHost）**：`GET /api/plugins/installed`、`POST /api/plugins/install`（multipart，64MB 上限）、`POST /api/plugins/uninstall`（`{ pluginId }`）；安装 / 卸载失败统一 400 `ErrorView` + 中文原因。
+- **安全**：文件名 / 插件 ID 路径穿越防护（共享 `SafeFileName`）、zip 解压 zip-slip 防护、外部插件禁止覆盖内置插件 ID（决策 6A）；外部插件字节加载（`LoadFromStream`）不锁文件，「卸载 = 删除文件 + 重启生效」在 Windows 下可用（决策 #73）。
+
 ## Studio 使用（迭代 7）
 
 ```powershell
