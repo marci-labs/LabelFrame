@@ -272,8 +272,10 @@ export function TransportPluginParamsEditor({
           const options = specOptions(spec)
           return (
             <label key={spec.key} className="field" style={{ maxWidth: 220 }} title={spec.hint}>
-              {spec.label}
-              {spec.required && <span style={{ color: 'var(--danger)' }}> *</span>}
+              <span>
+                {spec.label}
+                {spec.required && <span style={{ color: 'var(--danger)' }}> *</span>}
+              </span>
               <select className="input" value={String(value ?? specDefaultValue(spec))} onChange={(ev) => setParam(spec.key, ev.target.value)}>
                 {options.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -287,8 +289,10 @@ export function TransportPluginParamsEditor({
         if (spec.type === 'Int') {
           return (
             <label key={spec.key} className="field" style={{ maxWidth: 140 }} title={spec.hint}>
-              {spec.label}
-              {spec.required && <span style={{ color: 'var(--danger)' }}> *</span>}
+              <span>
+                {spec.label}
+                {spec.required && <span style={{ color: 'var(--danger)' }}> *</span>}
+              </span>
               <input
                 className="input mono"
                 type="number"
@@ -302,8 +306,10 @@ export function TransportPluginParamsEditor({
         }
         return (
           <label key={spec.key} className="field" style={{ maxWidth: 260 }} title={spec.hint}>
-            {spec.label}
-            {spec.required && <span style={{ color: 'var(--danger)' }}> *</span>}
+            <span>
+              {spec.label}
+              {spec.required && <span style={{ color: 'var(--danger)' }}> *</span>}
+            </span>
             <input
               className="input mono"
               value={String(value ?? '')}
