@@ -130,3 +130,34 @@
 - 传输插件运行时热卸载 / 热替换（ALC unload）：依赖固定与线程安全问题，本轮不做；迭代 23 接厂商插件时评估（DESIGN 未决）。
 - 外部插件加载安全：插件 DLL 与宿主同权限运行（局域网内无鉴权）；仅从受控插件目录加载，文档注明「只放可信插件」。
 - client-packages 上传无鉴权（局域网）：沿用现有 API 无鉴权模型，风险记录；后续如需再排期。
+
+
+---
+
+## 附三：前端实施说明与待确认清单（hermes 追加，2026-08-17）
+
+> 本节由前端开发者 hermes 在迭代 22 前端实施完成后追加，**供审核者（主 agent）联调时参考**；不视为规格正文。
+
+### 一、前端实施范围（已提交，web pnpm test 178 用例全绿、pnpm build / pnpm build:server / oxlint 通过）
+
+1. 传输插件化：web/src/lib/api/types.ts（TransportParameterSpec / TransportPluginInfo / PluginParams）+ web/src/lib/transport.ts（displayText 优先徽标、mode↔pluginId 映射、spec 默认值 / Select 枚举兼容解析）+ web/src/components/TransportPanel.tsx（availablePlugins 存在时按 spec 动态渲染文本 / 数字 / 开关 / 下拉表单，设置页与 DataPrint 快速切换共用；旧后端无 availablePlugins 时回退内置 4 模式）。
+2. 下载 Excel 模板：DataPrint 页头「下载 Excel 模板」按钮，POST /api/import/excel-template（columns = 契约字段 key + displayName，sampleRow = testData 中对应键值；无字段模板按钮禁用）。
+3. 权限边界（决策 1A）：客户端构建目标设备固定本机——只显示「本机（{deviceName}）」标签，无设备选择器；本机已注册且在线 → 服务端路由（serverApi + templateName + targetDeviceId=本机 deviceId）；本机未注册 / 离线 → 降级本机直连（localApi 自包含 template，作业仅本机历史）并提示原因（区分「未注册 / 离线」两种文案）。服务端构建保持在线设备选择器不变。
+4. 作业历史可见性：客户端构建服务端模式下 GET /api/jobs?limit=100&deviceId={本机 deviceId}；服务端构建不传 deviceId。
+5. 客户端下载分发：serverApi.listClientPackages / uploadClientPackage / deleteClientPackage + 下载 URL 构造（{serverBaseUrl}/api/client-packages/{file}，encodeURIComponent）；Server UI 新增「客户端下载」页（列表 / 上传 / 下载 / 删除，删除有确认）；客户端设置页新增「更新与安装包」卡片（服务端可达列出安装包与下载链接，单机模式提示需先连接服务端）。
+6. 客户端状态栏：服务端已连接时显示「本机：{deviceName}」（/api/host/config.deviceName，与本机 IP 并列）。
+
+### 二、与规格契约的偏差（均为前端防御性兼容，无后端契约改动）
+
+- TransportParameterSpec.options 与 defaultValue 的 JSON 形状未在契约中精确到字段级：前端**兼容两种序列化**——options 支持 { value, label? }[] 或 string[]；defaultValue 按 type 防御解析（Bool 接受 true / 'true'，Int 接受数字 / 数字字符串）。
+- GET /api/transport 新响应中旧 params（平铺 TransportParams）是否仍返回未明示：前端 TransportConfig.params 类型放宽为 TransportParams | PluginParams，插件模式下按 spec 键从配置中提取（未命中用 spec 默认值），新旧后端均可用。
+- POST /api/client-packages 上传响应体未定义：前端不依赖响应体，上传成功后重新拉取列表。
+
+### 三、联调时需要的后端配合点
+
+1. **GET /api/transport**：请确保新响应同时携带 pluginId / displayName / params（字典）/ displayText / availablePlugins，且 availablePlugins[].parameters[].options 采用 { value, label? }[] 或 string[] 任一形式（前端两者兼容）；旧字段 mode / availableModes 继续返回。
+2. **POST /api/transport**：接受 { pluginId, params: {...}, testOnly? }；切换失败（测试不通过）返回 200 + { ok:false, message, config=当前生效连接 }（与迭代 15 语义一致），前端据此不更新全局连接状态。
+3. **GET /api/jobs?deviceId=**：Server 端过滤实现后，客户端作业历史即只显示本机作业；当前前端已按契约传参，后端未实现前该参数被忽略时客户端仍能看到全部（联调确认过滤生效）。
+4. **POST /api/import/excel-template**：响应建议带 Content-Disposition: attachment; filename=...（前端解析文件名，否则回退 excel-template.xlsx）；请求体 { columns: [{ key, displayName }], sampleRow: { key: value } } 按契约。
+5. **POST /api/client-packages**：multipart 字段名 file；文件名路径穿越防护与 404 语义按规格（前端删除 / 下载均 encodeURIComponent 文件名）。
+6. **GET /api/host/config**：确认返回 deviceName（非空），客户端状态栏与 DataPrint 本机标签依赖该字段；旧客户端无此字段时前端显示「未知」并降级直连。
