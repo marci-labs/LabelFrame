@@ -15,6 +15,7 @@ using LabelFrame.WinHost.Jobs;
 using LabelFrame.Core.Logs;
 using LabelFrame.Rendering;
 using LabelFrame.WinHost.Transport;
+using Serilog;
 
 namespace LabelFrame.WinHost;
 
@@ -52,6 +53,17 @@ public static class Program
         {
             kestrel.Limits.MaxRequestBodySize = PluginPackageLimits.MaxBytes;
         });
+        // 迭代 24：Serilog 文件日志（ILogger 逐张日志落盘，供批间间隔冒烟验证；与 host.log 分开文件）
+        var appLogDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "LabelFrame",
+            "logs");
+        builder.Host.UseSerilog((_, loggerConfig) => loggerConfig
+            .MinimumLevel.Information()
+            .WriteTo.File(
+                Path.Combine(appLogDirectory, "app-{Date}.log"),
+                rollingInterval: RollingInterval.Day,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
         var hostLogWriter = OpenHostLogWriter(options);
 
@@ -93,6 +105,12 @@ public static class Program
 
         var hostConfigStore = new HostConfigStore(options.ConfigPath);
         builder.Services.AddSingleton(hostConfigStore);
+        // 迭代 24：批次作业设置（用户级持久化 + 内存单例，保存即生效；单例注入 JobPrintWorker）
+        var printSettingsStore = new PrintSettingsStore(options.PrintSettingsPath);
+        var printSettings = new PrintSettings();
+        printSettings.Update(printSettingsStore.Load());
+        builder.Services.AddSingleton(printSettingsStore);
+        builder.Services.AddSingleton(printSettings);
         var machineServerUrl = hostConfigStore.LoadServerUrl();
         if (!string.IsNullOrWhiteSpace(machineServerUrl) && !string.Equals(machineServerUrl, options.ServerUrl, StringComparison.OrdinalIgnoreCase))
         {
@@ -617,6 +635,12 @@ public static class Program
             HostInfo($"机器级配置已更新：ServerUrl={serverUrl}");
             return Results.Ok(new Api.HostConfigDto(serverUrl, options.DeviceId, options.DeviceName, LocalIpAddresses.EnumerateIpv4()));
         });
+        // ---- 批次作业设置（迭代 24）：GET/POST /api/host/print-settings；仅回环可写；保存即生效 ----
+        app.MapGet("/api/host/print-settings", (PrintSettings printSettings) =>
+            Api.PrintSettingsApi.Get(printSettings));
+
+        app.MapPost("/api/host/print-settings", (HttpContext context, PrintSettingsDto? request, PrintSettingsStore store, PrintSettings printSettings) =>
+            Api.PrintSettingsApi.Post(context.Connection.RemoteIpAddress, request, store, printSettings));
 
         // ---- 本机服务关闭（Web UI 设置页「退出程序」用）----
         app.MapPost("/api/host/shutdown", (HttpContext context, IHostApplicationLifetime lifetime) =>

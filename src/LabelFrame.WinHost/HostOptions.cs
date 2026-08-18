@@ -106,6 +106,12 @@ public sealed class HostOptions
         "Client",
         "plugins");
 
+    /// <summary>批次作业设置文件路径（默认 %LOCALAPPDATA%\LabelFrame\print-settings.json，迭代 24；与 connection.json 同级，用户级）。</summary>
+    public string PrintSettingsPath { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "LabelFrame",
+        "print-settings.json");
+
     /// <summary>Log 传输 / 宿主日志文件路径（默认 %LOCALAPPDATA%\LabelFrame\host.log）。</summary>
     public string HostLogPath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -215,6 +221,11 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_HOST_LOG") is { } hostLog)
         {
             HostLogPath = hostLog;
+        }
+
+        if (GetEnv("LABELFRAME_PRINT_SETTINGS") is { } printSettings)
+        {
+            PrintSettingsPath = printSettings;
         }
 
         if (GetEnv("LABELFRAME_CONFIG") is { } configPath)
