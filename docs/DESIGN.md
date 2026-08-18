@@ -134,7 +134,7 @@ flowchart LR
 | 69 | connection.json 兼容演进（迭代 22，2026-08-17） | 新格式 `{ "pluginId": "tcp9100", "params": { "host": "...", "port": "9100" } }`；旧 `{ Mode, TcpHost, ... }` 读取时自动映射（Log→log、Tcp→tcp9100、WindowsDriver→winspool、Zebra→zebra；TcpHost→host、TcpPort→port、PrinterName→printerName、ZebraKind→kind、ZebraUsbName→usbName）；`LABELFRAME_TRANSPORT` 环境变量同样映射 | 老配置零迁移；API 响应保留旧字段兼容旧前端 |
 | 70 | 打印测试体验与权限边界（迭代 22，2026-08-17） | 「下载 Excel 模板」= `POST /api/import/excel-template`（Server 与 WinHost 都实现，生成逻辑放 Core `LabelFrame.Core.Excel`，复用 `TemplateFrame.Excel.Simple` 的 `SimpleExcel.Write`，决策 4A）；客户端仅本机打印测试（在线走服务端路由、未注册 / 离线降级本机直连并提示，决策 1A）；客户端状态栏 / DataPrint 显示本机设备名；作业历史 `GET /api/jobs?deviceId=` 过滤（客户端只看自己、服务端看全部） | 边界明确（客户端不能给其他客户端发打印测试）；测试上手更容易；作业历史按设备可见 |
 | 71 | 客户端下载分发（迭代 22，2026-08-17） | 服务端 `client-packages` 目录（`LABELFRAME_SERVER_CLIENT_PACKAGES` 可覆盖）+ GET（列表）/ POST（上传）/ GET（下载）/ DELETE API（文件名路径穿越防护）；目录直放文件与页面上传都支持（决策 3A）；Server UI 新增「客户端下载」页；客户端设置「更新与安装包」默认从服务端获取；Ubuntu / Docker compose 挂载 `./client-packages:/var/lib/labelframe/server/client-packages` | 安装包集中分发、管理员可维护；客户端更新默认走服务端（不依赖外部渠道）；无鉴权（沿用局域网模型，风险记录） |
-| 72 | 插件包分发闭环（迭代 23，2026-08-17） | 插件包 = zip（根 `manifest.json`：pluginId/name/version 必填 + 可选 description/author/minHostVersion）+ 插件 DLL，后缀 `.lfplugin`；服务端独立 `plugin-packages` 目录 + `/api/plugin-packages`（列表含元数据与 valid/invalid 状态、上传即校验、路径穿越防护，`LABELFRAME_SERVER_PLUGIN_PACKAGES` 可覆盖，Docker 挂载 `./plugin-packages`）；客户端安装到 `plugins/<pluginId>/` 每插件一目录（决策 3A），设置页「插件管理」卡片安装 / 卸载，与「更新与安装包」UI 并列（决策 7A）；三层校验（zip 完整性 + manifest 必填 + 临时 ALC 预检核对插件 id，内置插件 id 拒绝，决策 5A/6A）；覆盖安装允许、不做版本比较（决策 4A）；包大小上限 64MB；不做签名（局域网无鉴权模型，风险记录） | 厂商插件包可经服务端集中分发、客户端界面安装 / 卸载（重启生效），形成完整闭环；精成打印机插件（迭代 24）可直接用该通道分发 |
+| 72 | 插件包分发闭环（迭代 23，2026-08-17） | 插件包 = zip（根 `manifest.json`：pluginId/name/version 必填 + 可选 description/author/minHostVersion）+ 插件 DLL，后缀 `.lfplugin`；服务端独立 `plugin-packages` 目录 + `/api/plugin-packages`（列表含元数据与 valid/invalid 状态、上传即校验、路径穿越防护，`LABELFRAME_SERVER_PLUGIN_PACKAGES` 可覆盖，Docker 挂载 `./plugin-packages`）；客户端安装到 `plugins/<pluginId>/` 每插件一目录（决策 3A），设置页「插件管理」卡片安装 / 卸载，与「更新与安装包」UI 并列（决策 7A）；三层校验（zip 完整性 + manifest 必填 + 临时 ALC 预检核对插件 id，内置插件 id 拒绝，决策 5A/6A）；覆盖安装允许、不做版本比较（决策 4A）；包大小上限 64MB；不做签名（局域网无鉴权模型，风险记录） | 厂商插件包可经服务端集中分发、客户端界面安装 / 卸载（重启生效），形成完整闭环；后续厂商打印机插件（如精成）可直接用该通道分发 |
 | 73 | 外部插件字节加载（迭代 23，2026-08-17） | `PluginDirectoryLoader` 由 `LoadFromAssemblyPath` 改为 `LoadFromStream` 字节加载（依赖解析回退默认上下文 / 包内伴生 DLL 字节加载）——Windows 下不锁插件 DLL 文件：「卸载 = 删除插件文件 + 重启生效」与覆盖安装真正可用（LoadFromAssemblyPath 会锁文件，已加载插件无法删除）；运行中进程继续使用内存镜像，重启后按新文件装配 | 卸载 / 覆盖安装不再被文件锁卡死（联调冒烟实证）；副作用：插件 `Assembly.Location` 为空（字节加载），插件自定位资源需改用上下文数据目录（`ITransportPluginContext.DataDirectory`），文档注明 |
 - 业界参考：Figma（视口缩放 + 参考线）、BarTender Auto-Fit（文本适应多模式）、Cleverence Label（Shrink to fit + 最小字高）、Konva snapping 库（参考线吸附）。
 - 原型 v3（2026-08-09）：画布 = 输入尺寸 + 四周 10mm 留白，标尺以 mm 覆盖全画布并跟随画布；画布平移 clamp 不越界；「实际大小」= 1mm=8 点（203dpi 打印比例）；文本溢出新增「不限制高度」；修复 HTML5 拖入坐标（改用 clientX/Y 几何换算，不依赖 Konva 指针状态）。
@@ -183,9 +183,9 @@ flowchart LR
 - SQLitePCLRaw 漏洞公告（GHSA-2m69-gcr7-jv3q，SQLite 原生库）：已升级 2.1.13 修复（2026-08-17，Core / Server / AndroidHost 同步升级，移除 NU1903 抑制，176 测试全绿）。
 - Zebra 模式要求 Win10+（Windows SDK 10.0.26100 投影）；Win7/8 只能用 TCP9100 / winspool raw 传输（未决）。
 - Server 暂存作业无过期策略：设备长期离线时作业堆积，需人工处理（迭代 3 暂定，后续可加过期/通知）。
-- Android PDA 宿主：迭代 5 曾因未装 .NET Android workload 受阻；2026-08-17 排入迭代 22 后又因新需求延后至迭代 24——安装 workload 后实施（本地 HTTP / JS 桥、TCP9100、注册轮询复用），真机验收。
+- Android PDA 宿主：迭代 5 曾因未装 .NET Android workload 受阻；2026-08-17 排入迭代 22 后又因新需求延后至迭代 25——安装 workload 后实施（本地 HTTP / JS 桥、TCP9100、注册轮询复用），真机验收。
 - Zebra SDK 3.0.3355 的 PrinterStatus 无公开状态字段；`~HS` 字段映射基于常见文档实现，均待真实设备联调确认（未决）。
-- AndroidHost 构建依赖：.NET Android workload、Android SDK 36、JDK 17（本机已配齐）；Android 16 起要求 16KB 页，SQLitePCLRaw 已升 2.1.13（2026-08-17），libe_sqlite3 的 16KB 适配待迭代 24 真机构建验证（未决）。
+- AndroidHost 构建依赖：.NET Android workload、Android SDK 36、JDK 17（本机已配齐）；Android 16 起要求 16KB 页，SQLitePCLRaw 已升 2.1.13（2026-08-17），libe_sqlite3 的 16KB 适配待迭代 25 真机构建验证（未决）。
 - Android 12+ 后台启动前台服务受限，开机自启需用户在系统设置允许；厂商 ROM 保活差异（真机验收时确认）。
 - Studio V2 画布编辑暂不提供「所见即所得」的真实条码渲染（占位框 + WinHost 预览确认），如需画布内真实条码再引入 ZXing 本地渲染（未决）。
 - Excel 导入（迭代 9）拟用 `TemplateFrame.Excel.Simple`（决策 #32）：其为第三方包，构建需联网还原 `DocumentFormat.OpenXml 3.3.0`；版本 / 表名约定在实施时定稿（未决）。
@@ -195,7 +195,7 @@ flowchart LR
 - 其他业务应用按 IP 查找设备并触发打印（用户提出，已排期迭代 20，决策 #61/#62/#63）：服务端记录设备 `last_ip`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 支持 `targetIp`；业务系统用 deviceId（或 targetIp）+ templateName + labels 提交作业，服务端路由到对应客户端打印（PDA / PC 只要本机跑客户端服务即无差异）。IP 为便捷查找而非身份（DHCP / NAT / VPN 会变化，deviceId 仍是稳定键）；服务端不做打印机直连，「后端打印」= 后端触发、客户端执行（详见 docs/ITERATION-20-SPEC.md）。
 - 传输插件化（2026-08-17 范围定稿，决策 #67-69，规格见 [docs/ITERATION-22-SPEC.md](ITERATION-22-SPEC.md)）：把连接方式（Log / TCP9100 / Windows 驱动 / Zebra SDK）抽象为传输插件——统一接口（连接 / 发送 / 状态 / 测试）+ 参数模型 + 注册表按需装配（配置指定插件与参数即启用，不编译进主程序）；第三方厂商可自研插件接入（TSPL / CPCL、蓝牙、云打印等）。与现有 `ITransport` 兼容演进，`connection.json` 旧格式自动映射；日志 / 状态上报复用现有通道；新厂商接入时先列计划再排期（迭代 23 精成打印机）。
 - 传输插件运行时热卸载 / 热替换（2026-08-17 记未决）：collectible ALC 卸载受依赖固定与线程安全问题限制，现阶段只做「删除插件文件 + 重启生效」；迭代 23（插件分发：上传 / 安装 / 卸载）仍沿用「安装 = 下载放入插件目录 + 重启生效、卸载 = 删除 + 重启生效」；如确有热卸载需求再评估。
-- Niimbot 蓝牙打印机插件（2026-08-17 用户提出，排入迭代 24，范围会话中细化）：补需求 P1「蓝牙传输」缺口（迭代 6 曾因蓝牙受阻）——按迭代 22 插件接口实现 Niimbot（小标蓝牙热敏标签打印机）传输插件（连接 / 发送 / 状态 / 测试），参数模型独立（蓝牙设备名 / 地址）；Windows 侧 BLE 实现方式（系统 BLE API / 第三方库）与指令集待调研；打包后经迭代 23 分发闭环安装；真机验收（连接 / 打印 / 状态 / 异常恢复）。
+- Niimbot 蓝牙打印机插件（2026-08-17 用户提出，排入迭代 24；2026-08-18 顺延至迭代 26，范围会话中细化）：补需求 P1「蓝牙传输」缺口（迭代 6 曾因蓝牙受阻）——按迭代 22 插件接口实现 Niimbot（小标蓝牙热敏标签打印机）传输插件（连接 / 发送 / 状态 / 测试），参数模型独立（蓝牙设备名 / 地址）；Windows 侧 BLE 实现方式（系统 BLE API / 第三方库）与指令集待调研；打包后经迭代 23 分发闭环安装；真机验收（连接 / 打印 / 状态 / 异常恢复）。
 - 传输插件分发（2026-08-17 迭代 23 完成，决策 #72/#73）：插件包上传服务端（独立 `plugin-packages` 目录 + `/api/plugin-packages`）+ 客户端设置页「插件管理」卡片安装 / 卸载（重启生效）；zip + manifest 格式、64MB 上限、三层校验、覆盖安装、与「更新与安装包」UI 并列；外部插件字节加载解决 Windows 文件锁（卸载 = 删文件 + 重启生效真正可用）。插件包签名 / 服务端鉴权仍为未决（正式对外分发再评估）。
 - 迭代 20 Server UI「仅在线设备可选」的提交竞态（K3，2026-08-11）：已拍板前端提交时现拉校验在线（掉线提示并禁止提交、作业不排队），属尽力而为，选择与提交之间仍有极小竞态窗口；如需彻底消除，需后端在 `SubmitJobAsync` 原子校验设备在线（离线即拒绝），将改变「设备离线作业暂存排队」语义（决策 #22），待后续迭代评估（未决）。
 
@@ -203,3 +203,4 @@ flowchart LR
 - ghcr 包可见性：新容器包默认私有，首次发布后需手动设为 Public / 跟随仓库可见性（运维项，2026-08-12 未决）。已解决（2026-08-15）：组织包可见性不支持 REST API 修改（官方仅提供用户级包 update-visibility 端点，组织级 PATCH 返回 404），须先由组织管理员在「组织设置 → Packages」勾选允许公开包，再在包设置页 Danger Zone 改为 Public；已通过匿名 `docker pull` 验证。
 
 - CI 测试偶发失败的根因（2026-08-12）：① SQLitePCLRaw provider 初始化依赖首次使用顺序（并行测试类竞态）→ 测试进程 ModuleInitializer + 存储类自初始化；② 时区 / 字体 / 端口时序差异 → 断言改环境无关。已修复并纳入迭代 21 完成记录。
+
