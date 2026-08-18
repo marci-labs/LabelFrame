@@ -4,6 +4,15 @@
 
 
 
+## 迭代 24 后端实施完成（WinHost）— 2026-08-18
+
+- **PrintSettings（选项模型）与 PrintSettingsStore**：新增 PrintSettings（默认 关闭 / batchSize 10 / batchIntervalMs 500；读取 Normalize：缺失 / 损坏 / 越界统一回默认值——batchSize<1→10、batchIntervalMs<0→500、batchEnabled 非 bool→false；保存校验返回中文原因）+ PrintSettingsStore（%LOCALAPPDATA%\LabelFrame\print-settings.json，原子写：先写临时文件再替换，与 HostConfigStore 同模式）。
+- **API**：新增 GET/POST /api/host/print-settings——POST 校验 batchSize≥1 / batchIntervalMs≥0（非法 400 + 中文原因）、仅回环可写（非回环 403）、保存即生效（更新内存单例，无需重启）；PrintSettings 单例注入 JobPrintWorker，读写 lock 保证跨线程可见性（评审 #8）。
+- **JobPrintWorker 批次节流**：「发送前暂停（claim-then-delay）」——ClaimNextItemAsync 领取下一张后、SendAsync 前，若 nabled && sendsSinceBatch>0 && sendsSinceBatch%batchSize==0 先 wait Task.Delay(batchIntervalMs, stoppingToken)；发送成功、CompleteItemAsync 后计数 +1（内存态、跨作业全局累计、不持久化，重启清零）；判定抽为 BatchPrintPolicy.ShouldPauseBeforeSend 纯函数保证可测；本机与服务端作业统一生效；测试页直发不计入计数；队列 / 幂等 / 挂起恢复 / 重打语义零改动（LabelJobQueue / JobSubmissionService / ServerRoutingWorker / ServerService / RoutingJson 均未改）。
+- **Serilog 文件日志**：WinHost 引入 Serilog.AspNetCore（传递依赖 Serilog.Sinks.File，无需单独引用）→ %LOCALAPPDATA%\LabelFrame\logs\app-{Date}.log（RollingInterval.Day、时间戳 + 级别），JobPrintWorker 逐张 ILogger 日志落盘带时间戳，供端到端冒烟断言批间间隔；host.log（hostLogWriter）通道不动，两套日志分开文件。
+- **测试**：WinHost 新增 50 个（PrintSettings Normalize / 校验、PrintSettingsStore 兜底 / 原子写、API GET 兜底含越界 Normalize / POST 400 / 非回环 403、BatchPrintPolicy、Worker 节流集成 FakeTransport 时间序列——25 张/批 5 → 第 6/11/16/21 张前各停一次共 4 次、跨作业 5+5 → 第 5 张后 B 首张前等待一次、不足一批不等待、禁用无间隔）；dotnet build 0 错误、dotnet test 315 全绿（Core 108 / Server 45 / Studio 25 / WinHost 137）。
+- **前端**（web 设置页「打印批次」卡片 + API client + 测试）由并行会话实施；端到端冒烟（Server 100 张 → 批次 10 / 500ms → Serilog 时间戳断言 ≈500ms → 终态 Completed）待两会话合并后执行。
+
 ## 迭代 24 设计定稿：客户端批次作业（Batch Print）— 2026-08-18
 
 - **迭代主题调整（用户提出）**：迭代 24 改为「客户端批次作业（Batch Print）」（🔄 进行中）；Niimbot 蓝牙插件顺延至迭代 26；Android PDA 排期以 ROADMAP「延后至迭代 25」为准（DESIGN.md 两处已同步修正）。

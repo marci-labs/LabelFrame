@@ -35,7 +35,7 @@
 | 21 | 自动化发布（ghcr + GitHub Release + MSI 签名通道） | ✅ 已完成（v0.17.0 自动发布成功；ghcr 包已公开） |
 | 22 | 打印测试体验 + 传输插件化 + 客户端下载分发 | ✅ 已完成（2026-08-17 迭代结束，本地 0.18.0 测试包验收） |
 | 23 | 客户端插件分发——上传服务端 + 客户端安装 / 卸载 | ✅ 已完成（2026-08-17 前端完成 + loadError 补充 + 0.19.0 打包验收） |
-| 24 | 客户端批次作业（Batch Print） | 🔄 进行中（2026-08-18 起，设计方案已过两轮评审） |
+| 24 | 客户端批次作业（Batch Print） | 🔄 进行中（后端 WinHost 实施完成 2026-08-18；前端并行会话进行中） |
 | 25 | Android PDA 宿主（AndroidHost） | 📋 延后（PDA 事项延后，再排期） |
 | 26 | Niimbot 蓝牙打印机传输插件实现 + 真机测试 | 📋 下一轮（顺延自迭代 24，2026-08-18） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
@@ -709,6 +709,12 @@
 **验收**：`dotnet build` / `dotnet test` 与 web `pnpm test` 全绿；端到端冒烟（Server 提交 100 张 → 批次 10 / 500ms → Serilog 日志按「打印完成」时间戳断言每 10 张间隔约 500ms → 终态回报 Completed）；按 DoD 更新 ROADMAP / CHANGELOG / DESIGN。
 
 **启动命令**：本迭代拆为**前端 / 后端两个独立会话并行实施**（后端 = WinHost：PrintSettings + API + Worker 节流 + Serilog；前端 = web：设置页卡片 + API client + 测试），命令由用户分别下发，两会话互不修改对方范围文件。
+**后端实施完成（2026-08-18，WinHost）**：
+- 新增 PrintSettings（选项模型：默认 关 / batchSize 10 / batchIntervalMs 500，读取 Normalize：缺失 / 损坏 / 越界回默认值）与 PrintSettingsStore（%LOCALAPPDATA%\LabelFrame\print-settings.json，原子写：临时文件 + 替换）。
+- 新增 GET/POST /api/host/print-settings（POST 校验 batchSize≥1 / batchIntervalMs≥0，非法 400；仅回环可写 403；保存即生效——更新内存单例，无需重启）；PrintSettings 单例注入 JobPrintWorker，读写 lock 保证跨线程可见性。
+- JobPrintWorker 实现「发送前暂停（claim-then-delay）」：领取下一张后、SendAsync 前，若已开启且已发送数满批次倍数则 wait Task.Delay(batchIntervalMs, stoppingToken)；发送成功、CompleteItemAsync 后计数 +1（内存态、跨作业全局累计、不持久化）；判定抽为 BatchPrintPolicy.ShouldPauseBeforeSend 纯函数。
+- WinHost 引入 Serilog（Serilog.AspNetCore，传递依赖 Serilog.Sinks.File）文件日志 → %LOCALAPPDATA%\LabelFrame\logs\app-{Date}.log（RollingInterval.Day、时间戳 + 级别），JobPrintWorker 逐张 ILogger 日志落盘；host.log（hostLogWriter）通道不动，两套日志分开文件。
+- 测试：新增 50 个（模型 Normalize / 校验、存储兜底 / 原子写、API GET 兜底 / POST 400 / 非回环 403、BatchPrintPolicy、Worker 节流集成 FakeTransport 时间序列：25 张/批 5 → 第 6/11/16/21 张前各停一次共 4 次、跨作业 5+5 → 第 5 张后 B 首张前等待一次、不足一批不等待、禁用无间隔）；dotnet build 0 错误、dotnet test 315 全绿（Core 108 / Server 45 / Studio 25 / WinHost 137）。前端（web 设置页卡片 + API client + 测试）由并行会话实施，端到端冒烟待两会话合并后执行。
 
 ---
 
