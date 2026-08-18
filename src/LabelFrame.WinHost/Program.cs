@@ -54,6 +54,8 @@ public static class Program
             kestrel.Limits.MaxRequestBodySize = PluginPackageLimits.MaxBytes;
         });
         // 迭代 24：Serilog 文件日志（ILogger 逐张日志落盘，供批间间隔冒烟验证；与 host.log 分开文件）
+        // 文件名 app-20260818.log：Serilog.Sinks.File 的 {Date} 是字面量（不会替换），
+        // 正确做法是 app-.log + RollingInterval.Day（Serilog 自动追加日期后缀），联调附五实证。
         var appLogDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "LabelFrame",
@@ -61,7 +63,7 @@ public static class Program
         builder.Host.UseSerilog((_, loggerConfig) => loggerConfig
             .MinimumLevel.Information()
             .WriteTo.File(
-                Path.Combine(appLogDirectory, "app-{Date}.log"),
+                Path.Combine(appLogDirectory, "app-.log"),
                 rollingInterval: RollingInterval.Day,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
