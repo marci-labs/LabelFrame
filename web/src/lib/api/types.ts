@@ -267,6 +267,19 @@ export interface HostConfig {
   ips?: string[]
 }
 
+/** 客户端批次作业设置（迭代 24 §4.1：GET/POST /api/host/print-settings，用户级持久化 print-settings.json）。
+ *  后端读取 Normalize：缺失 / 损坏 / 越界统一回默认值（batchSize<1→10、batchIntervalMs<0→500、batchEnabled 非 bool→false），
+ *  GET 永不返回非法值；POST 校验 batchSize ≥ 1、batchIntervalMs ≥ 0，非法 400 + 中文原因；保存即生效（无需重启）。
+ *  batchEnabled=false 时节流逻辑忽略 batchSize / batchIntervalMs（读取时两者仍参与 Normalize）。 */
+export interface PrintSettings {
+  /** 是否开启批次作业（默认 false）。 */
+  batchEnabled: boolean
+  /** 每批次打印数量（默认 10，≥ 1）。 */
+  batchSize: number
+  /** 批次打印间隔毫秒（默认 500，≥ 0；0 = 无间隔）。 */
+  batchIntervalMs: number
+}
+
 /** GET /api/printer/status（迭代 15 恢复，F4）。 */
 export interface PrinterStatus {
   isOnline: boolean

@@ -19,6 +19,7 @@ import type {
   PluginUninstallResult,
   PrinterStatus,
   PrinterTestResult,
+  PrintSettings,
   SubmitJobRequest,
   TemplatePackage,
   TemplateSummary,
@@ -296,6 +297,15 @@ export const localApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cfg),
+    }),
+
+  // ── 批次作业设置（迭代 24 §4.3：仅 WinHost 实现；GET Normalize 兜底、POST 校验 400 + 仅回环，保存即生效；旧 WinHost 404）──
+  getPrintSettings: () => localRequest<PrintSettings>('/api/host/print-settings'),
+  setPrintSettings: (s: PrintSettings) =>
+    localRequest<void>('/api/host/print-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(s),
     }),
 
   // ── 客户端插件安装 / 卸载（迭代 23 §2.2/§2.3：仅 WinHost 实现；失败 400 ErrorView；旧 WinHost 404）──
