@@ -364,3 +364,49 @@ DESIGN.md（Android 排期两处）、CHANGELOG。
    读取时两者仍参与 Normalize」，消除「忽略…仍参与校验」自相矛盾。
 
 其余按附三结论：10 条意见全部落实或合理处置（含 #9 误判纠正），四方语义互洽，**可定稿**。
+## 附五：联调测试记录（2026-08-18，hermes 前端会话）
+
+> 前端实施方联调（master 67214c3 合并前后端后执行）；测试环境全隔离（测试 Server 53963 + 测试 WinHost 53962 +
+> 模拟旧 WinHost stub 53964），生产 53960/53961 未受影响；按 §7 测试计划执行，前端零缺陷，后端 1 项待修（见下）。
+
+### ✅ 验证结果清单
+
+**① WinHost API `/api/host/print-settings`（§4.3）**
+- GET 默认值 `{batchEnabled:false, batchSize:10, batchIntervalMs:500}` ✓
+- POST 保存 200 + 回显；保存即生效（GET 立即反映，无需重启）；文件落盘 ✓
+- POST 非法值（batchSize=0 / batchIntervalMs=-1）→ 400 + 中文原因「每批次打印数量需 ≥ 1。」✓
+- 读取 Normalize：手改文件 `batchIntervalMs:-5` → GET 回默认 500，永不返回非法值 ✓
+
+**② 前端设置页「打印批次」卡片（§4.4）**
+- 卡片位于「连接方式」之下、「打印机」之上；渲染当前设置与提示文案 ✓
+- 开关联动：关闭时数量/间隔输入禁用置灰，开启后恢复 ✓
+- 保存成功提示「已保存并立即生效。」，GET 确认持久化 ✓
+- 404 降级：旧 WinHost stub（print-settings 恒 404）下显示「当前客户端版本不支持批次作业。」且不渲染表单 ✓
+
+**③ 端到端冒烟（§7，Server 提交 100 张 → 批次 10 / 500ms）**
+- 作业终态 Completed（100/100，0 失败），进度 0%→100% 符合现状预期 ✓
+- Serilog 逐张日志 100 条「第 N 张打印完成」序号连续；节流日志恰好 9 次
+  （已发送 10/20/…/90 张各暂停 500ms，最后一批后无下一张不等待——发送前暂停语义精确符合）✓
+- 批界间隔 9 次均值 686ms = 500ms 暂停 + ~186ms Log 传输固有耗时（批内均值 162ms），扣除固有耗时 ≈ 524ms ≈ 500ms ✓
+- 关闭批次后 30 张作业批界间隔仅 41/43ms（无暂停）——开关语义正确 ✓
+
+### 🔧 后端待修（只记录，前端不修）
+
+1. **Serilog 日志文件名含字面 `{Date}`**：实际文件 `app-{Date}20260818.log`（Program.cs:64 同时使用 `{Date}` 占位符与
+   `rollingInterval: RollingInterval.Day`，两者互斥——Serilog 仅按 rolling 追加日期后缀、不替换 `{Date}`），
+   与 §5.6「`app-{Date}.log` 按天滚动」的命名意图不符（滚动功能本身正常）。
+   建议二选一：去掉 `rollingInterval` 保留 `{Date}`，或去掉 `{Date}` 保留 `RollingInterval.Day`。
+
+### 🔧 联调环境事故（已恢复，非产品缺陷）
+
+测试 WinHost 切换传输时 connection.json 写入了生产路径——`Environment.GetFolderPath(LocalApplicationData)`
+在 Windows 走 KnownFolder API、**不读 `LOCALAPPDATA` 环境变量**，该路径无 env 覆盖、无法隔离。
+已按生产 WinHost 当前生效连接（Zebra USB 自动发现）原值恢复，生产进程未受影响；测试 Serilog 日志已从生产
+`logs/` 目录移走。教训：传输切换 / 批次联调前先备份 connection.json 并记录 logs 目录清单（已记入 hermes 笔记）。
+
+### 结论
+
+前后端联调全部通过（API 契约 / UI 交互 / 404 降级 / E2E 节流时序 / 终态回报）；前端无缺陷；
+后端仅 1 项日志命名偏差（低优先级，不阻塞功能）。待修项由主 Agent 裁决排期。
+
+（正文未做任何修改；本节为联调测试记录。）
