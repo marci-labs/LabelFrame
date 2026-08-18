@@ -1,8 +1,8 @@
 # 设计方案：客户端批次作业（Batch Print）
 
-> 状态：**已按评审意见修订（2026-08-18）**。评审意见见文末「附：审阅意见（hermes 追加）」；
-> 正文已按评审结论修订，修订记录见「附二：评审结论与修订记录」。待用户 / 审核者最终确认后，
-> 并入 `docs/ROADMAP.md` 迭代条目并形成实施规格。
+> 状态：**已通过两轮评审（2026-08-18）**。审阅记录见文末「附」（第一轮 hermes）与「附三」（第二轮复核）；
+> 正文按评审结论修订（修订记录见「附二」），两处 💡 非阻塞建议已落实（见「附四」）。
+> 待并入 `docs/ROADMAP.md` 迭代条目并形成实施规格。
 >
 > 目标：客户端把「向打印机发送」的动作按数量分批、批间加间隔，用于大批量作业时
 > 控制打印节奏 / 减轻打印机压力；同时澄清「服务端作业进度 0%→100%」的现象与批次功能的关系。
@@ -110,7 +110,7 @@
 | `batchSize` | int | `10` | ≥ 1 | 每批次打印数量 |
 | `batchIntervalMs` | int | `500` | ≥ 0 | 批次打印间隔（毫秒）；0 = 无间隔 |
 
-- `batchEnabled=false` 时忽略 `batchSize / batchIntervalMs`（仍参与读取校验，见下）。
+- `batchEnabled=false` 时节流逻辑忽略 `batchSize / batchIntervalMs`；读取时两者仍参与 Normalize（见下）。
 - **读取 Normalize（评审 #3 结论，与损坏兜底并为一条规则）**：文件缺失 / 损坏 / 值越界
   统一回默认值——`batchSize < 1 → 10`、`batchIntervalMs < 0 → 500`、`batchEnabled` 非 bool → `false`；
   GET 永不返回非法值，前端输入框恒为合法。
@@ -174,7 +174,7 @@
 6. **WinHost 引入 Serilog 文件日志**（评审 #2 结论 + 用户拍板，2026-08-18）：
    - 包：`Serilog.AspNetCore`（含 `Serilog.Sinks.File`）；
    - 配置：`builder.Host.UseSerilog(...)`（或 `builder.Logging.ClearProviders().AddSerilog(...)`），
-     文件 sink 输出到 `%LOCALAPPDATA%\LabelFrame\logs\app-.log`（按天 / 大小滚动、
+     文件 sink 输出到 `%LOCALAPPDATA%\LabelFrame\logs\app-{Date}.log`（`RollingInterval.Day` 按天滚动、
      带时间戳与级别），使 `JobPrintWorker` 的逐张 ILogger 日志（「开始打印 / 打印完成」）
      落盘带时间戳 → 端到端冒烟按「打印完成」时间戳断言批间间隔 ≈ 500ms；
    - 不重构现有 hostLogWriter（TextWriter）通道（HostInfo / LogPrintTransport /
@@ -319,3 +319,48 @@
 
 **待办（迭代正式启动时执行）**：ROADMAP 状态表（迭代 24 主题、Niimbot 顺延）、
 DESIGN.md（Android 排期两处）、CHANGELOG。
+
+## 附三：第二轮复核意见（hermes 追加，2026-08-18）
+
+> 复核对象：98801de 修订版正文 + 附二修订记录；逐条对照仓库代码核实。
+
+### 落实核对（对照附二表逐条）
+
+✅ **#1 发送前暂停**：§3.2 / §3.4 / §5.3 / §7 四处已统一为 claim-then-delay 且互洽——§7「25 张/批 5 → 第 6/11/16/21 张前各停一次（共 4 次）」「跨作业 5+5 → 第 5 张后、B 首张前等待一次」与 §3.4 的 9×500ms 数学一致，无误。
+✅ **#2 Serilog 冒烟链路**：§2.1 范围、§5.6、§7 已落地；包依赖声称属实（本机 NuGet 缓存 serilog.aspnetcore nuspec 确认传递依赖 Serilog.Sinks.File，无需单独引用）；host.log 通道不动、LogPrintTransport 行不改，两套日志分开，与 §2.2 一致；WinHost 测试项目无启动 Web 主机的用例（test/ 下无 WebApplication/CreateBuilder/Program.Main 引用），Serilog 引入不影响现有测试。
+✅ **#3 读取 Normalize**：§4.1 / §4.3 统一为「缺失 / 损坏 / 越界回默认值」（batchSize<1→10、batchIntervalMs<0→500、batchEnabled 非 bool→false），GET 永不返回非法值，与保存校验（400）不冲突。
+✅ **#4 措辞**：§8 Q2 已删「接口可预留」，改为「届时再讨论契约；本轮 Server 零改动」，与 §2.2「服务端任何改动」一致。
+✅ **#5 AndroidHost 排期**：以 ROADMAP「延后至迭代 25」为准；DESIGN.md 两处（Android PDA 宿主条目、AndroidHost 构建依赖条目）列入启动待办，合理。
+✅ **#6 迭代编号**：Q6「迭代 24 改为本功能、Niimbot 顺延」已确认并记录启动待办。
+✅ **#7 进度句**：§7 保留「进度仍 0%→100%，符合现状，避免实施后被误判为 bug」。
+✅ **#8 并发可见性**：§5.1 已注明 lock（HostConfigStore._gate 风格）或 volatile。
+✅ **#9 测试页计数**：**附二纠正属实**——`POST /api/printer/test` 为直发路径（Program.cs:567-587，直接 `CurrentTransport.SendAsync`，不经 JobPrintWorker / 队列），不计入计数、不受节流；第一轮 #9 所述「测试页也走 JobPrintWorker 发送路径」为我方误判，以修订版为准。§6 行「不计入批次计数：直发…无批次等待」准确。
+✅ **#10 前端落点**：§4.4 / §5.5 已写入行号（Settings.tsx:276/315、:95、:477），实施期落实。
+
+### 修订质量检查
+
+- 编号 / 结构：§5 新增第 6 条（Serilog）编号连续；附二表引用「§5.1 / §5.5 / §5.6」与正文实际编号一致；无重复标题。
+- 旧表述残留：§3.4 原「最后一批之后不额外等待」已改写为「无第 101 张、不额外等待」，与 claim-then-delay 自洽；§6「Log 模拟打印」行已修正（PNG 在提交时一次性保存，间隔体现在逐张发送 / Serilog 时间戳），无「PNG 保存之间」旧表述残留。
+- 新语义核对：「取消」行新增「间隔窗口内已领取在途的 1 张可能仍会发出」——属实（claim 时已置 Printing，取消置 Cancelled 后 SendAsync 仍会执行，CompleteItemAsync 对 Cancelled 作业直接返回不改变状态，LabelJobQueue.cs:123-125），「窗口变宽」表述准确（现状窗口≈0，加节流后 = 间隔时长）；§9 风险已同步。
+- 与第一轮 ✅ 项复核：正文修订未触碰 §1.1 代码依据、存储位置（%LOCALAPPDATA%\LabelFrame）、回环 403 校验、前端落点等已核对项。
+
+### 💡 非阻塞细节（实施期落实，不阻塞定稿）
+
+1. §5.6 日志文件名「`app-.log`（按天 / 大小滚动）」：Serilog File sink 的按天滚动需 `{Date}` 占位符，建议写为 `app-{Date}.log`（或注明 RollingInterval.Day），否则字面文件名不会滚动。
+2. §4.1「`batchEnabled=false` 时忽略 `batchSize / batchIntervalMs`（仍参与读取校验，见下）」——「忽略…仍参与校验」措辞自相矛盾，建议改为「节流逻辑忽略这两个值；读取时仍参与 Normalize」。
+
+### 结论
+
+无新异议：10 条意见全部落实或合理处置（含 #9 误判纠正），四方语义（§3.2 / §3.4 / §5.3 / §7）已互洽，修订未引入新矛盾，**可定稿**。两处 💡 由实施期按上述建议落实即可，无需再往返。
+
+（正文未做任何修改；本节为审阅记录。）
+
+## 附四：💡 非阻塞建议落实记录（2026-08-18，主 Agent）
+
+> 附三两条非阻塞建议已在正文落实（不再往返）：
+
+1. §5.6 日志文件名改为 `app-{Date}.log`（`RollingInterval.Day` 按天滚动），避免字面文件名不滚动。
+2. §4.1 措辞改为「`batchEnabled=false` 时节流逻辑忽略 `batchSize / batchIntervalMs`；
+   读取时两者仍参与 Normalize」，消除「忽略…仍参与校验」自相矛盾。
+
+其余按附三结论：10 条意见全部落实或合理处置（含 #9 误判纠正），四方语义互洽，**可定稿**。
