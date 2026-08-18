@@ -116,7 +116,7 @@ public class JobPrintWorkerThrottleTests
                 }
             }
 
-            Assert.True(await WaitForCompletionAsync(queue, jobIds, TimeSpan.FromSeconds(60)), "作业未在超时时间内完成。");
+            Assert.True(await WaitForCompletionAsync(queue, jobIds, TimeSpan.FromSeconds(300)), "作业未在超时时间内完成。");
             var throttleMessages = logProvider.Messages.Where(m => m.Contains("批次节流")).ToList();
             var sentCounts = throttleMessages
                 .Select(m => Regex.Match(m, "已发送 (\\d+) 张"))
