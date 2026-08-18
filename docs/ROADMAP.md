@@ -35,7 +35,7 @@
 | 21 | 自动化发布（ghcr + GitHub Release + MSI 签名通道） | ✅ 已完成（v0.17.0 自动发布成功；ghcr 包已公开） |
 | 22 | 打印测试体验 + 传输插件化 + 客户端下载分发 | ✅ 已完成（2026-08-17 迭代结束，本地 0.18.0 测试包验收） |
 | 23 | 客户端插件分发——上传服务端 + 客户端安装 / 卸载 | ✅ 已完成（2026-08-17 前端完成 + loadError 补充 + 0.19.0 打包验收） |
-| 24 | 客户端批次作业（Batch Print） | 🔄 进行中（前后端已合入 master 67214c3；联调附五通过；Serilog 日志命名修复完成 2026-08-18） |
+| 24 | 客户端批次作业（Batch Print） | ✅ 已完成（2026-08-18：前后端合入 master 67214c3 + 端到端联调附五通过 + Serilog 日志命名修复） |
 | 25 | Android PDA 宿主（AndroidHost） | 📋 延后（PDA 事项延后，再排期） |
 | 26 | Niimbot 蓝牙打印机传输插件实现 + 真机测试 | 📋 下一轮（顺延自迭代 24，2026-08-18） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
@@ -694,7 +694,7 @@
 **启动命令**：
 > 继续 LabelFrame 迭代 23（客户端插件分发：上传服务端 + 客户端安装 / 卸载）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-23-SPEC.md；按规格实施（后端 = 主 Agent、前端 = hermes，前端以契约为准、接口未就绪用 mock / 测试替身并注明假设，不修改对方范围文件）；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
-## 迭代 24：客户端批次作业（Batch Print）（进行中）
+## 迭代 24：客户端批次作业（Batch Print）（已完成）
 
 **目标**：客户端把「向打印机发送」的动作按数量分批、批间加间隔，用于大批量作业时控制打印节奏 / 减轻打印机压力；同时澄清「服务端作业进度 0%→100%」现象与批次功能的关系（批次不改变进度展示，进度回报仍为终态一次）。
 
@@ -717,6 +717,8 @@
 - 测试：新增 50 个（模型 Normalize / 校验、存储兜底 / 原子写、API GET 兜底 / POST 400 / 非回环 403、BatchPrintPolicy、Worker 节流集成 FakeTransport 时间序列：25 张/批 5 → 第 6/11/16/21 张前各停一次共 4 次、跨作业 5+5 → 第 5 张后 B 首张前等待一次、不足一批不等待、禁用无间隔）；dotnet build 0 错误、dotnet test 315 全绿（Core 108 / Server 45 / Studio 25 / WinHost 137）。前端（web 设置页卡片 + API client + 测试）由并行会话实施，端到端冒烟待两会话合并后执行。
 
 **联调完成（2026-08-18，附五）**：前后端合入 master（67214c3）后按 §7 端到端冒烟全部通过——API 契约（GET/POST /api/host/print-settings：默认值 / 保存即生效 / 400 校验 / Normalize）/ 设置页「打印批次」卡片（渲染 / 开关联动禁用 / 保存提示 / 旧 WinHost 404 降级）/ Server 100 张 → 批次 10/500ms → Serilog 100 条逐张日志 + 节流恰好 9 次（批界间隔 ≈ 500ms，扣除 Log 传输固有耗时后 ≈ 524ms）→ 终态 Completed；前端零缺陷。后端 1 项待修（Serilog 日志文件名含字面 {Date}，产物 app-{Date}20260818.log）已修复：实证 Serilog.Sinks.File 的 {Date} 为字面量，改为 app-.log + RollingInterval.Day → 实际产物 app-20260818.log（见 CHANGELOG 与设计文档附五处理记录）。
+
+**完成（2026-08-18）**：验收标准全部满足——`dotnet build` / `dotnet test` 315 全绿、web `pnpm test` 双模式 219×2 全绿、端到端联调附五通过、Serilog 日志命名待修项已修复；迭代状态更新为 ✅ 已完成。服务端零改动（跨端契约不变）；下一轮迭代 26（Niimbot 蓝牙打印机插件，顺延自本迭代）。
 
 ---
 

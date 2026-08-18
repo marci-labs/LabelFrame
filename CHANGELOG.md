@@ -4,6 +4,10 @@
 
 
 
+## 迭代 24 完成（客户端批次作业 Batch Print）— 2026-08-18
+
+- **迭代状态 ✅ 已完成**：前后端合入 master（67214c3）→ 端到端联调通过（附五）→ Serilog 日志命名待修项修复（pp-20260818.log）；dotnet build / dotnet test 315 全绿、web pnpm test 双模式 219×2 全绿。服务端零改动（跨端契约不变）；下一轮迭代 26（Niimbot 蓝牙打印机插件，顺延自本迭代）。
+
 ## 迭代 24 联调通过 + Serilog 日志命名修正 — 2026-08-18
 
 - **端到端联调通过（附五）**：前后端合入 master（67214c3）后联调——API 契约（GET/POST /api/host/print-settings：默认值 / 保存即生效 / 400 校验 / Normalize）/ 设置页「打印批次」卡片（渲染 / 开关联动禁用 / 保存提示 / 旧 WinHost 404 降级）/ E2E（Server 100 张 → 批次 10/500ms → Serilog 100 条逐张日志 + 节流 9 次、批界间隔 ≈ 500ms → 终态 Completed）全部通过，前端零缺陷。
