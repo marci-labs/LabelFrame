@@ -722,6 +722,8 @@
 
 **发布（2026-08-18）**：推送 `v0.20.0` tag 触发 GitHub Actions 自动发布——Server Docker 镜像推 ghcr.io（`ghcr.io/marci-labs/labelframe-server:0.20.0` / `latest`）、PC 安装包（Server / Client MSI、服务端 webui 插件 zip、Linux 归档）上传 GitHub Release；ServerOptions 版本号同步 0.20.0。
 
+**验证发布（2026-08-18）**：推送 `v0.20.1` tag 验证发布流水线稳定（内容与 v0.20.0 相同，无功能变更）——GitHub Actions 全流程通过，产物同上；ServerOptions 版本号同步 0.20.1。
+
 ---
 
 ## 迭代 26：Niimbot 蓝牙打印机传输插件实现 + 真机测试（下一轮，顺延自迭代 24）

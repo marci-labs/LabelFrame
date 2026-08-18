@@ -4,6 +4,10 @@
 
 
 
+## v0.20.1 验证发布 — 2026-08-18
+
+- **流水线验证**：推送 0.20.1 tag 验证 GitHub Actions 发布流水线稳定（内容与 v0.20.0 相同，无功能变更）；全流程（测试 / 打包 / ghcr 镜像 / Release）通过，产物同上；ServerOptions 版本号同步 0.20.1。
+
 ## v0.20.0 发布（迭代 24：客户端批次作业 Batch Print）— 2026-08-18
 
 - **自动发布**：推送 0.20.0 tag 触发 GitHub Actions——dotnet 全量测试 + 前端双模式测试/构建通过后，Server Docker 镜像推 ghcr.io（ghcr.io/marci-labs/labelframe-server:0.20.0 / latest），Server / Client MSI + 服务端 webui 插件 zip + Linux 归档上传 GitHub Release；ServerOptions 版本号同步 0.20.0（/api/server/info 与 tag 一致）。
