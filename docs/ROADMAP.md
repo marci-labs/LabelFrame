@@ -720,6 +720,8 @@
 
 **完成（2026-08-18）**：验收标准全部满足——`dotnet build` / `dotnet test` 315 全绿、web `pnpm test` 双模式 219×2 全绿、端到端联调附五通过、Serilog 日志命名待修项已修复；迭代状态更新为 ✅ 已完成。服务端零改动（跨端契约不变）；下一轮迭代 26（Niimbot 蓝牙打印机插件，顺延自本迭代）。
 
+**发布（2026-08-18）**：推送 `v0.20.0` tag 触发 GitHub Actions 自动发布——Server Docker 镜像推 ghcr.io（`ghcr.io/marci-labs/labelframe-server:0.20.0` / `latest`）、PC 安装包（Server / Client MSI、服务端 webui 插件 zip、Linux 归档）上传 GitHub Release；ServerOptions 版本号同步 0.20.0。
+
 ---
 
 ## 迭代 26：Niimbot 蓝牙打印机传输插件实现 + 真机测试（下一轮，顺延自迭代 24）

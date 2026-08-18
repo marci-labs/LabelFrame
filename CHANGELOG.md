@@ -4,6 +4,10 @@
 
 
 
+## v0.20.0 发布（迭代 24：客户端批次作业 Batch Print）— 2026-08-18
+
+- **自动发布**：推送 0.20.0 tag 触发 GitHub Actions——dotnet 全量测试 + 前端双模式测试/构建通过后，Server Docker 镜像推 ghcr.io（ghcr.io/marci-labs/labelframe-server:0.20.0 / latest），Server / Client MSI + 服务端 webui 插件 zip + Linux 归档上传 GitHub Release；ServerOptions 版本号同步 0.20.0（/api/server/info 与 tag 一致）。
+
 ## 迭代 24 完成（客户端批次作业 Batch Print）— 2026-08-18
 
 - **迭代状态 ✅ 已完成**：前后端合入 master（67214c3）→ 端到端联调通过（附五）→ Serilog 日志命名待修项修复（pp-20260818.log）；dotnet build / dotnet test 315 全绿、web pnpm test 双模式 219×2 全绿。服务端零改动（跨端契约不变）；下一轮迭代 26（Niimbot 蓝牙打印机插件，顺延自本迭代）。
