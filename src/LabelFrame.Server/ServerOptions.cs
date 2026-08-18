@@ -45,7 +45,7 @@ public sealed class ServerOptions
     public string? LogFilePath { get; set; }
 
     /// <summary>产品版本（随迭代版本号更新；打包脚本 -Version 需保持一致）。</summary>
-    public const string ProductVersion = "0.20.0";
+    public const string ProductVersion = "0.20.1";
 
     /// <summary>客户端安装包目录（迭代 22 §2.3：服务端统一分发客户端安装包；Windows %ProgramData%\\LabelFrame\\server\\client-packages；Linux /var/lib/labelframe/server/client-packages）。</summary>
     public static string DefaultClientPackagesPath => Path.Combine(DefaultDataDirectory, "client-packages");
