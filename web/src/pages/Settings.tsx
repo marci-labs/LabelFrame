@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { clientPackageDownloadUrl, localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
-import type { ClientPackageInfo, InstalledPluginInfo, PluginPackageInfo, PrinterStatus } from '../lib/api/types'
+import type { ClientPackageInfo, InstalledPluginInfo, PluginPackageInfo, PrinterStatus, PrintSettings } from '../lib/api/types'
 import { formatSize } from '../lib/download'
 import { formatTransport } from '../lib/transport'
 import { pluginPackageTooLarge } from '../lib/pluginLimits'
@@ -43,6 +43,13 @@ export function Settings() {
   const [uninstalling, setUninstalling] = useState<string | null>(null)
   const [pluginNotice, setPluginNotice] = useState<string | null>(null)
   const [pluginError, setPluginError] = useState<string | null>(null)
+
+  // 迭代 24 §4.4：打印批次——WinHost /api/host/print-settings（用户级持久化，保存即生效）；旧 WinHost 404 → 版本提示
+  const [printSettings, setPrintSettings] = useState<PrintSettings | null>(null)
+  const [printSettingsError, setPrintSettingsError] = useState<string | null>(null)
+  const [printSettingsOldWinHost, setPrintSettingsOldWinHost] = useState(false)
+  const [batchSaving, setBatchSaving] = useState(false)
+  const [batchSaveResult, setBatchSaveResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
   useEffect(() => {
     if (!app.connected) {
@@ -119,6 +126,30 @@ export function Settings() {
   useEffect(() => {
     void refreshInstalledPlugins()
   }, [refreshInstalledPlugins])
+
+  // 打印批次：挂载即拉（WinHost 专属端点；404 = 旧客户端无此端点 → 版本提示，不渲染表单）
+  useEffect(() => {
+    let on = true
+    localApi
+      .getPrintSettings()
+      .then((s) => {
+        if (on) {
+          setPrintSettings(s)
+          setPrintSettingsError(null)
+          setPrintSettingsOldWinHost(false)
+        }
+      })
+      .catch((err) => {
+        if (on) {
+          setPrintSettings(null)
+          setPrintSettingsError(err instanceof ApiError ? err.message : '获取批次设置失败。')
+          setPrintSettingsOldWinHost(err instanceof ApiError && err.code === 'HTTP_404')
+        }
+      })
+    return () => {
+      on = false
+    }
+  }, [])
 
   /** 安装：下载 blob → 保留原始文件名 multipart 提交本机 WinHost → 提示重启生效 + 刷新已安装列表。 */
   const installPlugin = async (p: PluginPackageInfo) => {
@@ -208,6 +239,21 @@ export function Settings() {
     setSaving(false)
   }
 
+  /** 保存批次设置：POST /api/host/print-settings 持久化并立即生效（无需重启）；失败展示后端中文 message。 */
+  const savePrintSettings = async () => {
+    if (!printSettings) return
+    setBatchSaving(true)
+    setBatchSaveResult(null)
+    try {
+      await localApi.setPrintSettings(printSettings)
+      setBatchSaveResult({ ok: true, msg: '已保存并立即生效。' })
+    } catch (err) {
+      setBatchSaveResult({ ok: false, msg: err instanceof ApiError ? err.message : '保存批次设置失败。' })
+    } finally {
+      setBatchSaving(false)
+    }
+  }
+
   const doTestPrint = async () => {
     setTestPrinting(true)
     setPrintResult(null)
@@ -276,6 +322,64 @@ export function Settings() {
           <div className="panel-head">连接方式</div>
           <div className="panel-body">
             <TransportPanel />
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">打印批次</div>
+          <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {printSettingsOldWinHost ? (
+              <div className="hint">当前客户端版本不支持批次作业。</div>
+            ) : printSettings === null ? (
+              <div className="hint">{printSettingsError ?? '加载批次设置…'}</div>
+            ) : (
+              <>
+                <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={printSettings.batchEnabled}
+                    onChange={(ev) => setPrintSettings({ ...printSettings, batchEnabled: ev.target.checked })}
+                  />
+                  开启批次作业
+                </label>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <label className="field" style={{ maxWidth: 150 }}>
+                    每批次打印数量
+                    <input
+                      className="input mono"
+                      type="number"
+                      min={1}
+                      value={printSettings.batchSize}
+                      disabled={!printSettings.batchEnabled}
+                      onChange={(ev) => setPrintSettings({ ...printSettings, batchSize: Number(ev.target.value) })}
+                    />
+                  </label>
+                  <label className="field" style={{ maxWidth: 190 }}>
+                    批次打印间隔（毫秒）
+                    <input
+                      className="input mono"
+                      type="number"
+                      min={0}
+                      value={printSettings.batchIntervalMs}
+                      disabled={!printSettings.batchEnabled}
+                      onChange={(ev) => setPrintSettings({ ...printSettings, batchIntervalMs: Number(ev.target.value) })}
+                    />
+                  </label>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <button className="btn primary" onClick={() => void savePrintSettings()} disabled={batchSaving}>
+                    <Icon name="save" size={13} />
+                    {batchSaving ? '保存中…' : '保存'}
+                  </button>
+                  {batchSaveResult && (
+                    <span className={batchSaveResult.ok ? 'badge ok' : 'badge err'}>{batchSaveResult.msg}</span>
+                  )}
+                </div>
+                <div className="hint">
+                  开启后，大批量作业将每 {printSettings.batchSize} 张一批发送到打印机，批与批之间间隔 {printSettings.batchIntervalMs} 毫秒。
+                </div>
+              </>
+            )}
           </div>
         </section>
 

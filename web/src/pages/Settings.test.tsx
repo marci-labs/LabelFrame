@@ -27,6 +27,8 @@ const mocks = vi.hoisted(() => ({
     listInstalledPlugins: vi.fn(),
     installPlugin: vi.fn(),
     uninstallPlugin: vi.fn(),
+    getPrintSettings: vi.fn(),
+    setPrintSettings: vi.fn(),
   },
   probeHealthz: vi.fn(),
 }))
@@ -80,6 +82,8 @@ beforeEach(() => {
   mocks.local.getPrinterStatus.mockResolvedValue({ isOnline: true, isPaperOut: false, isPaused: false, message: '就绪' })
   mocks.local.testPrinter.mockResolvedValue({ sent: true, bytes: 128 })
   mocks.local.setHostConfig.mockResolvedValue(undefined)
+  mocks.local.getPrintSettings.mockResolvedValue({ batchEnabled: false, batchSize: 10, batchIntervalMs: 500 })
+  mocks.local.setPrintSettings.mockResolvedValue(undefined)
   mocks.probeHealthz.mockResolvedValue(true)
 })
 
@@ -389,5 +393,99 @@ describe('插件管理（迭代 23 §5.6）', () => {
     renderSettings()
     const btn = (await screen.findByRole('button', { name: /^安装$/ })) as HTMLButtonElement
     expect(btn.disabled).toBe(true)
+  })
+})
+
+describe('打印批次（迭代 24 §4.4）', () => {
+  /** 批次卡片内限定查询（「保存」按钮在服务端地址与打印批次两组各有一个）。 */
+  function withinBatch(): HTMLElement {
+    return screen.getByText('打印批次').closest('section') as HTMLElement
+  }
+
+  it('卡片渲染：挂载即拉取设置，显示开关（默认关）与数量 / 间隔默认值 + 提示文案', async () => {
+    renderSettings()
+    // 面板与默认值（GET 返回默认：关 / 10 张 / 500ms）
+    expect(screen.getByText('打印批次')).toBeTruthy()
+    expect(await screen.findByLabelText('开启批次作业')).toBeTruthy()
+    const enabled = screen.getByLabelText('开启批次作业') as HTMLInputElement
+    const size = screen.getByLabelText('每批次打印数量') as HTMLInputElement
+    const interval = screen.getByLabelText('批次打印间隔（毫秒）') as HTMLInputElement
+    expect(enabled.checked).toBe(false)
+    expect(size.value).toBe('10')
+    expect(interval.value).toBe('500')
+    expect(mocks.local.getPrintSettings).toHaveBeenCalled()
+    // 提示文案
+    expect(screen.getByText(/每 10 张一批发送到打印机，批与批之间间隔 500 毫秒/)).toBeTruthy()
+    // 卡片位于「连接方式」之下
+    const conn = screen.getByText('连接方式').closest('section') as HTMLElement
+    expect(conn.compareDocumentPosition(withinBatch()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('开关联动：关闭时数量 / 间隔输入禁用置灰，开启后可用，再关闭恢复禁用', async () => {
+    renderSettings()
+    const enabled = (await screen.findByLabelText('开启批次作业')) as HTMLInputElement
+    const size = screen.getByLabelText('每批次打印数量') as HTMLInputElement
+    const interval = screen.getByLabelText('批次打印间隔（毫秒）') as HTMLInputElement
+    // 默认关 → 两个数字输入禁用
+    expect(size.disabled).toBe(true)
+    expect(interval.disabled).toBe(true)
+    // 开启 → 可用
+    fireEvent.click(enabled)
+    expect(enabled.checked).toBe(true)
+    expect(size.disabled).toBe(false)
+    expect(interval.disabled).toBe(false)
+    // 再关闭 → 恢复禁用
+    fireEvent.click(enabled)
+    expect(enabled.checked).toBe(false)
+    expect(size.disabled).toBe(true)
+    expect(interval.disabled).toBe(true)
+  })
+
+  it('保存成功：setPrintSettings 携带表单值，提示「已保存并立即生效」', async () => {
+    renderSettings()
+    const enabled = (await screen.findByLabelText('开启批次作业')) as HTMLInputElement
+    fireEvent.click(enabled)
+    fireEvent.change(screen.getByLabelText('每批次打印数量'), { target: { value: '20' } })
+    fireEvent.change(screen.getByLabelText('批次打印间隔（毫秒）'), { target: { value: '800' } })
+    fireEvent.click(within(withinBatch()).getByRole('button', { name: /^保存$/ }))
+    expect(await screen.findByText('已保存并立即生效。')).toBeTruthy()
+    expect(mocks.local.setPrintSettings).toHaveBeenCalledWith({ batchEnabled: true, batchSize: 20, batchIntervalMs: 800 })
+  })
+
+  it('保存失败（后端 400 ErrorView）：展示后端中文 message，不提示成功', async () => {
+    mocks.local.setPrintSettings.mockRejectedValue(new ApiError('LF_BATCH_INVALID', '每批次打印数量必须 ≥ 1。'))
+    renderSettings()
+    const enabled = (await screen.findByLabelText('开启批次作业')) as HTMLInputElement
+    fireEvent.click(enabled)
+    fireEvent.change(screen.getByLabelText('每批次打印数量'), { target: { value: '0' } })
+    fireEvent.click(within(withinBatch()).getByRole('button', { name: /^保存$/ }))
+    expect(await screen.findByText('每批次打印数量必须 ≥ 1。')).toBeTruthy()
+    expect(screen.queryByText('已保存并立即生效。')).toBeNull()
+  })
+
+  it('保存失败（网络错误）：回退通用文案', async () => {
+    mocks.local.setPrintSettings.mockRejectedValue(new Error('network down'))
+    renderSettings()
+    const enabled = (await screen.findByLabelText('开启批次作业')) as HTMLInputElement
+    fireEvent.click(enabled)
+    fireEvent.click(within(withinBatch()).getByRole('button', { name: /^保存$/ }))
+    expect(await screen.findByText('保存批次设置失败。')).toBeTruthy()
+  })
+
+  it('旧 WinHost（GET 404）：显示版本提示「当前客户端版本不支持批次作业」，不渲染表单', async () => {
+    mocks.local.getPrintSettings.mockRejectedValue(new ApiError('HTTP_404', '请求失败（HTTP 404）。'))
+    renderSettings()
+    expect(await screen.findByText('当前客户端版本不支持批次作业。')).toBeTruthy()
+    expect(screen.queryByLabelText('开启批次作业')).toBeNull()
+    expect(screen.queryByLabelText('每批次打印数量')).toBeNull()
+    expect(screen.queryByLabelText('批次打印间隔（毫秒）')).toBeNull()
+    expect(screen.queryByRole('button', { name: /^保存$/ })).toBeNull()
+  })
+
+  it('获取设置失败（非 404）：展示错误信息，不渲染表单', async () => {
+    mocks.local.getPrintSettings.mockRejectedValue(new Error('network down'))
+    renderSettings()
+    expect(await screen.findByText(/获取批次设置失败/)).toBeTruthy()
+    expect(screen.queryByLabelText('开启批次作业')).toBeNull()
   })
 })
