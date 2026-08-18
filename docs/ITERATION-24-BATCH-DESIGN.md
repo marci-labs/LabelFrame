@@ -174,7 +174,7 @@
 6. **WinHost 引入 Serilog 文件日志**（评审 #2 结论 + 用户拍板，2026-08-18）：
    - 包：`Serilog.AspNetCore`（含 `Serilog.Sinks.File`）；
    - 配置：`builder.Host.UseSerilog(...)`（或 `builder.Logging.ClearProviders().AddSerilog(...)`），
-     文件 sink 输出到 `%LOCALAPPDATA%\LabelFrame\logs\app-{Date}.log`（`RollingInterval.Day` 按天滚动、
+     文件 sink 输出到 `%LOCALAPPDATA%\LabelFrame\logs\app-20260818.log`（`app-.log` + `RollingInterval.Day` 按天滚动；注：Serilog.Sinks.File 的 `{Date}` 为字面量、不会被替换，实现以此为准，联调附五实证、
      带时间戳与级别），使 `JobPrintWorker` 的逐张 ILogger 日志（「开始打印 / 打印完成」）
      落盘带时间戳 → 端到端冒烟按「打印完成」时间戳断言批间间隔 ≈ 500ms；
    - 不重构现有 hostLogWriter（TextWriter）通道（HostInfo / LogPrintTransport /
@@ -396,6 +396,10 @@ DESIGN.md（Android 排期两处）、CHANGELOG。
    `rollingInterval: RollingInterval.Day`，两者互斥——Serilog 仅按 rolling 追加日期后缀、不替换 `{Date}`），
    与 §5.6「`app-{Date}.log` 按天滚动」的命名意图不符（滚动功能本身正常）。
    建议二选一：去掉 `rollingInterval` 保留 `{Date}`，或去掉 `{Date}` 保留 `RollingInterval.Day`。
+
+   **处理（主 Agent，2026-08-18 已修复并提交）**：实证 Serilog.Sinks.File 5.0.0 下 `{Date}` 为字面量——「去掉
+   `rollingInterval` 保留 `{Date}`」同样不会替换（产物为字面 `app-{Date}.log`）；已改为 `app-.log` +
+   `RollingInterval.Day`（尾连字符惯例），实际产物 `app-20260818.log`，按天滚动正常。§5.6 已同步更正。
 
 ### 🔧 联调环境事故（已恢复，非产品缺陷）
 
