@@ -40,6 +40,7 @@
 | 25 | Android PDA 宿主（AndroidHost） | 📋 延后（PDA 事项延后，再排期） |
 | 26 | Niimbot 蓝牙打印机传输插件实现 + 真机测试 | 📋 下一轮（顺延自迭代 24，2026-08-18） |
 | 27 | 工程治理 P0（日常 CI + API 契约与端点去重 + README/DEPLOY 重组） | ✅ 已完成（2026-08-25） |
+| 28 | 工程治理 P1/P2（文档归档 / 死重移除 / 数据层并发 / 异常契约 / Program 拆分 / 集成测试 / 安全边界） | ✅ 已完成（2026-08-25） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -800,6 +801,28 @@
 **完成（2026-08-25）**：三项 P0 全部完成——ci.yml 日常 CI、LabelFrame.Api 共享库落地（两端各删约 150 行重复端点与 DTO）、README 重写 + DEPLOY.md 拆分；dotnet build / dotnet test 315 全绿。
 
 **后续（2026-08-25，依赖升级）**：TemplateFrame.Excel.Simple 1.0.5 → 2.0.0（Core / Studio 两处引用）——修复「下载模板下方续填行导入丢失」（1.0.5 Read 以命名区域 EndRow 为边界、续填行被静默丢弃；2.0 数据区顺延到工作表最后一行）；所用 Read / Write / Table / Options API 签名不变、零代码改动；dotnet test 315 全绿。
+
+---
+
+## 迭代 28：工程治理 P1/P2（文档 / 死重 / 数据层 / 异常契约 / 拆分 / 测试 / 安全）（已完成）
+
+**背景**：2026-08-25 评审 P0（迭代 27）完成后的 P1/P2 清单批量治理。
+
+**范围与完成情况**：
+1. P1 文档：16 份历史文档归档 `docs/archive/`（核心收敛四件套 + ACCEPTANCE-BACKLOG）；ROADMAP 章节与状态总览按迭代号排序、12 处章节标题与总览表陈旧状态对齐；新增验收清欠清单（盘点结论：大部分验收已于 2026-08-17 批量通过，真正欠账仅 PDA 真机 / Zebra 状态字段 / Niimbot / Excel 续填冒烟 / 净机安装）。
+2. P1 死重移除：Studio（WPF）+ 其测试 + prototypes/web-designer 移除（冻结超两周、MSI 不含、Web 全面取代；git 可找回）；AndroidHost README 补实验性警示。
+3. P1 服务去重：ClientPackagesService / PluginPackagesService 抽共享基类 FilePackageService<TView>。
+4. P2 数据层（决策 #77）：领取原子化（UPDATE...RETURNING）、列表 N+1 修复（同连接加载）、ServerService 信号量收窄到提交路径、Worker 空转 EXISTS 探测、TransportManager 读写加锁 + Apply 串行化。
+5. P2 异常契约（决策 #78）：两宿主共享 GlobalExceptionHandler（500 + LF_INTERNAL_001 + 中文提示，不透堆栈）；上传端点确定性错误 400 / 意外 500；render base64 非法 400。
+6. P2 Program 拆分：WinHost Main 888→372 行（五组端点入 Api/）、Server 344→141 行（三组入 Api/），行为不变。
+7. P2 集成测试：新增 LabelFrame.Api.Tests（TestServer，10 用例）——共享端点层 HTTP 级覆盖，含迭代 27 漂移修复的回归锚点（预览 DPI / 错误码透传 / base64 400 / Excel 回环）。
+8. P2 安全边界（决策 #79）：局域网信任模型显式化——攻击面、缓解与升级触发条件（插件包签名优先于 API 鉴权）；插件包不加下载哈希（三层校验已覆盖损坏，同信道哈希对篡改无意义）。
+
+**不在范围**：C# analyzers / 覆盖率门禁、宿主专属端点 HTTP 集成测试、提交幂等下沉 DB、插件包签名（均记 DESIGN 未决，含触发条件）。
+
+**验收**：dotnet build 0 错误 0 警告；dotnet test 300 全绿（Core 108 / Server 45 / Api 10 / WinHost 137）；对外行为兼容（除决策 #78 错误码语义修正）。
+
+**完成（2026-08-25）**：P1/P2 清单全部完成；Studio 移除后测试基线 315→300。
 
 ---
 

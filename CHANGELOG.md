@@ -10,6 +10,17 @@
 - **破坏性变更对照无影响**：项目仅用 Read / Write / SimpleExcelTable / SimpleExcelOptions 四个 API，2.0 签名不变、零代码改动；`Read` 损坏流异常统一为 `InvalidOperationException` + 本地化中文消息（导入端点 catch Exception，行为兼容且报错更友好）；基础包层面的破坏性变更（MissingElementPolicy 迁移 / 删除 6 类型等）未使用。
 - 变更范围：`Core` 与 `Studio` 两个 csproj 版本号；dotnet build 0 错误、dotnet test 315 全绿；2.0.0 已发布 nuget.org，CI 可正常还原。
 
+## 迭代 28 工程治理 P1/P2（文档归档 / 死重移除 / 数据层并发 / 异常契约 / Program 拆分 / 集成测试 / 安全边界）· 2026-08-25
+
+- **P1 文档**：16 份历史迭代文档归档 docs/archive（核心四件套 + DEPLOY + ACCEPTANCE-BACKLOG）；ROADMAP 章节与总览表按迭代号排序、陈旧状态对齐（12 处标题）；验收清欠清单落地（大部分验收 2026-08-17 已通过，欠账仅 5 项，见 docs/ACCEPTANCE-BACKLOG.md）。
+- **P1 移除死重**：Studio（WPF，冻结存档可找回）与其测试、prototypes/web-designer 移除；AndroidHost README 实验性警示；ClientPackages / PluginPackages 抽共享 FilePackageService 基类。
+- **P2 数据层（决策 #77）**：服务端领取原子化（UPDATE...RETURNING，多实例不重复领取）；列表 / 回报同连接加载消除 N+1；ServerService 全局信号量收窄到提交路径（多设备并发不再排队）；打印 Worker 空转 EXISTS 轻量探测（空闲不再每 200ms 全量加载作业）；TransportManager 读写加锁。
+- **P2 异常契约（决策 #78）**：两宿主共享全局异常处理（未捕获异常 500 + LF_INTERNAL_001，不透堆栈 / 路径）；上传端点确定性错误 400、意外故障 500（原一律 400 且透出 ex.Message）；render 端点 base64 非法 400（原裸 500）。
+- **P2 结构**：Program.cs 拆分——WinHost Main 888→372 行、Server 344→141 行，端点按域分组入 Api/ 目录。
+- **P2 测试**：新增 LabelFrame.Api.Tests（TestServer HTTP 集成，10 用例）覆盖共享端点层，含预览 DPI / 错误码 / base64 / Excel 回环回归锚点。
+- **P2 安全（决策 #79）**：局域网信任模型显式化（攻击面 / 缓解 / 升级触发条件：插件包签名优先于 API 鉴权）；插件包不加下载哈希（三层校验已覆盖损坏，同信道哈希对主动篡改无意义）。
+- dotnet build 0 错误 0 警告；dotnet test 300 全绿（Studio 移除后基线 315→300）。
+
 ## 迭代 27 工程治理 P0（日常 CI + API 契约与端点去重 + 文档重组）· 2026-08-25
 
 - **日常 CI（ci.yml）**：push master / PR 触发 dotnet 构建 / 测试 + 前端 lint / 双模式测试 / 构建（命令与发版流水线一致），主干回归提交即发现；同分支新推送自动取消旧运行；不改动发布流水线。
