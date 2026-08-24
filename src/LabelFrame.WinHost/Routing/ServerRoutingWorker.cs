@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using LabelFrame.Api;
 using LabelFrame.Core.Jobs;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;

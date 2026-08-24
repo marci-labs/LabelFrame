@@ -1,3 +1,4 @@
+﻿using LabelFrame.Api;
 using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Layout;
 using LabelFrame.Core.Templates;
@@ -8,13 +9,13 @@ public class ServerServiceTests
 {
     private static SubmitJobRequest CreateRequest(string requestId, string deviceId = "device-1", int labels = 1) => new(
         requestId,
-        deviceId,
         new TemplateDto(SampleContract, SampleLayout),
         Enumerable.Range(0, labels).Select(i => new LabelDto(new Dictionary<string, string>
         {
             ["zone"] = "A-01",
             ["locationCode"] = $"A-01-02-0{i}",
-        })).ToList());
+        })).ToList(),
+        TargetDeviceId: deviceId);
 
     private static LabelContract SampleContract { get; } = new()
     {
@@ -159,7 +160,7 @@ public class ServerServiceTests
         using var db = new TempServer();
         await db.Service.RegisterDeviceAsync("device-1", "一号机");
 
-        var exception = await Assert.ThrowsAsync<ServerException>(() => db.Service.SubmitJobAsync(new SubmitJobRequest("req-x", "device-1", null, null)));
+        var exception = await Assert.ThrowsAsync<ServerException>(() => db.Service.SubmitJobAsync(new SubmitJobRequest("req-x", null, null, TargetDeviceId: "device-1")));
 
         Assert.Equal(ServerErrorCodes.InvalidRequest, exception.Code);
     }
@@ -189,10 +190,10 @@ public class ServerServiceTests
 
             var job = await svc.SubmitJobAsync(new SubmitJobRequest(
                 "req-tpl",
-                "device-1",
                 null,
                 new List<LabelDto> { new(new Dictionary<string, string> { ["zone"] = "A-01", ["locationCode"] = "A-01-02-03" }) },
-                "tpl-1"));
+                TargetDeviceId: "device-1",
+                TemplateName: "tpl-1"));
             Assert.Equal("Pending", job.Status);
 
             var claimed = await svc.ClaimPendingJobsAsync("device-1");
@@ -225,10 +226,10 @@ public class ServerServiceTests
             var svc = new ServerService(db.Db, templates);
             var exception = await Assert.ThrowsAsync<ServerException>(() => svc.SubmitJobAsync(new SubmitJobRequest(
                 "req-x",
-                "device-1",
                 null,
                 new List<LabelDto> { new(new Dictionary<string, string>()) },
-                "no-such-template")));
+                TargetDeviceId: "device-1",
+                TemplateName: "no-such-template")));
             Assert.Equal(ServerErrorCodes.TemplateNotFound, exception.Code);
         }
         finally

@@ -1,27 +1,9 @@
-using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Jobs;
-using LabelFrame.Core.Layout;
 
 namespace LabelFrame.WinHost.Api;
 
-/// <summary>提交作业请求（模板自包含：契约 + 版式 + 标签数据）。</summary>
-public sealed record SubmitJobRequest(
-    string? RequestId,
-    TemplateDto? Template,
-    IReadOnlyList<LabelDto>? Labels);
-
-/// <summary>自包含模板。</summary>
-public sealed record TemplateDto(LabelContract? Contract, LabelLayout? Layout)
-{
-    /// <summary>模板名（可选）：本机提交时用于从本地模板库加载图片资源。</summary>
-    public string? Name { get; init; }
-
-    /// <summary>模板图片资源（base64，键 → 图片字节；路由作业由 Server 附带，本机提交可省略按 Name 加载）。</summary>
-    public IReadOnlyDictionary<string, string>? Images { get; init; }
-}
-
-/// <summary>单张标签数据。</summary>
-public sealed record LabelDto(IReadOnlyDictionary<string, string>? Data);
+// 通用契约（SubmitJobRequest / TemplateDto / LabelDto / ErrorView / 模板与 Excel DTO）在 LabelFrame.Api 共享库，
+// 本文件只保留宿主专属类型（作业视图 / 提交结果 / 连接与插件 / 机器级配置）。
 
 /// <summary>作业视图（API 响应；CreatedAt / FailedItems / ErrorMessage / TargetDeviceId 为作业历史列表列，迭代 18 B10 扩展）。</summary>
 public sealed record JobView(
@@ -41,9 +23,6 @@ public sealed record JobView(
 /// <summary>单张标签视图。</summary>
 public sealed record JobItemView(int Index, string Status, string? ErrorCode, string? ErrorMessage);
 
-/// <summary>错误响应：问题码 + 中文消息（可选字段键）。</summary>
-public sealed record ErrorView(string Code, string Message, string? FieldKey = null);
-
 /// <summary>提交结果：成功带作业（含是否新建），失败带问题码。</summary>
 public sealed record SubmitJobResult(LabelJob? Job, bool Created, string? ErrorCode, string? ErrorMessage, string? FieldKey)
 {
@@ -54,20 +33,6 @@ public sealed record SubmitJobResult(LabelJob? Job, bool Created, string? ErrorC
     public static SubmitJobResult Failure(string code, string message, string? fieldKey = null)
         => new(null, false, code, message, fieldKey);
 }
-
-/// <summary>模板提交 DTO（图片资源经导入/导出传输；testData 可选）。</summary>
-public sealed record TemplatePackageDto(
-    string? Name,
-    string? Group,
-    LabelContract? Contract,
-    LabelLayout? Layout,
-    IReadOnlyDictionary<string, string>? TestData = null);
-
-/// <summary>预览请求。</summary>
-public sealed record PreviewRequest(IReadOnlyDictionary<string, string>? Data);
-
-/// <summary>设备日志回传请求（PDA）。</summary>
-public sealed record PushLogRequest(string? DeviceId, IReadOnlyList<string>? Lines);
 
 /// <summary>作业与视图映射。</summary>
 public static class JobViews
@@ -135,13 +100,7 @@ public sealed record TransportApplyRequest(
 /// <summary>连接切换 / 测试响应：ok + 中文消息 + 当前生效连接（失败时 config = 未变前的连接）。</summary>
 public sealed record TransportApplyResponse(bool Ok, string Message, TransportConfigDto Config);
 
-/// <summary>Excel 模板生成请求（POST /api/import/excel-template；columns 顺序即表头，sampleRow 示例行）。</summary>
-public sealed record ExcelTemplateRequest(IReadOnlyList<ExcelTemplateColumnDto>? Columns, IReadOnlyDictionary<string, string>? SampleRow);
-
-/// <summary>Excel 模板列。</summary>
-public sealed record ExcelTemplateColumnDto(string? Key, string? DisplayName);
-
-/// <summary>机器级配置响应（GET /api/host/config；Ips 为本机枚举 IPv4，状态栏展示用）。</summary>/// <summary>机器级配置响应（GET /api/host/config；Ips 为本机枚举 IPv4，状态栏展示用）。</summary>
+/// <summary>机器级配置响应（GET /api/host/config；Ips 为本机枚举 IPv4，状态栏展示用）。</summary>
 public sealed record HostConfigDto(string ServerUrl, string DeviceId, string DeviceName, IReadOnlyList<string>? Ips = null);
 
 /// <summary>机器级配置请求（POST /api/host/config；仅 serverUrl 可写）。</summary>

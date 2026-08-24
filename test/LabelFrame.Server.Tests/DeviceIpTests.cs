@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using LabelFrame.Api;
 using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Layout;
 using Microsoft.Data.Sqlite;
@@ -10,9 +11,9 @@ public class DeviceIpTests
 {
     private static SubmitJobRequest CreateRequest(string requestId, string? targetDeviceId = null, string? targetIp = null) => new(
         requestId,
-        targetDeviceId,
         new TemplateDto(SampleContract, SampleLayout),
         [new LabelDto(new Dictionary<string, string> { ["zone"] = "A-01", ["locationCode"] = "A-01-02-00" })],
+        TargetDeviceId: targetDeviceId,
         TemplateName: null,
         TargetIp: targetIp);
 

@@ -1,3 +1,4 @@
+﻿using LabelFrame.Api;
 using LabelFrame.Core.Documents;
 using LabelFrame.Core.Encoding;
 using LabelFrame.Core.Jobs;

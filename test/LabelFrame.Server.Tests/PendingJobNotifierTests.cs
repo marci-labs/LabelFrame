@@ -1,3 +1,4 @@
+﻿using LabelFrame.Api;
 using LabelFrame.Server;
 
 namespace LabelFrame.Server.Tests;
@@ -52,9 +53,9 @@ public class PendingJobNotifierTests
 
     private static SubmitJobRequest CreateRequest(string requestId, string deviceId) => new(
         requestId,
-        deviceId,
         new TemplateDto(SampleContract, SampleLayout),
-        [new LabelDto(new Dictionary<string, string> { ["zone"] = "A-01", ["locationCode"] = "A-01-02-03" })]);
+        [new LabelDto(new Dictionary<string, string> { ["zone"] = "A-01", ["locationCode"] = "A-01-02-03" })],
+        TargetDeviceId: deviceId);
 
     private static LabelFrame.Core.Contracts.LabelContract SampleContract { get; } = new()
     {

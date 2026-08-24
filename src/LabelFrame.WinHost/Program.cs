@@ -9,7 +9,8 @@ using LabelFrame.Core.Templates;
 using LabelFrame.Core.Transport;
 using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.Core.Transport.Plugins.Package;
-using LabelFrame.Core.Excel;
+using LabelFrame.Api;
+using LabelFrame.Api.Endpoints;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
 using LabelFrame.Core.Logs;
@@ -152,8 +153,9 @@ public static class Program
         var templateStore = new TemplateStore(options.TemplatesDbPath);
         await templateStore.InitializeAsync();
         builder.Services.AddSingleton(templateStore);
-        builder.Services.AddSingleton<LabelPreviewRenderer>();
-        builder.Services.AddSingleton<ILabelBitmapRenderer>(new SkiaLabelRenderer());
+        // Skia 渲染器实例单例：DI 与共享端点（模板预览 / 调试出图）共用同一实例（预览与打印同源）
+        var skiaRenderer = new SkiaLabelRenderer();
+        builder.Services.AddSingleton<ILabelBitmapRenderer>(skiaRenderer);
         builder.Services.AddSingleton(sp => new JobSubmissionService(
             queue,
             sp.GetRequiredService<ZplImageEncoder>(),
@@ -201,152 +203,18 @@ public static class Program
                 displayText = registry.Describe(transportManager.CurrentConfig.PluginId, new TransportPluginParameters(transportManager.CurrentConfig.Params)),
             }));
 
-        // ---- 模板管理（单机 CRUD + 导入导出 + 预览）----
-        app.MapPost("/api/templates", async (Api.TemplatePackageDto? dto, TemplateStore templateStore, CancellationToken ct) =>
-        {
-            if (dto is null || string.IsNullOrWhiteSpace(dto.Name) || dto.Contract is null || dto.Layout is null)
-            {
-                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "缺少模板 name / contract / layout。"));
-            }
+        // ---- 模板库 / 调试出图（端点实现与 Server 共享，见 LabelFrame.Api.Endpoints）----
+        // 预览修复：DPI 取宿主配置（原硬编码 203，非 203 DPI 时预览与打印不一致）；渲染统一 Skia 同源；
+        // 请求数据缺省时回退模板 testData（与 Server 一致）；模板不存在返回 LF_TPL_001（原误用 LF_JOB_001）。
+        app.MapTemplateApi(new TemplateApiOptions(
+            templateStore,
+            skiaRenderer,
+            options.Dpi,
+            JobErrorCodes.InvalidRequest,
+            ApiErrorCodes.TemplateNotFound));
 
-            await templateStore.SaveAsync(new TemplatePackage
-            {
-                Name = dto.Name,
-                Group = string.IsNullOrWhiteSpace(dto.Group) ? "默认" : dto.Group,
-                Contract = dto.Contract,
-                Layout = dto.Layout,
-                TestData = dto.TestData ?? new Dictionary<string, string>(),
-            }, ct);
-            return Results.Ok(new { name = dto.Name, group = string.IsNullOrWhiteSpace(dto.Group) ? "默认" : dto.Group });
-        });
-
-        app.MapGet("/api/templates", async (string? group, TemplateStore templateStore, CancellationToken ct) =>
-            Results.Ok(await templateStore.ListAsync(group, ct)));
-
-        app.MapGet("/api/templates/{name}", async (string name, TemplateStore templateStore, CancellationToken ct) =>
-        {
-            var package = await templateStore.GetAsync(name, ct);
-            return package is null
-                ? Results.NotFound(new ErrorView(JobErrorCodes.JobNotFound, $"模板不存在:{name}。"))
-                : Results.Ok(package);
-        });
-
-        app.MapDelete("/api/templates/{name}", async (string name, TemplateStore templateStore, CancellationToken ct) =>
-        {
-            await templateStore.DeleteAsync(name, ct);
-            return Results.NoContent();
-        });
-
-        app.MapGet("/api/templates/{name}/export", async (string name, TemplateStore templateStore, CancellationToken ct) =>
-        {
-            var package = await templateStore.GetAsync(name, ct);
-            return package is null
-                ? Results.NotFound(new ErrorView(JobErrorCodes.JobNotFound, $"模板不存在:{name}。"))
-                : Results.File(TemplatePackageSerializer.Export(package), "application/zip", $"{name}.lfpkg");
-        });
-
-        app.MapPost("/api/templates/import", async (IFormFile file, TemplateStore templateStore, CancellationToken ct) =>
-        {
-            if (file is null || file.Length == 0)
-            {
-                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "缺少模板包文件。"));
-            }
-
-            using var memory = new MemoryStream();
-            await file.CopyToAsync(memory, ct);
-            try
-            {
-                var package = TemplatePackageSerializer.Import(memory.ToArray());
-                await templateStore.SaveAsync(package, ct);
-                return Results.Ok(package.Name);
-            }
-            catch (InvalidDataException ex)
-            {
-                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, ex.Message));
-            }
-        }).DisableAntiforgery();
-
-        app.MapPost("/api/templates/{name}/preview", async (string name, Api.PreviewRequest? request, TemplateStore templateStore, LabelPreviewRenderer renderer, CancellationToken ct) =>
-        {
-            var package = await templateStore.GetAsync(name, ct);
-            if (package is null)
-            {
-                return Results.NotFound(new ErrorView(JobErrorCodes.JobNotFound, $"模板不存在:{name}。"));
-            }
-
-            var document = new LabelDocument
-            {
-                Layout = package.Layout,
-                Data = request?.Data ?? new Dictionary<string, string>(),
-            };
-            var png = renderer.RenderPng(document, dpi: 203, package.Images);
-            return Results.File(png, "image/png");
-        });
-
-        // 图片打印调试：渲染实际发送给打印机的 1bpp 位图为 PNG（不建作业、不打印），用于排查文字清晰度 / 定位
-        app.MapPost("/api/print/render-image", async (Api.SubmitJobRequest? request, TemplateStore templateStore, ILabelBitmapRenderer renderer, CancellationToken ct) =>
-        {
-            if (request?.Template?.Contract is null || request.Template.Layout is null)
-            {
-                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "缺少 template（contract + layout）。"));
-            }
-
-            if (request.Labels is null || request.Labels.Count == 0)
-            {
-                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "缺少 labels（至少一张）。"));
-            }
-
-            var document = new LabelDocument
-            {
-                Layout = request.Template.Layout,
-                Data = request.Labels[0].Data ?? new Dictionary<string, string>(),
-            };
-            IReadOnlyDictionary<string, byte[]> images = new Dictionary<string, byte[]>();
-            if (!string.IsNullOrWhiteSpace(request.Template.Name))
-            {
-                var package = await templateStore.GetAsync(request.Template.Name, ct);
-                if (package is not null)
-                {
-                    images = package.Images;
-                }
-            }
-
-            var png = renderer.RenderLabelBitmapPng(document, options.Dpi, images);
-            var fileName = $"{(string.IsNullOrWhiteSpace(request.Template.Name) ? "label" : request.Template.Name)}-print.png";
-            return Results.File(png, "image/png", fileName);
-        });
-
-        // 调试出图（批量）：后端渲染全部行为 zip（不建作业、不发驱动；迭代 15）
-        app.MapPost("/api/print/render-images", async (Api.SubmitJobRequest? request, JobSubmissionService service, CancellationToken ct) =>
-        {
-            if (request is null)
-            {
-                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "请求体不能为空。"));
-            }
-
-            try
-            {
-                var images = await service.RenderImagesAsync(request, ct);
-                using var stream = new MemoryStream();
-                using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
-                {
-                    foreach (var image in images)
-                    {
-                        var entry = archive.CreateEntry($"label-{image.Index + 1}.png");
-                        using var entryStream = entry.Open();
-                        entryStream.Write(image.Png);
-                    }
-                }
-
-                var name = string.IsNullOrWhiteSpace(request.Template?.Name) ? "label" : request.Template.Name;
-                var fileName = $"{name}-debug-{DateTime.Now:yyyyMMddHHmmss}.zip";
-                return Results.File(stream.ToArray(), "application/zip", fileName);
-            }
-            catch (ArgumentException ex)
-            {
-                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, ex.Message));
-            }
-        });
+        // 图片资源解析统一：请求附带 base64 优先、按名回退本地模板库（两端点行为一致）
+        app.MapRenderApi(new RenderApiOptions(templateStore, skiaRenderer, options.Dpi, JobErrorCodes.InvalidRequest));
 
         // ---- 连接管理（迭代 15）：查询 / 切换 / 测试；单一连接生效，先测试后生效 ----
                 // ---- 连接管理（迭代 22 传输插件化：pluginId + params + availablePlugins spec；旧字段 mode / availableModes 保留兼容）----
@@ -361,7 +229,7 @@ public static class Program
         {
             if (request is null)
             {
-                return Results.BadRequest(new ErrorView("LF_TRANSPORT_INVALID", "请求体不能为空。"));
+                return Results.BadRequest(new ErrorView(ApiErrorCodes.TransportInvalid, "请求体不能为空。"));
             }
 
             TransportConfig config;
@@ -381,7 +249,7 @@ public static class Program
                 // 旧格式兼容：mode + 平铺参数 → 迁移为 pluginId + params（决策 #69）
                 if (!Enum.TryParse<TransportMode>(request.Mode, ignoreCase: true, out var mode))
                 {
-                    return Results.BadRequest(new ErrorView("LF_TRANSPORT_INVALID", $"不支持的连接方式：{request.Mode}。"));
+                    return Results.BadRequest(new ErrorView(ApiErrorCodes.TransportInvalid, $"不支持的连接方式：{request.Mode}。"));
                 }
 
                 config = new TransportConfig
@@ -399,7 +267,7 @@ public static class Program
             }
             else
             {
-                return Results.BadRequest(new ErrorView("LF_TRANSPORT_INVALID", "缺少 pluginId 或 mode。"));
+                return Results.BadRequest(new ErrorView(ApiErrorCodes.TransportInvalid, "缺少 pluginId 或 mode。"));
             }
 
             var result = await transportManager.ApplyAsync(config, request.TestOnly ?? false, ct);
@@ -413,7 +281,7 @@ public static class Program
         {
             if (file is null || file.Length == 0)
             {
-                return Results.BadRequest(new ErrorView("LF_PLUGIN_INVALID", "请选择要安装的插件包。"));
+                return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginInvalid, "请选择要安装的插件包。"));
             }
 
             try
@@ -423,15 +291,15 @@ public static class Program
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                return Results.BadRequest(new ErrorView("LF_PLUGIN_BUSY", ex.Message));
+                return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginBusy, ex.Message));
             }
             catch (InvalidDataException ex)
             {
-                return Results.BadRequest(new ErrorView("LF_PLUGIN_INVALID", $"插件包无效：{ex.Message}"));
+                return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginInvalid, $"插件包无效：{ex.Message}"));
             }
             catch (Exception ex)
             {
-                return Results.BadRequest(new ErrorView("LF_PLUGIN_INSTALL_FAILED", $"安装失败：{ex.Message}"));
+                return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginInstallFailed, $"安装失败：{ex.Message}"));
             }
         }).DisableAntiforgery();
 
@@ -439,7 +307,7 @@ public static class Program
         {
             if (request is null || string.IsNullOrWhiteSpace(request.PluginId))
             {
-                return Results.BadRequest(new ErrorView("LF_PLUGIN_INVALID", "缺少插件 ID。"));
+                return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginInvalid, "缺少插件 ID。"));
             }
 
             try
@@ -449,34 +317,13 @@ public static class Program
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                return Results.BadRequest(new ErrorView("LF_PLUGIN_BUSY", ex.Message));
+                return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginBusy, ex.Message));
             }
             catch (InvalidDataException ex)
             {
-                return Results.BadRequest(new ErrorView("LF_PLUGIN_INVALID", ex.Message));
+                return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginInvalid, ex.Message));
             }
         }).DisableAntiforgery();
-
-        // ---- 下载 Excel 模板（迭代 22 §2.1：契约字段 + testData 生成 xlsx，直接套用导入做打印测试）----
-        app.MapPost("/api/import/excel-template", (Api.ExcelTemplateRequest? request) =>
-        {
-            if (request is null || request.Columns is null || request.Columns.Count == 0)
-            {
-                return Results.BadRequest(new ErrorView("LF_EXCEL_INVALID", "缺少模板列（columns）。"));
-            }
-
-            var columns = request.Columns
-                .Where(c => !string.IsNullOrWhiteSpace(c.Key))
-                .Select(c => new ExcelTemplateColumn(c.Key!, string.IsNullOrWhiteSpace(c.DisplayName) ? c.Key! : c.DisplayName!))
-                .ToList();
-            if (columns.Count == 0)
-            {
-                return Results.BadRequest(new ErrorView("LF_EXCEL_INVALID", "缺少有效的模板列（key）。"));
-            }
-
-            var bytes = ExcelTemplateWriter.CreateTemplate(columns, request.SampleRow);
-            return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "excel-template.xlsx");
-        });
 
         app.MapPost("/api/jobs", async (SubmitJobRequest? request, JobSubmissionService service, CancellationToken ct) =>
         {
@@ -538,47 +385,9 @@ public static class Program
             }
         });
 
-        // ---- 设备日志（PDA 回传 / PC 查看）----
-        app.MapPost("/api/logs", async (Api.PushLogRequest? request, SqliteLogStore logStore, CancellationToken ct) =>
-        {
-            if (request is null || string.IsNullOrWhiteSpace(request.DeviceId) || request.Lines is null || request.Lines.Count == 0)
-            {
-                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "缺少 deviceId / lines。"));
-            }
-
-            await logStore.AppendAsync(request.DeviceId, request.Lines, ct);
-            return Results.Ok(new { received = request.Lines.Count });
-        });
-
-        app.MapGet("/api/logs", async (string? deviceId, DateTimeOffset? since, SqliteLogStore logStore, CancellationToken ct) =>
-        {
-            var entries = await logStore.QueryAsync(deviceId, since, ct);
-            return Results.Ok(entries.Select(e => new { e.DeviceId, Time = e.Time, e.Line }));
-        });
-
-        // ---- Excel 数据导入（解析表头 + 数据行，前端做列映射）----
-        app.MapPost("/api/import/excel", async (IFormFile file, CancellationToken ct) =>
-        {
-            if (file is null || file.Length == 0)
-            {
-                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, "请上传 .xlsx 文件。"));
-            }
-
-            try
-            {
-                await using var stream = file.OpenReadStream();
-                var table = TemplateFrame.Excel.Simple.SimpleExcel.Read(stream);
-                var headers = (table.Headers ?? []).Select(h => h ?? string.Empty).ToList();
-                var rows = table.Rows
-                    .Select(row => row.Select(FormatExcelCell).ToList())
-                    .ToList();
-                return Results.Ok(new { headers, rows });
-            }
-            catch (Exception ex)
-            {
-                return Results.BadRequest(new ErrorView(JobErrorCodes.InvalidRequest, $"Excel 解析失败：{ex.Message}"));
-            }
-        }).DisableAntiforgery();
+        // ---- Excel 模板生成 / 设备日志 / Excel 数据导入（端点实现与 Server 共享，见 LabelFrame.Api.Endpoints）----
+        app.MapImportApi(new ImportApiOptions(JobErrorCodes.InvalidRequest));
+        app.MapLogApi(new LogApiOptions(logStore, JobErrorCodes.InvalidRequest));
 
         // ---- 打印机测试页 / 在线状态 ----
         app.MapGet("/api/printer/status", async (ITransportManager transportManager, CancellationToken ct) =>
@@ -748,13 +557,6 @@ public static class Program
         }
     }
 
-    private static string FormatExcelCell(object? value) => value switch
-    {
-        null => string.Empty,
-        DateTime dt => dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
-        IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
-        _ => value.ToString() ?? string.Empty,
-    };
 
     /// <summary>解析 Web UI 静态目录：配置优先，否则探测常见位置（含仓库开发路径）。</summary>
     private static string? ResolveWebUiPath(HostOptions options)

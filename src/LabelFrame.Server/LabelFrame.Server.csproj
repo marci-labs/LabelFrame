@@ -20,11 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LabelFrame.Core\LabelFrame.Core.csproj" />
+    <ProjectReference Include="..\LabelFrame.Api\LabelFrame.Api.csproj" />
     <ProjectReference Include="..\LabelFrame.Rendering\LabelFrame.Rendering.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="TemplateFrame.Excel.Simple" Version="1.0.5" />
   </ItemGroup>
 
 </Project>

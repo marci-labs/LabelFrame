@@ -1,26 +1,9 @@
-using LabelFrame.Core.Contracts;
-using LabelFrame.Core.Layout;
+using LabelFrame.Api;
 
 namespace LabelFrame.Server;
 
-/// <summary>业务提交请求（模板可自包含，或引用服务端模板库 templateName）。</summary>
-public sealed record SubmitJobRequest(
-    string? RequestId,
-    string? TargetDeviceId,
-    TemplateDto? Template,
-    IReadOnlyList<LabelDto>? Labels,
-    string? TemplateName = null,
-    string? TargetIp = null);
-
-/// <summary>模板（自包含或由 templateName 解析后附带；Images 为 base64 图片资源，领取时随载荷下发）。</summary>
-public sealed record TemplateDto(
-    LabelContract? Contract,
-    LabelLayout? Layout,
-    string? Name = null,
-    IReadOnlyDictionary<string, string>? Images = null);
-
-/// <summary>单张标签数据。</summary>
-public sealed record LabelDto(IReadOnlyDictionary<string, string>? Data);
+// 通用契约（SubmitJobRequest / TemplateDto / LabelDto / ErrorView / 模板与日志 DTO）在 LabelFrame.Api 共享库，
+// 本文件只保留服务端专属类型（设备 / 作业视图 / 领取与回报）。
 
 /// <summary>设备注册请求。</summary>
 public sealed record RegisterDeviceRequest(string? DeviceId, string? Name);
@@ -55,23 +38,3 @@ public sealed record JobPayload(TemplateDto Template, IReadOnlyList<LabelDto> La
 
 /// <summary>设备回报结果（POST 体）。</summary>
 public sealed record ReportResultRequest(string? Status, int? CompletedItems, int? FailedItems, string? ErrorMessage);
-
-/// <summary>错误响应。</summary>
-public sealed record ErrorView(string Code, string Message);
-/// <summary>模板提交 DTO（保存到服务端模板库）。</summary>
-public sealed record TemplatePackageDto(
-    string? Name,
-    string? Group,
-    LabelContract? Contract,
-    LabelLayout? Layout,
-    IReadOnlyDictionary<string, string>? TestData = null);
-
-/// <summary>预览请求。</summary>
-public sealed record PreviewRequest(IReadOnlyDictionary<string, string>? Data);
-/// <summary>Excel 模板生成请求（迭代 22 §2.1：columns 顺序即表头，sampleRow 示例行）。</summary>
-public sealed record ExcelTemplateRequest(IReadOnlyList<ExcelTemplateColumnDto>? Columns, IReadOnlyDictionary<string, string>? SampleRow);
-
-/// <summary>Excel 模板列。</summary>
-public sealed record ExcelTemplateColumnDto(string? Key, string? DisplayName);
-/// <summary>设备日志回传请求（客户端 / PDA）。</summary>
-public sealed record PushLogRequest(string? DeviceId, IReadOnlyList<string>? Lines);

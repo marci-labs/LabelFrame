@@ -1,3 +1,5 @@
+using LabelFrame.Api;
+using LabelFrame.Api.Endpoints;
 using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Documents;
 using LabelFrame.Core.Encoding;
@@ -69,26 +71,6 @@ public sealed class JobSubmissionService
         }
 
         return SubmitJobResult.Success(job, created);
-    }
-
-    /// <summary>
-    /// 渲染出图（调试 / render-images 用）：校验并渲染每张标签为 PNG，不建作业、不发驱动。
-    /// </summary>
-    public async Task<IReadOnlyList<RenderedImage>> RenderImagesAsync(SubmitJobRequest request, CancellationToken cancellationToken = default)
-    {
-        var rendered = await RenderAllAsync(request, cancellationToken);
-        if (rendered.ErrorCode is not null)
-        {
-            throw new ArgumentException(rendered.ErrorMessage ?? "渲染失败。");
-        }
-
-        var images = new List<RenderedImage>(rendered.Items!.Count);
-        foreach (var item in rendered.Items!)
-        {
-            images.Add(new RenderedImage(item.Index, LabelBitmapPng.ToPng(item.Bitmap)));
-        }
-
-        return images;
     }
 
     /// <summary>渲染结果：单张标签的整版位图与尺寸。</summary>
@@ -174,19 +156,6 @@ public sealed class JobSubmissionService
     }
 
     private async Task<IReadOnlyDictionary<string, byte[]>> LoadTemplateImagesAsync(TemplateDto template, CancellationToken cancellationToken)
-    {
-        // 路由作业由 Server 附带图片（base64）；本机提交按 Name 从本地模板库加载
-        if (template.Images is not null && template.Images.Count > 0)
-        {
-            return template.Images.ToDictionary(kv => kv.Key, kv => System.Convert.FromBase64String(kv.Value));
-        }
-
-        if (string.IsNullOrWhiteSpace(template.Name))
-        {
-            return new Dictionary<string, byte[]>();
-        }
-
-        var package = await _templateStore.GetAsync(template.Name, cancellationToken);
-        return package?.Images ?? new Dictionary<string, byte[]>();
-    }
+        // 图片资源解析与共享端点（render-image / render-images）同源：base64 附带优先、按名回退本地模板库
+        => await RenderEndpoints.ResolveImagesAsync(template, _templateStore, cancellationToken);
 }
