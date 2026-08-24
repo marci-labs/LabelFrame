@@ -37,8 +37,14 @@ jobs:
         run: dotnet restore LabelFrame.slnx
       - name: dotnet build
         run: dotnet build LabelFrame.slnx -c Release --no-restore
-      - name: dotnet test
-        run: dotnet test LabelFrame.slnx -c Release --no-build --no-restore
+      - name: dotnet test（含覆盖率收集）
+        run: dotnet test LabelFrame.slnx -c Release --no-build --no-restore --collect:"XPlat Code Coverage"
+      - name: 上传覆盖率报告
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: '**/TestResults/*/coverage.cobertura.xml'
+          if-no-files-found: warn
 
       - uses: pnpm/action-setup@v4
         with:
