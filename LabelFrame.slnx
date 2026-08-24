@@ -10,5 +10,6 @@
     <Project Path="test/LabelFrame.Core.Tests/LabelFrame.Core.Tests.csproj" />
     <Project Path="test/LabelFrame.WinHost.Tests/LabelFrame.WinHost.Tests.csproj" />
     <Project Path="test/LabelFrame.Server.Tests/LabelFrame.Server.Tests.csproj" />
+    <Project Path="test/LabelFrame.Api.Tests/LabelFrame.Api.Tests.csproj" />
   </Folder>
 </Solution>
