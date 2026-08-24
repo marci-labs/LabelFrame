@@ -2,6 +2,8 @@
 
 Android / PDA 打印宿主（迭代 5）。
 
+> **实验状态，未随发布构建**：不在 `LabelFrame.slnx` 解决方案中，CI 不构建、无测试覆盖；真机验收未执行、16KB 页适配待验证。排期见 ROADMAP 迭代 25（真机验收通过后再纳入解决方案与自动发布）；此前请勿视为可交付组件。
+
 ## 职责
 
 - 前台服务（`PrintHostService`）常驻 + 开机自启（`BootReceiver`，BOOT_COMPLETED / MY_PACKAGE_REPLACED）。

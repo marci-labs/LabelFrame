@@ -4,13 +4,11 @@
     <Project Path="src/LabelFrame.Api/LabelFrame.Api.csproj" />
     <Project Path="src/LabelFrame.Server/LabelFrame.Server.csproj" />
     <Project Path="src/LabelFrame.WinHost/LabelFrame.WinHost.csproj" />
-    <Project Path="src/LabelFrame.Studio/LabelFrame.Studio.csproj" />
     <Project Path="src/LabelFrame.Rendering/LabelFrame.Rendering.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/LabelFrame.Core.Tests/LabelFrame.Core.Tests.csproj" />
     <Project Path="test/LabelFrame.WinHost.Tests/LabelFrame.WinHost.Tests.csproj" />
     <Project Path="test/LabelFrame.Server.Tests/LabelFrame.Server.Tests.csproj" />
-    <Project Path="test/LabelFrame.Studio.Tests/LabelFrame.Studio.Tests.csproj" />
   </Folder>
 </Solution>
