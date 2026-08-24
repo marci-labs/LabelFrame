@@ -38,6 +38,7 @@
 | 24 | 客户端批次作业（Batch Print） | ✅ 已完成（2026-08-18：前后端合入 master 67214c3 + 端到端联调附五通过 + Serilog 日志命名修复） |
 | 25 | Android PDA 宿主（AndroidHost） | 📋 延后（PDA 事项延后，再排期） |
 | 26 | Niimbot 蓝牙打印机传输插件实现 + 真机测试 | 📋 下一轮（顺延自迭代 24，2026-08-18） |
+| 27 | 工程治理 P0（日常 CI + API 契约与端点去重 + README/DEPLOY 重组） | ✅ 已完成（2026-08-25） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -761,6 +762,24 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 25（Android PDA 宿主）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+## 迭代 27：工程治理 P0（日常 CI + API 契约与端点去重 + 文档重组）（已完成）
+
+**背景**：2026-08-25 仓库多维度评审（流程 / 代码质量 / 产品 / 测试 CI）确定的 P0 治理项——此前唯一工作流 release.yml 仅发版 tag 触发，日常提交无质量反馈回路；Server 与 WinHost 的 API 契约与端点成片复制且已漂移出真实缺陷；README 演变为迭代流水账，新用户上手路径被淹没。
+
+**范围**：
+1. 日常 CI：新增 `.github/workflows/ci.yml`（push master / PR 触发；命令与 release.yml 的 test job 一致：dotnet restore / build / test + 前端 lint / 双模式测试 / 双模式构建；同分支新推送取消旧运行）。不改动 release.yml。
+2. API 契约与端点去重：新增共享库 `src/LabelFrame.Api`——DTO（SubmitJobRequest / TemplateDto / LabelDto / TemplatePackageDto / PreviewRequest / PushLogRequest / ExcelTemplate* / ErrorView）+ 错误码注册表 `ApiErrorCodes` + 端点映射（模板 CRUD / 导入导出 / 预览、调试出图、Excel 模板与导入、设备日志，端点经 Options 传入各自错误码前缀，两宿主对外错误码不变）；Server / WinHost 各删除约 150 行重复实现；xlsx 文本解析下沉 Core（`ExcelTableReader`），两宿主移除 TemplateFrame.Excel.Simple 直接引用。
+3. 漂移缺陷修复（共享后行为统一）：WinHost 模板预览 DPI 硬编码 203 → 取宿主配置；预览渲染统一 Skia 同源（原 WinHost 用 GDI LabelPreviewRenderer）+ 请求数据缺省回退模板 testData；模板不存在错误码 WinHost 原误用 LF_JOB_001 → 新增 LF_TPL_001（Server 保持 LF_SRV_006）；ErrorView 统一 Code / Message / FieldKey 三字段（前端按可选读取，兼容）；render-image(s) 图片资源解析统一为「base64 附带优先、按名回退本地模板库」；WinHost 端点魔法字符串（LF_TRANSPORT_* / LF_PLUGIN_*）→ ApiErrorCodes 常量。
+4. 文档重组：README 重写（定位 + 三类角色快速开始 + 部署形态对照 + 仓库结构 + 开发；216 → 约 110 行，迭代流水账移除、状态以本文档为准）；新增 docs/DEPLOY.md 承接部署运维细节（MSI / Docker / Ubuntu / 管理界面插件 / 分发通道 / 签名 / 配置）。
+
+**不在范围**：AndroidHost 第三套端点并入（不在解决方案，另排）；ClientPackagesService / PluginPackagesService 同构去重；Program.cs 巨文件拆分与 WebApplicationFactory 集成测试；docs/ 归档分层与 ROADMAP 排序修复（P1）；数据层 N+1 / 领取事务 / 并发锁（P2）。
+
+**验收**：dotnet build 0 错误；dotnet test 315 全绿（Core 108 / Server 45 / Studio 25 / WinHost 137）；对外 JSON 契约不变（漂移修复点均向后兼容）；按 DoD 更新 ROADMAP / CHANGELOG / DESIGN。
+
+**完成（2026-08-25）**：三项 P0 全部完成——ci.yml 日常 CI、LabelFrame.Api 共享库落地（两端各删约 150 行重复端点与 DTO）、README 重写 + DEPLOY.md 拆分；dotnet build / dotnet test 315 全绿。
+
+---
+
 ## 检查点：试点验收（已完成）
 
 按 [REQUIREMENTS.md](REQUIREMENTS.md) §8 成功衡量执行：

@@ -4,6 +4,14 @@
 
 
 
+## 迭代 27 工程治理 P0（日常 CI + API 契约与端点去重 + 文档重组）· 2026-08-25
+
+- **日常 CI（ci.yml）**：push master / PR 触发 dotnet 构建 / 测试 + 前端 lint / 双模式测试 / 构建（命令与发版流水线一致），主干回归提交即发现；同分支新推送自动取消旧运行；不改动发布流水线。
+- **新增共享库 LabelFrame.Api**：Server / WinHost 重复的 9 个 DTO 与模板 / 调试出图 / Excel / 日志端点（约 250 行）收敛为共享实现（端点经 Options 传入各自错误码，对外错误码不变）；xlsx 文本解析下沉 Core（ExcelTableReader）；ApiErrorCodes 统一错误码注册表（替换 WinHost 端点魔法字符串）。
+- **修复两宿主漂移缺陷**：WinHost 模板预览 DPI 硬编码 203 → 取宿主配置（原非 203 DPI 时预览与打印不一致）；预览统一 Skia 与打印同源（原 GDI 不同源）、无请求数据回退模板 testData；模板不存在错误码 LF_JOB_001（误用）→ LF_TPL_001（Server 保持 LF_SRV_006）；ErrorView 统一 Code / Message / FieldKey；render-image(s) 图片资源解析统一（base64 附带优先、按名回退模板库）。
+- **文档重组**：README 重写（三类角色快速开始：文员单机 / 管理员多机 / 业务系统开发者；部署形态对照；216 → 约 110 行）；新增 docs/DEPLOY.md（MSI / Docker / Ubuntu / 管理界面插件 / 分发 / 签名 / 配置）。
+- dotnet build 0 错误；dotnet test 315 全绿（Core 108 / Server 45 / Studio 25 / WinHost 137）。
+
 ## v0.20.2 验证发布 — 2026-08-18
 
 - **流水线验证**：推送 0.20.2 tag 再次验证 GitHub Actions 发布流水线稳定（内容与 v0.20.1 相同，无功能变更）；全流程（测试 / 打包 / ghcr 镜像 / Release）通过，产物同上；ServerOptions 版本号同步 0.20.2。
