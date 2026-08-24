@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -55,7 +55,7 @@ public class TemplateEndpointTests : SharedEndpointsTestBase
     [Fact]
     public async Task Preview_should_render_at_host_dpi_and_fall_back_to_testData()
     {
-        // 迭代 27 漂移修复的回归锚点：预览 DPI 必须取宿主配置（原 WinHost 硬编码 203）
+        // 回归锚点：预览 DPI 必须取宿主配置（203 与 300 两档像素宽应不同）
         var dpi203 = await CreateClientAsync(dpi: 203);
         var dpi300 = await CreateClientAsync(dpi: 300);
         await dpi203.PostAsync("/api/templates", new StringContent(TemplateJson, Encoding.UTF8, "application/json"));
@@ -64,7 +64,7 @@ public class TemplateEndpointTests : SharedEndpointsTestBase
         var png203 = await (await dpi203.PostAsync("/api/templates/集成测试模板/preview", new StringContent("{}", Encoding.UTF8, "application/json"))).Content.ReadAsByteArrayAsync();
         var png300 = await (await dpi300.PostAsync("/api/templates/集成测试模板/preview", new StringContent("{}", Encoding.UTF8, "application/json"))).Content.ReadAsByteArrayAsync();
 
-        // 100mm 宽 @203dpi ≈ 799px、@300dpi ≈ 1181px（ testData 回退使文本元素有内容可渲染 ）
+        // 100mm 宽 @203dpi ≈ 799px、@300dpi ≈ 1181px（testData 回退使文本元素有内容可渲染）
         Assert.InRange(PngWidth(png203), 795, 805);
         Assert.InRange(PngWidth(png300), 1175, 1187);
     }
@@ -118,7 +118,7 @@ public class RenderEndpointTests : SharedEndpointsTestBase
     [Fact]
     public async Task Render_image_with_invalid_base64_should_return_400()
     {
-        // 迭代 28 异常契约修复的回归锚点：base64 非法由裸 500 改为 400 + 中文原因
+        // 回归锚点：base64 非法应 400 + 中文原因（而非 500）
         var withImages = $$"""
         {
           "template": {

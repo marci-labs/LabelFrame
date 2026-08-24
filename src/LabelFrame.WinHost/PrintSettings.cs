@@ -1,10 +1,10 @@
-namespace LabelFrame.WinHost;
+﻿namespace LabelFrame.WinHost;
 
-/// <summary>批次作业设置 DTO：API 请求 / 响应与 print-settings.json 持久化共用形状（迭代 24）。</summary>
+/// <summary>批次作业设置 DTO：API 请求 / 响应与 print-settings.json 持久化共用形状。</summary>
 public sealed record PrintSettingsDto(bool BatchEnabled, int BatchSize, int BatchIntervalMs);
 
 /// <summary>
-/// 批次作业设置（选项模型，迭代 24）：全局单例，API 线程写、打印 Worker 线程读，
+/// 批次作业设置（选项模型）：全局单例，API 线程写、打印 Worker 线程读，
 /// 读写统一走 lock 保证跨线程可见性（评审 #8 结论）。保存即生效，无需重启。
 /// </summary>
 public sealed class PrintSettings

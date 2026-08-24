@@ -1,7 +1,7 @@
-namespace LabelFrame.Core.Transport;
+﻿namespace LabelFrame.Core.Transport;
 
 /// <summary>
-/// 日志传输（模拟打印机）：迭代 15 起打印统一为整版位图（^GF），
+/// 日志传输（模拟打印机）：打印统一为整版位图（^GF），
 /// 不再把指令内容写入日志（数据量过大）；只记录摘要，实际图片由作业层保存 PNG（见 WinHost JobSubmissionService）。
 /// 用于没有真实打印机时的联调验证。
 /// </summary>

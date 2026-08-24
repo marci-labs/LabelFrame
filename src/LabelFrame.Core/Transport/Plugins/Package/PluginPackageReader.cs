@@ -1,9 +1,9 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 
 namespace LabelFrame.Core.Transport.Plugins.Package;
 
 /// <summary>
-/// 插件包 zip 读取（迭代 23 决策 1A/5A）：根 manifest.json + 插件 DLL；
+/// 插件包 zip 读取：根 manifest.json + 插件 DLL；
 /// zip-slip 防护（拒绝绝对路径 / 盘符 / .. 段）；不落地解压（服务端列表 / 上传校验用）。
 /// </summary>
 public static class PluginPackageReader

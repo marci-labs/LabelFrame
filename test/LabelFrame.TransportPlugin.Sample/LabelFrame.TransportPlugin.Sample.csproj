@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- 测试用示例传输插件：验证外部 DLL 目录加载（迭代 22 PluginDirectoryLoader） -->
+    <!-- 测试用示例传输插件：验证外部 DLL 目录加载 -->
     <ProjectReference Include="..\..\src\LabelFrame.Core\LabelFrame.Core.csproj" />
   </ItemGroup>
 

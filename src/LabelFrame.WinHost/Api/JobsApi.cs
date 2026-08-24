@@ -38,7 +38,7 @@ internal static class JobsApi
             : Results.Ok(jobView);
     });
 
-    // 作业列表（迭代 18 B10：作业历史页；单机降级用，形状与 Server 兼容）
+    // 作业列表（作业历史页；单机降级用，形状与 Server 兼容）
     app.MapGet("/api/jobs", async (int? limit, ILabelJobStore store, ITransportManager transportManager, CancellationToken ct) =>
     {
         var jobs = await store.ListRecentAsync(Math.Clamp(limit ?? 100, 1, 500), ct);

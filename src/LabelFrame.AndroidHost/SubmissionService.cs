@@ -1,4 +1,4 @@
-using LabelFrame.AndroidHost.Api;
+﻿using LabelFrame.AndroidHost.Api;
 using LabelFrame.AndroidHost.Rendering;
 using LabelFrame.Core.Documents;
 using LabelFrame.Core.Encoding;
@@ -7,7 +7,7 @@ using LabelFrame.Core.Validation;
 
 namespace LabelFrame.AndroidHost;
 
-/// <summary>提交服务：校验 → Android 整版位图渲染 → ^GF 编码 → 本地作业队列（与 WinHost 同构；迭代 15 起恒为图片打印）。</summary>
+/// <summary>提交服务：校验 → Android 整版位图渲染 → ^GF 编码 → 本地作业队列（与 WinHost 同构；恒为图片打印）。</summary>
 public sealed class SubmissionService
 {
     private readonly LabelJobQueue _queue;

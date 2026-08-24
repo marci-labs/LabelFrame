@@ -9,7 +9,7 @@ namespace LabelFrame.WinHost.Routing;
 /// <summary>
 /// Server 路由 Worker：周期注册（心跳）→ 领取定向作业 → 投入本地作业队列打印 →
 /// 本地作业终态后回报 Server。未配置 ServerUrl 时不启用。
-/// 回报由独立循环负责（迭代 19 反馈）：本地作业终态后约 1s 内回报，不被长轮询等待阻塞。
+/// 回报由独立循环负责（反馈）：本地作业终态后约 1s 内回报，不被长轮询等待阻塞。
 /// </summary>
 public sealed class ServerRoutingWorker : BackgroundService
 {

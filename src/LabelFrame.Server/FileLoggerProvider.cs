@@ -1,9 +1,9 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 
 namespace LabelFrame.Server;
 
 /// <summary>
-/// 极简文件日志（迭代 19）：把 ILogger 输出追加写入 UTF-8 文本文件，
+/// 极简文件日志：把 ILogger 输出追加写入 UTF-8 文本文件，
 /// 供 Linux 部署把日志目录挂载到宿主机直接查看（LABELFRAME_SERVER_LOG_FILE）。
 /// </summary>
 public sealed class FileLoggerProvider : ILoggerProvider

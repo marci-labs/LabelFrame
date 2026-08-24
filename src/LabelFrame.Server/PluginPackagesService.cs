@@ -1,4 +1,4 @@
-using LabelFrame.Core.IO;
+﻿using LabelFrame.Core.IO;
 using LabelFrame.Core.Transport.Plugins.Package;
 
 namespace LabelFrame.Server;
@@ -17,7 +17,7 @@ public sealed record PluginPackageView(
     string? InvalidReason);
 
 /// <summary>
-/// 服务端插件包目录服务（迭代 23 §2.1 / §5.1，决策 2A）：独立 plugin-packages 目录 + /api/plugin-packages——
+/// 服务端插件包目录服务：独立 plugin-packages 目录 + /api/plugin-packages——
 /// 上传 / 列表时只读 zip 根 manifest.json 展示插件元数据（不解压不加载）；zip / manifest 解析失败 → valid:false + 原因，仍列出便于管理删除；
 /// 文件名一律拒绝路径分隔符 / .. / 非法字符（路径穿越防护，共享 Core <see cref="SafeFileName"/>）。
 /// </summary>

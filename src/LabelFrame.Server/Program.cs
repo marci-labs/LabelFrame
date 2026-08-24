@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using LabelFrame.Api;
 using LabelFrame.Api.Endpoints;
 using LabelFrame.Core.Logs;
@@ -24,12 +24,12 @@ if (!string.IsNullOrWhiteSpace(serverOptions.LogFilePath))
     builder.Logging.AddProvider(new FileLoggerProvider(serverOptions.LogFilePath));
 }
 builder.WebHost.UseUrls(serverOptions.ListenUrl);
-// 迭代 23（决策 5A）：插件包上传端点大小上限 64MB（Kestrel 默认约 30MB，超出会返回 413 且无错误体）
+// 插件包上传端点大小上限 64MB（Kestrel 默认约 30MB，超出会返回 413 且无错误体）
 builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = PluginPackageLimits.MaxBytes);
-// 迭代 19 反馈：缩短停机超时（默认 30s），避免客户端长轮询请求拖慢 Windows 服务停止 / 卸载 / 升级。
+// 缩短停机超时（默认 30s）：避免客户端长轮询请求拖慢服务停止 / 卸载 / 升级。
 builder.Host.ConfigureHostOptions(options => options.ShutdownTimeout = TimeSpan.FromSeconds(5));
 #if WINDOWS
-// 迭代 18：以 Windows 服务运行（LabelFrameServer）；直接运行 exe 仍是控制台（开发用）。
+// 以 Windows 服务运行（LabelFrameServer）；直接运行 exe 仍是控制台（开发用）。
 builder.Host.UseWindowsService(options => options.ServiceName = "LabelFrameServer");
 #endif
 
@@ -73,7 +73,7 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseCors();
 
-// ---- 服务端管理界面插件（迭代 20）：静态前端包目录，目录存在即托管、移除即无头 ----
+// ---- 服务端管理界面插件：静态前端包目录，目录存在即托管、移除即无头 ----
 // 中间件常驻注册（FileProvider 指向插件目录）；目录出现 / 移除即时生效，无需重启。
 if (!string.IsNullOrWhiteSpace(serverOptions.WebUiPath))
 {
@@ -94,7 +94,7 @@ if (!string.IsNullOrWhiteSpace(serverOptions.WebUiPath))
 
 app.MapGet("/healthz", () => Results.Ok(new { service = "LabelFrame.Server", status = "ok" }));
 
-// ---- 服务端信息（迭代 20：调试 / Server UI 探测用）----
+// ---- 服务端信息（调试 / Server UI 探测用）----
 app.MapGet("/api/server/info", (ServerOptions options) =>
     Results.Ok(new
     {
@@ -108,7 +108,7 @@ app.MapDevicesApi();
 app.MapServerJobsApi();
 app.MapPackagesApi();
 
-// ---- 模板库（迭代 16：服务端集中管理；端点实现与 WinHost 共享，见 LabelFrame.Api.Endpoints）----
+// ---- 模板库（服务端集中管理；端点实现与 WinHost 共享，见 LabelFrame.Api.Endpoints）----
 app.MapTemplateApi(new TemplateApiOptions(
     templateStore,
     skiaRenderer,
@@ -116,14 +116,14 @@ app.MapTemplateApi(new TemplateApiOptions(
     ServerErrorCodes.InvalidRequest,
     ServerErrorCodes.TemplateNotFound));
 
-// ---- 调试出图（迭代 16：服务端渲染，浏览器下载；打印以客户端渲染为准；图片资源=请求附带优先、按名回退模板库）----
+// ---- 调试出图（服务端渲染，浏览器下载；打印以客户端渲染为准；图片资源=请求附带优先、按名回退模板库）----
 app.MapRenderApi(new RenderApiOptions(templateStore, skiaRenderer, serverOptions.Dpi, ServerErrorCodes.InvalidRequest));
 
 // ---- Excel 模板生成 / 设备日志 / Excel 数据导入（端点实现与 WinHost 共享，见 LabelFrame.Api.Endpoints）----
 app.MapImportApi(new ImportApiOptions(ServerErrorCodes.InvalidRequest));
 app.MapLogApi(new LogApiOptions(logStore, ServerErrorCodes.InvalidRequest));
 
-// 迭代 18：服务端无头化——不再托管 Web UI / 测试页，仅提供 API 与 /healthz。
+// 服务端无头化——不再托管 Web UI / 测试页，仅提供 API 与 /healthz。
 
 // ---- SPA fallback（插件）：仅非 /api/* 与 /healthz 的路径回退 index.html；插件未启用保持 404 ----
 app.MapFallback(async context =>
@@ -142,5 +142,5 @@ app.MapFallback(async context =>
 await app.RunAsync();
 
 
-// WebApplicationFactory 集成测试入口（迭代 29：宿主专属端点 HTTP 测试）
+// WebApplicationFactory 集成测试入口（宿主专属端点 HTTP 测试）
 public partial class Program { }

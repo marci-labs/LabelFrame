@@ -1,4 +1,4 @@
-using LabelFrame.WinHost.Transport;
+﻿using LabelFrame.WinHost.Transport;
 
 namespace LabelFrame.WinHost;
 
@@ -99,14 +99,14 @@ public sealed class HostOptions
         "LabelFrame",
         "logs.db");
 
-    /// <summary>外部传输插件目录（默认 %ProgramData%\\LabelFrame\\Client\\plugins；启动时扫描 *.dll，决策 #68）。</summary>
+    /// <summary>外部传输插件目录（默认 %ProgramData%\\LabelFrame\\Client\\plugins；启动时扫描 *.dll）。</summary>
     public string PluginsPath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
         "LabelFrame",
         "Client",
         "plugins");
 
-    /// <summary>批次作业设置文件路径（默认 %LOCALAPPDATA%\LabelFrame\print-settings.json，迭代 24；与 connection.json 同级，用户级）。</summary>
+    /// <summary>批次作业设置文件路径（默认 %LOCALAPPDATA%\LabelFrame\print-settings.json，与 connection.json 同级，用户级）。</summary>
     public string PrintSettingsPath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "LabelFrame",

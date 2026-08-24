@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace LabelFrame.WinHost.Tests.Jobs;
 
 /// <summary>
-/// JobPrintWorker 批次节流集成测试（迭代 24）：FakeTransport 记录发送时间戳，
+/// JobPrintWorker 批次节流集成测试：FakeTransport 记录发送时间戳，
 /// 断言「发送前暂停」的批间间隔——25 张/批 5 → 第 6/11/16/21 张前各停一次（共 4 次）；
 /// 跨作业累计（两个作业各 5 张 → 第 5 张后、B 首张前等待一次）；不足一批不等待；禁用无间隔。
 /// 判定双通道：① 批次节流日志的「已发送张数」序列（确定性主通道——代码中日志与 Task.Delay 同分支，

@@ -14,12 +14,12 @@ using Microsoft.AspNetCore.Routing;
 
 namespace LabelFrame.WinHost.Api;
 
-/// <summary>插件安装 / 卸载端点（迭代 23）：插件包上传服务端 → 客户端下载安装 / 卸载（重启生效）。</summary>
+/// <summary>插件安装 / 卸载端点：插件包上传服务端 → 客户端下载安装 / 卸载（重启生效）。</summary>
 internal static class PluginApi
 {
     public static IEndpointRouteBuilder MapPluginApi(this IEndpointRouteBuilder app)
     {
-    // ---- 插件安装 / 卸载（迭代 23 §5.2：插件包上传服务端 → 客户端下载安装 / 卸载；安装 / 卸载 = 写文件 + 重启生效）----
+    // ---- 插件安装 / 卸载（插件包上传服务端 → 客户端下载安装 / 卸载；安装 / 卸载 = 写文件 + 重启生效）----
     app.MapGet("/api/plugins/installed", (Transport.PluginInstaller installer) => Results.Ok(installer.ListInstalled()));
 
     app.MapPost("/api/plugins/install", async (IFormFile file, Transport.PluginInstaller installer, CancellationToken ct) =>

@@ -3,8 +3,8 @@
 namespace LabelFrame.WinHost;
 
 /// <summary>
-/// 安装完成提示（迭代 20 优化）：MSI 原生完成弹窗会被 Windows 焦点策略挡到后台 / 只在任务栏闪烁，
-/// 改为由 WinHost 以 `--install-finished` 模式显示 TopMost 弹窗（默认置前）。
+/// 安装完成提示（优化）：MSI 原生完成弹窗会被 Windows 焦点策略挡到后台 / 只在任务栏闪烁，
+/// WinHost 以 `--install-finished` 模式显示 TopMost 弹窗（默认置前）。
 /// 选择「立即打开」则以普通模式重启宿主（Kestrel + 托盘 + 打开浏览器界面），否则直接退出。
 /// </summary>
 internal static class InstallFinishedPrompt

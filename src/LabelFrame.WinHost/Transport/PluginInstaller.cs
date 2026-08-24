@@ -1,10 +1,10 @@
-using LabelFrame.Core.IO;
+﻿using LabelFrame.Core.IO;
 using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.Core.Transport.Plugins.Package;
 
 namespace LabelFrame.WinHost.Transport;
 
-/// <summary>已安装插件视图（GET /api/plugins/installed，迭代 23 §5.2）。</summary>
+/// <summary>已安装插件视图（GET /api/plugins/installed）。</summary>
 public sealed record InstalledPluginView(
     string PluginId,
     string Name,
@@ -18,7 +18,7 @@ public sealed record InstalledPluginView(
 
 
 /// <summary>
-/// 客户端插件安装 / 卸载服务（迭代 23 §5.2 / §6.2，决策 3A/4A/5A/6A）：
+/// 客户端插件安装 / 卸载服务：
 /// 安装 = 三层校验（zip + manifest / 内置 id 拒绝 / 临时 ALC 预检）→ 解压到 plugins/&lt;pluginId&gt;/（覆盖旧目录）→ 重启生效；
 /// 卸载 = 删除 plugins/&lt;pluginId&gt;/ → 重启生效；运行时热卸载不做。
 /// </summary>
@@ -137,11 +137,11 @@ public sealed class PluginInstaller
         // ① zip 完整性 + 根 manifest + 必填字段 + zip-slip（PluginPackageReader.Read 内部校验）
         var content = PluginPackageReader.Read(bytes);
 
-        // ② 内置插件 ID 拒绝（决策 6A）
+        // ② 内置插件 ID 拒绝
         var existing = _registry.GetPlugin(content.Manifest.PluginId);
         if (existing is { IsExternal: false })
         {
-            throw new InvalidDataException($"插件 ID「{content.Manifest.PluginId}」与内置插件冲突，禁止安装（决策 6A）。");
+            throw new InvalidDataException($"插件 ID「{content.Manifest.PluginId}」与内置插件冲突，禁止安装。");
         }
 
         // pluginId 目录名安全校验（防解压路径穿越）
@@ -245,7 +245,7 @@ public sealed class PluginInstaller
         _hostLog.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 已卸载插件包：{pluginId}（重启后生效）。");
     }
 
-    /// <summary>取目录内首个加载失败的 DLL 错误消息（未加载时透出启动期 loadError，迭代 23 附二拍板）。</summary>
+    /// <summary>取目录内首个加载失败的 DLL 错误消息（未加载时透出启动期 loadError）。</summary>
     private string? FindLoadError(string dir)
         => _lastLoadErrors.FirstOrDefault(kv => kv.Key.StartsWith(dir, StringComparison.OrdinalIgnoreCase)).Value;
     /// <summary>插件是否从指定目录加载（注册表描述 AssemblyPath 位于该目录下且 id 匹配）。</summary>

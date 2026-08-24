@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using LabelFrame.Core.Transport;
 using LabelFrame.WinHost.Transport;
 
@@ -88,7 +88,7 @@ public class TransportManagerTests
     [Fact]
     public async Task Tcp_connection_test_should_require_printer_response()
     {
-        // 迭代 15 联调反馈：能连端口 ≠ 打印机。测试必须收到 ~HS 响应才算成功。
+        // 能连端口 ≠ 打印机：测试必须收到 ~HS 响应才算成功。
         var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
         listener.Start();
         var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;

@@ -1,4 +1,4 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using System.Text;
 using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.Core.Transport.Plugins.Package;
@@ -251,7 +251,7 @@ public class PluginInstallerTests
     [Fact]
     public void List_should_report_load_error_for_broken_package_dll()
     {
-        // 场景：manifest 正常但 DLL 损坏（启动加载失败），lastLoadErrors 透出原因（迭代 23 附二拍板）
+        // 场景：manifest 正常但 DLL 损坏（启动加载失败），lastLoadErrors 透出原因
         var dir = Path.Combine(Path.GetTempPath(), $"lfinstall-{Guid.NewGuid():N}");
         var registry = TestTransportRegistry.Create();
         var packageDir = Path.Combine(dir, "sample");

@@ -1,11 +1,11 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace LabelFrame.Core.Transport.Plugins.Package;
 
 /// <summary>
-/// 插件包 manifest（zip 根 manifest.json，迭代 23 决策 1A）：
+/// 插件包 manifest（zip 根 manifest.json）：
 /// pluginId / name / version 必填；description / author / minHostVersion 可选
-/// （minHostVersion 本轮仅展示、暂不校验，厂商插件接入迭代 24 再评估）。
+/// （minHostVersion 本轮仅展示、暂不校验，有厂商插件接入需求时再评估）。
 /// </summary>
 public sealed record PluginPackageManifest(
     string PluginId,

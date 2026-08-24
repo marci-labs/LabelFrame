@@ -1,4 +1,4 @@
-using LabelFrame.Core.Data;
+﻿using LabelFrame.Core.Data;
 using Microsoft.Data.Sqlite;
 
 namespace LabelFrame.Core.Logs;
@@ -6,7 +6,7 @@ namespace LabelFrame.Core.Logs;
 /// <summary>日志条目（PDA / 设备回传）。</summary>
 public sealed record LogEntry(string DeviceId, DateTimeOffset Time, string Line);
 
-/// <summary>SQLite 日志存储：设备日志回传与查询（迭代 11：PDA 调试用）。</summary>
+/// <summary>SQLite 日志存储：设备日志回传与查询（PDA 调试用）。</summary>
 public sealed class SqliteLogStore
 {
     private readonly string _connectionString;

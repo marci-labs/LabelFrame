@@ -50,7 +50,7 @@ app.MapGet("/api/jobs/{jobId}", async (string jobId, ServerService svc, Cancella
 });
 
 // ---- 设备领取 / 回报 ----
-// 长轮询通知（迭代 18 联调反馈）：作业到达立即返回 hasPending=true（等效推送）；同时刷新心跳保活。
+// 长轮询通知：作业到达立即返回 hasPending=true（等效推送）；同时刷新心跳保活。
 app.MapGet("/api/devices/{deviceId}/jobs/notify", async (string deviceId, int? timeout, HttpContext context, ServerService svc, PendingJobNotifier notifier, CancellationToken ct) =>
 {
     try

@@ -14,12 +14,12 @@ using Microsoft.AspNetCore.Routing;
 
 namespace LabelFrame.WinHost.Api;
 
-/// <summary>机器级端点：ServerUrl 配置（仅回环可写）、批次打印设置（迭代 24）、本机服务关闭。</summary>
+/// <summary>机器级端点：ServerUrl 配置（仅回环可写）、批次打印设置、本机服务关闭。</summary>
 internal static class HostApi
 {
     public static IEndpointRouteBuilder MapHostApi(this IEndpointRouteBuilder app, Action<string> hostInfo)
     {
-    // ---- 机器级配置（迭代 18：/api/host/config，前端读写 ServerUrl；仅回环可写）----
+    // ---- 机器级配置（/api/host/config，前端读写 ServerUrl；仅回环可写）----
     app.MapGet("/api/host/config", (HostOptions options) =>
         Results.Ok(new Api.HostConfigDto(options.ServerUrl ?? string.Empty, options.DeviceId, options.DeviceName, LocalIpAddresses.EnumerateIpv4())));
 
@@ -47,7 +47,7 @@ internal static class HostApi
         hostInfo($"机器级配置已更新：ServerUrl={serverUrl}");
         return Results.Ok(new Api.HostConfigDto(serverUrl, options.DeviceId, options.DeviceName, LocalIpAddresses.EnumerateIpv4()));
     });
-    // ---- 批次作业设置（迭代 24）：GET/POST /api/host/print-settings；仅回环可写；保存即生效 ----
+    // ---- 批次作业设置：GET/POST /api/host/print-settings；仅回环可写；保存即生效 ----
     app.MapGet("/api/host/print-settings", (PrintSettings printSettings) =>
         Api.PrintSettingsApi.Get(printSettings));
 

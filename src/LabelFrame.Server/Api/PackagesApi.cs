@@ -1,4 +1,4 @@
-using LabelFrame.Api;
+﻿using LabelFrame.Api;
 using LabelFrame.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -6,12 +6,12 @@ using Microsoft.AspNetCore.Routing;
 
 namespace LabelFrame.Server.Api;
 
-/// <summary>分发端点：客户端安装包（迭代 22 决策 #71）与传输插件包（迭代 23 决策 #72）的列表 / 上传 / 下载 / 删除。</summary>
+/// <summary>分发端点：客户端安装包与传输插件包的列表 / 上传 / 下载 / 删除。</summary>
 internal static class PackagesApi
 {
     public static IEndpointRouteBuilder MapPackagesApi(this IEndpointRouteBuilder app)
     {
-// ---- 客户端下载分发（迭代 22 §2.3 / §5.4，决策 #71：服务端统一分发客户端安装包）----
+// ---- 客户端下载分发（服务端统一分发客户端安装包）----
 app.MapGet("/api/client-packages", (ClientPackagesService svc) => Results.Ok(svc.List()));
 
 app.MapPost("/api/client-packages", async (IFormFile file, ClientPackagesService svc, CancellationToken ct) =>
@@ -56,7 +56,7 @@ app.MapDelete("/api/client-packages/{fileName}", (string fileName, ClientPackage
     return Results.Ok(new { deleted = view.FileName });
 });
 
-// ---- 传输插件包（迭代 23 §2.1 / §5.1，决策 2A：插件包上传服务端，客户端安装用；列表含元数据与 valid 状态，路径穿越防护）----
+// ---- 传输插件包（插件包上传服务端，客户端安装用；列表含元数据与 valid 状态，路径穿越防护）----
 app.MapGet("/api/plugin-packages", (PluginPackagesService svc) => Results.Ok(svc.List()));
 
 app.MapPost("/api/plugin-packages", async (IFormFile file, PluginPackagesService svc, CancellationToken ct) =>

@@ -1,4 +1,4 @@
-namespace LabelFrame.Core.Contracts;
+﻿namespace LabelFrame.Core.Contracts;
 
 /// <summary>契约中的单个字段定义。</summary>
 public sealed class LabelField
@@ -15,6 +15,6 @@ public sealed class LabelField
     /// <summary>字段值类型。</summary>
     public LabelFieldType Type { get; init; } = LabelFieldType.Text;
 
-    /// <summary>可选格式约束（正则），迭代 1 仅作契约元数据，校验暂不执行。</summary>
+    /// <summary>可选格式约束（正则）；仅存储元数据，校验暂不执行。</summary>
     public string? Pattern { get; init; }
 }

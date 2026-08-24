@@ -13,7 +13,7 @@ public sealed class SampleTransportPlugin : ITransportPlugin
     public string DisplayName => "示例插件（测试）";
 
     /// <inheritdoc />
-    public string Description => "外部 DLL 目录加载示例：发送记录到宿主日志，连接测试恒成功（迭代 22 插件机制验证）。";
+    public string Description => "外部 DLL 目录加载示例：发送记录到宿主日志，连接测试恒成功（插件机制验证）。";
 
     /// <inheritdoc />
     public IReadOnlyList<TransportParameterSpec> Parameters => new[]

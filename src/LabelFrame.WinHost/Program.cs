@@ -31,7 +31,7 @@ public static class Program
 
     public static async Task Main(string[] args)
     {
-        // 安装完成提示模式（迭代 20）：仅显示 TopMost 弹窗（MSI 原生弹窗会被 Windows 焦点策略挡到后台），
+        // 安装完成提示模式：仅显示 TopMost 弹窗（MSI 原生弹窗会被 Windows 焦点策略挡到后台），
         // 选择「立即打开」后以普通模式重启宿主；不启动 Kestrel / 托盘。
         if (args.Contains(InstallFinishedPrompt.Flag))
         {
@@ -49,12 +49,12 @@ public static class Program
         builder.Configuration.GetSection("WinHost").Bind(options);
         options.ApplyEnvironmentOverrides();
         builder.WebHost.UseUrls(options.ListenUrl);
-        // 迭代 23（决策 5A）：插件包上传端点大小上限 64MB（Kestrel 默认约 30MB，超出会返回 413 且无错误体）
+        // 插件包上传端点大小上限 64MB（Kestrel 默认约 30MB，超出会返回 413 且无错误体）
         builder.WebHost.ConfigureKestrel(kestrel =>
         {
             kestrel.Limits.MaxRequestBodySize = PluginPackageLimits.MaxBytes;
         });
-        // 迭代 24：Serilog 文件日志（ILogger 逐张日志落盘，供批间间隔冒烟验证；与 host.log 分开文件）
+        // Serilog 文件日志（ILogger 逐张日志落盘，供批间间隔冒烟验证；与 host.log 分开文件）
         // 文件名 app-20260818.log：Serilog.Sinks.File 的 {Date} 是字面量（不会替换），
         // 正确做法是 app-.log + RollingInterval.Day（Serilog 自动追加日期后缀），联调附五实证。
         var appLogDirectory = Path.Combine(
@@ -71,7 +71,7 @@ public static class Program
 
         var hostLogWriter = OpenHostLogWriter(options);
 
-        // 迭代 22 传输插件化（决策 #67-69）：注册表 = Core 内置（log / tcp9100）+ WinHost 内置（winspool / zebra）+ 外部 DLL 目录扫描
+        // 传输插件注册表 = Core 内置（log / tcp9100）+ WinHost 内置（winspool / zebra）+ 外部 DLL 目录扫描
         var transportRegistry = new TransportPluginRegistry();
         foreach (var plugin in BuiltinTransportPlugins.CreateCorePlugins())
         {
@@ -86,7 +86,7 @@ public static class Program
         var pluginLoad = PluginDirectoryLoader.LoadWithErrors(options.PluginsPath, hostLogWriter);
         foreach (var (plugin, assemblyPath) in pluginLoad.Plugins)
         {
-            // 决策 6A：外部插件不允许覆盖内置插件 ID（冲突时 RegisterExternal 记日志跳过）
+            // 外部插件不允许覆盖内置插件 ID（冲突时记日志跳过）
             if (transportRegistry.RegisterExternal(plugin, assemblyPath, hostLogWriter))
             {
                 HostInfo($"已加载外部传输插件：{plugin.Id}（{plugin.DisplayName}，来自 {assemblyPath}）");
@@ -109,7 +109,7 @@ public static class Program
 
         var hostConfigStore = new HostConfigStore(options.ConfigPath);
         builder.Services.AddSingleton(hostConfigStore);
-        // 迭代 24：批次作业设置（用户级持久化 + 内存单例，保存即生效；单例注入 JobPrintWorker）
+        // 批次作业设置（用户级持久化 + 内存单例，保存即生效；单例注入 JobPrintWorker）
         var printSettingsStore = new PrintSettingsStore(options.PrintSettingsPath);
         var printSettings = new PrintSettings();
         printSettings.Update(printSettingsStore.Load());
@@ -144,7 +144,7 @@ public static class Program
             options.PluginsPath,
             sp.GetRequiredService<ITransportPluginRegistry>(),
             hostLogWriter,
-            // 迭代 23 附二拍板：启动装配时的加载失败透出（已安装列表「加载失败 err + 原因」）
+            // 启动装配时的加载失败透出给已安装列表（「加载失败 err + 原因」）
             pluginLoad.Errors.ToDictionary(e => e.AssemblyPath, e => e.Error, StringComparer.OrdinalIgnoreCase)));
         builder.Services.AddSingleton<ZplImageEncoder>();
         builder.Services.AddHostedService<JobPrintWorker>();
@@ -200,15 +200,13 @@ public static class Program
             {
                 service = "LabelFrame.WinHost",
                 status = "ok",
-                // 旧字段：连接方式（兼容旧前端徽标）；迭代 22 新增 pluginId / displayText 精确透出当前插件
+                // 旧字段：连接方式（兼容旧前端徽标）；pluginId / displayText 精确透出当前插件
                 transport = transportManager.CurrentConfig.Mode.ToString(),
                 pluginId = transportManager.CurrentConfig.PluginId,
                 displayText = registry.Describe(transportManager.CurrentConfig.PluginId, new TransportPluginParameters(transportManager.CurrentConfig.Params)),
             }));
 
         // ---- 模板库 / 调试出图（端点实现与 Server 共享，见 LabelFrame.Api.Endpoints）----
-        // 预览修复：DPI 取宿主配置（原硬编码 203，非 203 DPI 时预览与打印不一致）；渲染统一 Skia 同源；
-        // 请求数据缺省时回退模板 testData（与 Server 一致）；模板不存在返回 LF_TPL_001（原误用 LF_JOB_001）。
         app.MapTemplateApi(new TemplateApiOptions(
             templateStore,
             skiaRenderer,

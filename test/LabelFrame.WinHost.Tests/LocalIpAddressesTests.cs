@@ -3,7 +3,7 @@ using System.Net.Sockets;
 
 namespace LabelFrame.WinHost.Tests;
 
-/// <summary>迭代 20：本机 IPv4 枚举（状态栏显示用）。</summary>
+/// <summary>本机 IPv4 枚举（状态栏显示用）。</summary>
 public class LocalIpAddressesTests
 {
     [Fact]

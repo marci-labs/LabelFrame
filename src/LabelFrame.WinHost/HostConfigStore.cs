@@ -1,8 +1,8 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace LabelFrame.WinHost;
 
-/// <summary>机器级配置存取（迭代 18）：serverUrl 持久化到 %ProgramData%\LabelFrame\Client\settings.json，供前端 /api/host/config 读写。</summary>
+/// <summary>机器级配置存取：serverUrl 持久化到 %ProgramData%\LabelFrame\Client\settings.json，供前端 /api/host/config 读写。</summary>
 public sealed class HostConfigStore
 {
     private readonly string _path;

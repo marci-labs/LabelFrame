@@ -1,4 +1,4 @@
-using LabelFrame.Api;
+﻿using LabelFrame.Api;
 using LabelFrame.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Routing;
 
 namespace LabelFrame.Server.Api;
 
-/// <summary>设备端点：注册 / 心跳、目录（含在线状态）、按 IP 查找（迭代 20 决策 #61）。</summary>
+/// <summary>设备端点：注册 / 心跳、目录（含在线状态）、按 IP 查找。</summary>
 internal static class DevicesApi
 {
     public static IEndpointRouteBuilder MapDevicesApi(this IEndpointRouteBuilder app)

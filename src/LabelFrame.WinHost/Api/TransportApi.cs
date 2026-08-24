@@ -14,7 +14,7 @@ using Microsoft.AspNetCore.Routing;
 
 namespace LabelFrame.WinHost.Api;
 
-/// <summary>连接管理端点（迭代 15/22）：查询 / 切换 / 测试；单一连接生效，先测试后生效。</summary>
+/// <summary>连接管理端点（/22）：查询 / 切换 / 测试；单一连接生效，先测试后生效。</summary>
 internal static class TransportApi
 {
     // 旧字段 availableModes 的固定取值（兼容旧前端；新代码用 availablePlugins）
@@ -22,7 +22,7 @@ internal static class TransportApi
 
     public static IEndpointRouteBuilder MapTransportApi(this IEndpointRouteBuilder app)
     {
-    // ---- 连接管理（迭代 15）：查询 / 切换 / 测试；单一连接生效，先测试后生效 ----
+    // ---- 连接管理：查询 / 切换 / 测试；单一连接生效，先测试后生效 ----
         app.MapGet("/api/transport", (ITransportManager transportManager, ITransportPluginRegistry registry) =>
         Results.Ok(ToTransportConfigDto(transportManager.CurrentConfig, registry)));
 
@@ -51,7 +51,7 @@ internal static class TransportApi
         }
         else if (!string.IsNullOrWhiteSpace(request.Mode))
         {
-            // 旧格式兼容：mode + 平铺参数 → 迁移为 pluginId + params（决策 #69）
+            // 旧格式兼容：mode + 平铺参数 → 迁移为 pluginId + params
             if (!Enum.TryParse<TransportMode>(request.Mode, ignoreCase: true, out var mode))
             {
                 return Results.BadRequest(new ErrorView(ApiErrorCodes.TransportInvalid, $"不支持的连接方式：{request.Mode}。"));

@@ -1,4 +1,4 @@
-using LabelFrame.Core.Data;
+﻿using LabelFrame.Core.Data;
 using Microsoft.Data.Sqlite;
 
 namespace LabelFrame.Server;
@@ -305,7 +305,7 @@ public sealed class ServerDb
         return reloadedId is null ? null : await LoadJobCoreAsync(connection, reloadedId, cancellationToken);
     }
 
-    /// <summary>作业列表（按创建时间倒序；迭代 22：可选 deviceId 过滤——客户端只看自己的作业，服务端 UI 不传看全部）。</summary>
+    /// <summary>作业列表（按创建时间倒序；可选 deviceId 过滤——客户端只看自己的作业，服务端 UI 不传看全部）。</summary>
     public async Task<IReadOnlyList<ServerJob>> ListJobsAsync(int limit = 100, string? deviceId = null, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);

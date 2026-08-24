@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,8 +42,7 @@ public static class GlobalExceptionHandlerExtensions
     public static IServiceCollection AddLabelFrameExceptionHandler(this IServiceCollection services)
     {
         services.AddExceptionHandler<GlobalExceptionHandler>();
-        // 无参 UseExceptionHandler() 的必需配套（.NET 8+：无路径 / 无 ProblemDetails 时中间件构建即抛错——
-        // 由迭代 29 集成测试发现的真实启动缺陷）；GlobalExceptionHandler 已处理全部异常，ProblemDetails 仅作兜底形态
+        // 无参 UseExceptionHandler() 的必需配套：无路径且未注册 ProblemDetails 服务时中间件构建即抛错
         services.AddProblemDetails();
         return services;
     }

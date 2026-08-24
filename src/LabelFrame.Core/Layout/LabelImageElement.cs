@@ -1,6 +1,6 @@
-namespace LabelFrame.Core.Layout;
+﻿namespace LabelFrame.Core.Layout;
 
-/// <summary>图片元素，绑定图片数据键（迭代 1 编码为占位）。</summary>
+/// <summary>图片元素，绑定图片数据键（编码为占位）。</summary>
 public sealed class LabelImageElement : LabelElement
 {
     /// <inheritdoc />

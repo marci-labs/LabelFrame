@@ -1,4 +1,4 @@
-namespace LabelFrame.Server;
+﻿namespace LabelFrame.Server;
 
 /// <summary>Server 配置：监听地址、数据库路径与历史清理保留期。</summary>
 public sealed class ServerOptions
@@ -8,7 +8,7 @@ public sealed class ServerOptions
 
     /// <summary>
     /// 默认数据目录：Windows %ProgramData%\LabelFrame\server（服务账户下 LOCALAPPDATA 不可靠）；
-    /// Linux /var/lib/labelframe/server（迭代 19，systemd 部署约定）；LABELFRAME_SERVER_* 环境变量优先。
+    /// Linux /var/lib/labelframe/server（systemd 部署约定）；LABELFRAME_SERVER_* 环境变量优先。
     /// </summary>
     public static string DefaultDataDirectory => OperatingSystem.IsWindows()
         ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "LabelFrame", "server")
@@ -41,27 +41,27 @@ public sealed class ServerOptions
     /// <summary>历史清理周期（小时）。</summary>
     public int CleanupIntervalHours { get; set; } = 24;
 
-    /// <summary>文本日志文件路径（为空不写文件；Linux 部署挂载到宿主机查看，迭代 19）。</summary>
+    /// <summary>文本日志文件路径（为空不写文件；Linux 部署挂载到宿主机查看）。</summary>
     public string? LogFilePath { get; set; }
 
-    /// <summary>产品版本（随迭代版本号更新；打包脚本 -Version 需保持一致）。</summary>
+    /// <summary>产品版本（与打包脚本 -Version 保持一致）。</summary>
     public const string ProductVersion = "0.20.2";
 
-    /// <summary>客户端安装包目录（迭代 22 §2.3：服务端统一分发客户端安装包；Windows %ProgramData%\\LabelFrame\\server\\client-packages；Linux /var/lib/labelframe/server/client-packages）。</summary>
+    /// <summary>客户端安装包目录（服务端统一分发客户端安装包；Windows %ProgramData%\\LabelFrame\\server\\client-packages；Linux /var/lib/labelframe/server/client-packages）。</summary>
     public static string DefaultClientPackagesPath => Path.Combine(DefaultDataDirectory, "client-packages");
 
-    /// <summary>传输插件包目录（迭代 23 决策 2A：插件包上传服务端独立目录；Windows %ProgramData%\LabelFrame\server\plugin-packages；Linux /var/lib/labelframe/server/plugin-packages）。</summary>
+    /// <summary>传输插件包目录（插件包上传服务端独立目录；Windows %ProgramData%\LabelFrame\server\plugin-packages；Linux /var/lib/labelframe/server/plugin-packages）。</summary>
     public static string DefaultPluginPackagesPath => Path.Combine(DefaultDataDirectory, "plugin-packages");
 
     /// <summary>传输插件包目录（存在即列出；目录直放文件或经 API 上传都支持，上传时解析 manifest 展示元数据）。</summary>
     public string PluginPackagesPath { get; set; } = DefaultPluginPackagesPath;
-    /// <summary>客户端安装包目录（存在即列出；目录直放文件或经 API 上传都支持，决策 #71）。</summary>
+    /// <summary>客户端安装包目录（存在即列出；目录直放文件或经 API 上传都支持）。</summary>
     public string ClientPackagesPath { get; set; } = DefaultClientPackagesPath;
 
     /// <summary>默认服务端管理界面插件目录（Windows %ProgramData%\LabelFrame\server\plugins\web-ui；Linux /var/lib/labelframe/server/plugins/web-ui）。</summary>
     public static string DefaultWebUiPath => Path.Combine(DefaultDataDirectory, "plugins", "web-ui");
 
-    /// <summary>服务端管理界面插件目录（目录存在即托管、放进去即时生效；为空 / 目录不存在 = 无头，不推翻决策 #53）。</summary>
+    /// <summary>服务端管理界面插件目录（目录存在即托管、放进去即时生效；为空 / 目录不存在 = 无头）。</summary>
     public string? WebUiPath { get; set; } = DefaultWebUiPath;
 
     /// <summary>应用 LABELFRAME_SERVER_* 环境变量覆盖。</summary>

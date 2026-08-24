@@ -215,7 +215,7 @@ public sealed class ServerService : IDisposable
         return await ToJobViewAsync(job, cancellationToken);
     }
 
-    /// <summary>作业列表（倒序；迭代 22：可选 deviceId 过滤——客户端只看自己的作业，服务端 UI 不传看全部）。</summary>
+    /// <summary>作业列表（倒序；可选 deviceId 过滤——客户端只看自己的作业，服务端 UI 不传看全部）。</summary>
     public async Task<IReadOnlyList<ServerJobView>> ListJobsAsync(int limit = 100, string? deviceId = null, CancellationToken cancellationToken = default)
     {
         var jobs = await _db.ListJobsAsync(limit, deviceId, cancellationToken);

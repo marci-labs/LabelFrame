@@ -1,9 +1,9 @@
-using LabelFrame.Core.Transport.Plugins;
+﻿using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.WinHost.Transport;
 
 namespace LabelFrame.WinHost.Tests.Transport;
 
-/// <summary>测试用传输插件注册表 / 连接管理器工厂（迭代 22：注册表 = Core 内置 + WinHost 内置，同生产装配）。</summary>
+/// <summary>测试用传输插件注册表 / 连接管理器工厂（注册表 = Core 内置 + WinHost 内置，同生产装配）。</summary>
 public static class TestTransportRegistry
 {
     /// <summary>生产同款注册表（log / tcp9100 / winspool / zebra）。</summary>

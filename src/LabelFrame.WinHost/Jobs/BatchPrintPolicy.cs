@@ -1,7 +1,7 @@
-namespace LabelFrame.WinHost.Jobs;
+﻿namespace LabelFrame.WinHost.Jobs;
 
 /// <summary>
-/// 批次节流策略（迭代 24）：发送前暂停（claim-then-delay）的纯函数判定，保证可单测。
+/// 批次节流策略：发送前暂停（claim-then-delay）的纯函数判定，保证可单测。
 /// 语义：每发满 N 张后，下一张发送前暂停间隔；计数跨作业全局累计、内存态、不持久化。
 /// </summary>
 public static class BatchPrintPolicy

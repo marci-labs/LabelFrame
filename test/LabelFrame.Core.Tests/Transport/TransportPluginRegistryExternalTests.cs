@@ -1,4 +1,4 @@
-using LabelFrame.Core.Transport;
+﻿using LabelFrame.Core.Transport;
 using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.TransportPlugin.Sample;
 
@@ -17,7 +17,7 @@ public class TransportPluginRegistryExternalTests
 
         var writer = new StringWriter();
         var external = new SampleTransportPlugin();
-        // 篡改 id 为内置 id 的"外部插件"（决策 6A 场景）
+        // 篡改 id 为内置 id 的"外部插件"
         var shadow = new ShadowPlugin("log", "Shadow Log");
 
         Assert.False(registry.RegisterExternal(shadow, "C:\\plugins\\shadow.dll", writer));

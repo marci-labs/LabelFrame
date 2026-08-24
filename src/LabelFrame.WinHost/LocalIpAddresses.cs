@@ -4,7 +4,7 @@ using System.Net.Sockets;
 
 namespace LabelFrame.WinHost;
 
-/// <summary>本机网络信息（迭代 20：客户端状态栏显示本机 IP）。</summary>
+/// <summary>本机网络信息（客户端状态栏显示本机 IP）。</summary>
 public static class LocalIpAddresses
 {
     /// <summary>枚举本机 IPv4 地址（仅启用的非回环地址，去重后返回）。</summary>

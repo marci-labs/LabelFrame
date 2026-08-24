@@ -52,7 +52,7 @@ public class JobSubmissionServiceTests
         Assert.True(result.Created);
         Assert.Equal(LabelJobStatus.Pending, result.Job!.Status);
         var stored = await store.GetJobAsync(result.Job.Id);
-        // 迭代 15：恒为整版位图（^GF），不再有元素级 ^BC
+        // 恒为整版位图（^GF），不再有元素级 ^BC
         Assert.Contains("^GF", stored!.Items[0].Zpl);
         Assert.DoesNotContain("^BC", stored.Items[0].Zpl);
     }
@@ -168,7 +168,7 @@ public class JobSubmissionServiceTests
 
         var result = await service.SubmitAsync(request);
 
-        // 迭代 15：图片渲染容错（TryGet），缺失的非必填字段渲染为空文本，作业正常创建（与预览一致）
+        // 图片渲染容错（TryGet），缺失的非必填字段渲染为空文本，作业正常创建（与预览一致）
         Assert.NotNull(result.Job);
         Assert.True(result.Created);
         var stored = await store.GetJobAsync(result.Job!.Id);

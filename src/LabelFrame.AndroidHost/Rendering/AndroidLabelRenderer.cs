@@ -1,4 +1,4 @@
-using Android.Graphics;
+﻿using Android.Graphics;
 using LabelFrame.Core.Documents;
 using LabelFrame.Core.Layout;
 using ZXing;
@@ -8,7 +8,7 @@ using ZXing.QrCode;
 namespace LabelFrame.AndroidHost.Rendering;
 
 /// <summary>
-/// Android 整版位图渲染器（迭代 15：AndroidHost 打印统一为图片）：
+/// Android 整版位图渲染器（AndroidHost 打印统一为图片）：
 /// 文本用 Android.Graphics（加粗 / 对齐 / 垂直对齐 / 单行缩小适应），条码 / 二维码用 ZXing，
 /// 线 / 区域 / 图片绘制，输出 1bpp LabelBitmap → ZplImageEncoder ^GF。
 /// 与 PC 端 Skia 渲染语义尽量一致；换行等高级排版在真机联调阶段补齐。

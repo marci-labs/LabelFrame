@@ -1,6 +1,6 @@
-namespace LabelFrame.Core.Transport.Plugins.Package;
+﻿namespace LabelFrame.Core.Transport.Plugins.Package;
 
-/// <summary>插件包大小上限（迭代 23 决策 5A；Server / WinHost 上传端点与 Kestrel MaxRequestBodySize 同步）。</summary>
+/// <summary>插件包大小上限（Server / WinHost 上传端点与 Kestrel MaxRequestBodySize 同步）。</summary>
 public static class PluginPackageLimits
 {
     /// <summary>上限字节数（64MB）。</summary>

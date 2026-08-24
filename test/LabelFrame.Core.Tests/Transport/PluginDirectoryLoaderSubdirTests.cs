@@ -1,11 +1,11 @@
-using LabelFrame.Core.Transport.Plugins;
+﻿using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.TransportPlugin.Sample;
 
 namespace LabelFrame.Core.Tests.Transport;
 
 public class PluginDirectoryLoaderSubdirTests
 {
-    /// <summary>插件目录 = 平铺 + 子目录（迭代 23 决策 3A：安装包放 plugins/&lt;pluginId&gt;/，手动 DLL 平铺）。</summary>
+    /// <summary>插件目录 = 平铺 + 子目录（安装包放 plugins/&lt;pluginId&gt;/，手动 DLL 平铺）。</summary>
     [Fact]
     public void Load_should_scan_flat_and_subdirectory_dlls()
     {

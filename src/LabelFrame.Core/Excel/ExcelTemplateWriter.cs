@@ -1,4 +1,4 @@
-using TemplateFrame.Excel.Simple;
+﻿using TemplateFrame.Excel.Simple;
 
 namespace LabelFrame.Core.Excel;
 
@@ -6,7 +6,7 @@ namespace LabelFrame.Core.Excel;
 public sealed record ExcelTemplateColumn(string Key, string DisplayName);
 
 /// <summary>
-/// Excel 模板生成（迭代 22 决策 4A）：按契约字段生成「表头 + 示例行」的 .xlsx，
+/// Excel 模板生成：按契约字段生成「表头 + 示例行」的 .xlsx，
 /// 用户拿到后直接套用 Excel 导入做打印测试。复用 TemplateFrame.Excel.Simple 的写能力。
 /// </summary>
 public static class ExcelTemplateWriter

@@ -1,11 +1,11 @@
-using LabelFrame.Core.Jobs;
+﻿using LabelFrame.Core.Jobs;
 
 namespace LabelFrame.WinHost.Api;
 
 // 通用契约（SubmitJobRequest / TemplateDto / LabelDto / ErrorView / 模板与 Excel DTO）在 LabelFrame.Api 共享库，
 // 本文件只保留宿主专属类型（作业视图 / 提交结果 / 连接与插件 / 机器级配置）。
 
-/// <summary>作业视图（API 响应；CreatedAt / FailedItems / ErrorMessage / TargetDeviceId 为作业历史列表列，迭代 18 B10 扩展）。</summary>
+/// <summary>作业视图（API 响应；CreatedAt / FailedItems / ErrorMessage / TargetDeviceId 为作业历史列表列）。</summary>
 public sealed record JobView(
     string JobId,
     string RequestId,
@@ -53,7 +53,7 @@ public static class JobViews
         null);
 }
 
-/// <summary>传输插件参数规格（前端动态表单渲染用；迭代 22）。</summary>
+/// <summary>传输插件参数规格（前端动态表单渲染用）。</summary>
 public sealed record TransportPluginParameterDto(
     string Key,
     string Label,
@@ -75,7 +75,7 @@ public sealed record TransportPluginDescriptorDto(
     bool IsExternal = false,
     string? AssemblyPath = null);
 
-/// <summary>连接状态（GET /api/transport 与 POST 响应共用；迭代 22：pluginId + params 字典 + displayText + availablePlugins，旧字段 mode / availableModes 保留兼容）。</summary>
+/// <summary>连接状态（GET /api/transport 与 POST 响应共用；pluginId + params 字典 + displayText + availablePlugins，旧字段 mode / availableModes 保留兼容）。</summary>
 public sealed record TransportConfigDto(
     string PluginId,
     string DisplayName,
@@ -85,7 +85,7 @@ public sealed record TransportConfigDto(
     string Mode,
     IReadOnlyList<string> AvailableModes);
 
-/// <summary>连接切换 / 测试请求（POST /api/transport；迭代 22：pluginId + params 字典优先，旧字段 mode + 平铺参数兼容）。</summary>
+/// <summary>连接切换 / 测试请求（POST /api/transport；pluginId + params 字典优先，旧字段 mode + 平铺参数兼容）。</summary>
 public sealed record TransportApplyRequest(
     string? PluginId,
     IReadOnlyDictionary<string, string>? Params,
@@ -106,5 +106,5 @@ public sealed record HostConfigDto(string ServerUrl, string DeviceId, string Dev
 /// <summary>机器级配置请求（POST /api/host/config；仅 serverUrl 可写）。</summary>
 public sealed record HostConfigRequest(string? ServerUrl);
 
-/// <summary>卸载插件请求（POST /api/plugins/uninstall，迭代 23 §5.2）。</summary>
+/// <summary>卸载插件请求（POST /api/plugins/uninstall）。</summary>
 public sealed record UninstallPluginRequest(string? PluginId);

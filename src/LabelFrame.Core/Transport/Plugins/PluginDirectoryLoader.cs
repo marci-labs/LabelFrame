@@ -1,19 +1,19 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.Loader;
 
 namespace LabelFrame.Core.Transport.Plugins;
 
-/// <summary>目录加载结果：成功发现的插件 + 逐 DLL 加载失败信息（迭代 23 附二拍板：loadError 结构化透出）。</summary>
+/// <summary>目录加载结果：成功发现的插件 + 逐 DLL 加载失败信息（loadError 结构化透出）。</summary>
 public sealed record PluginDirectoryLoadResult(
     IReadOnlyList<(ITransportPlugin Plugin, string AssemblyPath)> Plugins,
     IReadOnlyList<(string AssemblyPath, string Error)> Errors);
 
 /// <summary>
-/// 外部传输插件目录加载器：扫描插件目录下 *.dll（平铺手动放置 + 子目录安装包，迭代 23 决策 3A），
+/// 外部传输插件目录加载器：扫描插件目录下 *.dll（平铺手动放置 + 子目录安装包），
 /// 用 collectible AssemblyLoadContext **字节加载**（LoadFromStream）并发现 <see cref="ITransportPlugin"/> 实现；
-/// 单个插件失败只记日志、不影响宿主启动（决策 #68），失败原因经 <see cref="LoadWithErrors"/> 结构化透出（前端「加载失败 err + 原因」）。
+/// 单个插件失败只记日志、不影响宿主启动，失败原因经 <see cref="LoadWithErrors"/> 结构化透出（前端「加载失败 err + 原因」）。
 /// 字节加载不锁插件文件（Windows LoadFromAssemblyPath 会锁 DLL）——卸载 = 删除插件文件 / 目录即可立即删除、
-/// 覆盖安装可直接替换，运行中进程继续使用内存镜像，重启后按新文件装配（决策 2A「卸载 = 删除文件 + 重启生效」）。
+/// 覆盖安装可直接替换，运行中进程继续使用内存镜像，重启后按新文件装配。
 /// </summary>
 public static class PluginDirectoryLoader
 {
@@ -27,7 +27,7 @@ public static class PluginDirectoryLoader
         => LoadWithErrors(directory, hostLog).Plugins;
 
     /// <summary>
-    /// 加载目录下所有可发现的传输插件，并返回逐 DLL 加载失败信息（迭代 23 附二：loadError 结构化透出，
+    /// 加载目录下所有可发现的传输插件，并返回逐 DLL 加载失败信息（loadError 结构化透出，
     /// 供「已安装插件」列表展示加载失败原因；单插件失败仍不阻断宿主启动）。
     /// </summary>
     /// <param name="directory">插件目录（不存在 / 为空返回空结果）。</param>
@@ -75,7 +75,7 @@ public static class PluginDirectoryLoader
         return new PluginDirectoryLoadResult(plugins, errors);
     }
 
-    /// <summary>插件 DLL 枚举：平铺（手动放置，向后兼容）+ 子目录（安装包，迭代 23 决策 3A）。</summary>
+    /// <summary>插件 DLL 枚举：平铺（手动放置，向后兼容）+ 子目录（安装包）。</summary>
     private static IEnumerable<string> EnumeratePluginDlls(string directory)
     {
         foreach (var dll in Directory.GetFiles(directory, "*.dll"))

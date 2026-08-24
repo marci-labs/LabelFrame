@@ -1,6 +1,6 @@
-namespace LabelFrame.Core.Layout;
+﻿namespace LabelFrame.Core.Layout;
 
-/// <summary>条码元素（迭代 1 支持 Code128），绑定契约字段键。</summary>
+/// <summary>条码元素（支持 Code128），绑定契约字段键。</summary>
 public sealed class LabelBarcodeElement : LabelElement
 {
     /// <inheritdoc />

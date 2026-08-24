@@ -250,7 +250,7 @@ public sealed class LabelJobQueue : IDisposable
         }
     }
 
-    /// <summary>失败项单独重打：把指定序号的 Failed Item 重置为 Pending（迭代 6）。</summary>
+    /// <summary>失败项单独重打：把指定序号的 Failed Item 重置为 Pending。</summary>
     public async Task<LabelJob> RetryItemAsync(string jobId, int itemIndex, CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);

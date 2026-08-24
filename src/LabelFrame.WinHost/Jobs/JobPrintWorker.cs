@@ -1,4 +1,4 @@
-using LabelFrame.Core.Jobs;
+﻿using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Transport;
 using LabelFrame.WinHost.Transport;
 
@@ -7,7 +7,7 @@ namespace LabelFrame.WinHost.Jobs;
 /// <summary>
 /// 打印 Worker：串行领取作业中的下一张标签并通过传输发送；
 /// 发送失败记 Failed 并由队列决定挂起 / 结束。每台打印机一次只处理一张。
-/// 迭代 24：按「批次作业」设置节流——每发满 N 张后、下一张发送前暂停间隔（claim-then-delay），
+/// 按「批次作业」设置节流——每发满 N 张后、下一张发送前暂停间隔（claim-then-delay），
 /// 本机作业与服务端作业统一生效；批次计数内存态、跨作业全局累计、不持久化（重启清零）。
 /// </summary>
 public sealed class JobPrintWorker : BackgroundService
@@ -69,7 +69,7 @@ public sealed class JobPrintWorker : BackgroundService
 
                 var (jobId, item) = next.Value;
 
-                // 批次节流（迭代 24，发送前暂停）：领取到下一张后、发送前，若已发送数满批次倍数则先延迟
+                // 批次节流（发送前暂停）：领取到下一张后、发送前，若已发送数满批次倍数则先延迟
                 var settings = _printSettings.Snapshot();
                 var sent = Volatile.Read(ref _sendsSinceBatch);
                 if (BatchPrintPolicy.ShouldPauseBeforeSend(settings, sent))

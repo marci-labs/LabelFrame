@@ -1,6 +1,6 @@
 ﻿namespace LabelFrame.Server.Tests;
 
-/// <summary>迭代 20：服务端管理界面插件（静态前端包目录）运行时检测逻辑。</summary>
+/// <summary>服务端管理界面插件（静态前端包目录）运行时检测逻辑。</summary>
 public class ServerPluginUiTests
 {
     [Fact]

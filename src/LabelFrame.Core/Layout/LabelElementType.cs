@@ -1,4 +1,4 @@
-namespace LabelFrame.Core.Layout;
+﻿namespace LabelFrame.Core.Layout;
 
 /// <summary>版式元素类型。</summary>
 public enum LabelElementType
@@ -6,7 +6,7 @@ public enum LabelElementType
     /// <summary>文本。</summary>
     Text,
 
-    /// <summary>条码（迭代 1 支持 Code128）。</summary>
+    /// <summary>条码（支持 Code128）。</summary>
     Barcode,
 
     /// <summary>二维码。</summary>

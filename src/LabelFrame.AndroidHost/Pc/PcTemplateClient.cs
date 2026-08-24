@@ -1,4 +1,4 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Net.Http.Json;
 using LabelFrame.AndroidHost.Api;
 using LabelFrame.Core.Contracts;
@@ -17,7 +17,7 @@ public sealed record PcTemplatePackage(
     LabelLayout? Layout,
     IReadOnlyDictionary<string, string>? TestData = null);
 
-/// <summary>PDA 测试模式客户端：从 PC 单机服务拉模板、回传日志（迭代 11）。</summary>
+/// <summary>PDA 测试模式客户端：从 PC 单机服务拉模板、回传日志。</summary>
 public sealed class PcTemplateClient
 {
     private readonly HttpClient _http;

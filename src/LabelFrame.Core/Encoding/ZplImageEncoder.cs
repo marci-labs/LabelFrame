@@ -6,7 +6,7 @@ namespace LabelFrame.Core.Encoding;
 
 /// <summary>
 /// 整版位图 ZPL 编码器：把整张标签的 1bpp 位图经 ^GF 输出（图片打印模式的物理载体）。
-/// 迭代 15 起打印统一为图片（Skia / Android 渲染整版位图），不再有矢量文本 / 条码 / 二维码 ZPL 编码。
+/// 打印统一为图片（Skia / Android 渲染整版位图），不再有矢量文本 / 条码 / 二维码 ZPL 编码。
 /// </summary>
 public sealed class ZplImageEncoder
 {

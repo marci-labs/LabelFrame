@@ -6,7 +6,7 @@ using Microsoft.Data.Sqlite;
 
 namespace LabelFrame.Server.Tests;
 
-/// <summary>迭代 20：设备 last_ip 记录 / 迁移、by-ip 查找、targetIp 提交、IP 规范化。</summary>
+/// <summary>设备 last_ip 记录 / 迁移、by-ip 查找、targetIp 提交、IP 规范化。</summary>
 public class DeviceIpTests
 {
     private static SubmitJobRequest CreateRequest(string requestId, string? targetDeviceId = null, string? targetIp = null) => new(

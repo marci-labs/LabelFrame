@@ -1,4 +1,4 @@
-using LabelFrame.Core.IO;
+﻿using LabelFrame.Core.IO;
 
 namespace LabelFrame.Server;
 
@@ -6,9 +6,9 @@ namespace LabelFrame.Server;
 public sealed record ClientPackageView(string FileName, long SizeBytes, DateTimeOffset ModifiedAt, string Url);
 
 /// <summary>
-/// 客户端安装包目录服务（迭代 22 §2.3 / §5.4，决策 #71）：
+/// 客户端安装包目录服务：
 /// 服务端统一分发客户端安装包——目录直放文件与页面上传都支持；文件名一律拒绝路径分隔符 / .. / 非法字符（路径穿越防护），
-/// 只允许普通文件名（无子目录）。文件名规范化共享 Core <see cref="SafeFileName"/>（迭代 23 提取）。
+/// 只允许普通文件名（无子目录）。文件名规范化共享 Core <see cref="SafeFileName"/>（提取）。
 /// </summary>
 public sealed class ClientPackagesService : FilePackageService<ClientPackageView>
 {

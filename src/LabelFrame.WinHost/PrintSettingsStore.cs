@@ -1,9 +1,9 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace LabelFrame.WinHost;
 
 /// <summary>
-/// 批次作业设置存取（迭代 24）：用户级文件 %LOCALAPPDATA%\LabelFrame\print-settings.json（与 connection.json 同级）。
+/// 批次作业设置存取：用户级文件 %LOCALAPPDATA%\LabelFrame\print-settings.json（与 connection.json 同级）。
 /// 原子写（先写临时文件再替换，与 HostConfigStore 同模式）；读取时 Normalize，
 /// 缺失 / 损坏 / 越界统一回默认值（见 <see cref="PrintSettings.Normalize"/>）。
 /// </summary>

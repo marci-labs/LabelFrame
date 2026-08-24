@@ -1,8 +1,8 @@
-using LabelFrame.Core.Contracts;
+﻿using LabelFrame.Core.Contracts;
 
 namespace LabelFrame.Core.Validation;
 
-/// <summary>契约数据校验：迭代 1 仅校验必填字段缺失（底线：缺数据不打半张）。</summary>
+/// <summary>契约数据校验：仅校验必填字段缺失（底线：缺数据不打半张）。</summary>
 public static class LabelValidator
 {
     /// <summary>校验数据是否满足契约要求。</summary>

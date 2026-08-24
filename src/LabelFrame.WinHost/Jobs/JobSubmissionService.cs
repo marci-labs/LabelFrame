@@ -1,4 +1,4 @@
-using LabelFrame.Api;
+﻿using LabelFrame.Api;
 using LabelFrame.Api.Endpoints;
 using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Documents;
@@ -15,7 +15,7 @@ namespace LabelFrame.WinHost.Jobs;
 /// <summary>
 /// 作业提交服务：校验契约数据 → Skia 整版渲染 1bpp 位图 → ^GF 编码入队（幂等）。
 /// 任一标签校验 / 渲染失败则整体拒绝（缺数据不打半张）。
-/// 迭代 15 起打印统一为图片：不再有矢量 ZPL / 文本栅格化路径。
+/// 打印统一为图片：不再有矢量 ZPL / 文本栅格化路径。
 /// Log 连接 = 模拟打印：提交时同时把渲染 PNG 保存到 print\{jobId}\。
 /// </summary>
 public sealed class JobSubmissionService

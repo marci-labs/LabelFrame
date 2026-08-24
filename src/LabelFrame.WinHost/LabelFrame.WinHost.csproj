@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -14,7 +14,7 @@
   <ItemGroup>
     <!-- Zebra 官方 Link-OS SDK：USB / TCP / 驱动 / 蓝牙 统一连接与打印机状态 -->
     <PackageReference Include="Zebra.Printer.SDK" Version="3.0.3355" />
-    <!-- 迭代 24：文件日志（Serilog.AspNetCore 传递依赖 Serilog.Sinks.File，无需单独引用） -->
+    <!-- 文件日志：Serilog.AspNetCore 传递依赖 Serilog.Sinks.File，无需单独引用 -->
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
   </ItemGroup>
 

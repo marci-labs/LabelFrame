@@ -1,9 +1,9 @@
-using LabelFrame.Core.Transport.Plugins;
+﻿using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.WinHost.Transport;
 
 namespace LabelFrame.WinHost.Tests.Transport;
 
-/// <summary>TransportManager 插件化路径（迭代 22：pluginId + params 装配 / 校验 / 测试 / 持久化）。</summary>
+/// <summary>TransportManager 插件化路径（pluginId + params 装配 / 校验 / 测试 / 持久化）。</summary>
 public class TransportManagerPluginTests
 {
     [Fact]
@@ -82,7 +82,7 @@ public class TransportManagerPluginTests
     [Fact]
     public void Startup_should_fall_back_to_log_when_persisted_plugin_missing()
     {
-        // 决策 2A：卸载外部插件 = 删除 DLL + 重启生效——connection.json 仍引用已删除插件时宿主必须正常启动（回退默认连接 + 日志警告）
+        // 卸载外部插件 = 删除 DLL + 重启生效：connection.json 仍引用已删除插件时宿主必须正常启动（回退默认连接 + 日志警告）
         var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfconn-{Guid.NewGuid():N}.json");
         System.IO.File.WriteAllText(path, """{"PluginId":"ghost-plugin","Params":{"x":"1"}}""");
         try

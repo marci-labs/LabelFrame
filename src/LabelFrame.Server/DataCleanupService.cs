@@ -2,7 +2,7 @@
 
 namespace LabelFrame.Server;
 
-/// <summary>历史数据定期清理：删除超过保留期的终态作业与设备日志（迭代 18）。</summary>
+/// <summary>历史数据定期清理：删除超过保留期的终态作业与设备日志。</summary>
 public sealed partial class DataCleanupService : BackgroundService
 {
     [LoggerMessage(Level = LogLevel.Error, Message = "历史数据清理失败。")]

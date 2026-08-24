@@ -1,4 +1,4 @@
-using LabelFrame.Core.Jobs;
+﻿using LabelFrame.Core.Jobs;
 
 namespace LabelFrame.Core.Tests.Jobs;
 
@@ -99,7 +99,7 @@ public class LabelJobQueueTests
         Assert.Equal(2, next!.Value.Item.Index);
 
         var completed = await db.Queue.CompleteItemAsync(jobId, next.Value.Item.Id);
-        // 批内存在失败项：作业结束为 Failed（失败项单独重打在迭代 6）
+        // 批内存在失败项：作业结束为 Failed
         Assert.Equal(LabelJobStatus.Failed, completed.Status);
         Assert.Equal(LabelJobItemStatus.Completed, completed.Items[0].Status);
         Assert.Equal(LabelJobItemStatus.Failed, completed.Items[1].Status);

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 namespace LabelFrame.WinHost.Api;
 
 /// <summary>
-/// 批次作业设置 API（迭代 24）：GET/POST /api/host/print-settings。
+/// 批次作业设置 API：GET/POST /api/host/print-settings。
 /// 仅回环可写（与 /api/host/config 一致）；保存即生效（更新单例 PrintSettings）。
 /// </summary>
 public static class PrintSettingsApi

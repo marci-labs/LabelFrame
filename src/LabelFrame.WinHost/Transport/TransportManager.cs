@@ -23,7 +23,7 @@ public interface ITransportManager
 }
 
 /// <summary>
-/// 连接管理器实现（迭代 22 传输插件化，决策 #67-69）：启动时按 connection.json &gt; appsettings / 环境变量 &gt; 默认 Log 初始化；
+/// 连接管理器实现：启动时按 connection.json &gt; appsettings / 环境变量 &gt; 默认 Log 初始化；
 /// 同一时间只有单一连接生效；配置 pluginId + params 经传输插件注册表装配（内置 + 外部 DLL）；
 /// 切换成功才持久化到 %LOCALAPPDATA%\LabelFrame\connection.json（新格式，旧格式自动迁移）。
 /// </summary>
@@ -97,7 +97,7 @@ public sealed class TransportManager : ITransportManager, IDisposable
 
     private async Task<TransportChangeResult> ApplyCoreAsync(TransportConfig config, bool testOnly, CancellationToken cancellationToken)
     {
-        // 旧格式（Mode + 平铺参数）→ 迁移为 pluginId + params（决策 #69）；再同步旧字段供兼容消费
+        // 旧格式（Mode + 平铺参数）→ 迁移为 pluginId + params；再同步旧字段供兼容消费
         if (config.Params.Count == 0 && config.Mode != TransportMode.Log)
         {
             config.MigrateFromLegacy();
@@ -269,7 +269,7 @@ public sealed class TransportManager : ITransportManager, IDisposable
                 return baseConfig;
             }
 
-            // 连接配置引用的传输插件已不存在（外部插件 DLL 被删除后重启，决策 2A「卸载 = 删除文件 + 重启生效」）：
+            // 连接配置引用的传输插件已不存在（外部插件 DLL 被删除后重启）：
             // 回退默认连接并记录日志，宿主正常启动，不因缺失插件崩溃。
             if (_registry.GetPlugin(persisted.PluginId) is null)
             {
