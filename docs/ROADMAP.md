@@ -19,8 +19,11 @@
 | 8B | Studio 版式增强（字段编辑 / 元素样式 / 区域布局） | ✅ 已完成（2026-08-17 界面验收通过） |
 | 8C | Studio 界面重构（工作台 + 设计器） | ✅ 已完成（2026-08-17 界面验收通过） |
 | 8D | 设计器交互重做（容器 / 设计测试分离 / 字段自动推导 / 标尺对齐 / 多选手柄） | ✅ 已完成（2026-08-17 界面验收通过） |
+| 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
+| 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
 | 9 | Excel 数据导入 | ✅ 已完成 |
-| 11 | 单机模式（Host 服务化 + Web Vite/TS 前端 + PDA 测试链路） | 🔄 进行中 |
+| 10 | MSI 安装包 | ✅ 已完成 |
+| 11 | 单机模式（Host 服务化 + Web Vite/TS 前端 + PDA 测试链路） | ✅ 已完成（单机服务化与 Web 前端主线交付，后续演进见迭代 12-24） |
 | 12 | 模板预览值持久化 + 图片打印实验 | ✅ 已完成（2026-08-17 前端 renderLabelImage 取消，不再实施） |
 | 13 | 文本排版与二维码参数持久化（元素契约补齐） | ✅ 已完成（2026-08-17 用户验收通过） |
 | 14 | 字体加粗（bold）契约 | ✅ 已完成（2026-08-17 联调验收通过） |
@@ -28,9 +31,6 @@
 | 16 | 服务端 / 客户端拆分（双安装包） | ✅ 已完成（2026-08-17 用户验收通过） |
 | 18 | 无头服务端 + 客户端 UI 回归 + Windows 服务 + 历史清理 + 推送通知（0.15.4） | ✅ 已完成（2026-08-17 联调验收通过） |
 | 19 | Ubuntu 服务端部署 + 跨机验证（服务端 Linux / 客户端 Windows） | ✅ 已完成（2026-08-17 真机部署验收通过） |
-| 8E | Web 设计器原型 v2（视口缩放 / 条码二维码实时渲染 / 智能参考线 / 文本溢出模式） | ✅ 已完成 |
-| 8F | Web 设计器原型 v3（画布留白 + 标尺 / 真实比例 1mm=8点 / 边界约束 / 拖入修复） | ✅ 已完成 |
-| 10 | MSI 安装包 | ✅ 已完成 |
 | 20 | 服务端管理界面（插件式 UI）+ 设备 IP | ✅ 已完成（2026-08-17 联调冒烟通过） |
 | 21 | 自动化发布（ghcr + GitHub Release + MSI 签名通道） | ✅ 已完成（v0.17.0 自动发布成功；ghcr 包已公开） |
 | 22 | 打印测试体验 + 传输插件化 + 客户端下载分发 | ✅ 已完成（2026-08-17 迭代结束，本地 0.18.0 测试包验收） |
@@ -41,6 +41,8 @@
 | 27 | 工程治理 P0（日常 CI + API 契约与端点去重 + README/DEPLOY 重组） | ✅ 已完成（2026-08-25） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
+
+---
 
 ---
 
@@ -362,6 +364,7 @@
 > 继续 LabelFrame 迭代 8D。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 8D 小节），对照上一迭代成果，严格按范围执行；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
+
 ## 迭代 8E：Web 设计器原型 v2（已完成）
 
 **目标**：按用户对原型的反馈改善体验：视口缩放模型、条码 / 二维码实时渲染、智能参考线、边框修正、控件精简、文本溢出模式。
@@ -384,6 +387,7 @@
 - 待用户本机验收手感后决定 UI 技术栈（Tauri 2 / Blazor Hybrid / 维持 WPF）。
 
 ---
+
 ## 迭代 8F：Web 设计器原型 v3（已完成）
 
 **目标**：按第二轮反馈改善原型：画布留白 + 标尺跟随、画布平移不越界、容器不再手动缩放、真实比例 1mm=8 点、文本溢出第四种模式、修复控件拖入不可见。
@@ -402,123 +406,7 @@
 **完成记录**（2026-08-09）：原型 v3 完成；二 ~ 四轮修复渲染模型、标尺、平移、控件可见性、吸附定位、二维码、边框内边距通用化、文本模式（缩小适应 / 隐藏）；第五轮：字高独立、内边距上下 / 左右、填充默认固定值、Ctrl+C/V；第六轮：Ctrl+Z/Y 撤销恢复、字高调大才撑高、吸附强化、导出 / 导入设计（剪贴板 JSON）、矩形控件、文本框高度字段；吸附落点修复；第七轮：矩形镂空、图层面板；第八轮：网格吸附兜底、字段填充提示；第九轮：真实 DPI 打印预览、纯打印效果、预览仅显示标签范围；第十轮：文本框自动换行（超右换行、超下隐藏）+ 行间距 + 字体选择 + 垂直对齐（顶 / 中 / 底）；填充切换清理；图层显示名称优化；**纯前端编辑器化**（移除后端按钮，导出 / 导入走快捷键）；headless 自测通过；待用户本机验收后进入「桌面壳」阶段。
 
 ---
-## 迭代 13：文本排版与二维码参数持久化（元素契约补齐，已完成，用户验收待执行）
 
-**目标**：补齐元素契约缺失字段（wrap / lineHeight / fitMode / fontFamily / qrEcc / qrMargin / displayValue / paddingH-V），导入→保存→重开逐字段一致；Skia 图片打印按这些字段真实渲染，与前端预览一致；旧模板向后兼容。
-**范围**：
-- 后端：C# 模型属性 + LabelElementJsonConverter 读写（非默认才写）+ SkiaLabelRenderer 渲染支持（wrap 换行+行距+超高整体缩小、overflow 隐藏、fontFamily、qrEcc/qrMargin、displayValue、paddingH/V）+ VerticalAlign 默认统一 Middle + 旧模板框高兜底 10mm + 测试。
-- 前端（hermes）：convert.ts 字段映射 + convert.test.ts；ElementNode wrap=true 超高改整体缩小。
-**不在范围**：ZPL 矢量路径（新字段不参与）；barcodeFormat（仅 CODE128）。
-**验收**：见 docs/ITERATION-13-CONTRACT.md §6。
-**完成记录**（2026-08-10，前后端已完成，用户验收待执行）：
-- C# 模型补齐元素契约第二批字段：文本 `wrap / lineHeight / fitMode / fontFamily`（默认 Microsoft YaHei）、二维码 `qrEcc / qrMargin`（默认 M / 2）、条码 `displayValue`（默认 true）、通用双边内边距 `paddingH / paddingV`（`PaddingHMm / PaddingVMm`，0=未设，缺失时回退 `paddingMm`）。
-- 决策 A：`VerticalAlign` 默认由 Top 改为 **Middle**；写规则改「非 Middle 才写」；Skia 渲染器旧模板无 `heightMm` 时框高兜底 = `max(字高 + 2×max(双边内边距), 10mm)`。
-- `LabelElementJsonConverter` 读写：非默认才写（wrap=true、displayValue=false、fitMode 非 shrink、lineHeight 非 1.2、fontFamily 非默认、qrEcc 非 M、qrMargin 非 2、paddingH/V >0、verticalAlign 非 Middle），旧模板无新字段读回默认（向后兼容）。
-- `SkiaLabelRenderer` 渲染支持：wrap 自动换行 + 行距（lineHeight 倍数）+ 超高整体缩小（最小 1.5mm）、overflow 隐藏裁剪、fontFamily 字体族（CJK 系统回退）、qrEcc / qrMargin 传 ZXing、条码 displayValue 底部文字（条码占剩余高度）、双边内边距内容区；以上字段不参与 ZPL 矢量编码（契约 §4.9）。
-- 测试 152 个全绿（新增字段往返 / 省略规则 / paddingMm 兜底 / wrap 换行与超高缩小 / overflow 不缩小 / 字体族 / QR 参数与静区 / 条码文字 / 双边内边距 / 旧模板默认 Middle / ZPL 不变量）。
-- 前端（hermes，commit 8294bef）：convert.ts 字段映射（paddingH/paddingV/fontFamily/wrap/lineHeight/fitMode/qrEcc/qrMargin/displayValue，写方向非默认才写、读回 ?? 默认 + paddingMm 兜底）；ElementNode TextContent wrap=true 超高改整体缩小（最小 1.5mm，与 Skia §4.4 一致）；convert.test.ts 64 用例全绿（+7 新增）。
-- 复现验证：100×60 方案往返关键差异清零（wrap/lineHeight/qrEcc/paddingV 均保留；剩余仅默认值显式化，显示一致）。
-- 文档归档：ITERATION-13-SPEC / CONTRACT 标记已完成；DESIGN 决策 #47 更新为前后端完成；CHANGELOG 记录。
-- 产物 `LabelFrame-0.12.1.msi`（2026-08-10）：含迭代 13 前后端合并版（元素契约第二批字段 + Skia 渲染 + 前端映射），用户测试验收待执行。
-- 前端修复（0.12.1，commit abf58a0）：画布中文长文本字高失真——含 CJK 文本改用 wrap=`char` 逐字换行（与 Skia 打印语义一致），shrink 按行数估算换行后总高只对超高缩小；70×50 方案 MaterialName 修复后两行 2.85mm；64 单测 + build + lint 全绿。产物 `LabelFrame-0.12.1.msi`。
-
-**启动命令**：
-> 继续 LabelFrame 迭代 13（后端）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-13-SPEC.md、docs/ITERATION-13-CONTRACT.md（含 Hermes 评估结论，已通过）。按 ITERATION-13-CONTRACT.md §3 字段对照、§4 Skia 渲染语义、§7 分工实施后端：C# 模型属性（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/paddingV，VerticalAlign 默认改 Middle，PaddingHMm/PaddingVMm）、LabelElementJsonConverter 读写（非默认才写）、SkiaLabelRenderer 渲染支持、测试与验收；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
-
-## 迭代 16：服务端 / 客户端拆分（双安装包，已完成，用户验收待执行）
-
-**目标**：把单机 WinHost 拆分为两个部署包——服务端（模板 / 作业 / 设备投递 / Web UI / 调试出图 / 日志，无打印机依赖）与客户端（本机打印执行 / 作业领取 / 连接配置，托盘部署），多台打印 PC 共用一个服务端；保留单机模式作为旧版迁移路径。
-**范围**：见 docs/ARCHITECTURE-SPLIT.md（职责边界 / 跨端契约 / 部署 / 迁移 / 实施规划）。
-**不在范围**：PDA（延后）；云部署 / 服务端高可用；多语言。
-**验收**：见 docs/ARCHITECTURE-SPLIT.md §7 完成定义。
-**完成记录**（2026-08-11，后端骨架）：
-- Server 迁入模板库（CRUD / 导入导出 / 预览，Core.Templates）、作业提交支持 `templateName` 引用（pending 载荷附带模板 + 图片 base64）、调试出图（render-image / render-images）、日志接收（SqliteLogStore 移至 Core.Logs）、Excel 导入、Web UI 静态托管（SPA fallback）；TFM 改 net10.0-windows 以引用 Skia Rendering。
-- Client（WinHost）：TemplateDto 增 Images（base64），JobSubmissionService 优先用内联图片、否则按 Name 本地加载；路由 Worker 透传 Server 附带模板；保留单机模式。
-- 测试 147 全绿（Core 60 / Server 10 / Studio 25 / WinHost 52）；Server 新增 templateName 解析 / 模板不存在用例。
-- 前端（hermes）待实施（迭代 17）：Web UI 指向 Server（移除打印机连接项）、数据与打印新增目标设备选择。
-- 前端（hermes，e161d81）：移除打印机连接 UI、目标设备选择（listDevices + targetDeviceId + templateName）、单机降级；105 用例全绿。
-- 双 MSI（0.14.0）：LabelFrame-Server → Program Files\LabelFrame\Server（默认 0.0.0.0:53961）；LabelFrame-Client → Program Files\LabelFrame\Client（默认 ServerUrl=127.0.0.1:53961）；文件清单 GUID 按包加盐。
-**启动命令**：
-> 继续 LabelFrame 迭代 16。先读 AGENTS.md、docs/ARCHITECTURE-SPLIT.md、docs/ROADMAP.md；按拆分设计实施：Server 迁入模板/作业/Web UI/调试出图/日志，Client 默认路由领取，pending 附带模板；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
-
----
-## 迭代 15：打印设置与会话保留 + 连接管理 + 删除 ZPL（前后端已完成，联调验收待执行）
-
-**目标**：① 数据与打印页会话保留（同一标签页内切视图不丢设置、标签页间不互通）；② 前端切换连接方式（Log / TCP / Windows驱动 / Zebra，单一连接生效，先测试后生效、失败回滚、持久化）；③ 彻底删除 ZPL（Vector），打印统一整版位图（Skia + ^GF），调试独立为「只出图不发送驱动」。
-**范围**：见 docs/ITERATION-15-SPEC.md。
-**不在范围**：新传输协议（蓝牙等）实现（仅留扩展点）；WPF Studio；Server 路由既有契约（仅 JobView 增可选 debugImagePaths、SubmitJobRequest 增可选 debug）。
-**验收**：见 docs/ITERATION-15-SPEC.md §8。
-**完成记录**（2026-08-10，后端部分）：
-- 删除矢量 ZPL：`IZplEncoder` / `ZplEncoder.Encode` / `ZplBoldMode` / `PrintMode` / `printMode` / `ITextRasterizer` / `GdiTextRasterizer` 全链路移除（配置、healthz、UI 字段、README、demo 脚本）；`^GF` 编码重构为 `ZplImageEncoder`；作业项内容统一为整版位图指令（沿用列名）。
-- 连接管理：`ITransportManager` + `TransportConfig`，`GET/POST /api/transport`（单一连接、先测试后生效、失败回滚、400 沿用 ErrorView），持久化 `%LOCALAPPDATA%\LabelFrame\connection.json`（启动优先级 connection.json > appsettings > 默认 Log）；Tcp / Raw / Zebra 增加连接测试；Worker / 状态 / 测试页统一取当前连接；测试页改为 Skia 渲染 ^GF。
-- 调试出图：`POST /api/print/render-images`（批量 zip）；`render-image` 保留（单张 PNG）；调试不建作业、不发驱动、不改作业模型 / SQLite。
-- Log 模拟打印：`LogPrintTransport` 只记摘要，作业层渲染 PNG 保存到 `print\{jobId}\`。
-- AndroidHost：`AndroidLabelRenderer`（Android.Graphics + ZXing）整版位图渲染 → `ZplImageEncoder`，替换 ZplEncoder（真机验收待 PDA 联调）。
-- 测试 143 全绿（Core 60 / Server 8 / Studio 25 / WinHost 50）；AndroidHost 编译通过。
-- 产物 `LabelFrame-0.13.2.msi`（2026-08-10）：含迭代 15 前后端合并版，可覆盖 0.12.x / 0.11.x 安装；用户测试验收与 PDA 联调待执行。
-**启动命令**：
-> 继续 LabelFrame 迭代 15。先读 AGENTS.md、docs/ITERATION-15-SPEC.md（含已确认决策）；hermes 评估前端无异议后，后端实施 §3.1/§4/§5，前端实施 §3.2/§6；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
-
-**完成记录**（2026-08-10，前端部分，hermes）：
-- §3.2 删除：DataPrint / Settings 的 printMode 下拉与旧「调试：不打印保存 PNG」复选框、`Healthz.printMode` / `SubmitJobRequest.printMode` 类型、Settings 服务端打印方式提示。
-- §6.1 会话保留：AppContext 增 `printDraft`（selectedName / valuesByTemplate + dirtyKeysByTemplate / debugMode / jobId），sessionStorage 持久化（刷新保留、标签页天然隔离，禁 localStorage）；values 加载 = testData 与用户 dirty 的 key 按 **key 存在性**合并（用户清空不被 testData 顶回）；Excel 数据与列映射不保留。
-- §6.2 连接管理 UI：AppContext 增 `transportConfig`（GET /api/transport），切换成功后立即用响应 config 更新全局状态（不依赖 healthz 10s 轮询）；设置页「连接方式」分组（模式单选 / 只显示当前模式参数 / 测试连接 testOnly / 保存并应用先测试后生效失败回滚）；DataPrint 顶部连接徽标 + 快速切换；状态栏 / 导航徽标显示 mode + 关键参数。
-- §6.3 调试独立：独立开关（默认关）与按钮文案联动（调试开 →「调试出图（单张）」/「下载调试图片 zip（N 张）」，隐藏「出图预览」；调试关 →「打印测试 / 批量打印」正常作业 +「出图预览」即时预览）；下载文件名用后端 Content-Disposition 值。
-- 测试 91 全绿（新增 27 个：draft 纯逻辑 12 + 设置页连接切换 5 + DataPrint 保留 / 调试 / 下载 10）；`pnpm build` / `pnpm lint` 通过；与后端工作区实现联调通过（/api/transport、render-image、render-images）。
-
----
-## 迭代 14：字体加粗（bold）契约（前后端已实施，联调验收待执行）
-
-**目标**：小字号（1.8~3mm）文本打印笔画过细，提供「加粗」设置试印对比；文本元素 JSON 新增 `bold?: boolean`（true 才写 / 默认 false，旧模板兼容）。
-**范围**：
-- 前端（hermes，已提交 ae16d0d）：属性面板加粗复选框 + 画布 `fontStyle: bold`；convert.ts 字段映射 + 单测；属性面板两项修复（数字输入受控同步、右侧面板滚动条）。
-- 后端（本仓库）：`LabelTextElement.Bold` + 转换器读写；ZPL 加粗方案 A（粗体字体变体映射，默认 `"0"→"1"`，可配置 `ZplBoldMode` / `LABELFRAME_BOLD_MODE`）与方案 B（宽度放大兜底）；Skia `Embolden` 渲染与度量一致。
-**不在范围**：条码 / 二维码加粗（仅文本）；字体文件打包。
-**验收**：见 docs/ITERATION-14-SPEC.md §4.3。
-**完成记录**（2026-08-10，后端部分）：模型/转换器/ZPL/Skia 已实施，测试 156 全绿；产物 `LabelFrame-0.12.3.msi`（含迭代 14 前后端合并版），待用户试印对比与联调验收。
-
----
-## 迭代 12：模板预览值持久化 + 图片打印实验（规格评审中）
-
-**目标**：修复字段填充控件预览值保存后丢失；让预览值自动成为打印测试默认值；提供整版位图直传打印的实验模式，评估打印效果与定位。
-**范围**：
-- 前端：元素 JSON 增加并读写 `previewValue`；测试默认值统一由元素预览值生成；DataPrint 预填提示；（可选）打印方式切换下拉。
-- 后端：元素模型 + JSON 转换器支持 `previewValue`；保存模板时自动派生 `testData`；新增 `PrintMode`（Vector / Image）与整版位图 `^GF` 打印；`SubmitJobRequest` 增加 `template.name` / `printMode`。
-**不在范围**：图片打印方案的最终定型（先实验评估）；其他打印指令集（TSPL 等）。
-**验收**：见 `docs/ITERATION-12-SPEC.md` 第 6 节。
-**进度（2026-08-10）**：规格 v3 双方确认；**后端已完成**：previewValue / testData 读改写 / PrintMode 图片打印 / template.name / healthz，且图片渲染定稿为 **SkiaSharp**（0.11.5，修复 CJK 字段缺失，133 个测试全绿，70×50 模板端到端验证通过）；待前端（hermes）按第 3 节实施 `renderLabelImage` 后联调。
-**收尾（2026-08-17）**：前端 `renderLabelImage` 按用户决定取消（不再实施），迭代 12 关闭；后端 previewValue / PrintMode 图片打印能力保留。
-**启动命令**：
-> 继续 LabelFrame 迭代 12。先读 `docs/ITERATION-12-SPEC.md`、`docs/DESIGN.md`、`docs/ROADMAP.md`；前端按规格第 3 节实施，后端已完成第 4 节；提交用 Conventional Commits；不推 tag。
-
----## 迭代 11：单机模式（进行中）
-
-**目标**：单机模式打印测试闭环：一台 PC = 一个 C# 进程（演进 WinHost）+ 浏览器（Vite + React + TS 前端）；从 PC 到 PDA 的测试链路逐个走通。
-
-**范围**：
-- 后端（C#，主 agent 实施）：
-  - WinHost 演进：静态托管 `web/dist`；模板 API 增加 `testData`（契约扩展 #41）；新增 `POST /api/import/excel`（复用 TemplateFrame.Excel.Simple）与 PDA 日志端点（`POST/GET /api/logs`）。
-  - AndroidHost 演进：配置指向 PC Host，拉模板列表 → 测试打印（用服务端 testData）→ 日志回传。
-- 前端（hermes 按 `docs/FRONTEND-SPEC.md` 实施）：`web/` Vite + React + TS + Konva；工作台 / 设计器（移植原型交互）/ 数据与打印（Excel 导入 + 批量打印）/ PDA 日志 / 设置。
-- 联调（主 agent）：前端产物与后端 API 对接，走通单机打印测试与 PC→PDA 链路。
-
-**不在范围**：远端模板服务器（迭代 12）；结构优化（迭代 13）；WPF Studio 维护（冻结）。
-
-**验收**：
-- 单机：启动 WinHost（含静态 UI）→ 浏览器编辑模板 → 保存 → Excel 导入批量打印 → 作业进度/失败可见。
-- PDA：配置 PC 地址 → 模板列表 → 点模板测试打印（testData）→ PC 端可见 PDA 日志。
-
-**完成记录**（2026-08-09，后端部分）：
-- 契约扩展 #41：模板 `testData`（Core TemplatePackage / SQLite / 模板包 manifest / WinHost API 全链路，旧库自动迁移）。
-- WinHost 演进：Web UI 静态托管（web/dist 自动探测 + SPA fallback）、`POST /api/import/excel`（TemplateFrame.Excel.Simple）、PDA 日志 `POST/GET /api/logs`（SQLite，可配置路径）、宽松 CORS、`WebUiPath` / `LABELFRAME_*` 配置。
-- AndroidHost 演进（决策 #42）：`pc_host` 配置、`GET /api/pc/templates`、`POST /api/pc/templates/{name}/print-test`（testData 本地打印 + 终态日志回传）、内置 PDA 测试页（127.0.0.1:53970）、Manifest 明文 HTTP。
-- 前端规格 `docs/FRONTEND-SPEC.md` 定稿（含 hermes 两轮审阅结论），hermes 并行开发 `web/`（Vite + React + TS + Konva + pnpm + Vitest）。
-- 测试 118 个全绿；AndroidHost 编译通过（已知 SQLite 16KB 页警告）。
-
-**启动命令**：
-> 继续 LabelFrame 迭代 11（单机模式）。'先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 11 小节）与 docs/FRONTEND-SPEC.md；后端按契约实现，前端按规格交付后联调；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。
-
----
 ## 迭代 9：Excel 数据导入（已完成）
 
 **目标**：Studio 里导入 Excel 数据，批量预览 / 打印。
@@ -570,8 +458,129 @@
 
 ---
 
+## 迭代 12：模板预览值持久化 + 图片打印实验（已完成）
 
-## 迭代 18：无头服务端 + 客户端 UI 回归（0.15.0，进行中）
+**目标**：修复字段填充控件预览值保存后丢失；让预览值自动成为打印测试默认值；提供整版位图直传打印的实验模式，评估打印效果与定位。
+**范围**：
+- 前端：元素 JSON 增加并读写 `previewValue`；测试默认值统一由元素预览值生成；DataPrint 预填提示；（可选）打印方式切换下拉。
+- 后端：元素模型 + JSON 转换器支持 `previewValue`；保存模板时自动派生 `testData`；新增 `PrintMode`（Vector / Image）与整版位图 `^GF` 打印；`SubmitJobRequest` 增加 `template.name` / `printMode`。
+**不在范围**：图片打印方案的最终定型（先实验评估）；其他打印指令集（TSPL 等）。
+**验收**：见 `docs/archive/ITERATION-12-SPEC.md` 第 6 节。
+**进度（2026-08-10）**：规格 v3 双方确认；**后端已完成**：previewValue / testData 读改写 / PrintMode 图片打印 / template.name / healthz，且图片渲染定稿为 **SkiaSharp**（0.11.5，修复 CJK 字段缺失，133 个测试全绿，70×50 模板端到端验证通过）；待前端（hermes）按第 3 节实施 `renderLabelImage` 后联调。
+**收尾（2026-08-17）**：前端 `renderLabelImage` 按用户决定取消（不再实施），迭代 12 关闭；后端 previewValue / PrintMode 图片打印能力保留。
+**启动命令**：
+> 继续 LabelFrame 迭代 12。先读 `docs/archive/ITERATION-12-SPEC.md`、`docs/DESIGN.md`、`docs/ROADMAP.md`；前端按规格第 3 节实施，后端已完成第 4 节；提交用 Conventional Commits；不推 tag。
+
+---## 迭代 11：单机模式（进行中）
+
+**目标**：单机模式打印测试闭环：一台 PC = 一个 C# 进程（演进 WinHost）+ 浏览器（Vite + React + TS 前端）；从 PC 到 PDA 的测试链路逐个走通。
+
+**范围**：
+- 后端（C#，主 agent 实施）：
+  - WinHost 演进：静态托管 `web/dist`；模板 API 增加 `testData`（契约扩展 #41）；新增 `POST /api/import/excel`（复用 TemplateFrame.Excel.Simple）与 PDA 日志端点（`POST/GET /api/logs`）。
+  - AndroidHost 演进：配置指向 PC Host，拉模板列表 → 测试打印（用服务端 testData）→ 日志回传。
+- 前端（hermes 按 `docs/archive/FRONTEND-SPEC.md` 实施）：`web/` Vite + React + TS + Konva；工作台 / 设计器（移植原型交互）/ 数据与打印（Excel 导入 + 批量打印）/ PDA 日志 / 设置。
+- 联调（主 agent）：前端产物与后端 API 对接，走通单机打印测试与 PC→PDA 链路。
+
+**不在范围**：远端模板服务器（迭代 12）；结构优化（迭代 13）；WPF Studio 维护（冻结）。
+
+**验收**：
+- 单机：启动 WinHost（含静态 UI）→ 浏览器编辑模板 → 保存 → Excel 导入批量打印 → 作业进度/失败可见。
+- PDA：配置 PC 地址 → 模板列表 → 点模板测试打印（testData）→ PC 端可见 PDA 日志。
+
+**完成记录**（2026-08-09，后端部分）：
+- 契约扩展 #41：模板 `testData`（Core TemplatePackage / SQLite / 模板包 manifest / WinHost API 全链路，旧库自动迁移）。
+- WinHost 演进：Web UI 静态托管（web/dist 自动探测 + SPA fallback）、`POST /api/import/excel`（TemplateFrame.Excel.Simple）、PDA 日志 `POST/GET /api/logs`（SQLite，可配置路径）、宽松 CORS、`WebUiPath` / `LABELFRAME_*` 配置。
+- AndroidHost 演进（决策 #42）：`pc_host` 配置、`GET /api/pc/templates`、`POST /api/pc/templates/{name}/print-test`（testData 本地打印 + 终态日志回传）、内置 PDA 测试页（127.0.0.1:53970）、Manifest 明文 HTTP。
+- 前端规格 `docs/archive/FRONTEND-SPEC.md` 定稿（含 hermes 两轮审阅结论），hermes 并行开发 `web/`（Vite + React + TS + Konva + pnpm + Vitest）。
+- 测试 118 个全绿；AndroidHost 编译通过（已知 SQLite 16KB 页警告）。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 11（单机模式）。'先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md（迭代 11 小节）与 docs/archive/FRONTEND-SPEC.md；后端按契约实现，前端按规格交付后联调；提交用 Conventional Commits；不推 tag；不改未规划内容；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+
+## 迭代 13：文本排版与二维码参数持久化（元素契约补齐，已完成，用户验收待执行）
+
+**目标**：补齐元素契约缺失字段（wrap / lineHeight / fitMode / fontFamily / qrEcc / qrMargin / displayValue / paddingH-V），导入→保存→重开逐字段一致；Skia 图片打印按这些字段真实渲染，与前端预览一致；旧模板向后兼容。
+**范围**：
+- 后端：C# 模型属性 + LabelElementJsonConverter 读写（非默认才写）+ SkiaLabelRenderer 渲染支持（wrap 换行+行距+超高整体缩小、overflow 隐藏、fontFamily、qrEcc/qrMargin、displayValue、paddingH/V）+ VerticalAlign 默认统一 Middle + 旧模板框高兜底 10mm + 测试。
+- 前端（hermes）：convert.ts 字段映射 + convert.test.ts；ElementNode wrap=true 超高改整体缩小。
+**不在范围**：ZPL 矢量路径（新字段不参与）；barcodeFormat（仅 CODE128）。
+**验收**：见 docs/archive/ITERATION-13-CONTRACT.md §6。
+**完成记录**（2026-08-10，前后端已完成，用户验收待执行）：
+- C# 模型补齐元素契约第二批字段：文本 `wrap / lineHeight / fitMode / fontFamily`（默认 Microsoft YaHei）、二维码 `qrEcc / qrMargin`（默认 M / 2）、条码 `displayValue`（默认 true）、通用双边内边距 `paddingH / paddingV`（`PaddingHMm / PaddingVMm`，0=未设，缺失时回退 `paddingMm`）。
+- 决策 A：`VerticalAlign` 默认由 Top 改为 **Middle**；写规则改「非 Middle 才写」；Skia 渲染器旧模板无 `heightMm` 时框高兜底 = `max(字高 + 2×max(双边内边距), 10mm)`。
+- `LabelElementJsonConverter` 读写：非默认才写（wrap=true、displayValue=false、fitMode 非 shrink、lineHeight 非 1.2、fontFamily 非默认、qrEcc 非 M、qrMargin 非 2、paddingH/V >0、verticalAlign 非 Middle），旧模板无新字段读回默认（向后兼容）。
+- `SkiaLabelRenderer` 渲染支持：wrap 自动换行 + 行距（lineHeight 倍数）+ 超高整体缩小（最小 1.5mm）、overflow 隐藏裁剪、fontFamily 字体族（CJK 系统回退）、qrEcc / qrMargin 传 ZXing、条码 displayValue 底部文字（条码占剩余高度）、双边内边距内容区；以上字段不参与 ZPL 矢量编码（契约 §4.9）。
+- 测试 152 个全绿（新增字段往返 / 省略规则 / paddingMm 兜底 / wrap 换行与超高缩小 / overflow 不缩小 / 字体族 / QR 参数与静区 / 条码文字 / 双边内边距 / 旧模板默认 Middle / ZPL 不变量）。
+- 前端（hermes，commit 8294bef）：convert.ts 字段映射（paddingH/paddingV/fontFamily/wrap/lineHeight/fitMode/qrEcc/qrMargin/displayValue，写方向非默认才写、读回 ?? 默认 + paddingMm 兜底）；ElementNode TextContent wrap=true 超高改整体缩小（最小 1.5mm，与 Skia §4.4 一致）；convert.test.ts 64 用例全绿（+7 新增）。
+- 复现验证：100×60 方案往返关键差异清零（wrap/lineHeight/qrEcc/paddingV 均保留；剩余仅默认值显式化，显示一致）。
+- 文档归档：ITERATION-13-SPEC / CONTRACT 标记已完成；DESIGN 决策 #47 更新为前后端完成；CHANGELOG 记录。
+- 产物 `LabelFrame-0.12.1.msi`（2026-08-10）：含迭代 13 前后端合并版（元素契约第二批字段 + Skia 渲染 + 前端映射），用户测试验收待执行。
+- 前端修复（0.12.1，commit abf58a0）：画布中文长文本字高失真——含 CJK 文本改用 wrap=`char` 逐字换行（与 Skia 打印语义一致），shrink 按行数估算换行后总高只对超高缩小；70×50 方案 MaterialName 修复后两行 2.85mm；64 单测 + build + lint 全绿。产物 `LabelFrame-0.12.1.msi`。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 13（后端）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/archive/ITERATION-13-SPEC.md、docs/archive/ITERATION-13-CONTRACT.md（含 Hermes 评估结论，已通过）。按 ITERATION-13-CONTRACT.md §3 字段对照、§4 Skia 渲染语义、§7 分工实施后端：C# 模型属性（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/paddingV，VerticalAlign 默认改 Middle，PaddingHMm/PaddingVMm）、LabelElementJsonConverter 读写（非默认才写）、SkiaLabelRenderer 渲染支持、测试与验收；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+---
+
+## 迭代 14：字体加粗（bold）契约（前后端已实施，联调验收待执行）
+
+**目标**：小字号（1.8~3mm）文本打印笔画过细，提供「加粗」设置试印对比；文本元素 JSON 新增 `bold?: boolean`（true 才写 / 默认 false，旧模板兼容）。
+**范围**：
+- 前端（hermes，已提交 ae16d0d）：属性面板加粗复选框 + 画布 `fontStyle: bold`；convert.ts 字段映射 + 单测；属性面板两项修复（数字输入受控同步、右侧面板滚动条）。
+- 后端（本仓库）：`LabelTextElement.Bold` + 转换器读写；ZPL 加粗方案 A（粗体字体变体映射，默认 `"0"→"1"`，可配置 `ZplBoldMode` / `LABELFRAME_BOLD_MODE`）与方案 B（宽度放大兜底）；Skia `Embolden` 渲染与度量一致。
+**不在范围**：条码 / 二维码加粗（仅文本）；字体文件打包。
+**验收**：见 docs/archive/ITERATION-14-SPEC.md §4.3。
+**完成记录**（2026-08-10，后端部分）：模型/转换器/ZPL/Skia 已实施，测试 156 全绿；产物 `LabelFrame-0.12.3.msi`（含迭代 14 前后端合并版），待用户试印对比与联调验收。
+
+---
+
+## 迭代 15：打印设置与会话保留 + 连接管理 + 删除 ZPL（前后端已完成，联调验收待执行）
+
+**目标**：① 数据与打印页会话保留（同一标签页内切视图不丢设置、标签页间不互通）；② 前端切换连接方式（Log / TCP / Windows驱动 / Zebra，单一连接生效，先测试后生效、失败回滚、持久化）；③ 彻底删除 ZPL（Vector），打印统一整版位图（Skia + ^GF），调试独立为「只出图不发送驱动」。
+**范围**：见 docs/archive/ITERATION-15-SPEC.md。
+**不在范围**：新传输协议（蓝牙等）实现（仅留扩展点）；WPF Studio；Server 路由既有契约（仅 JobView 增可选 debugImagePaths、SubmitJobRequest 增可选 debug）。
+**验收**：见 docs/archive/ITERATION-15-SPEC.md §8。
+**完成记录**（2026-08-10，后端部分）：
+- 删除矢量 ZPL：`IZplEncoder` / `ZplEncoder.Encode` / `ZplBoldMode` / `PrintMode` / `printMode` / `ITextRasterizer` / `GdiTextRasterizer` 全链路移除（配置、healthz、UI 字段、README、demo 脚本）；`^GF` 编码重构为 `ZplImageEncoder`；作业项内容统一为整版位图指令（沿用列名）。
+- 连接管理：`ITransportManager` + `TransportConfig`，`GET/POST /api/transport`（单一连接、先测试后生效、失败回滚、400 沿用 ErrorView），持久化 `%LOCALAPPDATA%\LabelFrame\connection.json`（启动优先级 connection.json > appsettings > 默认 Log）；Tcp / Raw / Zebra 增加连接测试；Worker / 状态 / 测试页统一取当前连接；测试页改为 Skia 渲染 ^GF。
+- 调试出图：`POST /api/print/render-images`（批量 zip）；`render-image` 保留（单张 PNG）；调试不建作业、不发驱动、不改作业模型 / SQLite。
+- Log 模拟打印：`LogPrintTransport` 只记摘要，作业层渲染 PNG 保存到 `print\{jobId}\`。
+- AndroidHost：`AndroidLabelRenderer`（Android.Graphics + ZXing）整版位图渲染 → `ZplImageEncoder`，替换 ZplEncoder（真机验收待 PDA 联调）。
+- 测试 143 全绿（Core 60 / Server 8 / Studio 25 / WinHost 50）；AndroidHost 编译通过。
+- 产物 `LabelFrame-0.13.2.msi`（2026-08-10）：含迭代 15 前后端合并版，可覆盖 0.12.x / 0.11.x 安装；用户测试验收与 PDA 联调待执行。
+**启动命令**：
+> 继续 LabelFrame 迭代 15。先读 AGENTS.md、docs/archive/ITERATION-15-SPEC.md（含已确认决策）；hermes 评估前端无异议后，后端实施 §3.1/§4/§5，前端实施 §3.2/§6；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+
+**完成记录**（2026-08-10，前端部分，hermes）：
+- §3.2 删除：DataPrint / Settings 的 printMode 下拉与旧「调试：不打印保存 PNG」复选框、`Healthz.printMode` / `SubmitJobRequest.printMode` 类型、Settings 服务端打印方式提示。
+- §6.1 会话保留：AppContext 增 `printDraft`（selectedName / valuesByTemplate + dirtyKeysByTemplate / debugMode / jobId），sessionStorage 持久化（刷新保留、标签页天然隔离，禁 localStorage）；values 加载 = testData 与用户 dirty 的 key 按 **key 存在性**合并（用户清空不被 testData 顶回）；Excel 数据与列映射不保留。
+- §6.2 连接管理 UI：AppContext 增 `transportConfig`（GET /api/transport），切换成功后立即用响应 config 更新全局状态（不依赖 healthz 10s 轮询）；设置页「连接方式」分组（模式单选 / 只显示当前模式参数 / 测试连接 testOnly / 保存并应用先测试后生效失败回滚）；DataPrint 顶部连接徽标 + 快速切换；状态栏 / 导航徽标显示 mode + 关键参数。
+- §6.3 调试独立：独立开关（默认关）与按钮文案联动（调试开 →「调试出图（单张）」/「下载调试图片 zip（N 张）」，隐藏「出图预览」；调试关 →「打印测试 / 批量打印」正常作业 +「出图预览」即时预览）；下载文件名用后端 Content-Disposition 值。
+- 测试 91 全绿（新增 27 个：draft 纯逻辑 12 + 设置页连接切换 5 + DataPrint 保留 / 调试 / 下载 10）；`pnpm build` / `pnpm lint` 通过；与后端工作区实现联调通过（/api/transport、render-image、render-images）。
+
+---
+
+## 迭代 16：服务端 / 客户端拆分（双安装包，已完成，用户验收待执行）
+
+**目标**：把单机 WinHost 拆分为两个部署包——服务端（模板 / 作业 / 设备投递 / Web UI / 调试出图 / 日志，无打印机依赖）与客户端（本机打印执行 / 作业领取 / 连接配置，托盘部署），多台打印 PC 共用一个服务端；保留单机模式作为旧版迁移路径。
+**范围**：见 docs/archive/ARCHITECTURE-SPLIT.md（职责边界 / 跨端契约 / 部署 / 迁移 / 实施规划）。
+**不在范围**：PDA（延后）；云部署 / 服务端高可用；多语言。
+**验收**：见 docs/archive/ARCHITECTURE-SPLIT.md §7 完成定义。
+**完成记录**（2026-08-11，后端骨架）：
+- Server 迁入模板库（CRUD / 导入导出 / 预览，Core.Templates）、作业提交支持 `templateName` 引用（pending 载荷附带模板 + 图片 base64）、调试出图（render-image / render-images）、日志接收（SqliteLogStore 移至 Core.Logs）、Excel 导入、Web UI 静态托管（SPA fallback）；TFM 改 net10.0-windows 以引用 Skia Rendering。
+- Client（WinHost）：TemplateDto 增 Images（base64），JobSubmissionService 优先用内联图片、否则按 Name 本地加载；路由 Worker 透传 Server 附带模板；保留单机模式。
+- 测试 147 全绿（Core 60 / Server 10 / Studio 25 / WinHost 52）；Server 新增 templateName 解析 / 模板不存在用例。
+- 前端（hermes）待实施（迭代 17）：Web UI 指向 Server（移除打印机连接项）、数据与打印新增目标设备选择。
+- 前端（hermes，e161d81）：移除打印机连接 UI、目标设备选择（listDevices + targetDeviceId + templateName）、单机降级；105 用例全绿。
+- 双 MSI（0.14.0）：LabelFrame-Server → Program Files\LabelFrame\Server（默认 0.0.0.0:53961）；LabelFrame-Client → Program Files\LabelFrame\Client（默认 ServerUrl=127.0.0.1:53961）；文件清单 GUID 按包加盐。
+**启动命令**：
+> 继续 LabelFrame 迭代 16。先读 AGENTS.md、docs/archive/ARCHITECTURE-SPLIT.md、docs/ROADMAP.md；按拆分设计实施：Server 迁入模板/作业/Web UI/调试出图/日志，Client 默认路由领取，pending 附带模板；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+
+## 迭代 18：无头服务端 + 客户端 UI 回归（0.15.0，已完成）
 
 **目标**：0.14 双包验收反馈收敛——服务端不再提供界面并以 Windows 服务部署；客户端恢复完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史）；新增历史数据定期清理；双 MSI 安装完成弹窗。
 
@@ -583,7 +592,7 @@
 **不在范围**：PDA 联调、Ubuntu 部署服务端（后续迭代）、作业 / 日志归档导出、自定义数据路径迁移。
 
 **启动命令**：
-> 继续 LabelFrame 迭代 18。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md（0.15 修订）、docs/ITERATION-18-SPEC.md；按范围实施后端；前端任务单交 hermes 评估后再开工；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+> 继续 LabelFrame 迭代 18。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/archive/ARCHITECTURE-SPLIT.md（0.15 修订）、docs/archive/ITERATION-18-SPEC.md；按范围实施后端；前端任务单交 hermes 评估后再开工；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 
 **后端完成记录（2026-08-11）**：
 - Server 无头化（移除 web/dist 托管与测试页）、Windows 服务（`UseWindowsService`，服务名 LabelFrameServer）、数据目录改 `%ProgramData%\LabelFrame\server`、历史清理后台服务（作业 30 天 / 日志 90 天 / 周期 24h，可配置）、exe 图标 labelframe.ico；`GET /api/jobs` 支持 limit（默认 100 上限 500）。
@@ -593,7 +602,9 @@
 - 修复 0.15.2：安装完成弹窗动作改为按钮 DoAction 触发（sc config / net start / 启动客户端），解决弹窗后动作不执行导致服务未自启/未运行；产物升级 0.15.2。
 - 简化 0.15.3：Server 服务注册即自动 + 安装时启动（ServiceInstall Start=auto + ServiceControl Start=install），完成弹窗仅提示；双包版本 0.15.3。
 - 0.15.4：Server 长轮询通知（notify 端点，作业到达立即唤醒客户端，等效推送）；客户端安装弹窗改为非阻塞启动（cmd /c start）；弹窗文字去掉括号说明；双包版本 0.15.4。
-## 迭代 19：Ubuntu 服务端部署 + 跨机验证（进行中）
+---
+
+## 迭代 19：Ubuntu 服务端部署 + 跨机验证（已完成）
 
 **目标**：服务端可部署到 Ubuntu（systemd），Windows Client 通过 HTTP 指向 Linux Server，验证跨机全链路（设备注册 / 模板库 / 作业 / 推送通知 / 调试出图 / 日志 / 历史清理）。
 
@@ -609,9 +620,10 @@
 - 迭代 19 反馈修复（2026-08-11）：Server / Client MSI 在覆盖安装与卸载前先停止运行中的程序（Server 先 sc stop LabelFrameServer 并把停机超时缩短为 5s；Client 用 taskkill（KillWinHost）强制结束 WinHost）；ServerRoutingWorker 完成回报改为独立 1s 循环，本地终态后立即回报 Server，不再被 20s 长轮询阻塞（新增回归测试）。
 
 **启动命令**：
-> 继续 LabelFrame 迭代 19（Ubuntu 服务端部署）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md、docs/ITERATION-19-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+> 继续 LabelFrame 迭代 19（Ubuntu 服务端部署）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/archive/ARCHITECTURE-SPLIT.md、docs/archive/ITERATION-19-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+---
 
-## 迭代 20：服务端管理界面（插件式 UI）+ 设备 IP（进行中）
+## 迭代 20：服务端管理界面（插件式 UI）+ 设备 IP（已完成）
 
 **目标**：① 客户端连接服务端后，状态栏显示本机 IP（方便调试）；② 服务端提供可选管理界面——插件形式（静态前端包放入 `plugins/web-ui` 即生效，无需重启），无任何打印机相关内容，保留工作台 / 设计器，新增“在线设备”菜单，数据与打印可浏览全部在线设备并选择其一发送打印测试。
 
@@ -626,8 +638,10 @@
 **进度（2026-08-11，后端）**：后端已完成——设备 `last_ip` 列与旧库迁移、注册/心跳记录来源 IP（统一 IPv4 文本 MapToIPv4）、`DeviceView.lastIp`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 支持 `targetIp`（`targetDeviceId` 优先）；`Server.WebUiPath` 插件式静态托管（启动确保目录存在，放入 index.html 即托管、移除即无头）+ `GET /api/server/info`（listenUrl / uiEnabled / version）+ 插件 zip 打包脚本 `scripts/package-server-webui.ps1` + compose 卷挂载示例；WinHost `/api/host/config` 增加 `ips`（本机 IPv4 枚举，过滤回环）。测试 176 全绿（Core 60 / Server 29 / Studio 25 / WinHost 62）+ 端到端冒烟（lastIp 记录 / by-ip / targetIp 解析 / 插件放入即托管 / 移除恢复无头）。前端（hermes，be87548）已按最终版实施——`VITE_UI_MODE` 双构建（`web/dist` + `web/dist-server`）、K1 同源 baseUrl、K2 无单机降级、Server UI 菜单裁剪 + 在线设备页 + 数据与打印在线设备选择器（K3 提交前现拉校验）、客户端状态栏本机 IP；前端测试 151 全绿（client / server 双分支）。0.16.0 双 MSI 与插件包已打包：`artifacts/LabelFrame-Server-0.16.0.msi`、`artifacts/LabelFrame-Client-0.16.0.msi`、`artifacts/labelframe-server-webui-0.16.0.zip`（插件端到端验证：放入即托管、静态资源与 API 正常）。0.16.0 收尾（2026-08-12）：Docker 镜像 `labelframe-server:0.16.0` + 离线包 `labelframe-server-0.16.0.docker.tar`，compose 默认挂载插件目录（`./plugins/web-ui:/var/lib/labelframe/server/plugins/web-ui`），容器内验证插件托管与 API 正常；Client 安装完成弹窗改为 WinHost `--install-finished` TopMost 弹窗（MSI 原生弹窗会被 Windows 焦点策略挡到后台），并修复“确认”关闭与重启宿主链路。联调冒烟待执行。
 
 **启动命令**：
-> 继续 LabelFrame 迭代 20（服务端管理界面插件 + 设备 IP）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ARCHITECTURE-SPLIT.md、docs/ITERATION-20-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
-## 迭代 21：自动化发布（进行中）
+> 继续 LabelFrame 迭代 20（服务端管理界面插件 + 设备 IP）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/archive/ARCHITECTURE-SPLIT.md、docs/archive/ITERATION-20-SPEC.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+---
+
+## 迭代 21：自动化发布（已完成）
 
 **目标**：发新版本时全自动——测试 → 打包 PC 端安装包（Server / Client MSI、管理界面插件 zip、Linux 归档）→ 构建并推送 Server 端 Docker 镜像（ghcr.io）→ 创建 GitHub Release。
 
@@ -645,12 +659,13 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 21（自动化发布）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；仓库内容不得出现公司 / 业务线品牌字样。
+---
 
 ## 迭代 22：打印测试体验 + 传输插件化 + 客户端下载分发（已完成）
 
 **目标**：围绕「易用性 / 权限边界 / 插件化 / 分发」四项收口——打印测试更好上手、客户端与服务的边界明确、传输方式插件化、客户端安装包由服务端分发。
 
-**已定稿范围**（2026-08-17 用户拍板，详见 [docs/ITERATION-22-SPEC.md](ITERATION-22-SPEC.md)）：
+**已定稿范围**（2026-08-17 用户拍板，详见 [docs/archive/ITERATION-22-SPEC.md](archive/ITERATION-22-SPEC.md)）：
 - 打印测试：客户端与服务端「数据与打印」界面新增「下载 Excel 模板」入口（`POST /api/import/excel-template`，按契约字段 + testData 生成 xlsx），便于直接套用 Excel 导入做打印测试。
 - 权限边界：客户端只能选择本机做打印测试（决策 1A：本机在线走服务端路由、未注册 / 离线降级本机直连并提示）；服务端可自由选设备打印测试。
 - 客户端显示本机设备名称（状态栏 + DataPrint 目标标签）。
@@ -671,12 +686,13 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 22（打印测试体验 + 传输插件化 + 客户端下载分发）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；本轮先与用户讨论定稿范围与插件化方案（插件如何加载 / 卸载 / 使用、统一接口与参数模型、服务端下载分发流程），再按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+---
 
 ## 迭代 23：客户端插件分发——上传服务端 + 客户端安装 / 卸载（已完成）
 
 **目标**：把迭代 22 的传输插件机制做成可分发闭环——插件包可上传到服务端（独立目录 + API + Server UI 管理），客户端在界面里浏览服务端可用插件 → 安装 / 卸载已安装的插件。
 
-**已定稿范围**（2026-08-17 用户拍板决策 1-7，详见 [docs/ITERATION-23-SPEC.md](ITERATION-23-SPEC.md)）：
+**已定稿范围**（2026-08-17 用户拍板决策 1-7，详见 [docs/archive/ITERATION-23-SPEC.md](archive/ITERATION-23-SPEC.md)）：
 - 插件包上传服务端（决策 1A/2A）：zip（根 `manifest.json` + 插件 DLL），后缀 `.lfplugin`；独立 `plugin-packages` 目录 + `/api/plugin-packages`（列表含元数据与 valid 状态 / 上传 / 下载 / 删除，路径穿越防护）；Server UI 新增「插件管理」页（与「客户端下载」并列）。
 - 客户端安装（决策 3A/4A/5A/6A/7A）：设置页新增「插件管理」卡片（与「更新与安装包」并列）——浏览服务端可用插件 → 安装（前端下载 → 本机 WinHost 三层校验 [zip CRC + manifest 必填 + 临时 ALC 预检核对插件 id，内置 id 拒绝] → 解压到 `plugins/<pluginId>/`）→ 重启生效；可查看已安装插件与状态（已加载 / 待重启 / 加载失败 / 手动放置）；覆盖安装允许、不做版本比较；包大小上限 64MB。
 - 客户端卸载（决策 3A 延续）：`source:"package"` 插件可卸载（删目录 → 重启生效；与决策 2A 一致）；平铺手动 DLL 只读；运行时热卸载 / 热替换仍不做。
@@ -693,13 +709,14 @@
 - 打包：本地 0.19.0 测试包（Client / Server MSI + webui 插件 zip + 示例 .lfplugin 合法/坏包）打包验收；ServerOptions 版本号同步 0.19.0。
 
 **启动命令**：
-> 继续 LabelFrame 迭代 23（客户端插件分发：上传服务端 + 客户端安装 / 卸载）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-23-SPEC.md；按规格实施（后端 = 主 Agent、前端 = hermes，前端以契约为准、接口未就绪用 mock / 测试替身并注明假设，不修改对方范围文件）；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+> 继续 LabelFrame 迭代 23（客户端插件分发：上传服务端 + 客户端安装 / 卸载）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/archive/ITERATION-23-SPEC.md；按规格实施（后端 = 主 Agent、前端 = hermes，前端以契约为准、接口未就绪用 mock / 测试替身并注明假设，不修改对方范围文件）；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+---
 
 ## 迭代 24：客户端批次作业（Batch Print）（已完成）
 
 **目标**：客户端把「向打印机发送」的动作按数量分批、批间加间隔，用于大批量作业时控制打印节奏 / 减轻打印机压力；同时澄清「服务端作业进度 0%→100%」现象与批次功能的关系（批次不改变进度展示，进度回报仍为终态一次）。
 
-**已定稿设计方案**（2026-08-18 过两轮评审「可定稿」，详见 [docs/ITERATION-24-BATCH-DESIGN.md](ITERATION-24-BATCH-DESIGN.md)）：
+**已定稿设计方案**（2026-08-18 过两轮评审「可定稿」，详见 [docs/archive/ITERATION-24-BATCH-DESIGN.md](archive/ITERATION-24-BATCH-DESIGN.md)）：
 - 客户端（WinHost）「批次作业」设置：是否开启（默认关）、每批次打印数量（默认 10）、批次打印间隔 ms（默认 500）；用户级持久化 `%LOCALAPPDATA%\LabelFrame\print-settings.json` + `GET/POST /api/host/print-settings`（仅回环可写、保存即生效）+ 设置页「打印批次」卡片。
 - `JobPrintWorker`「发送前暂停（claim-then-delay）」：领取下一张且已发送数满批次 N 的倍数时先延迟再发送；批次计数内存态、跨作业全局累计；本机与服务端作业统一生效；不拆作业、队列 / 幂等 / 挂起恢复 / 重打语义零改动。
 - WinHost 引入 Serilog 文件日志（`Serilog.AspNetCore` → `%LOCALAPPDATA%\LabelFrame\logs\app-20260818.log`，`RollingInterval.Day`），逐张 ILogger 日志落盘带时间戳，供端到端冒烟断言批间间隔。
@@ -729,22 +746,6 @@
 
 ---
 
-## 迭代 26：Niimbot 蓝牙打印机传输插件实现 + 真机测试（下一轮，顺延自迭代 24）
-
-**目标**：基于迭代 22 传输插件机制（+ 迭代 23 分发闭环），实现 Niimbot（小标蓝牙热敏标签打印机）的传输插件并真机测试——填补需求 P1「蓝牙传输」缺口（迭代 6 曾因蓝牙受阻，本轮以插件方式补上）。
-
-**范围**（承接迭代 22 / 23，会话中细化）：
-- 调研 Niimbot 打印机通信协议（BLE 特征 / 指令集），按 `ITransportPlugin` 接口实现传输插件（连接 / 发送 / 状态 / 测试），参数模型独立（蓝牙设备名 / 地址等）。
-- 打包 / 装载 / 注册表装配，配置指定插件与参数即启用（可经迭代 23 分发安装：`.lfplugin` 上传服务端 → 客户端安装 → 重启生效）。
-- 真机（Niimbot 打印机）验收：连接、打印、状态、异常恢复。
-
-**不在范围**：精成打印机插件（顺延，待用户确认需求）；PDA / AndroidHost（延后至迭代 25）；运行时热卸载 / 热替换（未决）。
-
-**验收**：会话中定稿后按 DoD 执行；`dotnet build` / `dotnet test` 与 web `pnpm test` 全绿；真机联调冒烟后按 DoD 收尾。
-
-**启动命令**：
-> 继续 LabelFrame 迭代 26（Niimbot 蓝牙打印机传输插件）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/ITERATION-23-SPEC.md；先调研 Niimbot 协议并讨论定稿范围（蓝牙方案 / 参数模型 / 真机验收方式），再按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
-
 ## 迭代 25：Android PDA 宿主（AndroidHost，延后）
 
 **目标**：交付可真机使用的 Android PDA 宿主——本地 HTTP / JS 桥、TCP9100 打印、复用 Server 注册 / 轮询链路；真机验收通过后再纳入自动发布。
@@ -762,6 +763,25 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 25（Android PDA 宿主）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+---
+
+## 迭代 26：Niimbot 蓝牙打印机传输插件实现 + 真机测试（下一轮，顺延自迭代 24）
+
+**目标**：基于迭代 22 传输插件机制（+ 迭代 23 分发闭环），实现 Niimbot（小标蓝牙热敏标签打印机）的传输插件并真机测试——填补需求 P1「蓝牙传输」缺口（迭代 6 曾因蓝牙受阻，本轮以插件方式补上）。
+
+**范围**（承接迭代 22 / 23，会话中细化）：
+- 调研 Niimbot 打印机通信协议（BLE 特征 / 指令集），按 `ITransportPlugin` 接口实现传输插件（连接 / 发送 / 状态 / 测试），参数模型独立（蓝牙设备名 / 地址等）。
+- 打包 / 装载 / 注册表装配，配置指定插件与参数即启用（可经迭代 23 分发安装：`.lfplugin` 上传服务端 → 客户端安装 → 重启生效）。
+- 真机（Niimbot 打印机）验收：连接、打印、状态、异常恢复。
+
+**不在范围**：精成打印机插件（顺延，待用户确认需求）；PDA / AndroidHost（延后至迭代 25）；运行时热卸载 / 热替换（未决）。
+
+**验收**：会话中定稿后按 DoD 执行；`dotnet build` / `dotnet test` 与 web `pnpm test` 全绿；真机联调冒烟后按 DoD 收尾。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 26（Niimbot 蓝牙打印机传输插件）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/archive/ITERATION-23-SPEC.md；先调研 Niimbot 协议并讨论定稿范围（蓝牙方案 / 参数模型 / 真机验收方式），再按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
+---
+
 ## 迭代 27：工程治理 P0（日常 CI + API 契约与端点去重 + 文档重组）（已完成）
 
 **背景**：2026-08-25 仓库多维度评审（流程 / 代码质量 / 产品 / 测试 CI）确定的 P0 治理项——此前唯一工作流 release.yml 仅发版 tag 触发，日常提交无质量反馈回路；Server 与 WinHost 的 API 契约与端点成片复制且已漂移出真实缺陷；README 演变为迭代流水账，新用户上手路径被淹没。
@@ -790,6 +810,7 @@
 - 产出试点对比报告。
 
 **完成记录（2026-08-17，用户确认）**：真实扫码枪抽 50 张 + 连续 100 张压力验证（含重启 / 断网）已通过，试点验收完成。
+---
 
 ## 待需求（有真实需求再排）
 
@@ -799,4 +820,3 @@
 - 打印历史统计。
 - 多打印机并行。
 - 契约字段 Pattern 校验（迭代 1 仅存元数据未执行；2026-08-17 列为未来事项，现阶段不处理）。
-

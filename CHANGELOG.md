@@ -51,22 +51,22 @@
 ## 迭代 24 设计定稿：客户端批次作业（Batch Print）— 2026-08-18
 
 - **迭代主题调整（用户提出）**：迭代 24 改为「客户端批次作业（Batch Print）」（🔄 进行中）；Niimbot 蓝牙插件顺延至迭代 26；Android PDA 排期以 ROADMAP「延后至迭代 25」为准（DESIGN.md 两处已同步修正）。
-- **设计方案定稿**：docs/ITERATION-24-BATCH-DESIGN.md 经 hermes 两轮评审「可定稿」（第一轮 10 条意见 + 第二轮复核；附四落实两处 💡 建议：app-{Date}.log 滚动命名、§4.1 措辞）。
+- **设计方案定稿**：docs/archive/ITERATION-24-BATCH-DESIGN.md 经 hermes 两轮评审「可定稿」（第一轮 10 条意见 + 第二轮复核；附四落实两处 💡 建议：app-{Date}.log 滚动命名、§4.1 措辞）。
 - **关键设计决策**：不拆作业、只在 JobPrintWorker 发送层节流；「发送前暂停（claim-then-delay）」统一语义（100 张/批 10/500ms = 9 次停顿 ≈ 4.5s，末批后不等待）；批次计数全局累计、内存态（重启清零）；设置读取 Normalize（缺失/损坏/越界回默认值）；WinHost 引入 Serilog 文件日志（app-{Date}.log，RollingInterval.Day）解决 ILogger 逐张日志不可见；测试页直发不计入批次计数；服务端零改动。
 ## 迭代 23 收尾：前端重做完成 + loadError 补充 + 0.19.0 打包 — 2026-08-17
 
-- **前端重做完成（hermes，4dcdbce）**：按任务书 docs/ITERATION-23-FRONTEND-TASK.md（含 hermes 评审附一 + 主 Agent 拍板附二）实施——`types.ts` / `client.ts` 插件包 API（serverApi.list/upload/delete/downloadPluginPackage + localApi.listInstalledPlugins/installPlugin/uninstallPlugin + pluginPackageDownloadUrl）；`pluginLimits.ts` 64MB 预检纯函数；Server UI「插件管理」页（invalid 红标+原因）；客户端设置「插件管理」卡片（可用插件四态 + 覆盖安装确认 + 已安装四态徽标 + manual 只读 + 旧版本 404 区分）；TabId 增 plugin-packages + puzzle 图标；web 212 用例全绿（双模式）。
+- **前端重做完成（hermes，4dcdbce）**：按任务书 docs/archive/ITERATION-23-FRONTEND-TASK.md（含 hermes 评审附一 + 主 Agent 拍板附二）实施——`types.ts` / `client.ts` 插件包 API（serverApi.list/upload/delete/downloadPluginPackage + localApi.listInstalledPlugins/installPlugin/uninstallPlugin + pluginPackageDownloadUrl）；`pluginLimits.ts` 64MB 预检纯函数；Server UI「插件管理」页（invalid 红标+原因）；客户端设置「插件管理」卡片（可用插件四态 + 覆盖安装确认 + 已安装四态徽标 + manual 只读 + 旧版本 404 区分）；TabId 增 plugin-packages + puzzle 图标；web 212 用例全绿（双模式）。
 - **loadError 结构化补充（前端评审三.1 拍板）**：`PluginDirectoryLoader.LoadWithErrors` 透出逐 DLL 失败原因 → `PluginInstaller.ListInstalled` 合并输出 `loadError`（package 按目录 / manual 按路径匹配）；端到端实证坏 DLL 包 loaded=false + loadError=Bad IL format.；dotnet 265 全绿。
 - **0.19.0 本地测试包**：Client / Server MSI + `labelframe-server-webui-0.19.0.zip` + 示例 `.lfplugin`（合法 `labelframe-transport-sample-1.0.0.lfplugin` / 坏 DLL 演示包）打包验收；ServerOptions 版本号同步 0.19.0。
 - **迭代 24 主题调整（用户提出）**：下一轮改为「Niimbot 蓝牙打印机传输插件实现 + 真机测试」（补需求 P1 蓝牙缺口）；精成打印机顺延。
 
 ## 迭代 23 客户端插件分发实施完成 — 2026-08-17
 
-- **范围定稿（2026-08-17 用户拍板决策 1A-7A，规格 [docs/ITERATION-23-SPEC.md](docs/ITERATION-23-SPEC.md)）**：插件包上传服务端（zip + 根 manifest.json + 插件 DLL，后缀 `.lfplugin`；独立 `plugin-packages` 目录 + `/api/plugin-packages`）；客户端安装（设置页「插件管理」卡片浏览服务端可用插件 → 下载 → 三层校验 → 解压到 `plugins/<pluginId>/` → 重启生效）；客户端卸载（删目录 → 重启生效，热卸载仍不做）；包大小上限 64MB；不做签名（局域网无鉴权模型）；与「更新与安装包」UI 并列。
+- **范围定稿（2026-08-17 用户拍板决策 1A-7A，规格 [docs/archive/ITERATION-23-SPEC.md](docs/archive/ITERATION-23-SPEC.md)）**：插件包上传服务端（zip + 根 manifest.json + 插件 DLL，后缀 `.lfplugin`；独立 `plugin-packages` 目录 + `/api/plugin-packages`）；客户端安装（设置页「插件管理」卡片浏览服务端可用插件 → 下载 → 三层校验 → 解压到 `plugins/<pluginId>/` → 重启生效）；客户端卸载（删目录 → 重启生效，热卸载仍不做）；包大小上限 64MB；不做签名（局域网无鉴权模型）；与「更新与安装包」UI 并列。
 - **Core（插件包 + 加载演进）**：`Transport/Plugins/Package/`——`PluginPackageManifest`（pluginId/name/version 必填 + 可选 description/author/minHostVersion）+ `PluginPackageReader`（zip 读取：根 manifest 校验 / zip-slip 防护 / 安全解压）+ `PluginPackageLimits`（64MB）；`PluginDirectoryLoader` 演进——平铺 + 子目录扫描（`plugins/<pluginId>/` 安装包，决策 3A）+ **字节加载（LoadFromStream，不锁 Windows DLL）**；注册表 `RegisterExternal`（外部插件禁止覆盖内置插件 ID，决策 6A）；`PluginProbe`（安装预检：临时 collectible ALC 字节加载发现插件并核对 id）；`SafeFileName`（由 ClientPackagesService 提取共享的文件名规范化，防路径穿越）。
 - **WinHost（插件安装 / 卸载 API）**：`PluginInstaller` 服务（安装三层校验 / 覆盖安装 / 卸载 / 已安装列表合并注册表 loaded 状态）+ `GET /api/plugins/installed`、`POST /api/plugins/install`（multipart）、`POST /api/plugins/uninstall`（失败统一 400 ErrorView）；Kestrel `MaxRequestBodySize` 64MB；卸载当前连接引用插件后重启回退默认连接（复用迭代 22 附五兜底）。
 - **Server（插件包 API）**：`PluginPackagesService` + `GET/POST/GET/DELETE /api/plugin-packages`（列表含元数据与 valid/invalid 状态、上传即校验、路径穿越防护）；`ServerOptions.PluginPackagesPath` + `LABELFRAME_SERVER_PLUGIN_PACKAGES`；Kestrel 64MB；`docker-compose.yml` 挂载 `./plugin-packages`。
-- **前端（待 hermes 独立实施）**：任务书 docs/ITERATION-23-FRONTEND-TASK.md（契约 / 清单 / 待评估设计点）；主 Agent 代跑提交 9faae3a 已回滚（2026-08-17，协作方式按用户指定：前端由 hermes 独立评估与实施）。
+- **前端（待 hermes 独立实施）**：任务书 docs/archive/ITERATION-23-FRONTEND-TASK.md（契约 / 清单 / 待评估设计点）；主 Agent 代跑提交 9faae3a 已回滚（2026-08-17，协作方式按用户指定：前端由 hermes 独立评估与实施）。
 - **测试**：dotnet 259 全绿（Core 104 / Server 45 / WinHost 85 / Studio 25，新增插件包读取 / zip-slip / 安全解压 / SafeFileName / 注册表防覆盖 / 加载器子目录 / PluginInstaller 安装卸载覆盖 / plugin-packages 上传删除路径穿越大小上限）；web 207 全绿（22 文件，+28 用例）。
 - **端到端联调冒烟通过（16 步）**：上传 .lfplugin → 服务端列表元数据 → 客户端安装（重启前 loaded=false）→ 重启后装配 / loaded=true → 配置启用（SAMPLE(SMOKE)）→ 卸载成功（**字节加载修复 Windows 文件锁**，决策 #73）→ 重启后消失 → 卸载当前连接插件后重启回退 log（附五兜底）→ Server 删除插件包。
 - **关键决策（DESIGN #72/#73）**：插件包分发闭环（格式 / 目录 / 校验 / 覆盖 / UI 并列）；外部插件字节加载（`LoadFromStream` 不锁文件，「卸载 = 删除文件 + 重启生效」在 Windows 下真正可用；插件 `Assembly.Location` 为空，自定位资源改用上下文数据目录）。
@@ -96,7 +96,7 @@
 
 - **范围定稿（用户拍板）**：打印测试体验（下载 Excel 模板、客户端仅本机打印测试、显示本机设备名、作业历史按设备可见）+ 传输插件化（统一接口 / 参数模型 / 注册表按需装配）+ 客户端下载分发（服务端 `client-packages` 目录 + 上传下载 API + 管理界面 + 客户端设置默认从服务端获取）。
 - **四项决策**：① 客户端本机打印测试 = 在线走服务端路由、未注册 / 离线降级本机直连并提示；② 插件卸载 = 删除文件 + 重启生效（运行时热卸载记未决）；③ 安装包 = 页面上传 + 目录直放都支持，**Ubuntu / Docker 允许挂载 `client-packages`**；④ Excel 模板生成放 Core 共享（复用 `TemplateFrame.Excel.Simple` 写能力）。
-- **分工**：后端由主 Agent 负责、前端由 hermes 负责；新增规格文档 `docs/ITERATION-22-SPEC.md`（§5 契约 / §6 后端拆分 / §7 前端拆分 / §8 验收）；后端等待前端评估后并行开工。
+- **分工**：后端由主 Agent 负责、前端由 hermes 负责；新增规格文档 `docs/archive/ITERATION-22-SPEC.md`（§5 契约 / §6 后端拆分 / §7 前端拆分 / §8 验收）；后端等待前端评估后并行开工。
 - **DESIGN.md 决策 #67-71**：传输插件统一接口与参数模型 / 加载卸载使用 / connection.json 兼容演进 / 打印测试体验与权限边界 / 客户端下载分发；未决新增「传输插件运行时热卸载（ALC）」。
 - 不推 tag；仓库内容无公司 / 业务线品牌字样。
 ## 迭代 21 收尾 + 状态盘点 — 2026-08-17
@@ -141,7 +141,7 @@
 
 - **范围定稿（用户拍板）**：打印测试体验（下载 Excel 模板、客户端仅本机打印测试、显示本机设备名、作业历史按设备可见）+ 传输插件化（统一接口 / 参数模型 / 注册表按需装配）+ 客户端下载分发（服务端 `client-packages` 目录 + 上传下载 API + 管理界面 + 客户端设置默认从服务端获取）。
 - **四项决策**：① 客户端本机打印测试 = 在线走服务端路由、未注册 / 离线降级本机直连并提示；② 插件卸载 = 删除文件 + 重启生效（运行时热卸载记未决）；③ 安装包 = 页面上传 + 目录直放都支持，**Ubuntu / Docker 允许挂载 `client-packages`**；④ Excel 模板生成放 Core 共享（复用 `TemplateFrame.Excel.Simple` 写能力）。
-- **分工**：后端由主 Agent 负责、前端由 hermes 负责；新增规格文档 `docs/ITERATION-22-SPEC.md`（§5 契约 / §6 后端拆分 / §7 前端拆分 / §8 验收）；后端等待前端评估后并行开工。
+- **分工**：后端由主 Agent 负责、前端由 hermes 负责；新增规格文档 `docs/archive/ITERATION-22-SPEC.md`（§5 契约 / §6 后端拆分 / §7 前端拆分 / §8 验收）；后端等待前端评估后并行开工。
 - **DESIGN.md 决策 #67-71**：传输插件统一接口与参数模型 / 加载卸载使用 / connection.json 兼容演进 / 打印测试体验与权限边界 / 客户端下载分发；未决新增「传输插件运行时热卸载（ALC）」。
 - 不推 tag；仓库内容无公司 / 业务线品牌字样。
 ## 迭代 21 收尾 + 状态盘点 — 2026-08-17
@@ -303,7 +303,7 @@
 - 契约扩展：模板 testData（Core / SQLite / 模板包 / API 全链路，旧库自动迁移）。
 - WinHost 演进：Web UI 静态托管（web/dist + SPA fallback）、Excel 导入 API、PDA 日志端点、宽松 CORS。
 - AndroidHost 演进：PDA 测试模式（pc_host 配置 / 拉模板列表 / 点击模板用 testData 本地打印 / 终态日志回传 PC / 内置测试页）。
-- 前端规格 docs/FRONTEND-SPEC.md 定稿（hermes 两轮审阅全部落定），前端并行开发中。
+- 前端规格 docs/archive/FRONTEND-SPEC.md 定稿（hermes 两轮审阅全部落定），前端并行开发中。
 - 测试 118 个全绿；AndroidHost 编译通过。
 
 ## 迭代 10（MSI 安装包）— 2026-08-09
@@ -347,7 +347,7 @@
 
 - 前端（hermes）：`convert.ts` 的 `BackendElement` 补齐 `paddingH/paddingV/fontFamily/wrap/lineHeight/fitMode/qrEcc/qrMargin/displayValue`；写方向按契约非默认才写（wrap=true、displayValue=false、verticalAlign 非 Middle、fitMode 非 shrink 等）；读回 `?? 默认`（paddingH/V ?? paddingMm 旧模板兜底）；`ElementNode.tsx` TextContent wrap=true 超高由裁剪改为整体缩小（最小 1.5mm），与后端 Skia 渲染语义一致；convert.test.ts 64 用例全绿（+7 新增）。
 - 复现验证：100×60 方案导入 → 保存 → 重开，关键差异清零（wrap / lineHeight / qrEcc / paddingV 均保留；剩余仅默认值显式化，显示一致）。
-- 文档归档：`docs/ITERATION-13-SPEC.md` / `docs/ITERATION-13-CONTRACT.md` 标记已完成；ROADMAP 迭代 13 状态更新为「已完成（用户验收待执行）」；DESIGN 决策 #47 更新为前后端完成。
+- 文档归档：`docs/archive/ITERATION-13-SPEC.md` / `docs/archive/ITERATION-13-CONTRACT.md` 标记已完成；ROADMAP 迭代 13 状态更新为「已完成（用户验收待执行）」；DESIGN 决策 #47 更新为前后端完成。
 - 产物 `LabelFrame-0.12.0.msi`（2026-08-10）：含迭代 13 前后端合并版（元素契约第二批字段 + Skia 图片打印渲染 + 前端字段映射与 wrap 超高缩小），可覆盖 0.11.x 安装；用户测试验收待执行。
 ## 迭代 13 前端修复（0.12.1，2026-08-10）
 
@@ -442,7 +442,7 @@
 - 服务端 Windows 服务部署（`LabelFrameServer`，LocalSystem）；数据目录默认改 `%ProgramData%\LabelFrame\server`；历史数据定期清理（作业默认保留 30 天、日志默认保留 90 天，可配置，非终态作业不删）。
 - 客户端机器级 ServerUrl（WinHost `GET/POST /api/host/config` → `%ProgramData%\LabelFrame\Client\settings.json`）。
 - 双 MSI 安装完成弹窗：Server（开机自启 / 立即运行，默认勾选）、Client（立即打开，默认勾选）；升级不触发。
-- 规格与任务单：docs/ITERATION-18-SPEC.md；决策登记 docs/DESIGN.md #53-58；架构修订 docs/ARCHITECTURE-SPLIT.md。
+- 规格与任务单：docs/archive/ITERATION-18-SPEC.md；决策登记 docs/DESIGN.md #53-58；架构修订 docs/archive/ARCHITECTURE-SPLIT.md。
 
 
 ## 迭代 18 后端实施（0.15.0，2026-08-11）
@@ -501,7 +501,7 @@
 - Server 数据目录按平台默认：Windows `%ProgramData%\LabelFrame\server` / Linux `/var/lib/labelframe/server`；`LABELFRAME_SERVER_*` 覆盖。
 - 交付：`scripts/publish-server-linux.ps1`（framework-dependent / self-contained，tar.gz 归档）、`scripts/deploy-server-ubuntu.sh`（用户/目录/systemd 自启/防火墙提示）、`packaging/ubuntu/labelframe-server.service`、`packaging/ubuntu/Dockerfile`。
 - 测试 162 全绿；Windows Server MSI 打包回归正常；linux-x64 产物 6.7MB（归档）。
-- 跨机验证（服务端 Linux + 客户端 Windows）待真机 / 容器执行：验证清单见 docs/ITERATION-19-SPEC.md §5。
+- 跨机验证（服务端 Linux + 客户端 Windows）待真机 / 容器执行：验证清单见 docs/archive/ITERATION-19-SPEC.md §5。
 
 
 ## 迭代 19 增补：Docker 镜像交付 + 容器跨机验证（2026-08-11）
@@ -528,7 +528,7 @@
 
 ## 迭代 20 文档：服务端管理界面（插件式 UI）+ 设备 IP（2026-08-11）
 
-- 起草 `docs/ITERATION-20-SPEC.md`：客户端状态栏显示本机 IP；服务端可选管理界面以插件形式提供（静态前端包放入 `plugins/web-ui` 即生效，无需重启，默认仍无头）；Server UI 去除打印机相关内容，保留工作台 / 设计器，新增在线设备页，数据与打印复用并改为“在线设备选择器”发送打印测试。
+- 起草 `docs/archive/ITERATION-20-SPEC.md`：客户端状态栏显示本机 IP；服务端可选管理界面以插件形式提供（静态前端包放入 `plugins/web-ui` 即生效，无需重启，默认仍无头）；Server UI 去除打印机相关内容，保留工作台 / 设计器，新增在线设备页，数据与打印复用并改为“在线设备选择器”发送打印测试。
 - 契约：`DeviceView.lastIp`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 可选 `targetIp`、`GET /api/host/config` 增加 `ips`、新增 `GET /api/server/info`、前端 `VITE_UI_MODE=client|server` 双构建。
 - DESIGN 决策 #61/#62/#63；ROADMAP 新增迭代 20 条目。
 
