@@ -64,9 +64,12 @@ builder.Services.AddSingleton<ILabelBitmapRenderer>(skiaRenderer);
 // 本地工具服务：地址由用户配置（可跨机器 / 跨端口），启用宽松 CORS
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+// 全局异常处理：未捕获异常统一 500 + ErrorView，不透出堆栈 / 内部路径
+builder.Services.AddLabelFrameExceptionHandler();
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.UseCors();
 
 // ---- 服务端管理界面插件（迭代 20）：静态前端包目录，目录存在即托管、移除即无头 ----
@@ -243,10 +246,11 @@ app.MapPost("/api/client-packages", async (IFormFile file, ClientPackagesService
         var view = await svc.SaveAsync(file.FileName, file.OpenReadStream(), ct);
         return Results.Ok(view);
     }
-    catch (Exception ex)
+    catch (InvalidOperationException ex)
     {
-        return Results.BadRequest(new ErrorView(ServerErrorCodes.InvalidRequest, $"上传失败：{ex.Message}"));
+        return Results.BadRequest(new ErrorView(ServerErrorCodes.InvalidRequest, ex.Message));
     }
+    // 其余异常（磁盘满 / IO 故障等）交给全局异常处理器 → 500，不再误报 400 或透出内部信息
 }).DisableAntiforgery();
 
 app.MapGet("/api/client-packages/{fileName}", (string fileName, ClientPackagesService svc) =>
@@ -291,10 +295,7 @@ app.MapPost("/api/plugin-packages", async (IFormFile file, PluginPackagesService
     {
         return Results.BadRequest(new ErrorView(ServerErrorCodes.InvalidRequest, $"插件包无效：{ex.Message}"));
     }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new ErrorView(ServerErrorCodes.InvalidRequest, $"上传失败：{ex.Message}"));
-    }
+    // 其余异常（磁盘满 / IO 故障等）交给全局异常处理器 → 500，不再误报 400 或透出内部信息
 }).DisableAntiforgery();
 
 app.MapGet("/api/plugin-packages/{fileName}", (string fileName, PluginPackagesService svc) =>

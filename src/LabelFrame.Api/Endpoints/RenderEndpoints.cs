@@ -37,7 +37,16 @@ public static class RenderEndpoints
                 Layout = request.Template.Layout,
                 Data = request.Labels[0].Data ?? new Dictionary<string, string>(),
             };
-            var images = await ResolveImagesAsync(request.Template, options.Store, ct);
+            IReadOnlyDictionary<string, byte[]> images;
+            try
+            {
+                images = await ResolveImagesAsync(request.Template, options.Store, ct);
+            }
+            catch (FormatException)
+            {
+                return Results.BadRequest(new ErrorView(options.InvalidRequestCode, "模板图片 base64 无效。"));
+            }
+
             var png = options.Renderer.RenderLabelBitmapPng(document, options.Dpi, images);
             var fileName = $"{(string.IsNullOrWhiteSpace(request.Template.Name) ? "label" : request.Template.Name)}-print.png";
             return Results.File(png, "image/png", fileName);
@@ -55,7 +64,16 @@ public static class RenderEndpoints
                 return Results.BadRequest(new ErrorView(options.InvalidRequestCode, "缺少 template 或 labels。"));
             }
 
-            var images = await ResolveImagesAsync(request.Template, options.Store, ct);
+            IReadOnlyDictionary<string, byte[]> images;
+            try
+            {
+                images = await ResolveImagesAsync(request.Template, options.Store, ct);
+            }
+            catch (FormatException)
+            {
+                return Results.BadRequest(new ErrorView(options.InvalidRequestCode, "模板图片 base64 无效。"));
+            }
+
             using var stream = new MemoryStream();
             using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
             {

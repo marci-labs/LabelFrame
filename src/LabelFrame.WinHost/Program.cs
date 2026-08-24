@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LabelFrame.Core.Encoding;
@@ -169,6 +169,9 @@ public static class Program
         builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
             policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
+        // 全局异常处理：未捕获异常统一 500 + ErrorView，不透出堆栈 / 内部路径
+        builder.Services.AddLabelFrameExceptionHandler();
+
         var logStore = new SqliteLogStore(options.LogsDbPath);
         await logStore.InitializeAsync();
         builder.Services.AddSingleton(logStore);
@@ -190,6 +193,7 @@ public static class Program
 
         var app = builder.Build();
 
+        app.UseExceptionHandler();
         app.UseCors();
 
         app.MapGet("/healthz", (ITransportManager transportManager, ITransportPluginRegistry registry) =>
@@ -297,10 +301,7 @@ public static class Program
             {
                 return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginInvalid, $"插件包无效：{ex.Message}"));
             }
-            catch (Exception ex)
-            {
-                return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginInstallFailed, $"安装失败：{ex.Message}"));
-            }
+            // 其余意外异常（解压 / 写入故障等）交给全局异常处理器 → 500，不再误报 400 或透出内部信息
         }).DisableAntiforgery();
 
         app.MapPost("/api/plugins/uninstall", (Api.UninstallPluginRequest? request, Transport.PluginInstaller installer) =>
