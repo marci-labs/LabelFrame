@@ -21,28 +21,13 @@ public sealed record PluginPackageView(
 /// 上传 / 列表时只读 zip 根 manifest.json 展示插件元数据（不解压不加载）；zip / manifest 解析失败 → valid:false + 原因，仍列出便于管理删除；
 /// 文件名一律拒绝路径分隔符 / .. / 非法字符（路径穿越防护，共享 Core <see cref="SafeFileName"/>）。
 /// </summary>
-public sealed class PluginPackagesService
+public sealed class PluginPackagesService : FilePackageService<PluginPackageView>
 {
-    private readonly string _directory;
-
     /// <summary>创建服务（目录不存在自动创建）。</summary>
     public PluginPackagesService(string directory)
+        : base(directory, nameof(directory))
     {
-        if (string.IsNullOrWhiteSpace(directory))
-        {
-            throw new ArgumentException("插件包目录不能为空。", nameof(directory));
-        }
-
-        _directory = directory;
-        Directory.CreateDirectory(directory);
     }
-
-    /// <summary>插件包列表（按修改时间倒序；每个 zip 即时解析 manifest，失败记 valid:false + 原因，v1 不做缓存）。</summary>
-    public IReadOnlyList<PluginPackageView> List()
-        => Directory.GetFiles(_directory)
-            .Select(ToView)
-            .OrderByDescending(v => v.ModifiedAt)
-            .ToList();
 
     /// <summary>
     /// 保存上传的插件包：先读入内存（64MB 上限）并校验 zip + 根 manifest + 必填字段（zip-slip），
@@ -51,7 +36,7 @@ public sealed class PluginPackagesService
     public async Task<PluginPackageView> SaveAsync(string? fileName, Stream content, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(content);
-        var safeName = SafeFileName.Normalize(fileName)
+        var path = ResolveSafePath(fileName)
             ?? throw new InvalidDataException("文件名无效（只允许普通文件名，不允许路径 / 特殊字符）。");
 
         using var buffer = new MemoryStream();
@@ -69,7 +54,6 @@ public sealed class PluginPackagesService
         var bytes = buffer.ToArray();
         _ = PluginPackageReader.Read(bytes); // 非法抛 InvalidDataException（中文原因）
 
-        var path = Path.Combine(_directory, safeName);
         await using (var stream = File.Create(path))
         {
             await stream.WriteAsync(bytes, cancellationToken);
@@ -78,42 +62,7 @@ public sealed class PluginPackagesService
         return ToView(path);
     }
 
-    /// <summary>取插件包视图（不存在 / 文件名非法返回 null）。</summary>
-    public PluginPackageView? Get(string fileName)
-    {
-        var path = Resolve(fileName);
-        return path is null ? null : ToView(path);
-    }
-
-    /// <summary>取下载文件路径（不存在 / 文件名非法返回 null）。</summary>
-    public string? GetDownloadPath(string fileName) => Resolve(fileName);
-
-    /// <summary>删除插件包（不存在 / 文件名非法返回 false）。</summary>
-    public bool Delete(string fileName)
-    {
-        var path = Resolve(fileName);
-        if (path is null)
-        {
-            return false;
-        }
-
-        File.Delete(path);
-        return true;
-    }
-
-    private string? Resolve(string fileName)
-    {
-        var safeName = SafeFileName.Normalize(fileName);
-        if (safeName is null)
-        {
-            return null;
-        }
-
-        var path = Path.Combine(_directory, safeName);
-        return File.Exists(path) ? path : null;
-    }
-
-    private PluginPackageView ToView(string path)
+    protected override PluginPackageView ToView(string path)
     {
         var info = new FileInfo(path);
         byte[] bytes;
