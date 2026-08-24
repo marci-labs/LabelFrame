@@ -10,6 +10,15 @@
 - **破坏性变更对照无影响**：项目仅用 Read / Write / SimpleExcelTable / SimpleExcelOptions 四个 API，2.0 签名不变、零代码改动；`Read` 损坏流异常统一为 `InvalidOperationException` + 本地化中文消息（导入端点 catch Exception，行为兼容且报错更友好）；基础包层面的破坏性变更（MissingElementPolicy 迁移 / 删除 6 类型等）未使用。
 - 变更范围：`Core` 与 `Studio` 两个 csproj 版本号；dotnet build 0 错误、dotnet test 315 全绿；2.0.0 已发布 nuget.org，CI 可正常还原。
 
+## 迭代 29 程序优化（SQLite WAL / 数据层基建 / 分析器门禁 / Server 集成测试 / 覆盖率收集）· 2026-08-25
+
+- **SQLite WAL 全库启用**（决策 #80）：读写并发不再互相阻塞（Server 长轮询 / 心跳 / 提交并发受益）；四存储（jobs / templates / logs / server）基建收拢公共 LabelFrame.Core.Data.SqliteSupport，Server 不再复制 provider 初始化；设备心跳合并单条 UPDATE。
+- **C# 分析器门禁**：AnalysisLevel=latest-recommended + 警告即错误（AndroidHost 实验性除外）；清零真修——ZPL 输出与端口参数固定 InvariantCulture（区域无关）、LabelJobQueue / ServerService / TransportManager 实现 IDisposable、LoggerMessage 源生成、Serilog formatProvider、传输插件接口参数名对齐；豁免（CA2007 / CA1031 / CA1848 / CA1873 / 测试目录 CA1707 / CA1861）在 .editorconfig 注明理由。
+- **死代码清理**：LabelPreviewRenderer（GDI 预览，迭代 27 后零生产消费者）与其测试移除；Rendering 双 TFM 收敛单 net10.0、移除 System.Drawing.Common。
+- **Server 端点集成测试**（WebApplicationFactory 全链路：注册 → 提交 → 幂等 → 领取 → 回报 → 403/404），**发现并修复两个真实缺陷**：① 无参 UseExceptionHandler() 缺 AddProblemDetails() 配套——宿主启动即崩（单元测试不拉管道未暴露）；② Results.Forbid() 依赖未注册的认证设施——运行时 500 而非 403（两宿主 4 处改显式 403）。
+- **覆盖率收集**：coverlet.collector + CI artifact（不设门禁）；首份基线 Server 88% / Api 63% / WinHost 59% / Core 49% / Rendering 31%（类级均值）。
+- dotnet build 0 警告 0 错误（分析器全开）；dotnet test 298 全绿。
+
 ## 迭代 28 工程治理 P1/P2（文档归档 / 死重移除 / 数据层并发 / 异常契约 / Program 拆分 / 集成测试 / 安全边界）· 2026-08-25
 
 - **P1 文档**：16 份历史迭代文档归档 docs/archive（核心四件套 + DEPLOY + ACCEPTANCE-BACKLOG）；ROADMAP 章节与总览表按迭代号排序、陈旧状态对齐（12 处标题）；验收清欠清单落地（大部分验收 2026-08-17 已通过，欠账仅 5 项，见 docs/ACCEPTANCE-BACKLOG.md）。

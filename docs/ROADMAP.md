@@ -41,6 +41,7 @@
 | 26 | Niimbot 蓝牙打印机传输插件实现 + 真机测试 | 📋 下一轮（顺延自迭代 24，2026-08-18） |
 | 27 | 工程治理 P0（日常 CI + API 契约与端点去重 + README/DEPLOY 重组） | ✅ 已完成（2026-08-25） |
 | 28 | 工程治理 P1/P2（文档归档 / 死重移除 / 数据层并发 / 异常契约 / Program 拆分 / 集成测试 / 安全边界） | ✅ 已完成（2026-08-25） |
+| 29 | 程序优化（SQLite WAL / 数据层基建 / 分析器门禁 / Server 集成测试 / 覆盖率收集） | ✅ 已完成（2026-08-25） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -823,6 +824,24 @@
 **验收**：dotnet build 0 错误 0 警告；dotnet test 300 全绿（Core 108 / Server 45 / Api 10 / WinHost 137）；对外行为兼容（除决策 #78 错误码语义修正）。
 
 **完成（2026-08-25）**：P1/P2 清单全部完成；Studio 移除后测试基线 315→300。
+
+---
+
+## 迭代 29：程序优化（SQLite WAL / 数据层基建 / 分析器门禁 / Server 集成测试 / 覆盖率）（已完成）
+
+**背景**：迭代 28 后剩余治理项评审，按「先优化现有程序」目标排序：analyzers 门禁与数据层优化优先，提交幂等下沉缓办（单进程部署下现方案完全正确）。
+
+**范围与完成情况**：
+1. SQLite WAL + 数据层基建（决策 #80）：全库连接启用 WAL；四存储收拢公共 LabelFrame.Core.Data.SqliteSupport（连接串 / 打开 / 时间格式化，Server 不再复制 provider 初始化）；设备心跳合并单条 UPDATE；移除 WinHost 死 DI 注册。
+2. C# 分析器门禁：.editorconfig + Directory.Build.props（latest-recommended + 警告即错误，AndroidHost 除外）；清零过程真修 InvariantCulture（ZPL / 端口参数）、IDisposable（三处信号量）、LoggerMessage 源生成、接口参数名对齐等；豁免逐项注明理由。顺带死代码清理：LabelPreviewRenderer（GDI 预览）移除、Rendering 双 TFM 收敛单 net10.0。
+3. Server 端点集成测试（WebApplicationFactory 全链路）：注册 → 提交 → 幂等重放 → 领取 → 回报 → 403/404；**发现并修复两个真实缺陷**——无参 UseExceptionHandler 缺 AddProblemDetails 配套（宿主启动即崩）、Results.Forbid() 依赖未注册认证设施（运行时 500 而非 403，两宿主 4 处）。
+4. 覆盖率收集：coverlet.collector + CI artifact（不设门禁）；首份基线：Server 88% / Api 63% / WinHost 59% / Core 49% / Rendering 31%（类级均值）。
+
+**不在范围（记 DESIGN 未决）**：WinHost 专属端点集成测试（需抽 host builder）；提交幂等下沉 DB；覆盖率阈值门禁；插件包签名。
+
+**验收**：dotnet build 0 警告 0 错误（分析器全开）；dotnet test 298 全绿（Core 108 / Server 49 / Api 10 / WinHost 131）。
+
+**完成（2026-08-25）**：四项全部完成；测试基线 290→298（+10 Server 集成，-2 死代码）。
 
 ---
 
