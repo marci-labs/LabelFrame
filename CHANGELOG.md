@@ -4,6 +4,12 @@
 
 
 
+## 依赖升级：TemplateFrame.Excel.Simple 1.0.5 → 2.0.0 · 2026-08-25
+
+- **修复 Excel 模板续填行导入丢失**：1.0.5 的 `SimpleExcel.Read` 以命名区域 EndRow 为边界——我们生成的模板命名区域只覆盖「表头 + 示例行」，用户在下方续填的行不扩展区域、导入时被静默丢弃；2.0（含 1.0.7 读取容错修复）数据区顺延到工作表最后一行，续填行完整读入。第三方（WPS / Excel 生成）文件兼容性同步改善（共享字符串表头 / 富文本 / 缺 RowIndex 等修复）。
+- **破坏性变更对照无影响**：项目仅用 Read / Write / SimpleExcelTable / SimpleExcelOptions 四个 API，2.0 签名不变、零代码改动；`Read` 损坏流异常统一为 `InvalidOperationException` + 本地化中文消息（导入端点 catch Exception，行为兼容且报错更友好）；基础包层面的破坏性变更（MissingElementPolicy 迁移 / 删除 6 类型等）未使用。
+- 变更范围：`Core` 与 `Studio` 两个 csproj 版本号；dotnet build 0 错误、dotnet test 315 全绿；2.0.0 已发布 nuget.org，CI 可正常还原。
+
 ## 迭代 27 工程治理 P0（日常 CI + API 契约与端点去重 + 文档重组）· 2026-08-25
 
 - **日常 CI（ci.yml）**：push master / PR 触发 dotnet 构建 / 测试 + 前端 lint / 双模式测试 / 构建（命令与发版流水线一致），主干回归提交即发现；同分支新推送自动取消旧运行；不改动发布流水线。

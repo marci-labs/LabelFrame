@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="TemplateFrame.Excel.Simple" Version="1.0.5" />
+    <PackageReference Include="TemplateFrame.Excel.Simple" Version="2.0.0" />
   </ItemGroup>
 
 </Project>

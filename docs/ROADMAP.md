@@ -778,6 +778,8 @@
 
 **完成（2026-08-25）**：三项 P0 全部完成——ci.yml 日常 CI、LabelFrame.Api 共享库落地（两端各删约 150 行重复端点与 DTO）、README 重写 + DEPLOY.md 拆分；dotnet build / dotnet test 315 全绿。
 
+**后续（2026-08-25，依赖升级）**：TemplateFrame.Excel.Simple 1.0.5 → 2.0.0（Core / Studio 两处引用）——修复「下载模板下方续填行导入丢失」（1.0.5 Read 以命名区域 EndRow 为边界、续填行被静默丢弃；2.0 数据区顺延到工作表最后一行）；所用 Read / Write / Table / Options API 签名不变、零代码改动；dotnet test 315 全绿。
+
 ---
 
 ## 检查点：试点验收（已完成）
