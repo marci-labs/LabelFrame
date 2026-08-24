@@ -1,5 +1,4 @@
-using System.Globalization;
-using LabelFrame.Core.Jobs;
+using LabelFrame.Core.Data;
 using Microsoft.Data.Sqlite;
 
 namespace LabelFrame.Core.Logs;
@@ -19,21 +18,7 @@ public sealed class SqliteLogStore
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "LabelFrame",
             "logs.db");
-        var fullPath = Path.GetFullPath(path);
-        var directory = Path.GetDirectoryName(fullPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        _connectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = fullPath,
-            DefaultTimeout = 5,
-            Pooling = true,
-        }.ToString();
-        // SQLite provider 自行初始化（幂等，避免依赖宿主/调用方先初始化）
-        SqliteSupport.EnsureInitialized();
+        _connectionString = SqliteSupport.BuildConnectionString(path);
     }
 
     /// <summary>建表。</summary>
@@ -69,7 +54,7 @@ public sealed class SqliteLogStore
             VALUES ($device, $time, $line);
             """;
         command.Parameters.AddWithValue("$device", deviceId);
-        command.Parameters.AddWithValue("$time", Format(now));
+        command.Parameters.AddWithValue("$time", SqliteSupport.Format(now));
         command.Parameters.AddWithValue("$line", string.Join(Environment.NewLine, lines));
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
@@ -93,7 +78,7 @@ public sealed class SqliteLogStore
         if (since is not null)
         {
             conditions.Add("time > $since");
-            command.Parameters.AddWithValue("$since", Format(since.Value));
+            command.Parameters.AddWithValue("$since", SqliteSupport.Format(since.Value));
         }
 
         if (conditions.Count > 0)
@@ -109,7 +94,7 @@ public sealed class SqliteLogStore
         {
             entries.Add(new LogEntry(
                 reader.GetString(0),
-                Parse(reader.GetString(1)),
+                SqliteSupport.Parse(reader.GetString(1)),
                 reader.GetString(2)));
         }
 
@@ -122,19 +107,10 @@ public sealed class SqliteLogStore
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM logs WHERE time < $cutoff;";
-        command.Parameters.AddWithValue("$cutoff", Format(cutoff));
+        command.Parameters.AddWithValue("$cutoff", SqliteSupport.Format(cutoff));
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
-    {
-        var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        return connection;
-    }
-
-    private static string Format(DateTimeOffset value) => value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
-
-    private static DateTimeOffset Parse(string value)
-        => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+    private Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
+        => SqliteSupport.OpenAsync(_connectionString, cancellationToken);
 }

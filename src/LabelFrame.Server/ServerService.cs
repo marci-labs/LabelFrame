@@ -51,12 +51,11 @@ public sealed class ServerService
     /// <summary>刷新设备心跳（长轮询通知端点用作在线保活）。设备未注册时抛出 DeviceNotFound。</summary>
     public async Task TouchDeviceAsync(string deviceId, DateTimeOffset now, string? lastIp = null, CancellationToken cancellationToken = default)
     {
-        if (await _db.GetDeviceAsync(deviceId, cancellationToken) is null)
+        var affected = await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken);
+        if (affected == 0)
         {
             throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
         }
-
-        await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken);
     }
 
     /// <summary>设备目录（含在线状态）。</summary>
@@ -162,13 +161,11 @@ public sealed class ServerService
     public async Task<IReadOnlyList<ClaimedJob>> ClaimPendingJobsAsync(string deviceId, string? lastIp = null, CancellationToken cancellationToken = default)
     {
         // 并发安全由 DB 层保证（领取为单条 UPDATE ... RETURNING 原子操作），无需进程内串行化
-        if (await _db.GetDeviceAsync(deviceId, cancellationToken) is null)
+        var now = DateTimeOffset.UtcNow;
+        if (await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken) == 0)
         {
             throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
         }
-
-        var now = DateTimeOffset.UtcNow;
-        await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken);
         var jobs = await _db.ClaimPendingJobsAsync(deviceId, now, limit: 10, cancellationToken);
         return jobs.Select(job => new ClaimedJob(
             job.Id,

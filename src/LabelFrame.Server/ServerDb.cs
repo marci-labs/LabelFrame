@@ -1,6 +1,5 @@
-using System.Globalization;
+using LabelFrame.Core.Data;
 using Microsoft.Data.Sqlite;
-using SQLitePCL;
 
 namespace LabelFrame.Server;
 
@@ -35,32 +34,12 @@ public sealed class ServerDb
         CREATE INDEX IF NOT EXISTS ix_server_jobs_device ON server_jobs(target_device_id, created_at);
         """;
 
-    private static int _initialized;
-
     private readonly string _connectionString;
 
     /// <summary>创建 Server 存储。</summary>
     public ServerDb(string databasePath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
-        var fullPath = Path.GetFullPath(databasePath);
-        var directory = Path.GetDirectoryName(fullPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        _connectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = fullPath,
-            DefaultTimeout = 5,
-            Pooling = true,
-        }.ToString();
-
-        if (Interlocked.Exchange(ref _initialized, 1) == 0)
-        {
-            raw.SetProvider(new SQLite3Provider_e_sqlite3());
-        }
+        _connectionString = SqliteSupport.BuildConnectionString(databasePath);
     }
 
     /// <summary>建表。</summary>
@@ -124,23 +103,23 @@ public sealed class ServerDb
             """;
         command.Parameters.AddWithValue("$id", device.Id);
         command.Parameters.AddWithValue("$name", device.Name);
-        command.Parameters.AddWithValue("$registeredAt", Format(device.RegisteredAt));
-        command.Parameters.AddWithValue("$lastSeenAt", Format(device.LastSeenAt));
+        command.Parameters.AddWithValue("$registeredAt", SqliteSupport.Format(device.RegisteredAt));
+        command.Parameters.AddWithValue("$lastSeenAt", SqliteSupport.Format(device.LastSeenAt));
         command.Parameters.AddWithValue("$lastIp", (object?)device.LastIp ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
         return device;
     }
 
-    /// <summary>刷新设备心跳。</summary>
-    public async Task TouchDeviceAsync(string deviceId, DateTimeOffset now, string? lastIp = null, CancellationToken cancellationToken = default)
+    /// <summary>刷新设备心跳；返回受影响行数（0 = 设备不存在，免去先查后写）。</summary>
+    public async Task<int> TouchDeviceAsync(string deviceId, DateTimeOffset now, string? lastIp = null, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = "UPDATE devices SET last_seen_at = $now, last_ip = $lastIp WHERE id = $id;";
-        command.Parameters.AddWithValue("$now", Format(now));
+        command.Parameters.AddWithValue("$now", SqliteSupport.Format(now));
         command.Parameters.AddWithValue("$lastIp", (object?)lastIp ?? DBNull.Value);
         command.Parameters.AddWithValue("$id", deviceId);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>查询设备。</summary>
@@ -160,8 +139,8 @@ public sealed class ServerDb
         {
             Id = reader.GetString(0),
             Name = reader.GetString(1),
-            RegisteredAt = Parse(reader.GetString(2)),
-            LastSeenAt = Parse(reader.GetString(3)),
+            RegisteredAt = SqliteSupport.Parse(reader.GetString(2)),
+            LastSeenAt = SqliteSupport.Parse(reader.GetString(3)),
             LastIp = reader.IsDBNull(4) ? null : reader.GetString(4),
         };
     }
@@ -180,8 +159,8 @@ public sealed class ServerDb
             {
                 Id = reader.GetString(0),
                 Name = reader.GetString(1),
-                RegisteredAt = Parse(reader.GetString(2)),
-                LastSeenAt = Parse(reader.GetString(3)),
+                RegisteredAt = SqliteSupport.Parse(reader.GetString(2)),
+                LastSeenAt = SqliteSupport.Parse(reader.GetString(3)),
                 LastIp = reader.IsDBNull(4) ? null : reader.GetString(4),
             });
         }
@@ -207,8 +186,8 @@ public sealed class ServerDb
         {
             Id = reader.GetString(0),
             Name = reader.GetString(1),
-            RegisteredAt = Parse(reader.GetString(2)),
-            LastSeenAt = Parse(reader.GetString(3)),
+            RegisteredAt = SqliteSupport.Parse(reader.GetString(2)),
+            LastSeenAt = SqliteSupport.Parse(reader.GetString(3)),
             LastIp = reader.IsDBNull(4) ? null : reader.GetString(4),
         };
     }
@@ -230,7 +209,7 @@ public sealed class ServerDb
         command.Parameters.AddWithValue("$requestId", job.RequestId);
         command.Parameters.AddWithValue("$targetDeviceId", job.TargetDeviceId);
         command.Parameters.AddWithValue("$status", job.Status.ToString());
-        command.Parameters.AddWithValue("$createdAt", Format(job.CreatedAt));
+        command.Parameters.AddWithValue("$createdAt", SqliteSupport.Format(job.CreatedAt));
         command.Parameters.AddWithValue("$totalItems", job.TotalItems);
         command.Parameters.AddWithValue("$payloadJson", job.PayloadJson);
         var inserted = await command.ExecuteNonQueryAsync(cancellationToken);
@@ -268,7 +247,7 @@ public sealed class ServerDb
                 RETURNING id;
                 """;
             command.Parameters.AddWithValue("$claimed", ServerJobStatus.Claimed.ToString());
-            command.Parameters.AddWithValue("$claimedAt", Format(now));
+            command.Parameters.AddWithValue("$claimedAt", SqliteSupport.Format(now));
             command.Parameters.AddWithValue("$pending", ServerJobStatus.Pending.ToString());
             command.Parameters.AddWithValue("$deviceId", deviceId);
             command.Parameters.AddWithValue("$limit", limit);
@@ -311,7 +290,7 @@ public sealed class ServerDb
         command.Parameters.AddWithValue("$completedItems", completedItems);
         command.Parameters.AddWithValue("$failedItems", failedItems);
         command.Parameters.AddWithValue("$errorMessage", (object?)errorMessage ?? DBNull.Value);
-        command.Parameters.AddWithValue("$finishedAt", Format(now));
+        command.Parameters.AddWithValue("$finishedAt", SqliteSupport.Format(now));
         command.Parameters.AddWithValue("$id", jobId);
         var affected = await command.ExecuteNonQueryAsync(cancellationToken);
         if (affected == 0)
@@ -373,7 +352,7 @@ public sealed class ServerDb
             WHERE status IN ('Completed', 'Failed')
               AND COALESCE(finished_at, created_at) < $cutoff;
             """;
-        command.Parameters.AddWithValue("$cutoff", Format(cutoff));
+        command.Parameters.AddWithValue("$cutoff", SqliteSupport.Format(cutoff));
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
@@ -410,9 +389,9 @@ public sealed class ServerDb
             RequestId = reader.GetString(1),
             TargetDeviceId = reader.GetString(2),
             Status = Enum.Parse<ServerJobStatus>(reader.GetString(3)),
-            CreatedAt = Parse(reader.GetString(4)),
-            ClaimedAt = reader.IsDBNull(5) ? null : Parse(reader.GetString(5)),
-            FinishedAt = reader.IsDBNull(6) ? null : Parse(reader.GetString(6)),
+            CreatedAt = SqliteSupport.Parse(reader.GetString(4)),
+            ClaimedAt = reader.IsDBNull(5) ? null : SqliteSupport.Parse(reader.GetString(5)),
+            FinishedAt = reader.IsDBNull(6) ? null : SqliteSupport.Parse(reader.GetString(6)),
             TotalItems = reader.GetInt32(7),
             CompletedItems = reader.GetInt32(8),
             FailedItems = reader.GetInt32(9),
@@ -421,15 +400,6 @@ public sealed class ServerDb
         };
     }
 
-    private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
-    {
-        var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        return connection;
-    }
-
-    private static string Format(DateTimeOffset value) => value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
-
-    private static DateTimeOffset Parse(string value)
-        => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+    private Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
+        => SqliteSupport.OpenAsync(_connectionString, cancellationToken);
 }

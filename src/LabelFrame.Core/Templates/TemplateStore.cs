@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LabelFrame.Core.Contracts;
-using LabelFrame.Core.Jobs;
+using LabelFrame.Core.Data;
 using LabelFrame.Core.Layout;
 using Microsoft.Data.Sqlite;
 
@@ -47,21 +47,7 @@ public sealed class TemplateStore
     /// <summary>创建模板存储。</summary>
     public TemplateStore(string databasePath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
-        var fullPath = Path.GetFullPath(databasePath);
-        var directory = Path.GetDirectoryName(fullPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        _connectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = fullPath,
-            DefaultTimeout = 5,
-            Pooling = true,
-        }.ToString();
-        SqliteSupport.EnsureInitialized();
+        _connectionString = SqliteSupport.BuildConnectionString(databasePath);
     }
 
     /// <summary>建表。</summary>
@@ -133,7 +119,7 @@ public sealed class TemplateStore
             command.Parameters.AddWithValue("$contractJson", JsonSerializer.Serialize(package.Contract, JsonOptions));
             command.Parameters.AddWithValue("$layoutJson", JsonSerializer.Serialize(package.Layout, JsonOptions));
             command.Parameters.AddWithValue("$testDataJson", JsonSerializer.Serialize(testData, JsonOptions));
-            command.Parameters.AddWithValue("$now", Format(now));
+            command.Parameters.AddWithValue("$now", SqliteSupport.Format(now));
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
@@ -272,23 +258,14 @@ public sealed class TemplateStore
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            summaries.Add(new TemplateSummary(reader.GetString(0), reader.GetString(1), Parse(reader.GetString(2))));
+            summaries.Add(new TemplateSummary(reader.GetString(0), reader.GetString(1), SqliteSupport.Parse(reader.GetString(2))));
         }
 
         return summaries;
     }
 
-    private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
-    {
-        var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        return connection;
-    }
-
-    private static string Format(DateTimeOffset value) => value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
-
-    private static DateTimeOffset Parse(string value)
-        => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+    private Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
+        => SqliteSupport.OpenAsync(_connectionString, cancellationToken);
 }
 
 /// <summary>模板列表摘要。</summary>

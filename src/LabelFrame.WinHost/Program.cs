@@ -146,8 +146,6 @@ public static class Program
             // 迭代 23 附二拍板：启动装配时的加载失败透出（已安装列表「加载失败 err + 原因」）
             pluginLoad.Errors.ToDictionary(e => e.AssemblyPath, e => e.Error, StringComparer.OrdinalIgnoreCase)));
         builder.Services.AddSingleton<ZplImageEncoder>();
-        builder.Services.AddSingleton<IPrinterStatusProvider>(sp =>
-            sp.GetRequiredService<ITransportManager>().CurrentTransport as IPrinterStatusProvider ?? new UnsupportedStatusProvider());
         builder.Services.AddHostedService<JobPrintWorker>();
 
         var templateStore = new TemplateStore(options.TemplatesDbPath);

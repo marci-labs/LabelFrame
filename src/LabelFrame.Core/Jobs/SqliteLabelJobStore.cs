@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+﻿using LabelFrame.Core.Data;
 using Microsoft.Data.Sqlite;
 
 namespace LabelFrame.Core.Jobs;
@@ -39,22 +39,7 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
     /// <param name="databasePath">数据库文件路径（父目录不存在时自动创建）。</param>
     public SqliteLabelJobStore(string databasePath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
-
-        var fullPath = Path.GetFullPath(databasePath);
-        var directory = Path.GetDirectoryName(fullPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        _connectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = fullPath,
-            DefaultTimeout = 5,
-            Pooling = true,
-        }.ToString();
-        SqliteSupport.EnsureInitialized();
+        _connectionString = SqliteSupport.BuildConnectionString(databasePath);
     }
 
     /// <inheritdoc />
@@ -82,8 +67,8 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
             command.Parameters.AddWithValue("$id", job.Id);
             command.Parameters.AddWithValue("$requestId", job.RequestId);
             command.Parameters.AddWithValue("$status", job.Status.ToString());
-            command.Parameters.AddWithValue("$createdAt", FormatTime(job.CreatedAt));
-            command.Parameters.AddWithValue("$updatedAt", FormatTime(job.UpdatedAt));
+            command.Parameters.AddWithValue("$createdAt", SqliteSupport.Format(job.CreatedAt));
+            command.Parameters.AddWithValue("$updatedAt", SqliteSupport.Format(job.UpdatedAt));
             var inserted = await command.ExecuteNonQueryAsync(cancellationToken);
             if (inserted == 0)
             {
@@ -106,7 +91,7 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
             command.Parameters.AddWithValue("$index", item.Index);
             command.Parameters.AddWithValue("$status", item.Status.ToString());
             command.Parameters.AddWithValue("$zpl", item.Zpl);
-            command.Parameters.AddWithValue("$updatedAt", FormatTime(job.UpdatedAt));
+            command.Parameters.AddWithValue("$updatedAt", SqliteSupport.Format(job.UpdatedAt));
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
@@ -131,7 +116,7 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
             UPDATE jobs SET status = $status, updated_at = $updatedAt WHERE id = $id;
             """;
         command.Parameters.AddWithValue("$status", status.ToString());
-        command.Parameters.AddWithValue("$updatedAt", FormatTime(DateTimeOffset.UtcNow));
+        command.Parameters.AddWithValue("$updatedAt", SqliteSupport.Format(DateTimeOffset.UtcNow));
         command.Parameters.AddWithValue("$id", jobId);
         var affected = await command.ExecuteNonQueryAsync(cancellationToken);
         return affected == 0 ? null : await LoadJobCoreAsync(connection, jobId, cancellationToken);
@@ -156,7 +141,7 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
         command.Parameters.AddWithValue("$status", status.ToString());
         command.Parameters.AddWithValue("$errorCode", (object?)errorCode ?? DBNull.Value);
         command.Parameters.AddWithValue("$errorMessage", (object?)errorMessage ?? DBNull.Value);
-        command.Parameters.AddWithValue("$updatedAt", FormatTime(DateTimeOffset.UtcNow));
+        command.Parameters.AddWithValue("$updatedAt", SqliteSupport.Format(DateTimeOffset.UtcNow));
         command.Parameters.AddWithValue("$jobId", jobId);
         command.Parameters.AddWithValue("$itemId", itemId);
         var affected = await command.ExecuteNonQueryAsync(cancellationToken);
@@ -258,8 +243,8 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
             Id = reader.GetString(0),
             RequestId = reader.GetString(1),
             Status = Enum.Parse<LabelJobStatus>(reader.GetString(2)),
-            CreatedAt = ParseTime(reader.GetString(3)),
-            UpdatedAt = ParseTime(reader.GetString(4)),
+            CreatedAt = SqliteSupport.Parse(reader.GetString(3)),
+            UpdatedAt = SqliteSupport.Parse(reader.GetString(4)),
             Items = Array.Empty<LabelJobItem>(),
         };
 
@@ -298,15 +283,6 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
         };
     }
 
-    private async Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken)
-    {
-        var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        return connection;
-    }
-
-    private static string FormatTime(DateTimeOffset value) => value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
-
-    private static DateTimeOffset ParseTime(string value)
-        => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+    private Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken)
+        => SqliteSupport.OpenAsync(_connectionString, cancellationToken);
 }
