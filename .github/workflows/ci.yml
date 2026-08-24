@@ -1,0 +1,73 @@
+# 日常 CI（迭代 27）：push / PR 触发——dotnet 全量构建测试 + 前端 lint / 双模式测试 / 双模式构建。
+# 与 release.yml 的 test job 命令一致（不含打包 / 发布）；让主干回归在提交时即被发现，而不是发版时。
+name: ci
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同一分支的新推送取消未完成的旧运行（省配额；PR 场景尤其有效）
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '24'
+  PNPM_VERSION: '11.10.0'
+
+jobs:
+  check:
+    name: 构建与测试（dotnet + 前端）
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: dotnet restore
+        run: dotnet restore LabelFrame.slnx
+      - name: dotnet build
+        run: dotnet build LabelFrame.slnx -c Release --no-restore
+      - name: dotnet test
+        run: dotnet test LabelFrame.slnx -c Release --no-build --no-restore
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: 前端依赖
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      - name: 前端 lint
+        working-directory: web
+        run: pnpm lint
+      - name: 前端测试（client 模式）
+        working-directory: web
+        run: pnpm test
+      - name: 前端测试（server 模式）
+        working-directory: web
+        env:
+          VITE_UI_MODE: server
+        run: pnpm test
+      - name: 前端构建（client，含 tsc 类型检查）
+        working-directory: web
+        run: pnpm build
+      - name: 前端构建（server）
+        working-directory: web
+        env:
+          VITE_UI_MODE: server
+        run: pnpm build:server
