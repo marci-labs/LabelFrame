@@ -28,7 +28,7 @@ internal static class HostApi
         var remote = context.Connection.RemoteIpAddress;
         if (remote is null || !System.Net.IPAddress.IsLoopback(remote))
         {
-            return Results.Forbid();
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
 
         if (request is null || string.IsNullOrWhiteSpace(request.ServerUrl))
@@ -60,7 +60,7 @@ internal static class HostApi
         var remote = context.Connection.RemoteIpAddress;
         if (remote is null || !System.Net.IPAddress.IsLoopback(remote))
         {
-            return Results.Forbid();
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
 
         _ = Task.Run(async () =>

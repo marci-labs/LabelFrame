@@ -140,3 +140,7 @@ app.MapFallback(async context =>
 });
 
 await app.RunAsync();
+
+
+// WebApplicationFactory 集成测试入口（迭代 29：宿主专属端点 HTTP 测试）
+public partial class Program { }

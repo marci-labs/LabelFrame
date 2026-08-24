@@ -1,4 +1,4 @@
-using LabelFrame.Api;
+﻿using LabelFrame.Api;
 using LabelFrame.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -94,7 +94,7 @@ app.MapPost("/api/devices/{deviceId}/jobs/{jobId}/result", async (string deviceI
         return ex.Code switch
         {
             ServerErrorCodes.JobNotFound => Results.NotFound(new ErrorView(ex.Code, ex.Message)),
-            ServerErrorCodes.NotJobOwner => Results.Forbid(),
+            ServerErrorCodes.NotJobOwner => Results.StatusCode(StatusCodes.Status403Forbidden),
             _ => Results.Conflict(new ErrorView(ex.Code, ex.Message)),
         };
     }

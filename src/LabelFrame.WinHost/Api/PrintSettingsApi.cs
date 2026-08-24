@@ -20,7 +20,7 @@ public static class PrintSettingsApi
     {
         if (remoteIp is null || !IPAddress.IsLoopback(remoteIp))
         {
-            return Results.Forbid();
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
 
         if (request is null)
