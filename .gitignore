@@ -21,3 +21,6 @@ packaging/files*.wxs
 ## Visual Studio launch profiles
 **/Properties/launchSettings.json
 .pnpm-store/
+
+# 联调临时目录（迭代 23 联调测试产物：插件包/脚本/日志）
+.tmp/
