@@ -52,9 +52,17 @@ public sealed class JobPrintWorker : BackgroundService
         {
             try
             {
+                // 空转先轻量探测（EXISTS）：避免每 200ms 全量加载 Pending/Printing 作业（含 ZPL 文本）
+                if (!await _queue.HasPendingItemsAsync(stoppingToken))
+                {
+                    await Task.Delay(IdleDelay, stoppingToken);
+                    continue;
+                }
+
                 var next = await _queue.ClaimNextItemAsync(stoppingToken);
                 if (next is null)
                 {
+                    // 探测与领取之间被并发领走（挂起 / 取消等）——按空转处理
                     await Task.Delay(IdleDelay, stoppingToken);
                     continue;
                 }

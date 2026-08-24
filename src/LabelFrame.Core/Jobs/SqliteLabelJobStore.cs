@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.Data.Sqlite;
 
 namespace LabelFrame.Core.Jobs;
@@ -187,6 +187,19 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
     }
 
     /// <inheritdoc />
+    /// <inheritdoc />
+    public async Task<bool> HasPendingItemsAsync(CancellationToken cancellationToken = default)
+    {
+        // 轻量探测：EXISTS 只扫 job_items 状态行，不加载作业与 ZPL（打印 Worker 每 200ms 空转轮询用）
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT EXISTS(SELECT 1 FROM job_items WHERE status = $pending LIMIT 1);";
+        command.Parameters.AddWithValue("$pending", LabelJobItemStatus.Pending.ToString());
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is 1L or 1;
+    }
+
     public async Task<IReadOnlyList<LabelJob>> ListRecentAsync(int limit, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);

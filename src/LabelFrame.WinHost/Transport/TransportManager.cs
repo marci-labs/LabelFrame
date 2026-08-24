@@ -1,4 +1,4 @@
-using LabelFrame.Core.Transport;
+﻿using LabelFrame.Core.Transport;
 using LabelFrame.Core.Transport.Plugins;
 
 namespace LabelFrame.WinHost.Transport;
@@ -32,6 +32,10 @@ public sealed class TransportManager : ITransportManager
     private readonly ITransportPluginRegistry _registry;
     private readonly ITransportPluginContext _context;
     private readonly TextWriter _hostLogWriter;
+    // 并发防护：_config/_transport 被打印 Worker（每张发送）与 API 并发读，切换时写入——
+    // 读写经 _stateLock；ApplyAsync 整体再经 _applyLock 串行化（避免两个「先测试后生效」交错切换）
+    private readonly object _stateLock = new();
+    private readonly SemaphoreSlim _applyLock = new(1, 1);
     private TransportConfig _config;
     private IPrintTransport _transport;
 
@@ -62,10 +66,16 @@ public sealed class TransportManager : ITransportManager
     }
 
     /// <inheritdoc />
-    public TransportConfig CurrentConfig => _config;
+    public TransportConfig CurrentConfig
+    {
+        get { lock (_stateLock) return _config; }
+    }
 
     /// <inheritdoc />
-    public IPrintTransport CurrentTransport => _transport;
+    public IPrintTransport CurrentTransport
+    {
+        get { lock (_stateLock) return _transport; }
+    }
 
     /// <inheritdoc />
     public string ConfigFilePath { get; }
@@ -74,6 +84,19 @@ public sealed class TransportManager : ITransportManager
     public async Task<TransportChangeResult> ApplyAsync(TransportConfig config, bool testOnly, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(config);
+        await _applyLock.WaitAsync(cancellationToken);
+        try
+        {
+            return await ApplyCoreAsync(config, testOnly, cancellationToken);
+        }
+        finally
+        {
+            _applyLock.Release();
+        }
+    }
+
+    private async Task<TransportChangeResult> ApplyCoreAsync(TransportConfig config, bool testOnly, CancellationToken cancellationToken)
+    {
         // 旧格式（Mode + 平铺参数）→ 迁移为 pluginId + params（决策 #69）；再同步旧字段供兼容消费
         if (config.Params.Count == 0 && config.Mode != TransportMode.Log)
         {
@@ -109,10 +132,16 @@ public sealed class TransportManager : ITransportManager
             return new TransportChangeResult(true, $"连接测试成功：{Describe(config)}。", _config);
         }
 
-        _config = config;
-        _transport = candidate;
-        Persist(_config);
-        return new TransportChangeResult(true, $"已切换为 {Describe(_config)}。", _config);
+        TransportConfig applied;
+        lock (_stateLock)
+        {
+            _config = config;
+            _transport = candidate;
+            applied = _config;
+        }
+
+        Persist(applied);
+        return new TransportChangeResult(true, $"已切换为 {Describe(applied)}。", applied);
     }
 
     /// <summary>按插件参数规格校验：插件存在、必填、Int / Select 取值。</summary>

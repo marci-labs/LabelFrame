@@ -36,24 +36,16 @@ public sealed class ServerService
             throw new ServerException(ServerErrorCodes.InvalidRequest, "缺少 deviceId。");
         }
 
-        await _gate.WaitAsync(cancellationToken);
-        try
+        var now = DateTimeOffset.UtcNow;
+        var device = await _db.UpsertDeviceAsync(new Device
         {
-            var now = DateTimeOffset.UtcNow;
-            var device = await _db.UpsertDeviceAsync(new Device
-            {
-                Id = deviceId,
-                Name = string.IsNullOrWhiteSpace(name) ? deviceId : name,
-                RegisteredAt = now,
-                LastSeenAt = now,
-                LastIp = NormalizeIpText(lastIp),
-            }, cancellationToken);
-            return ToView(device, now);
-        }
-        finally
-        {
-            _gate.Release();
-        }
+            Id = deviceId,
+            Name = string.IsNullOrWhiteSpace(name) ? deviceId : name,
+            RegisteredAt = now,
+            LastSeenAt = now,
+            LastIp = NormalizeIpText(lastIp),
+        }, cancellationToken);
+        return ToView(device, now);
     }
 
     /// <summary>刷新设备心跳（长轮询通知端点用作在线保活）。设备未注册时抛出 DeviceNotFound。</summary>
@@ -127,6 +119,8 @@ public sealed class ServerService
             throw new ServerException(ServerErrorCodes.InvalidRequest, "缺少 labels（至少一张）。");
         }
 
+        // 门只覆盖提交路径：幂等 requestId 为「查询-再插入」两步，进程内串行化避免并发重放双双插入
+        //（DB 层 request_id UNIQUE 兜底跨进程重复）；注册 / 领取 / 回报路径无 check-then-act，已不再串行化
         await _gate.WaitAsync(cancellationToken);
         try
         {
@@ -167,55 +161,45 @@ public sealed class ServerService
     /// <summary>设备领取作业：刷新心跳并把该设备的 Pending 作业置为 Claimed。</summary>
     public async Task<IReadOnlyList<ClaimedJob>> ClaimPendingJobsAsync(string deviceId, string? lastIp = null, CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken);
-        try
+        // 并发安全由 DB 层保证（领取为单条 UPDATE ... RETURNING 原子操作），无需进程内串行化
+        if (await _db.GetDeviceAsync(deviceId, cancellationToken) is null)
         {
-            if (await _db.GetDeviceAsync(deviceId, cancellationToken) is null)
-            {
-                throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
-            }
+            throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
+        }
 
-            var now = DateTimeOffset.UtcNow;
-            await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken);
-            var jobs = await _db.ClaimPendingJobsAsync(deviceId, now, limit: 10, cancellationToken);
-            return jobs.Select(job => new ClaimedJob(
-                job.Id,
-                job.RequestId,
-                job.TotalItems,
-                System.Text.Json.JsonSerializer.Deserialize<JobPayload>(job.PayloadJson, RoutingJson.Options)!)).ToList();
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        var now = DateTimeOffset.UtcNow;
+        await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken);
+        var jobs = await _db.ClaimPendingJobsAsync(deviceId, now, limit: 10, cancellationToken);
+        return jobs.Select(job => new ClaimedJob(
+            job.Id,
+            job.RequestId,
+            job.TotalItems,
+            System.Text.Json.JsonSerializer.Deserialize<JobPayload>(job.PayloadJson, RoutingJson.Options)!)).ToList();
     }
 
     /// <summary>设备回报作业结果。</summary>
     public async Task<ServerJobView> ReportResultAsync(string deviceId, string jobId, ReportResultRequest report, CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken);
-        try
-        {
-            var job = await _db.GetJobAsync(jobId, cancellationToken)
+        var job = await _db.GetJobAsync(jobId, cancellationToken)
                 ?? throw new ServerException(ServerErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
-            if (job.TargetDeviceId != deviceId)
-            {
+        if (job.TargetDeviceId != deviceId)
+        {
                 throw new ServerException(ServerErrorCodes.NotJobOwner, $"设备 {deviceId} 不是作业 {jobId} 的领取者。");
-            }
+        }
 
-            // 幂等重放：终态作业直接返回
-            if (job.Status is ServerJobStatus.Completed or ServerJobStatus.Failed)
-            {
+        // 幂等重放：终态作业直接返回
+        if (job.Status is ServerJobStatus.Completed or ServerJobStatus.Failed)
+        {
                 return await ToJobViewAsync(job, cancellationToken);
-            }
+        }
 
-            if (job.Status != ServerJobStatus.Claimed)
-            {
+        if (job.Status != ServerJobStatus.Claimed)
+        {
                 throw new ServerException(ServerErrorCodes.InvalidTransition, $"作业 {jobId} 当前状态 {job.Status} 不允许回报结果。");
-            }
+        }
 
-            var isCompleted = string.Equals(report.Status, "Completed", StringComparison.OrdinalIgnoreCase);
-            var updated = await _db.UpdateJobResultAsync(
+        var isCompleted = string.Equals(report.Status, "Completed", StringComparison.OrdinalIgnoreCase);
+        var updated = await _db.UpdateJobResultAsync(
                 jobId,
                 isCompleted ? ServerJobStatus.Completed : ServerJobStatus.Failed,
                 report.CompletedItems ?? 0,
@@ -223,12 +207,7 @@ public sealed class ServerService
                 report.ErrorMessage,
                 DateTimeOffset.UtcNow,
                 cancellationToken);
-            return await ToJobViewAsync(updated!, cancellationToken);
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        return await ToJobViewAsync(updated!, cancellationToken);
     }
 
     /// <summary>查询作业（含设备在线状态）。</summary>

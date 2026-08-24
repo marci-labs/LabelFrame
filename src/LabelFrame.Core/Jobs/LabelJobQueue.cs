@@ -1,4 +1,4 @@
-namespace LabelFrame.Core.Jobs;
+﻿namespace LabelFrame.Core.Jobs;
 
 /// <summary>
 /// 作业队列：幂等提交、逐张状态、挂起 / 恢复 / 取消、批内顺序。
@@ -69,6 +69,10 @@ public sealed class LabelJobQueue
     /// <summary>按作业标识查询。</summary>
     public Task<LabelJob?> GetAsync(string jobId, CancellationToken cancellationToken = default)
         => _store.GetJobAsync(jobId, cancellationToken);
+
+    /// <summary>是否存在待打 Item（轻量探测，不加载作业；Worker 空转时先探测再走完整领取）。</summary>
+    public Task<bool> HasPendingItemsAsync(CancellationToken cancellationToken = default)
+        => _store.HasPendingItemsAsync(cancellationToken);
 
     /// <summary>
     /// 取下一个待打 Item：最旧 Pending 作业中序号最小的 Pending Item，

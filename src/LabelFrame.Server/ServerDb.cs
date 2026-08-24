@@ -246,6 +246,7 @@ public sealed class ServerDb
         => GetJobCoreAsync(requestId, byRequestId: true, cancellationToken);
 
     /// <summary>领取：把目标设备的 Pending 作业置为 Claimed，返回载荷。</summary>
+    /// <remarks>单条 UPDATE ... RETURNING 原子完成「圈定 + 置 Claimed」——并发领取 / 多实例下不会重复领取同一作业。</remarks>
     public async Task<IReadOnlyList<ServerJob>> ClaimPendingJobsAsync(
         string deviceId,
         DateTimeOffset now,
@@ -253,27 +254,36 @@ public sealed class ServerDb
         CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
-        var jobs = new List<ServerJob>();
+        List<string> claimedIds = [];
         await using (var command = connection.CreateCommand())
         {
             command.CommandText = """
-                SELECT id FROM server_jobs
-                WHERE status = $pending AND target_device_id = $deviceId
-                ORDER BY created_at, id LIMIT $limit;
+                UPDATE server_jobs
+                SET status = $claimed, claimed_at = $claimedAt
+                WHERE id IN (
+                    SELECT id FROM server_jobs
+                    WHERE status = $pending AND target_device_id = $deviceId
+                    ORDER BY created_at, id LIMIT $limit
+                )
+                RETURNING id;
                 """;
+            command.Parameters.AddWithValue("$claimed", ServerJobStatus.Claimed.ToString());
+            command.Parameters.AddWithValue("$claimedAt", Format(now));
             command.Parameters.AddWithValue("$pending", ServerJobStatus.Pending.ToString());
             command.Parameters.AddWithValue("$deviceId", deviceId);
             command.Parameters.AddWithValue("$limit", limit);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
-                jobs.Add((await GetJobCoreAsync(reader.GetString(0), byRequestId: false, cancellationToken))!);
+                claimedIds.Add(reader.GetString(0));
             }
         }
 
-        foreach (var job in jobs)
+        // Reader 关闭后再逐个加载载荷（同一连接，2 次查询替代原 1+N 条连接）
+        var jobs = new List<ServerJob>(claimedIds.Count);
+        foreach (var id in claimedIds)
         {
-            await SetJobClaimedAsync(connection, job.Id, now, cancellationToken);
+            jobs.Add((await LoadJobCoreAsync(connection, id, cancellationToken))!);
         }
 
         return jobs;
@@ -304,29 +314,46 @@ public sealed class ServerDb
         command.Parameters.AddWithValue("$finishedAt", Format(now));
         command.Parameters.AddWithValue("$id", jobId);
         var affected = await command.ExecuteNonQueryAsync(cancellationToken);
-        return affected == 0 ? null : await GetJobCoreAsync(jobId, byRequestId: false, cancellationToken);
+        if (affected == 0)
+        {
+            return null;
+        }
+
+        await using var reload = connection.CreateCommand();
+        reload.CommandText = "SELECT id FROM server_jobs WHERE id = $id LIMIT 1;";
+        reload.Parameters.AddWithValue("$id", jobId);
+        var reloadedId = await reload.ExecuteScalarAsync(cancellationToken) as string;
+        return reloadedId is null ? null : await LoadJobCoreAsync(connection, reloadedId, cancellationToken);
     }
 
-    /// <summary>作业列表（按创建时间倒序）。</summary>
     /// <summary>作业列表（按创建时间倒序；迭代 22：可选 deviceId 过滤——客户端只看自己的作业，服务端 UI 不传看全部）。</summary>
     public async Task<IReadOnlyList<ServerJob>> ListJobsAsync(int limit = 100, string? deviceId = null, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
-        var jobs = new List<ServerJob>();
-        await using var command = connection.CreateCommand();
-        command.CommandText = string.IsNullOrWhiteSpace(deviceId)
-            ? "SELECT id FROM server_jobs ORDER BY created_at DESC, id LIMIT $limit;"
-            : "SELECT id FROM server_jobs WHERE target_device_id = $deviceId ORDER BY created_at DESC, id LIMIT $limit;";
-        command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 500));
-        if (!string.IsNullOrWhiteSpace(deviceId))
+        List<string> ids = [];
+        await using (var command = connection.CreateCommand())
         {
-            command.Parameters.AddWithValue("$deviceId", deviceId);
+            command.CommandText = string.IsNullOrWhiteSpace(deviceId)
+                ? "SELECT id FROM server_jobs ORDER BY created_at DESC, id LIMIT $limit;"
+                : "SELECT id FROM server_jobs WHERE target_device_id = $deviceId ORDER BY created_at DESC, id LIMIT $limit;";
+            command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 500));
+            if (!string.IsNullOrWhiteSpace(deviceId))
+            {
+                command.Parameters.AddWithValue("$deviceId", deviceId);
+            }
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                ids.Add(reader.GetString(0));
+            }
         }
 
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
+        // Reader 关闭后在同一连接逐个加载（消除原 1+N 次连接的 N+1）
+        var jobs = new List<ServerJob>(ids.Count);
+        foreach (var id in ids)
         {
-            var job = await GetJobCoreAsync(reader.GetString(0), byRequestId: false, cancellationToken);
+            var job = await LoadJobCoreAsync(connection, id, cancellationToken);
             if (job is not null)
             {
                 jobs.Add(job);
@@ -360,16 +387,6 @@ public sealed class ServerDb
         command.Parameters.AddWithValue("$key", key);
         var id = await command.ExecuteScalarAsync(cancellationToken) as string;
         return id is null ? null : await LoadJobCoreAsync(connection, id, cancellationToken);
-    }
-
-    private static async Task SetJobClaimedAsync(SqliteConnection connection, string jobId, DateTimeOffset now, CancellationToken cancellationToken)
-    {
-        await using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE server_jobs SET status = $status, claimed_at = $claimedAt WHERE id = $id;";
-        command.Parameters.AddWithValue("$status", ServerJobStatus.Claimed.ToString());
-        command.Parameters.AddWithValue("$claimedAt", Format(now));
-        command.Parameters.AddWithValue("$id", jobId);
-        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task<ServerJob?> LoadJobCoreAsync(SqliteConnection connection, string jobId, CancellationToken cancellationToken)
