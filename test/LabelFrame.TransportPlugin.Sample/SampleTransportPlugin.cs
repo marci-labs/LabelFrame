@@ -1,4 +1,4 @@
-using LabelFrame.Core.Transport;
+﻿using LabelFrame.Core.Transport;
 using LabelFrame.Core.Transport.Plugins;
 
 namespace LabelFrame.TransportPlugin.Sample;
@@ -29,11 +29,11 @@ public sealed class SampleTransportPlugin : ITransportPlugin
     };
 
     /// <inheritdoc />
-    public string Describe(TransportPluginParameters p) => $"SAMPLE({p.GetString("prefix", "SAMPLE")})";
+    public string Describe(TransportPluginParameters parameters) => $"SAMPLE({parameters.GetString("prefix", "SAMPLE")})";
 
     /// <inheritdoc />
-    public IPrintTransport Create(TransportPluginParameters p, ITransportPluginContext context)
-        => new SamplePrintTransport(context, p.GetString("prefix", "SAMPLE"));
+    public IPrintTransport Create(TransportPluginParameters parameters, ITransportPluginContext context)
+        => new SamplePrintTransport(context, parameters.GetString("prefix", "SAMPLE"));
 }
 
 /// <summary>示例传输：发送写一行到宿主日志；连接测试恒成功；状态恒在线。</summary>

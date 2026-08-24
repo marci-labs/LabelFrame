@@ -1,0 +1,40 @@
+# LabelFrame 代码规范（analyzer 相关；格式化不做强制）
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{cs,csproj,props,slnx}]
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2
+
+# ---- C# / .NET 分析器严重度（latest-recommended 基线上的项目级豁免）----
+[*.cs]
+
+# 应用层（宿主 / API 边界）不要求 ConfigureAwait：无同步上下文的 ASP.NET Core / 后台服务
+dotnet_diagnostic.CA2007.severity = none
+
+# 边界代码有意兜底 catch Exception（转 400/500 + 日志），见 GlobalExceptionHandler 与上传端点
+dotnet_diagnostic.CA1031.severity = suggestion
+
+# 字符串比较显式 culture：中文场景默认 Ordinal 豁免提示级
+dotnet_diagnostic.CA1310.severity = suggestion
+
+# LoggerMessage 源生成：本应用日志量级（逐张打印 / 管理操作）下收益边际，
+# 全量改造几十处调用点的维护成本不划算；新增热路径日志建议参考 GlobalExceptionHandler 的源生成写法
+dotnet_diagnostic.CA1848.severity = suggestion
+dotnet_diagnostic.CA1873.severity = suggestion
+
+# ---- 测试项目豁免 ----
+# 测试方法命名约定 Method_should_expected_behavior（下划线分隔），全仓库统一
+[**/LabelFrame.*Tests/**]
+dotnet_diagnostic.CA1707.severity = none
+# Assert.Equal(new[]{...}) 惯用写法
+dotnet_diagnostic.CA1861.severity = none

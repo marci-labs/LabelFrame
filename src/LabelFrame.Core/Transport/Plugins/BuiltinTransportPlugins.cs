@@ -1,4 +1,4 @@
-using LabelFrame.Core.Transport;
+﻿using LabelFrame.Core.Transport;
 
 namespace LabelFrame.Core.Transport.Plugins;
 
@@ -57,12 +57,12 @@ public sealed class Tcp9100TransportPlugin : ITransportPlugin
     };
 
     /// <inheritdoc />
-    public string Describe(TransportPluginParameters p) => $"TCP {p.GetString("host", "?")}:{p.GetInt("port", 9100)}";
+    public string Describe(TransportPluginParameters parameters) => $"TCP {parameters.GetString("host", "?")}:{parameters.GetInt("port", 9100)}";
 
     /// <inheritdoc />
-    public IPrintTransport Create(TransportPluginParameters p, ITransportPluginContext context)
+    public IPrintTransport Create(TransportPluginParameters parameters, ITransportPluginContext context)
         => new Tcp9100PrintTransport(
-            p.GetString("host") ?? throw new ArgumentException("缺少打印机地址（host）。"),
-            p.GetInt("port", 9100),
-            TimeSpan.FromSeconds(p.GetInt("timeoutSeconds", 10)));
+            parameters.GetString("host") ?? throw new ArgumentException("缺少打印机地址（host）。"),
+            parameters.GetInt("port", 9100),
+            TimeSpan.FromSeconds(parameters.GetInt("timeoutSeconds", 10)));
 }

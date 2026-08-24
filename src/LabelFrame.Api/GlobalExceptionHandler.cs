@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace LabelFrame.Api;
 
 /// <summary>全局异常处理：未捕获异常统一 500 + ErrorView（问题码 + 中文提示），不向客户端透出堆栈与内部路径。</summary>
-public sealed class GlobalExceptionHandler : IExceptionHandler
+public sealed partial class GlobalExceptionHandler : IExceptionHandler
 {
     private readonly ILogger<GlobalExceptionHandler> _logger;
 
@@ -15,6 +15,9 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     {
         _logger = logger;
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "未处理异常：{Method} {Path}")]
+    private static partial void LogUnhandled(ILogger logger, Exception exception, string method, string path);
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
@@ -24,7 +27,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             return true;
         }
 
-        _logger.LogError(exception, "未处理异常：{Method} {Path}", httpContext.Request.Method, httpContext.Request.Path);
+        LogUnhandled(_logger, exception, httpContext.Request.Method, httpContext.Request.Path.Value ?? string.Empty);
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
         await httpContext.Response.WriteAsJsonAsync(
             new ErrorView("LF_INTERNAL_001", "服务器内部错误，请查看服务端日志。"),

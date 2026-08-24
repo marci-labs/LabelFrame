@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using LabelFrame.Core.Layout;
 using LabelFrame.WinHost.Routing;
 
@@ -31,7 +31,7 @@ public class ServerJobPollerTests
             {
                 template = new
                 {
-                    contract = new { name = "location-label", version = "1.0", fields = new object[] { } },
+                    contract = new { name = "location-label", version = "1.0", fields = System.Array.Empty<object>() },
                     layout = new
                     {
                         name = "l", contractName = "location-label", contractVersion = "1.0", widthMm = 100, heightMm = 60,

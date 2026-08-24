@@ -1,10 +1,16 @@
-using LabelFrame.Core.Logs;
+﻿using LabelFrame.Core.Logs;
 
 namespace LabelFrame.Server;
 
 /// <summary>历史数据定期清理：删除超过保留期的终态作业与设备日志（迭代 18）。</summary>
-public sealed class DataCleanupService : BackgroundService
+public sealed partial class DataCleanupService : BackgroundService
 {
+    [LoggerMessage(Level = LogLevel.Error, Message = "历史数据清理失败。")]
+    private static partial void LogCleanupFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "历史数据清理完成：删除终态作业 {JobCount} 条、日志 {LogCount} 条。")]
+    private static partial void LogCleanupCompleted(ILogger logger, int jobCount, int logCount);
+
     private readonly ServerDb _db;
     private readonly SqliteLogStore _logStore;
     private readonly ServerOptions _options;
@@ -44,7 +50,7 @@ public sealed class DataCleanupService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "历史数据清理失败。");
+                LogCleanupFailed(_logger, ex);
             }
         }
     }
@@ -57,6 +63,6 @@ public sealed class DataCleanupService : BackgroundService
         var jobDeleted = await _db.DeleteTerminalJobsBeforeAsync(jobCutoff, cancellationToken);
         var logCutoff = now.AddDays(-Math.Max(0, _options.LogRetentionDays));
         var logDeleted = await _logStore.DeleteBeforeAsync(logCutoff, cancellationToken);
-        _logger.LogInformation("历史数据清理完成：删除终态作业 {JobCount} 条、日志 {LogCount} 条。", jobDeleted, logDeleted);
+        LogCleanupCompleted(_logger, jobDeleted, logDeleted);
     }
 }

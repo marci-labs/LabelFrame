@@ -4,7 +4,9 @@
 /// 作业队列：幂等提交、逐张状态、挂起 / 恢复 / 取消、批内顺序。
 /// 由单个打印 Worker 调用 <see cref="ClaimNextItemAsync"/> 取下一张并按序打印。
 /// </summary>
-public sealed class LabelJobQueue
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:类型名不应以后缀结尾",
+    Justification = "域类型语义即打印队列，命名直白优先")]
+public sealed class LabelJobQueue : IDisposable
 {
     private readonly ILabelJobStore _store;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -316,4 +318,7 @@ public sealed class LabelJobQueue
             _gate.Release();
         }
     }
+
+    /// <summary>释放内部信号量（宿主停机时由 DI 容器触发）。</summary>
+    public void Dispose() => _gate.Dispose();
 }

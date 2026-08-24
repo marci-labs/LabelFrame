@@ -1,4 +1,4 @@
-using LabelFrame.Core.Transport;
+﻿using LabelFrame.Core.Transport;
 using LabelFrame.Core.Transport.Plugins;
 
 namespace LabelFrame.WinHost.Transport;
@@ -31,26 +31,26 @@ public sealed class ZebraTransportPlugin : ITransportPlugin
     };
 
     /// <inheritdoc />
-    public string Describe(TransportPluginParameters p)
+    public string Describe(TransportPluginParameters parameters)
     {
-        var kind = p.GetString("kind") ?? "Tcp";
+        var kind = parameters.GetString("kind") ?? "Tcp";
         return kind switch
         {
-            "Usb" => string.IsNullOrWhiteSpace(p.GetString("usbName")) ? "Zebra USB（自动发现）" : $"Zebra USB {p.GetString("usbName")}",
-            "Driver" => $"Zebra 驱动 {p.GetString("printerName") ?? "?"}",
-            _ => $"Zebra TCP {p.GetString("host", "?")}:{p.GetInt("port", 9100)}",
+            "Usb" => string.IsNullOrWhiteSpace(parameters.GetString("usbName")) ? "Zebra USB（自动发现）" : $"Zebra USB {parameters.GetString("usbName")}",
+            "Driver" => $"Zebra 驱动 {parameters.GetString("printerName") ?? "?"}",
+            _ => $"Zebra TCP {parameters.GetString("host", "?")}:{parameters.GetInt("port", 9100)}",
         };
     }
 
     /// <inheritdoc />
-    public IPrintTransport Create(TransportPluginParameters p, ITransportPluginContext context)
+    public IPrintTransport Create(TransportPluginParameters parameters, ITransportPluginContext context)
     {
-        var kind = Enum.TryParse<ZebraTransportKind>(p.GetString("kind"), ignoreCase: true, out var parsed) ? parsed : ZebraTransportKind.Tcp;
+        var kind = Enum.TryParse<ZebraTransportKind>(parameters.GetString("kind"), ignoreCase: true, out var parsed) ? parsed : ZebraTransportKind.Tcp;
         return new ZebraPrinterTransport(
             kind,
-            p.GetString("host") ?? string.Empty,
-            p.GetInt("port", 9100),
-            p.GetString("printerName") ?? string.Empty,
-            p.GetString("usbName") ?? string.Empty);
+            parameters.GetString("host") ?? string.Empty,
+            parameters.GetInt("port", 9100),
+            parameters.GetString("printerName") ?? string.Empty,
+            parameters.GetString("usbName") ?? string.Empty);
     }
 }

@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- 全仓共享构建设置：质量分析器基线（迭代 29）。
+       AndroidHost 为实验性、不在解决方案内，排除警告即错误；正式纳入（迭代 25）后收敛。 -->
+  <PropertyGroup>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <TreatWarningsAsErrors Condition="'$(MSBuildProjectName)' != 'LabelFrame.AndroidHost'">true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  </PropertyGroup>
+
+</Project>

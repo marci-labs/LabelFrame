@@ -1,4 +1,4 @@
-using LabelFrame.Core.Transport;
+﻿using LabelFrame.Core.Transport;
 using LabelFrame.Core.Transport.Plugins;
 
 namespace LabelFrame.WinHost.Transport;
@@ -22,13 +22,13 @@ public sealed class WinspoolTransportPlugin : ITransportPlugin
     };
 
     /// <inheritdoc />
-    public string Describe(TransportPluginParameters p)
-        => string.IsNullOrWhiteSpace(p.GetString("printerName"))
+    public string Describe(TransportPluginParameters parameters)
+        => string.IsNullOrWhiteSpace(parameters.GetString("printerName"))
             ? "WindowsDriver ?"
-            : $"WindowsDriver {p.GetString("printerName")}";
+            : $"WindowsDriver {parameters.GetString("printerName")}";
 
     /// <inheritdoc />
-    public IPrintTransport Create(TransportPluginParameters p, ITransportPluginContext context)
+    public IPrintTransport Create(TransportPluginParameters parameters, ITransportPluginContext context)
         => new RawPrinterTransport(
-            p.GetString("printerName") ?? throw new ArgumentException("缺少 Windows 打印机名（printerName）。"));
+            parameters.GetString("printerName") ?? throw new ArgumentException("缺少 Windows 打印机名（printerName）。"));
 }

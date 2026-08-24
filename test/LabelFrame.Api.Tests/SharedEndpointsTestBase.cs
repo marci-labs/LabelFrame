@@ -77,6 +77,7 @@ public abstract class SharedEndpointsTestBase : IDisposable
 
     public void Dispose()
     {
+        GC.SuppressFinalize(this);
         foreach (var entry in _apps)
         {
             entry.Client.Dispose();

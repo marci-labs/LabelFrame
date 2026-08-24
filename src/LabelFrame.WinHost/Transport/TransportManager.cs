@@ -27,7 +27,7 @@ public interface ITransportManager
 /// 同一时间只有单一连接生效；配置 pluginId + params 经传输插件注册表装配（内置 + 外部 DLL）；
 /// 切换成功才持久化到 %LOCALAPPDATA%\LabelFrame\connection.json（新格式，旧格式自动迁移）。
 /// </summary>
-public sealed class TransportManager : ITransportManager
+public sealed class TransportManager : ITransportManager, IDisposable
 {
     private readonly ITransportPluginRegistry _registry;
     private readonly ITransportPluginContext _context;
@@ -222,7 +222,7 @@ public sealed class TransportManager : ITransportManager
         {
             case TransportMode.Tcp:
                 config.Params["host"] = options.TcpHost;
-                config.Params["port"] = options.TcpPort.ToString();
+                config.Params["port"] = options.TcpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 break;
             case TransportMode.WindowsDriver:
                 config.Params["printerName"] = options.PrinterName;
@@ -232,7 +232,7 @@ public sealed class TransportManager : ITransportManager
                 if (options.ZebraKind == ZebraTransportKind.Tcp)
                 {
                     config.Params["host"] = options.TcpHost;
-                    config.Params["port"] = options.TcpPort.ToString();
+                    config.Params["port"] = options.TcpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 }
                 else if (options.ZebraKind == ZebraTransportKind.Driver)
                 {
@@ -317,4 +317,11 @@ public sealed class TransportManager : ITransportManager
             _hostLogWriter.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 连接配置持久化失败（{ConfigFilePath}）：{ex.Message}");
         }
     }
+    /// <summary>释放切换串行锁（宿主停机时由 DI 容器触发）。</summary>
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+        _applyLock.Dispose();
+    }
+
 }

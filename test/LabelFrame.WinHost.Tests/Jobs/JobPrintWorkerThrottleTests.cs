@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Transport;
@@ -98,10 +98,9 @@ public class JobPrintWorkerThrottleTests
             new FakeTransportManager(transport),
             loggerFactory.CreateLogger<JobPrintWorker>(),
             printSettings);
-        IHostedService hosted = worker;
         try
         {
-            await hosted.StartAsync(CancellationToken.None);
+            await worker.StartAsync(CancellationToken.None);
 
             var jobIds = new List<string>();
             for (var i = 0; i < jobSizes.Length; i++)
@@ -121,7 +120,7 @@ public class JobPrintWorkerThrottleTests
             var sentCounts = throttleMessages
                 .Select(m => Regex.Match(m, "已发送 (\\d+) 张"))
                 .Where(m => m.Success)
-                .Select(m => int.Parse(m.Groups[1].Value))
+                .Select(m => int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture))
                 .ToList();
             return new WorkerRunResult(
                 transport.SendOffsetsMs.ToList(),
@@ -130,7 +129,7 @@ public class JobPrintWorkerThrottleTests
         }
         finally
         {
-            await hosted.StopAsync(CancellationToken.None);
+            await worker.StopAsync(CancellationToken.None);
             TryDelete(dbPath);
         }
     }

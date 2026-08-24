@@ -17,6 +17,9 @@ namespace LabelFrame.WinHost.Api;
 /// <summary>连接管理端点（迭代 15/22）：查询 / 切换 / 测试；单一连接生效，先测试后生效。</summary>
 internal static class TransportApi
 {
+    // 旧字段 availableModes 的固定取值（兼容旧前端；新代码用 availablePlugins）
+    private static readonly string[] LegacyModes = ["Log", "Tcp", "WindowsDriver", "Zebra"];
+
     public static IEndpointRouteBuilder MapTransportApi(this IEndpointRouteBuilder app)
     {
     // ---- 连接管理（迭代 15）：查询 / 切换 / 测试；单一连接生效，先测试后生效 ----
@@ -89,7 +92,7 @@ internal static class TransportApi
             new Dictionary<string, string>(config.Params, StringComparer.OrdinalIgnoreCase),
             registry.ListPlugins().Select(ToTransportPluginDescriptorDto).ToList(),
             config.Mode.ToString(),
-            new[] { "Log", "Tcp", "WindowsDriver", "Zebra" });
+            LegacyModes);
     }
 
     internal static TransportPluginDescriptorDto ToTransportPluginDescriptorDto(TransportPluginDescriptor plugin) => new(

@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
 
 namespace LabelFrame.WinHost.Tests.Routing;
@@ -22,11 +22,14 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
         return Task.FromResult(response);
     }
 
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions =
+        new(System.Text.Json.JsonSerializerDefaults.Web);
+
     public static HttpResponseMessage Json(object? body, HttpStatusCode status = HttpStatusCode.OK)
         => new(status)
         {
             Content = new StringContent(
-                System.Text.Json.JsonSerializer.Serialize(body, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)),
+                System.Text.Json.JsonSerializer.Serialize(body, JsonOptions),
                 Encoding.UTF8,
                 "application/json"),
         };

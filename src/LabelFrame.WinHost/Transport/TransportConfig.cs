@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace LabelFrame.WinHost.Transport;
@@ -82,7 +82,7 @@ public sealed class TransportConfig
         {
             case TransportMode.Tcp:
                 Params["host"] = TcpHost;
-                Params["port"] = TcpPort.ToString();
+                Params["port"] = TcpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 break;
             case TransportMode.WindowsDriver:
                 Params["printerName"] = PrinterName;
@@ -92,7 +92,7 @@ public sealed class TransportConfig
                 if (ZebraKind == ZebraTransportKind.Tcp)
                 {
                     Params["host"] = TcpHost;
-                    Params["port"] = TcpPort.ToString();
+                    Params["port"] = TcpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 }
                 else if (ZebraKind == ZebraTransportKind.Driver)
                 {

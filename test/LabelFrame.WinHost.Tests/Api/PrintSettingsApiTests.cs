@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
 using LabelFrame.WinHost.Api;
@@ -142,7 +142,7 @@ public class PrintSettingsApiTests
         return (context.Response.StatusCode, body);
     }
 
-    private static HttpContext CreateContext()
+    private static DefaultHttpContext CreateContext()
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -156,8 +156,10 @@ public class PrintSettingsApiTests
         return context;
     }
 
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
     private static async Task<PrintSettingsDto?> ReadJsonAsync((int StatusCode, string Body) response)
-        => JsonSerializer.Deserialize<PrintSettingsDto>(response.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        => JsonSerializer.Deserialize<PrintSettingsDto>(response.Body, JsonOptions);
 
     /// <summary>最小假认证服务：ForbidAsync 写 403（ForbidResult 执行所需，测试环境无真实认证）。</summary>
     private sealed class FakeAuthenticationService : IAuthenticationService

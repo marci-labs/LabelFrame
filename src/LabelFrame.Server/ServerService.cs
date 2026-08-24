@@ -6,7 +6,7 @@ namespace LabelFrame.Server;
 /// Server 业务服务：设备注册 / 心跳、作业定向投递（宿主轮询领取）、结果回报、集中查询。
 /// 设备离线时作业在 Server 暂存（Pending），上线轮询即领取。
 /// </summary>
-public sealed class ServerService
+public sealed class ServerService : IDisposable
 {
     /// <summary>在线窗口：超过该时长未心跳视为离线。</summary>
     public static readonly TimeSpan OnlineWindow = TimeSpan.FromSeconds(30);
@@ -318,4 +318,7 @@ public sealed class ServerService
 
         return request.Template;
     }
+
+    /// <summary>释放内部信号量（宿主停机时由 DI 容器触发）。</summary>
+    public void Dispose() => _gate.Dispose();
 }
