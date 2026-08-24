@@ -136,77 +136,66 @@ flowchart LR
 | 71 | 客户端下载分发（迭代 22，2026-08-17） | 服务端 `client-packages` 目录（`LABELFRAME_SERVER_CLIENT_PACKAGES` 可覆盖）+ GET（列表）/ POST（上传）/ GET（下载）/ DELETE API（文件名路径穿越防护）；目录直放文件与页面上传都支持（决策 3A）；Server UI 新增「客户端下载」页；客户端设置「更新与安装包」默认从服务端获取；Ubuntu / Docker compose 挂载 `./client-packages:/var/lib/labelframe/server/client-packages` | 安装包集中分发、管理员可维护；客户端更新默认走服务端（不依赖外部渠道）；无鉴权（沿用局域网模型，风险记录） |
 | 72 | 插件包分发闭环（迭代 23，2026-08-17） | 插件包 = zip（根 `manifest.json`：pluginId/name/version 必填 + 可选 description/author/minHostVersion）+ 插件 DLL，后缀 `.lfplugin`；服务端独立 `plugin-packages` 目录 + `/api/plugin-packages`（列表含元数据与 valid/invalid 状态、上传即校验、路径穿越防护，`LABELFRAME_SERVER_PLUGIN_PACKAGES` 可覆盖，Docker 挂载 `./plugin-packages`）；客户端安装到 `plugins/<pluginId>/` 每插件一目录（决策 3A），设置页「插件管理」卡片安装 / 卸载，与「更新与安装包」UI 并列（决策 7A）；三层校验（zip 完整性 + manifest 必填 + 临时 ALC 预检核对插件 id，内置插件 id 拒绝，决策 5A/6A）；覆盖安装允许、不做版本比较（决策 4A）；包大小上限 64MB；不做签名（局域网无鉴权模型，风险记录） | 厂商插件包可经服务端集中分发、客户端界面安装 / 卸载（重启生效），形成完整闭环；后续厂商打印机插件（如精成）可直接用该通道分发 |
 | 73 | 外部插件字节加载（迭代 23，2026-08-17） | `PluginDirectoryLoader` 由 `LoadFromAssemblyPath` 改为 `LoadFromStream` 字节加载（依赖解析回退默认上下文 / 包内伴生 DLL 字节加载）——Windows 下不锁插件 DLL 文件：「卸载 = 删除插件文件 + 重启生效」与覆盖安装真正可用（LoadFromAssemblyPath 会锁文件，已加载插件无法删除）；运行中进程继续使用内存镜像，重启后按新文件装配 | 卸载 / 覆盖安装不再被文件锁卡死（联调冒烟实证）；副作用：插件 `Assembly.Location` 为空（字节加载），插件自定位资源需改用上下文数据目录（`ITransportPluginContext.DataDirectory`），文档注明 |
-| 74 | 客户端批次作业（Batch Print，迭代 24，2026-08-18） | WinHost 新增批次节流：PrintSettings（默认 关 / batchSize 10 / batchIntervalMs 500；读取 Normalize 缺失 / 损坏 / 越界回默认值；保存校验 batchSize≥1、batchIntervalMs≥0）+ PrintSettingsStore（%LOCALAPPDATA%\LabelFrame\print-settings.json，原子写）+ GET/POST /api/host/print-settings（仅回环可写、保存即生效、单例 lock 跨线程可见）；JobPrintWorker「发送前暂停（claim-then-delay）」——领取下一张后、SendAsync 前按 BatchPrintPolicy.ShouldPauseBeforeSend（enabled && 已发送数满批次倍数）wait Task.Delay(batchIntervalMs)，计数内存态、跨作业全局累计、不持久化；本机 + 服务端作业统一生效，测试页直发不计入；WinHost 引入 Serilog 文件日志（Serilog.AspNetCore → %LOCALAPPDATA%\LabelFrame\logs\app-20260818.log，RollingInterval.Day）供批间间隔冒烟验证，host.log 通道不动 | 大批量控制打印节奏 / 减轻打印机压力；不拆作业、队列 / 幂等 / 挂起恢复 / 重打语义零改动；服务端进度仍为终态一次（增量进度回报未决 Q2，届时再讨论契约） |- 业界参考：Figma（视口缩放 + 参考线）、BarTender Auto-Fit（文本适应多模式）、Cleverence Label（Shrink to fit + 最小字高）、Konva snapping 库（参考线吸附）。
+| 74 | 客户端批次作业（Batch Print，迭代 24，2026-08-18） | WinHost 新增批次节流：PrintSettings（默认 关 / batchSize 10 / batchIntervalMs 500；读取 Normalize 缺失 / 损坏 / 越界回默认值；保存校验 batchSize≥1、batchIntervalMs≥0）+ PrintSettingsStore（%LOCALAPPDATA%\LabelFrame\print-settings.json，原子写）+ GET/POST /api/host/print-settings（仅回环可写、保存即生效、单例 lock 跨线程可见）；JobPrintWorker「发送前暂停（claim-then-delay）」——领取下一张后、SendAsync 前按 BatchPrintPolicy.ShouldPauseBeforeSend（enabled && 已发送数满批次倍数）wait Task.Delay(batchIntervalMs)，计数内存态、跨作业全局累计、不持久化；本机 + 服务端作业统一生效，测试页直发不计入；WinHost 引入 Serilog 文件日志（Serilog.AspNetCore → %LOCALAPPDATA%\LabelFrame\logs\app-20260818.log，RollingInterval.Day）供批间间隔冒烟验证，host.log 通道不动 | 大批量控制打印节奏 / 减轻打印机压力；不拆作业、队列 / 幂等 / 挂起恢复 / 重打语义零改动；服务端进度仍为终态一次（增量进度回报未决 Q2，届时再讨论契约） |
 | 75 | API 契约与端点共享库（迭代 27，2026-08-25） | 新增 `LabelFrame.Api`：Server / WinHost 重复的 DTO（SubmitJobRequest / TemplateDto / LabelDto / TemplatePackageDto / PreviewRequest / PushLogRequest / ExcelTemplate* / ErrorView）与模板 / 调试出图 / Excel / 日志端点收敛为共享实现（端点经 Options 传入各自错误码前缀，两宿主对外错误码不变）；xlsx 文本解析下沉 Core（ExcelTableReader），两宿主移除 TemplateFrame.Excel.Simple 直接引用 | 一处修复两端生效（AndroidHost 后续可复用）；共享后行为统一——WinHost 预览 DPI 取宿主配置并统一 Skia 同源渲染、数据缺省回退 testData；模板不存在错误码新增 LF_TPL_001（WinHost 原误用 LF_JOB_001，Server 保持 LF_SRV_006）；ErrorView 统一 Code / Message / FieldKey（Server 原两字段，向后兼容）；render-image(s) 图片解析 = base64 附带优先、按名回退模板库 |
 | 76 | 日常 CI（迭代 27，2026-08-25） | 新增 `.github/workflows/ci.yml`：push master / PR 触发，dotnet restore / build / test + 前端 lint / 双模式测试 / 双模式构建（命令与 release.yml test job 一致）；同分支新推送取消旧运行；不改动发布流水线 | 主干回归在提交时即被发现（此前唯一工作流仅 v* tag 触发，是评审发现的最大质量关卡缺口）；AGENTS「非 CI 迭代不修改 CI 工作流」约束下，本项经用户批准的 P0 治理清单执行 |
 | 77 | 数据层并发模型（迭代 28，2026-08-25） | 服务端领取 = 单条 `UPDATE ... RETURNING`（原子圈定 + 置 Claimed）；ServerService 信号量收窄到仅提交路径（requestId 幂等「查询-再插入」，DB request_id UNIQUE 兜底跨进程）；注册（单条 UPSERT）/ 领取 / 回报不再进程内串行化；WinHost 打印 Worker 空转改为 `HasPendingItemsAsync`（EXISTS）轻量探测后再走完整领取；TransportManager 配置 / 实例读写加锁、ApplyAsync 串行化 | 多设备并发操作不再全局排队；领取在多实例 / 并发下不重复（原 SELECT-后-UPDATE 无事务）；空闲时不再每 200ms 全量加载作业（含 ZPL） |
 | 78 | 全局异常处理与错误契约（迭代 28，2026-08-25） | 两宿主接入共享 `GlobalExceptionHandler`：未捕获异常统一 500 + ErrorView（LF_INTERNAL_001 + 中文提示），不透出堆栈 / 内部路径；上传端点「catch(Exception)→400 且透出 ex.Message」改为确定性错误 400、意外故障 500；render 端点 base64 非法 400 + 中文原因（原裸 500 空响应体） | 状态码语义不失真（服务端故障不再误报 4xx）、不泄露内部信息；前端收到的错误形状统一（code / message / fieldKey） |
 | 79 | 安全边界：局域网信任模型（迭代 28，2026-08-25） | 明确决策：定位内网部署，Server / WinHost API 不做鉴权（沿用决策 #62/#71/#72 的局域网模型）；插件包不加下载哈希校验——三层校验（zip 完整性 + manifest + ALC 预检）已覆盖传输损坏，而同信道哈希对主动篡改无防护意义，真实防护需签名 | 攻击面记录：局域网内任何主机可上传插件包 / 安装包（客户端会下载并执行插件 DLL）、可提交作业、可读日志。缓解 = 部署边界（内网 / 防火墙）+ 插件安装仍需本机界面操作 + 作业只投递到已注册设备。升级触发条件：跨网段 / 公网暴露、陌生第三方插件分发 → 先加插件包签名（manifest 加签名块 + 客户端验签），API 鉴权（token）次之 |
 | 80 | 程序优化批次：SQLite WAL + 数据层基建 + 质量门禁（迭代 29，2026-08-25） | ① 全库连接启用 WAL（公共 SqliteSupport.OpenAsync 统一 PRAGMA，不可用静默回退）+ 四存储连接串 / 打开 / 时间格式化收拢公共 LabelFrame.Core.Data.SqliteSupport；② AnalysisLevel=latest-recommended + 警告即错误（AndroidHost 实验性除外），豁免逐项注明理由（CA2007/CA1031/CA1848/CA1873 + 测试目录 CA1707/CA1861）；③ 覆盖率只收集不设门禁（首份基线：Server 88% / Api 63% / WinHost 59% / Core 49% / Rendering 31%，类级均值） | WAL 下读写并发不再互阻（Server 长轮询 + 提交并发受益）；分析器清零过程顺带真修——ZPL 输出固定 InvariantCulture、三处信号量持有者实现 IDisposable、Forbid() 依赖认证设施改显式 403（原运行时 500）、UseExceptionHandler 配套 AddProblemDetails（原宿主启动即崩，集成测试发现）；死代码 LabelPreviewRenderer（GDI 预览）移除、Rendering 收敛单 TFM |
-- 原型 v3（2026-08-09）：画布 = 输入尺寸 + 四周 10mm 留白，标尺以 mm 覆盖全画布并跟随画布；画布平移 clamp 不越界；「实际大小」= 1mm=8 点（203dpi 打印比例）；文本溢出新增「不限制高度」；修复 HTML5 拖入坐标（改用 clientX/Y 几何换算，不依赖 Konva 指针状态）。
-- 原型 v3 核心修复（2026-08-09 第二轮）：stage 尺寸 = 逻辑尺寸 × 比例尺（Konva stage.scale 不改变 canvas 容器尺寸，原实现放大时内容被裁剪导致元素不可见 / 网格范围异常）；标尺 0 点与画布左缘对齐（左上角空块布局）；「适应窗口 / 实际大小」统一为同一比例尺的两个预设（设计时按点处理，需要真实比例时再换算点与 mm）。
-- 原型 v3 第三轮修复（2026-08-09）：控件不可见根因 = Konva 9.3 Text 无 clipFunc 导致 render 抛异常（改 Group clip + 未绑定占位）；标尺画进 Konva 与内容同坐标系（解决放大 + 平移后错位）；中键平移改用原生 DOM + document 级 mouseup（修复粘滞）。
-- 原型 v3 第四轮修复（2026-08-09）：吸附 / 定位统一逻辑坐标（getClientRect relativeTo layer，原绝对坐标在比例尺下偏差）；二维码同步 canvas 渲染；属性下拉 / 勾选补 commit；边框 / 内边距通用化；文本模式收敛为「缩小适应 / 溢出显示」两种（文本框 = 遮罩区域）。
-- 原型 v3 第五轮改进（2026-08-09）：字高独立于文本框（拉伸只改遮罩）；内边距拆上下 / 左右；填充默认固定值，字段填充 = 键名称 + 预览填充值；Ctrl+C / Ctrl+V 复制粘贴。
-- 原型 v3 第六轮改进（2026-08-09）：Ctrl+Z / Ctrl+Y 撤销恢复；字高调大才撑高文本框；吸附强化（边完全重合）；导出 / 导入设计到剪贴板（labelframe-web-design JSON 格式）；控件栏新增矩形控件（保存映射 region）；文本框基础属性新增高度字段。
-- 吸附落点修复（2026-08-09）：Konva 拖拽内部会用指针位置覆盖 dragmove 中设置的吸附位置，导致松手坐标偏离；dragend 时重新吸附再保存坐标。
-- 原型 v3 第七轮改进（2026-08-09）：矩形镂空（仅边框，打印无背景色）；图层面板（列表 z 序 / 点击选中同步 / 置顶上移下移置底 / Delete 删除）。
-- 原型 v3 第八轮修复（2026-08-09）：网格吸附兜底（无参考目标时贴最近 1mm 网格，消除小数偏移）；字段填充提示明确预览值仅画布显示、打印以外界数据为准。
-- 原型 v3 第九轮改进（2026-08-09）：移除适应窗口 / 实际大小按钮；新增 DPI 选择框（203 / 300）与「预览打印效果」——按 DPI 真实打印比例显示（scale = round(dpi/25.4) / 4），可平移 / 缩放，再点退出回到适应窗口。
-- 原型 v3 第九轮增强（2026-08-09）：预览 = 纯打印效果（同界面，不弹窗）——隐藏网格 / 标尺 / 内容区边界 / 选中框，元素与所有编辑操作锁定（属性面板 / 图层面板显示预览中提示），退出预览恢复。
-- 原型 v3 第九轮增强二（2026-08-09）：预览画布仅显示标签宽高定义的范围（去掉标尺区与 10mm 留白，元素按标签坐标直接渲染）。
-- 原型 v3 第十轮改进（2026-08-09）：文本框自动换行 + 行间距 + 字体选择；语义修正：单行 = 超宽缩小（或隐藏）；自动换行 = 按字高超右边界换行、超下边界隐藏（不缩小）；默认单行。
-- 文本垂直对齐（顶端 / 居中 / 底部）配合换行；支持无边框标签，靠位置 / 字体 / 字号 / 对齐区分信息层级。
-- 填充切换：字段填充 → 固定值时清空键名称；图层显示名称 = 固定值内容 /（键名）预览值 / 条码二维码带类型前缀；原型改为纯前端编辑器（移除后端按钮，导出 / 导入走 Ctrl+Shift+C/V，待桌面壳阶段再讨论与后端结合）。
-- 待用户本机验收后确定 UI 技术栈（Tauri 2 / Blazor Hybrid / 维持 WPF）；后端与公共契约不随 UI 选型变动。
-## 6. Server API 契约（迭代 3）
+## 5. API 概览
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | /api/devices | 设备注册 / 心跳（宿主轮询时也刷新） |
-| GET | /api/devices | 设备目录（含在线状态） |
-| POST | /api/jobs | 业务提交：`{ requestId, targetDeviceId, template, labels[] }`，幂等 |
-| GET | /api/jobs | 作业列表（集中可查） |
-| GET | /api/jobs/{jobId} | 作业详情（含设备在线状态） |
-| GET | /api/devices/{deviceId}/jobs/pending | 宿主领取定向作业（Pending → Claimed） |
-| POST | /api/devices/{deviceId}/jobs/{jobId}/result | 宿主回报结果（Completed / Failed + 计数 + 原因） |
-| GET | / | 测试入口（无业务系统提交打印） |
+错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验）；未捕获异常统一 500 + `LF_INTERNAL_001`。
+
+### 5.1 Server（默认 0.0.0.0:53961，无鉴权——局域网信任模型见决策 #79）
+
+| 分组 | 端点 |
+|---|---|
+| 设备 | `POST /api/devices`（注册 / 心跳）、`GET /api/devices`（目录）、`GET /api/devices/by-ip/{ip}` |
+| 作业 | `POST /api/jobs`（requestId 幂等；templateName 引用模板库或自包含 template；targetDeviceId / targetIp 定向）、`GET /api/jobs?deviceId=`（历史，按设备过滤）、`GET /api/jobs/{jobId}` |
+| 投递 | `GET /api/devices/{id}/jobs/notify?timeout=`（长轮询通知 + 心跳保活）、`GET /api/devices/{id}/jobs/pending`（领取，Pending → Claimed 原子）、`POST /api/devices/{id}/jobs/{jobId}/result`（回报终态） |
+| 模板 | `POST/GET /api/templates`、`GET/DELETE /api/templates/{name}`、`GET /api/templates/{name}/export`、`POST /api/templates/import`、`POST /api/templates/{name}/preview` |
+| 调试出图 | `POST /api/print/render-image`（单张 PNG）、`POST /api/print/render-images`（批量 zip） |
+| 分发 | `/api/client-packages`（列表 / 上传 / 下载 / 删除）、`/api/plugin-packages`（同前，含 manifest 元数据与 valid 状态） |
+| Excel / 日志 | `POST /api/import/excel-template`（按契约生成模板）、`POST /api/import/excel`（解析表头 + 数据行）、`POST/GET /api/logs` |
+| 其他 | `GET /api/server/info`、`GET /healthz` |
 
 投递方式：宿主轮询（决策 #21）；设备离线作业暂存（决策 #22）。
-## 5. 风险与未决问题
 
-- 中文位图渲染的字体嵌入与 ^GF 数据量控制（迭代 2 展开）。
-- Android 前台服务在厂商 ROM 上的自启 / 保活差异（迭代 5 展开）。
-- 蓝牙打印的配对与重连策略（P1）。
-- 设备离线时作业语义：暂存还是拒绝（迭代 3 定）。
-- net48 版 WinHost 的技术细节（HttpListener、netstandard2.0 约束），有需求再展开。
-- 打印计数 / 库存联动：默认不做；如需，考虑事件接口（未决）。
-- ZPL 文本转义策略：`^FD` 数据中的 `^` / `~` / `_` 用 `^FH` 十六进制转义；中文文本迭代 1 直通，迭代 2 位图化（^GF）后不再依赖内置字体（迭代 2 展开）。
-- 契约字段格式（Pattern）校验：迭代 1 仅存元数据未执行；2026-08-17 列为未来事项（现阶段不处理，有真实需求再排）。
-- 内嵌中文字体文件：迭代 2 实现「优先加载内嵌/本地字体、回退系统字体（微软雅黑）」的机制；实际字体文件（开源中文 TTF，体积较大）待与用户确认后加入资源（未决）。
-- `^GF` 数据量：中文一行按 1bpp 十六进制展开约每字 1KB+，迭代 2 先不做压缩；如需优化（^GF 二进制/压缩模式、字库缓存）再排期（未决）。
-- TCP 9100 无法感知打印机缺纸/卡纸，迭代 2 以「发送异常 → 挂起」近似；真实缺纸语义待真实设备联调（迭代 2 验收时确认）。
-- SQLitePCLRaw 漏洞公告（GHSA-2m69-gcr7-jv3q，SQLite 原生库）：已升级 2.1.13 修复（2026-08-17，Core / Server / AndroidHost 同步升级，移除 NU1903 抑制，176 测试全绿）。
-- Zebra 模式要求 Win10+（Windows SDK 10.0.26100 投影）；Win7/8 只能用 TCP9100 / winspool raw 传输（未决）。
-- Server 暂存作业无过期策略：设备长期离线时作业堆积，需人工处理（迭代 3 暂定，后续可加过期/通知）。
-- Android PDA 宿主：迭代 5 曾因未装 .NET Android workload 受阻；2026-08-17 排入迭代 22 后又因新需求延后至迭代 25——安装 workload 后实施（本地 HTTP / JS 桥、TCP9100、注册轮询复用），真机验收。
-- Zebra SDK 3.0.3355 的 PrinterStatus 无公开状态字段；`~HS` 字段映射基于常见文档实现，均待真实设备联调确认（未决）。
-- AndroidHost 构建依赖：.NET Android workload、Android SDK 36、JDK 17（本机已配齐）；Android 16 起要求 16KB 页，SQLitePCLRaw 已升 2.1.13（2026-08-17），libe_sqlite3 的 16KB 适配待迭代 25 真机构建验证（未决）。
-- Android 12+ 后台启动前台服务受限，开机自启需用户在系统设置允许；厂商 ROM 保活差异（真机验收时确认）。
-- Excel 导入（迭代 9）拟用 `TemplateFrame.Excel.Simple`（决策 #32）：其为第三方包，构建需联网还原 `DocumentFormat.OpenXml 3.3.0`；版本 / 表名约定在实施时定稿（未决）。
-- 区域布局的 ZPL 实现：区域内文本对齐用 `^FB` 块（宽度 = 区域宽 - padding×2）；区域边框用 `^GB`；元素在区域内的位置由对齐参数计算。文本块宽度为 0 时不做块对齐（保持旧行为）。真实打印效果待设备抽查（未决）。
-- Studio 2.0 实时预览依赖本地渲染（共享库 `LabelFrame.Rendering`，GDI + ZXing），与打印端同坐标/同解析；拖拽节流刷新。字体渲染差异（GDI vs 打印机）以真机抽查为准（未决）。
-- Web 前端增强字段与后端契约的差距（hermes 交付报告决策 #6，已由迭代 13 解决，2026-08-10）：文本 `wrap / lineHeight / valign / fitMode / fontFamily`、条码 `displayValue / 码制`、二维码 `qrEcc / qrMargin` 等前端属性已通过迭代 13 契约扩展补齐后端字段（决策 #47，后端已实施）；`barcodeFormat` 固定 CODE128 不持久化；前端 convert.ts 字段映射已完成（commit 8294bef），文档已归档，用户测试验收待执行。
-- 其他业务应用按 IP 查找设备并触发打印（用户提出，已排期迭代 20，决策 #61/#62/#63）：服务端记录设备 `last_ip`、`GET /api/devices/by-ip/{ip}`、`POST /api/jobs` 支持 `targetIp`；业务系统用 deviceId（或 targetIp）+ templateName + labels 提交作业，服务端路由到对应客户端打印（PDA / PC 只要本机跑客户端服务即无差异）。IP 为便捷查找而非身份（DHCP / NAT / VPN 会变化，deviceId 仍是稳定键）；服务端不做打印机直连，「后端打印」= 后端触发、客户端执行（详见 docs/archive/ITERATION-20-SPEC.md）。
-- 传输插件化（2026-08-17 范围定稿，决策 #67-69，规格见 [docs/archive/ITERATION-22-SPEC.md](archive/ITERATION-22-SPEC.md)）：把连接方式（Log / TCP9100 / Windows 驱动 / Zebra SDK）抽象为传输插件——统一接口（连接 / 发送 / 状态 / 测试）+ 参数模型 + 注册表按需装配（配置指定插件与参数即启用，不编译进主程序）；第三方厂商可自研插件接入（TSPL / CPCL、蓝牙、云打印等）。与现有 `ITransport` 兼容演进，`connection.json` 旧格式自动映射；日志 / 状态上报复用现有通道；新厂商接入时先列计划再排期（迭代 23 精成打印机）。
-- 传输插件运行时热卸载 / 热替换（2026-08-17 记未决）：collectible ALC 卸载受依赖固定与线程安全问题限制，现阶段只做「删除插件文件 + 重启生效」；迭代 23（插件分发：上传 / 安装 / 卸载）仍沿用「安装 = 下载放入插件目录 + 重启生效、卸载 = 删除 + 重启生效」；如确有热卸载需求再评估。
-- 客户端批次作业（迭代 24，2026-08-18 **已完成**：前后端合入 master + 端到端联调附五通过 + Serilog 日志命名修复为 pp-20260818.log）：不拆作业、只在 JobPrintWorker 发送层节流（发送前暂停 claim-then-delay）；批次计数内存态、跨作业全局累计，服务重启清零（只影响节奏不影响正确性）；服务端作业进度仍 0%→100% 终态跳变（增量进度回报为独立跨端特性，未决 Q2，届时再讨论契约）；AndroidHost（PDA）批次延后至迭代 25；测试页直发不计入批次计数。- Niimbot 蓝牙打印机插件（2026-08-17 用户提出，排入迭代 24；2026-08-18 顺延至迭代 26，范围会话中细化）：补需求 P1「蓝牙传输」缺口（迭代 6 曾因蓝牙受阻）——按迭代 22 插件接口实现 Niimbot（小标蓝牙热敏标签打印机）传输插件（连接 / 发送 / 状态 / 测试），参数模型独立（蓝牙设备名 / 地址）；Windows 侧 BLE 实现方式（系统 BLE API / 第三方库）与指令集待调研；打包后经迭代 23 分发闭环安装；真机验收（连接 / 打印 / 状态 / 异常恢复）。
-- 传输插件分发（2026-08-17 迭代 23 完成，决策 #72/#73）：插件包上传服务端（独立 `plugin-packages` 目录 + `/api/plugin-packages`）+ 客户端设置页「插件管理」卡片安装 / 卸载（重启生效）；zip + manifest 格式、64MB 上限、三层校验、覆盖安装、与「更新与安装包」UI 并列；外部插件字节加载解决 Windows 文件锁（卸载 = 删文件 + 重启生效真正可用）。插件包签名 / 服务端鉴权仍为未决（正式对外分发再评估）。
-- 迭代 20 Server UI「仅在线设备可选」的提交竞态（K3，2026-08-11）：已拍板前端提交时现拉校验在线（掉线提示并禁止提交、作业不排队），属尽力而为，选择与提交之间仍有极小竞态窗口；如需彻底消除，需后端在 `SubmitJobAsync` 原子校验设备在线（离线即拒绝），将改变「设备离线作业暂存排队」语义（决策 #22），待后续迭代评估（未决）。
+### 5.2 WinHost（默认 127.0.0.1:53960，客户端本机）
 
-- 工程治理剩余项（2026-08-25 迭代 29 后更新）：WinHost 专属端点（连接 / 插件 / 机器级配置）的 HTTP 集成测试（需先抽 host builder，托盘 / 浏览器 / Environment.Exit 阻塞直接复用 Main；Server 侧已由 ServerEndpointsTests 全链路覆盖）；ServerService 提交幂等下沉 DB（现「进程内门 + 唯一索引兜底」对单进程部署完全正确，多实例需求出现再做，收益边际风险实质）；覆盖率门禁（数据已在 CI 收集，等测试规模再上台阶后评估阈值）；插件包签名（触发条件见决策 #79）。真机验收欠账集中管理：docs/ACCEPTANCE-BACKLOG.md。
-- 自签证书公开分发限制（2026-08-12）：自签证书无法消除公开下载的 SmartScreen「未知发布者」提示，仅内网 / 域环境（推送受信任根）有效；正式对外分发待购买 OV 代码签名证书后接入（未决）。
-- ghcr 包可见性：新容器包默认私有，首次发布后需手动设为 Public / 跟随仓库可见性（运维项，2026-08-12 未决）。已解决（2026-08-15）：组织包可见性不支持 REST API 修改（官方仅提供用户级包 update-visibility 端点，组织级 PATCH 返回 404），须先由组织管理员在「组织设置 → Packages」勾选允许公开包，再在包设置页 Danger Zone 改为 Public；已通过匿名 `docker pull` 验证。
+模板 / 调试出图 / Excel / 日志端点与 Server 完全一致（共享实现 `LabelFrame.Api`，宿主前缀错误码除外）。宿主专属：
 
-- CI 测试偶发失败的根因（2026-08-12）：① SQLitePCLRaw provider 初始化依赖首次使用顺序（并行测试类竞态）→ 测试进程 ModuleInitializer + 存储类自初始化；② 时区 / 字体 / 端口时序差异 → 断言改环境无关。已修复并纳入迭代 21 完成记录。
+| 分组 | 端点 |
+|---|---|
+| 作业 | `POST /api/jobs`（自包含模板，本地打印）、`GET /api/jobs?limit=`、`GET /api/jobs/{id}`、`POST /api/jobs/{id}/suspend|resume|cancel`、`POST /api/jobs/{id}/items/{index}/retry`（失败项重打） |
+| 连接 | `GET /api/transport`（当前连接 + 可用插件）、`POST /api/transport`（切换 / 测试，先测试后生效）、`GET /api/transport/plugins` |
+| 插件 | `GET /api/plugins/installed`、`POST /api/plugins/install`、`POST /api/plugins/uninstall`（安装 / 卸载重启生效） |
+| 机器级 | `GET/POST /api/host/config`（ServerUrl；仅回环可写）、`GET/POST /api/host/print-settings`（批次节流；仅回环可写）、`POST /api/host/shutdown`（仅回环） |
+| 打印机 | `GET /api/printer/status`、`POST /api/printer/test` |
+| 其他 | `GET /healthz`（含当前连接插件信息） |
 
+## 6. 风险与未决问题
+
+**真机 / 联调待确认**（集中管理见 [ACCEPTANCE-BACKLOG.md](ACCEPTANCE-BACKLOG.md)）：
+
+- Zebra `~HS` 状态字段映射与 SDK 3.x `PrinterStatus` 语义（`GET /api/printer/status` 展示准确性）待真实设备确认。
+- TCP 9100 无法感知缺纸 / 卡纸：以「发送异常 → 作业挂起」近似，真实缺纸语义待真机验证。
+- Android PDA 宿主（排期见 ROADMAP 迭代 25）：前台服务厂商 ROM 保活差异、Android 16 的 16KB 页适配（SQLitePCLRaw）待真机验证。
+
+**兼容性**：
+
+- Zebra SDK 要求 Win10+；Win7/8 只能用 tcp9100 / winspool。
+- net48 版 WinHost（HttpListener、netstandard2.0 约束）有真实需求再做。
+
+**暂不做（有需求再排）**：
+
+- 内嵌中文字体文件：加载机制已实现（内嵌优先、回退系统字体），实际字体文件（开源中文 TTF，体积大）未加入资源。
+- `^GF` 数据量优化（二进制 / 压缩模式、字库缓存）。
+- Server 暂存作业无过期策略（设备长期离线时需人工处理，可加过期 / 通知）。
+- 契约字段 Pattern 校验（仅存储元数据，不执行）。
+- 打印计数 / 库存联动（如需只提供事件接口）。
+- 传输插件运行时热卸载 / 热替换（卸载 = 删文件 + 重启生效）。
+- Server UI「仅在线设备可选」的提交竞态：现为前端提交时校验在线（尽力而为）；彻底消除需后端原子校验，会改变离线暂存语义（决策 #22），需要时再评估。
+- 工程治理遗留：WinHost 专属端点 HTTP 集成测试（需先抽 host builder）；ServerService 提交幂等下沉 DB（多实例需求出现再做）；覆盖率阈值门禁（数据已在 CI 收集）。
+- 插件包签名 / 服务端鉴权：升级触发条件见决策 #79；正式对外分发需购买 OV 代码签名证书（自签证书无法消除公开下载的 SmartScreen 提示）。

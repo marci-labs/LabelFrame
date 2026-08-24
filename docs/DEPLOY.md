@@ -83,7 +83,7 @@ curl http://127.0.0.1:53961/healthz   # {"service":"LabelFrame.Server","status":
 - 客户端设置页「插件管理」：浏览 → 安装（下载 → 三层校验 → 解压到 `%ProgramData%\LabelFrame\Client\plugins\<pluginId>\`）→ **重启客户端生效**；卸载 = 删目录 + 重启。外部插件字节加载，不锁文件。
 - 外部插件 DLL 也可手动放入 `%ProgramData%\LabelFrame\Client\plugins`（`LABELFRAME_PLUGINS` 可覆盖），单个加载失败只记日志不影响宿主。
 - 连接配置：`%LOCALAPPDATA%\LabelFrame\connection.json`，格式 `{ "pluginId": "tcp9100", "params": { "host": "...", "port": "9100" } }`；旧格式自动迁移。
-- 内置传输插件：`log`（模拟打印）、`tcp9100`、`winspool`（Windows 驱动）、`zebra`（Zebra Link-OS SDK）。插件接口见 DESIGN 决策 #67-69。
+- 内置传输插件：`log`（模拟打印）、`tcp9100`、`winspool`（Windows 驱动）、`zebra`（Zebra Link-OS SDK）。插件接口见 DESIGN「传输插件」相关决策记录。
 
 ## 7. 自动化发布与签名
 

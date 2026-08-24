@@ -10,6 +10,13 @@
 - **破坏性变更对照无影响**：项目仅用 Read / Write / SimpleExcelTable / SimpleExcelOptions 四个 API，2.0 签名不变、零代码改动；`Read` 损坏流异常统一为 `InvalidOperationException` + 本地化中文消息（导入端点 catch Exception，行为兼容且报错更友好）；基础包层面的破坏性变更（MissingElementPolicy 迁移 / 删除 6 类型等）未使用。
 - 变更范围：`Core` 与 `Studio` 两个 csproj 版本号；dotnet build 0 错误、dotnet test 315 全绿；2.0.0 已发布 nuget.org，CI 可正常还原。
 
+## 迭代 30 注释与文档清理（代码去过程化 / DESIGN 重构）· 2026-08-25
+
+- **代码注释去过程化**（60+ 文件约 165 处）：迭代号 / 决策号 / 章节引用等过程标记与历史叙述移除，注释只保留「是什么 / 为什么」；面向用户的错误消息去掉内部代号；标点残渣校验为零。
+- **DESIGN.md 重构**：章节顺序修正（4→6→5 → 1-6）；原型十轮过程笔记归档 docs/archive/DESIGN-PROTOTYPE-NOTES.md；API 契约刷新为现状（Server / WinHost 完整端点分组 + 错误响应约定）；「风险与未决问题」重写为仅现存项（已解决条目删除），全文 212→201 行。
+- DEPLOY / README / ACCEPTANCE-BACKLOG 过程引用清理。
+- dotnet build 0 警告 0 错误；dotnet test 298 全绿。
+
 ## 迭代 29 程序优化（SQLite WAL / 数据层基建 / 分析器门禁 / Server 集成测试 / 覆盖率收集）· 2026-08-25
 
 - **SQLite WAL 全库启用**（决策 #80）：读写并发不再互相阻塞（Server 长轮询 / 心跳 / 提交并发受益）；四存储（jobs / templates / logs / server）基建收拢公共 LabelFrame.Core.Data.SqliteSupport，Server 不再复制 provider 初始化；设备心跳合并单条 UPDATE。

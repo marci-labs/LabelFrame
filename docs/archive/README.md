@@ -8,3 +8,4 @@
 | FRONTEND-SPEC / FRONTEND-REPORT | Web 前端交付规格与验收报告（迭代 11） |
 | ARCHITECTURE-SPLIT | 服务端 / 客户端拆分方案（迭代 16，决策 #52） |
 | DEPLOY-0.14-ACCEPTANCE | 0.14 部署验收记录 |
+| DESIGN-PROTOTYPE-NOTES | Web 设计器原型的过程笔记（决策 #36-40 评估期） |
