@@ -5,6 +5,7 @@ using LabelFrame.Core.Transport;
 using LabelFrame.WinHost.Jobs;
 using LabelFrame.WinHost.Transport;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.Extensions.Logging;
 
 namespace LabelFrame.WinHost.Tests.Jobs;
@@ -87,7 +88,8 @@ public class JobPrintWorkerThrottleTests
         var store = new SqliteLabelJobStore(dbPath);
         await store.InitializeAsync();
         var queue = new LabelJobQueue(store);
-        var transport = new FakePrintTransport(TimeSpan.FromMilliseconds(1));
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var transport = new FakePrintTransport(TimeSpan.Zero, time);
         var printSettings = new PrintSettings();
         printSettings.Update(settings);
         var logProvider = new ListLoggerProvider();
@@ -97,7 +99,8 @@ public class JobPrintWorkerThrottleTests
             queue,
             new FakeTransportManager(transport),
             loggerFactory.CreateLogger<JobPrintWorker>(),
-            printSettings);
+            printSettings,
+            time);
         try
         {
             await worker.StartAsync(CancellationToken.None);
@@ -110,12 +113,12 @@ public class JobPrintWorkerThrottleTests
                 jobIds.Add(job.Id);
                 if (i < jobSizes.Length - 1)
                 {
-                    // 保证 CreatedAt 严格递增，队列按「最旧作业优先」领取
-                    await Task.Delay(30);
+                    // 保证 CreatedAt 严格递增（假时间推进 1ms 即可），队列按「最旧作业优先」领取
+                    time.Advance(TimeSpan.FromMilliseconds(1));
                 }
             }
 
-            Assert.True(await WaitForCompletionAsync(queue, jobIds, TimeSpan.FromSeconds(300)), "作业未在超时时间内完成。");
+            Assert.True(await WaitForCompletionAsync(queue, jobIds, time), "作业未在真实限时内完成（驱动循环异常）。");
             var throttleMessages = logProvider.Messages.Where(m => m.Contains("批次节流")).ToList();
             var sentCounts = throttleMessages
                 .Select(m => Regex.Match(m, "已发送 (\\d+) 张"))
@@ -134,11 +137,14 @@ public class JobPrintWorkerThrottleTests
         }
     }
 
-    private static async Task<bool> WaitForCompletionAsync(LabelJobQueue queue, IReadOnlyList<string> jobIds, TimeSpan timeout)
+    /// <summary>驱动循环：推进假时间（节流 / 空转间隔瞬时跨过）+ 真实让步（Worker 线程得以执行 IO）。</summary>
+    private static async Task<bool> WaitForCompletionAsync(LabelJobQueue queue, IReadOnlyList<string> jobIds, FakeTimeProvider time)
     {
-        var deadline = DateTime.UtcNow + timeout;
+        // 真实限时仅为安全网：假时间驱动下正常路径毫秒级完成
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
         while (DateTime.UtcNow < deadline)
         {
+            time.Advance(TimeSpan.FromMilliseconds(500));
             var allDone = true;
             foreach (var id in jobIds)
             {
@@ -155,7 +161,7 @@ public class JobPrintWorkerThrottleTests
                 return true;
             }
 
-            await Task.Delay(20);
+            await Task.Delay(5);
         }
 
         return false;
@@ -190,31 +196,16 @@ public class JobPrintWorkerThrottleTests
 
     private sealed record WorkerRunResult(List<double> Offsets, int ThrottleLogCount, List<int> SentCounts);
 
-    /// <summary>记录每次 SendAsync 开始时刻（相对 Stopwatch 起始）的假传输。</summary>
-    private sealed class FakePrintTransport : IPrintTransport
+    /// <summary>记录每次 SendAsync 开始时刻（相对 TimeProvider 起始，假时间轴）的假传输。</summary>
+    private sealed class FakePrintTransport(TimeSpan sendDelay, TimeProvider time) : IPrintTransport
     {
-        private readonly TimeSpan _sendDelay;
-        private readonly long _start = Stopwatch.GetTimestamp();
+        private readonly DateTimeOffset _start = time.GetUtcNow();
+        public List<double> SendOffsetsMs { get; } = [];
 
-        public FakePrintTransport(TimeSpan sendDelay)
+        public Task SendAsync(string zpl, CancellationToken cancellationToken = default)
         {
-            _sendDelay = sendDelay;
-        }
-
-        /// <summary>每次发送的开始时刻（毫秒，单调时钟）。</summary>
-        public List<double> SendOffsetsMs { get; } = new();
-
-        public async Task SendAsync(string command, CancellationToken cancellationToken = default)
-        {
-            lock (SendOffsetsMs)
-            {
-                SendOffsetsMs.Add(Stopwatch.GetElapsedTime(_start).TotalMilliseconds);
-            }
-
-            if (_sendDelay > TimeSpan.Zero)
-            {
-                await Task.Delay(_sendDelay, cancellationToken);
-            }
+            SendOffsetsMs.Add((time.GetUtcNow() - _start).TotalMilliseconds);
+            return Task.Delay(sendDelay, time, cancellationToken);
         }
     }
 

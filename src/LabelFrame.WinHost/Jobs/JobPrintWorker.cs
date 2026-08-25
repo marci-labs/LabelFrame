@@ -18,17 +18,25 @@ public sealed class JobPrintWorker : BackgroundService
     private readonly ITransportManager _transportManager;
     private readonly ILogger<JobPrintWorker> _logger;
     private readonly PrintSettings _printSettings;
+    private readonly TimeProvider _time;
 
     /// <summary>批次节流内存计数：发送成功张数，跨作业全局累计，不持久化（服务重启清零）。</summary>
     private int _sendsSinceBatch;
 
     /// <summary>创建打印 Worker。</summary>
     public JobPrintWorker(LabelJobQueue queue, ITransportManager transportManager, ILogger<JobPrintWorker> logger, PrintSettings printSettings)
+        : this(queue, transportManager, logger, printSettings, TimeProvider.System)
+    {
+    }
+
+    /// <summary>创建打印 Worker（注入 TimeProvider：节流测试用 FakeTimeProvider 确定性推进）。</summary>
+    public JobPrintWorker(LabelJobQueue queue, ITransportManager transportManager, ILogger<JobPrintWorker> logger, PrintSettings printSettings, TimeProvider timeProvider)
     {
         _queue = queue;
         _transportManager = transportManager;
         _logger = logger;
         _printSettings = printSettings;
+        _time = timeProvider;
     }
 
     /// <inheritdoc />
@@ -55,7 +63,7 @@ public sealed class JobPrintWorker : BackgroundService
                 // 空转先轻量探测（EXISTS）：避免每 200ms 全量加载 Pending/Printing 作业（含 ZPL 文本）
                 if (!await _queue.HasPendingItemsAsync(stoppingToken))
                 {
-                    await Task.Delay(IdleDelay, stoppingToken);
+                    await Task.Delay(IdleDelay, _time, stoppingToken);
                     continue;
                 }
 
@@ -63,7 +71,7 @@ public sealed class JobPrintWorker : BackgroundService
                 if (next is null)
                 {
                     // 探测与领取之间被并发领走（挂起 / 取消等）——按空转处理
-                    await Task.Delay(IdleDelay, stoppingToken);
+                    await Task.Delay(IdleDelay, _time, stoppingToken);
                     continue;
                 }
 
@@ -75,7 +83,7 @@ public sealed class JobPrintWorker : BackgroundService
                 if (BatchPrintPolicy.ShouldPauseBeforeSend(settings, sent))
                 {
                     _logger.LogInformation("批次节流：已发送 {SentCount} 张，暂停 {IntervalMs} 毫秒后继续。", sent, settings.BatchIntervalMs);
-                    await Task.Delay(settings.BatchIntervalMs, stoppingToken);
+                    await Task.Delay(TimeSpan.FromMilliseconds(settings.BatchIntervalMs), _time, stoppingToken);
                 }
 
                 _logger.LogInformation("开始打印作业 {JobId} 第 {Index} 张。", jobId, item.Index);
@@ -111,7 +119,7 @@ public sealed class JobPrintWorker : BackgroundService
                 _logger.LogError(ex, "打印 Worker 异常，稍后重试。");
                 try
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+                    await Task.Delay(TimeSpan.FromSeconds(1), _time, stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
