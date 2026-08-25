@@ -10,6 +10,14 @@
 - **破坏性变更对照无影响**：项目仅用 Read / Write / SimpleExcelTable / SimpleExcelOptions 四个 API，2.0 签名不变、零代码改动；`Read` 损坏流异常统一为 `InvalidOperationException` + 本地化中文消息（导入端点 catch Exception，行为兼容且报错更友好）；基础包层面的破坏性变更（MissingElementPolicy 迁移 / 删除 6 类型等）未使用。
 - 变更范围：`Core` 与 `Studio` 两个 csproj 版本号；dotnet build 0 错误、dotnet test 315 全绿；2.0.0 已发布 nuget.org，CI 可正常还原。
 
+## 迭代 33 性能 / 稳定性测试（微基准 / 端到端延迟 / soak / nightly CI）· 2026-08-25
+
+- **微基准**（test/LabelFrame.Benchmarks，BenchmarkDotNet + MemoryDiagnoser）：整链路单张 0.7-3.4ms、分配 1-5MB（面积线性）；50 张批量 36-170ms 远低于 1 秒预算。
+- **端到端延迟**（Trait=Perf，`scripts/run-perf.ps1 perf`）：Server 路由 p50 恒 3-4ms，**发现 SQLite 单写者在 20 并发设备下的 p95 尾部特征**（写事务排队 2-3s，不丢不错）——分层阈值；WinHost 单张 p50 ≈ 205ms，**发现延迟主体是 Worker 200ms 空转轮询**（渲染仅 ~1ms），信号量唤醒记为优化机会。
+- **稳定性 soak**（Trait=Soak，默认 5 分钟 / LF_SOAK_MINUTES 可调）：混合负载 0 错误、WAL 有界（显式声明 wal_autocheckpoint=1000）、托管堆稳定。
+- **CI**：nightly-perf.yml 每周一 04:00 UTC（Perf + 15 分钟 soak + 基准）；日常 ci.yml 不含 Perf/Soak。
+- **文档**：docs/PERF-BASELINE.md 首份基线 + 三个优化机会；dotnet test 314 全绿。
+
 ## 迭代 32 测试完善（端点集成 / 渲染元素 / TimeProvider 确定性 / 设计器组件 / MSI 断言 CI）· 2026-08-25
 
 - **WinHost 端点集成测试 +10**：WinHostApp 装配抽取（与生产一致，托盘/浏览器/退出留 Main）；HostOptions 新增 ConnectionPath（测试隔离本机连接配置——实际抓到测试读到开发者本机 zebra 配置的缺陷）；覆盖 transport / jobs 全生命周期 / host config 回环 / 插件安装卸载等八组端点。

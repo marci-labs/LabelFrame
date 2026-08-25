@@ -27,3 +27,6 @@ packaging/files*.wxs
 
 # 测试产物（覆盖率报告等）
 TestResults/
+
+# BenchmarkDotNet 产物
+BenchmarkDotNet.Artifacts/

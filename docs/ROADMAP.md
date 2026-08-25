@@ -45,6 +45,7 @@
 | 30 | 注释与文档清理（代码去过程化 / DESIGN 重构） | ✅ 已完成（2026-08-25） |
 | 31 | 安装包 UI 专业化（WixUI 向导 / 品牌位图 / ARP 元数据） | ✅ 已完成（2026-08-25，视觉验收待执行） |
 | 32 | 测试完善（端点集成 / 渲染元素 / TimeProvider 确定性 / 设计器组件 / MSI 断言 CI） | ✅ 已完成（2026-08-25） |
+| 33 | 性能 / 稳定性测试（微基准 / 端到端延迟 / soak / nightly CI） | ✅ 已完成（2026-08-25） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -897,6 +898,22 @@
 **验收**：dotnet test 314 全绿（298→314）；pnpm test 双模式 246 全绿（219→246）；WinHost 套件连续 4 轮并行全绿。
 
 **产出质量**：两个结构性发现（RegionHAlign 失效 / ConnectionPath 隔离缺陷）证明「集成测试优先」的评审方向正确。
+
+---
+
+## 迭代 33：性能 / 稳定性测试（微基准 / 端到端延迟 / soak / nightly CI）（已完成）
+
+**背景**：迭代 32 后按业界方法（BenchmarkDotNet 官方 / Grafana soak 实践 / MS 负载测试指引）设计方案：三层——微基准（热路径）、端到端延迟（对 REQUIREMENTS 量化指标）、soak（稳态漂移）。工具选型 xUnit TestServer 自建（与生产同装配、零新增基础设施），不引入 k6/NBomber（场景为局域网几十客户端，进程内 harness 更可维护）。
+
+**范围与完成情况**：
+1. 微基准 `test/LabelFrame.Benchmarks`（BenchmarkDotNet + MemoryDiagnoser）：整链路单张 0.7-3.4ms / 分配 1-5MB（随面积线性），50 张批量 36-170ms——远低于 1 秒预算。
+2. Server 路由延迟（Trait=Perf）：并发 1/5/20 设备全链路（提交→领取→回报）——p50 恒 3-4ms；**发现 SQLite 单写者特征**：20 并发时 60 写事务排队使 p95 尾部 2-3s（不丢不错、主体无影响），按规模分层阈值（≤5 设备 2s / 20 设备 5s + p50<50ms）。
+3. WinHost 单张全链路（Trait=Perf）：p50 ≈ 205ms / p99 ≈ 240ms——**发现延迟主体是 Worker 200ms 空转轮询周期**（渲染+编码仅 ~1ms），信号量唤醒为已记录优化机会（当前 4 倍余量不必要）。
+4. Server soak（Trait=Soak，LF_SOAK_MINUTES 可调，默认 5 分钟 / CI 15 分钟）：4 设备混合负载（提交/领取/回报/notify/日志/列表）——0 错误、WAL 有界、托管堆稳定；配套显式声明 `wal_autocheckpoint=1000`。
+5. `scripts/run-perf.ps1`（perf/soak/bench/all 四模式）+ `.github/workflows/nightly-perf.yml`（每周一 04:00 UTC：Perf + 15 分钟 soak + 基准）。
+6. `docs/PERF-BASELINE.md`：首份基线数据 + 两个发现 + 三个优化机会（Worker 信号量唤醒 / 写事务合批 / SKBitmap 池）。
+
+**验收**：perf / soak / bench 三模式全部通过；日常测试与 ci.yml 不含 Perf/Soak（时长与抖动考虑）；dotnet test 314 全绿。
 
 ---
 

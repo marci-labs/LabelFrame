@@ -1,0 +1,42 @@
+# 每周性能 / 稳定性夜间流水线（迭代 33）：
+# 周一 04:00（UTC）跑 soak（15 分钟稳态）+ Perf 延迟 + 微基准——日常 ci.yml 不含这些（时长 / 抖动考虑）。
+name: nightly-perf
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  perf:
+    name: 性能与稳定性（Soak / Perf / Bench）
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 构建测试
+        run: dotnet build LabelFrame.slnx -c Release
+
+      - name: 延迟 / 并发（Perf）
+        run: |
+          dotnet test test/LabelFrame.Server.Tests -c Release --no-build -v minimal --filter 'Category=Perf'
+          dotnet test test/LabelFrame.WinHost.Tests -c Release --no-build -v minimal --filter 'Category=Perf'
+
+      - name: 稳定性 soak（15 分钟）
+        env:
+          LF_SOAK_MINUTES: '15'
+        run: dotnet test test/LabelFrame.Server.Tests -c Release --no-build -v minimal --filter 'Category=Soak'
+
+      - name: 微基准（基准快照，--job short）
+        run: dotnet run -c Release --project test/LabelFrame.Benchmarks -- --job short

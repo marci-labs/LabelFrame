@@ -52,7 +52,7 @@ public static class SqliteSupport
         try
         {
             await using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA journal_mode=WAL;";
+            command.CommandText = "PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=1000;";
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
         catch
