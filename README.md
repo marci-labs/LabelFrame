@@ -1,5 +1,11 @@
 # LabelFrame
 
+[![CI](https://github.com/marci-labs/LabelFrame/actions/workflows/ci.yml/badge.svg)](https://github.com/marci-labs/LabelFrame/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/marci-labs/LabelFrame?display_name=tag&sort=semver)](https://github.com/marci-labs/LabelFrame/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![.NET](https://img.shields.io/badge/.NET-10-512BD4.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%C2%B7%20Linux-blue)
+
 面向仓库场景的标签打印框架：模板契约 + 打印服务 + 设备宿主（PC / PDA）。
 
 ## 愿景
