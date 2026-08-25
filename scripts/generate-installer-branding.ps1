@@ -10,7 +10,9 @@ New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 $blue = [System.Drawing.Color]::FromArgb(255, 22, 104, 220)
 $blueDark = [System.Drawing.Color]::FromArgb(255, 13, 72, 158)
 $white = [System.Drawing.Color]::White
-$paper = [System.Drawing.Color]::FromArgb(255, 250, 251, 253)
+# 底色取系统按钮面色 COLOR_BTNFACE（240,240,240）：MSI 的 CheckBox 等控件不支持透明、
+# 以按钮面绘制自身背景，位图底色与之一致时控件才无缝融入（否则复选框区域出现色差矩形）
+$paper = [System.Drawing.Color]::FromArgb(255, 240, 240, 240)
 
 function New-LMark([System.Drawing.Graphics]$g, [float]$x, [float]$y, [float]$size, [System.Drawing.Color]$markColor) {
     # 与应用图标同构的 L：竖条 + 横条
