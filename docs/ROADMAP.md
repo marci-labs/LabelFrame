@@ -878,6 +878,8 @@
 
 **追加（2026-08-25，用户反馈二则）**：① 向导全量中文化——构建加 `-culture zh-cn`（WixUI 扩展内置中文资源），各页按钮与引导文字全部中文；② Client 新增「安装选项」页（目录页后、确认页前）：「开机自动启动 LabelFrame」默认勾选，勾选写 HKLM Run 键并以 `--autostart` 托盘模式启动（不拉浏览器，WinHost 新增参数支持；v7 条件安装用隐藏子 Feature + `<Level>` 元素——Component/Feature 的 Condition 子元素已移除）；Server 服务本身自启无需选项。verify-msi-ui.ps1 断言扩展（中文文案 / 选项页链路 / Run 键 / AUTO_START 默认值），两包全过；dotnet test 298 全绿。
 
+**发布（2026-08-25）**：推送 `v0.21.0` tag 触发 GitHub Actions 自动发布（Server Docker 镜像推 ghcr.io、Server / Client MSI、管理界面插件 zip、Linux 归档上传 GitHub Release）；ServerOptions 版本号同步 0.21.0。本版包含迭代 27-31 全部内容（工程治理 + Excel 2.0 依赖升级 + 安装向导 UI）。
+
 ---
 
 ## 检查点：试点验收（已完成）

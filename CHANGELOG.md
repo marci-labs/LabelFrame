@@ -10,6 +10,13 @@
 - **破坏性变更对照无影响**：项目仅用 Read / Write / SimpleExcelTable / SimpleExcelOptions 四个 API，2.0 签名不变、零代码改动；`Read` 损坏流异常统一为 `InvalidOperationException` + 本地化中文消息（导入端点 catch Exception，行为兼容且报错更友好）；基础包层面的破坏性变更（MissingElementPolicy 迁移 / 删除 6 类型等）未使用。
 - 变更范围：`Core` 与 `Studio` 两个 csproj 版本号；dotnet build 0 错误、dotnet test 315 全绿；2.0.0 已发布 nuget.org，CI 可正常还原。
 
+## v0.21.0 发布（迭代 27-31：工程治理 + Excel 2.0 + 安装向导 UI）· 2026-08-25
+
+- **安装体验**（迭代 31）：WixUI 全中文品牌向导（欢迎 / 许可 / 安装目录 / 完成）+ 品牌位图 + 完成页「立即打开」复选框 + Client「安装选项」页开机自启（默认勾选，--autostart 托盘模式）；控制面板元数据补全。
+- **工程治理**（迭代 27-30）：日常 CI（push/PR）；LabelFrame.Api 共享契约库（两端端点/DTO 去重，修复预览 DPI / 错误码漂移）；数据层并发修复（领取原子化 / N+1 / Worker 轮询轻量化 / TransportManager 加锁）+ SQLite WAL；C# 分析器门禁（latest-recommended + 警告即错误）；Server 端点集成测试（发现并修复宿主启动即崩与 403 变 500 两个真 bug）；覆盖率收集；Studio（WPF）与原型移除；文档体系重组（README 三类角色快速开始 / DEPLOY / 归档）。
+- **依赖升级**：TemplateFrame.Excel.Simple 1.0.5 → 2.0.0——修复「下载 Excel 模板下方续填行导入丢失」。
+- dotnet test 298 全绿；`dotnet build` 0 警告（分析器全开）。
+
 ## 迭代 31 安装包 UI 专业化（WixUI 向导 / 品牌位图 / ARP 元数据）· 2026-08-25
 
 - **安装向导**：Client / Server MSI 接入 WixUI_InstallDir——欢迎页（品牌左幅）→ 中文许可协议 → 安装目录（默认 Program Files，可选）→ 安装进度 → 完成页；此前双击 MSI 只有 Windows Installer 默认裸进度窗。
