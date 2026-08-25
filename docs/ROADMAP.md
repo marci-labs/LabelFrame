@@ -874,6 +874,8 @@
 
 **验收**：MSI 构建成功且结构断言通过；视觉验收（真实安装走一遍向导）待执行，见 ACCEPTANCE-BACKLOG §6。
 
+**视觉验收反馈修正（2026-08-25）**：许可页标题混入字体名（RTF 字体表不解析 Unicode 转义，改 ASCII 字体名重新生成）；「立即打开」由独立 TopMost 弹窗并入向导完成页可选复选框（默认勾选，Finish 条件 DoAction 异步启动），应用侧 InstallFinishedPrompt 移除（dotnet test 298 全绿）。
+
 ---
 
 ## 检查点：试点验收（已完成）
