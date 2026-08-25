@@ -876,6 +876,8 @@
 
 **视觉验收反馈修正（2026-08-25）**：许可页标题混入字体名（RTF 字体表不解析 Unicode 转义，改 ASCII 字体名重新生成）；「立即打开」由独立 TopMost 弹窗并入向导完成页可选复选框（默认勾选，Finish 条件 DoAction 异步启动），应用侧 InstallFinishedPrompt 移除（dotnet test 298 全绿）。
 
+**追加（2026-08-25，用户反馈二则）**：① 向导全量中文化——构建加 `-culture zh-cn`（WixUI 扩展内置中文资源），各页按钮与引导文字全部中文；② Client 新增「安装选项」页（目录页后、确认页前）：「开机自动启动 LabelFrame」默认勾选，勾选写 HKLM Run 键并以 `--autostart` 托盘模式启动（不拉浏览器，WinHost 新增参数支持；v7 条件安装用隐藏子 Feature + `<Level>` 元素——Component/Feature 的 Condition 子元素已移除）；Server 服务本身自启无需选项。verify-msi-ui.ps1 断言扩展（中文文案 / 选项页链路 / Run 键 / AUTO_START 默认值），两包全过；dotnet test 298 全绿。
+
 ---
 
 ## 检查点：试点验收（已完成）

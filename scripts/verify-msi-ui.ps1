@@ -43,6 +43,38 @@ foreach ($path in $MsiPaths) {
     Write-Host '-- ARP 属性（控制面板）--'
     Invoke-MsiQuery $db 'SELECT Property, Value FROM Property' | Where-Object { $_[0] -like 'ARP*' } | ForEach-Object { Write-Host ("  {0} = {1}" -f $_[0], $_[1]) }
 
+    # 安装选项页 / 中文文案 / 开机自启注册表（仅 Client）
+    Write-Host '-- 选项页与链路（Client）--'
+    # 直读记录循环（Invoke-MsiQuery 对单行结果的嵌套数组会被 PS 展平，索引会错位）
+    $optView = $db.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $db, @("SELECT Control, Text FROM Control WHERE Dialog_ = 'OptionsDlg' AND Control = 'AutoStartCheck'"))
+    $optView.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $optView, $null) | Out-Null
+    $optRec = $optView.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $optView, $null)
+    $optView.GetType().InvokeMember('Close', 'InvokeMethod', $null, $optView, $null) | Out-Null
+    if ($null -ne $optRec) {
+        $checkText = $optRec.GetType().InvokeMember('StringData', 'GetProperty', $null, $optRec, @(2))
+        if ($checkText -notlike '*LabelFrame*') { throw '选项页复选框文本异常' }
+        Write-Host '  选项页复选框：OK（开机自动启动 LabelFrame）'
+        # Event 为 MSI SQL 保留字：全表拉取后客户端过滤
+        $chain = Invoke-MsiQuery $db 'SELECT * FROM ControlEvent' |
+            Where-Object { $_[0] -eq 'InstallDirDlg' -and $_[1] -eq 'Next' -and $_[3] -eq 'OptionsDlg' }
+        if ($chain.Count -eq 0) { throw '向导链路缺失：InstallDirDlg.Next 应跳转 OptionsDlg' }
+        Write-Host '  向导链路：目录页 Next -> 选项页 -> 确认页 OK'
+        $reg = Invoke-MsiQuery $db 'SELECT * FROM Registry' | Where-Object { $_[2] -like '*CurrentVersion*Run*' }
+        if ($reg.Count -gt 0) { Write-Host ('  Run 键：' + $reg[0][3] + ' = ' + $reg[0][4]) } else { throw '开机自启 Run 键缺失' }
+        $autoStart = Invoke-MsiQuery $db "SELECT Value FROM Property WHERE Property = 'AUTO_START'"
+        Write-Host ('  AUTO_START 默认：' + $autoStart[0][0])
+    }
+    else { Write-Host '  （无选项页——Server 包跳过本节）' }
+
+    Write-Host '-- 中文文案抽查（WelcomeDlg）--'
+    $wv = $db.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $db, @("SELECT Text FROM Control WHERE Dialog_ = 'WelcomeDlg' AND Control = 'Next'"))
+    $wv.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $wv, $null) | Out-Null
+    $wr = $wv.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $wv, $null)
+    $wv.GetType().InvokeMember('Close', 'InvokeMethod', $null, $wv, $null) | Out-Null
+    $nextText = $wr.GetType().InvokeMember('StringData', 'GetProperty', $null, $wr, @(1))
+    Write-Host ('  欢迎页下一步按钮：' + $nextText)
+    if ($nextText -notlike '*下一步*') { throw '向导文案未中文化（-culture zh-cn 未生效）' }
+
     # 关键断言：向导齐全 + 运行时检查在欢迎页之前
     $dialogs = Invoke-MsiQuery $db 'SELECT Dialog FROM Dialog' | ForEach-Object { $_[0] }
     foreach ($required in @('WelcomeDlg', 'LicenseAgreementDlg', 'InstallDirDlg', 'VerifyReadyDlg', 'ExitDialog', 'RuntimeMissingDlg', 'ClearDataDlg')) {

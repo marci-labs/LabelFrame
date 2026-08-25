@@ -14,6 +14,8 @@
     <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)/installer-dialog.bmp" />
     <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)/installer-banner.bmp" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <!-- 开机自启（安装选项页勾选）：默认开启，控制 HKLM Run 键组件 -->
+    <Property Id="AUTO_START" Value="1" />
     <!-- 完成页可选复选框（ExitDialog 自带控件）：文本经属性格式化，默认勾选 -->
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="立即打开 LabelFrame" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
@@ -66,6 +68,31 @@
           <Publish Event="EndDialog" Value="Return" Condition="1" />
         </Control>
       </Dialog>
+      <!-- 安装选项页：目录页之后、确认安装页之前 -->
+      <Dialog Id="OptionsDlg" Width="370" Height="270" Title="[ProductName] 安装">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="yes" Text="WixUI_Bmp_Banner" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" TabSkip="yes"
+                 Text="{\WixUI_Font_Title}安装选项" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="AutoStartCheck" Type="CheckBox" X="20" Y="80" Width="300" Height="17"
+                 Property="AUTO_START" CheckBoxValue="1" Text="开机自动启动 LabelFrame" />
+        <Control Id="AutoStartHint" Type="Text" X="20" Y="105" Width="320" Height="40"
+                 Text="开机自启以托盘方式常驻运行，不自动打开浏览器界面；可随时从托盘图标退出或暂停。" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="上一步(&amp;B)">
+          <Publish Event="NewDialog" Value="InstallDirDlg" />
+        </Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Text="下一步(&amp;N)">
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="取消">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+      <!-- 向导链路改道：目录页 Next 先进选项页；确认页 Back（仅全新安装）回选项页。
+           ControlEvent 重复发布时后执行者生效，Order 越大越后执行。 -->
+      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="OptionsDlg" Order="10" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OptionsDlg" Order="10"
+               Condition="NOT Installed AND NOT REMOVE" />
       <!-- 向导完成页启动：对 UI 扩展库的 ExitDialog 追加控件事件（勾选 + 全新安装才启动） -->
       <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchClientOnExit"
                Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = &quot;1&quot; AND NOT Installed" />
@@ -89,6 +116,12 @@
     </Directory>
     </Directory>
     </StandardDirectory>
+
+    <!-- 开机自启注册表（HKLM Run 键）：由隐藏子 Feature 的 Level 条件控制——安装选项页未勾选（AUTO_START 空）时 Level=0 不安装 -->
+    <Component Id="AutoStartRunKey" Guid="3F8A9C71-6B2D-4E45-9A10-58C6E2D7B013">
+      <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                     Name="LabelFrame" Type="string" Value="&quot;[#WinHostExe]&quot; --autostart" KeyPath="yes" />
+    </Component>
 
     <!-- 开始菜单 -->
     <StandardDirectory Id="ProgramMenuFolder">
@@ -122,6 +155,10 @@
       <ComponentRef Id="AppSettingsFile" />
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="DesktopShortcut" />
+      <Feature Id="AutoStartFeature" Level="1" Display="hidden">
+        <Level Value="0" Condition="NOT AUTO_START" />
+        <ComponentRef Id="AutoStartRunKey" />
+      </Feature>
     </Feature>
 
     <!-- 覆盖安装 / 卸载前强制结束托盘程序（迭代 19 反馈：先停再删，避免 exe 占用导致覆盖失败或卸载后残留进程） -->

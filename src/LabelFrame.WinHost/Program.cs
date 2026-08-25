@@ -40,6 +40,11 @@ public static class Program
         var options = new HostOptions();
         builder.Configuration.GetSection("WinHost").Bind(options);
         options.ApplyEnvironmentOverrides();
+        // 开机自启（注册表 Run 键）以 --autostart 启动：托盘常驻，不自动打开浏览器
+        if (args.Contains("--autostart", StringComparer.OrdinalIgnoreCase))
+        {
+            options.OpenBrowser = false;
+        }
         builder.WebHost.UseUrls(options.ListenUrl);
         // 插件包上传端点大小上限 64MB（Kestrel 默认约 30MB，超出会返回 413 且无错误体）
         builder.WebHost.ConfigureKestrel(kestrel =>

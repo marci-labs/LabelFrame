@@ -18,6 +18,8 @@
 - **其他**：控制面板元数据（产品图标 / 帮助链接）补全；Server 自定义完成小窗由品牌化 ExitDialog 取代；Client 保留「立即打开」TopMost 完成弹窗；新增 verify-msi-ui.ps1 结构校验（COM 校验对话框表 / 序列 / 品牌二进制，关键断言）；release.yml 安装 WixToolset.UI.wixext。
 - **视觉验收反馈修正**：① 许可页标题混入「微软雅黑」——RTF 字体表不解析 Unicode 转义序列，字体名改用 ASCII 英文名 Microsoft YaHei（fcharset134 声明中文字符集）重新生成；② 「立即打开」独立 TopMost 弹窗取消——并入向导完成页可选复选框（默认勾选，Finish 按钮按条件 DoAction 异步启动客户端），应用侧 --install-finished 模式与 InstallFinishedPrompt 一并移除。
 - **复选框色差修正**：MSI 的 CheckBox 控件不支持透明、以系统按钮面色（240,240,240）绘制自身背景——位图底色由近白（250,251,253）改为精确按钮面色，完成页复选框与周围无缝融合。
+- **向导全量中文化**：构建加 `-culture zh-cn`（WixUI 扩展内置中文资源）——欢迎 / 许可 / 目录 / 进度 / 完成各页按钮与引导文字全部中文（下一步(&N)、上一步(&B)、取消……）。
+- **开机自启选项（Client）**：新增「安装选项」页（目录页与确认页之间）——「开机自动启动 LabelFrame」复选框默认勾选；勾选时写 HKLM Run 键，以 `--autostart` 参数启动（托盘常驻、不自动打开浏览器，WinHost 新增该参数支持）；未勾选则不写。Server 无需选项（Windows 服务本身开机自启）。
 - 本地构建 Client / Server 0.21.0 MSI 断言全部通过；视觉验收（真实安装走一遍向导）待执行（ACCEPTANCE-BACKLOG §6）。
 
 ## 迭代 30 注释与文档清理（代码去过程化 / DESIGN 重构）· 2026-08-25
