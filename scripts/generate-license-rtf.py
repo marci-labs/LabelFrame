@@ -36,7 +36,9 @@ for style, text in paras:
         suffix = '\\b0' if style == 'b' else ''
         body.append(prefix + esc(text) + suffix + '\\par')
 
-rtf = ('{\\rtf1\\ansi\\ansicpg936\\deff0{\\fonttbl{\\f0\\fnil\\fcharset134 ' + esc('微软雅黑') + ';}}\n'
+# 字体表内的字体名必须是 RTF 可直接解析的文本：用 ASCII 英文名（fcharset134 声明中文字符集）。
+# \u 转义在 fonttbl 中不被解析，字体名会被当正文渲染出来（如「微软雅黑」出现在标题行）。
+rtf = ('{\\rtf1\\ansi\\ansicpg936\\deff0{\\fonttbl{\\f0\\fnil\\fcharset134 Microsoft YaHei;}}\n'
        '\\viewkind4\\uc1\\pard\\lang2052\\f0\\fs18\n' + '\n'.join(body) + '\n}')
 io.open('packaging/license.rtf', 'w', encoding='ascii', newline='\n').write(rtf)
 print('packaging/license.rtf written,', len(rtf), 'chars')

@@ -14,6 +14,9 @@
     <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)/installer-dialog.bmp" />
     <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)/installer-banner.bmp" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <!-- 完成页可选复选框（ExitDialog 自带控件）：文本经属性格式化，默认勾选 -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="立即打开 LabelFrame" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
     <Icon Id="LabelframeAppIco" SourceFile="$(var.AssetsDir)/labelframe.ico" />
     <Property Id="ARPPRODUCTICON" Value="LabelframeAppIco" />
     <Property Id="ARPHELPLINK" Value="https://github.com/marci-labs/LabelFrame" />
@@ -63,18 +66,15 @@
           <Publish Event="EndDialog" Value="Return" Condition="1" />
         </Control>
       </Dialog>
+      <!-- 向导完成页启动：对 UI 扩展库的 ExitDialog 追加控件事件（勾选 + 全新安装才启动） -->
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchClientOnExit"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = &quot;1&quot; AND NOT Installed" />
     </UI>
     <InstallUISequence>
       <Show Dialog="RuntimeMissingDlg" Sequence="1150"
             Condition="NOT DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
       <Show Dialog="ClearDataDlg" Sequence="1290"
             Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
-      <!-- 安装完成 TopMost 弹窗（迭代 20）：ExecuteAction（安装执行完成）之后拉起；
-           仅全新安装（执行前记录 LAUNCH_FINISH_PROMPT）且非静默（/qn，UI 序列不执行） -->
-      <Custom Action="SetLaunchPrompt" Before="ExecuteAction"
-        Condition="NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT REMOVE" />
-      <Custom Action="LaunchFinishPrompt" After="ExecuteAction"
-        Condition="LAUNCH_FINISH_PROMPT = &quot;1&quot;" />
     </InstallUISequence>
 
     <!-- 安装目录：Program Files\LabelFrame（64 位） -->
@@ -126,15 +126,10 @@
 
     <!-- 覆盖安装 / 卸载前强制结束托盘程序（迭代 19 反馈：先停再删，避免 exe 占用导致覆盖失败或卸载后残留进程） -->
     <CustomAction Id="KillWinHost" Directory="SystemFolder" Execute="immediate" Return="ignore"
-      ExeCommand="taskkill /F /IM LabelFrame.WinHost.exe" />    <!-- 安装完成提示（迭代 20 优化）：MSI 原生完成弹窗会被 Windows 焦点策略挡到后台 / 任务栏闪烁，
-         改为拉起 WinHost 的安装完成模式（install-finished 参数）TopMost 弹窗（默认置前），
-         选择「立即打开」后重启宿主并打开界面 -->
-    <!-- XML 注释规则：不得包含双减号，故此处不写参数原文 -->
-    <CustomAction Id="LaunchFinishPrompt" Directory="INSTALLFOLDER" Execute="immediate" Return="ignore"
-      ExeCommand="&quot;[#WinHostExe]&quot; --install-finished" />
-    <!-- 记录「全新安装」：ExecuteAction 之后 Installed 已置真，无法再判断全新安装，故执行前用属性记录 -->
-    <CustomAction Id="SetLaunchPrompt" Property="LAUNCH_FINISH_PROMPT" Value="1" Execute="immediate" />
-
+      ExeCommand="taskkill /F /IM LabelFrame.WinHost.exe" />
+    <!-- 完成页「立即打开」：Finish 按钮在勾选时触发（见 Publish），异步启动不阻塞向导关闭 -->
+    <CustomAction Id="LaunchClientOnExit" Directory="INSTALLFOLDER" Execute="immediate" Return="asyncNoWait"
+                  ExeCommand="&quot;[#WinHostExe]&quot;" />
     <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；新增机器级配置 settings.json，迭代 18） -->
     <CustomAction Id="ClearDataDelFiles" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%LOCALAPPDATA%\LabelFrame\jobs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\templates.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\logs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\host.log&quot; &quot;%LOCALAPPDATA%\LabelFrame\connection.json&quot;" />
