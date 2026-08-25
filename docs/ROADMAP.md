@@ -44,6 +44,7 @@
 | 29 | 程序优化（SQLite WAL / 数据层基建 / 分析器门禁 / Server 集成测试 / 覆盖率收集） | ✅ 已完成（2026-08-25） |
 | 30 | 注释与文档清理（代码去过程化 / DESIGN 重构） | ✅ 已完成（2026-08-25） |
 | 31 | 安装包 UI 专业化（WixUI 向导 / 品牌位图 / ARP 元数据） | ✅ 已完成（2026-08-25，视觉验收待执行） |
+| 32 | 测试完善（端点集成 / 渲染元素 / TimeProvider 确定性 / 设计器组件 / MSI 断言 CI） | ✅ 已完成（2026-08-25） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -879,6 +880,23 @@
 **追加（2026-08-25，用户反馈二则）**：① 向导全量中文化——构建加 `-culture zh-cn`（WixUI 扩展内置中文资源），各页按钮与引导文字全部中文；② Client 新增「安装选项」页（目录页后、确认页前）：「开机自动启动 LabelFrame」默认勾选，勾选写 HKLM Run 键并以 `--autostart` 托盘模式启动（不拉浏览器，WinHost 新增参数支持；v7 条件安装用隐藏子 Feature + `<Level>` 元素——Component/Feature 的 Condition 子元素已移除）；Server 服务本身自启无需选项。verify-msi-ui.ps1 断言扩展（中文文案 / 选项页链路 / Run 键 / AUTO_START 默认值），两包全过；dotnet test 298 全绿。
 
 **发布（2026-08-25）**：推送 `v0.21.0` tag 触发 GitHub Actions 自动发布（Server Docker 镜像推 ghcr.io、Server / Client MSI、管理界面插件 zip、Linux 归档上传 GitHub Release）；ServerOptions 版本号同步 0.21.0。本版包含迭代 27-31 全部内容（工程治理 + Excel 2.0 依赖升级 + 安装向导 UI）。
+
+---
+
+## 迭代 32：测试完善（迭代前测试评审的 P0+P1 全项）（已完成）
+
+**背景**：迭代 31 后按业界基准（测试奖杯 / 实用金字塔 / MS 集成测试指引）做了一次测试体系评审，确认五个盲区（WinHost 端点零 HTTP 测试 / 渲染器三种元素零测试 / 设计器组件层零测试 / 时序测试脆弱 / MSI 断言未进 CI），本迭代全部补齐。
+
+**范围与完成情况**：
+1. **WinHost 端点集成测试**（+10）：抽 `WinHostApp.BuildAsync` 装配（DI + 全端点 + Web UI 托管与生产一致，托盘 / 浏览器 / Serilog / Environment.Exit 留在 Main）；HostOptions 新增 ConnectionPath（测试注入临时路径，隔离本机真实 connection.json——集成测试实际抓到了这个隔离缺陷）；覆盖 healthz / transport / jobs 全生命周期 / host config 回环 / shutdown 非回环 403 / print-settings / 插件安装卸载 / printer status。
+2. **渲染器元素测试**（+6）：图片（模板资源 / 缺图 / 带边框）、线（横竖）、区域（边框 + 锚定）、图片全链路到 ^GF；**发现 RegionHAlign 对自动宽度文本失效**（无 WidthMm 时块宽扩为区域全宽，对齐系数被抵消）——记 DESIGN 风险，测试按可观察行为分轴断言。
+3. **TimeProvider 确定性**（+1 注入，5 个节流测试重写）：JobPrintWorker 的全部 Task.Delay 经 TimeProvider；节流测试以 FakeTimeProvider 驱动（推进假时间 + 真实让步），300 秒兜底降为 30 秒安全网；移除 WinHost.Tests 程序集级并行关闭，套件 17 秒 → 2 秒。
+4. **设计器组件测试**（web +27）：PropsPanel 17 例（三类元素字段集互斥 / onChange 回调 / 联动 / 多选对齐删除）、SidePanel 10 例（图层列表 / 选中 / 层级 / pendingType）、双面板主链 harness；结构性发现：SidePanelProps.onDelete 声明未使用。
+5. **MSI 断言进 CI**：ci.yml 新增 msi-verify job（打包 Client MSI + verify-msi-ui.ps1 断言），安装包 UI 契约回归提交即发现。
+
+**验收**：dotnet test 314 全绿（298→314）；pnpm test 双模式 246 全绿（219→246）；WinHost 套件连续 4 轮并行全绿。
+
+**产出质量**：两个结构性发现（RegionHAlign 失效 / ConnectionPath 隔离缺陷）证明「集成测试优先」的评审方向正确。
 
 ---
 

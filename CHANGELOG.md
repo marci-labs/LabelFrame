@@ -10,6 +10,15 @@
 - **破坏性变更对照无影响**：项目仅用 Read / Write / SimpleExcelTable / SimpleExcelOptions 四个 API，2.0 签名不变、零代码改动；`Read` 损坏流异常统一为 `InvalidOperationException` + 本地化中文消息（导入端点 catch Exception，行为兼容且报错更友好）；基础包层面的破坏性变更（MissingElementPolicy 迁移 / 删除 6 类型等）未使用。
 - 变更范围：`Core` 与 `Studio` 两个 csproj 版本号；dotnet build 0 错误、dotnet test 315 全绿；2.0.0 已发布 nuget.org，CI 可正常还原。
 
+## 迭代 32 测试完善（端点集成 / 渲染元素 / TimeProvider 确定性 / 设计器组件 / MSI 断言 CI）· 2026-08-25
+
+- **WinHost 端点集成测试 +10**：WinHostApp 装配抽取（与生产一致，托盘/浏览器/退出留 Main）；HostOptions 新增 ConnectionPath（测试隔离本机连接配置——实际抓到测试读到开发者本机 zebra 配置的缺陷）；覆盖 transport / jobs 全生命周期 / host config 回环 / 插件安装卸载等八组端点。
+- **渲染器元素测试 +6**：图片 / 线 / 区域三种此前零测试的元素；发现 RegionHAlign 对自动宽度文本失效（DESIGN 风险，分轴断言绕过）。
+- **TimeProvider 确定性（节流测试重写）**：JobPrintWorker Task.Delay 全经 TimeProvider；FakeTimeProvider 驱动消除 300 秒真实等待；移除测试程序集并行关闭——WinHost 套件 17s→2s。
+- **设计器组件测试 +27**：PropsPanel/SidePanel 真实渲染（三类元素字段集互斥、onChange 回调、图层选中与层级、双面板主链 harness）。
+- **MSI 断言进 CI**：ci.yml msi-verify job——安装包 UI 契约（向导 / 中文 / 选项页 / Run 键）回归提交即发现。
+- dotnet test 314 全绿（298→314）；pnpm test 双模式 246 全绿；测试评审结论与基准来源见 ROADMAP 迭代 32。
+
 ## v0.21.0 发布（迭代 27-31：工程治理 + Excel 2.0 + 安装向导 UI）· 2026-08-25
 
 - **安装体验**（迭代 31）：WixUI 全中文品牌向导（欢迎 / 许可 / 安装目录 / 完成）+ 品牌位图 + 完成页「立即打开」复选框 + Client「安装选项」页开机自启（默认勾选，--autostart 托盘模式）；控制面板元数据补全。
