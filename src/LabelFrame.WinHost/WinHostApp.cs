@@ -25,12 +25,14 @@ public static class WinHostApp
     /// <summary>装配并构建应用（含三库初始化与外部插件目录扫描）。</summary>
     /// <param name="options">宿主配置（路径与监听已就绪）。</param>
     /// <param name="hostInfo">宿主日志回调（Main 传 host.log 写入器；测试可传收集器）。</param>
-    /// <param name="configureBuilder">构建器扩展点（测试注入 UseTestServer / 移除后台服务等）。</param>
+    /// <param name="configureBuilder">Web 层扩展点（测试注入 UseTestServer 等），在最前执行。</param>
+    /// <param name="configureServices">服务层扩展点（测试移除后台服务等），在全部服务注册完成后执行——顺序保证 RemoveAll 能生效。</param>
     public static async Task<WebApplication> BuildAsync(
         HostOptions options,
         TextWriter hostLogWriter,
         Action<string> hostInfo,
-        Action<WebApplicationBuilder>? configureBuilder = null)
+        Action<WebApplicationBuilder>? configureBuilder = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -149,6 +151,9 @@ public static class WinHostApp
                 TimeSpan.FromSeconds(Math.Max(1, options.PollIntervalSeconds)),
                 sp.GetRequiredService<ILogger<Routing.ServerRoutingWorker>>()));
         }
+
+        // 服务层扩展点：在全部注册完成后执行（测试 RemoveAll<IHostedService> 等需要看到完整注册列表）
+        configureServices?.Invoke(builder.Services);
 
         var app = builder.Build();
 

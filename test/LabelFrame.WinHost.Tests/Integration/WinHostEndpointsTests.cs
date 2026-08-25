@@ -228,10 +228,12 @@ public abstract class WinHostIntegrationTestBase : IDisposable
         _app = WinHostApp.BuildAsync(options, TextWriter.Null, _ => { }, builder =>
         {
             builder.WebHost.UseTestServer();
-            // 移除后台打印 Worker：作业状态在测试内确定性可控
-            builder.Services.RemoveAll<IHostedService>();
             // 测试专用：管道最前注入来源模拟中间件（生产行为不受影响；回环判定逻辑是端点自己的）
             builder.Services.AddSingleton<IStartupFilter>(new RemoteIpStartupFilter(RemoteIpHeader));
+        }, services =>
+        {
+            // 服务注册完成后移除后台打印 Worker（第二段扩展点保证 RemoveAll 在 AddHostedService 之后执行）
+            services.RemoveAll<IHostedService>();
         }).GetAwaiter().GetResult();
 
         _app.StartAsync().GetAwaiter().GetResult();
