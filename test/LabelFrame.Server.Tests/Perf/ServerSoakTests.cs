@@ -94,7 +94,7 @@ public sealed class ServerSoakTests : IDisposable
             {
                 var throughput = round / (DateTime.UtcNow - deadline + TimeSpan.FromMinutes(minutes)).TotalSeconds;
                 var heap = GC.GetTotalMemory(false);
-                var walSize = new FileInfo(Path.Combine(_directory, "server.db-wal")).Length;
+                var walSize = SafeWalSize();
                 if (firstWindowThroughput < 0)
                 {
                     firstWindowThroughput = throughput;
@@ -111,7 +111,7 @@ public sealed class ServerSoakTests : IDisposable
         Assert.Equal(0, errors);
 
         // ② WAL 有界：autocheckpoint=1000 页（≈4MB）+ 运行期余量，10MB 上限
-        var finalWal = new FileInfo(Path.Combine(_directory, "server.db-wal")).Length;
+        var finalWal = SafeWalSize();
         Assert.True(finalWal < 10 * 1024 * 1024, $"WAL 文件 {finalWal / 1024}KB 无界增长——autocheckpoint 未生效");
 
         // ③ 托管堆无持续增长：允许 50% 余量（GC 波动），排除泄漏
@@ -122,6 +122,9 @@ public sealed class ServerSoakTests : IDisposable
 
         _output.WriteLine($"soak {minutes} 分钟完成：{round} 轮 × 4 设备 = {round * 4} 作业，0 错误，WAL={finalWal / 1024}KB，堆 {firstSnapshot / 1024}KB→{finalHeap / 1024}KB");
     }
+
+    /// <summary>WAL 文件尺寸（文件可能被 SQLite 关闭后清空/移除——无则 0）。</summary>
+    long SafeWalSize() { try { return File.Exists(Path.Combine(_directory, "server.db-wal")) ? new FileInfo(Path.Combine(_directory, "server.db-wal")).Length : 0; } catch (IOException) { return 0; } }
 
     private static StringContent Json(string body) => new(body, Encoding.UTF8, "application/json");
 

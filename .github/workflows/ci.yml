@@ -38,8 +38,8 @@ jobs:
         run: dotnet restore LabelFrame.slnx
       - name: dotnet build
         run: dotnet build LabelFrame.slnx -c Release --no-restore
-      - name: dotnet test（含覆盖率收集）
-        run: dotnet test LabelFrame.slnx -c Release --no-build --no-restore --collect:"XPlat Code Coverage"
+      - name: dotnet test（含覆盖率收集，排除 Perf/Soak——它们由 nightly-perf 跑）
+        run: dotnet test LabelFrame.slnx -c Release --no-build --no-restore --collect:"XPlat Code Coverage" --filter "FullyQualifiedName!~Perf&FullyQualifiedName!~Soak"
       - name: 上传覆盖率报告
         uses: actions/upload-artifact@v4
         with:
