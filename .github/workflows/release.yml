@@ -141,6 +141,8 @@ jobs:
           # WiX v7 任何命令前都需先接受 OSMF EULA
           & $wix eula accept wix7 2>$null | Out-Null
           & $wix extension add -g WixToolset.NetFx.wixext/${{ env.WIX_VERSION }}
+          & $wix extension add -g WixToolset.UI.wixext/${{ env.WIX_VERSION }}
+          if ($LASTEXITCODE -ne 0) { throw 'wix extension add (UI) 失败' }
           if ($LASTEXITCODE -ne 0) { throw 'wix extension add 失败' }
 
       # 注意：upload-artifact 上传的是 dist 目录内容，下载路径要对应 web/dist 与 web/dist-server

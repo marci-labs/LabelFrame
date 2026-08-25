@@ -35,7 +35,7 @@ $filesWxs = Join-Path $root 'packaging\files-server.wxs'
 $msi = Join-Path $root "artifacts\LabelFrame-Server-$Version.msi"
 $global:LASTEXITCODE = 0
 & $wix eula accept wix7 2>$null | Out-Null
-& $wix build (Join-Path $root 'packaging\main-server.wxs') $filesWxs -d PublishDir=$publishDir -d Version=$Version -o $msi -arch x64 -ext WixToolset.NetFx.wixext 2>&1 | Write-Host
+& $wix build (Join-Path $root 'packaging\main-server.wxs') $filesWxs -d PublishDir=$publishDir -d Version=$Version -d AssetsDir=$(Join-Path $root 'assets') -d LicenseRtf=$(Join-Path $root 'packaging\license.rtf') -o $msi -arch x64 -ext WixToolset.NetFx.wixext -ext WixToolset.UI.wixext 2>&1 | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
 
 # 5) 代码签名（可选：-Sign，与 Client 同证书）

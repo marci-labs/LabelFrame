@@ -1,11 +1,24 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
+     xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package Name="LabelFrame Client" Manufacturer="LabelFrame" Version="$(var.Version)"
            UpgradeCode="EE3F2357-56CE-4C0F-AEC1-4C04B6E6BCDA" Codepage="65001">
     <SummaryInformation Description="LabelFrame 打印客户端：托管完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史）并连接本机打印机打印（安装于 Program Files\LabelFrame\Client）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- 安装向导 UI（欢迎 / 许可 / 目录 / 进度 / 完成）+ 品牌资产（generate-installer-branding.ps1 生成）+ 控制面板元数据 -->
+    <ui:WixUI Id="WixUI_InstallDir" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)/installer-dialog.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)/installer-banner.bmp" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <Icon Id="LabelframeAppIco" SourceFile="$(var.AssetsDir)/labelframe.ico" />
+    <Property Id="ARPPRODUCTICON" Value="LabelframeAppIco" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/marci-labs/LabelFrame" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/marci-labs/LabelFrame/releases" />
+
 
     <!-- 检测 .NET Desktop Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
     <!-- 之前的注册表搜索读不到运行时，因为版本号是命名值而非默认值，这里不再依赖注册表结构 -->
@@ -52,9 +65,9 @@
       </Dialog>
     </UI>
     <InstallUISequence>
-      <Show Dialog="RuntimeMissingDlg" Sequence="1250"
+      <Show Dialog="RuntimeMissingDlg" Sequence="1150"
             Condition="NOT DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
-      <Show Dialog="ClearDataDlg" Sequence="1350"
+      <Show Dialog="ClearDataDlg" Sequence="1290"
             Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
       <!-- 安装完成 TopMost 弹窗（迭代 20）：ExecuteAction（安装执行完成）之后拉起；
            仅全新安装（执行前记录 LAUNCH_FINISH_PROMPT）且非静默（/qn，UI 序列不执行） -->
@@ -123,13 +136,13 @@
     <CustomAction Id="SetLaunchPrompt" Property="LAUNCH_FINISH_PROMPT" Value="1" Execute="immediate" />
 
     <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；新增机器级配置 settings.json，迭代 18） -->
-    <CustomAction Id="ClearDataDelFiles" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
+    <CustomAction Id="ClearDataDelFiles" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%LOCALAPPDATA%\LabelFrame\jobs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\templates.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\logs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\host.log&quot; &quot;%LOCALAPPDATA%\LabelFrame\connection.json&quot;" />
-    <CustomAction Id="ClearDataDelPrintDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
+    <CustomAction Id="ClearDataDelPrintDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c rmdir /s /q &quot;%LOCALAPPDATA%\LabelFrame\print&quot;" />
-    <CustomAction Id="ClearDataDelMachineConfig" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
+    <CustomAction Id="ClearDataDelMachineConfig" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramData%\LabelFrame\Client\settings.json&quot;" />
-    <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
+    <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramFiles%\LabelFrame\Client\appsettings.json&quot;" />
     <InstallExecuteSequence>
       <!-- 最先结束托盘进程：覆盖升级 / 卸载前释放 exe 占用。

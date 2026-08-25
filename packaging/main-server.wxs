@@ -1,11 +1,24 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
+     xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package Name="LabelFrame Server" Manufacturer="LabelFrame" Version="$(var.Version)"
            UpgradeCode="10BDDF3E-BD37-4C3A-A19E-56CA9EFE5B74" Codepage="65001">
     <SummaryInformation Description="LabelFrame 服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志（安装于 Program Files\LabelFrame\Server，无 Web UI，以 Windows 服务运行）" />
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- 安装向导 UI（欢迎 / 许可 / 目录 / 进度 / 完成）+ 品牌资产（generate-installer-branding.ps1 生成）+ 控制面板元数据 -->
+    <ui:WixUI Id="WixUI_InstallDir" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)/installer-dialog.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)/installer-banner.bmp" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <Icon Id="LabelframeAppIco" SourceFile="$(var.AssetsDir)/labelframe.ico" />
+    <Property Id="ARPPRODUCTICON" Value="LabelframeAppIco" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/marci-labs/LabelFrame" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/marci-labs/LabelFrame/releases" />
+
 
     <!-- 检测 .NET Desktop Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
     <!-- 之前的注册表搜索读不到运行时，因为版本号是命名值而非默认值，这里不再依赖注册表结构 -->
@@ -50,26 +63,12 @@
           <Publish Event="EndDialog" Value="Return" Condition="1" />
         </Control>
       </Dialog>
-      <!-- 安装完成弹窗（迭代 18 简化）：服务注册即自动 + 安装时启动，仅提示 -->
-      <Dialog Id="ServerFinishDlg" X="50" Y="50" Width="370" Height="140"
-              Title="LabelFrame 服务端安装完成" NoMinimize="yes">
-        <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="25" Text="LabelFrame Server 安装完成。" />
-        <Control Id="HintText" Type="Text" X="15" Y="45" Width="340" Height="40"
-                 Text="服务 LabelFrameServer 已注册并自动启动。" />
-        <Control Id="ConfirmButton" Type="PushButton" X="280" Y="100" Width="75" Height="25"
-                 Text="确认" Default="yes">
-          <Publish Event="EndDialog" Value="Return" Condition="1" />
-        </Control>
-      </Dialog>
     </UI>
     <InstallUISequence>
-      <Show Dialog="RuntimeMissingDlg" Sequence="1250"
+      <Show Dialog="RuntimeMissingDlg" Sequence="1150"
             Condition="NOT DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
-      <Show Dialog="ClearDataDlg" Sequence="1350"
+      <Show Dialog="ClearDataDlg" Sequence="1290"
             Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
-      <!-- 安装完成弹窗与后续动作：仅全新安装（ExecuteAction=6750 之后展示，勾选项在 execute 之后由 UI 动作消费） -->
-      <Show Dialog="ServerFinishDlg" Sequence="6800"
-            Condition="NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT REMOVE" />
     </InstallUISequence>
 
     <!-- 安装目录：Program Files\LabelFrame（64 位） -->
@@ -95,11 +94,11 @@
     <CustomAction Id="StopServerService" Directory="SystemFolder" Execute="deferred" Impersonate="no" Return="ignore"
       ExeCommand="sc.exe stop LabelFrameServer" />
     <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；路径为 ProgramData，迭代 18） -->
-    <CustomAction Id="ClearDataDelServerDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
+    <CustomAction Id="ClearDataDelServerDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c rmdir /s /q &quot;%ProgramData%\LabelFrame\server&quot;" />
-    <CustomAction Id="ClearDataDelServerDb" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
+    <CustomAction Id="ClearDataDelServerDb" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramData%\LabelFrame\server.db&quot;" />
-    <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="check"
+    <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramFiles%\LabelFrame\Server\appsettings.json&quot;" />
     <InstallExecuteSequence>
       <!-- 先停服务，再执行 MSI 自带的 StopServices / DeleteServices（安装 / 卸载均生效） -->

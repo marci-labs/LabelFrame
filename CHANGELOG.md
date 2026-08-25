@@ -10,6 +10,14 @@
 - **破坏性变更对照无影响**：项目仅用 Read / Write / SimpleExcelTable / SimpleExcelOptions 四个 API，2.0 签名不变、零代码改动；`Read` 损坏流异常统一为 `InvalidOperationException` + 本地化中文消息（导入端点 catch Exception，行为兼容且报错更友好）；基础包层面的破坏性变更（MissingElementPolicy 迁移 / 删除 6 类型等）未使用。
 - 变更范围：`Core` 与 `Studio` 两个 csproj 版本号；dotnet build 0 错误、dotnet test 315 全绿；2.0.0 已发布 nuget.org，CI 可正常还原。
 
+## 迭代 31 安装包 UI 专业化（WixUI 向导 / 品牌位图 / ARP 元数据）· 2026-08-25
+
+- **安装向导**：Client / Server MSI 接入 WixUI_InstallDir——欢迎页（品牌左幅）→ 中文许可协议 → 安装目录（默认 Program Files，可选）→ 安装进度 → 完成页；此前双击 MSI 只有 Windows Installer 默认裸进度窗。
+- **品牌资产**：新增 generate-installer-branding.ps1 生成 493×312 欢迎 / 完成页背景与 493×58 内页横幅（主蓝 + L 标，与应用图标同体系）；generate-license-rtf.py 生成中文许可 RTF。
+- **修复隐患**：接入 WixUI 后 ExecuteAction 固定 1300，原卸载清数据对话框（1350）会晚于执行阶段弹出导致勾选失效——移至 1290；运行时缺失提示提前至向导之前（1150）。清理动作改为 `[INSTALLFOLDER]` 目录无关（支持自定义安装目录）+ 尽力语义（缺失文件不卡卸载）。
+- **其他**：控制面板元数据（产品图标 / 帮助链接）补全；Server 自定义完成小窗由品牌化 ExitDialog 取代；Client 保留「立即打开」TopMost 完成弹窗；新增 verify-msi-ui.ps1 结构校验（COM 校验对话框表 / 序列 / 品牌二进制，关键断言）；release.yml 安装 WixToolset.UI.wixext。
+- 本地构建 Client / Server 0.21.0 MSI 断言全部通过；视觉验收（真实安装走一遍向导）待执行（ACCEPTANCE-BACKLOG §6）。
+
 ## 迭代 30 注释与文档清理（代码去过程化 / DESIGN 重构）· 2026-08-25
 
 - **代码注释去过程化**（60+ 文件约 165 处）：迭代号 / 决策号 / 章节引用等过程标记与历史叙述移除，注释只保留「是什么 / 为什么」；面向用户的错误消息去掉内部代号；标点残渣校验为零。

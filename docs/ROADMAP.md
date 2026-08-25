@@ -43,6 +43,7 @@
 | 28 | 工程治理 P1/P2（文档归档 / 死重移除 / 数据层并发 / 异常契约 / Program 拆分 / 集成测试 / 安全边界） | ✅ 已完成（2026-08-25） |
 | 29 | 程序优化（SQLite WAL / 数据层基建 / 分析器门禁 / Server 集成测试 / 覆盖率收集） | ✅ 已完成（2026-08-25） |
 | 30 | 注释与文档清理（代码去过程化 / DESIGN 重构） | ✅ 已完成（2026-08-25） |
+| 31 | 安装包 UI 专业化（WixUI 向导 / 品牌位图 / ARP 元数据） | ✅ 已完成（2026-08-25，视觉验收待执行） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -854,6 +855,24 @@
 3. DEPLOY / README / ACCEPTANCE-BACKLOG 过程引用清理。
 
 **验收**：dotnet build 0 警告 0 错误、dotnet test 298 全绿；`grep 迭代|决策 src test` 为零（决策记录所在的 DESIGN 表格与 ROADMAP/CHANGELOG 历史记录除外）。
+
+---
+
+## 迭代 31：安装包 UI 专业化（WixUI 向导 / 品牌位图 / ARP 元数据）（已完成，视觉验收待执行）
+
+**背景**：MSI 此前未引用任何 WixUI 对话框集，双击安装只有 Windows Installer 默认基础进度窗（无欢迎 / 许可 / 目录 / 完成页）——观感「不正式」的直接原因。
+
+**范围与完成情况**：
+1. 两个 MSI 接入 `WixUI_InstallDir`（WixToolset.UI.wixext 7.0.0）：欢迎 → 许可 → 安装目录（默认 Program Files，可改）→ 安装 → 完成；许可为中文 RTF（`packaging/license.rtf`，`scripts/generate-license-rtf.py` 生成）。
+2. 品牌资产：`scripts/generate-installer-branding.ps1` 生成 493×312 欢迎 / 完成页背景（左侧主蓝竖幅 + L 标 + 产品名）与 493×58 内页横幅（底部饰条 + 右侧 L 标），与应用图标同一品牌体系。
+3. 控制面板（ARP）元数据：产品图标、帮助 / 关于链接。
+4. 自定义对话框序列适配：运行时缺失提示提前到向导之前（1150 < WelcomeDlg 1297）；卸载清数据询问移到 1290（执行前）——**发现并修复一个隐患**：接入 WixUI 后 ExecuteAction 固定在 1300，原 1350 的清数据对话框会晚于执行阶段弹出、勾选属性传不进清理动作（功能静默失效）。
+5. 连带加固：清理用户数据的动作改为目录无关（`[INSTALLFOLDER]`，支持用户自定义安装目录）且尽力语义（缺失文件不再卡住卸载）；Server 自定义完成小窗移除（品牌化 ExitDialog 取代，服务自动启动无需单独提示）；Client 保留应用级「立即打开」TopMost 完成弹窗。
+6. 工具与验证：`scripts/verify-msi-ui.ps1`（Windows Installer COM 校验对话框表 / UI 序列 / 品牌二进制 / ARP 属性 + 关键断言）；本地构建 Client / Server 0.21.0 两个 MSI 全部断言通过；release.yml 增加 UI 扩展安装一行。
+
+**不在范围**：Burn 引导器（决策 #44 已否）；MSIX / 换安装器工具。
+
+**验收**：MSI 构建成功且结构断言通过；视觉验收（真实安装走一遍向导）待执行，见 ACCEPTANCE-BACKLOG §6。
 
 ---
 
