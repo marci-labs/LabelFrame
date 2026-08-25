@@ -24,3 +24,6 @@ packaging/files*.wxs
 
 # 联调临时目录（迭代 23 联调测试产物：插件包/脚本/日志）
 .tmp/
+
+# 测试产物（覆盖率报告等）
+TestResults/
