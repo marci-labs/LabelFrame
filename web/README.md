@@ -1,50 +1,27 @@
-# React + TypeScript + Vite
+# LabelFrame Web 前端
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + TypeScript + Vite + Konva；同一工程产出客户端界面与服务端管理界面两种构建。
 
-Currently, two official plugins are available:
+## 命令
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## 双构建模式（迭代 20）
-
-同一前端工程产出两个构建产物（`VITE_UI_MODE` 构建时环境变量，默认 `client`）：
-
-- `pnpm build` —— 客户端界面产物 `web/dist`（由 LabelFrame Client / WinHost 托管，默认模式）。
-- `pnpm build:server` —— 服务端管理界面插件产物 `web/dist-server`（放入服务端插件目录
-  `%ProgramData%\LabelFrame\server\plugins\web-ui` 即生效，无需重启）。脚本已内联
-  `cross-env VITE_UI_MODE=server`，任何环境直接执行即可（无需手动设置环境变量）；早期版本（0.17 及以前）
-  需要先设置 `VITE_UI_MODE=server` 再构建，CI 曾因漏设该变量把 client 产物打进 server 插件包（迭代 22 已修复并加产物自检）。
-
-`VITE_UI_MODE=server` 构建（Server UI）：API 走同源相对路径（`getServerBaseUrl()` 返回 `''`，
-不读 localStorage / 机器级配置）；菜单移除设置页与一切打印机相关内容，新增「在线设备」页与
-「客户端下载」页（迭代 22：安装包列表 / 上传 / 下载 / 删除）；数据与打印的目标设备改为在线设备
-选择器（仅在线可选，提交前现拉校验）；无单机降级分支。
-
-dev 联调：vite dev（:5173）的 proxy 按模式分支——server 模式指向 `http://127.0.0.1:53961`（服务端），
-client 模式指向 `http://127.0.0.1:53960`（本机 Client），覆盖 `/api` 与 `/healthz`。
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+pnpm install
+pnpm dev            # 开发（:5173）
+pnpm lint           # oxlint
+pnpm test           # vitest（client 模式；server 模式：VITE_UI_MODE=server pnpm test）
+pnpm build          # 客户端产物 → web/dist（WinHost 托管）
+pnpm build:server   # 服务端管理界面插件产物 → web/dist-server
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## 双构建模式
+
+由构建时环境变量 `VITE_UI_MODE` 区分（默认 `client`）：
+
+- **client（`pnpm build`）**：完整界面——设计器 / 数据与打印 / 设置（连接 / 插件 / 更新）/ 作业历史 / 日志；API 指向本机 WinHost（127.0.0.1:53960，地址可配置）。
+- **server（`pnpm build:server`）**：服务端管理界面——工作台 / 设计器 / 在线设备 / 客户端下载 / 插件管理 / 作业历史 / 设备日志；API 走同源相对路径；无打印机相关内容与单机降级分支。
+
+产物自检：CI 构建后校验两产物特征（防止 `VITE_UI_MODE` 未生效把 client 产物打进 server 包）。
+
+## 开发联调
+
+`vite dev`（:5173）的 proxy 按模式分支：server 模式指向 `http://127.0.0.1:53961`（服务端），client 模式指向 `http://127.0.0.1:53960`（本机客户端），覆盖 `/api` 与 `/healthz`。

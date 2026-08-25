@@ -66,7 +66,7 @@ curl -X POST http://<服务器>:53961/api/jobs \
 | 项目 | 说明 |
 |---|---|
 | `src/LabelFrame.Core` | 契约 / 版式模型、数据校验、ZPL 图片编码、作业队列、模板库、传输插件接口 |
-| `src/LabelFrame.Rendering` | Skia 整版渲染（打印与预览同源）；GDI 预览（Windows，供 Studio） |
+| `src/LabelFrame.Rendering` | Skia 整版渲染（打印与预览同源） |
 | `src/LabelFrame.Api` | Server / WinHost 共享的 HTTP 契约（DTO / 错误码）与端点实现 |
 | `src/LabelFrame.Server` | 无头服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志 |
 | `src/LabelFrame.WinHost` | Windows 打印客户端：本地界面托管 / 作业打印 / 连接与插件管理 |

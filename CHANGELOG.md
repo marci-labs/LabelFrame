@@ -15,6 +15,7 @@
 - **代码注释去过程化**（60+ 文件约 165 处）：迭代号 / 决策号 / 章节引用等过程标记与历史叙述移除，注释只保留「是什么 / 为什么」；面向用户的错误消息去掉内部代号；标点残渣校验为零。
 - **DESIGN.md 重构**：章节顺序修正（4→6→5 → 1-6）；原型十轮过程笔记归档 docs/archive/DESIGN-PROTOTYPE-NOTES.md；API 契约刷新为现状（Server / WinHost 完整端点分组 + 错误响应约定）；「风险与未决问题」重写为仅现存项（已解决条目删除），全文 212→201 行。
 - DEPLOY / README / ACCEPTANCE-BACKLOG 过程引用清理。
+- **收尾体检修复**：移除误提交的本地覆盖率报告（TestResults 入 gitignore）；README Rendering 行去掉已删除的 GDI 预览表述；src/LabelFrame.Studio 磁盘残渣删除；web/README 重写（去 Vite 模板样板与历史叙述）；DESIGN 决策表 3 处单元格内未转义管道符修复（表格渲染破坏）。
 - dotnet build 0 警告 0 错误；dotnet test 298 全绿。
 
 ## 迭代 29 程序优化（SQLite WAL / 数据层基建 / 分析器门禁 / Server 集成测试 / 覆盖率收集）· 2026-08-25
