@@ -112,6 +112,12 @@ public sealed class HostOptions
         "LabelFrame",
         "print-settings.json");
 
+    /// <summary>连接配置文件路径（connection.json；TransportManager 持久化，测试可注入临时路径）。</summary>
+    public string ConnectionPath { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "LabelFrame",
+        "connection.json");
+
     /// <summary>Log 传输 / 宿主日志文件路径（默认 %LOCALAPPDATA%\LabelFrame\host.log）。</summary>
     public string HostLogPath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
