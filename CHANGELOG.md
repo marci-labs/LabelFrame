@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 34 Linux 无头客户端（Log 驱动）+ Docker Compose E2E · 2026-08-28
+
+- **Linux Client Host**：`LabelFrame.WinHost` 增加 `net10.0` 目标并产出 `LabelFrame.ClientHost`；复用队列、Server 路由、Skia 渲染和批次 Worker，Linux 固定只暴露 `log`，不加载 Windows 驱动、Zebra SDK、外部插件、Web UI、浏览器或托盘。
+- **容器化测试环境**：新增 Linux Client 多阶段镜像、稳定版 Server `0.21.0` + 当前 UI / Client 候选的 Compose，以及一键 E2E 脚本；数据与 PNG 使用命名卷，默认管理地址 `http://127.0.0.1:53910`。
+- **闭环验证**：设备注册 / 心跳、单张与 3 张作业、客户端领取与终态回报、Log PNG 数量、重启恢复全部通过；浏览器完成在线设备选择 → 单张打印 → 作业历史，实际 PNG 的中文、条码和明文完整可见。
+- **联调修复**：Log PNG 输出目录改为可配置且作业 API 返回同一目录 / 正确数量；环境变量 ServerUrl 优先于持久化配置；SQLite provider 初始化改为真正线程安全；Server 完整宿主测试按进程环境变量约束串行，消除数据库路径互相覆盖。
+- **验证**：Release build 0 警告 / 0 错误；日常 .NET 315 项全绿，Server 5 分钟 soak 通过；web client / server 各 246 项全绿，lint 与双构建通过；Docker / 浏览器 E2E 通过。Perf 在低干扰轮次通过，但宿主 CPU 41%–46% 时既有延迟门槛会抖动失败，未降低阈值，风险记入 DESIGN。
+
 
 
 ## 依赖升级：TemplateFrame.Excel.Simple 1.0.5 → 2.0.0 · 2026-08-25
@@ -624,4 +632,3 @@
 - Docker 交付 0.16.0：镜像 `labelframe-server:0.16.0`（393MB，基础镜像 aspnet:10.0 + Skia 依赖）、离线包 `artifacts/labelframe-server-0.16.0.docker.tar`（105.9MB）；`docker-compose.yml` 升级镜像标签并默认挂载插件目录 `./plugins/web-ui:/var/lib/labelframe/server/plugins/web-ui`（README 已写明挂载目录与操作：解压 `labelframe-server-webui-0.16.0.zip` 到该目录即生效、移除即无头）；容器内验证 healthz / `/api/server/info`（uiEnabled）/ 插件页面 200 全部通过。
 - Client 安装完成弹窗优化：MSI 原生完成弹窗会被 Windows 焦点策略挡到后台 / 任务栏闪烁——改为安装完成后拉起 WinHost 的 `--install-finished` TopMost 弹窗（默认置前，勾选「立即打开」重启宿主并打开界面）；修复弹窗「确认」点击后不关闭、进程挂起的问题（Application.Run 非模态下 DialogResult 不自动关闭，改为 ShowDialog + 显式 Close，重启宿主用 CreateProcess）；弹窗仅全新安装且非静默（/qn）时出现；已实测全新安装弹窗 TopMost 出现、安装成功。
 - 未来规划（仅文档，不实施）：打印机连接方式插件化——把 Log / TCP9100 / Windows 驱动 / Zebra SDK 抽象为传输插件（接口 + 注册表按需装配），第三方厂商可自研接入；见 ROADMAP 待需求 / DESIGN 未决问题。
-

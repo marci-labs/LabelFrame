@@ -46,6 +46,7 @@
 | 31 | 安装包 UI 专业化（WixUI 向导 / 品牌位图 / ARP 元数据） | ✅ 已完成（2026-08-25，视觉验收待执行） |
 | 32 | 测试完善（端点集成 / 渲染元素 / TimeProvider 确定性 / 设计器组件 / MSI 断言 CI） | ✅ 已完成（2026-08-25） |
 | 33 | 性能 / 稳定性测试（微基准 / 端到端延迟 / soak / nightly CI） | ✅ 已完成（2026-08-25） |
+| 34 | Linux 无头客户端（Log 驱动）+ Server / Client Compose E2E | ✅ 已完成（2026-08-28） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -914,6 +915,33 @@
 6. `docs/PERF-BASELINE.md`：首份基线数据 + 两个发现 + 三个优化机会（Worker 信号量唤醒 / 写事务合批 / SKBitmap 池）。
 
 **验收**：perf / soak / bench 三模式全部通过；日常测试与 ci.yml 不含 Perf/Soak（时长与抖动考虑）；dotnet test 314 全绿。
+
+---
+
+## 迭代 34：Linux 无头客户端（Log 驱动）+ Server / Client Compose E2E（已完成）
+
+**目标**：让真实 Client Host 作业执行链路可在 Linux 容器运行；用一个 Compose 同时启动稳定版 Server 与 Linux Client，在没有打印机的环境里验证设备注册、作业领取、Skia 渲染、Log 模拟输出和终态回报。
+
+**范围**：
+- `LabelFrame.WinHost` 增加 `net10.0` Linux 目标，复用现有作业队列、路由 Worker、Skia 渲染、批次设置与 HTTP 健康检查；Windows 目标行为保持不变。
+- Linux 目标固定只注册内置 `log` 传输；不扫描 / 安装外部传输插件；不启动 Web UI、浏览器或托盘。
+- 增加可覆盖的数据路径配置（数据库、模板、日志、连接、打印设置、PNG 输出），容器内统一落到持久化数据卷。
+- 新增 Linux Client 多阶段 Dockerfile，以及 Server + Client 的 E2E Compose。Server 镜像默认固定 `ghcr.io/marci-labs/labelframe-server:0.21.0`；Linux Client 从当前源码构建，因此测试结果标记为「稳定 Server 基线 + Client 发布候选」，不能冒充双端稳定版。
+- 增加 Linux 目标集成测试与自动化 E2E 冒烟：设备上线 → 提交单张 / 多张作业 → Server 终态 Completed → Client 生成对应 PNG；客户端重启后可重新上线并继续领取。
+
+**不在范围**：Linux 图形界面；TCP 9100 / USB / winspool / Zebra / 第三方插件；arm64 / 多架构；修改发布与 CI 工作流；发布 tag；Windows 真机打印回归。
+
+**验收**：
+- `dotnet build LabelFrame.slnx` 通过；日常测试按 CI 口径排除 Perf / Soak 后通过；Windows Client 既有测试无回归，新增 Linux Client 测试通过。
+- Linux Client 镜像启动后 `/healthz` 为 ok，`/api/transport/plugins` 仅含 `log`。
+- Compose 一条命令启动 Server + Client；Server 设备目录出现指定 Linux 设备且在线。
+- 经 Server 提交的单张 / 多张作业均完成，Client 数据卷内生成数量一致、可解码且非空白的 PNG；重启客户端后设备恢复在线。
+- 浏览器从 Server 管理界面完成一次模板 / 数据 / 定向打印主链路，页面无阻断性错误。
+
+**完成记录（2026-08-28）**：验收标准全部满足。Release 构建 0 警告 / 0 错误；日常 .NET 测试 315 项全绿，Server 5 分钟 soak 通过；web client / server 双模式各 246 项全绿，lint 与双构建通过。Compose 使用稳定版 Server `0.21.0` + 当前 Linux Client 候选完成幂等重放、单张 / 3 张作业、PNG 出图、终态回报、客户端重启恢复；浏览器管理界面完成在线设备选择、单张打印与作业历史验证，控制台无错误。联调同时修复 SQLite provider 并发初始化竞态、可配置 Log PNG 目录的作业 API 元数据漂移，以及 E2E 单元素 JSON 数组折叠问题。Perf 在低干扰轮次通过，但宿主 CPU 41%–46% 时 WinHost p99 680ms、Server 20 设备 p50 816ms 超过既有门槛；功能请求 0 错误，不降阈值，继续由 nightly 在隔离环境判定。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 34（Linux 无头客户端，仅 Log 驱动）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；严格按本节范围实施，先更新公共文档再改代码；完成 dotnet 构建 / 测试、Docker Compose E2E 与浏览器主链验证；更新 ROADMAP / CHANGELOG / DESIGN；提交用 Conventional Commits；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 

@@ -26,6 +26,7 @@ public sealed class JobSubmissionService
     private readonly TemplateStore _templateStore;
     private readonly ITransportManager _transportManager;
     private readonly TextWriter _hostLogWriter;
+    private readonly string _printOutputPath;
     private readonly int _dpi;
 
     /// <summary>创建提交服务。</summary>
@@ -36,7 +37,8 @@ public sealed class JobSubmissionService
         ILabelBitmapRenderer renderer,
         TemplateStore templateStore,
         ITransportManager transportManager,
-        TextWriter hostLogWriter)
+        TextWriter hostLogWriter,
+        string? printOutputPath = null)
     {
         _queue = queue;
         _encoder = encoder;
@@ -44,6 +46,10 @@ public sealed class JobSubmissionService
         _templateStore = templateStore;
         _transportManager = transportManager;
         _hostLogWriter = hostLogWriter;
+        _printOutputPath = printOutputPath ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "LabelFrame",
+            "print");
         _dpi = dpi;
     }
 
@@ -133,11 +139,7 @@ public sealed class JobSubmissionService
     {
         try
         {
-            var dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "LabelFrame",
-                "print",
-                jobId);
+            var dir = Path.Combine(_printOutputPath, jobId);
             Directory.CreateDirectory(dir);
             for (var i = 0; i < items.Count; i++)
             {

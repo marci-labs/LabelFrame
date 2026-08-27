@@ -22,6 +22,16 @@ namespace LabelFrame.WinHost;
 /// </summary>
 public static class WinHostApp
 {
+#if WINDOWS
+    private const string ServiceName = "LabelFrame.WinHost";
+    private const string HostPlatform = "windows";
+    private const bool IsHeadless = false;
+#else
+    private const string ServiceName = "LabelFrame.ClientHost";
+    private const string HostPlatform = "linux";
+    private const bool IsHeadless = true;
+#endif
+
     /// <summary>装配并构建应用（含三库初始化与外部插件目录扫描）。</summary>
     /// <param name="options">宿主配置（路径与监听已就绪）。</param>
     /// <param name="hostInfo">宿主日志回调（Main 传 host.log 写入器；测试可传收集器）。</param>
@@ -47,8 +57,9 @@ public static class WinHostApp
         });
         configureBuilder?.Invoke(builder);
 
-        // 传输插件注册表 = Core 内置（log / tcp9100）+ WinHost 内置（winspool / zebra）+ 外部 DLL 目录扫描
+        // Windows 注册完整传输能力；Linux 首版固定只注册 Log。
         var transportRegistry = new TransportPluginRegistry();
+#if WINDOWS
         foreach (var plugin in BuiltinTransportPlugins.CreateCorePlugins())
         {
             transportRegistry.Register(plugin);
@@ -56,9 +67,14 @@ public static class WinHostApp
 
         transportRegistry.Register(new WinspoolTransportPlugin());
         transportRegistry.Register(new ZebraTransportPlugin());
+#else
+        options.Transport = TransportMode.Log;
+        transportRegistry.Register(new LogTransportPlugin());
+#endif
         var pluginContext = new TransportPluginContext(
             hostLogWriter,
-            Path.GetDirectoryName(HostOptions.DefaultDatabasePath) ?? string.Empty);
+            Path.GetDirectoryName(options.DatabasePath) ?? string.Empty);
+#if WINDOWS
         var pluginLoad = PluginDirectoryLoader.LoadWithErrors(options.PluginsPath, hostLogWriter);
         foreach (var (plugin, assemblyPath) in pluginLoad.Plugins)
         {
@@ -68,6 +84,7 @@ public static class WinHostApp
                 hostInfo($"已加载外部传输插件：{plugin.Id}（{plugin.DisplayName}，来自 {assemblyPath}）");
             }
         }
+#endif
 
         var transportManager = new TransportManager(transportRegistry, pluginContext, options, hostLogWriter, options.ConnectionPath);
 
@@ -79,7 +96,7 @@ public static class WinHostApp
         printSettings.Update(printSettingsStore.Load());
         builder.Services.AddSingleton(printSettingsStore);
         builder.Services.AddSingleton(printSettings);
-        var machineServerUrl = hostConfigStore.LoadServerUrl();
+        var machineServerUrl = options.HasServerUrlEnvironmentOverride ? null : hostConfigStore.LoadServerUrl();
         if (!string.IsNullOrWhiteSpace(machineServerUrl) && !string.Equals(machineServerUrl, options.ServerUrl, StringComparison.OrdinalIgnoreCase))
         {
             options.ServerUrl = machineServerUrl;
@@ -102,12 +119,14 @@ public static class WinHostApp
         builder.Services.AddSingleton(queue);
         builder.Services.AddSingleton<ITransportManager>(transportManager);
         builder.Services.AddSingleton<ITransportPluginRegistry>(transportRegistry);
+#if WINDOWS
         builder.Services.AddSingleton(sp => new Transport.PluginInstaller(
             options.PluginsPath,
             sp.GetRequiredService<ITransportPluginRegistry>(),
             hostLogWriter,
             // 启动装配时的加载失败透出给已安装列表（「加载失败 err + 原因」）
             pluginLoad.Errors.ToDictionary(e => e.AssemblyPath, e => e.Error, StringComparer.OrdinalIgnoreCase)));
+#endif
         builder.Services.AddSingleton<ZplImageEncoder>();
         builder.Services.AddHostedService<JobPrintWorker>();
 
@@ -124,7 +143,8 @@ public static class WinHostApp
             skiaRenderer,
             templateStore,
             transportManager,
-            hostLogWriter));
+            hostLogWriter,
+            options.PrintOutputPath));
 
         // 本地工具服务：地址由用户配置（可跨机器 / 跨端口），启用宽松 CORS
         builder.Services.AddCors(corsOptions => corsOptions.AddDefaultPolicy(policy =>
@@ -163,8 +183,10 @@ public static class WinHostApp
         app.MapGet("/healthz", (ITransportManager transportManager, ITransportPluginRegistry registry) =>
             Results.Ok(new
             {
-                service = "LabelFrame.WinHost",
+                service = ServiceName,
                 status = "ok",
+                platform = HostPlatform,
+                headless = IsHeadless,
                 // 旧字段：连接方式（兼容旧前端徽标）；pluginId / displayText 精确透出当前插件
                 transport = transportManager.CurrentConfig.Mode.ToString(),
                 pluginId = transportManager.CurrentConfig.PluginId,
@@ -184,12 +206,16 @@ public static class WinHostApp
 
         // ---- 宿主专属端点（分组实现见 Api/ 目录）----
         app.MapTransportApi();
+#if WINDOWS
         app.MapPluginApi();
+#endif
         app.MapJobsApi();
         app.MapPrinterApi(options.Dpi);
         app.MapHostApi(hostInfo);
 
+#if WINDOWS
         MapWebUi(app, options);
+#endif
         return app;
     }
 

@@ -10,14 +10,26 @@ namespace LabelFrame.Core.Data;
 /// </summary>
 public static class SqliteSupport
 {
+    private static readonly object InitializationLock = new();
     private static int _initialized;
 
     /// <summary>确保 SQLitePCLRaw 的 e_sqlite3 provider 已设置（进程内仅一次，幂等）。</summary>
     public static void EnsureInitialized()
     {
-        if (Interlocked.Exchange(ref _initialized, 1) == 0)
+        if (Volatile.Read(ref _initialized) == 1)
         {
+            return;
+        }
+
+        lock (InitializationLock)
+        {
+            if (_initialized == 1)
+            {
+                return;
+            }
+
             raw.SetProvider(new SQLite3Provider_e_sqlite3());
+            Volatile.Write(ref _initialized, 1);
         }
     }
 

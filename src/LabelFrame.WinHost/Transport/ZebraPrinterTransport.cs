@@ -5,19 +5,6 @@ using Zebra.Sdk.Printer.Discovery;
 
 namespace LabelFrame.WinHost.Transport;
 
-/// <summary>Zebra SDK 连接类型。</summary>
-public enum ZebraTransportKind
-{
-    /// <summary>TCP/IP 网络打印机（默认 9100）。</summary>
-    Tcp,
-
-    /// <summary>USB 直连（ZebraUsbName 为空时自动发现第一台）。</summary>
-    Usb,
-
-    /// <summary>Windows 驱动（按打印机名）。</summary>
-    Driver,
-}
-
 /// <summary>
 /// Zebra 官方 Link-OS SDK 传输：统一处理 TCP / USB / Windows 驱动连接，
 /// 发送 ZPL 指令；异常统一转换为中文 InvalidOperationException。

@@ -19,7 +19,7 @@
 | 标签文档（LabelDocument） | 版式 + 数据解析后的中间结果，与打印机指令无关 |
 | 作业（Job） | 一次打印请求 = N 张标签，逐张状态，可挂起 / 恢复 / 取消，批内顺序 |
 | 设备（Device） | 一台运行宿主的 PC 或 PDA，向 Server 注册 |
-| 宿主（Host） | 设备上的本地打印服务（WinHost / AndroidHost） |
+| 宿主（Host） | 设备上的打印执行服务（Windows Client / Linux Client / AndroidHost） |
 | 编码器（Encoder） | LabelDocument → 打印机指令（ZPL 优先，预留 TSPL / CPCL / 图片） |
 | 传输（Transport） | 把指令送到打印机：TCP 9100 / Windows 驱动 / 蓝牙 / 日志模拟 |
 | 模板包（TemplatePackage） | 契约 + 版式 + 静态图片资源的可导入导出单元（zip） |
@@ -41,12 +41,18 @@ flowchart LR
             A[AndroidHost]
             P2[打印机 IP / 蓝牙]
         end
+        subgraph 测试设备[Linux / Docker]
+            L[Linux Client<br/>无头]
+            O[Log 模拟输出<br/>PNG]
+        end
     end
     WMS -->|"HTTP 提交作业"| S
     S -->|"定向投递"| W
     S -->|"定向投递"| A
+    S -->|"定向投递"| L
     W --> P1
     A --> P2
+    L --> O
 ```
 
 ### 3.1 两种打印模式
@@ -70,7 +76,7 @@ flowchart LR
 | 6 | 设备定向投递 | 作业目标 = 发起设备；Server 维护设备目录精准投递 | 多人并发互不干扰；替代广播方案 |
 | 7 | 本地服务统一入口 | 所有打印经设备宿主；直连与路由并存 | PC / PDA 同构 |
 | 8 | 预览是设计期能力 | 预览渲染不进打印主链路，模板设计 / 调试用 | 正式流程零预览开销 |
-| 9 | 运行平台 | .NET 10（2026-08-09 起）；WinHost 目标 `net10.0-windows10.0.26100`（Zebra SDK 需要 Windows SDK 投影）；Win7/8 用 net48 版 WinHost（尽量兼容，有真实需求再做） | 官方 SDK 与最新 LTS 能力；兼容后置 |
+| 9 | 运行平台 | .NET 10；Client Host 共用一套作业 / 路由 / 渲染代码，Windows 目标 `net10.0-windows10.0.26100`（Zebra SDK 需要 Windows SDK 投影），Linux 目标 `net10.0`；Win7/8 的 net48 版有真实需求再做 | Windows 保留完整打印能力，Linux 可作为无头容器客户端运行；兼容后置 |
 | 10 | 模板管理先单机 | 单机 CRUD + 模板包导入导出；WMS 下发后置 | 「标准模板包」格式从第一天定，下发复用同一格式 |
 | 11 | Server 自带测试入口 | 无业务系统也能提交打印、连接打印机验证 | 系统独立可测 |
 | 12 | 迭代 1 编码器范围 | ZPL 编码器先覆盖文本 / Code128 / 图片占位；二维码 / 线元素进入模型但编码器显式报错（NotSupportedException），迭代 2 补全 ^BQ / ^GB | 迭代 1 验收聚焦 ^BC，避免范围膨胀 |
@@ -78,14 +84,14 @@ flowchart LR
 | 14 | 作业模型与 SQLite 持久化 | 一次请求 = 1 个 Job + N 个 Item（逐张）；SQLite 表 `jobs` / `job_items`，`request_id` 唯一索引实现幂等；Item 存编码后的 ZPL（不可变，避免重打） | 服务重启不丢作业；重放同一 requestId 不重复建单 |
 | 15 | 本地 HTTP API（迭代 2 契约） | 提交请求自包含模板（contract + layout + labels[]），因为模板管理在迭代 4；端点：`POST /api/jobs`、`GET /api/jobs/{id}`、`POST /api/jobs/{id}/suspend / resume / cancel`、`GET /healthz` | 无模板库也能端到端打印；迭代 4 再支持模板引用 |
 | 16 | 挂起 / 恢复语义 | 传输异常（如打印机离线）→ 当前 Item 记 Failed，若仍有未打 Item 则 Job 挂起；恢复后从未打印的 Pending Item 续打（不重打 Failed，失败项单独重打在迭代 6）；取消 → 剩余 Pending/Printing Item 置 Cancelled；服务重启把 in-flight（Printing）Job 置 Suspended，并把在途（Printing）Item 重置为 Pending，恢复后续打优先保证不漏打（不重打语义在真实设备联调时确认） | 符合底线「不重打、不漏打」；TCP 无法感知缺纸，以发送异常近似 |
-| 17 | 中文渲染架构 | Core 定义 `LabelBitmap`（1bpp）+ ZPL `^GF` 编码；WinHost 用 GDI（System.Drawing，Windows 专属）把非 ASCII 文本元素栅格化为位图并替换为图片元素；ASCII 仍用原生 `^A` 文本 | 不依赖打印机固件中文字库；Android 迭代 5 用平台位图实现同契约 |
+| 17 | 中文渲染架构 | Core 定义 `LabelBitmap`（1bpp）+ ZPL `^GF` 编码；PC / Linux Client 用 Skia 把整张标签统一渲染为位图，Android 使用平台位图实现同一编码契约 | 不依赖打印机固件中文字库；各宿主打印主链路同构 |
 | 18 | 传输分层 | TCP 9100 在 Core（跨平台，Android 复用）；Windows 驱动（USB）用 winspool P/Invoke raw 打印，放在 WinHost | 每台打印机串行，一台设备一次只处理一个 Item |
 | 19 | WinHost 配置 | `appsettings.json` 的 `WinHost` 节 + `LABELFRAME_*` 环境变量覆盖；默认监听 127.0.0.1:53960、Log 传输（联调）、数据库 %LOCALAPPDATA%\\LabelFrame\\jobs.db | 一次配置可复制；无真实打印机时日志模拟 |
 | 20 | Zebra 官方 SDK | 传输新增 Zebra 模式（`Zebra.Printer.SDK 3.0.3355`，Link-OS）：TCP / USB（自动发现）/ Windows 驱动统一连接；避开 5.x 引入的 MAUI/WinUI 依赖；轻量 TCP9100 / winspool raw 保留作备选 | 官方 USB 直连与打印机状态（迭代 6）可用；Zebra 模式要求 Win10+ |
 | 21 | Server 投递采用「宿主轮询」 | WinHost 注册后周期轮询 Server 领取定向作业，完成后回报结果；不要求宿主开放入站端口 | PC / PDA 同构，天然穿透防火墙；设备在线以心跳（轮询）为准 |
 | 22 | 设备离线语义 | 作业投递给离线设备时在 Server 暂存（Pending），设备上线轮询即领取；不设过期 | 符合「不丢作业」底线；后续可按需加过期/通知 |
 | 23 | 模板包格式 | zip：`manifest.json`（name / group / contract / layout）+ `images/` 图片资源；模板库 SQLite（Core.Templates，按分组列表） | 两台电脑间可导入导出；WMS 下发复用同一格式 |
-| 24 | 预览渲染 | LabelDocument → PNG（设计期）：文本 / 线用 GDI，条码 / 二维码用 ZXing，图片用模板资源或位图；毫米 → 像素按 DPI | 预览与打印同坐标体系，抽查一致 |
+| 24 | 预览渲染 | `LabelDocument` → PNG（设计期）与打印位图统一使用 Skia / ZXing；图片来自模板资源；毫米 → 像素按 DPI | 预览与打印共用渲染器，避免平台渲染漂移 |
 | 25 | 失败项单独重打 | Failed Item → Pending（清错误），Failed 作业自动恢复 Pending 由 Worker 续打 | 补打不重建整单；不重打已完成项 |
 | 26 | 在线状态 / 测试页 | `GET /api/printer/status` + `POST /api/printer/test`；TCP 用 `~HS` 基础解析（字段映射待真实设备联调），Zebra SDK 3.x PrinterStatus 无公开字段先按「连接成功 = 在线」，驱动模式不可读回 | 故障可解释；真实设备联调确认字段语义 |
 | 27 | Android 本地 HTTP | AndroidHost 用 TcpListener 极简 HTTP（仅 127.0.0.1:53970），不承载完整 ASP.NET Core | 包体小、依赖少；JS 桥同端口预留 |
@@ -146,6 +152,8 @@ flowchart LR
 | 81 | 安装向导 UI（迭代 31，2026-08-25） | 两个 MSI 接入 `WixUI_InstallDir`（WixToolset.UI.wixext）：欢迎 / 中文许可 / 安装目录（可改，默认不变）/ 完成；品牌位图与应用图标同体系（generate-installer-branding.ps1）；ARP 元数据（图标 / 链接）补全；自定义对话框（运行时缺失 / 卸载清数据）保留并重排到向导之外、执行之前 | 从「默认裸进度窗」升级为完整品牌向导；注意点：ExecuteAction 被扩展固定在 1300，自定义对话框必须排在其前（否则属性传不进执行序列）；清理用户数据动作改为 `[INSTALLFOLDER]` 目录无关 + 尽力语义；Server 完成提示由品牌化 ExitDialog 承担，Client 完成体验 = 向导完成页可选复选框「立即打开 LabelFrame」（默认勾选，Finish 条件启动；应用侧 --install-finished 模式已移除）；RTF 字体表必须用 ASCII 字体名（Unicode 转义会被当正文渲染）；向导文案经 `-culture zh-cn` 本地化；开机自启 = 安装选项页勾选 + HKLM Run 键 + `--autostart` 托盘启动（WiX v7 条件组件用隐藏子 Feature 的 `<Level>` 元素，Condition 子元素已移除） |
 | 82 | 测试体系完善策略（迭代 32，2026-08-25） | ① 端点集成测试与生产同一装配（WinHostApp.BuildAsync / Server Program）；② 时序依赖经 TimeProvider 注入（FakeTimeProvider 驱动，恢复测试并行）；③ 画布交互以 onChange 为断言边界（与画布同数据源），Konva 本体留 E2E 层；④ 安装包 UI 契约以 MSI 结构断言（COM 查表）进 CI | 两个结构性缺陷由新测试发现（RegionHAlign 失效、测试与生产 connection.json 未隔离）；WinHost 套件 17s→2s 且可并行；「测到的就是生产的」成为可验证命题 |
 | 83 | 性能 / 稳定性测试体系（迭代 33，2026-08-25） | 三层：微基准（BenchmarkDotNet + MemoryDiagnoser，热路径量化）、端到端延迟（xUnit TestServer 与生产同装配，对 REQUIREMENTS 量化指标）、soak（稳态漂移：GC 堆 / WAL 界 / 吞吐 / 错误率）；Trait 隔离（Perf/Soak 不进日常 CI），nightly 每周跑；工具自建不引入 k6/NBomber（局域网规模进程内 harness 更可维护） | 两个实测发现：SQLite 单写者 20 并发 p95 尾部 2-3s（分层阈值记录）、WinHost 延迟主体为 200ms 空转轮询（信号量唤醒为已记录优化机会）；wal_autocheckpoint 显式声明并纳入 soak 断言 |
+| 84 | Linux 无头客户端（迭代 34） | 现有 Client Host 多目标编译：Windows 保持完整 UI / 托盘 / winspool / Zebra / 插件能力；Linux `net10.0` 仅注册内置 `log` 传输，不加载外部传输插件，不启动浏览器或托盘。提供 Linux Client 镜像及 Server + Client Compose；测试组合默认固定稳定版 Server `0.21.0`，Linux Client 为当前迭代候选 | 作业队列、Server 轮询、Skia 渲染与结果回报共用同一代码路径，可在 Docker 中验证真实客户端闭环；首版不能连接物理打印机，不能代表 Windows 专属驱动验收 |
+| 85 | SQLite provider 初始化与集成测试隔离（迭代 34 E2E 收尾） | `SqliteSupport` 只在 `raw.SetProvider` 成功后发布已初始化状态，等待中的并发调用受同一锁保护；Server 测试因多个完整宿主通过进程环境变量选择独立数据库，测试类禁止并行 | 消除并发首开数据库时读取未就绪 provider 的竞态；完整宿主测试不再互相覆盖数据库路径，代价是 Server 测试程序集串行运行 |
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验）；未捕获异常统一 500 + `LF_INTERNAL_001`。
@@ -165,7 +173,7 @@ flowchart LR
 
 投递方式：宿主轮询（决策 #21）；设备离线作业暂存（决策 #22）。
 
-### 5.2 WinHost（默认 127.0.0.1:53960，客户端本机）
+### 5.2 Client Host（Windows 默认 127.0.0.1:53960；Linux 容器内默认 0.0.0.0:53960）
 
 模板 / 调试出图 / Excel / 日志端点与 Server 完全一致（共享实现 `LabelFrame.Api`，宿主前缀错误码除外）。宿主专属：
 
@@ -177,6 +185,8 @@ flowchart LR
 | 机器级 | `GET/POST /api/host/config`（ServerUrl；仅回环可写）、`GET/POST /api/host/print-settings`（批次节流；仅回环可写）、`POST /api/host/shutdown`（仅回环） |
 | 打印机 | `GET /api/printer/status`、`POST /api/printer/test` |
 | 其他 | `GET /healthz`（含当前连接插件信息） |
+
+Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端点、外部插件扫描、Web UI、托盘与浏览器拉起均不启用。运行参数由 `LABELFRAME_*` 环境变量提供，主要用于 Compose 中的发布候选端到端测试。
 
 ## 6. 风险与未决问题
 
@@ -190,6 +200,8 @@ flowchart LR
 
 - Zebra SDK 要求 Win10+；Win7/8 只能用 tcp9100 / winspool。
 - net48 版 WinHost（HttpListener、netstandard2.0 约束）有真实需求再做。
+- Linux Client 首版只验证 Log 模拟输出；TCP / USB / 厂商 SDK 与真实打印机状态不在该镜像的能力声明内。
+- Perf 阈值对宿主 CPU 争用敏感：本地低干扰轮次可通过，CPU 41%–46% 时 WinHost p99 与 Server 20 设备 p50 会超门槛但请求仍 0 错误；保持既有阈值，由 nightly 隔离执行。`release.yml` 当前仍运行未过滤的 solution 测试，可能受 Perf / Soak 抖动影响；迭代 34 按约束不修改发布工作流，后续 CI 治理迭代应与日常 / nightly 口径对齐。
 
 **暂不做（有需求再排）**：
 

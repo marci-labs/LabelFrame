@@ -64,6 +64,7 @@ curl -X POST http://<服务器>:53961/api/jobs \
 | 单机 | Server + Client 两个 MSI 同机安装 | 一台电脑一台打印机 |
 | Windows 服务器 | Server MSI（Windows 服务，端口 53961） | 局域网多机 |
 | Linux / Docker | `docker compose up -d` 或 systemd | 局域网多机 |
+| Docker E2E | 稳定版 Server + 当前 Linux Log Client | 无打印机集成回归 |
 
 安装细节、Docker / Ubuntu 步骤、签名与配置项见 **[docs/DEPLOY.md](docs/DEPLOY.md)**。
 
@@ -75,7 +76,7 @@ curl -X POST http://<服务器>:53961/api/jobs \
 | `src/LabelFrame.Rendering` | Skia 整版渲染（打印与预览同源） |
 | `src/LabelFrame.Api` | Server / WinHost 共享的 HTTP 契约（DTO / 错误码）与端点实现 |
 | `src/LabelFrame.Server` | 无头服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志 |
-| `src/LabelFrame.WinHost` | Windows 打印客户端：本地界面托管 / 作业打印 / 连接与插件管理 |
+| `src/LabelFrame.WinHost` | Client Host 共享实现：Windows 完整客户端；Linux 无头 Log 测试客户端 |
 | `src/LabelFrame.AndroidHost` | Android / PDA 打印宿主（实验性，不随发布构建，见其 README） |
 | `web/` | Web 前端（Vite + React + TS + Konva）：客户端界面与服务端管理界面双构建 |
 
@@ -85,11 +86,12 @@ curl -X POST http://<服务器>:53961/api/jobs \
 
 ```bash
 dotnet build LabelFrame.slnx        # 构建
-dotnet test LabelFrame.slnx         # 全量测试
+dotnet test LabelFrame.slnx --filter "FullyQualifiedName!~Perf&FullyQualifiedName!~Soak"  # 日常测试
 cd web && pnpm install && pnpm dev  # 前端开发（连本机 WinHost）
 ```
 
 - 无打印机验证打印闭环：`powershell -ExecutionPolicy Bypass -File .\scripts\demo-winhost.ps1`。
+- Docker 验证 Server / Linux Client 路由闭环：`powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1`，详见 [docs/LINUX-CLIENT-E2E.md](docs/LINUX-CLIENT-E2E.md)。
 - 提交即跑 CI（`.github/workflows/ci.yml`：dotnet 构建 / 测试 + 前端 lint / 双模式测试 / 构建）。
 - 发版：更新 ROADMAP / CHANGELOG 后推送 `v*` tag，由 `release.yml` 自动构建发布（见 [docs/DEPLOY.md](docs/DEPLOY.md) §7）。
 

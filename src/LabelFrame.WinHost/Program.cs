@@ -1,5 +1,3 @@
-using System.Text.Json;
-using LabelFrame.Core.Transport.Plugins.Package;
 using LabelFrame.WinHost.Transport;
 using Serilog;
 
@@ -8,12 +6,6 @@ namespace LabelFrame.WinHost;
 /// <summary>WinHost：本地打印服务（作业队列 + HTTP API + 打印 Worker）。</summary>
 public static class Program
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
-    };
-
     public static async Task Main(string[] args)
     {
         // 配置装配：appsettings.json 的 WinHost 节 + 环境变量覆盖 + --autostart（开机自启：托盘常驻不拉浏览器）
@@ -30,6 +22,15 @@ public static class Program
             options.OpenBrowser = false;
         }
 
+#if !WINDOWS
+        // Linux 首版是容器化无头测试客户端，传输能力固定为 Log。
+        options.Transport = TransportMode.Log;
+        options.OpenBrowser = false;
+        options.EnableTray = false;
+        options.WebUiPath = null;
+#endif
+
+#if WINDOWS
         // Serilog 文件日志（ILogger 逐张日志落盘；与 host.log 分开文件）
         // 文件名 app-20260818.log：Serilog.Sinks.File 的 {Date} 是字面量（不会替换），
         // 正确做法是 app-.log + RollingInterval.Day（Serilog 自动追加日期后缀）。
@@ -44,6 +45,7 @@ public static class Program
                 formatProvider: System.Globalization.CultureInfo.InvariantCulture,
                 rollingInterval: RollingInterval.Day,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
+#endif
 
         var hostLogWriter = OpenHostLogWriter(options);
         void HostInfo(string message)
@@ -52,6 +54,9 @@ public static class Program
             {
                 hostLogWriter.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}");
                 hostLogWriter.Flush();
+#if !WINDOWS
+                Console.WriteLine($"[LabelFrame] {message}");
+#endif
             }
             catch
             {
@@ -64,7 +69,8 @@ public static class Program
         // 应用装配（DI + 全部端点 + Web UI 托管）；宿主层职责（托盘 / 浏览器 / 退出）留在 Main
         var app = await WinHostApp.BuildAsync(options, hostLogWriter, HostInfo);
 
-        // 单机模式：启动后自动打开默认浏览器
+#if WINDOWS
+        // Windows 单机模式：启动后自动打开默认浏览器
         if (options.OpenBrowser)
         {
             _ = Task.Run(async () =>
@@ -85,11 +91,13 @@ public static class Program
                 }
             });
         }
+#endif
 
         app.Lifetime.ApplicationStopping.Register(() => HostInfo("ApplicationStopping"));
         app.Lifetime.ApplicationStopped.Register(() => HostInfo("ApplicationStopped"));
 
-        var tray = new TrayIconService(HostInfo);
+#if WINDOWS
+        using var tray = new TrayIconService(HostInfo);
         if (options.EnableTray)
         {
             tray.Start(ToLocalUiUrl(options.ListenUrl), () =>
@@ -99,6 +107,7 @@ public static class Program
             });
             HostInfo("系统托盘已启用（右键托盘图标可退出）。");
         }
+#endif
 
         try
         {
@@ -113,9 +122,10 @@ public static class Program
         }
         finally
         {
-            tray.Dispose();
             HostInfo("宿主退出流程完成。");
+#if WINDOWS
             Environment.Exit(0);
+#endif
         }
     }
 

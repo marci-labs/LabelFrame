@@ -1,0 +1,13 @@
+.git
+.github
+.tmp
+artifacts
+BenchmarkDotNet.Artifacts
+TestResults
+**/bin
+**/obj
+**/node_modules
+web/dist
+web/dist-server
+*.user
+*.suo

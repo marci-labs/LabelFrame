@@ -48,6 +48,18 @@ curl http://127.0.0.1:53961/healthz   # {"service":"LabelFrame.Server","status":
 - 自行构建：`docker build -f packaging/ubuntu/Dockerfile -t labelframe-server artifacts/server-linux/linux-x64`。
 - 本地构建镜像调试：`LABELFRAME_IMAGE=labelframe-server LABELFRAME_VERSION=0.20.2 docker compose up -d`。
 
+### 3.1 Server + Linux Log Client 本地 E2E
+
+仓库提供仅用于测试的 Linux 无头 Client。它固定使用 `log` 模拟打印，不包含 TCP 9100、USB、Windows 驱动、Zebra SDK、第三方插件或客户端 Web UI。默认组合是稳定版 Server `0.21.0` 后端 + 当前源码构建的 Server UI / Linux Client 候选，不能标记为双端稳定版。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1
+# 通过后环境保持运行：http://127.0.0.1:53910
+docker compose -f .\packaging\e2e\compose.yaml down
+```
+
+脚本验证设备注册、单张 / 多张作业、Skia 渲染、PNG 数量、Server 终态回报，以及 Client 重启后恢复在线；数据保存在 Compose 命名卷。端口冲突时传 `-ServerPort <端口>`。完整测试大纲与排障方式见 [LINUX-CLIENT-E2E.md](LINUX-CLIENT-E2E.md)。
+
 ## 4. Ubuntu（systemd 裸机部署）
 
 1. Windows 上发布 linux-x64 包：

@@ -1,0 +1,19 @@
+ARG LABELFRAME_VERSION=0.21.0
+
+FROM node:24-bookworm-slim AS web-build
+WORKDIR /web
+RUN npm install --global pnpm@11.10.0
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY web/ ./
+RUN pnpm build:server
+
+FROM ghcr.io/marci-labs/labelframe-server:${LABELFRAME_VERSION}
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=web-build /web/dist-server/ /app/web-ui/
+ENV LABELFRAME_SERVER_WEB_UI=/app/web-ui
+HEALTHCHECK --interval=5s --timeout=3s --start-period=10s --retries=12 \
+    CMD curl --fail --silent http://127.0.0.1:53961/healthz > /dev/null || exit 1

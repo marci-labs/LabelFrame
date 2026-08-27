@@ -9,6 +9,7 @@
   <Folder Name="/test/">
     <Project Path="test/LabelFrame.Core.Tests/LabelFrame.Core.Tests.csproj" />
     <Project Path="test/LabelFrame.WinHost.Tests/LabelFrame.WinHost.Tests.csproj" />
+    <Project Path="test/LabelFrame.ClientHost.Tests/LabelFrame.ClientHost.Tests.csproj" />
     <Project Path="test/LabelFrame.Server.Tests/LabelFrame.Server.Tests.csproj" />
     <Project Path="test/LabelFrame.Api.Tests/LabelFrame.Api.Tests.csproj" />
     <Project Path="test/LabelFrame.Benchmarks/LabelFrame.Benchmarks.csproj" />

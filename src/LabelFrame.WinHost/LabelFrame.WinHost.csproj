@@ -1,21 +1,37 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <ApplicationIcon>..\..\assets\labelframe.ico</ApplicationIcon>
-    <UseWindowsForms>true</UseWindowsForms>
-    <TargetFramework>net10.0-windows10.0.26100</TargetFramework>
+    <TargetFrameworks>net10.0;net10.0-windows10.0.26100</TargetFrameworks>
+    <OutputType>Exe</OutputType>
     <RootNamespace>LabelFrame.WinHost</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <AssemblyName>LabelFrame.ClientHost</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'">
+    <OutputType>WinExe</OutputType>
+    <ApplicationIcon>..\..\assets\labelframe.ico</ApplicationIcon>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- Zebra 官方 Link-OS SDK：USB / TCP / 驱动 / 蓝牙 统一连接与打印机状态 -->
-    <PackageReference Include="Zebra.Printer.SDK" Version="3.0.3355" />
+    <PackageReference Include="Zebra.Printer.SDK" Version="3.0.3355" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
     <!-- 文件日志：Serilog.AspNetCore 传递依赖 Serilog.Sinks.File，无需单独引用 -->
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="TrayIconService.cs" />
+    <Compile Remove="Transport\RawPrinterTransport.cs" />
+    <Compile Remove="Transport\WinspoolTransportPlugin.cs" />
+    <Compile Remove="Transport\ZebraPrinterTransport.cs" />
+    <Compile Remove="Transport\ZebraTransportPlugin.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -118,6 +118,12 @@ public sealed class HostOptions
         "LabelFrame",
         "connection.json");
 
+    /// <summary>Log 模拟打印 PNG 输出目录（默认 %LOCALAPPDATA%\LabelFrame\print）。</summary>
+    public string PrintOutputPath { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "LabelFrame",
+        "print");
+
     /// <summary>Log 传输 / 宿主日志文件路径（默认 %LOCALAPPDATA%\LabelFrame\host.log）。</summary>
     public string HostLogPath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -129,6 +135,9 @@ public sealed class HostOptions
 
     /// <summary>系统托盘图标（默认开启，可用 LABELFRAME_TRAY=0 关闭）。</summary>
     public bool EnableTray { get; set; } = true;
+
+    /// <summary>ServerUrl 是否由环境变量明确提供；环境变量优先于持久化机器配置。</summary>
+    internal bool HasServerUrlEnvironmentOverride { get; private set; }
 
     /// <summary>应用 LABELFRAME_* 环境变量覆盖（优先级最高）。</summary>
     public void ApplyEnvironmentOverrides()
@@ -182,6 +191,7 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_SERVER_URL") is { } serverUrl)
         {
             ServerUrl = serverUrl;
+            HasServerUrlEnvironmentOverride = true;
         }
 
         if (GetEnv("LABELFRAME_DEVICE_ID") is { } deviceId)
@@ -232,6 +242,16 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_PRINT_SETTINGS") is { } printSettings)
         {
             PrintSettingsPath = printSettings;
+        }
+
+        if (GetEnv("LABELFRAME_CONNECTION") is { } connectionPath)
+        {
+            ConnectionPath = connectionPath;
+        }
+
+        if (GetEnv("LABELFRAME_PRINT_OUTPUT") is { } printOutputPath)
+        {
+            PrintOutputPath = printOutputPath;
         }
 
         if (GetEnv("LABELFRAME_CONFIG") is { } configPath)
