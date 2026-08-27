@@ -6,9 +6,10 @@
 
 - **Linux Client Host**：`LabelFrame.WinHost` 增加 `net10.0` 目标并产出 `LabelFrame.ClientHost`；复用队列、Server 路由、Skia 渲染和批次 Worker，Linux 固定只暴露 `log`，不加载 Windows 驱动、Zebra SDK、外部插件、Web UI、浏览器或托盘。
 - **容器化测试环境**：新增 Linux Client 多阶段镜像、稳定版 Server `0.21.0` + 当前 UI / Client 候选的 Compose，以及一键 E2E 脚本；数据与 PNG 使用命名卷，默认管理地址 `http://127.0.0.1:53910`。
-- **闭环验证**：设备注册 / 心跳、单张与 3 张作业、客户端领取与终态回报、Log PNG 数量、重启恢复全部通过；浏览器完成在线设备选择 → 单张打印 → 作业历史，实际 PNG 的中文、条码和明文完整可见。
+- **闭环验证**：设备注册 / 心跳、单张与 3 张作业、客户端领取与终态回报、Log PNG 数量、重启恢复全部通过；浏览器在设计器实际新建并保存模板，再完成数据填写、在线设备选择、单张打印与作业历史，控制台无 warning / error。
+- **严格补证**：新增 `LabelFrame.PrintImageVerifier`，E2E 从 Client 命名卷直接复制每个 Item 的 PNG，检查非空白并逐张解码预期 Code128；Client 重启后先断言旧作业仍在，再提交新作业并验证领取、出图与终态回报，补齐此前仅验证重新在线的缺口。
 - **联调修复**：Log PNG 输出目录改为可配置且作业 API 返回同一目录 / 正确数量；环境变量 ServerUrl 优先于持久化配置；SQLite provider 初始化改为真正线程安全；Server 完整宿主测试按进程环境变量约束串行，消除数据库路径互相覆盖。
-- **验证**：Release build 0 警告 / 0 错误；日常 .NET 315 项全绿，Server 5 分钟 soak 通过；web client / server 各 246 项全绿，lint 与双构建通过；Docker / 浏览器 E2E 通过。Perf 在低干扰轮次通过，但宿主 CPU 41%–46% 时既有延迟门槛会抖动失败，未降低阈值，风险记入 DESIGN。
+- **验证**：Release build 0 警告 / 0 错误；日常 .NET 315 项全绿，Server 5 分钟 soak 通过；web client / server 各 246 项全绿，lint 与双构建通过；Docker / 浏览器 E2E 通过。严格补证轮次中自动化 5 张 Compose PNG 与浏览器作业 PNG 均直接解码成功，重启后新作业 `Completed`。Perf 在低干扰轮次通过，但宿主 CPU 41%–46% 时既有延迟门槛会抖动失败，未降低阈值，风险记入 DESIGN。
 
 
 

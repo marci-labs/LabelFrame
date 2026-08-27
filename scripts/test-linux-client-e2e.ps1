@@ -7,6 +7,7 @@
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $composeFile = Join-Path $repoRoot "packaging\e2e\compose.yaml"
+$verifierProject = Join-Path $repoRoot "tools\LabelFrame.PrintImageVerifier\LabelFrame.PrintImageVerifier.csproj"
 $env:LABELFRAME_E2E_SERVER_PORT = $ServerPort.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 $env:LABELFRAME_DEVICE_ID = $DeviceId
 $baseUrl = "http://127.0.0.1:$ServerPort"
@@ -48,8 +49,11 @@ function Submit-TestJob {
     param([int]$LabelCount)
 
     $requestId = "linux-e2e-$LabelCount-$([Guid]::NewGuid().ToString('N'))"
-    $labels = @(1..$LabelCount | ForEach-Object {
-        @{ data = @{ code = "LF-E2E-$LabelCount-$_" } }
+    $expectedCodes = @(1..$LabelCount | ForEach-Object {
+        "LF-E2E-$LabelCount-$_"
+    })
+    $labels = @($expectedCodes | ForEach-Object {
+        @{ data = @{ code = $_ } }
     })
     $body = @{
         requestId = $requestId
@@ -96,7 +100,31 @@ function Submit-TestJob {
         throw "客户端本地作业 $($localJob.jobId) 的 PNG 数量异常：$pngCount/$LabelCount"
     }
 
-    return $jobId
+    $copyRoot = Join-Path ([System.IO.Path]::GetTempPath()) "labelframe-e2e-$([Guid]::NewGuid().ToString('N'))"
+    New-Item -ItemType Directory -Path $copyRoot | Out-Null
+    try {
+        Invoke-Compose cp "labelframe-client:/var/lib/labelframe/client/print/$($localJob.jobId)/." $copyRoot | Out-Host
+        & dotnet run --project $verifierProject --configuration Release --no-build -- $copyRoot @expectedCodes | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            throw "客户端本地作业 $($localJob.jobId) 的 Compose PNG 条码解码失败。"
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $copyRoot) {
+            Remove-Item -LiteralPath $copyRoot -Recurse -Force
+        }
+    }
+
+    return [pscustomobject]@{
+        ServerJobId = $jobId
+        ClientJobId = $localJob.jobId
+        RequestId = $requestId
+    }
+}
+
+& dotnet build $verifierProject --configuration Release --nologo
+if ($LASTEXITCODE -ne 0) {
+    throw "Compose PNG 校验器构建失败。"
 }
 
 $upArgs = @("up", "-d")
@@ -139,10 +167,13 @@ $templateBody = @{
 } | ConvertTo-Json -Depth 10
 Invoke-RestMethod -Method Post -Uri "$baseUrl/api/templates" -ContentType "application/json; charset=utf-8" -Body $templateBody | Out-Null
 
-$singleJobId = Submit-TestJob -LabelCount 1
-$batchJobId = Submit-TestJob -LabelCount 3
+$singleJob = Submit-TestJob -LabelCount 1
+$batchJob = Submit-TestJob -LabelCount 3
 
-$lastSeenBefore = [DateTimeOffset]::Parse($device.lastSeenAt)
+$deviceBeforeRestart = (Invoke-RestMethod -Uri "$baseUrl/api/devices") |
+    Where-Object { $_.deviceId -eq $DeviceId } |
+    Select-Object -First 1
+$lastSeenBefore = [DateTimeOffset]::Parse($deviceBeforeRestart.lastSeenAt)
 Invoke-Compose restart labelframe-client
 $deviceAfterRestart = Wait-Until -FailureMessage "Linux Client 重启后未恢复心跳。" -Condition {
     $devices = Invoke-RestMethod -Uri "$baseUrl/api/devices"
@@ -151,11 +182,23 @@ $deviceAfterRestart = Wait-Until -FailureMessage "Linux Client 重启后未恢�
     return $null
 }
 
+$persistedRequestIds = @($singleJob.RequestId, $batchJob.RequestId)
+Wait-Until -FailureMessage "Linux Client 重启后未保留重启前的本地作业。" -Condition {
+    $jobsJson = & docker compose -f $composeFile exec -T labelframe-client curl --fail --silent "http://127.0.0.1:53960/api/jobs?limit=500"
+    if ($LASTEXITCODE -ne 0) { return $null }
+    $actualRequestIds = @(($jobsJson | ConvertFrom-Json).requestId)
+    if (@($persistedRequestIds | Where-Object { $_ -notin $actualRequestIds }).Count -eq 0) { return $true }
+    return $null
+} | Out-Null
+
+$postRestartJob = Submit-TestJob -LabelCount 1
+
 [pscustomobject]@{
     Server = $baseUrl
     DeviceId = $deviceAfterRestart.deviceId
     DeviceStatus = $deviceAfterRestart.status
-    SingleJobId = $singleJobId
-    BatchJobId = $batchJobId
+    SingleJobId = $singleJob.ServerJobId
+    BatchJobId = $batchJob.ServerJobId
+    PostRestartJobId = $postRestartJob.ServerJobId
     Result = "PASS"
 } | Format-List

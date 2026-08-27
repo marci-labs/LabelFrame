@@ -940,6 +940,8 @@
 
 **完成记录（2026-08-28）**：验收标准全部满足。Release 构建 0 警告 / 0 错误；日常 .NET 测试 315 项全绿，Server 5 分钟 soak 通过；web client / server 双模式各 246 项全绿，lint 与双构建通过。Compose 使用稳定版 Server `0.21.0` + 当前 Linux Client 候选完成幂等重放、单张 / 3 张作业、PNG 出图、终态回报、客户端重启恢复；浏览器管理界面完成在线设备选择、单张打印与作业历史验证，控制台无错误。联调同时修复 SQLite provider 并发初始化竞态、可配置 Log PNG 目录的作业 API 元数据漂移，以及 E2E 单元素 JSON 数组折叠问题。Perf 在低干扰轮次通过，但宿主 CPU 41%–46% 时 WinHost p99 680ms、Server 20 设备 p50 816ms 超过既有门槛；功能请求 0 错误，不降阈值，继续由 nightly 在隔离环境判定。
 
+**严格补证（2026-08-28）**：管理界面设计器实际新建并保存 `Linux UI E2E 20260828`，同一模板填写 `LF-UI-COMPOSE-001`、选择在线 Linux 设备并完成作业 `5363d5333855447ebc788c4a583fd5e3`，页面显示 1/1、控制台无 warning / error；对应 Client 数据卷 PNG 直接复制后解码成功。E2E 脚本现逐张复制并解码 Compose PNG，且在 Client 重启后断言旧本地作业仍存在，再提交新作业 `1c728cddb1644d5b866dc6bba70eed66` 并验证 Completed，消除“只验证重新在线、未验证继续领取”的证据缺口。
+
 **启动命令**：
 > 继续 LabelFrame 迭代 34（Linux 无头客户端，仅 Log 驱动）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；严格按本节范围实施，先更新公共文档再改代码；完成 dotnet 构建 / 测试、Docker Compose E2E 与浏览器主链验证；更新 ROADMAP / CHANGELOG / DESIGN；提交用 Conventional Commits；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
 
