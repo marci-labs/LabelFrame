@@ -9,6 +9,7 @@
 - **测试治理**：新增 `docs/TEST-MATRIX.md`，按 P0/P1/P2 记录功能、自动化层级、发布门禁与真机欠账；Release 与日常 CI 统一排除 Perf / Soak，由 nightly 独立负责性能与稳态判定。
 - **Excel 续填实证**：真实下载模板的命名区域仍为 `A1:A2`，在其下续填 A3:A5 后由 Server 管理界面完整识别 4 行，关闭 TemplateFrame.Excel.Simple 2.0.0 升级后的人工冒烟欠账。
 - **回归修复**：WinHost 多目标编译后，Windows MSI 发布脚本显式选择 `net10.0-windows10.0.26100`，恢复 Windows 发布与 MSI 流水线。
+- **跨平台门禁修复**：独立 PNG 校验器补齐 Linux 原生 Skia 资产，确保 Release 的 Ubuntu runner 能解码候选镜像产出的 PNG；首次 `v0.22.0` 工作流在镜像推送前准确阻断了该工具链缺口。
 - **本地验证**：Release build 0 警告 / 0 错误；日常 .NET 315 项全绿；web client / server 各 246 项全绿，lint（保留既有 6 条 warning）与双构建通过；源码 Compose 与精确版本候选 Compose E2E 均通过。
 
 ## 迭代 34 Linux 无头客户端（Log 驱动）+ Docker Compose E2E · 2026-08-28
