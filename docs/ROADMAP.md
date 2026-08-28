@@ -47,7 +47,7 @@
 | 32 | 测试完善（端点集成 / 渲染元素 / TimeProvider 确定性 / 设计器组件 / MSI 断言 CI） | ✅ 已完成（2026-08-25） |
 | 33 | 性能 / 稳定性测试（微基准 / 端到端延迟 / soak / nightly CI） | ✅ 已完成（2026-08-25） |
 | 34 | Linux 无头客户端（Log 驱动）+ Server / Client Compose E2E | ✅ 已完成（2026-08-28） |
-| 35 | Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强 | 🚧 进行中（2026-08-28） |
+| 35 | Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强 | ✅ 已完成（2026-08-28，v0.22.0） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -948,7 +948,7 @@
 
 ---
 
-## 迭代 35：Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强（进行中）
+## 迭代 35：Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强（已完成）
 
 **目标**：把迭代 34 的 Linux 无头 Client 从“源码候选”升级为正式版本化制品；发布前验证同一次构建产生的 Server / Client 候选镜像，发布后用双端稳定镜像复验；同时建立可追溯的全仓功能测试矩阵并关闭 Excel 续填冒烟欠账。
 
@@ -970,6 +970,8 @@
 - 浏览器 Excel 续填文件导入行数完整，管理界面主链无阻断性错误。
 - `v0.22.0` Release 成功，Server / Client 版本镜像可拉取；稳定版 Compose 不含 `build`，复验结果通过。
 - ROADMAP / CHANGELOG / DESIGN / DEPLOY / TEST-MATRIX / ACCEPTANCE-BACKLOG 与实际证据一致。
+
+**完成记录（2026-08-28）**：验收标准全部满足。主干 CI `33133458787` 的构建 / 日常测试 / 前端双模式与 MSI 结构断言全绿；Release `33133706115` 完成双 MSI、管理界面插件、Linux Server 归档与 GitHub Release。发布流水线先构建 Server / Client 候选镜像，Ubuntu Compose E2E 通过后才推送同一镜像；首轮 `33132887964` 在推送前发现独立 PNG 校验器缺 Linux Skia 原生资产并正确阻断，修复后 Linux 容器解码与第二轮发布均通过。正式镜像摘要为 Server `sha256:73080dc76df8b14faa19e41cee9074dcc1067814587b7c61360fda455040abd9`、Client `sha256:6bf9d318c9f94fca134d0ccbbf394c2bb7da84e4ac6ea10a33189f0d1ac7770d`，均为 `linux/amd64`、OCI 版本 `0.22.0`。发布后重新 pull 双镜像，在全新独立卷上完成稳定 Compose 复验：设备 `linux-stable-0-22-0` 在线，单张 `4852e406b9664c19961db831d97ad4ba`、3 张批量 `7b70ccb0277d464f83259075e0aead99`、离线暂存 `4851a04cf5a942bf8a4be45cb1dbc678`、重启后新作业 `0cca13b3193745b4a0eb3e94689e07fb` 均 `Completed`，预览与 6 张 Client PNG 全部解码成功。浏览器 Excel 续填冒烟识别 4 行，欠账关闭。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 35（Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；严格按本节范围实施，先更新公共文档再改代码；完成构建 / 测试、候选镜像 Compose E2E、浏览器 Excel 续填冒烟，按 DoD 更新文档并提交；推送 `v0.22.0` 后拉取双端稳定镜像复验；仓库内容不得出现公司 / 业务线品牌字样。

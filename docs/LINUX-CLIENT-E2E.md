@@ -68,7 +68,8 @@ docker compose -f packaging/e2e/compose.yaml down
 - 浏览器在 Server 管理界面设计器中新建 `Linux UI E2E 20260828`，放置 Code128 条码、绑定 `code` 字段并保存；随后选择同一模板与在线设备 `linux-e2e-01`，填写 `LF-UI-COMPOSE-001` 并完成单张打印。Server 作业 `5363d5333855447ebc788c4a583fd5e3` 与 Client 本地作业 `d106ae755fb14e1fa34d8df76e250846` 均为 `Completed`，浏览器控制台无 warning / error。
 - 自动化脚本在 Client 重启后先断言重启前的单张 / 多张本地作业仍存在，再提交新作业 `1c728cddb1644d5b866dc6bba70eed66`；设备恢复 `Online`，新作业完成领取、出图与终态回报。
 - 脚本通过 `docker compose cp` 直接复制 Client 命名卷中的 PNG，由 `LabelFrame.PrintImageVerifier` 检查图片非空白并逐张解码 Code128。本轮自动化 5 张均通过；浏览器作业 PNG 另行直接解码为 `LF-UI-COMPOSE-001`。
-- `0.22.0` 精确版本候选双镜像在只引用镜像的 Compose 中通过：公共模板 / 预览 / 模板包 / Excel / 日志端点、Linux 能力裁剪、幂等、单张 + 3 张、离线暂存、重启持久化与重启后新作业，共 6 张 PNG 均解码成功；发布后将用同一 Compose 拉取 GHCR 稳定镜像复验。
+- `0.22.0` 精确版本候选双镜像在只引用镜像的 Compose 中通过：公共模板 / 预览 / 模板包 / Excel / 日志端点、Linux 能力裁剪、幂等、单张 + 3 张、离线暂存、重启持久化与重启后新作业，共 6 张 PNG 均解码成功。
+- Release `33133706115` 在 Ubuntu runner 上通过同一候选 E2E 后推送原镜像；发布后重新 pull GHCR 双镜像，以全新项目卷复验同一完整大纲并通过。Server 摘要 `sha256:73080dc76df8b14faa19e41cee9074dcc1067814587b7c61360fda455040abd9`，Client 摘要 `sha256:6bf9d318c9f94fca134d0ccbbf394c2bb7da84e4ac6ea10a33189f0d1ac7770d`；稳定复验作业为单张 `4852e406b9664c19961db831d97ad4ba`、3 张 `7b70ccb0277d464f83259075e0aead99`、离线暂存 `4851a04cf5a942bf8a4be45cb1dbc678`、重启后新作业 `0cca13b3193745b4a0eb3e94689e07fb`。
 
 ## 已知边界
 
