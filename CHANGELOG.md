@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 35 Linux Client 正式发布 + P0/P1 测试补强 · 2026-08-28
+
+- **双镜像发布**：新增正式 `ghcr.io/marci-labs/labelframe-client`（`linux/amd64`、仅 `log`）与只引用同版本镜像的 `compose.release.yaml`；Server / Client 候选各构建一次，Compose E2E 通过后直接推送原镜像的版本号与 `latest` 标签，避免验收制品与发布制品漂移。Server 发布镜像携带当前管理界面，但继续由配置决定是否启用。
+- **P0/P1 发布门禁**：E2E 扩展到 Linux 能力裁剪、模板详情 / 列表 / 预览 / 包导入导出、Excel 生成上传、日志回传、幂等、单张 / 3 张、离线暂存、Client 重启持久化与重启后继续领取；逐张复制真实容器 PNG，检查非空白并解码 Code128。精确 `0.22.0` 本地候选双镜像已通过完整组合。
+- **测试治理**：新增 `docs/TEST-MATRIX.md`，按 P0/P1/P2 记录功能、自动化层级、发布门禁与真机欠账；Release 与日常 CI 统一排除 Perf / Soak，由 nightly 独立负责性能与稳态判定。
+- **Excel 续填实证**：真实下载模板的命名区域仍为 `A1:A2`，在其下续填 A3:A5 后由 Server 管理界面完整识别 4 行，关闭 TemplateFrame.Excel.Simple 2.0.0 升级后的人工冒烟欠账。
+- **回归修复**：WinHost 多目标编译后，Windows MSI 发布脚本显式选择 `net10.0-windows10.0.26100`，恢复 Windows 发布与 MSI 流水线。
+- **本地验证**：Release build 0 警告 / 0 错误；日常 .NET 315 项全绿；web client / server 各 246 项全绿，lint（保留既有 6 条 warning）与双构建通过；源码 Compose 与精确版本候选 Compose E2E 均通过。
+
 ## 迭代 34 Linux 无头客户端（Log 驱动）+ Docker Compose E2E · 2026-08-28
 
 - **Linux Client Host**：`LabelFrame.WinHost` 增加 `net10.0` 目标并产出 `LabelFrame.ClientHost`；复用队列、Server 路由、Skia 渲染和批次 Worker，Linux 固定只暴露 `log`，不加载 Windows 驱动、Zebra SDK、外部插件、Web UI、浏览器或托盘。

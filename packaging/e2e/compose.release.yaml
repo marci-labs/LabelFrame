@@ -1,0 +1,51 @@
+name: labelframe-release-e2e
+
+services:
+  labelframe-server:
+    image: "${LABELFRAME_SERVER_IMAGE:-ghcr.io/marci-labs/labelframe-server}:${LABELFRAME_VERSION:-0.22.0}"
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${LABELFRAME_E2E_SERVER_PORT:-53910}:53961"
+    environment:
+      TZ: Asia/Shanghai
+      LABELFRAME_SERVER_LISTEN: http://0.0.0.0:53961
+      LABELFRAME_SERVER_DB: /var/lib/labelframe/server/server.db
+      LABELFRAME_SERVER_TEMPLATES_DB: /var/lib/labelframe/server/templates.db
+      LABELFRAME_SERVER_LOGS_DB: /var/lib/labelframe/server/logs.db
+      LABELFRAME_SERVER_LOG_FILE: /var/lib/labelframe/server/server.log
+      LABELFRAME_SERVER_WEB_UI: /app/web-ui
+    volumes:
+      - server-data:/var/lib/labelframe/server
+
+  labelframe-client:
+    image: "${LABELFRAME_CLIENT_IMAGE:-ghcr.io/marci-labs/labelframe-client}:${LABELFRAME_VERSION:-0.22.0}"
+    init: true
+    restart: unless-stopped
+    depends_on:
+      labelframe-server:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      LABELFRAME_LISTEN: http://0.0.0.0:53960
+      LABELFRAME_SERVER_URL: http://labelframe-server:53961
+      LABELFRAME_DEVICE_ID: ${LABELFRAME_DEVICE_ID:-linux-release-e2e-01}
+      LABELFRAME_DEVICE_NAME: ${LABELFRAME_DEVICE_NAME:-Linux Release E2E Client}
+      LABELFRAME_POLL_INTERVAL: "1"
+      LABELFRAME_DB: /var/lib/labelframe/client/jobs.db
+      LABELFRAME_TEMPLATES_DB: /var/lib/labelframe/client/templates.db
+      LABELFRAME_LOGS_DB: /var/lib/labelframe/client/logs.db
+      LABELFRAME_CONFIG: /var/lib/labelframe/client/settings.json
+      LABELFRAME_CONNECTION: /var/lib/labelframe/client/connection.json
+      LABELFRAME_PRINT_SETTINGS: /var/lib/labelframe/client/print-settings.json
+      LABELFRAME_HOST_LOG: /var/lib/labelframe/client/host.log
+      LABELFRAME_PRINT_OUTPUT: /var/lib/labelframe/client/print
+      LABELFRAME_TRANSPORT: Log
+      LABELFRAME_OPEN_BROWSER: "0"
+      LABELFRAME_TRAY: "0"
+    volumes:
+      - client-data:/var/lib/labelframe/client
+
+volumes:
+  server-data:
+  client-data:

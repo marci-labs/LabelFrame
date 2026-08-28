@@ -91,7 +91,7 @@ cd web && pnpm install && pnpm dev  # 前端开发（连本机 WinHost）
 ```
 
 - 无打印机验证打印闭环：`powershell -ExecutionPolicy Bypass -File .\scripts\demo-winhost.ps1`。
-- Docker 验证 Server / Linux Client 路由闭环：`powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1`，详见 [docs/LINUX-CLIENT-E2E.md](docs/LINUX-CLIENT-E2E.md)。
+- Docker 验证 Server / Linux Client 路由闭环：源码候选运行 `powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1`；正式同版本镜像运行 `powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1 -ComposeFile packaging/e2e/compose.release.yaml -SkipBuild`，详见 [docs/LINUX-CLIENT-E2E.md](docs/LINUX-CLIENT-E2E.md)。
 - 提交即跑 CI（`.github/workflows/ci.yml`：dotnet 构建 / 测试 + 前端 lint / 双模式测试 / 构建）。
 - 发版：更新 ROADMAP / CHANGELOG 后推送 `v*` tag，由 `release.yml` 自动构建发布（见 [docs/DEPLOY.md](docs/DEPLOY.md) §7）。
 
@@ -101,4 +101,5 @@ cd web && pnpm install && pnpm dev  # 前端开发（连本机 WinHost）
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) —— 需求：场景、底线、能力、边界、成功衡量
 - [docs/ROADMAP.md](docs/ROADMAP.md) —— 迭代计划与状态
 - [docs/DEPLOY.md](docs/DEPLOY.md) —— 部署指南（MSI / Docker / Ubuntu / 分发 / 签名）
+- [docs/TEST-MATRIX.md](docs/TEST-MATRIX.md) —— 功能清单、发布测试大纲与证据边界
 - [AGENTS.md](AGENTS.md) —— 给 AI 协作的常驻约束

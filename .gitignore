@@ -30,3 +30,6 @@ TestResults/
 
 # BenchmarkDotNet 产物
 BenchmarkDotNet.Artifacts/
+
+# 本地 E2E / 文档工具生成物
+outputs/

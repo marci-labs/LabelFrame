@@ -47,6 +47,7 @@
 | 32 | 测试完善（端点集成 / 渲染元素 / TimeProvider 确定性 / 设计器组件 / MSI 断言 CI） | ✅ 已完成（2026-08-25） |
 | 33 | 性能 / 稳定性测试（微基准 / 端到端延迟 / soak / nightly CI） | ✅ 已完成（2026-08-25） |
 | 34 | Linux 无头客户端（Log 驱动）+ Server / Client Compose E2E | ✅ 已完成（2026-08-28） |
+| 35 | Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强 | 🚧 进行中（2026-08-28） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -944,6 +945,34 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 34（Linux 无头客户端，仅 Log 驱动）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；严格按本节范围实施，先更新公共文档再改代码；完成 dotnet 构建 / 测试、Docker Compose E2E 与浏览器主链验证；更新 ROADMAP / CHANGELOG / DESIGN；提交用 Conventional Commits；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+
+## 迭代 35：Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强（进行中）
+
+**目标**：把迭代 34 的 Linux 无头 Client 从“源码候选”升级为正式版本化制品；发布前验证同一次构建产生的 Server / Client 候选镜像，发布后用双端稳定镜像复验；同时建立可追溯的全仓功能测试矩阵并关闭 Excel 续填冒烟欠账。
+
+**范围**：
+- GHCR 正式发布 `ghcr.io/marci-labs/labelframe-client:<version>` 与 `latest`，首版仍为 `linux/amd64`、仅 `log` 传输；Server / Client 使用同一发布版本号。
+- 发布流水线的日常测试口径与 CI 对齐（排除 Perf / Soak，继续由 nightly 承担）；在推送镜像前构建 Server / Client 候选镜像并运行 Compose E2E，通过后把同一镜像标记并推送版本 tag / `latest`。
+- Server 发布镜像携带当前版本管理界面文件，但默认仍无头；测试 Compose 显式设置 `LABELFRAME_SERVER_WEB_UI` 才启用。
+- 新增只引用预构建镜像的稳定版 Compose；版本由 `LABELFRAME_VERSION` 或单独镜像变量覆盖，不从源码构建。
+- 扩展发布制品 E2E：健康与 Linux 能力边界、模板 / Excel / 日志公共端点、设备注册、幂等、单张 / 多张、离线暂存、重启持久化、PNG 非空与条码解码。
+- 新增 `docs/TEST-MATRIX.md`，按功能域标注 P0/P1、已有证据、发布门禁、真机边界与欠账。
+- 浏览器完成“下载 Excel 模板 → 在示例行下续填多行 → 导入 → 行数完整”的真实 `.xlsx` 冒烟，并回写验收清欠清单。
+- 发布 `v0.22.0`；发布成功后拉取 Server / Client `0.22.0` 镜像，用稳定版 Compose 再跑严格 E2E。
+
+**不在范围**：Linux 图形界面；Linux TCP 9100 / USB / winspool / Zebra / 外部插件；arm64 / 多架构；PDA / Niimbot；Windows 真实打印机、净机 MSI 安装与安装向导视觉验收；新增业务功能或公共打印契约变更。
+
+**验收**：
+- `dotnet build LabelFrame.slnx -c Release` 与日常 .NET 测试全绿；web lint、client / server 双模式测试与构建全绿；master 日常 CI 通过。
+- 发布候选 Compose E2E 在镜像推送前通过；双镜像只构建一次，验收后推送的字节不再重建。
+- 浏览器 Excel 续填文件导入行数完整，管理界面主链无阻断性错误。
+- `v0.22.0` Release 成功，Server / Client 版本镜像可拉取；稳定版 Compose 不含 `build`，复验结果通过。
+- ROADMAP / CHANGELOG / DESIGN / DEPLOY / TEST-MATRIX / ACCEPTANCE-BACKLOG 与实际证据一致。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 35（Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；严格按本节范围实施，先更新公共文档再改代码；完成构建 / 测试、候选镜像 Compose E2E、浏览器 Excel 续填冒烟，按 DoD 更新文档并提交；推送 `v0.22.0` 后拉取双端稳定镜像复验；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 

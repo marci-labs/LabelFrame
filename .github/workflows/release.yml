@@ -1,6 +1,6 @@
 # LabelFrame 自动发布流水线（迭代 21）
 # 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
-# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Linux 归档）→ 推送 ghcr.io 镜像 → 创建 GitHub Release。
+# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Linux 归档）→ 双镜像候选 E2E → 推送 ghcr.io → 创建 GitHub Release。
 # MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
 name: release
 
@@ -58,8 +58,8 @@ jobs:
         run: dotnet restore LabelFrame.slnx
       - name: dotnet build
         run: dotnet build LabelFrame.slnx -c Release --no-restore
-      - name: dotnet test
-        run: dotnet test LabelFrame.slnx -c Release --no-build --no-restore
+      - name: dotnet test（日常口径；Perf / Soak 由 nightly-perf 跑）
+        run: dotnet test LabelFrame.slnx -c Release --no-build --no-restore --filter "FullyQualifiedName!~Perf&FullyQualifiedName!~Soak"
 
       - uses: pnpm/action-setup@v4
         with:
@@ -212,12 +212,13 @@ jobs:
           if-no-files-found: error
 
   docker:
-    name: Docker 镜像（ghcr.io）
+    name: Docker 双镜像（候选 E2E → ghcr.io）
     needs: [version, test]
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.version.outputs.version }}
-      IMAGE: ghcr.io/${{ github.repository_owner }}/labelframe-server
+      LABELFRAME_SERVER_IMAGE: ghcr.io/${{ github.repository_owner }}/labelframe-server
+      LABELFRAME_CLIENT_IMAGE: ghcr.io/${{ github.repository_owner }}/labelframe-client
     steps:
       - uses: actions/checkout@v4
 
@@ -233,6 +234,38 @@ jobs:
       - name: 写入默认配置
         run: cp packaging/appsettings-server.json artifacts/server-linux/linux-x64/appsettings.json
 
+      - name: 下载服务端管理界面
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist-server
+          path: artifacts/server-linux/linux-x64/web-ui
+
+      - name: 构建 Server / Linux Client 候选镜像
+        run: |
+          docker build \
+            --build-arg LABELFRAME_VERSION="$VERSION" \
+            -f packaging/ubuntu/Dockerfile \
+            -t "$LABELFRAME_SERVER_IMAGE:$VERSION" \
+            artifacts/server-linux/linux-x64
+          docker build \
+            --build-arg LABELFRAME_VERSION="$VERSION" \
+            -f packaging/linux-client/Dockerfile \
+            -t "$LABELFRAME_CLIENT_IMAGE:$VERSION" \
+            .
+
+      - name: 发布候选 Compose E2E
+        shell: pwsh
+        run: |
+          ./scripts/test-linux-client-e2e.ps1 `
+            -ComposeFile packaging/e2e/compose.release.yaml `
+            -ServerPort 53910 `
+            -DeviceId "linux-release-$env:VERSION" `
+            -SkipBuild
+
+      - name: 清理候选 E2E 环境
+        if: always()
+        run: docker compose -f packaging/e2e/compose.release.yaml down --volumes
+
       - name: 登录 ghcr.io
         uses: docker/login-action@v3
         with:
@@ -240,11 +273,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 构建并推送镜像
+      - name: 推送已验收的 Server / Linux Client 镜像
         run: |
-          docker build -f packaging/ubuntu/Dockerfile -t "$IMAGE:$VERSION" -t "$IMAGE:latest" artifacts/server-linux/linux-x64
-          docker push "$IMAGE:$VERSION"
-          docker push "$IMAGE:latest"
+          docker tag "$LABELFRAME_SERVER_IMAGE:$VERSION" "$LABELFRAME_SERVER_IMAGE:latest"
+          docker tag "$LABELFRAME_CLIENT_IMAGE:$VERSION" "$LABELFRAME_CLIENT_IMAGE:latest"
+          docker push "$LABELFRAME_SERVER_IMAGE:$VERSION"
+          docker push "$LABELFRAME_SERVER_IMAGE:latest"
+          docker push "$LABELFRAME_CLIENT_IMAGE:$VERSION"
+          docker push "$LABELFRAME_CLIENT_IMAGE:latest"
 
   release:
     name: 创建 GitHub Release

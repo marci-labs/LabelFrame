@@ -155,6 +155,7 @@ flowchart LR
 | 84 | Linux 无头客户端（迭代 34） | 现有 Client Host 多目标编译：Windows 保持完整 UI / 托盘 / winspool / Zebra / 插件能力；Linux `net10.0` 仅注册内置 `log` 传输，不加载外部传输插件，不启动浏览器或托盘。提供 Linux Client 镜像及 Server + Client Compose；测试组合默认固定稳定版 Server `0.21.0`，Linux Client 为当前迭代候选 | 作业队列、Server 轮询、Skia 渲染与结果回报共用同一代码路径，可在 Docker 中验证真实客户端闭环；首版不能连接物理打印机，不能代表 Windows 专属驱动验收 |
 | 85 | SQLite provider 初始化与集成测试隔离（迭代 34 E2E 收尾） | `SqliteSupport` 只在 `raw.SetProvider` 成功后发布已初始化状态，等待中的并发调用受同一锁保护；Server 测试因多个完整宿主通过进程环境变量选择独立数据库，测试类禁止并行 | 消除并发首开数据库时读取未就绪 provider 的竞态；完整宿主测试不再互相覆盖数据库路径，代价是 Server 测试程序集串行运行 |
 | 86 | Compose 打印产物验收（迭代 34 严格补证） | E2E 不以 TestServer 生成物替代容器产物：从 Linux Client 命名卷直接复制每个 Item 的 PNG，用独立命令行校验器检查非空白并解码预期 Code128；重启验收必须同时证明旧作业持久化与重启后新作业完成 | 自动化证据覆盖真实镜像、数据路径与重启后的继续领取；ZXing 解码仍是软件验证，不能替代真实打印机走纸与扫码枪验收 |
+| 87 | Linux Client 发布与同制品门禁（迭代 35） | GHCR 同版本发布 Server / Linux Client 两个 `linux/amd64` 镜像；发布 job 分别构建一次本地候选镜像，先用只引用镜像的 Compose 跑 E2E，通过后对同一镜像追加版本 / `latest` 标签并推送，不在验收后重建。Server 镜像携带管理界面文件但默认无头，测试 Compose 显式启用。发布后再 pull 同版本双镜像复验 | 避免“测试的是源码临时镜像、发布的是另一次构建”造成证据漂移；稳定 Compose 可复现正式发布组合。Linux Client 的能力声明仍严格限于 Log，不能外推为物理打印能力 |
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验）；未捕获异常统一 500 + `LF_INTERNAL_001`。
@@ -201,8 +202,8 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 - Zebra SDK 要求 Win10+；Win7/8 只能用 tcp9100 / winspool。
 - net48 版 WinHost（HttpListener、netstandard2.0 约束）有真实需求再做。
-- Linux Client 首版只验证 Log 模拟输出；TCP / USB / 厂商 SDK 与真实打印机状态不在该镜像的能力声明内。
-- Perf 阈值对宿主 CPU 争用敏感：本地低干扰轮次可通过，CPU 41%–46% 时 WinHost p99 与 Server 20 设备 p50 会超门槛但请求仍 0 错误；保持既有阈值，由 nightly 隔离执行。`release.yml` 当前仍运行未过滤的 solution 测试，可能受 Perf / Soak 抖动影响；迭代 34 按约束不修改发布工作流，后续 CI 治理迭代应与日常 / nightly 口径对齐。
+- Linux Client 正式镜像首版只验证 Log 模拟输出；TCP / USB / 厂商 SDK 与真实打印机状态不在该镜像的能力声明内。
+- Perf 阈值对宿主 CPU 争用敏感：本地低干扰轮次可通过，CPU 41%–46% 时 WinHost p99 与 Server 20 设备 p50 会超门槛但请求仍 0 错误；保持既有阈值，由 nightly 隔离执行。日常 CI 与 Release 已统一排除 Perf / Soak，避免环境抖动阻断功能发布，性能退化仍由独立 nightly 判定。
 
 **暂不做（有需求再排）**：
 

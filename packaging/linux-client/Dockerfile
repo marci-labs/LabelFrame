@@ -18,6 +18,10 @@ RUN dotnet publish src/LabelFrame.WinHost/LabelFrame.WinHost.csproj \
     -o /out
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
+ARG LABELFRAME_VERSION=dev
+LABEL org.opencontainers.image.title="LabelFrame Linux Client" \
+      org.opencontainers.image.version="$LABELFRAME_VERSION" \
+      org.opencontainers.image.source="https://github.com/marci-labs/LabelFrame"
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl fonts-noto-cjk libfontconfig1 libfreetype6 libharfbuzz0b \
     && rm -rf /var/lib/apt/lists/*

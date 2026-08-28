@@ -10,6 +10,7 @@
 | 单机 | Server MSI + Client MSI 同机安装 | 同一台 | 一台电脑一台打印机 |
 | Windows 服务器 | Server MSI（Windows 服务 `LabelFrameServer`，默认 0.0.0.0:53961） | 每台装 Client MSI | 局域网多机 |
 | Linux 服务器 | Docker（推荐）或 systemd | 每台装 Client MSI | 局域网多机 |
+| Linux 自动化测试 | Server Docker + Linux Client Docker | `log` 模拟输出 | 无打印机的发布制品 E2E |
 
 默认端口：Server `53961`、Client 本机界面 `53960`、PDA 宿主 `53970`。
 
@@ -50,7 +51,18 @@ curl http://127.0.0.1:53961/healthz   # {"service":"LabelFrame.Server","status":
 
 ### 3.1 Server + Linux Log Client 本地 E2E
 
-仓库提供仅用于测试的 Linux 无头 Client。它固定使用 `log` 模拟打印，不包含 TCP 9100、USB、Windows 驱动、Zebra SDK、第三方插件或客户端 Web UI。默认组合是稳定版 Server `0.21.0` 后端 + 当前源码构建的 Server UI / Linux Client 候选，不能标记为双端稳定版。
+正式镜像 `ghcr.io/marci-labs/labelframe-client` 是仅用于无打印机自动化测试的 Linux 无头 Client。它固定使用 `log` 模拟打印，不包含 TCP 9100、USB、Windows 驱动、Zebra SDK、第三方插件或客户端 Web UI，不能替代物理打印验收。
+
+验证已发布的同版本 Server / Client（Compose 不含 `build`）：
+
+```powershell
+$env:LABELFRAME_VERSION = "0.22.0"
+powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1 `
+  -ComposeFile packaging/e2e/compose.release.yaml -SkipBuild
+docker compose -f .\packaging\e2e\compose.release.yaml down
+```
+
+验证当前源码候选：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1
@@ -58,7 +70,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1
 docker compose -f .\packaging\e2e\compose.yaml down
 ```
 
-脚本验证设备注册、单张 / 多张作业、Skia 渲染、PNG 数量、Server 终态回报，以及 Client 重启后恢复在线；数据保存在 Compose 命名卷。端口冲突时传 `-ServerPort <端口>`。完整测试大纲与排障方式见 [LINUX-CLIENT-E2E.md](LINUX-CLIENT-E2E.md)。
+脚本验证 Linux 能力边界、模板 / 预览 / 包导入导出、Excel / 日志公共端点、设备注册、幂等、单张 / 多张、离线暂存、Skia 渲染、PNG 数量与条码内容、Server 终态回报、Client 重启持久化及重启后继续领取；数据保存在 Compose 命名卷。端口冲突时传 `-ServerPort <端口>`。完整测试大纲与排障方式见 [LINUX-CLIENT-E2E.md](LINUX-CLIENT-E2E.md)。
 
 ## 4. Ubuntu（systemd 裸机部署）
 
@@ -99,8 +111,8 @@ docker compose -f .\packaging\e2e\compose.yaml down
 
 ## 7. 自动化发布与签名
 
-- 发版两步：① 更新 `docs/ROADMAP.md` 与 `CHANGELOG.md` 提交推送；② `git tag v0.20.2 && git push origin v0.20.2`。
-- CI 自动：构建测试 → 双 MSI（可签名）→ 管理界面插件 zip → Linux 归档 → Docker 镜像推 ghcr.io → GitHub Release。
+- 发版两步：① 更新 `docs/ROADMAP.md` 与 `CHANGELOG.md` 提交推送；② 例如 `git tag v0.22.0 && git push origin v0.22.0`。
+- CI 自动：构建测试 → 双 MSI（可签名）→ 管理界面插件 zip → Linux 归档 → 同一次构建的 Server / Linux Client 候选镜像通过 Compose E2E → 原镜像推 ghcr.io（版本号 + `latest`）→ GitHub Release。
 - MSI 签名：配置 Secret `MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD` 时自动签名，否则跳过。当前为自签证书过渡方案（公开下载仍可能 SmartScreen 提示），正式对外分发建议购买 OV 代码签名证书。本地签名：`scripts\create-signing-cert.ps1` 生成证书，`scripts\build-msi.ps1 -Sign` 使用。
 
 ## 8. 配置与环境变量

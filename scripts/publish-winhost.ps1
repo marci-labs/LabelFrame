@@ -11,8 +11,8 @@ $publishDir = Join-Path $OutputDir $Runtime
 
 Write-Host "publish WinHost ($Configuration / $Runtime framework-dependent) ..."
 dotnet publish (Join-Path $root 'src\LabelFrame.WinHost\LabelFrame.WinHost.csproj') `
-    -c $Configuration -r $Runtime -p:SelfContained=false `
-    -o $publishDir -p:DebugType=None -p:DebugSymbols=false | Out-Null
+    -c $Configuration -f net10.0-windows10.0.26100 -r $Runtime -p:SelfContained=false `
+    -o $publishDir -p:DebugType=None -p:DebugSymbols=false
 if ($LASTEXITCODE -ne 0) { throw 'WinHost publish failed' }
 
 $webDist = Join-Path $root 'web\dist'
