@@ -2,8 +2,10 @@
 # 构建：docker build -f packaging/ubuntu/Dockerfile -t labelframe-server artifacts/server-linux/linux-x64
 # 运行：docker run -d --name labelframe-server -p 53961:53961 -v labelframe-data:/var/lib/labelframe/server labelframe-server
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
-# SkiaSharp Linux 依赖（fontconfig / freetype / harfbuzz）与容器健康检查工具。
-RUN apt-get update && apt-get install -y --no-install-recommends curl libfontconfig1 libfreetype6 libharfbuzz0b \
+# SkiaSharp Linux 依赖、中文预览字体与容器健康检查工具。
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl fontconfig fonts-noto-cjk libfontconfig1 libfreetype6 libharfbuzz0b \
+    && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY . /app

@@ -2,6 +2,13 @@
 
 本文件记录每个迭代的变更。
 
+## v0.22.1 Server Docker 中文字体补丁 · 2026-09-03
+
+- **Server 镜像中文字体**：Ubuntu / Docker Server 镜像默认安装 `fontconfig` 与 `fonts-noto-cjk`，并在构建时刷新字体缓存；服务端管理界面的模板预览 / 出图预览在 Linux 容器中具备中文文本渲染基线。
+- **版本同步**：`/api/server/info` 的服务端版本同步为 `0.22.1`；稳定版 Compose 默认版本更新为 `0.22.1`。
+- **范围说明**：不改变模板包、打印 API、作业模型或客户端打印链路；Code128 条码绑定中文导致的编码异常作为独立校验问题后续处理。
+- **本地验证**：Release 构建 0 警告 / 0 错误；日常 .NET 测试 315 项全绿；本地候选 Server 镜像可见 `Noto Sans CJK SC`，中文文本框出图预览返回 `HTTP 200`，PNG 6653 字节。
+
 ## 迭代 35 Linux Client 正式发布 + P0/P1 测试补强 · 2026-08-28
 
 - **双镜像发布**：新增正式 `ghcr.io/marci-labs/labelframe-client`（`linux/amd64`、仅 `log`）与只引用同版本镜像的 `compose.release.yaml`；Server / Client 候选各构建一次，Compose E2E 通过后直接推送原镜像的版本号与 `latest` 标签，避免验收制品与发布制品漂移。Server 发布镜像携带当前管理界面，但继续由配置决定是否启用。

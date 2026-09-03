@@ -45,9 +45,10 @@ curl http://127.0.0.1:53961/healthz   # {"service":"LabelFrame.Server","status":
 ```
 
 - 数据（server.db / templates.db / logs.db）在数据卷 `/var/lib/labelframe/server`；文本日志在挂载目录 `./logs/server.log`，`tail -f` 即可。
+- Server 镜像已内置 `fonts-noto-cjk`，服务端管理界面的模板预览 / 出图预览可直接渲染中文文本。
 - compose 已默认挂载 `./plugins/web-ui`（管理界面插件）与 `./client-packages`（客户端安装包分发），见下文 §5 / §6。
 - 自行构建：`docker build -f packaging/ubuntu/Dockerfile -t labelframe-server artifacts/server-linux/linux-x64`。
-- 本地构建镜像调试：`LABELFRAME_IMAGE=labelframe-server LABELFRAME_VERSION=0.20.2 docker compose up -d`。
+- 本地构建镜像调试：`LABELFRAME_IMAGE=labelframe-server LABELFRAME_VERSION=0.22.1 docker compose up -d`。
 
 ### 3.1 Server + Linux Log Client 本地 E2E
 
@@ -56,7 +57,7 @@ curl http://127.0.0.1:53961/healthz   # {"service":"LabelFrame.Server","status":
 验证已发布的同版本 Server / Client（Compose 不含 `build`）：
 
 ```powershell
-$env:LABELFRAME_VERSION = "0.22.0"
+$env:LABELFRAME_VERSION = "0.22.1"
 powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1 `
   -ComposeFile packaging/e2e/compose.release.yaml -SkipBuild
 docker compose -f .\packaging\e2e\compose.release.yaml down
@@ -111,7 +112,7 @@ docker compose -f .\packaging\e2e\compose.yaml down
 
 ## 7. 自动化发布与签名
 
-- 发版两步：① 更新 `docs/ROADMAP.md` 与 `CHANGELOG.md` 提交推送；② 例如 `git tag v0.22.0 && git push origin v0.22.0`。
+- 发版两步：① 更新 `docs/ROADMAP.md` 与 `CHANGELOG.md` 提交推送；② 例如 `git tag v0.22.1 && git push origin v0.22.1`。
 - CI 自动：构建测试 → 双 MSI（可签名）→ 管理界面插件 zip → Linux 归档 → 同一次构建的 Server / Linux Client 候选镜像通过 Compose E2E → 原镜像推 ghcr.io（版本号 + `latest`）→ GitHub Release。
 - MSI 签名：配置 Secret `MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD` 时自动签名，否则跳过。当前为自签证书过渡方案（公开下载仍可能 SmartScreen 提示），正式对外分发建议购买 OV 代码签名证书。本地签名：`scripts\create-signing-cert.ps1` 生成证书，`scripts\build-msi.ps1 -Sign` 使用。
 

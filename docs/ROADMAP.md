@@ -48,6 +48,7 @@
 | 33 | 性能 / 稳定性测试（微基准 / 端到端延迟 / soak / nightly CI） | ✅ 已完成（2026-08-25） |
 | 34 | Linux 无头客户端（Log 驱动）+ Server / Client Compose E2E | ✅ 已完成（2026-08-28） |
 | 35 | Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强 | ✅ 已完成（2026-08-28，v0.22.0） |
+| 发布补丁 | Server Docker 中文字体基线 | ✅ 已完成（2026-09-03，v0.22.1） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -975,6 +976,26 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 35（Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；严格按本节范围实施，先更新公共文档再改代码；完成构建 / 测试、候选镜像 Compose E2E、浏览器 Excel 续填冒烟，按 DoD 更新文档并提交；推送 `v0.22.0` 后拉取双端稳定镜像复验；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+
+## v0.22.1：Server Docker 中文字体补丁（已完成）
+
+**目标**：让 Ubuntu / Docker Server 管理界面的模板预览与出图预览默认具备中文文本渲染能力。
+
+**范围**：
+- Server Ubuntu 镜像默认安装 `fontconfig` 与 `fonts-noto-cjk`，构建时刷新字体缓存。
+- 服务端版本号同步为 `0.22.1`，稳定版 Compose 默认版本同步为 `0.22.1`。
+- 记录设计决策与变更日志。
+
+**不在范围**：模板包格式、打印 API、作业模型、CI 工作流、客户端打印链路、Code128 中文值校验。
+
+**验收**：`dotnet build` / 日常 `dotnet test` 通过；本地候选 Server 镜像内可通过 fontconfig 匹配 Noto CJK，中文文本出图预览返回非空 PNG；推送 `v0.22.1` tag 后由 Release 工作流发布 Server / Client 同版本制品。
+
+**完成记录（2026-09-03）**：Release 构建 0 警告 / 0 错误；日常 .NET 测试 315 项全绿；本地候选 Server 镜像构建成功并确认 `Noto Sans CJK SC` 可见；纯中文文本框模板调用 `/api/print/render-image` 返回 `HTTP 200`、`image/png`、6653 字节，覆盖服务端 Ubuntu 预览中文文本场景。
+
+**启动命令**：
+> 继续 LabelFrame v0.22.1 Server Docker 中文字体补丁。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；严格限制范围为 Server Ubuntu/Docker 镜像中文字体基线、版本同步与文档记录；完成构建 / 测试与本地 Docker 中文文本出图验证；更新 ROADMAP / CHANGELOG / DESIGN；提交用 Conventional Commits；按发布流程推送 `v0.22.1` tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 
