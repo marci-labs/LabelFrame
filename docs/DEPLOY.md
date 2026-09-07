@@ -119,6 +119,11 @@ docker compose -f .\packaging\e2e\compose.yaml down
 ## 8. 配置与环境变量
 
 - 服务端监听 / 数据库路径 / 历史清理保留期（作业默认 30 天、日志默认 90 天）均可用 `LABELFRAME_SERVER_*` 环境变量覆盖（systemd 单元已设默认值）。
+- 服务端暂存作业过期：设备离线期间暂存的 Pending 作业默认 **12 小时**未投递即放弃（终态 Expired，作业历史可见、不重新投递，业务系统重打需用新 requestId 重发）；TTL 只对 Pending 计龄，作业被设备领取后不再计龄。配置 `Server.PendingJobTtlHours`（`LABELFRAME_SERVER_PENDING_TTL_HOURS`），设为 0 或负值 = 关闭过期（行为与现状一致）；过期扫描周期 `Server.ExpirationScanIntervalMinutes`（默认 5 分钟，`LABELFRAME_SERVER_EXPIRATION_SCAN_MINUTES`）。例：
+  ```bash
+  LABELFRAME_SERVER_PENDING_TTL_HOURS=4      # 暂存 4 小时未投递即放弃
+  LABELFRAME_SERVER_PENDING_TTL_HOURS=0      # 关闭过期（长期离线设备需人工处理）
+  ```
 - WinHost：`appsettings.json` 的 `WinHost` 节 + `LABELFRAME_*` 环境变量覆盖；常用传输变量示例：
   ```powershell
   $env:LABELFRAME_TRANSPORT = "Zebra"        # Zebra SDK；或 Tcp / WindowsDriver / Log

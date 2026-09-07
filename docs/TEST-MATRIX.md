@@ -23,6 +23,7 @@
 | P0 | requestId 幂等、不重打 | ServerService / Server endpoints | Server 完整宿主幂等重放 | Compose 对同一请求重放并断言同一 jobId | 自动门禁完整 |
 | P0 | 设备注册、心跳、定向投递、领取、终态回报 | ServerService / Routing Worker | Server 注册→提交→领取→回报 | Compose 真实双进程闭环 | 自动门禁完整 |
 | P0 | 设备离线作业暂存、恢复后继续 | Routing 单元 / Server 持久层 | Server 路由集成 | Compose 停 Client 后提交，启动后完成 | 自动门禁完整 |
+| P0 | Pending 暂存 TTL 过期（Expired 终态 / 领取过滤兜底 / requestId 重放不重新投递） | PendingJobTtlTests（FakeTimeProvider） | 完整宿主集成（含 TTL=0 回归锚点、notify 积压立即返回） | 不依赖真机（纯服务端时钟语义） | 自动门禁完整 |
 | P0 | Client 重启后本地历史保留并继续领取 | 队列持久层 / Worker | WinHost HTTP 作业列表 | Compose 重启前后作业与新作业双断言 | 自动门禁完整 |
 | P0 | 批次节流 | BatchPrintPolicy + FakeTimeProvider Worker | print-settings HTTP | 100 张 / 10 张一批既有联调记录 | 自动 + 既有联调证据 |
 | P0 | 错误响应与未捕获异常不泄露 | Api / 两宿主异常测试 | 统一 ErrorView / 500 集成 | 浏览器展示人话错误按主链抽查 | 自动门禁完整 |

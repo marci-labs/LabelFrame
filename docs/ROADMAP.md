@@ -49,6 +49,7 @@
 | 34 | Linux 无头客户端（Log 驱动）+ Server / Client Compose E2E | ✅ 已完成（2026-08-28） |
 | 35 | Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强 | ✅ 已完成（2026-08-28，v0.22.0） |
 | 36 | 文档治理与路线图收口（迭代 26 放弃 / 迭代 25 转下一轮 / 一致性核对 / 注释清理） | ✅ 已完成（2026-09-07） |
+| 37 | 服务端暂存作业 TTL 过期 + notify 积压即时唤醒 | ✅ 已完成（2026-09-07） |
 | 发布补丁 | Server Docker 中文字体基线 | ✅ 已完成（2026-09-03，v0.22.1） |
 | 发布补丁 | Linux 容器中文字体切换到文泉驿微米黑 | ✅ 已完成（2026-09-07，v0.22.2） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
@@ -1043,6 +1044,30 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 36（文档治理与路线图收口）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md，再按四块范围执行（路线图决定落地 / 文档与代码一致性核对 / 注释清理 / 过程性文档清理）；验收 dotnet build 0 警告 0 错误、日常 dotnet test 全绿；按 DoD 更新 ROADMAP / CHANGELOG；提交用 Conventional Commits（docs: / chore: 按性质分开，中文说明）；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+
+## 迭代 37：服务端暂存作业 TTL 过期 + notify 积压即时唤醒（已完成）
+
+**目标**：客户端离线期间服务端暂存（Pending）的作业大量陈旧、上线即全部补打且用户来不及干预——为 Pending 作业设置 TTL，超期视为「目标不可达」主动放弃（终态 Expired）；同时消除纯积压清空场景下 notify 长轮询每批 20 秒的空等（清空吞吐被钉在约 30 个作业/分钟）。
+
+**范围**：
+- 契约与文档先行（作业模型契约变更）：DESIGN 决策表新增条目（#89 TTL 过期、#90 notify 积压预检）并更新 Server API 契约——新增作业终态 Expired（过期未投递）；TTL 只对 Pending 计龄，Claimed / Completed / Failed 一律豁免（作业被领取后归客户端本地持久化队列管，服务端不再计龄）；过期判定只以服务端时钟为准；幂等保持严格（同一 requestId 重放只返回既有 Expired 作业、不重新投递，重打必须用新 requestId 重发）。
+- 服务端实现：`Server.PendingJobTtlHours`（默认 12 小时，0 / 负值 = 关闭过期，`LABELFRAME_SERVER_PENDING_TTL_HOURS` 覆盖）与 `ExpirationScanIntervalMinutes`（默认 5 分钟，`LABELFRAME_SERVER_EXPIRATION_SCAN_MINUTES` 覆盖）；领取查询按「CreatedAt + TTL」过滤超期作业（正确性兜底，不依赖扫描周期）；后台扫描任务 `PendingJobExpirationService`（与 DataCleanupService 分离的独立 BackgroundService，职责是状态转移而非删除数据）把超期 Pending 批量标记 Expired 并写入中文失败原因；Expired 随既有 30 天历史清理回收；时间源统一经可注入 TimeProvider（测试用 FakeTimeProvider 确定性驱动）。
+- notify 积压即时唤醒：`GET /api/devices/{id}/jobs/notify` 挂起等待前先查一次该设备是否有未过期 Pending 作业（与领取过滤同一判定），有则立即返回 hasPending=true。
+- 前端：作业历史状态映射补 Expired =「已过期」（中性终态徽标），DataPrint 同一状态映射同步；不新增操作按钮。
+
+**不在范围**：取消作业状态机与取消 API；requeue / 重新推送接口与界面；按作业粒度的 TTL 覆盖字段；客户端（Windows / Linux / Android）任何改动；发布 / CI 工作流。
+
+**验收**：
+- dotnet build 0 警告 0 错误；日常 dotnet test（排除 Perf / Soak）全绿；web 双模式测试与 lint 通过。
+- 测试场景全覆盖：超期 Pending 不被领取；后台扫描正确标记 Expired；notify 有积压时立即返回；同一 requestId 重放返回 Expired 作业且不重新投递；TTL 关闭（0）行为与现状完全一致（回归锚点）；领取过滤在扫描未运行时依然拦截超期作业（双保险验证）。
+- 按 DoD 更新 ROADMAP / CHANGELOG / DESIGN / DEPLOY / TEST-MATRIX。
+
+**完成记录（2026-09-07）**：验收标准全部满足。Debug / Release 构建 0 警告 0 错误；日常 .NET 测试 325 项全绿（Server 49→59，新增 TTL 单元 + 完整宿主集成测试，含 TTL=0 回归锚点类）；web client / server 双模式各 247 项全绿，lint（既有 6 条 warning）与双构建通过。实现要点：领取过滤与 notify 预检共用同一 TTL 截止判定（ServerService.PendingTtlCutoff）；过期扫描显式 ScanOnceAsync 供测试与后台循环共用；ServerService 全部时间取值统一到注入 TimeProvider。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 37（服务端暂存作业 TTL 过期 + notify 积压即时唤醒）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；本迭代为作业模型契约变更，严格按「先更新公共文档（DESIGN 的 Server API 契约与决策表），再改代码」执行；提交用 Conventional Commits；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 

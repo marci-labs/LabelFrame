@@ -2,6 +2,17 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 37 服务端暂存作业 TTL 过期 + notify 积压即时唤醒 · 2026-09-07
+
+- **作业模型契约变更（文档先行）**：服务端作业新增终态 **Expired**（过期未投递）——设备离线期间暂存的 Pending 作业超过 TTL 视为「目标不可达」主动放弃，修订决策 #22 的「不设过期」（新决策 #89 / #90 记入 DESIGN）。TTL 只对 Pending 计龄（Claimed / Completed / Failed 豁免，领取后归客户端本地队列管理），过期判定只以服务端时钟为准；幂等语义保持严格——同一 requestId 重放只返回既有 Expired 作业、不重新投递，业务系统重打必须用新 requestId 重发。
+- **服务端配置**：`Server.PendingJobTtlHours`（默认 12 小时；0 或负值 = 关闭过期，行为与现状一致）与 `Server.ExpirationScanIntervalMinutes`（默认 5 分钟）；均支持 appsettings 与 `LABELFRAME_SERVER_PENDING_TTL_HOURS` / `LABELFRAME_SERVER_EXPIRATION_SCAN_MINUTES` 环境变量覆盖。
+- **领取过滤（正确性兜底）**：设备领取查询按「CreatedAt + TTL」过滤，超期作业一律不下发，不依赖过期扫描周期；notify 积压预检与领取过滤共用同一判定。
+- **后台过期扫描**：新增 `PendingJobExpirationService`（与 DataCleanupService 分离的独立 BackgroundService——过期是状态转移需分钟级及时可见，清理是删除历史数据为小时级周期），把超期 Pending 批量标记 Expired 并写入中文失败原因；Expired 作业随既有 30 天历史清理回收。ServerService 时间取值统一到可注入 TimeProvider（测试 FakeTimeProvider 确定性驱动）。
+- **notify 积压即时唤醒**：`GET /api/devices/{id}/jobs/notify` 挂起等待前先查一次该设备未过期 Pending 作业，有则立即返回 hasPending=true——消除纯积压清空场景每批 20 秒的长轮询空等（清空吞吐原被钉在约 30 个作业/分钟）。
+- **前端**：作业历史页（与数据打印页同一状态映射）新增 Expired =「已过期」中文标签与中性终态徽标，失败原因列透出服务端放弃说明；不新增操作按钮，客户端零改动。
+- **测试**：新增 10 项——TTL 单元（FakeTimeProvider：超期不领取 / 未超期照常领取 / Claimed 豁免 / 扫描只标记超期 / TTL 关闭无操作 / 配置默认值与环境变量）+ 完整宿主集成（超期作业在扫描未运行时仍被领取过滤拦截的双保险、扫描标记 Expired、requestId 重放返回 Expired 且不重新投递、notify 有积压立即返回）+ TTL 关闭（0）回归锚点类（超龄 Pending 照常下发，行为与现状完全一致）。
+- **本地验证**：Debug / Release 构建 0 警告 0 错误；日常 .NET 测试 325 项全绿（Server 49→59）；web client / server 双模式各 247 项全绿，lint（既有 6 条 warning）与双构建通过。
+
 ## 迭代 36 文档治理与路线图收口 · 2026-09-07
 
 - **路线图决定落地（2026-09-07 用户拍板，只改文档）**：迭代 26（Niimbot 蓝牙传输插件）标记「已放弃」（PDA 宿主走 IP 打印、无蓝牙承接需求；传输插件机制保留，有真实蓝牙打印机需求时按插件另行立项），ACCEPTANCE-BACKLOG §3 真机验收项随之取消；迭代 25（Android PDA 宿主）由「延后」改为「下一轮」，蓝牙打印移出其范围；需求 P1「PDA 蓝牙传输」降级至 P2 / 待需求（PDA 宿主本身走 IP 打印、不依赖蓝牙）。
