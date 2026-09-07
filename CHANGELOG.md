@@ -7,7 +7,8 @@
 - **flaky 根因核实与加固**：ci run `34081028327` 的 `DataPrint.test.tsx` 会话保留用例失败定位到 `findByDisplayValue('A-01')` 行——等待语义本身无误（已是 `findBy`），超因是 testing library 默认 1000ms 超时不足：DataPrint 挂载需串行走完「设备探测 → 模板列表 → 模板详情 → testData 预填」多段异步链，CI 高负载（多 worker CPU 争抢）下整链偶发被拖过默认超时。`DataPrint.test.tsx` / `DataPrint.server.test.tsx` 中守卫该挂载链（含页面卸载重挂后的整链重跑）的 `findBy*` / `waitFor` 统一显式放宽到 3000ms（`MOUNT_WAIT` 常量），仍在 vitest 5s 测试预算内；测试框架 / vitest 配置零变更（约定记入 DESIGN 决策 #91）。
 - **同类模式排查（按范围仅加固、不批量重写）**：`web/src` 其余组件测试（Settings / JobHistory / Devices / PluginPackages / ClientPackages / App 双模式）均为「先 `findBy` 异步锚点、再同步断言」的正确模式，等待链为单段 fetch，未发现确有竞态风险的同步查询，维持现状。
 - **本机构建产物清理**：删除 `src/LabelFrame.WinHost/bin/Debug/net10.0-windows/` 旧 TFM 遗留目录（bin 不入库，仅本机动作）；清理后 `dotnet run --project src/LabelFrame.WinHost -f net10.0-windows` 被 `NETSDK1005` 拒绝（提示该 TFM 不在 TargetFrameworks 内），不再静默运行月龄旧代码（此前联调会表现为端点大面积 404）。风险提示与「使用完整 TFM 名」约定记入 DESIGN「兼容性」。
-- **范围说明**：不改产品代码行为、不改测试框架 / vitest 配置、不动发布 / CI 工作流、不推 tag；`bin/Debug/net8.0-windows` 陈旧目录不属本迭代范围，保留未动。
+- **收尾补记（同日，用户要求）——全仓旧 TFM 残留清理**：迭代收尾后按 csproj 现行 TFM 集合清理各项目 bin/obj（Debug / Release）下全部非现行目录——`net8.0`（Core / Core.Tests / Server）、`net8.0-windows` 与旧 `net10.0-windows`（WinHost / WinHost.Tests，后者含验证命令预建的半成品）、Rendering 旧多目标 `net10.0-windows`（Debug / Release）、Server.Tests 旧 `net10.0`，以及已移除项目 `test/LabelFrame.Studio.Tests` 的整目录构建残留（项目本体已随 a61fe60 删除，git 零跟踪）；清理后 `dotnet build` 0 警告 0 错误，git 工作区零变更（均为 gitignore 本机动作）。
+- **范围说明**：不改产品代码行为、不改测试框架 / vitest 配置、不动发布 / CI 工作流、不推 tag；范围外发现的其余旧 TFM 残留在迭代收尾后按用户要求一并清理（见收尾补记）。
 - **本地验证**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 325 项全绿；web client / server 双模式各连跑 3 轮（共 6 轮 × 247 项）全绿；lint 通过（既有 6 条 warning，0 errors）。
 
 ## 迭代 37 服务端暂存作业 TTL 过期 + notify 积压即时唤醒 · 2026-09-07
