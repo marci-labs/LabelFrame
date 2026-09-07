@@ -172,16 +172,19 @@ public sealed class ServerService : IDisposable
         }
     }
 
-    /// <summary>设备领取作业：刷新心跳并把该设备的未过期 Pending 作业置为 Claimed（超期作业不下发，正确性兜底不依赖过期扫描周期）。</summary>
+    /// <summary>设备领取作业：同一事务内刷新心跳并把该设备的未过期 Pending 作业置为 Claimed（超期作业不下发，正确性兜底不依赖过期扫描周期）。</summary>
     public async Task<IReadOnlyList<ClaimedJob>> ClaimPendingJobsAsync(string deviceId, string? lastIp = null, CancellationToken cancellationToken = default)
     {
-        // 并发安全由 DB 层保证（领取为单条 UPDATE ... RETURNING 原子操作），无需进程内串行化
+        // 并发安全由 DB 层保证（圈定为单条 UPDATE ... RETURNING 原子操作），无需进程内串行化；
+        // 心跳与圈定合并为单个写事务（迭代 39 写合批，减少一次单写锁排队）
         var now = _time.GetUtcNow();
-        if (await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken) == 0)
+        var (touched, jobs) = await _db.TouchAndClaimPendingJobsAsync(
+            deviceId, now, NormalizeIpText(lastIp), limit: 10, PendingTtlCutoff(now), cancellationToken);
+        if (touched == 0)
         {
             throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
         }
-        var jobs = await _db.ClaimPendingJobsAsync(deviceId, now, limit: 10, PendingTtlCutoff(now), cancellationToken);
+
         return jobs.Select(job => new ClaimedJob(
             job.Id,
             job.RequestId,

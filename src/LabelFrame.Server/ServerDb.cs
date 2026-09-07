@@ -224,23 +224,41 @@ public sealed class ServerDb
     public Task<ServerJob?> GetJobByRequestIdAsync(string requestId, CancellationToken cancellationToken = default)
         => GetJobCoreAsync(requestId, byRequestId: true, cancellationToken);
 
-    /// <summary>领取：把目标设备的未过期 Pending 作业置为 Claimed，返回载荷。</summary>
+    /// <summary>领取：同一事务内刷新心跳 + 把目标设备的未过期 Pending 作业置为 Claimed，返回 (心跳受影响行数, 载荷)。</summary>
     /// <remarks>
-    /// 单条 UPDATE ... RETURNING 原子完成「圈定 + 置 Claimed」——并发领取 / 多实例下不会重复领取同一作业。
+    /// 写事务合批（迭代 39）：原「Touch + Claim」为两个独立自动提交写事务，20 设备并发下各排队一次
+    /// SQLite 单写锁；合并为一个事务后每轮领取少一次锁竞争。并发安全不变——圈定仍由单条
+    /// UPDATE ... RETURNING 原子完成，多实例 / 并发下不会重复领取同一作业。
     /// <paramref name="ttlCutoff"/> 非 null 时按 created_at 过滤超期作业（正确性兜底，不依赖过期扫描周期）；null = 不过滤（TTL 关闭）。
     /// </remarks>
-    public async Task<IReadOnlyList<ServerJob>> ClaimPendingJobsAsync(
+    public async Task<(int Touched, IReadOnlyList<ServerJob> Jobs)> TouchAndClaimPendingJobsAsync(
         string deviceId,
         DateTimeOffset now,
+        string? lastIp,
         int limit,
         DateTimeOffset? ttlCutoff = null,
         CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        int touched;
         List<string> claimedIds = [];
-        await using (var command = connection.CreateCommand())
+        await using (var touch = connection.CreateCommand())
         {
-            command.CommandText = """
+            touch.Transaction = transaction;
+            touch.CommandText = "UPDATE devices SET last_seen_at = $now, last_ip = $lastIp WHERE id = $id;";
+            touch.Parameters.AddWithValue("$now", SqliteSupport.Format(now));
+            touch.Parameters.AddWithValue("$lastIp", (object?)lastIp ?? DBNull.Value);
+            touch.Parameters.AddWithValue("$id", deviceId);
+            touched = await touch.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        if (touched > 0)
+        {
+            await using var claim = connection.CreateCommand();
+            claim.Transaction = transaction;
+            claim.CommandText = """
                 UPDATE server_jobs
                 SET status = $claimed, claimed_at = $claimedAt
                 WHERE id IN (
@@ -251,27 +269,29 @@ public sealed class ServerDb
                 )
                 RETURNING id;
                 """;
-            command.Parameters.AddWithValue("$claimed", ServerJobStatus.Claimed.ToString());
-            command.Parameters.AddWithValue("$claimedAt", SqliteSupport.Format(now));
-            command.Parameters.AddWithValue("$pending", ServerJobStatus.Pending.ToString());
-            command.Parameters.AddWithValue("$deviceId", deviceId);
-            command.Parameters.AddWithValue("$ttlCutoff", (object?)(ttlCutoff is null ? null : SqliteSupport.Format(ttlCutoff.Value)) ?? DBNull.Value);
-            command.Parameters.AddWithValue("$limit", limit);
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            claim.Parameters.AddWithValue("$claimed", ServerJobStatus.Claimed.ToString());
+            claim.Parameters.AddWithValue("$claimedAt", SqliteSupport.Format(now));
+            claim.Parameters.AddWithValue("$pending", ServerJobStatus.Pending.ToString());
+            claim.Parameters.AddWithValue("$deviceId", deviceId);
+            claim.Parameters.AddWithValue("$ttlCutoff", (object?)(ttlCutoff is null ? null : SqliteSupport.Format(ttlCutoff.Value)) ?? DBNull.Value);
+            claim.Parameters.AddWithValue("$limit", limit);
+            await using var reader = await claim.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
                 claimedIds.Add(reader.GetString(0));
             }
         }
 
-        // Reader 关闭后再逐个加载载荷（同一连接，2 次查询替代原 1+N 条连接）
+        await transaction.CommitAsync(cancellationToken);
+
+        // Reader 关闭后在同一连接逐个加载载荷（圈定已提交，读不占用写事务）
         var jobs = new List<ServerJob>(claimedIds.Count);
         foreach (var id in claimedIds)
         {
             jobs.Add((await LoadJobCoreAsync(connection, id, cancellationToken))!);
         }
 
-        return jobs;
+        return (touched, jobs);
     }
 
     /// <summary>更新作业结果。</summary>
@@ -304,11 +324,8 @@ public sealed class ServerDb
             return null;
         }
 
-        await using var reload = connection.CreateCommand();
-        reload.CommandText = "SELECT id FROM server_jobs WHERE id = $id LIMIT 1;";
-        reload.Parameters.AddWithValue("$id", jobId);
-        var reloadedId = await reload.ExecuteScalarAsync(cancellationToken) as string;
-        return reloadedId is null ? null : await LoadJobCoreAsync(connection, reloadedId, cancellationToken);
+        // UPDATE 已受影响说明行存在，直接同连接回读（省去原先的冗余 id 探测查询）
+        return await LoadJobCoreAsync(connection, jobId, cancellationToken);
     }
 
     /// <summary>作业列表（按创建时间倒序；可选 deviceId 过滤——客户端只看自己的作业，服务端 UI 不传看全部）。</summary>
