@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 36 文档治理与路线图收口 · 2026-09-07
+
+- **路线图决定落地（2026-09-07 用户拍板，只改文档）**：迭代 26（Niimbot 蓝牙传输插件）标记「已放弃」（PDA 宿主走 IP 打印、无蓝牙承接需求；传输插件机制保留，有真实蓝牙打印机需求时按插件另行立项），ACCEPTANCE-BACKLOG §3 真机验收项随之取消；迭代 25（Android PDA 宿主）由「延后」改为「下一轮」，蓝牙打印移出其范围；需求 P1「PDA 蓝牙传输」降级至 P2 / 待需求（PDA 宿主本身走 IP 打印、不依赖蓝牙）。
+- **Code128 中文校验决策不做**：Code 128 字符集仅 ASCII，中文值在渲染 / 编码层按编码异常拒绝（作业项 Failed + `LF_ENC_001` + 原因）即为正确语义，不加提交前专门校验（DESIGN「暂不做」已记录）——了结 v0.22.1 遗留的「作为独立校验问题后续处理」悬空承诺；历史 CHANGELOG 条目保持原样。
+- **文档与代码一致性核对**：`docs/` 根 8 份活跃文档对照 `src/` 逐项核对 API 端点 / 错误码 / 配置与环境变量 / 默认端口（53960 / 53961 / 53970）/ 数据目录 / 作业状态机，主体一致；修正文档滞后项——DESIGN 术语表「编码器 / 传输」（矢量 ZPL 早已删除、蓝牙降级）、架构图 PDA 节点、错误码家族补 `LF_ENC` / `LF_TRANSPORT` / `LF_PLUGIN`；REQUIREMENTS 底线「中文渲染」机制表述；TEST-MATRIX（Niimbot / PDA 行、示例版本 0.22.2）；LINUX-CLIENT-E2E 示例版本；PERF-BASELINE Niimbot 展望；archive README 现行文档清单；CONTRIBUTING 测试命令改日常过滤口径。未发现代码偏离设计契约的问题。
+- **注释清理（无行为变更）**：修正 7 处过时 / 失效注释（失效的规格 §9 / 契约 §4 / DESIGN 旧章节 / 迭代号引用；`LabelTextElement` 字体字段与 `SkiaLabelRenderer` 摘要按现行图片打印语义重写）。
+- **过程性文档盘点**：`docs/` 根与 `docs/archive/` 无需归档移动；`artifacts/` / `outputs/` / `BenchmarkDotNet.Artifacts/` 已确认 gitignore 且未跟踪。
+- **本地验证**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 315 项全绿。
+
 ## v0.22.2 Linux 容器中文字体切换 · 2026-09-07
 
 - **中文字体基线**：Server Ubuntu/Docker 镜像与 Linux Log Client 镜像的预装中文字体从 `fonts-noto-cjk` 切换为 `fonts-wqy-microhei`，中文字符首选匹配 `WenQuanYi Micro Hei Regular`。

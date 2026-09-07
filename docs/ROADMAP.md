@@ -37,8 +37,8 @@
 | 22 | 打印测试体验 + 传输插件化 + 客户端下载分发 | ✅ 已完成（2026-08-17 迭代结束，本地 0.18.0 测试包验收） |
 | 23 | 客户端插件分发——上传服务端 + 客户端安装 / 卸载 | ✅ 已完成（2026-08-17 前端完成 + loadError 补充 + 0.19.0 打包验收） |
 | 24 | 客户端批次作业（Batch Print） | ✅ 已完成（2026-08-18：前后端合入 master 67214c3 + 端到端联调附五通过 + Serilog 日志命名修复） |
-| 25 | Android PDA 宿主（AndroidHost） | 📋 延后（PDA 事项延后，再排期） |
-| 26 | Niimbot 蓝牙打印机传输插件实现 + 真机测试 | 📋 下一轮（顺延自迭代 24，2026-08-18） |
+| 25 | Android PDA 宿主（AndroidHost） | 📋 下一轮（2026-09-07 路线图收口排定） |
+| 26 | Niimbot 蓝牙打印机传输插件实现 + 真机测试 | ❌ 已放弃（2026-09-07：PDA 走 IP 打印、无蓝牙承接需求，蓝牙降级待需求） |
 | 27 | 工程治理 P0（日常 CI + API 契约与端点去重 + README/DEPLOY 重组） | ✅ 已完成（2026-08-25） |
 | 28 | 工程治理 P1/P2（文档归档 / 死重移除 / 数据层并发 / 异常契约 / Program 拆分 / 集成测试 / 安全边界） | ✅ 已完成（2026-08-25） |
 | 29 | 程序优化（SQLite WAL / 数据层基建 / 分析器门禁 / Server 集成测试 / 覆盖率收集） | ✅ 已完成（2026-08-25） |
@@ -48,6 +48,7 @@
 | 33 | 性能 / 稳定性测试（微基准 / 端到端延迟 / soak / nightly CI） | ✅ 已完成（2026-08-25） |
 | 34 | Linux 无头客户端（Log 驱动）+ Server / Client Compose E2E | ✅ 已完成（2026-08-28） |
 | 35 | Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强 | ✅ 已完成（2026-08-28，v0.22.0） |
+| 36 | 文档治理与路线图收口（迭代 26 放弃 / 迭代 25 转下一轮 / 一致性核对 / 注释清理） | ✅ 已完成（2026-09-07） |
 | 发布补丁 | Server Docker 中文字体基线 | ✅ 已完成（2026-09-03，v0.22.1） |
 | 发布补丁 | Linux 容器中文字体切换到文泉驿微米黑 | ✅ 已完成（2026-09-07，v0.22.2） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
@@ -757,7 +758,7 @@
 
 ---
 
-## 迭代 25：Android PDA 宿主（AndroidHost，延后）
+## 迭代 25：Android PDA 宿主（AndroidHost，下一轮）
 
 **目标**：交付可真机使用的 Android PDA 宿主——本地 HTTP / JS 桥、TCP9100 打印、复用 Server 注册 / 轮询链路；真机验收通过后再纳入自动发布。
 
@@ -765,10 +766,10 @@
 - 安装 .NET Android workload（Android SDK 36 / JDK 17 已配齐），编译并验证 AndroidHost。
 - 本地 HTTP / JS 桥 + TCP9100 传输；设备注册 / 心跳 / 轮询复用 Server 路由；作业领取 → 本地打印 → 终态回报。
 - Android 16 16KB 页要求验证（SQLitePCLRaw 已升 2.1.13，libe_sqlite3 适配待确认，目标消除 XA0141 警告）。
-- 蓝牙打印（P1，配对 / 重连策略）；开机自启与前台服务保活（厂商 ROM 差异真机确认）。
+- 开机自启与前台服务保活（厂商 ROM 差异真机确认）。
 - 真机验收：注册 / 心跳 / 模板下发 / 作业打印 / 离线恢复 / 断网重连。
 
-**不在范围**：PDA 构建与自动发布（真机验收通过后再排期）；Docker 多架构。
+**不在范围**：PDA 构建与自动发布（真机验收通过后再排期）；Docker 多架构；蓝牙打印（2026-09-07 决策移出：P1「PDA 蓝牙传输」降级为待需求，见 REQUIREMENTS §6；有真实蓝牙打印机需求时按传输插件另行排期）。
 
 **验收**：真机（PDA）完成设备注册与端到端打印；现有 `dotnet build` / `dotnet test` 保持全绿。
 
@@ -776,7 +777,11 @@
 > 继续 LabelFrame 迭代 25（Android PDA 宿主）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 ---
 
-## 迭代 26：Niimbot 蓝牙打印机传输插件实现 + 真机测试（下一轮，顺延自迭代 24）
+## 迭代 26：Niimbot 蓝牙打印机传输插件实现 + 真机测试（已放弃）
+
+**状态**：❌ 已放弃（2026-09-07 用户拍板，路线图收口）。原因：PDA 宿主打印走 IP（TCP 9100），不依赖蓝牙；仓库无 Niimbot 蓝牙打印的承接需求，原 P1「PDA 蓝牙传输」随之降级为待需求（REQUIREMENTS §6）。迭代 22/23 的传输插件机制保留，未来出现真实蓝牙打印机需求时按 `ITransportPlugin` 插件方式另行立项，不复活本迭代。
+
+以下为放弃时的原计划（未实施，仅存档）：
 
 **目标**：基于迭代 22 传输插件机制（+ 迭代 23 分发闭环），实现 Niimbot（小标蓝牙热敏标签打印机）的传输插件并真机测试——填补需求 P1「蓝牙传输」缺口（迭代 6 曾因蓝牙受阻，本轮以插件方式补上）。
 
@@ -788,9 +793,6 @@
 **不在范围**：精成打印机插件（顺延，待用户确认需求）；PDA / AndroidHost（延后至迭代 25）；运行时热卸载 / 热替换（未决）。
 
 **验收**：会话中定稿后按 DoD 执行；`dotnet build` / `dotnet test` 与 web `pnpm test` 全绿；真机联调冒烟后按 DoD 收尾。
-
-**启动命令**：
-> 继续 LabelFrame 迭代 26（Niimbot 蓝牙打印机传输插件）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md、docs/archive/ITERATION-23-SPEC.md；先调研 Niimbot 协议并讨论定稿范围（蓝牙方案 / 参数模型 / 真机验收方式），再按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。
 ---
 
 ## 迭代 27：工程治理 P0（日常 CI + API 契约与端点去重 + 文档重组）（已完成）
@@ -1021,6 +1023,29 @@
 
 ---
 
+## 迭代 36：文档治理与路线图收口（已完成）
+
+**目标**：落地 2026-09-07 路线图决定并完成一轮文档治理——迭代 26 放弃、迭代 25 转下一轮、蓝牙需求降级、Code128 校验决策记录；对照 `src/` 核对 `docs/` 根活跃文档与代码的一致性；清理剩余冗余注释与盘点过程性文档。只改文档与注释，不改任何代码行为。
+
+**范围与完成情况**：
+1. 路线图决定落地（2026-09-07 用户拍板）：
+   - 迭代 26（Niimbot 蓝牙传输插件）标记「已放弃」，注明日期与原因（PDA 宿主走 IP 打印、无蓝牙承接需求），原计划存档、删除启动命令；ACCEPTANCE-BACKLOG §3（Niimbot 真机验收）随之划掉取消；TEST-MATRIX「Niimbot 蓝牙」行改为已放弃。
+   - 迭代 25（Android PDA 宿主）状态由「延后」改为「下一轮」；蓝牙打印移出其范围（转入「不在范围」并注明降级）。
+   - REQUIREMENTS P1「PDA 蓝牙传输」降级至 P2 / 待需求（注明 PDA 宿主本身走 IP 打印、不依赖蓝牙，与蓝牙传输区分表述）；ROADMAP「待需求」同步登记。
+   - Code128 中文校验决定不做：DESIGN「暂不做」记录决策——Code 128 字符集仅 ASCII，中文值按编码异常拒绝（作业项 Failed + `LF_ENC_001` + 原因）即为正确语义，不加提交前专门校验；了结 CHANGELOG v0.22.1「作为独立校验问题后续处理」的悬空承诺（历史条目不改，本次新条目提及）。
+2. 文档与代码一致性核对（`docs/` 根 8 份活跃文档对照 `src/`，重点：API 端点 / 错误码、配置项与环境变量、默认端口 WinHost 53960 / Server 53961 / AndroidHost 53970、数据目录、作业状态机、能力边界）：端点清单、`LABELFRAME_*` 环境变量、端口、数据目录、状态机（Job：Pending/Printing/Suspended/Completed/Cancelled/Failed；Server：Pending/Claimed/Completed/Failed）逐项核对与代码一致；修正文档滞后项——DESIGN 术语表「编码器 / 传输」两行（矢量 ZPL 早已删除、蓝牙降级待需求）、架构图 PDA 打印机节点标注、错误码家族补 `LF_ENC_xxx` / `LF_TRANSPORT_xxx` / `LF_PLUGIN_xxx`；REQUIREMENTS 底线「中文必须能打」机制表述改为现行整版位图渲染；TEST-MATRIX PDA 行标注排期；LINUX-CLIENT-E2E / TEST-MATRIX 稳定 Compose 示例版本 `0.22.0` → `0.22.2`；PERF-BASELINE 中 Niimbot 基准展望改写；`docs/archive/README.md`「现行有效文档」清单补全（8 份）；CONTRIBUTING 测试命令改为日常过滤口径（去除写死的用例数）。未发现代码偏离设计契约的问题，无需新增未决项。
+3. 注释清理（不改行为）：7 处过时 / 失效注释修正——`PluginProbe`（删「见规格 §9」失效引用）、Benchmarks `Program`（删迭代号）、`Tcp9100PrintTransport` / `ZebraPrinterTransport`（删指向 DESIGN 旧章节的失效指针）、`SkiaLabelRenderer` 类摘要（删已废弃的「不参与 ZPL 矢量编码 / 避免 GDI」表述）、`LabelTextElement` 字体三字段注释（按现行图片打印语义重写，`FontName` 标注为模板格式保留字段）。
+4. 过程性文档清理：盘点 `docs/` 根（8 份均为被引用的活跃文档）与 `docs/archive/`（17 份均已按惯例归档），本轮无需移动归档；`artifacts/` / `outputs/` / `BenchmarkDotNet.Artifacts/` 已核实 gitignore 且未跟踪。
+
+**不在范围**：任何代码行为变更；发布 / CI 工作流；发版 tag；历史 CHANGELOG 条目修改。
+
+**验收**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 315 全绿（ClientHost 1 / Api 10 / Core 108 / Server 49 / WinHost 147）；文档与代码不一致项全部修正；仓库无公司 / 业务线品牌字样。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 36（文档治理与路线图收口）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md，再按四块范围执行（路线图决定落地 / 文档与代码一致性核对 / 注释清理 / 过程性文档清理）；验收 dotnet build 0 警告 0 错误、日常 dotnet test 全绿；按 DoD 更新 ROADMAP / CHANGELOG；提交用 Conventional Commits（docs: / chore: 按性质分开，中文说明）；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+
 ## 检查点：试点验收（已完成）
 
 按 [REQUIREMENTS.md](REQUIREMENTS.md) §8 成功衡量执行：
@@ -1033,9 +1058,10 @@
 
 ## 待需求（有真实需求再排）
 
-- net48 版 WinHost（Win7 / 8 老电脑，尽量兼容）。
+- net48 版 WinHost（Win7 / Win8 老电脑，尽量兼容）。
 - WMS 模板下发（复用模板包格式）。
 - 其他打印机指令集（TSPL / CPCL）。
+- PDA 蓝牙传输（原 P1；2026-09-07 Niimbot 专用插件迭代已放弃而降级——PDA 宿主走 IP 打印、不依赖蓝牙，出现真实蓝牙打印机需求时按传输插件接入）。
 - 打印历史统计。
 - 多打印机并行。
 - 契约字段 Pattern 校验（迭代 1 仅存元数据未执行；2026-08-17 列为未来事项，现阶段不处理）。

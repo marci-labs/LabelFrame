@@ -10,7 +10,7 @@
 
 ```bash
 dotnet build LabelFrame.slnx        # 构建
-dotnet test LabelFrame.slnx         # 全量测试（314 用例）
+dotnet test LabelFrame.slnx --filter "FullyQualifiedName!~Perf&FullyQualifiedName!~Soak"  # 日常测试
 cd web && pnpm install && pnpm dev  # 前端开发
 ```
 

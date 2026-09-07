@@ -20,8 +20,8 @@
 | 作业（Job） | 一次打印请求 = N 张标签，逐张状态，可挂起 / 恢复 / 取消，批内顺序 |
 | 设备（Device） | 一台运行宿主的 PC 或 PDA，向 Server 注册 |
 | 宿主（Host） | 设备上的打印执行服务（Windows Client / Linux Client / AndroidHost） |
-| 编码器（Encoder） | LabelDocument → 打印机指令（ZPL 优先，预留 TSPL / CPCL / 图片） |
-| 传输（Transport） | 把指令送到打印机：TCP 9100 / Windows 驱动 / 蓝牙 / 日志模拟 |
+| 编码器（Encoder） | LabelDocument → 打印机指令：整版位图 ZPL `^GF`（当前唯一路径），其他指令集（TSPL / CPCL）待需求 |
+| 传输（Transport） | 把指令送到打印机：TCP 9100 / Windows 驱动 / Zebra SDK / 日志模拟（蓝牙待需求，可经插件接入） |
 | 模板包（TemplatePackage） | 契约 + 版式 + 静态图片资源的可导入导出单元（zip） |
 
 ## 3. 总体架构
@@ -39,7 +39,7 @@ flowchart LR
         end
         subgraph 设备B[PDA]
             A[AndroidHost]
-            P2[打印机 IP / 蓝牙]
+            P2[打印机 IP（蓝牙待需求）]
         end
         subgraph 测试设备[Linux / Docker]
             L[Linux Client<br/>无头]
@@ -159,7 +159,7 @@ flowchart LR
 | 88 | Linux 容器中文字体基线（v0.22.1 / v0.22.2） | Ubuntu / Docker Server 镜像自 v0.22.1 起安装中文字体；v0.22.2 起 Server 与 Linux Client 容器默认改为 `fontconfig` + `fonts-wqy-microhei`，让中文字符首选匹配 `WenQuanYi Micro Hei`。Windows 单机仍依赖系统微软雅黑等本机字体 | 服务端管理界面的模板预览 / 出图预览在 Linux 容器中默认支持中文文本，Linux Log Client 测试出图同用文泉驿微米黑；镜像体积增加。应用程序仍不内嵌字体文件，裸机 Ubuntu 部署需由系统安装中文字体 |
 ## 5. API 概览
 
-错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验）；未捕获异常统一 500 + `LF_INTERNAL_001`。
+错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`。
 
 ### 5.1 Server（默认 0.0.0.0:53961，无鉴权——局域网信任模型见决策 #79）
 
@@ -208,6 +208,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 **暂不做（有需求再排）**：
 
+- Code128 中文值专门校验（2026-09-07 决策）：Code 128 字符集仅 ASCII，中文值在渲染 / 编码层按编码异常拒绝（作业项 Failed + `LF_ENC_001` + 原因）即为正确语义，不在提交前加专门校验；了结 v0.22.1 遗留的「独立校验问题后续处理」。
 - 应用内嵌中文字体文件：加载机制已实现（内嵌优先、回退系统字体），实际字体文件（开源中文 TTF，体积大）未加入程序集；Linux 容器通过系统包 `fonts-wqy-microhei` 提供中文字体基线。
 - `^GF` 数据量优化（二进制 / 压缩模式、字库缓存）。
 - Server 暂存作业无过期策略（设备长期离线时需人工处理，可加过期 / 通知）。

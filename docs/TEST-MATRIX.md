@@ -53,7 +53,7 @@
 | P1 | 插件发现、隔离加载、包校验、安装 / 卸载 | Core package / loader + PluginInstaller | WinHost HTTP；既有 16 步联调 | 自动门禁完整；无签名边界已记录 |
 | P1 | Client / 插件包服务端分发 | Server service + 页面组件 | 上传 / 列表 / 下载 / 删除集成 | 自动门禁完整 |
 | P1 | Linux Client 能力裁剪 | ClientHost tests | 镜像 health / 传输列表，UI 与插件接口 404 | 发布门禁完整 |
-| P1 | Niimbot 蓝牙 | 尚未实施 | 真机待迭代 26 | 明确欠账，不阻断当前发布 |
+| P1 | Niimbot 蓝牙 | 已放弃（2026-09-07，迭代 26 取消） | 不适用 | 不再承接；蓝牙需求降级待需求（REQUIREMENTS §6） |
 
 ## 5. 部署、可靠性与非功能
 
@@ -68,7 +68,7 @@
 | P1 | 服务端可选管理界面 | ServerPluginUi tests + web server build | Docker 测试 Compose 显式启用 | 默认无头边界保持 |
 | P2 | 延迟 / 并发门槛 | Perf Trait | nightly-perf | 不进日常 / Release 测试 |
 | P2 | 15 分钟稳态与微基准 | Soak Trait / BenchmarkDotNet | nightly artifact / 日志 | 周期门禁 |
-| P2 | PDA Android 宿主 | 实验性代码，不在 solution | 16KB 页、保活、打印真机待验 | 明确欠账，不阻断当前发布 |
+| P2 | PDA Android 宿主 | 实验性代码，不在 solution | 16KB 页、保活、打印真机待验（排期迭代 25，下一轮） | 明确欠账，不阻断当前发布 |
 
 ## 6. 标准执行口径
 
@@ -89,7 +89,7 @@ Pop-Location
 .\scripts\test-linux-client-e2e.ps1
 
 # 只引用同版本正式镜像的组合
-$env:LABELFRAME_VERSION = "0.22.0"
+$env:LABELFRAME_VERSION = "0.22.2"
 .\scripts\test-linux-client-e2e.ps1 -ComposeFile packaging/e2e/compose.release.yaml -SkipBuild
 ```
 

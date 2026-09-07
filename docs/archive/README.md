@@ -1,6 +1,6 @@
 # docs/archive —— 历史文档归档
 
-已实施完成的历史迭代规格、前端交付文档与拆分方案。**内容不再维护**，仅作过程存档；现行有效文档只有上层四件套：[DESIGN](../DESIGN.md) / [REQUIREMENTS](../REQUIREMENTS.md) / [ROADMAP](../ROADMAP.md) / [DEPLOY](../DEPLOY.md)。
+已实施完成的历史迭代规格、前端交付文档与拆分方案。**内容不再维护**，仅作过程存档；现行有效文档见 `docs/` 根：[DESIGN](../DESIGN.md) / [REQUIREMENTS](../REQUIREMENTS.md) / [ROADMAP](../ROADMAP.md) / [DEPLOY](../DEPLOY.md) / [TEST-MATRIX](../TEST-MATRIX.md) / [ACCEPTANCE-BACKLOG](../ACCEPTANCE-BACKLOG.md) / [LINUX-CLIENT-E2E](../LINUX-CLIENT-E2E.md) / [PERF-BASELINE](../PERF-BASELINE.md)。
 
 | 文档 | 说明 |
 |---|---|
