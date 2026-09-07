@@ -50,7 +50,7 @@
 | 35 | Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强 | ✅ 已完成（2026-08-28，v0.22.0） |
 | 36 | 文档治理与路线图收口（迭代 26 放弃 / 迭代 25 转下一轮 / 一致性核对 / 注释清理） | ✅ 已完成（2026-09-07） |
 | 37 | 服务端暂存作业 TTL 过期 + notify 积压即时唤醒 | ✅ 已完成（2026-09-07） |
-| 38 | 测试稳定性小治理（flaky 用例加固 + 本机构建产物清理） | 📋 已排定 |
+| 38 | 测试稳定性小治理（flaky 用例加固 + 本机构建产物清理） | ✅ 已完成（2026-09-07） |
 | 39 | 性能优化批次（Worker 信号量唤醒 / SQLite 写合批评估 / SKBitmap 池） | 📋 已排定 |
 | 发布补丁 | Server Docker 中文字体基线 | ✅ 已完成（2026-09-03，v0.22.1） |
 | 发布补丁 | Linux 容器中文字体切换到文泉驿微米黑 | ✅ 已完成（2026-09-07，v0.22.2） |
@@ -1073,7 +1073,7 @@
 
 ---
 
-## 迭代 38：测试稳定性小治理（flaky 用例加固 + 本机构建产物清理）（已排定）
+## 迭代 38：测试稳定性小治理（flaky 用例加固 + 本机构建产物清理）（已完成）
 
 **背景**：2026-09-07 复查 CI 历史，发现 v0.22.2 提交时 ci run `34081028327` 偶发失败——`DataPrint.test.tsx`「切 tab（页面卸载重挂）：模板、字段值、调试开关保留」用例在 CI 高负载下找不到 `display value: A-01`（异步渲染未就绪即同步断言），属 flaky 测试而非产品缺陷（同用例后续多轮全绿）。同日本机实测踩中 `dotnet run -f net10.0-windows` 前缀匹配到 `bin\Debug\net10.0-windows\`（2026-08-09 遗留旧 TFM 产物，现 Windows TFM 为 `net10.0-windows10.0.26100`）导致跑到旧代码、端点大面积 404。
 
@@ -1084,6 +1084,8 @@
 **不在范围**：测试框架 / vitest 配置变更；产品代码行为变更；发布 / CI 工作流。
 
 **验收**：web 双模式测试连续 3 轮全绿（验证抖动消除）；`dotnet build` / 日常 `dotnet test` 全绿；按 DoD 更新 ROADMAP / CHANGELOG。
+
+**完成记录（2026-09-07）**：验收标准全部满足。**根因核实**：CI 日志定位到 `DataPrint.test.tsx:145` —— 该行已是 `await screen.findByDisplayValue('A-01')` 等待语义，真正超因是 testing library `findBy` / `waitFor` 默认 1000ms 超时不足：DataPrint 挂载需串行走完「设备探测（404 单机降级）→ 模板列表 → 选中模板 → 模板详情 → testData 预填」多段异步链，CI 多 worker CPU 争抢下整链被拖过 1s（该用例耗时 2489ms）。**加固**：两个 DataPrint 测试文件（`DataPrint.test.tsx` / `DataPrint.server.test.tsx`）中守卫该挂载链（含页面卸载重挂后的整链重跑）的 `findBy*` / `waitFor` 统一显式放宽到 3000ms（`MOUNT_WAIT` 常量）；其余组件测试经排查均为「先 findBy 异步锚点、再同步断言」的正确模式且等待链为单段 fetch，按范围不批量重写；测试框架 / vitest 配置零变更。**本机清理**：删除 `src/LabelFrame.WinHost/bin/Debug/net10.0-windows/`（gitignore 内、仅本机动作）；清理后 `dotnet run --project src/LabelFrame.WinHost -f net10.0-windows` 被 NETSDK1005 拒绝（提示 `net10.0-windows` 不在 TargetFrameworks 内），不再误跑旧产物；`net8.0-windows` 陈旧目录不属本迭代范围，保留（`net10.0` 为现行 Linux TFM 产物，不动）。约定记入 DESIGN 决策 #91 与「兼容性」风险条目。**验证**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 325 项全绿；web client / server 双模式各连跑 3 轮（共 6 轮 × 247 项）全绿；lint 通过（既有 6 条 warning，0 errors）。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 38（测试稳定性小治理）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围执行：DataPrint 会话保留 flaky 用例改等待语义并排查同类模式、删除本机遗留 bin\Debug\net10.0-windows 旧产物目录并验证 dotnet run -f 不再误匹配；验收 web 双模式测试连跑 3 轮全绿；提交用 Conventional Commits；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。

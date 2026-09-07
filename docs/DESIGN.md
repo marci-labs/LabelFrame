@@ -159,6 +159,7 @@ flowchart LR
 | 88 | Linux 容器中文字体基线（v0.22.1 / v0.22.2） | Ubuntu / Docker Server 镜像自 v0.22.1 起安装中文字体；v0.22.2 起 Server 与 Linux Client 容器默认改为 `fontconfig` + `fonts-wqy-microhei`，让中文字符首选匹配 `WenQuanYi Micro Hei`。Windows 单机仍依赖系统微软雅黑等本机字体 | 服务端管理界面的模板预览 / 出图预览在 Linux 容器中默认支持中文文本，Linux Log Client 测试出图同用文泉驿微米黑；镜像体积增加。应用程序仍不内嵌字体文件，裸机 Ubuntu 部署需由系统安装中文字体 |
 | 89 | 服务端暂存作业 TTL 过期（迭代 37，2026-09-07 用户拍板） | 修订决策 #22 的「不设过期」：设备离线期间暂存的 Pending 作业超过 TTL 视为「目标不可达」主动放弃，进入新终态 **Expired**（过期未投递）。TTL 只对 Pending 计龄——Claimed / Completed / Failed 一律豁免（作业被领取后归客户端本地持久化队列管理，服务端不再计龄）；过期判定只以服务端时钟为准（CreatedAt + TTL，与设备在线状态无关）；设为 0 或负值 = 关闭过期（行为与现状一致）。双保险：设备领取查询按「CreatedAt + TTL」过滤，超期作业一律不下发（正确性兜底，不依赖扫描周期）；后台独立任务（与 DataCleanupService 分离，职责是状态转移而非删除数据，周期分钟级即可及时可见）把超期 Pending 批量标记为 Expired 并写入中文 ErrorMessage，Expired 随既有 30 天历史清理回收。幂等语义保持严格：同一 requestId 重放只会返回既有 Expired 作业、不重新投递，业务系统需要重打必须用新 requestId 重发 | 客户端长期离线不再积压陈旧作业、上线不被大量过期补打淹没；作业历史状态可解释；不做取消状态机 / requeue API，客户端零改动 |
 | 90 | notify 挂起前积压预检（迭代 37） | `GET /api/devices/{id}/jobs/notify` 在进入长轮询等待前先查一次该设备当前是否有未过期 Pending 作业，有则立即返回 hasPending=true；「未过期」与领取过滤同一判定（CreatedAt + TTL） | 纯积压清空场景（提交脉冲早于 notify 到达已空放）不再每批空等长轮询超时，清空吞吐不再被钉在约 30 作业/分钟；hasPending 语义（有待领取作业）不变，客户端零改动 |
+| 91 | 组件测试挂载链等待超时约定（迭代 38） | 组件测试中等待「多段异步挂载链」的 `findBy*` / `waitFor`（如 DataPrint：设备探测 → 模板列表 → 模板详情 → testData 预填，或页面卸载重挂后的整链重跑）显式放宽超时到 3000ms（`MOUNT_WAIT`）；testing library 默认 1000ms 在 CI 高负载（多 worker CPU 争抢）下偶发不足——实证为 ci run `34081028327`：等待语义本身无误（已是 `findBy`），是整链被拖过默认超时后误报「Unable to find display value」。单段 fetch 的等待与同步断言维持既有约定（先 `findBy` 异步锚点、再同步断言同一渲染批状态）；不改测试框架 / vitest 配置 | CI 高负载下挂载链等待不再因默认超时误报 flaky；最坏路径仍在 vitest 5s 测试预算内；本地快速回归耗时与语义零变化 |
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`。
@@ -209,6 +210,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 - net48 版 WinHost（HttpListener、netstandard2.0 约束）有真实需求再做。
 - Linux Client 正式镜像首版只验证 Log 模拟输出；TCP / USB / 厂商 SDK 与真实打印机状态不在该镜像的能力声明内。
 - Perf 阈值对宿主 CPU 争用敏感：本地低干扰轮次可通过，CPU 41%–46% 时 WinHost p99 与 Server 20 设备 p50 会超门槛但请求仍 0 错误；保持既有阈值，由 nightly 隔离执行。日常 CI 与 Release 已统一排除 Perf / Soak，避免环境抖动阻断功能发布，性能退化仍由独立 nightly 判定。
+- `dotnet run -f` 短 TFM 名的误匹配隐患（迭代 38 本机实证）：机器上残留旧 TFM 时代产物（如 `bin/Debug/net10.0-windows/`，现行 Windows TFM 为 `net10.0-windows10.0.26100`）时，`dotnet run -f net10.0-windows` 会匹配到旧目录、静默运行月龄旧代码（联调表现为端点大面积 404）。已清理该遗留目录，清理后同一命令被 NETSDK1005 拒绝（提示该 TFM 不在 TargetFrameworks 内）。约定：本机起服务调试使用完整 TFM 名；发现旧 TFM 残留 bin 目录随手清理。
 
 **暂不做（有需求再排）**：
 

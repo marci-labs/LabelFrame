@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 38 测试稳定性小治理 · 2026-09-07
+
+- **flaky 根因核实与加固**：ci run `34081028327` 的 `DataPrint.test.tsx` 会话保留用例失败定位到 `findByDisplayValue('A-01')` 行——等待语义本身无误（已是 `findBy`），超因是 testing library 默认 1000ms 超时不足：DataPrint 挂载需串行走完「设备探测 → 模板列表 → 模板详情 → testData 预填」多段异步链，CI 高负载（多 worker CPU 争抢）下整链偶发被拖过默认超时。`DataPrint.test.tsx` / `DataPrint.server.test.tsx` 中守卫该挂载链（含页面卸载重挂后的整链重跑）的 `findBy*` / `waitFor` 统一显式放宽到 3000ms（`MOUNT_WAIT` 常量），仍在 vitest 5s 测试预算内；测试框架 / vitest 配置零变更（约定记入 DESIGN 决策 #91）。
+- **同类模式排查（按范围仅加固、不批量重写）**：`web/src` 其余组件测试（Settings / JobHistory / Devices / PluginPackages / ClientPackages / App 双模式）均为「先 `findBy` 异步锚点、再同步断言」的正确模式，等待链为单段 fetch，未发现确有竞态风险的同步查询，维持现状。
+- **本机构建产物清理**：删除 `src/LabelFrame.WinHost/bin/Debug/net10.0-windows/` 旧 TFM 遗留目录（bin 不入库，仅本机动作）；清理后 `dotnet run --project src/LabelFrame.WinHost -f net10.0-windows` 被 `NETSDK1005` 拒绝（提示该 TFM 不在 TargetFrameworks 内），不再静默运行月龄旧代码（此前联调会表现为端点大面积 404）。风险提示与「使用完整 TFM 名」约定记入 DESIGN「兼容性」。
+- **范围说明**：不改产品代码行为、不改测试框架 / vitest 配置、不动发布 / CI 工作流、不推 tag；`bin/Debug/net8.0-windows` 陈旧目录不属本迭代范围，保留未动。
+- **本地验证**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 325 项全绿；web client / server 双模式各连跑 3 轮（共 6 轮 × 247 项）全绿；lint 通过（既有 6 条 warning，0 errors）。
+
 ## 迭代 37 服务端暂存作业 TTL 过期 + notify 积压即时唤醒 · 2026-09-07
 
 - **作业模型契约变更（文档先行）**：服务端作业新增终态 **Expired**（过期未投递）——设备离线期间暂存的 Pending 作业超过 TTL 视为「目标不可达」主动放弃，修订决策 #22 的「不设过期」（新决策 #89 / #90 记入 DESIGN）。TTL 只对 Pending 计龄（Claimed / Completed / Failed 豁免，领取后归客户端本地队列管理），过期判定只以服务端时钟为准；幂等语义保持严格——同一 requestId 重放只返回既有 Expired 作业、不重新投递，业务系统重打必须用新 requestId 重发。
