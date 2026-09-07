@@ -51,7 +51,7 @@
 | 36 | 文档治理与路线图收口（迭代 26 放弃 / 迭代 25 转下一轮 / 一致性核对 / 注释清理） | ✅ 已完成（2026-09-07） |
 | 37 | 服务端暂存作业 TTL 过期 + notify 积压即时唤醒 | ✅ 已完成（2026-09-07） |
 | 38 | 测试稳定性小治理（flaky 用例加固 + 本机构建产物清理） | ✅ 已完成（2026-09-07） |
-| 39 | 性能优化批次（Worker 信号量唤醒 / SQLite 写合批评估 / SKBitmap 池） | 📋 已排定 |
+| 39 | 性能优化批次（Worker 信号量唤醒 / SQLite 写合批评估 / SKBitmap 池） | ✅ 已完成（2026-09-07） |
 | 发布补丁 | Server Docker 中文字体基线 | ✅ 已完成（2026-09-03，v0.22.1） |
 | 发布补丁 | Linux 容器中文字体切换到文泉驿微米黑 | ✅ 已完成（2026-09-07，v0.22.2） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
@@ -1092,7 +1092,7 @@
 
 ---
 
-## 迭代 39：性能优化批次（Worker 信号量唤醒 / SQLite 写合批评估 / SKBitmap 池）（已排定）
+## 迭代 39：性能优化批次（Worker 信号量唤醒 / SQLite 写合批评估 / SKBitmap 池）（已完成）
 
 **背景**：迭代 33 建立三层性能体系（微基准 / Perf / Soak + nightly）并记录三个优化机会（见 `docs/PERF-BASELINE.md`）：① WinHost 单张全链路 p50 ≈ 205ms，主体是 JobPrintWorker 200ms 空转轮询（渲染 + 编码仅 ~1ms）；② Server 20 并发设备下 SQLite 单写者特征使 60 写事务排队、p95 尾部 2-3s（不丢不错）；③ 整链路每张分配 1-5MB（SKBitmap 未池化）。服务端 notify 即时唤醒（迭代 37）已消除路由侧等待，本地队列侧轮询与写放大仍未治理。
 
@@ -1105,6 +1105,13 @@
 **不在范围**：Server 架构级改造（写副本 / 分库 / 换存储）；AndroidHost；增量进度回报等跨端契约；发布 / CI 工作流（Perf 阈值在测试代码中，不属于工作流）。
 
 **验收**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 全绿；`scripts/run-perf.ps1` perf / soak / bench 三模式通过并产出新基线；作业 / 路由 / 打印行为零变化；按 DoD 更新 ROADMAP / CHANGELOG / DESIGN / PERF-BASELINE。
+
+**完成记录（2026-09-07）**：
+- **Worker 信号量唤醒（决策 #92①）**：`LabelJobQueue` 新增唤醒信号——新提交 / 恢复 / 失败项重打 / 启动恢复中断四条产生待打项的路径在存储写入提交后 Release；`JobPrintWorker` 空转等待改 `WaitForPendingWakeAsync`（信号即时返回 + 5s 超时兜底防信号遗漏），「EXISTS 探测 → 完整领取」结构与批次节流 / 挂起恢复语义零变化；「探测有 Pending 但领取落空」（挂起作业等）保留 200ms 周期且同样可被信号提前唤醒。效果：单张全链路 **p50 205ms → 9ms**（p99=79ms 为首张预热）；Perf 阈值收紧 `p50 < 20ms`（原仅 p99 < 500ms）。新增 Core 单测 3 项（提交即唤醒 / 幂等重放不发信号 / 恢复与重打唤醒）；既有 FakeTimeProvider 节流测试零改动通过（信号驱动不依赖假时间推进）。
+- **SQLite 写事务合批（决策 #92②，评估 + 实施一项）**：评估结论——提交（INSERT OR IGNORE + UNIQUE 兜底）与回报已是单写事务最细粒度；notify 心跳语义独立保持；busy_timeout 5s 为排队上限（调小变错误、调大延长尾部，均无收益）。实施：领取路径「Touch 心跳 + Claim 圈定」合并为一个显式事务（`TouchAndClaimPendingJobsAsync`），20 设备并发每轮少一次单写锁排队，本机 ~39% CPU 负载 A/B：无合批 p95 3741ms → 合批 2954-3422ms；回报路径顺带移除 UPDATE 受影响后的冗余 id 回读。**架构级合批明确不做**：≤20 设备 p50 恒 3-4ms 不受影响、无错误无丢失，尾部排队是 SQLite 单写者可预期特征（量化依据记 DESIGN 决策 #92）。本机复测 20 设备两臂 p50 均超 50ms 阈值属既有记录的环境敏感特征（DESIGN §6：CPU 40%+ 时超阈、nightly 隔离把关），非本次回归。
+- **SKBitmap 池（决策 #92③）**：`SkiaLabelRenderer` 整版渲染中间态（SKBitmap 像素内存 + 托管像素暂存 byte[]）按「尺寸 + 暂存长度」匹配池化（上限 4、lock 保护、Clear 白底全量重置），输出 LabelBitmap / PNG 始终新分配。效果（bench 实测）：整链路每张分配 **60×40@203：~990KB → 390KB（-61%）**、100×60@300：~4.9MB → 1.61MB（-67%）；渲染步 Gen0/Gen2 收集频率大幅下降。
+- **基线更新**：`docs/PERF-BASELINE.md` 升级 v2（三项优化后数据 + 旧基线对照 + 遗留优化机会清单收敛）；soak 5 分钟通过（0 错误、WAL 有界、托管堆稳定）。
+- **本地验证**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 328 项全绿（Core 108→111）；perf（WinHost p50=9ms 通过新阈值；Server 1/5 设备通过，20 设备本机负载下超阈为既有环境敏感特征）；soak 通过；bench 通过并产出新数据。行为零变化：既有作业 / 路由 / 打印测试全部原样通过。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 39（性能优化批次：Worker 信号量唤醒 / SQLite 写合批评估 / SKBitmap 池）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md 与 docs/PERF-BASELINE.md；按范围实施三项优化（SQLite 合批为评估 + 实施有效项，结论不明确时记 DESIGN 决策不强行实施）；行为零变化，Perf / Soak / bench 通过并更新 PERF-BASELINE 基线；提交用 Conventional Commits；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。

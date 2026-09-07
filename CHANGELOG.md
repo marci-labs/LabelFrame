@@ -2,6 +2,16 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 39 性能优化批次（Worker 信号量唤醒 / SQLite 写合批 / SKBitmap 池）· 2026-09-07
+
+- **Worker 信号量唤醒（决策 #92①）**：`LabelJobQueue` 新增「出现新待打项」唤醒信号——新提交 / 恢复 / 失败项重打 / 启动恢复中断四条路径在存储写入提交后发信号（先信号后提交会让 Worker 探测落空且信号被消费，错过唤醒）；`JobPrintWorker` 空转等待由 200ms 轮询改为信号即时唤醒（5s 超时兜底防信号遗漏，正常路径不触发），「EXISTS 轻量探测 → 完整领取」结构、批次节流（TimeProvider 注入保留）、挂起恢复语义零变化；「探测有 Pending 但领取落空」（挂起作业等不可领场景）保留 200ms 周期且同样可被信号提前唤醒。实测：单张全链路 **p50 205ms → 9ms**（p99 79ms 为首张预热），Perf 阈值收紧为 `p50 < 20ms` + `p99 < 500ms`。
+- **SQLite 写事务合批——评估 + 实施一项（决策 #92②）**：评估结论记 DESIGN——提交（INSERT OR IGNORE + UNIQUE 兜底）与回报已是单写事务最细粒度，notify 心跳语义独立保持，busy_timeout 5s 为排队上限（调小变 SQLITE_BUSY 错误、调大延长尾部，均无收益）；**架构级合批（写队列串行化 / 提交缓冲 / 换存储）明确不做**——当前局域网规模（≤20 设备）p50 恒 3-4ms 不受影响、无错误无丢失，尾部排队是 SQLite 单写者可预期特征。实施：领取路径「Touch 心跳 + Claim 圈定」两个自动提交写事务合并为一个显式事务（`ServerDb.TouchAndClaimPendingJobsAsync`），20 设备并发每轮领取少一次单写锁排队——本机 ~39% CPU 负载 A/B：无合批 p95 3741ms → 合批 2954-3422ms；回报路径顺带移除 UPDATE 受影响后的冗余 id 回读。
+- **SKBitmap 池化（决策 #92③）**：`SkiaLabelRenderer` 整版渲染中间态（SKBitmap 像素内存 + 托管像素暂存 byte[]）按「尺寸 + 暂存长度」匹配池化复用（池上限 4、lock 保护），租用后 Clear 白底全量重置保证与上一张内容无关；输出 LabelBitmap / PNG 始终新分配，对外 API 与渲染结果不变。bench 实测：**每张托管分配降 61%-67%**（整链路 60×40@203 ~990KB → 390KB；100×60@300 ~4.9MB → 1.61MB），批量均摊 2.3MB/张 → **0.84MB/张**（200 张 458MB → 165MB），Gen2 高频回收显著缓解。
+- **基线更新**：`docs/PERF-BASELINE.md` 升级 v2——三项优化后新数据 + v1 旧值对照 + 遗留优化机会清单收敛（Worker 唤醒 / SKBitmap 池已了结；架构级写合批记不做）。
+- **测试**：新增 Core 单测 3 项（提交即唤醒、幂等重放不发信号、恢复与失败项重打唤醒——确定性等待语义，无睡眠断言）；既有 FakeTimeProvider 批次节流测试零改动通过；Server 领取路径由既有集成测试覆盖（未注册设备 / TTL 过滤 / 领取不重复全绿）。
+- **本地验证**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 328 项全绿（Core 108→111）；perf：WinHost 通过新阈值（p50=9ms）、Server 1/5 设备通过（20 设备在本机 ~39% CPU 负载下两臂同超 50ms 阈值——DESIGN §6 既有环境敏感特征、A/B 证实非本次回归，nightly 隔离把关）；soak 5 分钟通过（0 错误 / WAL 有界 / 托管堆稳定）；bench 全套通过。行为零变化：作业 / 路由 / 打印既有测试全部原样通过。
+- **范围说明**：不改发布 / CI 工作流；不推 tag；AndroidHost 与跨端契约不在范围。
+
 ## 迭代 38 测试稳定性小治理 · 2026-09-07
 
 - **flaky 根因核实与加固**：ci run `34081028327` 的 `DataPrint.test.tsx` 会话保留用例失败定位到 `findByDisplayValue('A-01')` 行——等待语义本身无误（已是 `findBy`），超因是 testing library 默认 1000ms 超时不足：DataPrint 挂载需串行走完「设备探测 → 模板列表 → 模板详情 → testData 预填」多段异步链，CI 高负载（多 worker CPU 争抢）下整链偶发被拖过默认超时。`DataPrint.test.tsx` / `DataPrint.server.test.tsx` 中守卫该挂载链（含页面卸载重挂后的整链重跑）的 `findBy*` / `waitFor` 统一显式放宽到 3000ms（`MOUNT_WAIT` 常量），仍在 vitest 5s 测试预算内；测试框架 / vitest 配置零变更（约定记入 DESIGN 决策 #91）。
