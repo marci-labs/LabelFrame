@@ -23,10 +23,56 @@ public interface ILabelBitmapRenderer
 /// SkiaSharp 后端渲染器：与前端 canvas 渲染同源（自动换行 / 行距 / 溢出处理 / 字体族 /
 /// 左中右对齐 / 双边内边距 / 边框、线条、区域、ZXing 条码二维码参数、模板图片），
 /// 输出 1bpp 位图，用于图片打印与调试。
+/// 整版渲染中间态（SKBitmap 像素内存 + 托管像素暂存数组）按尺寸池化复用，
+/// 降低大批量打印时每张 1-5MB 的分配与 GC 压力；输出 LabelBitmap / PNG 始终为新分配，行为不变。
 /// </summary>
 public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
 {
     private const string FontFamily = "Microsoft YaHei";
+
+    /// <summary>池上限：留出并发渲染（多请求提交 + 出图 / 预览）的余量，超出即释放不再复用。</summary>
+    private const int MaxPooledSurfaces = 4;
+
+    private readonly object _surfacePoolLock = new();
+    private readonly Stack<(SKBitmap Bitmap, byte[] Pixels)> _surfacePool = new();
+
+    /// <summary>租用整版渲染中间态：优先取「尺寸与暂存长度都匹配」的池化项（像素内存复用，内容由 Clear 全量重置）；无则新分配。</summary>
+    private (SKBitmap Bitmap, byte[] Pixels) RentSurface(int width, int height)
+    {
+        lock (_surfacePoolLock)
+        {
+            while (_surfacePool.Count > 0)
+            {
+                var surface = _surfacePool.Pop();
+                if (surface.Bitmap.Width == width
+                    && surface.Bitmap.Height == height
+                    && surface.Pixels.Length == surface.Bitmap.RowBytes * height)
+                {
+                    return surface;
+                }
+
+                surface.Bitmap.Dispose();
+            }
+        }
+
+        var bitmap = new SKBitmap(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Opaque));
+        return (bitmap, new byte[bitmap.RowBytes * height]);
+    }
+
+    /// <summary>归还中间态：池未满则复用，尺寸 / 容量溢出时释放。</summary>
+    private void ReturnSurface(SKBitmap bitmap, byte[] pixels)
+    {
+        lock (_surfacePoolLock)
+        {
+            if (_surfacePool.Count < MaxPooledSurfaces)
+            {
+                _surfacePool.Push((bitmap, pixels));
+                return;
+            }
+        }
+
+        bitmap.Dispose();
+    }
 
     /// <inheritdoc />
     public LabelBitmap RenderLabelBitmap(LabelDocument document, int dpi = 203, IReadOnlyDictionary<string, byte[]>? templateImages = null)
@@ -34,19 +80,25 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         ArgumentNullException.ThrowIfNull(document);
         var width = Math.Max(1, ToDots(document.Layout.WidthMm, dpi));
         var height = Math.Max(1, ToDots(document.Layout.HeightMm, dpi));
-        using var bitmap = new SKBitmap(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Opaque));
-        using var canvas = new SKCanvas(bitmap);
-        canvas.Clear(SKColors.White);
-        var regions = LabelLayoutResolver.IndexRegions(document.Layout);
-        foreach (var element in document.Layout.Elements)
+        var (bitmap, staging) = RentSurface(width, height);
+        try
         {
-            DrawElement(canvas, element, document, templateImages, regions, dpi);
-        }
+            using var canvas = new SKCanvas(bitmap);
+            canvas.Clear(SKColors.White);
+            var regions = LabelLayoutResolver.IndexRegions(document.Layout);
+            foreach (var element in document.Layout.Elements)
+            {
+                DrawElement(canvas, element, document, templateImages, regions, dpi);
+            }
 
-        var rowBytes = bitmap.RowBytes;
-        var bytes = new byte[rowBytes * height];
-        Marshal.Copy(bitmap.GetPixels(), bytes, 0, bytes.Length);
-        return ToLabelBitmap(width, height, rowBytes, bytes);
+            var rowBytes = bitmap.RowBytes;
+            Marshal.Copy(bitmap.GetPixels(), staging, 0, staging.Length);
+            return ToLabelBitmap(width, height, rowBytes, staging);
+        }
+        finally
+        {
+            ReturnSurface(bitmap, staging);
+        }
     }
 
     /// <inheritdoc />
@@ -55,18 +107,25 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         ArgumentNullException.ThrowIfNull(document);
         var width = Math.Max(1, ToDots(document.Layout.WidthMm, dpi));
         var height = Math.Max(1, ToDots(document.Layout.HeightMm, dpi));
-        using var bitmap = new SKBitmap(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Opaque));
-        using var canvas = new SKCanvas(bitmap);
-        canvas.Clear(SKColors.White);
-        var regions = LabelLayoutResolver.IndexRegions(document.Layout);
-        foreach (var element in document.Layout.Elements)
+        var (bitmap, _) = RentSurface(width, height);
+        try
         {
-            DrawElement(canvas, element, document, templateImages, regions, dpi);
-        }
+            using var canvas = new SKCanvas(bitmap);
+            canvas.Clear(SKColors.White);
+            var regions = LabelLayoutResolver.IndexRegions(document.Layout);
+            foreach (var element in document.Layout.Elements)
+            {
+                DrawElement(canvas, element, document, templateImages, regions, dpi);
+            }
 
-        using var image = SKImage.FromBitmap(bitmap);
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        return data.ToArray();
+            using var image = SKImage.FromBitmap(bitmap);
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            return data.ToArray();
+        }
+        finally
+        {
+            ReturnSurface(bitmap, []);
+        }
     }
 
     private static void DrawElement(
