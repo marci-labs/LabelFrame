@@ -40,7 +40,8 @@ await templateStore.InitializeAsync();
 var logStore = new SqliteLogStore(serverOptions.LogsDbPath);
 await logStore.InitializeAsync();
 var notifier = new PendingJobNotifier();
-var service = new ServerService(db, templateStore, notifier);
+var timeProvider = TimeProvider.System;
+var service = new ServerService(db, templateStore, notifier, serverOptions, timeProvider);
 var clientPackages = new ClientPackagesService(serverOptions.ClientPackagesPath);
 var pluginPackages = new PluginPackagesService(serverOptions.PluginPackagesPath);
 
@@ -54,11 +55,14 @@ builder.Services.AddSingleton(db);
 builder.Services.AddSingleton(service);
 builder.Services.AddSingleton(notifier);
 builder.Services.AddSingleton(serverOptions);
+builder.Services.AddSingleton(timeProvider);
 builder.Services.AddSingleton(templateStore);
 builder.Services.AddSingleton(logStore);
 builder.Services.AddSingleton(clientPackages);
 builder.Services.AddSingleton(pluginPackages);
 builder.Services.AddHostedService(sp => new DataCleanupService(db, logStore, serverOptions, sp.GetRequiredService<ILogger<DataCleanupService>>()));
+// Pending 过期扫描（TTL 关闭时任务直接退出）；正确性由领取查询的 TTL 过滤兜底
+builder.Services.AddHostedService(sp => new PendingJobExpirationService(db, serverOptions, timeProvider, sp.GetRequiredService<ILogger<PendingJobExpirationService>>()));
 // Skia 渲染器实例单例：DI 与共享端点（模板预览 / 调试出图）共用同一实例
 var skiaRenderer = new SkiaLabelRenderer();
 builder.Services.AddSingleton<ILabelBitmapRenderer>(skiaRenderer);

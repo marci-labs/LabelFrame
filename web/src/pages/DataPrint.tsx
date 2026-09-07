@@ -38,10 +38,11 @@ const JOB_STATUS_LABEL: Record<string, string> = {
   Suspended: '已挂起',
   Cancelled: '已取消',
   Claimed: '已领取',
+  Expired: '已过期',
 }
 
 const jobLabel = (s: string) => JOB_STATUS_LABEL[s] ?? s
-const isTerminal = (s: string) => s === 'Completed' || s === 'Failed' || s === 'Cancelled'
+const isTerminal = (s: string) => s === 'Completed' || s === 'Failed' || s === 'Cancelled' || s === 'Expired'
 
 /** 作业轮询（1.5s，终端状态停止）；API 跟随模式（服务端 / 单机降级）。
  *  参数用 Pick 而非 typeof serverApi：client 构建降级直连时传 localApi（无 client-packages 方法），仅需 getJob / retryJobItem。 */

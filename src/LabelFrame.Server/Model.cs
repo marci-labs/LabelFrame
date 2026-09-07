@@ -35,7 +35,7 @@ public enum ServerJobStatus
     /// <summary>待设备领取（设备离线时暂存）。</summary>
     Pending,
 
-    /// <summary>已被设备领取，打印中。</summary>
+    /// <summary>已被设备领取，打印中（后续归客户端本地队列管理，服务端不再计龄）。</summary>
     Claimed,
 
     /// <summary>设备回报完成。</summary>
@@ -43,6 +43,9 @@ public enum ServerJobStatus
 
     /// <summary>设备回报失败（或本地校验 / 编码失败）。</summary>
     Failed,
+
+    /// <summary>暂存超过 TTL 未投递，服务端主动放弃（终态，不重新投递）。</summary>
+    Expired,
 }
 
 /// <summary>Server 作业：一次请求 = 一个作业，载荷为模板 + labels。</summary>

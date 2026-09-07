@@ -224,12 +224,16 @@ public sealed class ServerDb
     public Task<ServerJob?> GetJobByRequestIdAsync(string requestId, CancellationToken cancellationToken = default)
         => GetJobCoreAsync(requestId, byRequestId: true, cancellationToken);
 
-    /// <summary>领取：把目标设备的 Pending 作业置为 Claimed，返回载荷。</summary>
-    /// <remarks>单条 UPDATE ... RETURNING 原子完成「圈定 + 置 Claimed」——并发领取 / 多实例下不会重复领取同一作业。</remarks>
+    /// <summary>领取：把目标设备的未过期 Pending 作业置为 Claimed，返回载荷。</summary>
+    /// <remarks>
+    /// 单条 UPDATE ... RETURNING 原子完成「圈定 + 置 Claimed」——并发领取 / 多实例下不会重复领取同一作业。
+    /// <paramref name="ttlCutoff"/> 非 null 时按 created_at 过滤超期作业（正确性兜底，不依赖过期扫描周期）；null = 不过滤（TTL 关闭）。
+    /// </remarks>
     public async Task<IReadOnlyList<ServerJob>> ClaimPendingJobsAsync(
         string deviceId,
         DateTimeOffset now,
         int limit,
+        DateTimeOffset? ttlCutoff = null,
         CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
@@ -242,6 +246,7 @@ public sealed class ServerDb
                 WHERE id IN (
                     SELECT id FROM server_jobs
                     WHERE status = $pending AND target_device_id = $deviceId
+                      AND ($ttlCutoff IS NULL OR created_at >= $ttlCutoff)
                     ORDER BY created_at, id LIMIT $limit
                 )
                 RETURNING id;
@@ -250,6 +255,7 @@ public sealed class ServerDb
             command.Parameters.AddWithValue("$claimedAt", SqliteSupport.Format(now));
             command.Parameters.AddWithValue("$pending", ServerJobStatus.Pending.ToString());
             command.Parameters.AddWithValue("$deviceId", deviceId);
+            command.Parameters.AddWithValue("$ttlCutoff", (object?)(ttlCutoff is null ? null : SqliteSupport.Format(ttlCutoff.Value)) ?? DBNull.Value);
             command.Parameters.AddWithValue("$limit", limit);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -342,14 +348,50 @@ public sealed class ServerDb
         return jobs;
     }
 
-    /// <summary>删除终态（Completed / Failed）且结束 / 创建时间早于截止时间的作业（历史清理用）。</summary>
+    /// <summary>查询设备当前是否有未过期 Pending 作业（notify 挂起前积压预检；ttlCutoff null = 不过滤）。</summary>
+    public async Task<bool> HasDeliverablePendingJobsAsync(string deviceId, DateTimeOffset? ttlCutoff = null, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT EXISTS(
+                SELECT 1 FROM server_jobs
+                WHERE status = $pending AND target_device_id = $deviceId
+                  AND ($ttlCutoff IS NULL OR created_at >= $ttlCutoff)
+            );
+            """;
+        command.Parameters.AddWithValue("$pending", ServerJobStatus.Pending.ToString());
+        command.Parameters.AddWithValue("$deviceId", deviceId);
+        command.Parameters.AddWithValue("$ttlCutoff", (object?)(ttlCutoff is null ? null : SqliteSupport.Format(ttlCutoff.Value)) ?? DBNull.Value);
+        return await command.ExecuteScalarAsync(cancellationToken) is long exists && exists != 0;
+    }
+
+    /// <summary>把超期 Pending 作业批量标记为 Expired 终态（失败原因由调用方给出，含具体 TTL 时长）；返回标记条数。</summary>
+    public async Task<int> MarkExpiredJobsAsync(DateTimeOffset now, DateTimeOffset ttlCutoff, string reason, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE server_jobs
+            SET status = $expired, finished_at = $now, error_message = $reason
+            WHERE status = $pending AND created_at < $cutoff;
+            """;
+        command.Parameters.AddWithValue("$expired", ServerJobStatus.Expired.ToString());
+        command.Parameters.AddWithValue("$pending", ServerJobStatus.Pending.ToString());
+        command.Parameters.AddWithValue("$now", SqliteSupport.Format(now));
+        command.Parameters.AddWithValue("$reason", reason);
+        command.Parameters.AddWithValue("$cutoff", SqliteSupport.Format(ttlCutoff));
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <summary>删除终态（Completed / Failed / Expired）且结束 / 创建时间早于截止时间的作业（历史清理用）。</summary>
     public async Task<int> DeleteTerminalJobsBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
             DELETE FROM server_jobs
-            WHERE status IN ('Completed', 'Failed')
+            WHERE status IN ('Completed', 'Failed', 'Expired')
               AND COALESCE(finished_at, created_at) < $cutoff;
             """;
         command.Parameters.AddWithValue("$cutoff", SqliteSupport.Format(cutoff));

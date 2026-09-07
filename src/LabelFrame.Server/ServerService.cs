@@ -16,17 +16,32 @@ public sealed class ServerService : IDisposable
     private readonly ServerDb _db;
     private readonly LabelFrame.Core.Templates.TemplateStore _templates;
     private readonly PendingJobNotifier? _notifier;
+    private readonly ServerOptions? _options;
+    private readonly TimeProvider _time;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>创建业务服务。</summary>
     /// <param name="templates">服务端模板库（templateName 引用提交用；可为空则不启用引用）。</param>
     /// <param name="notifier">待领取作业通知器（长轮询推送用；为空则不通知）。</param>
-    public ServerService(ServerDb db, LabelFrame.Core.Templates.TemplateStore? templates = null, PendingJobNotifier? notifier = null)
+    /// <param name="options">服务端配置（Pending 暂存 TTL；为空则关闭过期，行为与现状一致）。</param>
+    /// <param name="timeProvider">时间源（测试注入 FakeTimeProvider 保证确定性；默认系统时钟）。</param>
+    public ServerService(
+        ServerDb db,
+        LabelFrame.Core.Templates.TemplateStore? templates = null,
+        PendingJobNotifier? notifier = null,
+        ServerOptions? options = null,
+        TimeProvider? timeProvider = null)
     {
         _db = db;
         _templates = templates!;
         _notifier = notifier;
+        _options = options;
+        _time = timeProvider ?? TimeProvider.System;
     }
+
+    /// <summary>Pending 暂存 TTL 截止时间：早于该时间创建且仍 Pending 的作业视为超期；TTL 关闭时为 null（不过滤）。</summary>
+    private DateTimeOffset? PendingTtlCutoff(DateTimeOffset now)
+        => _options?.PendingJobTtl is { } ttl ? now - ttl : null;
 
     /// <summary>注册 / 更新设备并刷新心跳。</summary>
     public async Task<DeviceView> RegisterDeviceAsync(string? deviceId, string? name, string? lastIp = null, CancellationToken cancellationToken = default)
@@ -36,7 +51,7 @@ public sealed class ServerService : IDisposable
             throw new ServerException(ServerErrorCodes.InvalidRequest, "缺少 deviceId。");
         }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _time.GetUtcNow();
         var device = await _db.UpsertDeviceAsync(new Device
         {
             Id = deviceId,
@@ -61,7 +76,7 @@ public sealed class ServerService : IDisposable
     /// <summary>设备目录（含在线状态）。</summary>
     public async Task<IReadOnlyList<DeviceView>> ListDevicesAsync(CancellationToken cancellationToken = default)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = _time.GetUtcNow();
         var devices = await _db.ListDevicesAsync(cancellationToken);
         return devices.Select(d => ToView(d, now)).ToList();
     }
@@ -75,7 +90,7 @@ public sealed class ServerService : IDisposable
             return null;
         }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _time.GetUtcNow();
         var device = await _db.FindDeviceByIpAsync(normalized, cancellationToken);
         return device is null ? null : ToView(device, now);
     }
@@ -144,7 +159,7 @@ public sealed class ServerService : IDisposable
                 RequestId = request.RequestId,
                 TargetDeviceId = targetDeviceId,
                 Status = ServerJobStatus.Pending,
-                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedAt = _time.GetUtcNow(),
                 TotalItems = request.Labels.Count,
                 PayloadJson = payloadJson,
             }, cancellationToken);
@@ -157,22 +172,26 @@ public sealed class ServerService : IDisposable
         }
     }
 
-    /// <summary>设备领取作业：刷新心跳并把该设备的 Pending 作业置为 Claimed。</summary>
+    /// <summary>设备领取作业：刷新心跳并把该设备的未过期 Pending 作业置为 Claimed（超期作业不下发，正确性兜底不依赖过期扫描周期）。</summary>
     public async Task<IReadOnlyList<ClaimedJob>> ClaimPendingJobsAsync(string deviceId, string? lastIp = null, CancellationToken cancellationToken = default)
     {
         // 并发安全由 DB 层保证（领取为单条 UPDATE ... RETURNING 原子操作），无需进程内串行化
-        var now = DateTimeOffset.UtcNow;
+        var now = _time.GetUtcNow();
         if (await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken) == 0)
         {
             throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
         }
-        var jobs = await _db.ClaimPendingJobsAsync(deviceId, now, limit: 10, cancellationToken);
+        var jobs = await _db.ClaimPendingJobsAsync(deviceId, now, limit: 10, PendingTtlCutoff(now), cancellationToken);
         return jobs.Select(job => new ClaimedJob(
             job.Id,
             job.RequestId,
             job.TotalItems,
             System.Text.Json.JsonSerializer.Deserialize<JobPayload>(job.PayloadJson, RoutingJson.Options)!)).ToList();
     }
+
+    /// <summary>设备当前是否有未过期 Pending 作业（notify 挂起前积压预检；判定与领取过滤一致）。</summary>
+    public Task<bool> HasDeliverablePendingJobsAsync(string deviceId, CancellationToken cancellationToken = default)
+        => _db.HasDeliverablePendingJobsAsync(deviceId, PendingTtlCutoff(_time.GetUtcNow()), cancellationToken);
 
     /// <summary>设备回报作业结果。</summary>
     public async Task<ServerJobView> ReportResultAsync(string deviceId, string jobId, ReportResultRequest report, CancellationToken cancellationToken = default)
@@ -202,7 +221,7 @@ public sealed class ServerService : IDisposable
                 report.CompletedItems ?? 0,
                 report.FailedItems ?? 0,
                 report.ErrorMessage,
-                DateTimeOffset.UtcNow,
+                _time.GetUtcNow(),
                 cancellationToken);
         return await ToJobViewAsync(updated!, cancellationToken);
     }
@@ -233,7 +252,7 @@ public sealed class ServerService : IDisposable
         var device = await _db.GetDeviceAsync(job.TargetDeviceId, cancellationToken);
         var deviceStatus = device is null
             ? DeviceStatus.Offline
-            : IsOnline(device, DateTimeOffset.UtcNow) ? DeviceStatus.Online : DeviceStatus.Offline;
+            : IsOnline(device, _time.GetUtcNow()) ? DeviceStatus.Online : DeviceStatus.Offline;
         return new ServerJobView(
             job.Id,
             job.RequestId,

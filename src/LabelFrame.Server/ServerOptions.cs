@@ -32,7 +32,7 @@ public sealed class ServerOptions
     /// <summary>渲染 DPI（调试出图 / 预览默认 203）。</summary>
     public int Dpi { get; set; } = 203;
 
-    /// <summary>终态作业（Completed / Failed）保留天数，超过则定期清理；非终态作业不清理。</summary>
+    /// <summary>终态作业（Completed / Failed / Expired）保留天数，超过则定期清理；非终态作业不清理。</summary>
     public int JobRetentionDays { get; set; } = 30;
 
     /// <summary>设备日志保留天数，超过则定期清理。</summary>
@@ -40,6 +40,15 @@ public sealed class ServerOptions
 
     /// <summary>历史清理周期（小时）。</summary>
     public int CleanupIntervalHours { get; set; } = 24;
+
+    /// <summary>Pending 作业暂存 TTL（小时）：设备离线期间暂存的作业超过该时长视为「目标不可达」主动放弃（终态 Expired）；0 或负值 = 关闭过期（行为与现状一致）。</summary>
+    public int PendingJobTtlHours { get; set; } = 12;
+
+    /// <summary>解析后的 Pending 暂存 TTL；null = 关闭过期（不领取过滤、不扫描标记）。</summary>
+    public TimeSpan? PendingJobTtl => PendingJobTtlHours > 0 ? TimeSpan.FromHours(PendingJobTtlHours) : null;
+
+    /// <summary>Pending 过期扫描周期（分钟）：后台任务按此周期把超期 Pending 标记为 Expired。</summary>
+    public int ExpirationScanIntervalMinutes { get; set; } = 5;
 
     /// <summary>文本日志文件路径（为空不写文件；Linux 部署挂载到宿主机查看）。</summary>
     public string? LogFilePath { get; set; }
@@ -105,6 +114,16 @@ public sealed class ServerOptions
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_CLEANUP_INTERVAL_HOURS") is { } hours && int.TryParse(hours, out var intervalHours))
         {
             CleanupIntervalHours = intervalHours;
+        }
+
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_PENDING_TTL_HOURS") is { } ttlHours && int.TryParse(ttlHours, out var pendingTtl))
+        {
+            PendingJobTtlHours = pendingTtl;
+        }
+
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_EXPIRATION_SCAN_MINUTES") is { } scanMinutes && int.TryParse(scanMinutes, out var expirationScan))
+        {
+            ExpirationScanIntervalMinutes = expirationScan;
         }
 
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_LOG_FILE") is { } logFile)

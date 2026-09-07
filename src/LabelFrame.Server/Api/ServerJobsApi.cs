@@ -57,6 +57,12 @@ app.MapGet("/api/devices/{deviceId}/jobs/notify", async (string deviceId, int? t
     {
         var seconds = Math.Clamp(timeout ?? 20, 1, 30);
         await svc.TouchDeviceAsync(deviceId, DateTimeOffset.UtcNow, ServerService.NormalizeRemoteIp(context.Connection.RemoteIpAddress), ct);
+        // 挂起前先查一次未过期 Pending（积压预检）：提交脉冲早于本请求到达时已空放，
+        // 不预检会导致纯积压清空场景每批空等满超时；有积压立即返回，不进入长轮询。
+        if (await svc.HasDeliverablePendingJobsAsync(deviceId, ct))
+        {
+            return Results.Ok(new { hasPending = true });
+        }
         var hasPending = await notifier.WaitAsync(deviceId, TimeSpan.FromSeconds(seconds), ct);
         return Results.Ok(new { hasPending });
     }

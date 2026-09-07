@@ -17,10 +17,11 @@ const JOB_STATUS_LABEL: Record<string, string> = {
   Suspended: '已挂起',
   Cancelled: '已取消',
   Claimed: '已领取',
+  Expired: '已过期',
 }
 
 const jobLabel = (s: string) => JOB_STATUS_LABEL[s] ?? s
-const isTerminal = (s: string) => s === 'Completed' || s === 'Failed' || s === 'Cancelled'
+const isTerminal = (s: string) => s === 'Completed' || s === 'Failed' || s === 'Cancelled' || s === 'Expired'
 
 /** 时间列：本地时间 MM-dd HH:mm:ss。 */
 function formatTime(iso?: string): string {
