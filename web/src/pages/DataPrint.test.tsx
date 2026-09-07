@@ -133,16 +133,20 @@ afterEach(() => {
   cleanup()
 })
 
+/** 挂载链等待超时（ms）：DataPrint 挂载要串行走完「设备探测 → 模板列表 → 模板详情 → testData 预填」多段异步链，
+ *  CI 高负载下可能超过 findBy / waitFor 默认 1000ms（迭代 38：ci run 34081028327 偶发超时），统一放宽。 */
+const MOUNT_WAIT = { timeout: 3000 }
+
 async function renderDataPrint() {
   render(<Harness show />)
   // 等模板与 testData 预填值出现
-  await screen.findByDisplayValue('A-01')
+  await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
 }
 
 describe('DataPrint 会话保留（迭代 15 §6.1）', () => {
   it('切 tab（页面卸载重挂）：模板、字段值、调试开关保留', async () => {
     const { rerender } = render(<Harness show />)
-    await screen.findByDisplayValue('A-01')
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
     fireEvent.change(screen.getByDisplayValue('A-01'), { target: { value: 'B-02' } })
     fireEvent.click(screen.getByRole('checkbox', { name: /调试模式/ }))
     await waitFor(() => expect((screen.getByRole('checkbox', { name: /调试模式/ }) as HTMLInputElement).checked).toBe(true))
@@ -150,7 +154,7 @@ describe('DataPrint 会话保留（迭代 15 §6.1）', () => {
     // 切走再切回
     rerender(<Harness show={false} />)
     rerender(<Harness show />)
-    await waitFor(() => expect(screen.getByDisplayValue('B-02')).toBeTruthy())
+    await waitFor(() => expect(screen.getByDisplayValue('B-02')).toBeTruthy(), MOUNT_WAIT)
     expect((screen.getByRole('checkbox', { name: /调试模式/ }) as HTMLInputElement).checked).toBe(true)
     // 模板仍是选中项（第一个下拉 = 模板选择）
     expect((screen.getAllByRole('combobox')[0] as HTMLSelectElement).value).toBe('库位标签')
@@ -158,7 +162,7 @@ describe('DataPrint 会话保留（迭代 15 §6.1）', () => {
 
   it('刷新（sessionStorage 恢复）：字段值与调试开关保留', async () => {
     const { unmount } = render(<Harness show />)
-    await screen.findByDisplayValue('A-01')
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
     fireEvent.change(screen.getByDisplayValue('A-01'), { target: { value: 'C-03' } })
     fireEvent.click(screen.getByRole('checkbox', { name: /调试模式/ }))
     await waitFor(() => expect(window.sessionStorage.getItem('labelframe.printDraft')).toContain('C-03'))
@@ -166,13 +170,13 @@ describe('DataPrint 会话保留（迭代 15 §6.1）', () => {
     unmount()
     // 全新会话（模拟刷新页面）：草稿从 sessionStorage 恢复
     render(<Harness show />)
-    await waitFor(() => expect(screen.getByDisplayValue('C-03')).toBeTruthy())
+    await waitFor(() => expect(screen.getByDisplayValue('C-03')).toBeTruthy(), MOUNT_WAIT)
     expect((screen.getByRole('checkbox', { name: /调试模式/ }) as HTMLInputElement).checked).toBe(true)
   })
 
   it('草稿只用 sessionStorage，不用 localStorage（D5：避免跨标签页共享）', async () => {
     const { unmount } = render(<Harness show />)
-    await screen.findByDisplayValue('A-01')
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
     fireEvent.change(screen.getByDisplayValue('A-01'), { target: { value: 'D-04' } })
     await waitFor(() => expect(window.sessionStorage.getItem('labelframe.printDraft')).toContain('D-04'))
     // 刷新后从 sessionStorage 恢复，localStorage 无草稿（标签页隔离的存储基础）
@@ -190,7 +194,7 @@ describe('DataPrint 会话保留（迭代 15 §6.1）', () => {
     // 切走再切回：Excel 状态丢弃（无重新映射按钮、无弹窗）
     rerender(<Harness show={false} />)
     rerender(<Harness show />)
-    await screen.findByDisplayValue('A-01')
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
     expect(screen.queryByRole('button', { name: /重新映射/ })).toBeNull()
     expect(screen.queryByText('列映射（2 行数据）')).toBeNull()
     // 模板与字段值仍在
@@ -275,9 +279,9 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
     mocks.server.listDevices.mockResolvedValue(devices)
     mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', ...host })
     render(<Harness show />)
-    await screen.findByDisplayValue('A-01')
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
     // 等本机目标标签出现（listDevices 异步 resolve）
-    await waitFor(() => expect(screen.getByText(/^本机（/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/^本机（/)).toBeTruthy(), MOUNT_WAIT)
   }
 
   it('本机已注册且在线：只显示「本机（{deviceName}）」标签，无设备选择器', async () => {
@@ -341,8 +345,8 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
     mocks.server.listDevices.mockResolvedValue(DEVICES)
     mocks.server.getJob.mockResolvedValue(DONE_JOB_SERVER)
     render(<Harness show />)
-    await screen.findByDisplayValue('A-01')
-    await waitFor(() => expect(screen.getByText(/^本机（/)).toBeTruthy())
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
+    await waitFor(() => expect(screen.getByText(/^本机（/)).toBeTruthy(), MOUNT_WAIT)
 
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     expect(await screen.findByText('已完成 1 / 1 张')).toBeTruthy()

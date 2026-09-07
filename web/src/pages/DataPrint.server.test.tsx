@@ -123,10 +123,14 @@ afterEach(() => {
   cleanup()
 })
 
+/** 挂载链等待超时（ms）：DataPrint 挂载要串行走完「设备列表 → 模板列表 → 模板详情 → testData 预填」多段异步链，
+ *  CI 高负载下可能超过 findBy / waitFor 默认 1000ms（迭代 38：ci run 34081028327 偶发超时），统一放宽。 */
+const MOUNT_WAIT = { timeout: 3000 }
+
 async function renderDataPrint() {
   render(<Harness />)
-  await screen.findByDisplayValue('A-01')
-  await waitFor(() => expect(screen.getByLabelText('目标设备')).toBeTruthy())
+  await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
+  await waitFor(() => expect(screen.getByLabelText('目标设备')).toBeTruthy(), MOUNT_WAIT)
 }
 
 describe('DataPrint server 构建：在线设备选择器', () => {
