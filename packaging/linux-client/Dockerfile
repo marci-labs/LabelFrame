@@ -23,7 +23,8 @@ LABEL org.opencontainers.image.title="LabelFrame Linux Client" \
       org.opencontainers.image.version="$LABELFRAME_VERSION" \
       org.opencontainers.image.source="https://github.com/marci-labs/LabelFrame"
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl fonts-noto-cjk libfontconfig1 libfreetype6 libharfbuzz0b \
+    && apt-get install -y --no-install-recommends curl fontconfig fonts-wqy-microhei libfontconfig1 libfreetype6 libharfbuzz0b \
+    && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

@@ -2,6 +2,13 @@
 
 本文件记录每个迭代的变更。
 
+## v0.22.2 Linux 容器中文字体切换 · 2026-09-07
+
+- **中文字体基线**：Server Ubuntu/Docker 镜像与 Linux Log Client 镜像的预装中文字体从 `fonts-noto-cjk` 切换为 `fonts-wqy-microhei`，中文字符首选匹配 `WenQuanYi Micro Hei Regular`。
+- **版本同步**：`/api/server/info` 的服务端版本同步为 `0.22.2`；稳定版 Compose 默认版本更新为 `0.22.2`。
+- **范围说明**：不改变模板包、打印 API、作业模型或客户端打印链路；Windows 客户端实际打印仍使用客户端本机字体环境。
+- **本地验证**：Release 构建 0 警告 / 0 错误；日常 .NET 测试 315 项全绿；本地候选 Server 与 Linux Client 镜像的中文字符首选均匹配 `WenQuanYi Micro Hei`，Server 中文文本出图预览返回 `HTTP 200`，PNG 11575 字节。
+
 ## v0.22.1 Server Docker 中文字体补丁 · 2026-09-03
 
 - **Server 镜像中文字体**：Ubuntu / Docker Server 镜像默认安装 `fontconfig` 与 `fonts-noto-cjk`，并在构建时刷新字体缓存；服务端管理界面的模板预览 / 出图预览在 Linux 容器中具备中文文本渲染基线。

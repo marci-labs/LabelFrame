@@ -49,6 +49,7 @@
 | 34 | Linux 无头客户端（Log 驱动）+ Server / Client Compose E2E | ✅ 已完成（2026-08-28） |
 | 35 | Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强 | ✅ 已完成（2026-08-28，v0.22.0） |
 | 发布补丁 | Server Docker 中文字体基线 | ✅ 已完成（2026-09-03，v0.22.1） |
+| 发布补丁 | Linux 容器中文字体切换到文泉驿微米黑 | ✅ 已完成（2026-09-07，v0.22.2） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
@@ -996,6 +997,27 @@
 
 **启动命令**：
 > 继续 LabelFrame v0.22.1 Server Docker 中文字体补丁。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；严格限制范围为 Server Ubuntu/Docker 镜像中文字体基线、版本同步与文档记录；完成构建 / 测试与本地 Docker 中文文本出图验证；更新 ROADMAP / CHANGELOG / DESIGN；提交用 Conventional Commits；按发布流程推送 `v0.22.1` tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+
+## v0.22.2：Linux 容器中文字体切换到文泉驿微米黑（已完成）
+
+**目标**：把 Linux 容器默认中文字体从 Noto CJK 切换为用户实测观感更合适的文泉驿微米黑。
+
+**范围**：
+- Server Ubuntu 镜像预装中文字体从 `fonts-noto-cjk` 改为 `fonts-wqy-microhei`，构建时刷新字体缓存。
+- Linux Log Client 镜像同步从 `fonts-noto-cjk` 改为 `fonts-wqy-microhei`，让发布候选 E2E 的 Linux 出图与 Server 预览字体基线一致。
+- 服务端版本号同步为 `0.22.2`，稳定版 Compose 默认版本同步为 `0.22.2`。
+- 记录设计决策与变更日志。
+
+**不在范围**：模板包格式、打印 API、作业模型、客户端打印链路、Windows 客户端默认字体、应用内嵌字体文件。
+
+**验收**：`dotnet build` / 日常 `dotnet test` 通过；本地候选 Server 与 Linux Client 镜像内中文字符首选匹配 `WenQuanYi Micro Hei`；中文文本出图预览返回非空 PNG。
+
+**完成记录（2026-09-07）**：Release 构建 0 警告 / 0 错误；日常 .NET 测试 315 项全绿；本地候选 Server 镜像 `labelframe-server:0.22.2-wqy` 与 Linux Client 镜像 `labelframe-client:0.22.2-wqy` 均确认中文字符首选匹配 `WenQuanYi Micro Hei Regular`；Server 候选镜像使用中文文本框模板调用 `/api/print/render-image` 返回 `HTTP 200`、`image/png`、11575 字节。
+
+**启动命令**：
+> 继续 LabelFrame v0.22.2 Linux 容器中文字体切换到文泉驿微米黑。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；严格限制范围为 Server / Linux Client Docker 镜像中文字体基线、版本同步与文档记录；完成构建 / 测试与本地 Docker 字体匹配及中文文本出图验证；更新 ROADMAP / CHANGELOG / DESIGN；提交用 Conventional Commits；按发布流程推送 `v0.22.2` tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 
