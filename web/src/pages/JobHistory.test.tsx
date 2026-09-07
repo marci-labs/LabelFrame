@@ -54,6 +54,16 @@ const JOBS: JobView[] = [
     completedItems: 2,
     createdAt: '2026-08-11T08:00:00Z',
   },
+  {
+    jobId: 'job-ddd-4',
+    requestId: 'req-ddd-4',
+    status: 'Expired',
+    totalItems: 1,
+    completedItems: 0,
+    errorMessage: '暂存超过 12 小时未投递，服务端已放弃；需重打请用新 requestId 重发。',
+    targetDeviceId: 'device-3',
+    createdAt: '2026-08-10T20:00:00Z',
+  },
 ]
 
 function renderJobHistory() {
@@ -105,6 +115,17 @@ describe('作业历史页（迭代 18 F6）', () => {
     const printing = screen.getByText('打印中').closest('span')
     expect(completed?.className).toContain('ok')
     expect(printing?.className).toContain('info')
+  })
+
+  it('Expired 状态：显示「已过期」中文标签与中性终态样式', async () => {
+    renderJobHistory()
+    expect(await screen.findByText('已过期')).toBeTruthy()
+    const expired = screen.getByText('已过期').closest('span')
+    // 已过期是服务端放弃的终态：中性灰徽标（非 ok / err / info）
+    expect(expired?.className).toContain('neutral')
+    expect(expired?.className).not.toContain('info')
+    // 失败原因列透出服务端放弃说明
+    expect(screen.getByText(/服务端已放弃/)).toBeTruthy()
   })
 
   it('刷新按钮：重新拉取列表', async () => {
