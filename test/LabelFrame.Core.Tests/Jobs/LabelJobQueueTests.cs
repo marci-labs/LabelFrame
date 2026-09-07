@@ -34,6 +34,71 @@ public class LabelJobQueueTests
     }
 
     [Fact]
+    public async Task Submit_should_signal_pending_wake_immediately()
+    {
+        using var db = new TempJobDb();
+
+        // 无信号时等待不应完成（超时取远大于断言窗口，避免假成功）
+        var idleWait = db.Queue.WaitForPendingWakeAsync(TimeSpan.FromSeconds(30));
+        await Task.Delay(50);
+        Assert.False(idleWait.IsCompleted);
+
+        // 提交（写入提交后）应立即唤醒等待者
+        await db.Queue.SubmitAsync("req-wake", ["zpl-0"]);
+        var finished = await Task.WhenAny(idleWait, Task.Delay(2000));
+        Assert.Same(idleWait, finished);
+        Assert.True(await idleWait);
+    }
+
+    [Fact]
+    public async Task Idempotent_replay_should_not_signal_pending_wake()
+    {
+        using var db = new TempJobDb();
+        await db.Queue.SubmitAsync("req-replay", ["zpl-0"]);
+
+        // 消耗提交时已发出的信号后，同 requestId 重放不应再发新信号
+        Assert.True(await db.Queue.WaitForPendingWakeAsync(TimeSpan.Zero));
+        Assert.False(await db.Queue.WaitForPendingWakeAsync(TimeSpan.Zero));
+        await db.Queue.SubmitAsync("req-replay", ["zpl-0"]);
+        Assert.False(await db.Queue.WaitForPendingWakeAsync(TimeSpan.Zero));
+    }
+
+    [Fact]
+    public async Task Resume_and_retry_should_signal_pending_wake()
+    {
+        using var db = new TempJobDb();
+        var (job, _) = await db.Queue.SubmitAsync("req-resume", ["zpl-0", "zpl-1"]);
+        var claimed = await db.Queue.ClaimNextItemAsync();
+
+        // 第 0 张失败、第 1 张未打 → 作业挂起
+        await db.Queue.FailItemAsync(job.Id, claimed!.Value.Item.Id, "LF_IO_001", "发送失败");
+        var suspended = await db.Queue.GetAsync(job.Id);
+        Assert.Equal(LabelJobStatus.Suspended, suspended!.Status);
+
+        // 排空提交时已发出的信号后，恢复应立即唤醒等待者
+        while (await db.Queue.WaitForPendingWakeAsync(TimeSpan.Zero))
+        {
+        }
+
+        var wait = db.Queue.WaitForPendingWakeAsync(TimeSpan.FromSeconds(30));
+        await db.Queue.ResumeAsync(job.Id);
+        var finished = await Task.WhenAny(wait, Task.Delay(2000));
+        Assert.Same(wait, finished);
+
+        // 第 1 张也失败 → 作业 Failed；失败项重打（Failed → Pending）同样应唤醒
+        var afterResume = await db.Queue.GetAsync(job.Id);
+        await db.Queue.FailItemAsync(job.Id, afterResume!.Items[1].Id, "LF_IO_001", "发送失败");
+        while (await db.Queue.WaitForPendingWakeAsync(TimeSpan.Zero))
+        {
+        }
+
+        var retryWait = db.Queue.WaitForPendingWakeAsync(TimeSpan.FromSeconds(30));
+        await db.Queue.RetryItemAsync(job.Id, 0);
+        var retryFinished = await Task.WhenAny(retryWait, Task.Delay(2000));
+        Assert.Same(retryWait, retryFinished);
+    }
+
+    [Fact]
     public async Task Claim_should_return_items_in_batch_order()
     {
         using var db = new TempJobDb();

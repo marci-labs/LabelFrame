@@ -2,7 +2,8 @@
 
 /// <summary>
 /// 作业队列：幂等提交、逐张状态、挂起 / 恢复 / 取消、批内顺序。
-/// 由单个打印 Worker 调用 <see cref="ClaimNextItemAsync"/> 取下一张并按序打印。
+/// 由单个打印 Worker 调用 <see cref="ClaimNextItemAsync"/> 取下一张并按序打印；
+/// 新待打项产生（提交 / 恢复 / 重打 / 启动恢复）时经 <see cref="WaitForPendingWakeAsync"/> 即时唤醒 Worker。
 /// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:类型名不应以后缀结尾",
     Justification = "域类型语义即打印队列，命名直白优先")]
@@ -10,6 +11,7 @@ public sealed class LabelJobQueue : IDisposable
 {
     private readonly ILabelJobStore _store;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _pendingWake = new(0, int.MaxValue);
 
     /// <summary>创建作业队列。</summary>
     public LabelJobQueue(ILabelJobStore store)
@@ -60,13 +62,23 @@ public sealed class LabelJobQueue : IDisposable
                     .ToList(),
             };
 
-            return (await _store.CreateJobAsync(job, cancellationToken), Created: true);
+            var createdJob = await _store.CreateJobAsync(job, cancellationToken);
+            SignalPendingWake();
+            return (createdJob, Created: true);
         }
         finally
         {
             _gate.Release();
         }
     }
+
+    /// <summary>
+    /// 等待「出现新待打项」的唤醒信号：提交 / 恢复 / 重打 / 启动恢复产生 Pending 项时立即返回；
+    /// 超时返回仅作兜底（防信号遗漏时仍按 <paramref name="safetyPollDelay"/> 周期轮询，正常路径不触发）。
+    /// 调用方返回后仍需自行探测 / 领取——信号语义是「可能有变化」，不是「一定可领取」。
+    /// </summary>
+    public Task<bool> WaitForPendingWakeAsync(TimeSpan safetyPollDelay, CancellationToken cancellationToken = default)
+        => _pendingWake.WaitAsync(safetyPollDelay, cancellationToken);
 
     /// <summary>按作业标识查询。</summary>
     public Task<LabelJob?> GetAsync(string jobId, CancellationToken cancellationToken = default)
@@ -216,7 +228,9 @@ public sealed class LabelJobQueue : IDisposable
                 throw new LabelJobException(JobErrorCodes.InvalidTransition, "作业没有可续打的标签，无法恢复。");
             }
 
-            return await _store.SetJobStatusAsync(jobId, LabelJobStatus.Pending, cancellationToken) ?? job;
+            var resumed = await _store.SetJobStatusAsync(jobId, LabelJobStatus.Pending, cancellationToken) ?? job;
+            SignalPendingWake();
+            return resumed;
         }
         finally
         {
@@ -285,6 +299,7 @@ public sealed class LabelJobQueue : IDisposable
                 // 挂起作业重打后保持挂起，由调用方决定是否恢复；若其它 Item 已在打则无需改动
             }
 
+            SignalPendingWake();
             return (await _store.GetJobAsync(jobId, cancellationToken))!;
         }
         finally
@@ -311,6 +326,7 @@ public sealed class LabelJobQueue : IDisposable
                 }
 
                 await _store.SetJobStatusAsync(job.Id, LabelJobStatus.Suspended, cancellationToken);
+                SignalPendingWake();
             }
         }
         finally
@@ -319,6 +335,13 @@ public sealed class LabelJobQueue : IDisposable
         }
     }
 
+    /// <summary>发出唤醒信号：写入已提交后才调用（先信号后提交会让 Worker 探测落空、信号被消费而错过唤醒）。</summary>
+    private void SignalPendingWake() => _pendingWake.Release();
+
     /// <summary>释放内部信号量（宿主停机时由 DI 容器触发）。</summary>
-    public void Dispose() => _gate.Dispose();
+    public void Dispose()
+    {
+        _gate.Dispose();
+        _pendingWake.Dispose();
+    }
 }

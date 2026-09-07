@@ -175,7 +175,7 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
     /// <inheritdoc />
     public async Task<bool> HasPendingItemsAsync(CancellationToken cancellationToken = default)
     {
-        // 轻量探测：EXISTS 只扫 job_items 状态行，不加载作业与 ZPL（打印 Worker 每 200ms 空转轮询用）
+        // 轻量探测：EXISTS 只扫 job_items 状态行，不加载作业与 ZPL（打印 Worker 唤醒后先探测再完整领取）
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();

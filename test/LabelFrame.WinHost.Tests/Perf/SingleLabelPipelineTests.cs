@@ -85,8 +85,9 @@ public sealed class SingleLabelPipelineTests : IDisposable
             _output.WriteLine($"单张提交→终态（60x40mm @203dpi）：p50={p50}ms p99={p99}ms max={latencies[^1]}ms");
 
             // 需求指标：提交到出纸 < 1 秒（物理打印除外）。
-            // 实测发现：延迟主体是 Worker 空转轮询的 200ms 周期（提交后最多等一个周期才被领走），
-            // 渲染+编码仅 ~1ms——如需进一步压缩可改信号量唤醒（记 PERF-BASELINE 优化机会）。
+            // 迭代 39 起 Worker 由入队信号即时唤醒（原 200ms 空转轮询），延迟主体收敛为渲染+编码 ~1ms
+            // 与入队 / 领取开销——p50 阈值 20ms（留 CI 抖动余量）；p99 仍留 500ms（首张含 JIT / 字体加载预热）。
+            Assert.True(p50 < 20, $"p50={p50}ms 超过 20ms，信号唤醒失效或系统侧占用过高");
             Assert.True(p99 < 500, $"p99={p99}ms 超过 500ms，系统侧占用过高");
         }
         finally

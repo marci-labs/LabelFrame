@@ -12,6 +12,10 @@ namespace LabelFrame.WinHost.Jobs;
 /// </summary>
 public sealed class JobPrintWorker : BackgroundService
 {
+    /// <summary>空转等待兜底周期：信号唤醒为主（作业入队即醒），超时兜底防信号遗漏（正常路径不触发）。</summary>
+    private static readonly TimeSpan SafetyPollInterval = TimeSpan.FromSeconds(5);
+
+    /// <summary>探测有 Pending 项但领取落空（挂起作业等）时的回退等待：信号可提前唤醒。</summary>
     private static readonly TimeSpan IdleDelay = TimeSpan.FromMilliseconds(200);
 
     private readonly LabelJobQueue _queue;
@@ -60,18 +64,20 @@ public sealed class JobPrintWorker : BackgroundService
         {
             try
             {
-                // 空转先轻量探测（EXISTS）：避免每 200ms 全量加载 Pending/Printing 作业（含 ZPL 文本）
+                // 空转等待信号唤醒（提交 / 恢复 / 重打入队即醒）；无信号时超时兜底轮询。
+                // 唤醒后仍先轻量探测（EXISTS）再走完整领取，避免无谓加载 Pending/Printing 作业（含 ZPL 文本）。
                 if (!await _queue.HasPendingItemsAsync(stoppingToken))
                 {
-                    await Task.Delay(IdleDelay, _time, stoppingToken);
+                    await _queue.WaitForPendingWakeAsync(SafetyPollInterval, stoppingToken);
                     continue;
                 }
 
                 var next = await _queue.ClaimNextItemAsync(stoppingToken);
                 if (next is null)
                 {
-                    // 探测与领取之间被并发领走（挂起 / 取消等）——按空转处理
-                    await Task.Delay(IdleDelay, _time, stoppingToken);
+                    // 探测与领取之间被并发领走，或存在挂起作业（Item 为 Pending 但作业不可领取）——
+                    // 信号可提前唤醒，超时兜底保持既有 200ms 周期
+                    await _queue.WaitForPendingWakeAsync(IdleDelay, stoppingToken);
                     continue;
                 }
 
