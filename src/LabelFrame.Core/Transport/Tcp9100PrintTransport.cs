@@ -100,7 +100,7 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
     /// <inheritdoc />
     /// <remarks>
     /// Zebra ~HS 主机状态响应为逗号分隔字段：第 2 个字段为暂停位，第 5 个字段为缺纸位；
-    /// 字段映射以真实设备联调为准（见 docs/DESIGN.md §5）。
+    /// 字段映射以真实设备联调为准。
     /// </remarks>
     public async Task<PrinterStatusInfo> GetStatusAsync(CancellationToken cancellationToken = default)
     {

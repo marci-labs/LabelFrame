@@ -7,7 +7,7 @@ namespace LabelFrame.Core.Transport.Plugins;
 /// 插件发现探针（安装预检用）——用临时 collectible AssemblyLoadContext **字节加载**
 /// 目录内 DLL 并返回发现的插件 ID；只做发现，不 Create 传输实例。
 /// 与插件目录加载器共用同一发现逻辑；与 LoadFromAssemblyPath 不同，字节加载不锁文件，
-/// 预检后临时目录可正常移动 / 删除（Windows 文件锁问题，见规格 §9）。
+/// 预检后临时目录可正常移动 / 删除。
 /// </summary>
 public static class PluginProbe
 {

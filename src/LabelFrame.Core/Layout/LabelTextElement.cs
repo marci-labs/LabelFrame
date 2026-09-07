@@ -3,7 +3,7 @@ namespace LabelFrame.Core.Layout;
 /// <summary>文本元素，绑定契约字段键。</summary>
 public sealed class LabelTextElement : LabelElement
 {
-    /// <summary>默认画布字体族（图片打印 / 预览用；矢量 ZPL 仍由 <see cref="FontName"/> 决定）。</summary>
+    /// <summary>默认画布字体族（图片打印 / 预览渲染用）。</summary>
     public const string DefaultFontFamily = "Microsoft YaHei";
 
     /// <inheritdoc />
@@ -15,7 +15,7 @@ public sealed class LabelTextElement : LabelElement
     /// <summary>固定值（不填充字段时使用；为空则按 SourceKey 字段填充）。</summary>
     public string? Literal { get; init; }
 
-    /// <summary>ZPL 内置字体名（默认 0）。</summary>
+    /// <summary>ZPL 内置字体名（默认 0；模板格式保留字段，图片打印不使用）。</summary>
     public string FontName { get; init; } = "0";
 
     /// <summary>字高（毫米）。</summary>
@@ -36,7 +36,7 @@ public sealed class LabelTextElement : LabelElement
     /// <summary>垂直对齐（默认 Middle，与前端一致；Top/Bottom 显式写入，Middle 省略）。</summary>
     public LabelVerticalAlign VerticalAlign { get; init; } = LabelVerticalAlign.Middle;
 
-    /// <summary>画布字体族（默认 Microsoft YaHei；仅图片打印 / 预览用，矢量 ZPL 用 <see cref="FontName"/>）。</summary>
+    /// <summary>画布字体族（默认 Microsoft YaHei；图片打印 / 预览渲染用）。</summary>
     public string FontFamily { get; init; } = DefaultFontFamily;
 
     /// <summary>自动换行（默认 false；true 时按框宽换行，超高整体缩小，避免打印丢字）。</summary>
@@ -48,7 +48,7 @@ public sealed class LabelTextElement : LabelElement
     /// <summary>溢出处理方式（默认 Shrink 缩小适应；Overflow = 隐藏 / 裁剪，不缩小）。</summary>
     public LabelFitMode FitMode { get; init; } = LabelFitMode.Shrink;
 
-    /// <summary>字体加粗（默认 false；ZPL 用粗体字体变体 / 宽度放大，Skia 用 fontStyle bold）。</summary>
+    /// <summary>字体加粗（默认 false；渲染时以粗体字形绘制）。</summary>
     public bool Bold { get; init; }
 }
 

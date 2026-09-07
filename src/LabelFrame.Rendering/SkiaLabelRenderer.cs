@@ -21,10 +21,8 @@ public interface ILabelBitmapRenderer
 
 /// <summary>
 /// SkiaSharp 后端渲染器：与前端 canvas 渲染同源（自动换行 / 行距 / 溢出处理 / 字体族 /
-/// 左中右对齐 / 双边内边距 / 边框、线条、区域、ZXing 条码二维码参数、模板图片），输出 1bpp 位图。
-/// 用于图片打印与调试，避免 GDI 对 CJK / 右对齐 / 长文本的兼容问题。
-/// 新排版字段（wrap/lineHeight/fitMode/fontFamily/qrEcc/qrMargin/displayValue/paddingH/V）
-/// 只影响本渲染器，不参与 ZPL 矢量编码（与契约 §4 一致）。
+/// 左中右对齐 / 双边内边距 / 边框、线条、区域、ZXing 条码二维码参数、模板图片），
+/// 输出 1bpp 位图，用于图片打印与调试。
 /// </summary>
 public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
 {

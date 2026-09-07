@@ -164,8 +164,8 @@ public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvi
         {
             connection = CreateConnection();
             connection.Open();
-            // 3.x 的 PrinterStatus 无公开状态字段；详细状态（缺纸/暂停）待真实设备联调
-            // （可用 ~HS 或 SGD 命令扩展，见 docs/DESIGN.md §5）
+            // 3.x 的 PrinterStatus 无公开状态字段；详细状态（缺纸/暂停）待真实设备联调，
+            // 届时可用 ~HS 或 SGD 命令扩展
             return new PrinterStatusInfo(true, IsPaperOut: false, IsPaused: false, "已连接（详细状态待真实设备联调）。");
         }
         catch (ConnectionException ex)
