@@ -50,6 +50,8 @@
 | 35 | Linux Client 正式发布 + 双端稳定 Compose + P0/P1 测试补强 | ✅ 已完成（2026-08-28，v0.22.0） |
 | 36 | 文档治理与路线图收口（迭代 26 放弃 / 迭代 25 转下一轮 / 一致性核对 / 注释清理） | ✅ 已完成（2026-09-07） |
 | 37 | 服务端暂存作业 TTL 过期 + notify 积压即时唤醒 | ✅ 已完成（2026-09-07） |
+| 38 | 测试稳定性小治理（flaky 用例加固 + 本机构建产物清理） | 📋 已排定 |
+| 39 | 性能优化批次（Worker 信号量唤醒 / SQLite 写合批评估 / SKBitmap 池） | 📋 已排定 |
 | 发布补丁 | Server Docker 中文字体基线 | ✅ 已完成（2026-09-03，v0.22.1） |
 | 发布补丁 | Linux 容器中文字体切换到文泉驿微米黑 | ✅ 已完成（2026-09-07，v0.22.2） |
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
@@ -1068,6 +1070,42 @@
 
 **启动命令**：
 > 继续 LabelFrame 迭代 37（服务端暂存作业 TTL 过期 + notify 积压即时唤醒）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；本迭代为作业模型契约变更，严格按「先更新公共文档（DESIGN 的 Server API 契约与决策表），再改代码」执行；提交用 Conventional Commits；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+
+## 迭代 38：测试稳定性小治理（flaky 用例加固 + 本机构建产物清理）（已排定）
+
+**背景**：2026-09-07 复查 CI 历史，发现 v0.22.2 提交时 ci run `34081028327` 偶发失败——`DataPrint.test.tsx`「切 tab（页面卸载重挂）：模板、字段值、调试开关保留」用例在 CI 高负载下找不到 `display value: A-01`（异步渲染未就绪即同步断言），属 flaky 测试而非产品缺陷（同用例后续多轮全绿）。同日本机实测踩中 `dotnet run -f net10.0-windows` 前缀匹配到 `bin\Debug\net10.0-windows\`（2026-08-09 遗留旧 TFM 产物，现 Windows TFM 为 `net10.0-windows10.0.26100`）导致跑到旧代码、端点大面积 404。
+
+**范围**：
+- flaky 加固：`DataPrint.test.tsx` 会话保留用例的同步查询改为 `findBy*` / `waitFor` 等待语义；顺带排查 `web/src` 下其他组件测试中同类「渲染后立即同步查询」的高风险模式，仅加固确有竞态风险的断言（不批量重写）。
+- 本机构建产物清理：删除 `src/LabelFrame.WinHost/bin/Debug/net10.0-windows/` 遗留目录（bin 不入库，动作仅本机执行）；清理后验证 `dotnet run --project src/LabelFrame.WinHost -f net10.0-windows` 不再误匹配（应提示需要精确 TFM），避免再次跑到月龄旧代码。
+
+**不在范围**：测试框架 / vitest 配置变更；产品代码行为变更；发布 / CI 工作流。
+
+**验收**：web 双模式测试连续 3 轮全绿（验证抖动消除）；`dotnet build` / 日常 `dotnet test` 全绿；按 DoD 更新 ROADMAP / CHANGELOG。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 38（测试稳定性小治理）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围执行：DataPrint 会话保留 flaky 用例改等待语义并排查同类模式、删除本机遗留 bin\Debug\net10.0-windows 旧产物目录并验证 dotnet run -f 不再误匹配；验收 web 双模式测试连跑 3 轮全绿；提交用 Conventional Commits；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
+
+---
+
+## 迭代 39：性能优化批次（Worker 信号量唤醒 / SQLite 写合批评估 / SKBitmap 池）（已排定）
+
+**背景**：迭代 33 建立三层性能体系（微基准 / Perf / Soak + nightly）并记录三个优化机会（见 `docs/PERF-BASELINE.md`）：① WinHost 单张全链路 p50 ≈ 205ms，主体是 JobPrintWorker 200ms 空转轮询（渲染 + 编码仅 ~1ms）；② Server 20 并发设备下 SQLite 单写者特征使 60 写事务排队、p95 尾部 2-3s（不丢不错）；③ 整链路每张分配 1-5MB（SKBitmap 未池化）。服务端 notify 即时唤醒（迭代 37）已消除路由侧等待，本地队列侧轮询与写放大仍未治理。
+
+**范围**：
+- WinHost Worker 信号量唤醒：`JobPrintWorker` 的 200ms 空转轮询（HasPendingItemsAsync EXISTS 探测循环）改为「作业入队即唤醒」（信号量 / 事件），消除空转延迟；打印语义、批内顺序、批次节流、挂起恢复、TimeProvider 注入全部保持；既有 FakeTimeProvider 节流测试适配；Perf 阈值同步收紧（p50 目标从 205ms 降至 20ms 量级，留 CI 抖动余量）。
+- SQLite 写事务合批（评估 + 实施有效项）：分析 Server 并发写路径（提交 / 领取 / 回报 / 心跳）的事务粒度与连接超时配置，实施收益明确且低风险的项（如合并多余写事务、心跳批量、超时调优）；若实测结论为「当前局域网规模不值得架构级合批」，在 DESIGN 记录决策与量化依据即可，不强行实施。
+- SKBitmap 池：Skia 渲染主链路位图分配池化复用，降低每张 1-5MB 的 GC 压力；soak 托管堆稳定性断言验证收益。
+- 更新 `docs/PERF-BASELINE.md`：三项优化后的新基线数据 + 结论。
+
+**不在范围**：Server 架构级改造（写副本 / 分库 / 换存储）；AndroidHost；增量进度回报等跨端契约；发布 / CI 工作流（Perf 阈值在测试代码中，不属于工作流）。
+
+**验收**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 全绿；`scripts/run-perf.ps1` perf / soak / bench 三模式通过并产出新基线；作业 / 路由 / 打印行为零变化；按 DoD 更新 ROADMAP / CHANGELOG / DESIGN / PERF-BASELINE。
+
+**启动命令**：
+> 继续 LabelFrame 迭代 39（性能优化批次：Worker 信号量唤醒 / SQLite 写合批评估 / SKBitmap 池）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md 与 docs/PERF-BASELINE.md；按范围实施三项优化（SQLite 合批为评估 + 实施有效项，结论不明确时记 DESIGN 决策不强行实施）；行为零变化，Perf / Soak / bench 通过并更新 PERF-BASELINE 基线；提交用 Conventional Commits；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
 
 ---
 
