@@ -101,13 +101,13 @@ public sealed class LabelHostConfig
         var editor = prefs.Edit();
         if (editor is not null)
         {
-            editor.PutString("server_url", ServerUrl)
-                .PutString("printer_brand", PrinterBrand)
-                .PutString("connection_type", ConnectionType)
-                .PutString("tcp_host", TcpHost)
-                .PutInt("tcp_port", TcpPort)
-                .PutString("device_name", DeviceName)
-                .Apply();
+            editor.PutString("server_url", ServerUrl);
+            editor.PutString("printer_brand", PrinterBrand);
+            editor.PutString("connection_type", ConnectionType);
+            editor.PutString("tcp_host", TcpHost);
+            editor.PutInt("tcp_port", TcpPort);
+            editor.PutString("device_name", DeviceName);
+            editor.Apply();
         }
     }
 
@@ -127,7 +127,9 @@ public sealed class LabelHostConfig
         if (string.IsNullOrWhiteSpace(uuid))
         {
             uuid = $"pda-{Guid.NewGuid():N}";
-            prefs.Edit()?.PutString("device_uuid", uuid).Apply();
+            var uuidEditor = prefs.Edit();
+            uuidEditor?.PutString("device_uuid", uuid);
+            uuidEditor?.Apply();
         }
 
         return uuid;

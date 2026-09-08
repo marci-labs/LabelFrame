@@ -465,77 +465,108 @@ public sealed class EmbeddedHttpServer : IDisposable
     private static (int, string, byte[]) Html(int status, string html)
         => (status, "text/html; charset=utf-8", Encoding.UTF8.GetBytes(html));
 
-    /// <summary>宿主状态页：运行状态 + 配置概览 + 测试打印（轻量单页；第三方集成走同端口 HTTP API）。</summary>
+    /// <summary>宿主状态页：本机 / 服务器 / 打印机状态 + 测试打印（轻量单页；第三方集成走同端口 HTTP API）。</summary>
     private const string StatusPageHtml = """
         <!DOCTYPE html>
         <html lang="zh-CN">
         <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>LabelFrame 宿主状态</title>
+        <title>LabelFrame 打印状态</title>
         <style>
-          body { font-family: sans-serif; margin: 12px; color: #222; }
-          h1 { font-size: 18px; }
-          .card { border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
-          .row { margin: 4px 0; font-size: 14px; }
-          .row b { display: inline-block; min-width: 5.5em; color: #666; font-weight: 600; }
-          button { padding: 10px 16px; font-size: 15px; margin: 6px 8px 0 0; }
-          #result { margin-top: 8px; color: #555; white-space: pre-wrap; }
+          body { font-family: system-ui, sans-serif; margin: 0; background: #f2f4f7; color: #1f2329; }
+          .wrap { padding: 16px; }
+          h1 { font-size: 20px; margin: 0 0 2px; }
+          .sub { color: #6b7075; font-size: 13px; margin: 0 0 14px; }
+          .card { background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+          .card h2 { font-size: 15px; margin: 0 0 6px; }
+          .row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; margin: 6px 0; }
+          .row b { color: #6b7075; font-weight: 600; flex-shrink: 0; }
+          .row span { text-align: right; word-break: break-all; }
+          .ok { color: #1b7e3a; } .err { color: #c5221f; } .warn { color: #b25e00; }
+          .muted { color: #6b7075; }
+          button { display: block; width: 100%; padding: 14px; font-size: 16px; color: #fff;
+                   background: #1d6fe0; border: 0; border-radius: 10px; min-height: 48px; }
+          #result { margin-top: 10px; font-size: 14px; white-space: pre-wrap; }
+          .foot { color: #9aa0a6; font-size: 12px; margin-top: 16px; }
         </style>
         </head>
         <body>
-        <h1>LabelFrame 宿主状态</h1>
-        <div class="card" id="config"><div class="row">加载中…</div></div>
+        <div class="wrap">
+        <h1>LabelFrame 打印状态</h1>
+        <p class="sub">这台 PDA 打印服务的运行情况</p>
+        <div class="card" id="device"><h2>本机</h2><div class="row">正在读取…</div></div>
+        <div class="card"><h2>服务器</h2><div class="row"><b>地址</b><span id="server">—</span></div></div>
         <div class="card">
-          <div class="row"><b>打印机状态</b><span id="printer">探测中…</span></div>
+          <h2>打印机</h2>
+          <div class="row"><b>地址</b><span id="printerAddr">—</span></div>
+          <div class="row"><b>状态</b><span id="printer">正在检查…</span></div>
         </div>
-        <button id="print">测试打印</button>
+        <button id="print">打印一张测试标签</button>
         <div id="result"></div>
-        <p style="color:#999;font-size:12px;margin-top:16px">
-          本页为宿主状态页；第三方程序集成请走同端口 HTTP API（POST /api/jobs 直连打印，契约见仓库文档）。
-        </p>
+        <p class="foot">本页由 PDA 上的打印服务提供；开发者集成请用同端口的 HTTP 接口（见项目文档）。</p>
+        </div>
         <script>
         const resultEl = document.getElementById('result');
+        function setResult(text, cls) {
+          resultEl.textContent = text;
+          resultEl.className = cls || '';
+        }
         async function loadConfig() {
           try {
             const res = await fetch('/api/host/config');
             const c = await res.json();
-            document.getElementById('config').innerHTML =
-              '<div class="row"><b>设备号</b>' + c.DeviceId + '</div>' +
-              '<div class="row"><b>设备名称</b>' + c.DeviceName + '</div>' +
-              '<div class="row"><b>服务端</b>' + (c.ServerUrl || '未配置') + '</div>' +
-              '<div class="row"><b>打印机</b>' + c.TcpHost + ':' + c.TcpPort + '（' + c.PrinterBrand + ' · ' + c.ConnectionType.toUpperCase() + '）</div>';
-          } catch (ex) { document.getElementById('config').textContent = '加载失败：' + ex.message; }
+            document.getElementById('device').innerHTML =
+              '<h2>本机</h2>' +
+              '<div class="row"><b>设备号</b><span>' + c.DeviceId + '</span></div>' +
+              '<div class="row"><b>设备名称</b><span>' + c.DeviceName + '</span></div>';
+            document.getElementById('server').textContent = c.ServerUrl || '未设置';
+            document.getElementById('printerAddr').textContent = c.TcpHost + ':' + c.TcpPort;
+          } catch (ex) {
+            document.getElementById('device').innerHTML =
+              '<h2>本机</h2><div class="row err">读取失败，刷新页面试试</div>';
+          }
         }
         async function loadPrinter() {
+          const el = document.getElementById('printer');
           try {
             const res = await fetch('/api/printer/status');
             const s = await res.json();
-            const text = s.IsOnline
-              ? '在线' + (s.Message ? '（' + s.Message + '）' : '') + (s.IsPaperOut ? ' · 缺纸' : '') + (s.IsPaused ? ' · 暂停' : '')
-              : '离线' + (s.Message ? '（' + s.Message + '）' : '');
-            document.getElementById('printer').textContent = text;
-          } catch (ex) { document.getElementById('printer').textContent = '探测失败：' + ex.message; }
+            if (s.IsOnline) {
+              if (s.IsPaperOut) { el.textContent = '缺纸，请装纸'; el.className = 'err'; }
+              else if (s.IsPaused) { el.textContent = '已暂停'; el.className = 'warn'; }
+              else { el.textContent = '在线，可以打印'; el.className = 'ok'; }
+            } else {
+              el.textContent = '连不上——请检查打印机电源和 IP 地址';
+              el.className = 'err';
+            }
+          } catch (ex) {
+            el.textContent = '检查失败，稍后自动重试';
+            el.className = 'muted';
+          }
         }
         document.getElementById('print').onclick = async () => {
-          resultEl.textContent = '提交测试作业…';
+          setResult('正在发送到打印机…', 'muted');
           try {
             const res = await fetch('/api/host/test-print', { method: 'POST' });
             const job = await res.json();
-            if (!res.ok) { resultEl.textContent = '提交失败：' + (job.Message || res.status); return; }
+            if (!res.ok) { setResult('✗ 没打出来——请再试一次', 'err'); return; }
             const timer = setInterval(async () => {
               const r = await fetch('/api/jobs/' + job.JobId);
               const j = await r.json();
               if (j.Status === 'Completed' || j.Status === 'Failed' || j.Status === 'Cancelled') {
                 clearInterval(timer);
-                const err = (j.Items || []).find(x => x.ErrorMessage)?.ErrorMessage || '';
-                resultEl.textContent = (j.Status === 'Completed' ? '✓ 打印完成' : '✗ ' + j.Status) +
-                  '（' + j.CompletedItems + '/' + j.TotalItems + '）' + (err ? '：' + err : '');
+                if (j.Status === 'Completed') {
+                  setResult('✓ 打印成功，已出纸（' + j.CompletedItems + '/' + j.TotalItems + '）', 'ok');
+                } else {
+                  const err = (j.Items || []).find(x => x.ErrorMessage)?.ErrorMessage || '';
+                  setResult('✗ 没打出来——请检查打印机是否开机、IP 是否正确' + (err ? '（原因：' + err + '）' : ''), 'err');
+                }
               } else {
-                resultEl.textContent = '打印中…（' + j.CompletedItems + '/' + j.TotalItems + '）';
+                setResult('正在打印…（' + j.CompletedItems + '/' + j.TotalItems + '）', 'muted');
               }
             }, 1000);
-          } catch (ex) { resultEl.textContent = '异常：' + ex.message; }
+          } catch (ex) { setResult('出错了，请再试一次', 'err'); }
         };
         loadConfig();
         loadPrinter();

@@ -81,7 +81,7 @@ public sealed class PrintHostService : Service
     {
         if (OperatingSystem.IsAndroidVersionAtLeast(26))
         {
-            var channel = new NotificationChannel(ChannelId, "LabelFrame 打印宿主", NotificationImportance.Low);
+            var channel = new NotificationChannel(ChannelId, "LabelFrame 打印服务", NotificationImportance.Low);
             var manager = (NotificationManager?)GetSystemService(NotificationService);
             manager?.CreateNotificationChannel(channel);
             var notification = BuildNotification(BuildStatusText());
@@ -112,7 +112,7 @@ public sealed class PrintHostService : Service
             ? new Notification.Builder(this, ChannelId)
             : new Notification.Builder(this);
         return builder
-            .SetContentTitle("LabelFrame 打印宿主")
+            .SetContentTitle("LabelFrame 标签打印")
             .SetContentText(text)
             .SetSmallIcon(Android.Resource.Drawable.SymDefAppIcon)
             .SetOngoing(true)
@@ -120,33 +120,34 @@ public sealed class PrintHostService : Service
             .Build();
     }
 
-    /// <summary>状态文案：服务端连接 + 打印机端点（用于常驻通知）。</summary>
+    /// <summary>通知文案（面向仓库用户的人话）：服务器状态 + 打印机地址，一句话说完。</summary>
     private static string BuildStatusText()
     {
         var s = HostStatus.Current;
         string server;
         if (s.ActiveServerUrl.Length == 0)
         {
-            server = "服务端：未配置";
+            server = "服务器：未设置";
         }
         else if (s.LastServerError is not null)
         {
-            server = "服务端：连接失败";
+            server = "服务器：连不上（自动重试中）";
         }
         else if (s.LastServerContactUtc is not null)
         {
-            server = "服务端：已连接";
+            server = "服务器：已连接";
         }
         else
         {
-            server = "服务端：连接中…";
+            server = "服务器：正在连接…";
         }
 
-        var printer = $"打印机：{s.ActivePrinterEndpoint}";
-        if (s.LastPrintError is not null)
-        {
-            printer += "（发送失败）";
-        }
+        var printerIp = s.ActivePrinterEndpoint.Contains(':', StringComparison.Ordinal)
+            ? s.ActivePrinterEndpoint[..s.ActivePrinterEndpoint.IndexOf(':')]
+            : s.ActivePrinterEndpoint;
+        var printer = s.LastPrintError is not null
+            ? $"打印机 {printerIp} · 连不上"
+            : $"打印机 {printerIp}";
 
         return $"{server} · {printer}";
     }
