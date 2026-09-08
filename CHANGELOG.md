@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## v0.23.0 迭代 36-39 汇总发布 · 2026-09-08
+
+- **打包范围**：文档治理与路线图收口（迭代 36）、服务端暂存作业 TTL 过期 + notify 积压即时唤醒（迭代 37）、测试稳定性治理（迭代 38）、性能优化批次（迭代 39）；详见各迭代条目。
+- **服务端行为变更（部署注意）**：Pending 作业 TTL 默认开启（12 小时；`Server.PendingJobTtlHours` / `LABELFRAME_SERVER_PENDING_TTL_HOURS`，0 或负值 = 关闭，行为回到「不设过期」）——设备长期离线期间暂存的作业超期进入新终态 **Expired**，幂等语义保持严格（同一 requestId 重放只返回既有作业，重打需新 requestId）；notify 挂起前积压预检消除纯积压清空场景的 20s 长轮询空等。
+- **性能优化**：客户端提交到出纸系统侧 p50 205ms → 9ms（Worker 信号量唤醒）；大批量打印每张托管分配 2.3MB → 0.84MB（SKBitmap 池化）；服务端领取路径写事务合批（Touch + Claim 合一）降低高并发锁竞争。作业 / 路由 / 打印行为零变化。
+- **版本同步**：`/api/server/info` 版本与稳定版 Compose 默认版本更新为 `0.23.0`。
+- **发布产物**：GitHub Release 附件（Server / Client MSI、服务端 webui 插件 zip、linux-x64 归档）+ ghcr 镜像 `ghcr.io/marci-labs/labelframe-server:0.23.0` / `labelframe-client:0.23.0`（均含 `latest`）。
+
 ## 迭代 39 性能优化批次（Worker 信号量唤醒 / SQLite 写合批 / SKBitmap 池）· 2026-09-07
 
 - **Worker 信号量唤醒（决策 #92①）**：`LabelJobQueue` 新增「出现新待打项」唤醒信号——新提交 / 恢复 / 失败项重打 / 启动恢复中断四条路径在存储写入提交后发信号（先信号后提交会让 Worker 探测落空且信号被消费，错过唤醒）；`JobPrintWorker` 空转等待由 200ms 轮询改为信号即时唤醒（5s 超时兜底防信号遗漏，正常路径不触发），「EXISTS 轻量探测 → 完整领取」结构、批次节流（TimeProvider 注入保留）、挂起恢复语义零变化；「探测有 Pending 但领取落空」（挂起作业等不可领场景）保留 200ms 周期且同样可被信号提前唤醒。实测：单张全链路 **p50 205ms → 9ms**（p99 79ms 为首张预热），Perf 阈值收紧为 `p50 < 20ms` + `p99 < 500ms`。

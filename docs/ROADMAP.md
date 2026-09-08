@@ -1113,6 +1113,8 @@
 - **基线更新**：`docs/PERF-BASELINE.md` 升级 v2（三项优化后数据 + 旧基线对照 + 遗留优化机会清单收敛）；soak 5 分钟通过（0 错误、WAL 有界、托管堆稳定）。
 - **本地验证**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 328 项全绿（Core 108→111）；perf（WinHost p50=9ms 通过新阈值；Server 1/5 设备通过，20 设备本机负载下超阈为既有环境敏感特征）；soak 通过；bench 通过并产出新数据。行为零变化：既有作业 / 路由 / 打印测试全部原样通过。
 
+**发布（2026-09-08）**：推送 `v0.23.0` tag 触发 GitHub Actions 自动发布——打包迭代 36-39 四轮成果（TTL 过期 + notify 积压即时唤醒、性能优化批次、测试稳定性治理、文档治理），Server Docker 镜像推 ghcr.io（`0.23.0` + `latest`）、PC 安装包（Server / Client MSI、服务端 webui 插件 zip、Linux 归档）上传 GitHub Release；ServerOptions 版本号与稳定版 Compose 默认版本同步 0.23.0。**部署注意**：Pending 作业 TTL 默认开启（12 小时，`Server.PendingJobTtlHours`，0 或负值关闭）——离线暂存作业超期将进入 Expired 终态，业务系统重打需用新 requestId。
+
 **启动命令**：
 > 继续 LabelFrame 迭代 39（性能优化批次：Worker 信号量唤醒 / SQLite 写合批评估 / SKBitmap 池）。先读 README.md、AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md 与 docs/PERF-BASELINE.md；按范围实施三项优化（SQLite 合批为评估 + 实施有效项，结论不明确时记 DESIGN 决策不强行实施）；行为零变化，Perf / Soak / bench 通过并更新 PERF-BASELINE 基线；提交用 Conventional Commits；不推 tag；不修改发布 / CI 工作流；仓库内容不得出现公司 / 业务线品牌字样。
 
