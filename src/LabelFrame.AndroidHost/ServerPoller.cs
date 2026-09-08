@@ -11,9 +11,11 @@ public sealed record PendingJob(string JobId, string RequestId, int TotalItems, 
 /// <summary>回报结果。</summary>
 public sealed record JobResult(string Status, int CompletedItems, int FailedItems, string? ErrorMessage);
 
-/// <summary>Server 轮询客户端：注册 / 领取定向作业 / 回报结果（与 WinHost 同构，内联实现）。</summary>
-public sealed class ServerPoller
+/// <summary>Server 轮询客户端：注册 / 心跳、长轮询通知、领取定向作业、回报结果（与 WinHost 同构，内联实现）。</summary>
+public sealed class ServerPoller : IDisposable
 {
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
+
     private readonly HttpClient _http;
     private readonly string _serverUrl;
     private readonly string _deviceId;
@@ -23,7 +25,8 @@ public sealed class ServerPoller
     /// <summary>创建轮询客户端。</summary>
     public ServerPoller(string serverUrl, string deviceId, string? deviceName = null)
     {
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        // 超时按请求单独控制（notify 长轮询可达 20s+，不能被全局 Timeout 掐断）
+        _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
         _serverUrl = serverUrl.TrimEnd('/');
         _deviceId = deviceId;
         _deviceName = string.IsNullOrWhiteSpace(deviceName) ? deviceId : deviceName;
@@ -38,21 +41,22 @@ public sealed class ServerPoller
     }
 
     /// <summary>注册设备（同时作为心跳）。</summary>
-    public async Task RegisterAsync(CancellationToken cancellationToken = default)
+    public Task RegisterAsync(CancellationToken cancellationToken = default)
+        => PostAsync($"{_serverUrl}/api/devices", new { deviceId = _deviceId, name = _deviceName }, RequestTimeout, cancellationToken);
+
+    /// <summary>长轮询等待本设备待领取作业；服务端在作业到达时立即返回 hasPending=true，否则超时返回 false。</summary>
+    public async Task<bool> WaitForJobAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        var response = await _http.PostAsJsonAsync(
-            $"{_serverUrl}/api/devices",
-            new { deviceId = _deviceId, name = _deviceName },
-            _json,
-            cancellationToken);
-        response.EnsureSuccessStatusCode();
+        var seconds = (int)Math.Clamp(timeout.TotalSeconds, 1, 30);
+        var response = await GetAsync($"{_serverUrl}/api/devices/{_deviceId}/jobs/notify?timeout={seconds}", timeout + TimeSpan.FromSeconds(5), cancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<NotifyResult>(_json, cancellationToken);
+        return body?.HasPending ?? false;
     }
 
     /// <summary>领取本设备的定向作业。</summary>
     public async Task<IReadOnlyList<PendingJob>> FetchPendingAsync(CancellationToken cancellationToken = default)
     {
-        var response = await _http.GetAsync($"{_serverUrl}/api/devices/{_deviceId}/jobs/pending", cancellationToken);
-        response.EnsureSuccessStatusCode();
+        var response = await GetAsync($"{_serverUrl}/api/devices/{_deviceId}/jobs/pending", RequestTimeout, cancellationToken);
         var jobs = await response.Content.ReadFromJsonAsync<List<ClaimedJobDto>>(_json, cancellationToken) ?? [];
         return jobs
             .Where(j => j.JobId is not null && j.RequestId is not null && j.Payload?.Template is not null && j.Payload.Labels is not null)
@@ -61,9 +65,8 @@ public sealed class ServerPoller
     }
 
     /// <summary>回报作业结果。</summary>
-    public async Task ReportResultAsync(string jobId, JobResult result, CancellationToken cancellationToken = default)
-    {
-        var response = await _http.PostAsJsonAsync(
+    public Task ReportResultAsync(string jobId, JobResult result, CancellationToken cancellationToken = default)
+        => PostAsync(
             $"{_serverUrl}/api/devices/{_deviceId}/jobs/{jobId}/result",
             new
             {
@@ -72,10 +75,31 @@ public sealed class ServerPoller
                 failedItems = result.FailedItems,
                 errorMessage = result.ErrorMessage,
             },
-            _json,
+            RequestTimeout,
             cancellationToken);
+
+    private async Task<HttpResponseMessage> GetAsync(string url, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(timeout);
+        var response = await _http.GetAsync(url, cts.Token);
+        response.EnsureSuccessStatusCode();
+        return response;
+    }
+
+    private async Task PostAsync(string url, object payload, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(timeout);
+        var response = await _http.PostAsJsonAsync(url, payload, _json, cts.Token);
         response.EnsureSuccessStatusCode();
     }
+
+    /// <inheritdoc />
+    public void Dispose() => _http.Dispose();
+
+    /// <summary>长轮询通知响应。</summary>
+    private sealed record NotifyResult(bool HasPending);
 
     private sealed record ClaimedJobDto(string? JobId, string? RequestId, int TotalItems, JobPayloadDto? Payload);
 

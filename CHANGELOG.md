@@ -2,6 +2,17 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 25 Android PDA 宿主真机落地 · 2026-09-08
+
+- **PDA 接入边界定界（决策 #93，用户拍板）**：AndroidHost 是 PDA 上唯一打印执行宿主；第三方 PDA 程序统一经既有 HTTP 公共契约集成——路由模式（Server `POST /api/jobs` + targetDeviceId）或直连模式（同机 `127.0.0.1:53970`，即 JS 桥）。零跨端契约变更；不做 Android SDK / Intent / AAR 新契约形态。
+- **SQLitePCLRaw 原生库双坑修复（决策 #94）**：`lib.e_sqlite3.android` 定版 **2.1.11**（2.1.12/2.1.13 误装 glibc 构建 so，Android 装载即 LinkageError）；桌面版 `lib.e_sqlite3` 从 Core 下沉到各可执行项目自引（WinHost / Server / 各测试项目）——此前 Core 引用经 RID 回退图把桌面 glibc so 打进 APK、压过 android 包的 NDK so。桌面宿主行为零变化（328 项测试全绿）。
+- **AndroidHost 修复**：启动装载 `e_sqlite3` 原生库（否则 SQLite 首开 DllNotFoundException，迭代 5 以来首次真机运行即崩）；本地 HTTP 修复 **POST 带体请求挂死**（StreamReader 预读吞掉请求体，改统一缓冲解析）；构建脚本关闭 Fast Deployment（默认 Debug 产物纯 `adb install` 后启动即 abort）。
+- **AndroidHost 补齐（与 WinHost 同构）**：本地 HTTP 宽松 CORS + OPTIONS 预检（JS 桥）；`GET /api/jobs?limit=` 作业列表与 `POST /api/jobs/{id}/items/{index}/retry` 失败项重打端点；Server 轮询升级为 notify 20s 长轮询 + 独立 1s 回报循环（作业到达即领取）；分析器警告清零。
+- **16KB 页构建级验证通过**：全部 arm64 so ELF 段对齐 ≥ 16KB + `zipalign -c -P 16` 通过 + 构建无 XA0141；运行时验证待 Android 15+ 设备（保留验收积压表）。
+- **真机验收全通过（UROVO DT50 / Android 11）**：注册 / 心跳（notify 保活）、模板下发、作业打印（路由 + 直连双模式、批量 3 张、ZPL 字节级核对：^PW480/^LL320 精确换算 + ^GF 位图 QR 与中文内容可见）、离线恢复（Offline 判定 + Pending 暂存 + 恢复 7s 内领取）、断网重连（挂起 → resume 续打 → retry 补打 → 两端终态一致）、开机自启（重启 10s 内拉起）、前台服务保活。物理出纸以 TCP9100 模拟打印机验证，真实 IP 打印机出纸保留验收积压。
+- **遗留（DESIGN 未决）**：宿主重启后本地↔Server 作业映射（内存态）丢失，Server 侧已 Claimed 作业无终态——全宿主既有语义，需跨端方案再立项。
+- **测试**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 328 项全绿。
+
 ## v0.23.0 迭代 36-39 汇总发布 · 2026-09-08
 
 - **打包范围**：文档治理与路线图收口（迭代 36）、服务端暂存作业 TTL 过期 + notify 积压即时唤醒（迭代 37）、测试稳定性治理（迭代 38）、性能优化批次（迭代 39）；详见各迭代条目。

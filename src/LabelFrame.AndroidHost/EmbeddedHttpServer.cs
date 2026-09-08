@@ -17,6 +17,7 @@ public sealed class EmbeddedHttpServer : IDisposable
     private readonly int _port;
     private readonly SubmissionService _submission;
     private readonly LabelJobQueue _queue;
+    private readonly ILabelJobStore _store;
     private readonly IPrintTransport _transport;
     private readonly IPrinterStatusProvider? _status;
     private readonly PcTemplateClient? _pc;
@@ -29,12 +30,14 @@ public sealed class EmbeddedHttpServer : IDisposable
         int port,
         SubmissionService submission,
         LabelJobQueue queue,
+        ILabelJobStore store,
         IPrintTransport transport,
         PcTemplateClient? pcClient = null)
     {
         _port = port;
         _submission = submission;
         _queue = queue;
+        _store = store;
         _transport = transport;
         _status = transport as IPrinterStatusProvider;
         _pc = pcClient;
@@ -84,8 +87,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         try
         {
             using var stream = client.GetStream();
-            var (method, path, headers) = ReadRequest(stream);
-            var body = await ReadBodyAsync(stream, headers, cancellationToken);
+            var (method, path, headers, body) = await ReadRequestAsync(stream, cancellationToken);
             var response = Route(method, path, body, cancellationToken);
             await WriteResponseAsync(stream, response, cancellationToken);
         }
@@ -99,19 +101,47 @@ public sealed class EmbeddedHttpServer : IDisposable
         }
     }
 
-    private static (string Method, string Path, Dictionary<string, string> Headers) ReadRequest(Stream stream)
+    /// <summary>
+    /// 统一缓冲读取请求：请求头与请求体从同一份累积字节中解析。
+    /// 不能先 StreamReader 读头再读体——StreamReader 预读缓冲会把请求体一并吞掉，
+    /// 后续按 Content-Length 直读网络流将永久等待（POST 带体请求挂死）。
+    /// </summary>
+    private static async Task<(string Method, string Path, Dictionary<string, string> Headers, string Body)> ReadRequestAsync(
+        Stream stream, CancellationToken cancellationToken)
     {
-        using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
-        var requestLine = reader.ReadLine() ?? throw new InvalidDataException("空请求。");
-        var parts = requestLine.Split(' ');
+        const int MaxHeaderBytes = 64 * 1024;
+        const int MaxBodyBytes = 32 * 1024 * 1024;
+
+        var received = new List<byte>(2048);
+        var buffer = new byte[4096];
+        var headerEnd = -1;
+        while (headerEnd < 0)
+        {
+            var n = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+            if (n == 0)
+            {
+                throw new InvalidDataException("连接在请求头结束前关闭。");
+            }
+
+            received.AddRange(buffer.AsSpan(0, n));
+            if (received.Count > MaxHeaderBytes)
+            {
+                throw new InvalidDataException("请求头超出大小上限。");
+            }
+
+            headerEnd = IndexOfHeaderTerminator(received);
+        }
+
+        var headerText = Encoding.UTF8.GetString([.. received.Take(headerEnd)]);
+        var lines = headerText.Split("\r\n");
+        var parts = lines[0].Split(' ');
         if (parts.Length < 3)
         {
             throw new InvalidDataException("请求行不合法。");
         }
 
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        string? line;
-        while (!string.IsNullOrEmpty(line = reader.ReadLine()))
+        foreach (var line in lines.Skip(1))
         {
             var idx = line.IndexOf(':');
             if (idx > 0)
@@ -120,36 +150,64 @@ public sealed class EmbeddedHttpServer : IDisposable
             }
         }
 
-        return (parts[0].ToUpperInvariant(), parts[1], headers);
-    }
-
-    private static async Task<string> ReadBodyAsync(Stream stream, Dictionary<string, string> headers, CancellationToken cancellationToken)
-    {
-        if (!headers.TryGetValue("Content-Length", out var lengthText) || !int.TryParse(lengthText, out var length) || length <= 0)
+        var body = string.Empty;
+        if (headers.TryGetValue("Content-Length", out var lengthText)
+            && int.TryParse(lengthText, out var length) && length > 0)
         {
-            return string.Empty;
-        }
-
-        var buffer = new byte[length];
-        var read = 0;
-        while (read < length)
-        {
-            var n = await stream.ReadAsync(buffer.AsMemory(read, length - read), cancellationToken);
-            if (n == 0)
+            if (length > MaxBodyBytes)
             {
-                break;
+                throw new InvalidDataException("请求体超出大小上限。");
             }
 
-            read += n;
+            var bodyBytes = new byte[length];
+            var buffered = Math.Min(received.Count - headerEnd - 4, length);
+            for (var i = 0; i < buffered; i++)
+            {
+                bodyBytes[i] = received[headerEnd + 4 + i];
+            }
+
+            var read = buffered;
+            while (read < length)
+            {
+                var n = await stream.ReadAsync(bodyBytes.AsMemory(read, length - read), cancellationToken);
+                if (n == 0)
+                {
+                    break;
+                }
+
+                read += n;
+            }
+
+            body = Encoding.UTF8.GetString(bodyBytes, 0, read);
         }
 
-        return Encoding.UTF8.GetString(buffer, 0, read);
+        return (parts[0].ToUpperInvariant(), parts[1], headers, body);
+    }
+
+    /// <summary>在已接收字节中查找请求头结束符 \r\n\r\n 的起始下标。</summary>
+    private static int IndexOfHeaderTerminator(List<byte> received)
+    {
+        for (var i = 0; i <= received.Count - 4; i++)
+        {
+            if (received[i] == 13 && received[i + 1] == 10 && received[i + 2] == 13 && received[i + 3] == 10)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private (int Status, string ContentType, byte[] Body) Route(
         string method, string path, string body, CancellationToken cancellationToken)
     {
         var basePath = path.Split('?')[0];
+
+        // JS 桥（第三方 WebView / 浏览器页面跨源直连）：宽松 CORS 预检直接放行
+        if (method == "OPTIONS")
+        {
+            return (204, "text/plain; charset=utf-8", []);
+        }
 
         if (method == "GET" && basePath == "/healthz")
         {
@@ -164,6 +222,11 @@ public sealed class EmbeddedHttpServer : IDisposable
         if (method == "POST" && basePath == "/api/jobs")
         {
             return SubmitJob(body);
+        }
+
+        if (method == "GET" && basePath == "/api/jobs")
+        {
+            return ListJobs(path);
         }
 
         if (method == "GET" && basePath.StartsWith("/api/jobs/", StringComparison.Ordinal))
@@ -185,6 +248,11 @@ public sealed class EmbeddedHttpServer : IDisposable
         if (method == "POST" && basePath.StartsWith("/api/jobs/", StringComparison.Ordinal) && basePath.EndsWith("/cancel", StringComparison.Ordinal))
         {
             return Transition(basePath, "cancel");
+        }
+
+        if (method == "POST" && basePath.StartsWith("/api/jobs/", StringComparison.Ordinal) && basePath.EndsWith("/retry", StringComparison.Ordinal))
+        {
+            return RetryItem(basePath);
         }
 
         if (method == "GET" && basePath == "/api/printer/status")
@@ -244,6 +312,24 @@ public sealed class EmbeddedHttpServer : IDisposable
             : Json(200, JobViews.From(job));
     }
 
+    /// <summary>作业列表（与 WinHost GET /api/jobs?limit= 同构）。</summary>
+    private (int, string, byte[]) ListJobs(string path)
+    {
+        var query = path.Contains('?', StringComparison.Ordinal) ? path.Split('?', 2)[1] : string.Empty;
+        var limit = 100;
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var kv = pair.Split('=', 2);
+            if (kv.Length == 2 && kv[0] == "limit" && int.TryParse(kv[1], out var parsed))
+            {
+                limit = Math.Clamp(parsed, 1, 500);
+            }
+        }
+
+        var jobs = _store.ListRecentAsync(limit, CancellationToken.None).GetAwaiter().GetResult();
+        return Json(200, jobs.Select(JobViews.From).ToList());
+    }
+
     private (int, string, byte[]) Transition(string basePath, string action)
     {
         var middle = basePath["/api/jobs/".Length..];
@@ -256,6 +342,30 @@ public sealed class EmbeddedHttpServer : IDisposable
                 "resume" => _queue.ResumeAsync(jobId, CancellationToken.None).GetAwaiter().GetResult(),
                 _ => _queue.CancelAsync(jobId, CancellationToken.None).GetAwaiter().GetResult(),
             };
+            return Json(200, JobViews.From(job));
+        }
+        catch (LabelJobException ex)
+        {
+            return ex.Code == JobErrorCodes.JobNotFound
+                ? Json(404, new ErrorView(ex.Code, ex.Message))
+                : Json(409, new ErrorView(ex.Code, ex.Message));
+        }
+    }
+
+    /// <summary>失败项单独重打：把指定序号的 Failed Item 重置为 Pending（与 WinHost 端点同构）。</summary>
+    private (int, string, byte[]) RetryItem(string basePath)
+    {
+        // 路径形如 /api/jobs/{jobId}/items/{itemIndex}/retry
+        var middle = basePath["/api/jobs/".Length..];
+        var parts = middle.Split('/');
+        if (parts.Length != 4 || parts[1] != "items" || !int.TryParse(parts[2], out var itemIndex))
+        {
+            return Json(404, new ErrorView(JobErrorCodes.JobNotFound, "接口不存在。"));
+        }
+
+        try
+        {
+            var job = _queue.RetryItemAsync(parts[0], itemIndex, CancellationToken.None).GetAwaiter().GetResult();
             return Json(200, JobViews.From(job));
         }
         catch (LabelJobException ex)
@@ -471,6 +581,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         {
             200 => "OK",
             202 => "Accepted",
+            204 => "No Content",
             400 => "Bad Request",
             404 => "Not Found",
             409 => "Conflict",
@@ -480,6 +591,9 @@ public sealed class EmbeddedHttpServer : IDisposable
         var head = $"HTTP/1.1 {response.Status} {reason}\r\n" +
                    $"Content-Type: {response.ContentType}\r\n" +
                    $"Content-Length: {response.Body.Length}\r\n" +
+                   "Access-Control-Allow-Origin: *\r\n" +
+                   "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
+                   "Access-Control-Allow-Headers: Content-Type\r\n" +
                    "Connection: close\r\n\r\n";
         var headBytes = Encoding.UTF8.GetBytes(head);
         await stream.WriteAsync(headBytes, cancellationToken);

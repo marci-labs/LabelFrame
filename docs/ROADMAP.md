@@ -37,7 +37,7 @@
 | 22 | 打印测试体验 + 传输插件化 + 客户端下载分发 | ✅ 已完成（2026-08-17 迭代结束，本地 0.18.0 测试包验收） |
 | 23 | 客户端插件分发——上传服务端 + 客户端安装 / 卸载 | ✅ 已完成（2026-08-17 前端完成 + loadError 补充 + 0.19.0 打包验收） |
 | 24 | 客户端批次作业（Batch Print） | ✅ 已完成（2026-08-18：前后端合入 master 67214c3 + 端到端联调附五通过 + Serilog 日志命名修复） |
-| 25 | Android PDA 宿主（AndroidHost） | 📋 下一轮（2026-09-07 路线图收口排定） |
+| 25 | Android PDA 宿主（AndroidHost） | ✅ 已完成（2026-09-08 UROVO DT50 真机验收通过） |
 | 26 | Niimbot 蓝牙打印机传输插件实现 + 真机测试 | ❌ 已放弃（2026-09-07：PDA 走 IP 打印、无蓝牙承接需求，蓝牙降级待需求） |
 | 27 | 工程治理 P0（日常 CI + API 契约与端点去重 + README/DEPLOY 重组） | ✅ 已完成（2026-08-25） |
 | 28 | 工程治理 P1/P2（文档归档 / 死重移除 / 数据层并发 / 异常契约 / Program 拆分 / 集成测试 / 安全边界） | ✅ 已完成（2026-08-25） |
@@ -761,7 +761,7 @@
 
 ---
 
-## 迭代 25：Android PDA 宿主（AndroidHost，下一轮）
+## 迭代 25：Android PDA 宿主（AndroidHost，已完成）
 
 **目标**：交付可真机使用的 Android PDA 宿主——本地 HTTP / JS 桥、TCP9100 打印、复用 Server 注册 / 轮询链路；真机验收通过后再纳入自动发布。
 
@@ -772,9 +772,18 @@
 - 开机自启与前台服务保活（厂商 ROM 差异真机确认）。
 - 真机验收：注册 / 心跳 / 模板下发 / 作业打印 / 离线恢复 / 断网重连。
 
-**不在范围**：PDA 构建与自动发布（真机验收通过后再排期）；Docker 多架构；蓝牙打印（2026-09-07 决策移出：P1「PDA 蓝牙传输」降级为待需求，见 REQUIREMENTS §6；有真实蓝牙打印机需求时按传输插件另行排期）。
+**不在范围**：PDA 构建与自动发布（真机验收已通过，纳入自动发布另行排期）；Docker 多架构；蓝牙打印（2026-09-07 决策移出：P1「PDA 蓝牙传输」降级为待需求，见 REQUIREMENTS §6；有真实蓝牙打印机需求时按传输插件另行排期）。
 
-**验收**：真机（PDA）完成设备注册与端到端打印；现有 `dotnet build` / `dotnet test` 保持全绿。
+**验收**：真机（PDA）完成设备注册与端到端打印；现有 `dotnet build` / `dotnet test` 保持全绿。✅ 已满足。
+
+**完成记录（2026-09-08，UROVO DT50 / Android 11 真机验收通过）**：
+- **PDA 接入边界（用户拍板，决策 #93）**：AndroidHost 是 PDA 上唯一打印执行宿主；第三方 PDA 程序统一经既有 HTTP 公共契约集成——路由模式（Server `POST /api/jobs` + targetDeviceId 指 PDA）或直连模式（同机 `http://127.0.0.1:53970`，即「JS 桥」，WebView / 浏览器页面 fetch 调用）。零跨端契约变更；不做 Android SDK / Intent / AAR 等新契约形态（有真实需求再立项）。
+- **SQLitePCLRaw 原生库双坑修复（决策 #94）**：① 2.1.12/2.1.13 的 android 包误装 glibc 构建 so（DT_NEEDED 含 libc.so.6，Android 装载即 LinkageError）——`lib.e_sqlite3.android` 定版 **2.1.11**（NDK 构建 + LOAD 段 16KB 对齐）；② Core 引用的桌面版 `lib.e_sqlite3` 经 RID 回退图（android-arm64 → linux-arm64）把 glibc so 打进 APK、压过 android 包的 NDK so（XA4301 先到先得）——原生包从 Core 下沉到各可执行项目（WinHost / Server / 各测试项目自引，AndroidHost 只引 android 包），桌面行为零变化。
+- **AndroidHost 修复与补齐**：服务启动先 `JavaSystem.LoadLibrary("e_sqlite3")`（Android 链接器命名空间要求，否则 SQLite 首开即 DllNotFoundException——迭代 5 以来首次真机运行即暴露）；本地 HTTP 修复 **POST 带体请求挂死**（StreamReader 预读缓冲吞掉请求体、后续按 Content-Length 直读网络流永久等待；改为统一缓冲解析请求头 + 请求体，此前该路径从未被真实执行过）；本地 HTTP 补宽松 CORS + OPTIONS 预检（JS 桥，与 WinHost 迭代 11 同策略）；补 `GET /api/jobs?limit=`（作业列表）与 `POST /api/jobs/{id}/items/{index}/retry`（失败项重打）端点（与 WinHost 同构）；Server 轮询由 5s 简单轮询升级为 **notify 20s 长轮询 + 独立 1s 回报循环**（与 WinHost ServerRoutingWorker 同构，作业到达即领取、每请求独立超时）；分析器警告清零（CA1001 两处 HttpClient 释放 / CA1822 静态化）；构建脚本关闭 Fast Deployment（默认 Debug 产物程序集不在 APK 内，纯 `adb install` 后启动即 abort）。
+- **16KB 页构建级验证通过**：APK 全部 arm64 so 的 ELF PT_LOAD 段对齐 ≥ 0x4000（16KB），`zipalign -c -P 16` 通过，构建无 XA0141。运行时验证需 Android 15+ 16KB 内核设备（DT50 为 Android 11 / 4KB 页），该项保留在验收积压表。
+- **真机验收全通过（UROVO DT50，Android 11）**：注册 / 心跳（notify 长轮询保活，lastSeen ~20s 持续刷新）；模板下发（templateName → 模板随作业投递）；作业打印（路由 + 直连双模式，单张 + 3 张批量，^PW480/^LL320 精确换算，^GF 位图 QR 定位角与中文文本可见，38451 字节/张送达 TCP9100）；离线恢复（WiFi 断 35s 转 Offline、作业 Pending 暂存不丢、WiFi 恢复后 7s 内自动领取完成）；断网重连（打印机不可达 → 传输失败挂起 → resume 未打项续打 → retry 失败项补打 → 两端终态一致，含中文错误信息回报）；开机自启（重启后 10s 内 BootReceiver 拉起）；前台服务保活（isForeground=true，默认厂商 ROM 策略下常驻）。物理出纸以本机 TCP9100 模拟打印机验证发送链路（ZPL 字节级核对），真实 IP 打印机出纸项保留在验收积压表。
+- **遗留（记 DESIGN 未决，不动代码）**：宿主进程重启后本地↔Server 作业映射（内存态 ConcurrentDictionary）丢失，Server 侧已 Claimed 作业停留 Claimed 无终态回报——WinHost / Linux Client 同构的既有语义，需跨端方案（Server 侧 Claimed 超时回收或客户端持久化映射），出现真实诉求再立项。
+- **测试**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 328 项全绿（原生包下沉后桌面测试无回归）。
 
 **启动命令**：
 > 继续 LabelFrame 迭代 25（Android PDA 宿主）。先读 AGENTS.md、docs/DESIGN.md、docs/REQUIREMENTS.md、docs/ROADMAP.md；按范围实施；提交用 Conventional Commits；不推 tag；仓库内容不得出现公司 / 业务线品牌字样。

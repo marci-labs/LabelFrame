@@ -10,8 +10,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.4" />
+    <!-- 原生库（lib.e_sqlite3）不下沉到 Core：经 RID 回退图（android-arm64 → linux-arm64）会把
+         桌面 glibc so 打进 Android APK、压过 AndroidHost 的 NDK so。由各可执行项目自行引用。 -->
     <PackageReference Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.13" />
-    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
     <!-- Excel 模板生成（写能力；Server / WinHost / AndroidHost 共享 Core） -->
     <PackageReference Include="TemplateFrame.Excel.Simple" Version="2.0.0" />
   </ItemGroup>

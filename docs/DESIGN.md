@@ -161,6 +161,8 @@ flowchart LR
 | 90 | notify 挂起前积压预检（迭代 37） | `GET /api/devices/{id}/jobs/notify` 在进入长轮询等待前先查一次该设备当前是否有未过期 Pending 作业，有则立即返回 hasPending=true；「未过期」与领取过滤同一判定（CreatedAt + TTL） | 纯积压清空场景（提交脉冲早于 notify 到达已空放）不再每批空等长轮询超时，清空吞吐不再被钉在约 30 作业/分钟；hasPending 语义（有待领取作业）不变，客户端零改动 |
 | 91 | 组件测试挂载链等待超时约定（迭代 38） | 组件测试中等待「多段异步挂载链」的 `findBy*` / `waitFor`（如 DataPrint：设备探测 → 模板列表 → 模板详情 → testData 预填，或页面卸载重挂后的整链重跑）显式放宽超时到 3000ms（`MOUNT_WAIT`）；testing library 默认 1000ms 在 CI 高负载（多 worker CPU 争抢）下偶发不足——实证为 ci run `34081028327`：等待语义本身无误（已是 `findBy`），是整链被拖过默认超时后误报「Unable to find display value」。单段 fetch 的等待与同步断言维持既有约定（先 `findBy` 异步锚点、再同步断言同一渲染批状态）；不改测试框架 / vitest 配置 | CI 高负载下挂载链等待不再因默认超时误报 flaky；最坏路径仍在 vitest 5s 测试预算内；本地快速回归耗时与语义零变化 |
 | 92 | 性能优化批次：Worker 信号量唤醒 + SQLite 领取写合批 + SKBitmap 池（迭代 39） | ① Worker 唤醒：`LabelJobQueue` 在「产生新待打项」的存储写入提交后发唤醒信号（新提交 / 恢复 / 失败项重打 / 启动恢复中断四条路径），`JobPrintWorker` 空转等待改为 `WaitForPendingWakeAsync`（信号即时返回 + 5s 超时兜底防信号遗漏，正常路径不触发）；「EXISTS 轻量探测 → 完整领取」结构、批次节流（TimeProvider 注入保留）、挂起恢复语义零变化。信号语义 =「可能有变化」而非「一定可领取」，且必须在写入提交后发出——先信号后提交会让 Worker 探测落空且信号已被消费，错过后只能等兜底周期。「探测有 Pending 但领取落空」（挂起作业等不可领场景）保留 200ms 周期、同样可被信号提前唤醒。② SQLite 写事务合批（评估 + 实施一项）：评估结论——提交路径（INSERT OR IGNORE 单写事务 + request_id UNIQUE 兜底）与回报路径（单写事务）已是最细粒度；notify 心跳为语义独立的单写事务，保持；busy_timeout 5s 是排队上限而非延迟目标（调小把排队转化为 SQLITE_BUSY 错误、调大延长尾部，均无收益），保持。实施项 = 领取路径「Touch 心跳 + Claim 圈定」两个自动提交写事务合并为一个显式事务（20 设备并发每轮领取少一次单写锁排队；本机负载下 A/B：无合批 p95 3741ms vs 合批 2954-3422ms）；回报路径顺带移除 UPDATE 受影响后的冗余 id 回读。架构级合批（写队列串行化 / 提交缓冲 / 换存储）明确不做：当前局域网规模（≤20 设备）p50 恒 3-4ms 不受影响、无错误无丢失，尾部排队是 SQLite 单写者的可预期特征，更大规模需求出现再评估。③ SKBitmap 池：`SkiaLabelRenderer` 整版渲染中间态（SKBitmap 像素内存 + 托管像素暂存 byte[]）按「尺寸 + 暂存长度」匹配池化复用（池上限 4、lock 保护；PNG 路径归还空暂存、租用侧校验长度防误配），租用后 Clear 白底全量重置保证与上一张内容无关；输出 LabelBitmap / PNG 始终新分配，对外 API 与渲染结果不变 | 单张提交到终态 p50 205ms → 9ms（延迟主体收敛为渲染+编码与入队开销，Perf 阈值同步收紧 p50 < 20ms）；高并发领取写锁竞争下降；大批量每张托管分配约降 6 成（60×40@203 整链路 ~990KB → ~390KB，被池化的像素暂存为最大单块），Gen2 高频回收缓解；行为零变化（批内顺序 / 节流 / 挂起恢复 / 幂等 / 领取不重复语义全部不动） |
+| 93 | PDA 接入边界：自研宿主与第三方集成的关系（迭代 25，2026-09-08 用户拍板） | AndroidHost 是 PDA 上**唯一打印执行宿主**（队列 / 渲染 / TCP9100 传输 / Server 注册轮询 / 保活都在宿主内）；第三方 PDA 程序不嵌入 LabelFrame 代码，统一经**既有 HTTP 公共契约**集成——路由模式（主）：`POST /api/jobs` + targetDeviceId 指 PDA，零耦合；直连模式（就近单张）：与 PDA 同机的程序 / WebView / 浏览器页面直接调 `http://127.0.0.1:53970`（即「JS 桥」，本地 HTTP 已补宽松 CORS + OPTIONS 预检，与 WinHost 迭代 11 同策略）。**不做** Android SDK / AAR / Intent / 广播 / ContentProvider 等新契约形态——出现真实需求再讨论并更新文档后实施 | 零跨端契约变更（本轮仅给本地 HTTP 补 CORS 响应头）；第三方只拿 jobId + 状态 + 错误码，升级解耦；宿主打印链路单点可控（与决策 #7「本地服务统一入口」一脉相承） |
+| 94 | SQLitePCLRaw 原生库 Android 打包（迭代 25，2026-09-08） | ① 版本定界：`SQLitePCLRaw.lib.e_sqlite3.android` 定版 **2.1.11**——2.1.12/2.1.13 的 android 包误装 glibc 构建的 so（DT_NEEDED 含 `libc.so.6` / `ld-linux-aarch64.so.1`，Android 上 dlopen 即 LinkageError；这也解释了其 64KB 对齐的假象——是 Linux 二进制）；2.1.11 为 NDK 构建（依赖 liblog/libc/libm/libstdc++/libdl）且 LOAD 段 16KB 对齐。② 原生包下沉：桌面版 `SQLitePCLRaw.lib.e_sqlite3` 从 Core 移除、由各可执行项目自引（WinHost / Server / 各测试项目 / AndroidHost 只引 android 包）——Core 引用时经 RID 回退图（android-arm64 → linux-arm64）会把桌面 glibc so 打进 APK 且先于 AAR 的 NDK so（XA4301 先到先得），ExcludeAssets 无法拦截该路径。③ AndroidHost 服务启动先 `JavaSystem.LoadLibrary("e_sqlite3")`（Android 链接器命名空间要求，否则 `DllImport("e_sqlite3")` 抛 DllNotFoundException）。④ AndroidHost 构建关闭 Fast Deployment（`-p:AndroidFastDeployment=false`，Release 天然满足）——默认 Debug 产物程序集不在 APK 内，脱离开发环境纯 `adb install` 后启动即 abort | 真机可运行（DT50 实测 SQLite 首开正常）；16KB 构建级验证通过（全部 so 段对齐 ≥ 16KB + zipalign -P 16）；桌面宿主零变化（原生包仍经各自项目图解析）；后续升级 SQLitePCLRaw 前必须核对 android 包的 so 是否回归 glibc 构建 |
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`。
@@ -197,13 +199,28 @@ flowchart LR
 
 Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端点、外部插件扫描、Web UI、托盘与浏览器拉起均不启用。运行参数由 `LABELFRAME_*` 环境变量提供，主要用于 Compose 中的发布候选端到端测试。
 
+### 5.3 AndroidHost 本地 HTTP（PDA，默认 127.0.0.1:53970，TcpListener 极简实现）
+
+第三方 PDA 程序集成入口（决策 #93）：同机 App / WebView / 浏览器页面直接调用（宽松 CORS + OPTIONS 预检，即「JS 桥」）；与 WinHost 作业端点同构但为独立实现。
+
+| 分组 | 端点 |
+|---|---|
+| 作业 | `POST /api/jobs`（自包含模板直连打印）、`GET /api/jobs?limit=`、`GET /api/jobs/{id}`、`POST /api/jobs/{id}/suspend / resume / cancel`、`POST /api/jobs/{id}/items/{index}/retry` |
+| 打印机 | `GET /api/printer/status`、`POST /api/printer/test` |
+| 测试模式 | `GET /api/pc/templates`、`POST /api/pc/templates/{name}/print-test`（配置 pc_host 时，决策 #42） |
+| 其他 | `GET /healthz`、`GET /`（内置 PDA 测试页） |
+
 ## 6. 风险与未决问题
 
 **真机 / 联调待确认**（集中管理见 [ACCEPTANCE-BACKLOG.md](ACCEPTANCE-BACKLOG.md)）：
 
 - Zebra `~HS` 状态字段映射与 SDK 3.x `PrinterStatus` 语义（`GET /api/printer/status` 展示准确性）待真实设备确认。
 - TCP 9100 无法感知缺纸 / 卡纸：以「发送异常 → 作业挂起」近似，真实缺纸语义待真机验证。
-- Android PDA 宿主（排期见 ROADMAP 迭代 25）：前台服务厂商 ROM 保活差异、Android 16 的 16KB 页适配（SQLitePCLRaw）待真机验证。
+- Android PDA 宿主（迭代 25 已完成，UROVO DT50 / Android 11 真机验收通过）：16KB 页**运行时**验证待 Android 15+ 16KB 内核设备（构建级已通过：全部 so 段对齐 ≥ 16KB + zipalign）；真实 IP 打印机物理出纸待验收（发送链路已用 TCP9100 模拟器字节级验证）。
+
+**宿主重启后 Claimed 作业无终态（迭代 25 验收发现，既有语义）**：
+
+- 宿主（WinHost / Linux Client / AndroidHost 同构）的「本地作业 ↔ Server 作业」映射是**内存态**（ConcurrentDictionary），宿主进程重启即丢失；此时 Server 侧已 Claimed 的作业即使本地队列随后打完也不会再收到终态回报，停留 Claimed 直至 30 天历史清理。修复需跨端方案（Server 侧 Claimed 超时回收，或客户端持久化映射 + 重启后补报），出现真实诉求再立项。
 
 **兼容性**：
 

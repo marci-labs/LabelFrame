@@ -17,7 +17,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.13" />
+    <!-- 2.1.12/2.1.13 的 android 包误装 glibc 构建的 so（DT_NEEDED 含 libc.so.6，Android 装载失败）；
+         2.1.11 为 NDK 构建（依赖 liblog/libc/libm 等）且 LOAD 段 16KB 对齐，真机验证通过。 -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.11" />
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 

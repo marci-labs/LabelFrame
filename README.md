@@ -77,7 +77,7 @@ curl -X POST http://<服务器>:53961/api/jobs \
 | `src/LabelFrame.Api` | Server / WinHost 共享的 HTTP 契约（DTO / 错误码）与端点实现 |
 | `src/LabelFrame.Server` | 无头服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志 |
 | `src/LabelFrame.WinHost` | Client Host 共享实现：Windows 完整客户端；Linux 无头 Log 测试客户端 |
-| `src/LabelFrame.AndroidHost` | Android / PDA 打印宿主（实验性，不随发布构建，见其 README） |
+| `src/LabelFrame.AndroidHost` | Android / PDA 打印宿主（真机验收通过，不随发布构建，见其 README） |
 | `web/` | Web 前端（Vite + React + TS + Konva）：客户端界面与服务端管理界面双构建 |
 
 ## 开发

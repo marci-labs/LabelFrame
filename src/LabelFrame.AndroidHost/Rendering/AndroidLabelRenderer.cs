@@ -13,10 +13,10 @@ namespace LabelFrame.AndroidHost.Rendering;
 /// 线 / 区域 / 图片绘制，输出 1bpp LabelBitmap → ZplImageEncoder ^GF。
 /// 与 PC 端 Skia 渲染语义尽量一致；换行等高级排版在真机联调阶段补齐。
 /// </summary>
-public sealed class AndroidLabelRenderer
+public static class AndroidLabelRenderer
 {
     /// <summary>渲染整张标签为 1bpp 位图（白底黑字）。</summary>
-    public LabelBitmap RenderLabelBitmap(LabelDocument document, int dpi, IReadOnlyDictionary<string, byte[]>? templateImages = null)
+    public static LabelBitmap RenderLabelBitmap(LabelDocument document, int dpi, IReadOnlyDictionary<string, byte[]>? templateImages = null)
     {
         ArgumentNullException.ThrowIfNull(document);
 

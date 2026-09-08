@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <!-- Zebra 官方 Link-OS SDK：USB / TCP / 驱动 / 蓝牙 统一连接与打印机状态 -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
     <PackageReference Include="Zebra.Printer.SDK" Version="3.0.3355" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
     <!-- 文件日志：Serilog.AspNetCore 传递依赖 Serilog.Sinks.File，无需单独引用 -->
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />

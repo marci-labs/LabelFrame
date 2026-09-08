@@ -23,6 +23,7 @@ public sealed class PrintHostService : Service
     private LabelJobQueue? _queue;
     private Tcp9100PrintTransport? _transport;
     private EmbeddedHttpServer? _http;
+    private ServerPoller? _poller;
     private CancellationTokenSource? _cts;
     private Task? _printLoop;
     private Task? _routingLoop;
@@ -33,25 +34,29 @@ public sealed class PrintHostService : Service
         base.OnCreate();
         StartForegroundCompat();
 
+        // SQLitePCLRaw 的 e_sqlite3 原生库需先经 System.loadLibrary 装载进 Android 链接器命名空间，
+        // 否则 raw.SetProvider 的 DllImport("e_sqlite3") 抛 DllNotFoundException（APK 内已含 libe_sqlite3.so 也不行）。
+        Java.Lang.JavaSystem.LoadLibrary("e_sqlite3");
+
         var config = LabelHostConfig.Load(this);
         var store = new SqliteLabelJobStore(config.DatabasePath);
         store.InitializeAsync().GetAwaiter().GetResult();
         _queue = new LabelJobQueue(store);
         _transport = new Tcp9100PrintTransport(config.TcpHost, LabelHostConfig.TcpPort);
-        var submission = new SubmissionService(_queue, new AndroidLabelRenderer(), LabelHostConfig.Dpi);
+        var submission = new SubmissionService(_queue, LabelHostConfig.Dpi);
 
         _cts = new CancellationTokenSource();
         var pcClient = string.IsNullOrWhiteSpace(config.PcHostUrl)
             ? null
             : new PcTemplateClient(config.PcHostUrl, config.DeviceId);
-        _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, _transport, pcClient);
+        _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, store, _transport, pcClient);
         _http.Start();
 
         _printLoop = Task.Run(() => PrintLoopAsync(_cts.Token));
         if (!string.IsNullOrWhiteSpace(config.ServerUrl))
         {
-            var poller = new ServerPoller(config.ServerUrl, config.DeviceId);
-            _routingLoop = Task.Run(() => RoutingLoopAsync(poller, submission, _queue, config, _cts.Token));
+            _poller = new ServerPoller(config.ServerUrl, config.DeviceId);
+            _routingLoop = Task.Run(() => RoutingLoopAsync(_poller, submission, _queue, _cts.Token));
         }
     }
 
@@ -64,6 +69,7 @@ public sealed class PrintHostService : Service
     {
         _cts?.Cancel();
         _http?.Dispose();
+        _poller?.Dispose();
         _cts?.Dispose();
         base.OnDestroy();
     }
@@ -162,40 +168,101 @@ public sealed class PrintHostService : Service
         }
     }
 
-    private async Task RoutingLoopAsync(
+    private static async Task RoutingLoopAsync(
         ServerPoller poller,
         SubmissionService submission,
         LabelJobQueue queue,
-        LabelHostConfig config,
         CancellationToken cancellationToken)
     {
-        var localToServer = new Dictionary<string, string>();
+        // 与 WinHost ServerRoutingWorker 同构：主循环负责注册 / 长轮询 / 领取 / 投入队列，
+        // 回报循环每 1s 检查本地作业终态并立即回报，避免被长轮询等待（最长 20s）阻塞。
+        var localToServer = new System.Collections.Concurrent.ConcurrentDictionary<string, string>();
         var interval = TimeSpan.FromSeconds(Math.Max(1, LabelHostConfig.PollIntervalSeconds));
+        var notifyTimeout = TimeSpan.FromSeconds(20);
 
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var reportLoop = ReportFinishedLoopAsync(poller, localToServer, queue, linked.Token);
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await poller.RegisterAsync(cancellationToken);
+                    // 长轮询等待通知：作业到达立即返回，随后立刻领取（等效推送）；超时也照常领取一次兜底
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        var signaled = await poller.WaitForJobAsync(notifyTimeout, cancellationToken);
+                        var jobs = await poller.FetchPendingAsync(cancellationToken);
+                        foreach (var job in jobs)
+                        {
+                            var result = await submission.SubmitAsync(
+                                new SubmitJobRequest(job.RequestId, job.Template, job.Labels),
+                                cancellationToken);
+                            if (result.Job is not null)
+                            {
+                                // 幂等重放：同一 requestId 可能返回既有本地作业
+                                localToServer[result.Job.Id] = job.JobId;
+                            }
+                            else
+                            {
+                                await poller.ReportResultAsync(
+                                    job.JobId,
+                                    new JobResult("Failed", 0, job.TotalItems, result.ErrorMessage),
+                                    cancellationToken);
+                            }
+                        }
+
+                        if (!signaled)
+                        {
+                            // 超时：继续下一轮等待（连续挂起，设备在线由 notify 端点心跳维持）
+                            continue;
+                        }
+                    }
+                }
+                catch (System.OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch
+                {
+                    // 网络异常下一轮重试
+                    try
+                    {
+                        await Task.Delay(interval, cancellationToken);
+                    }
+                    catch (System.OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                }
+            }
+        }
+        finally
+        {
+            linked.Cancel();
+            try
+            {
+                await reportLoop;
+            }
+            catch (System.OperationCanceledException)
+            {
+                // 取消路径：回报循环已结束
+            }
+        }
+    }
+
+    /// <summary>回报循环：周期检查本地作业终态并回报 Server（不依赖长轮询）。</summary>
+    private static async Task ReportFinishedLoopAsync(
+        ServerPoller poller,
+        System.Collections.Concurrent.ConcurrentDictionary<string, string> localToServer,
+        LabelJobQueue queue,
+        CancellationToken cancellationToken)
+    {
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                await poller.RegisterAsync(cancellationToken);
-                var jobs = await poller.FetchPendingAsync(cancellationToken);
-                foreach (var job in jobs)
-                {
-                    var result = await submission.SubmitAsync(
-                        new SubmitJobRequest(job.RequestId, job.Template, job.Labels),
-                        cancellationToken);
-                    if (result.Job is not null)
-                    {
-                        localToServer[result.Job.Id] = job.JobId;
-                    }
-                    else
-                    {
-                        await poller.ReportResultAsync(
-                            job.JobId,
-                            new JobResult("Failed", 0, job.TotalItems, result.ErrorMessage),
-                            cancellationToken);
-                    }
-                }
-
                 foreach (var (localJobId, serverJobId) in localToServer.ToList())
                 {
                     var local = await queue.GetAsync(localJobId, cancellationToken);
@@ -212,8 +279,10 @@ public sealed class PrintHostService : Service
                             local.Items.Count(i => i.Status is LabelJobItemStatus.Failed or LabelJobItemStatus.Cancelled),
                             local.Items.FirstOrDefault(i => i.ErrorMessage is not null)?.ErrorMessage),
                         cancellationToken);
-                    localToServer.Remove(localJobId);
+                    localToServer.TryRemove(localJobId, out _);
                 }
+
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
             }
             catch (System.OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -221,16 +290,15 @@ public sealed class PrintHostService : Service
             }
             catch
             {
-                // 网络异常下一轮重试
-            }
-
-            try
-            {
-                await Task.Delay(interval, cancellationToken);
-            }
-            catch (System.OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                return;
+                // 回报异常下一轮重试
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                }
+                catch (System.OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
             }
         }
     }

@@ -12,15 +12,13 @@ public sealed class SubmissionService
 {
     private readonly LabelJobQueue _queue;
     private readonly ZplImageEncoder _encoder;
-    private readonly AndroidLabelRenderer _renderer;
     private readonly int _dpi;
 
     /// <summary>创建提交服务。</summary>
-    public SubmissionService(LabelJobQueue queue, AndroidLabelRenderer renderer, int dpi)
+    public SubmissionService(LabelJobQueue queue, int dpi)
     {
         _queue = queue;
         _encoder = new ZplImageEncoder();
-        _renderer = renderer;
         _dpi = dpi;
     }
 
@@ -56,7 +54,7 @@ public sealed class SubmissionService
             try
             {
                 var document = new LabelDocument { Layout = request.Template.Layout, Data = data };
-                var bitmap = _renderer.RenderLabelBitmap(document, _dpi);
+                var bitmap = AndroidLabelRenderer.RenderLabelBitmap(document, _dpi);
                 commandLabels.Add(_encoder.EncodeImage(bitmap, document.Layout.WidthMm, document.Layout.HeightMm, _dpi));
             }
             catch (NotSupportedException ex)

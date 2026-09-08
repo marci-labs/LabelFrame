@@ -18,7 +18,7 @@ public sealed record PcTemplatePackage(
     IReadOnlyDictionary<string, string>? TestData = null);
 
 /// <summary>PDA 测试模式客户端：从 PC 单机服务拉模板、回传日志。</summary>
-public sealed class PcTemplateClient
+public sealed class PcTemplateClient : IDisposable
 {
     private readonly HttpClient _http;
     private readonly string _deviceId;
@@ -68,4 +68,7 @@ public sealed class PcTemplateClient
             // 日志回传失败不影响打印
         }
     }
+
+    /// <inheritdoc />
+    public void Dispose() => _http.Dispose();
 }
