@@ -25,9 +25,10 @@ Write-Host "Android SDK=$sdk"
 
 Push-Location $repo
 try {
-    # AndroidFastDeployment=false：程序集打包进 APK，产物可脱离开发环境独立安装
-    # （默认 Fast Deployment 只装壳到设备、程序集放 files/.__override__/，纯 adb install 会启动 abort）。
-    dotnet build src\LabelFrame.AndroidHost\LabelFrame.AndroidHost.csproj -p:AndroidSdkDirectory="$sdk" -p:AndroidFastDeployment=false
+    # EmbedAssembliesIntoApk=true：程序集打包进 APK，产物可脱离开发环境独立安装
+    # （Debug 默认 Fast Deployment 只装壳到设备、程序集放 files/.__override__/，纯 adb install 会启动 abort；
+    #   .NET Android 36.1.x 起开关由 AndroidFastDeployment 改名为 EmbedAssembliesIntoApk，Release 构建天然满足）。
+    dotnet build src\LabelFrame.AndroidHost\LabelFrame.AndroidHost.csproj -p:AndroidSdkDirectory="$sdk" -p:EmbedAssembliesIntoApk=true
     if ($LASTEXITCODE -ne 0) { throw 'AndroidHost 构建失败。' }
     $apk = Get-ChildItem src\LabelFrame.AndroidHost\bin\Debug\net10.0-android\*-Signed.apk | Select-Object -First 1
     Write-Host "构建成功：$($apk.FullName)"

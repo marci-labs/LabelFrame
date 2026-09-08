@@ -3,7 +3,6 @@ using Android.Content;
 using Android.Graphics;
 using Android.OS;
 using LabelFrame.AndroidHost.Api;
-using LabelFrame.AndroidHost.Pc;
 using LabelFrame.AndroidHost.Rendering;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Transport;
@@ -12,7 +11,7 @@ namespace LabelFrame.AndroidHost;
 
 /// <summary>
 /// 前台打印宿主服务：本地 HTTP + 打印 Worker + Server 路由轮询。
-/// 前台服务常驻，开机由 BootReceiver 拉起。
+/// 前台服务常驻，开机由 BootReceiver 拉起；运行状态经 <see cref="HostStatus"/> 快照供配置页 / 状态页读取。
 /// </summary>
 [Service(Exported = true, ForegroundServiceType = Android.Content.PM.ForegroundService.TypeDataSync)]
 public sealed class PrintHostService : Service
@@ -27,6 +26,7 @@ public sealed class PrintHostService : Service
     private CancellationTokenSource? _cts;
     private Task? _printLoop;
     private Task? _routingLoop;
+    private Task? _notifyLoop;
 
     /// <inheritdoc />
     public override void OnCreate()
@@ -39,23 +39,22 @@ public sealed class PrintHostService : Service
         Java.Lang.JavaSystem.LoadLibrary("e_sqlite3");
 
         var config = LabelHostConfig.Load(this);
+        HostStatus.NoteServiceStarted(config.ServerUrl, $"{config.TcpHost}:{config.TcpPort}");
         var store = new SqliteLabelJobStore(config.DatabasePath);
         store.InitializeAsync().GetAwaiter().GetResult();
         _queue = new LabelJobQueue(store);
-        _transport = new Tcp9100PrintTransport(config.TcpHost, LabelHostConfig.TcpPort);
+        _transport = new Tcp9100PrintTransport(config.TcpHost, config.TcpPort);
         var submission = new SubmissionService(_queue, LabelHostConfig.Dpi);
 
         _cts = new CancellationTokenSource();
-        var pcClient = string.IsNullOrWhiteSpace(config.PcHostUrl)
-            ? null
-            : new PcTemplateClient(config.PcHostUrl, config.DeviceId);
-        _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, store, _transport, this, pcClient);
+        _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, store, _transport, this);
         _http.Start();
 
         _printLoop = Task.Run(() => PrintLoopAsync(_cts.Token));
+        _notifyLoop = Task.Run(() => NotificationLoopAsync(_cts.Token));
         if (!string.IsNullOrWhiteSpace(config.ServerUrl))
         {
-            _poller = new ServerPoller(config.ServerUrl, config.DeviceId);
+            _poller = new ServerPoller(config.ServerUrl, config.DeviceId, config.DeviceName);
             _routingLoop = Task.Run(() => RoutingLoopAsync(_poller, submission, _queue, _cts.Token));
         }
     }
@@ -71,6 +70,7 @@ public sealed class PrintHostService : Service
         _http?.Dispose();
         _poller?.Dispose();
         _cts?.Dispose();
+        HostStatus.NoteServiceStopped();
         base.OnDestroy();
     }
 
@@ -84,12 +84,7 @@ public sealed class PrintHostService : Service
             var channel = new NotificationChannel(ChannelId, "LabelFrame 打印宿主", NotificationImportance.Low);
             var manager = (NotificationManager?)GetSystemService(NotificationService);
             manager?.CreateNotificationChannel(channel);
-            var notification = new Notification.Builder(this, ChannelId)
-                .SetContentTitle("LabelFrame 打印宿主")
-                .SetContentText("本地打印服务运行中")
-                .SetSmallIcon(Android.Resource.Drawable.SymDefAppIcon)
-                .SetOngoing(true)
-                .Build();
+            var notification = BuildNotification(BuildStatusText());
             if (OperatingSystem.IsAndroidVersionAtLeast(29))
             {
                 StartForeground(NotificationId, notification, Android.Content.PM.ForegroundService.TypeDataSync);
@@ -102,6 +97,85 @@ public sealed class PrintHostService : Service
         else
         {
             StartForeground(NotificationId, new Notification.Builder(this).Build());
+        }
+    }
+
+    /// <summary>常驻通知：点击打开配置页（MainActivity），文案随运行状态刷新。</summary>
+    private Notification BuildNotification(string text)
+    {
+        var intent = new Intent(this, typeof(MainActivity));
+        intent.AddFlags(ActivityFlags.NewTask | ActivityFlags.SingleTop);
+        var pending = PendingIntent.GetActivity(
+            this, 0, intent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
+
+        var builder = OperatingSystem.IsAndroidVersionAtLeast(26)
+            ? new Notification.Builder(this, ChannelId)
+            : new Notification.Builder(this);
+        return builder
+            .SetContentTitle("LabelFrame 打印宿主")
+            .SetContentText(text)
+            .SetSmallIcon(Android.Resource.Drawable.SymDefAppIcon)
+            .SetOngoing(true)
+            .SetContentIntent(pending)
+            .Build();
+    }
+
+    /// <summary>状态文案：服务端连接 + 打印机端点（用于常驻通知）。</summary>
+    private static string BuildStatusText()
+    {
+        var s = HostStatus.Current;
+        string server;
+        if (s.ActiveServerUrl.Length == 0)
+        {
+            server = "服务端：未配置";
+        }
+        else if (s.LastServerError is not null)
+        {
+            server = "服务端：连接失败";
+        }
+        else if (s.LastServerContactUtc is not null)
+        {
+            server = "服务端：已连接";
+        }
+        else
+        {
+            server = "服务端：连接中…";
+        }
+
+        var printer = $"打印机：{s.ActivePrinterEndpoint}";
+        if (s.LastPrintError is not null)
+        {
+            printer += "（发送失败）";
+        }
+
+        return $"{server} · {printer}";
+    }
+
+    /// <summary>通知文案刷新循环：状态文本变化时才重发通知（5s 一帧）。</summary>
+    private async Task NotificationLoopAsync(CancellationToken cancellationToken)
+    {
+        var lastText = BuildStatusText();
+        var manager = (NotificationManager?)GetSystemService(NotificationService);
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                var text = BuildStatusText();
+                if (text != lastText)
+                {
+                    lastText = text;
+                    manager?.Notify(NotificationId, BuildNotification(text));
+                }
+            }
+            catch (System.OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch
+            {
+                // 通知刷新失败不影响服务
+            }
         }
     }
 
@@ -135,6 +209,7 @@ public sealed class PrintHostService : Service
                 {
                     await _transport!.SendAsync(next.Value.Item.Zpl, cancellationToken);
                     await _queue.CompleteItemAsync(next.Value.JobId, next.Value.Item.Id, cancellationToken);
+                    HostStatus.NotePrintSuccess();
                 }
                 catch (System.OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -142,6 +217,7 @@ public sealed class PrintHostService : Service
                 }
                 catch (Exception ex)
                 {
+                    HostStatus.NotePrintError(ex.Message);
                     await _queue.FailItemAsync(
                         next.Value.JobId,
                         next.Value.Item.Id,
@@ -189,11 +265,13 @@ public sealed class PrintHostService : Service
                 try
                 {
                     await poller.RegisterAsync(cancellationToken);
+                    HostStatus.NoteServerContact();
                     // 长轮询等待通知：作业到达立即返回，随后立刻领取（等效推送）；超时也照常领取一次兜底
                     while (!cancellationToken.IsCancellationRequested)
                     {
                         var signaled = await poller.WaitForJobAsync(notifyTimeout, cancellationToken);
                         var jobs = await poller.FetchPendingAsync(cancellationToken);
+                        HostStatus.NoteServerContact();
                         foreach (var job in jobs)
                         {
                             var result = await submission.SubmitAsync(
@@ -224,8 +302,9 @@ public sealed class PrintHostService : Service
                 {
                     return;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    HostStatus.NoteServerError(ex.Message);
                     // 网络异常下一轮重试
                     try
                     {

@@ -1,13 +1,24 @@
 # LabelFrame.AndroidHost
 
-Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地）。
+Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 40 配置面补齐）。
 
-> **真机验收已通过（2026-09-08，UROVO DT50 / Android 11）**：注册 / 心跳 / 模板下发 / 作业打印（路由 + 直连）/ 离线恢复 / 断网重连（挂起 → 续打 → 失败项重打）/ 开机自启 / 前台服务保活 / JS 桥 CORS 全部通过。仍不在 `LabelFrame.slnx` 解决方案中、不随发布构建（纳入自动发布另行排期，见 ROADMAP 迭代 25）；遗留验收项（真实打印机物理出纸、16KB 运行时验证）见 [ACCEPTANCE-BACKLOG.md](../../docs/ACCEPTANCE-BACKLOG.md)。
+> **真机验收已通过（2026-09-08，UROVO DT50 / Android 11）**：注册 / 心跳 / 模板下发 / 作业打印（路由 + 直连）/ 离线恢复 / 断网重连（挂起 → 续打 → 失败项重打）/ 开机自启 / 前台服务保活 / JS 桥 CORS 全部通过。仍不在 `LabelFrame.slnx` 解决方案中、不随发布构建（纳入自动发布另行排期，见 ROADMAP 迭代 25）；遗留验收项（16KB 运行时验证）见 [ACCEPTANCE-BACKLOG.md](../../docs/ACCEPTANCE-BACKLOG.md)。
+
+## 定位（决策 #95）
+
+**后台打印执行服务**：打印入口在业务系统侧（Server 路由或第三方程序经 JS 桥），宿主自身不提供业务打印界面；唯一 UI 是原生配置页（点 App 图标打开）：
+
+- **服务端**：地址 + 「测试连接」（留空 = 不连 Server）。
+- **打印机**：品牌（默认 Zebra，当前唯一）→ 连接类型（默认网口 TCP）→ IP + 端口（默认 9100）；品牌 / 连接类型是未来传输插件的路由键。
+- **设备信息**：设备号取系统唯一码（ANDROID_ID）自动生成只读展示；设备名称可选编辑（默认 `PDA-<码后 4 位>`，注册 Server 随 name 上报）。
+- **测试打印**：本地提交内置测试标签，走完整链路（校验 → 渲染 → `^GF` → TCP 发送 → 终态），验证打印功能无误。
+- **「保存并应用」**：写配置后自动重启宿主服务生效，无需 force-stop。
+- 常驻通知点击打开配置页，文案带服务端 / 打印机状态；浏览器打开 `http://127.0.0.1:53970` 为轻量状态页。
 
 ## 职责
 
 - 前台服务（`PrintHostService`）常驻 + 开机自启（`BootReceiver`，BOOT_COMPLETED / MY_PACKAGE_REPLACED）。
-- 本地 HTTP 服务（仅 127.0.0.1:53970，TcpListener 极简实现）：健康检查、提交 / 列表 / 查询 / 挂起 / 恢复 / 取消作业、失败项重打、打印机状态与测试页；宽松 CORS + OPTIONS 预检（JS 桥）。
+- 本地 HTTP 服务（仅 127.0.0.1:53970，TcpListener 极简实现）：健康检查、提交 / 列表 / 查询 / 挂起 / 恢复 / 取消作业、失败项重打、打印机状态与测试、宿主配置、测试打印、状态页；宽松 CORS + OPTIONS 预检（JS 桥）。
 - IP 9100 打印机传输（复用 Core 的 `Tcp9100PrintTransport`）。
 - 向 Server 注册设备并经 notify 长轮询（20s）领取定向作业 + 独立 1s 回报循环（与 WinHost `ServerRoutingWorker` 同构）。
 - 中文栅格化：Android.Graphics 渲染为 1bpp 位图（^GF），与 WinHost 同契约。
@@ -25,12 +36,15 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地）。
 
 | 键 | 默认 | 说明 |
 |---|---|---|
-| `tcp_host` | 192.168.1.50 | 打印机 IP |
 | `server_url` | 空 | Server 地址，为空不启用路由 |
-| `device_id` | android-pda-1 | 注册到 Server 的设备标识 |
-| `pc_host` | 空 | PC 单机服务地址（PDA 测试模式，决策 #42） |
+| `printer_brand` | zebra | 打印机品牌（未来插件路由键） |
+| `connection_type` | tcp | 连接类型（未来蓝牙等扩展） |
+| `tcp_host` | 192.168.1.50 | 打印机 IP |
+| `tcp_port` | 9100 | 打印机端口 |
+| `device_name` | PDA-xxxx | 设备名称（注册 Server 展示；xxxx 为设备码后 4 位） |
+| `device_uuid` | — | 设备号兜底（仅 ANDROID_ID 取不到时生成一次） |
 
-读写入口：`GET/POST /api/host/config`（本地 HTTP，与 WinHost 同构；POST 持久化到 SharedPreferences，**重启宿主后生效**——传输 / 路由实例在服务启动时创建）。当前无屏幕配置界面（可按需求另立项）。
+设备号自动取 `Settings.Secure.ANDROID_ID`（`pda-<id>`），不接受配置（多台设备天然不撞号；恢复出厂后变化，视为新设备）。读写入口：配置页 UI 或 `GET/POST /api/host/config`（POST 持久化，重启宿主生效——配置页「保存并应用」自动完成重启）。
 
 ## 构建
 
@@ -39,9 +53,9 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地）。
 ```
 
 要求：.NET 10 SDK + Android workload、Android SDK（platforms;android-36、build-tools 36.0.0）、JDK 17。
-产出：`src\LabelFrame.AndroidHost\bin\Debug\net10.0-android\com.labelframe.androidhost-Signed.apk`（脚本已关闭 Fast Deployment，可脱离开发环境独立 `adb install`）。
+产出：`src\LabelFrame.AndroidHost\bin\Debug\net10.0-android\com.labelframe.androidhost-Signed.apk`（脚本已传 `-p:EmbedAssembliesIntoApk=true`，程序集打包进 APK，可脱离开发环境独立 `adb install`）。
 
-注意：交付真机请用 **Release** 配置（`dotnet build -c Release`，约 25MB 自包含 APK）；Debug 默认 Fast Deployment 的产物不含程序集。
+注意：交付真机请用 **Release** 配置（`dotnet build -c Release`，约 25MB 自包含 APK）；Debug + 嵌入程序集约 74MB。`.NET Android 36.1.x` 起 `AndroidFastDeployment` 属性已失效（决策 #95 ⑦），关闭 Fast Deployment 必须用 `EmbedAssembliesIntoApk`。
 
 ## 原生库注意（决策 #94）
 

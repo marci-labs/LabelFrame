@@ -2,6 +2,19 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 40 PDA 宿主配置与测试体验 · 2026-09-08
+
+- **PDA 宿主定位定稿（决策 #95，用户拍板）**：AndroidHost = 后台打印执行服务（打印入口在业务系统侧，承接 #93），本迭代收敛为 PDA 专项——PC 侧易用性候选项（模板快选 / 打印值记忆 / 失败提示行动化 / ServerUrl 免重启等）全部延期，PDA 业务打印界面（扫码即打 / 模板列表 / 字段表单）明确不做。跨端公共契约零变更（仅 AndroidHost 本地 HTTP 扩展）。
+- **原生配置页（唯一 UI）**：点 App 图标打开（替代此前启动即 Finish 的无界面行为）——服务端地址 + 测试连接；打印机按「品牌（默认 Zebra）→ 连接类型（默认网口 TCP）→ IP + 端口（默认 9100）」两级结构（品牌 / 连接类型为未来传输插件路由键）；设备号只读自动展示 + 复制；设备名称可选编辑；运行状态区（服务 / 服务端最近通讯 / 打印机最近出纸或失败）；「测试打印」本地提交内置测试标签走完整链路（校验 → 渲染 → `^GF` → TCP 发送 → 终态）。
+- **设备号自动生成**：取 `Settings.Secure.ANDROID_ID`（`pda-<id>`），不可配置——多台设备天然不撞号，消除配置出错导致互相领作业的风险；卸载重装不变、恢复出厂视为新设备；取不到（含 Android 8 前著名坏值）时本地 UUID 兜底。设备名称默认 `PDA-<码后 4 位>`，注册 Server 随 `name` 上报（设备目录 / 目标设备选择器 / `GET /api/devices` 可读）。**注意**：从旧版本升级后设备号会从 `android-pda-1` 变为自动码，Server 目录出现一台新设备、旧条目变离线残留，属预期。
+- **保存并应用（免 force-stop）**：写 SharedPreferences 后自动重启宿主服务（同进程 stop/start），配置页等待本地 HTTP 就绪后刷新状态。
+- **通知与状态页**：常驻通知点击打开配置页，文案随服务端连接 / 打印机端点状态刷新（5s 一帧、变化才重发）；内置浏览器页（`127.0.0.1:53970/`）收敛为轻量状态页（配置概览 + 打印机探测 + 测试打印）。
+- **配置模型结构化**：`{ server_url, printer_brand, connection_type, tcp_host, tcp_port, device_name }`，旧装机 `tcp_host` 自动迁移；`GET/POST /api/host/config` DTO 扩展（TcpPort / PrinterBrand / ConnectionType / DeviceName，保留旧字段）。
+- **移除 pc_host 测试模式（决策 #42 废止）**：`PcTemplateClient`、`/api/pc/*` 端点、`PcHostUrl` 配置项删除——状态页收敛后失去唯一消费方；WinHost `/api/logs` 接收端点保留，PDA 不再自动回传日志。
+- **构建修复（决策 #95 ⑦）**：构建脚本改用 `-p:EmbedAssembliesIntoApk=true`——.NET Android 36.1.x 起 `AndroidFastDeployment` 属性失效，Debug 产物一度退化为 Fast Deployment 壳（纯 `adb install` 启动即 abort，真机冒烟时发现并修复）。
+- **真机冒烟（UROVO DT50 / Android 11，全部通过）**：配置页渲染与旧配置迁移（server_url / tcp_host 读回）；设备号 `pda-b4ee90bd59b33c53` 自动生成、默认名 `PDA-3C53`；`/api/host/config` 新 DTO；状态页 HTML；打印机状态探测（在线 / 有纸 / 未暂停）；**测试打印真实 Zebra（192.168.2.121）物理出纸（1/1 Completed）**；「保存并应用」触发服务自动重启（ServiceRecord 重建验证）且 healthz 恢复；CORS 预检（OPTIONS 204 + 宽松头）。通知点击进配置页与 UI 视觉细节留待用户日常使用确认。
+- **测试**：`dotnet build` 0 警告 0 错误；AndroidHost 构建 0 警告 0 错误；日常 `dotnet test` 328 项全绿（桌面零回归）。
+
 ## 迭代 25 Android PDA 宿主真机落地 · 2026-09-08
 
 - **PDA 接入边界定界（决策 #93，用户拍板）**：AndroidHost 是 PDA 上唯一打印执行宿主；第三方 PDA 程序统一经既有 HTTP 公共契约集成——路由模式（Server `POST /api/jobs` + targetDeviceId）或直连模式（同机 `127.0.0.1:53970`，即 JS 桥）。零跨端契约变更；不做 Android SDK / Intent / AAR 新契约形态。

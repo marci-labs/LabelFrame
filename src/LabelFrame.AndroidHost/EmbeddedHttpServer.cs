@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using LabelFrame.AndroidHost.Api;
-using LabelFrame.AndroidHost.Pc;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Transport;
 
@@ -20,7 +19,6 @@ public sealed class EmbeddedHttpServer : IDisposable
     private readonly ILabelJobStore _store;
     private readonly IPrintTransport _transport;
     private readonly IPrinterStatusProvider? _status;
-    private readonly PcTemplateClient? _pc;
     private readonly Android.Content.Context _context;
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
@@ -33,8 +31,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         LabelJobQueue queue,
         ILabelJobStore store,
         IPrintTransport transport,
-        Android.Content.Context context,
-        PcTemplateClient? pcClient = null)
+        Android.Content.Context context)
     {
         _port = port;
         _submission = submission;
@@ -43,7 +40,6 @@ public sealed class EmbeddedHttpServer : IDisposable
         _transport = transport;
         _status = transport as IPrinterStatusProvider;
         _context = context;
-        _pc = pcClient;
     }
 
     /// <summary>启动监听。</summary>
@@ -219,7 +215,7 @@ public sealed class EmbeddedHttpServer : IDisposable
 
         if (method == "GET" && basePath == "/")
         {
-            return Html(200, PcTestPageHtml);
+            return Html(200, StatusPageHtml);
         }
 
         if (method == "POST" && basePath == "/api/jobs")
@@ -279,16 +275,10 @@ public sealed class EmbeddedHttpServer : IDisposable
             return SaveHostConfig(body);
         }
 
-        // ---- PDA 测试模式（从 PC 单机服务拉模板 / 测试打印 / 日志回传）----
-        if (method == "GET" && basePath == "/api/pc/templates")
+        // ---- 测试打印（配置页 / 状态页共用：内置测试标签走完整链路）----
+        if (method == "POST" && basePath == "/api/host/test-print")
         {
-            return PcTemplates();
-        }
-
-        if (method == "POST" && basePath.StartsWith("/api/pc/templates/", StringComparison.Ordinal) && basePath.EndsWith("/print-test", StringComparison.Ordinal))
-        {
-            var name = Uri.UnescapeDataString(basePath["/api/pc/templates/".Length..^"/print-test".Length]);
-            return PcPrintTest(name);
+            return TestPrint();
         }
 
         return Json(404, new ErrorView(JobErrorCodes.JobNotFound, "接口不存在。"));
@@ -391,20 +381,32 @@ public sealed class EmbeddedHttpServer : IDisposable
     }
 
     /// <summary>宿主配置视图（GET /api/host/config 响应形状）。</summary>
-    private sealed record HostConfigView(string TcpHost, string? ServerUrl, string? PcHostUrl, string DeviceId, string LocalPort)
+    private sealed record HostConfigView(
+        string TcpHost, int TcpPort, string PrinterBrand, string ConnectionType,
+        string ServerUrl, string DeviceId, string DeviceName, string LocalPort)
     {
         public static HostConfigView From(LabelHostConfig config)
-            => new(config.TcpHost, config.ServerUrl, config.PcHostUrl, config.DeviceId, $"127.0.0.1:{LabelHostConfig.LocalPort}");
+            => new(
+                config.TcpHost, config.TcpPort, config.PrinterBrand, config.ConnectionType,
+                config.ServerUrl, config.DeviceId, config.DeviceName,
+                $"127.0.0.1:{LabelHostConfig.LocalPort}");
     }
 
-    /// <summary>保存宿主配置到 SharedPreferences（null / 空白字段保持原值）；传输与路由在下次宿主启动时按新配置创建。</summary>
+    /// <summary>保存宿主配置到 SharedPreferences（null / 空白 / 越界字段保持原值）；传输与路由在下次宿主启动时按新配置创建。</summary>
     private (int, string, byte[]) SaveHostConfig(string body)
     {
         try
         {
             var dto = System.Text.Json.JsonSerializer.Deserialize<HostConfigUpdateDto>(body, HostJson.Options);
             var config = LabelHostConfig.Load(_context);
-            config.Persist(_context, dto?.TcpHost, dto?.ServerUrl, dto?.PcHostUrl, dto?.DeviceId);
+            config.Persist(
+                _context,
+                dto?.ServerUrl,
+                dto?.PrinterBrand,
+                dto?.ConnectionType,
+                dto?.TcpHost,
+                dto?.TcpPort,
+                dto?.DeviceName);
             return Json(200, HostConfigView.From(config));
         }
         catch (Exception ex)
@@ -413,7 +415,9 @@ public sealed class EmbeddedHttpServer : IDisposable
         }
     }
 
-    private sealed record HostConfigUpdateDto(string? TcpHost, string? ServerUrl, string? PcHostUrl, string? DeviceId);
+    private sealed record HostConfigUpdateDto(
+        string? ServerUrl, string? PrinterBrand, string? ConnectionType,
+        string? TcpHost, int? TcpPort, string? DeviceName);
 
     private (int, string, byte[]) GetPrinterStatus()
     {
@@ -442,167 +446,100 @@ public sealed class EmbeddedHttpServer : IDisposable
         }
     }
 
-    private (int, string, byte[]) PcTemplates()
+    /// <summary>测试打印：提交内置测试标签作业（校验 → 渲染 → ^GF → TCP 发送），返回作业供调用方轮询终态。</summary>
+    private (int, string, byte[]) TestPrint()
     {
-        if (_pc is null)
+        var request = new SubmitJobRequest(
+            $"self-test-{Guid.NewGuid():N}",
+            new TemplateDto(TestLabelTemplate.Contract, TestLabelTemplate.Layout),
+            new List<LabelDto> { new(TestLabelTemplate.SampleData()) });
+        var result = _submission.SubmitAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+        if (result.Job is null)
         {
-            return Json(400, new ErrorView(JobErrorCodes.InvalidRequest, "未配置 PC 单机服务地址（pc_host）。"));
+            return Json(400, new ErrorView(result.ErrorCode!, result.ErrorMessage!, result.FieldKey));
         }
 
-        try
-        {
-            var list = _pc.ListTemplatesAsync(CancellationToken.None).GetAwaiter().GetResult();
-            return Json(200, new { templates = list.Select(t => new { t.Name, t.Group, t.UpdatedAt }) });
-        }
-        catch (Exception ex)
-        {
-            return Json(502, new ErrorView(JobErrorCodes.InvalidRequest, $"PC 服务访问失败：{ex.Message}"));
-        }
-    }
-
-    /// <summary>PDA 打印测试：拉模板详情 → 用服务端 testData 本地打印 → 日志回传 PC。</summary>
-    private (int, string, byte[]) PcPrintTest(string name)
-    {
-        if (_pc is null)
-        {
-            return Json(400, new ErrorView(JobErrorCodes.InvalidRequest, "未配置 PC 单机服务地址（pc_host）。"));
-        }
-
-        try
-        {
-            var template = _pc.GetTemplateAsync(name, CancellationToken.None).GetAwaiter().GetResult();
-            if (template is null)
-            {
-                return Json(404, new ErrorView(JobErrorCodes.JobNotFound, $"PC 上不存在模板：{name}。"));
-            }
-
-            if (template.Contract is null || template.Layout is null)
-            {
-                return Json(400, new ErrorView(JobErrorCodes.InvalidRequest, "模板详情不完整（缺 contract / layout）。"));
-            }
-
-            var testData = template.TestData ?? new Dictionary<string, string>();
-            var request = new SubmitJobRequest(
-                $"pc-test-{Guid.NewGuid():N}",
-                new TemplateDto(template.Contract, template.Layout),
-                new List<LabelDto> { new(testData) });
-            var result = _submission.SubmitAsync(request, CancellationToken.None).GetAwaiter().GetResult();
-            if (result.Job is null)
-            {
-                _pc.PushLogsAsync([$"打印测试失败：{result.ErrorMessage}"], CancellationToken.None).GetAwaiter().GetResult();
-                return Json(400, new ErrorView(result.ErrorCode!, result.ErrorMessage!, result.FieldKey));
-            }
-
-            var job = result.Job;
-            _pc.PushLogsAsync(
-                [$"打印测试已提交：{name}（{job.Id}，测试数据 {testData.Count} 个字段）"],
-                CancellationToken.None).GetAwaiter().GetResult();
-            _ = Task.Run(() => ReportPrintResultAsync(job.Id, name));
-            return Json(result.Created ? 202 : 200, JobViews.From(job));
-        }
-        catch (Exception ex)
-        {
-            _pc.PushLogsAsync([$"打印测试异常：{ex.Message}"], CancellationToken.None).GetAwaiter().GetResult();
-            return Json(502, new ErrorView(JobErrorCodes.InvalidRequest, $"打印测试异常：{ex.Message}"));
-        }
-    }
-
-    /// <summary>异步轮询作业终态并回传结果日志。</summary>
-    private async Task ReportPrintResultAsync(string jobId, string name)
-    {
-        try
-        {
-            for (var i = 0; i < 120; i++)
-            {
-                await Task.Delay(500);
-                var job = _queue.GetAsync(jobId, CancellationToken.None).GetAwaiter().GetResult();
-                if (job is null)
-                {
-                    return;
-                }
-
-                if (job.Status is LabelJobStatus.Completed or LabelJobStatus.Failed or LabelJobStatus.Cancelled)
-                {
-                    var completed = job.Items.Count(i => i.Status == LabelJobItemStatus.Completed);
-                    var error = job.Items.FirstOrDefault(x => x.ErrorMessage is not null)?.ErrorMessage;
-                    await _pc!.PushLogsAsync(
-                        [$"打印测试终态：{name} {job.Status}（{completed}/{job.Items.Count}）{error ?? string.Empty}"],
-                        CancellationToken.None);
-                    return;
-                }
-            }
-        }
-        catch
-        {
-            // 轮询失败不打断
-        }
+        return Json(202, JobViews.From(result.Job));
     }
 
     private static (int, string, byte[]) Html(int status, string html)
         => (status, "text/html; charset=utf-8", Encoding.UTF8.GetBytes(html));
 
-    /// <summary>PDA 测试页：模板列表 → 点击测试打印（拉取 PC 模板 + testData → 本地打印 → 日志回传）。</summary>
-    private const string PcTestPageHtml = """
+    /// <summary>宿主状态页：运行状态 + 配置概览 + 测试打印（轻量单页；第三方集成走同端口 HTTP API）。</summary>
+    private const string StatusPageHtml = """
         <!DOCTYPE html>
         <html lang="zh-CN">
         <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>PDA 打印测试</title>
+        <title>LabelFrame 宿主状态</title>
         <style>
-          body { font-family: sans-serif; margin: 12px; }
+          body { font-family: sans-serif; margin: 12px; color: #222; }
           h1 { font-size: 18px; }
-          #list { list-style: none; padding: 0; }
-          #list li { margin: 6px 0; }
-          #list button { width: 100%; padding: 12px; font-size: 15px; text-align: left; }
-          #status { margin: 10px 0; color: #555; white-space: pre-wrap; }
+          .card { border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
+          .row { margin: 4px 0; font-size: 14px; }
+          .row b { display: inline-block; min-width: 5.5em; color: #666; font-weight: 600; }
+          button { padding: 10px 16px; font-size: 15px; margin: 6px 8px 0 0; }
+          #result { margin-top: 8px; color: #555; white-space: pre-wrap; }
         </style>
         </head>
         <body>
-        <h1>PDA 打印测试</h1>
-        <div id="status">加载中…</div>
-        <ul id="list"></ul>
+        <h1>LabelFrame 宿主状态</h1>
+        <div class="card" id="config"><div class="row">加载中…</div></div>
+        <div class="card">
+          <div class="row"><b>打印机状态</b><span id="printer">探测中…</span></div>
+        </div>
+        <button id="print">测试打印</button>
+        <div id="result"></div>
+        <p style="color:#999;font-size:12px;margin-top:16px">
+          本页为宿主状态页；第三方程序集成请走同端口 HTTP API（POST /api/jobs 直连打印，契约见仓库文档）。
+        </p>
         <script>
-        const statusEl = document.getElementById('list');
-        async function load() {
-          const box = document.getElementById('status');
+        const resultEl = document.getElementById('result');
+        async function loadConfig() {
           try {
-            const res = await fetch('/api/pc/templates');
-            const data = await res.json();
-            box.textContent = '共 ' + (data.templates || []).length + ' 个模板（来自 PC 单机服务）';
-            statusEl.innerHTML = '';
-            (data.templates || []).forEach(t => {
-              const li = document.createElement('li');
-              const btn = document.createElement('button');
-              btn.textContent = t.name + (t.group ? '（' + t.group + '）' : '');
-              btn.onclick = () => printTest(t.name);
-              li.appendChild(btn);
-              statusEl.appendChild(li);
-            });
-          } catch (ex) { box.textContent = '加载失败：' + ex.message; }
+            const res = await fetch('/api/host/config');
+            const c = await res.json();
+            document.getElementById('config').innerHTML =
+              '<div class="row"><b>设备号</b>' + c.DeviceId + '</div>' +
+              '<div class="row"><b>设备名称</b>' + c.DeviceName + '</div>' +
+              '<div class="row"><b>服务端</b>' + (c.ServerUrl || '未配置') + '</div>' +
+              '<div class="row"><b>打印机</b>' + c.TcpHost + ':' + c.TcpPort + '（' + c.PrinterBrand + ' · ' + c.ConnectionType.toUpperCase() + '）</div>';
+          } catch (ex) { document.getElementById('config').textContent = '加载失败：' + ex.message; }
         }
-        async function printTest(name) {
-          const box = document.getElementById('status');
-          box.textContent = '正在测试打印：' + name + ' …';
+        async function loadPrinter() {
           try {
-            const res = await fetch('/api/pc/templates/' + encodeURIComponent(name) + '/print-test', { method: 'POST' });
+            const res = await fetch('/api/printer/status');
+            const s = await res.json();
+            const text = s.IsOnline
+              ? '在线' + (s.Message ? '（' + s.Message + '）' : '') + (s.IsPaperOut ? ' · 缺纸' : '') + (s.IsPaused ? ' · 暂停' : '')
+              : '离线' + (s.Message ? '（' + s.Message + '）' : '');
+            document.getElementById('printer').textContent = text;
+          } catch (ex) { document.getElementById('printer').textContent = '探测失败：' + ex.message; }
+        }
+        document.getElementById('print').onclick = async () => {
+          resultEl.textContent = '提交测试作业…';
+          try {
+            const res = await fetch('/api/host/test-print', { method: 'POST' });
             const job = await res.json();
-            if (!res.ok) { box.textContent = '失败：' + (job.message || res.status); return; }
-            box.textContent = '已提交 ' + job.jobId + '，等待打印结果…';
+            if (!res.ok) { resultEl.textContent = '提交失败：' + (job.Message || res.status); return; }
             const timer = setInterval(async () => {
-              const r = await fetch('/api/jobs/' + job.jobId);
+              const r = await fetch('/api/jobs/' + job.JobId);
               const j = await r.json();
-              if (j.status === 'Completed' || j.status === 'Failed' || j.status === 'Cancelled') {
+              if (j.Status === 'Completed' || j.Status === 'Failed' || j.Status === 'Cancelled') {
                 clearInterval(timer);
-                const err = (j.items || []).find(x => x.errorMessage)?.errorMessage || '';
-                box.textContent = j.status + '（' + j.completedItems + '/' + j.totalItems + '）' + err;
+                const err = (j.Items || []).find(x => x.ErrorMessage)?.ErrorMessage || '';
+                resultEl.textContent = (j.Status === 'Completed' ? '✓ 打印完成' : '✗ ' + j.Status) +
+                  '（' + j.CompletedItems + '/' + j.TotalItems + '）' + (err ? '：' + err : '');
               } else {
-                box.textContent = j.status + '…（' + j.completedItems + '/' + j.totalItems + '）';
+                resultEl.textContent = '打印中…（' + j.CompletedItems + '/' + j.TotalItems + '）';
               }
             }, 1000);
-          } catch (ex) { box.textContent = '异常：' + ex.message; }
-        }
-        load();
+          } catch (ex) { resultEl.textContent = '异常：' + ex.message; }
+        };
+        loadConfig();
+        loadPrinter();
+        setInterval(loadPrinter, 10000);
         </script>
         </body>
         </html>
