@@ -12,6 +12,7 @@
 - **真机验收全通过（UROVO DT50 / Android 11）**：注册 / 心跳（notify 保活）、模板下发、作业打印（路由 + 直连双模式、批量 3 张、ZPL 字节级核对：^PW480/^LL320 精确换算 + ^GF 位图 QR 与中文内容可见）、离线恢复（Offline 判定 + Pending 暂存 + 恢复 7s 内领取）、断网重连（挂起 → resume 续打 → retry 补打 → 两端终态一致）、开机自启（重启 10s 内拉起）、前台服务保活。物理出纸以 TCP9100 模拟打印机验证，真实 IP 打印机出纸保留验收积压。
 - **遗留（DESIGN 未决）**：宿主重启后本地↔Server 作业映射（内存态）丢失，Server 侧已 Claimed 作业无终态——全宿主既有语义，需跨端方案再立项。
 - **测试**：`dotnet build` 0 警告 0 错误；日常 `dotnet test` 328 项全绿。
+- **追加（同日真打印机联调）**：本地 HTTP 新增 `GET/POST /api/host/config`（tcpHost / serverUrl / deviceId / pcHost 读写，持久化 SharedPreferences，重启宿主生效）——补齐 WinHost 同构端点，第三方程序 / 联调可免 adb 改配置；真 Zebra 打印机（TCP9100）实测：PDA 侧状态探测在线 / 有纸 / 未暂停，直连作业渲染出纸链路 Completed（物理出纸由用户现场确认）。
 
 ## v0.23.0 迭代 36-39 汇总发布 · 2026-09-08
 

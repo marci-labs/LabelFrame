@@ -207,6 +207,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 |---|---|
 | 作业 | `POST /api/jobs`（自包含模板直连打印）、`GET /api/jobs?limit=`、`GET /api/jobs/{id}`、`POST /api/jobs/{id}/suspend / resume / cancel`、`POST /api/jobs/{id}/items/{index}/retry` |
 | 打印机 | `GET /api/printer/status`、`POST /api/printer/test` |
+| 配置 | `GET/POST /api/host/config`（tcpHost / serverUrl / deviceId / pcHost；持久化 SharedPreferences，重启宿主生效） |
 | 测试模式 | `GET /api/pc/templates`、`POST /api/pc/templates/{name}/print-test`（配置 pc_host 时，决策 #42） |
 | 其他 | `GET /healthz`、`GET /`（内置 PDA 测试页） |
 

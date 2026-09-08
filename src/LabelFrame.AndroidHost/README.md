@@ -30,6 +30,8 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地）。
 | `device_id` | android-pda-1 | 注册到 Server 的设备标识 |
 | `pc_host` | 空 | PC 单机服务地址（PDA 测试模式，决策 #42） |
 
+读写入口：`GET/POST /api/host/config`（本地 HTTP，与 WinHost 同构；POST 持久化到 SharedPreferences，**重启宿主后生效**——传输 / 路由实例在服务启动时创建）。当前无屏幕配置界面（可按需求另立项）。
+
 ## 构建
 
 ```powershell

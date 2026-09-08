@@ -49,4 +49,24 @@ public sealed class LabelHostConfig
         };
         return config;
     }
+
+    /// <summary>
+    /// 持久化到 SharedPreferences（null 字段保持原值）。
+    /// 注意：传输 / 路由实例在服务启动时创建，保存后需重启宿主（force-stop 后重新拉起）生效。
+    /// </summary>
+    public void Persist(Context context, string? tcpHost = null, string? serverUrl = null, string? pcHostUrl = null, string? deviceId = null)
+    {
+        TcpHost = string.IsNullOrWhiteSpace(tcpHost) ? TcpHost : tcpHost.Trim();
+        ServerUrl = string.IsNullOrWhiteSpace(serverUrl) ? ServerUrl : serverUrl.Trim();
+        PcHostUrl = string.IsNullOrWhiteSpace(pcHostUrl) ? PcHostUrl : pcHostUrl.Trim();
+        DeviceId = string.IsNullOrWhiteSpace(deviceId) ? DeviceId : deviceId.Trim();
+
+        var prefs = context.GetSharedPreferences("labelframe", FileCreationMode.Private)!;
+        prefs.Edit()!
+            .PutString("tcp_host", TcpHost)
+            .PutString("server_url", ServerUrl ?? string.Empty)
+            .PutString("pc_host", PcHostUrl ?? string.Empty)
+            .PutString("device_id", DeviceId)
+            .Apply();
+    }
 }

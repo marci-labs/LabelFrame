@@ -49,7 +49,7 @@ public sealed class PrintHostService : Service
         var pcClient = string.IsNullOrWhiteSpace(config.PcHostUrl)
             ? null
             : new PcTemplateClient(config.PcHostUrl, config.DeviceId);
-        _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, store, _transport, pcClient);
+        _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, store, _transport, this, pcClient);
         _http.Start();
 
         _printLoop = Task.Run(() => PrintLoopAsync(_cts.Token));

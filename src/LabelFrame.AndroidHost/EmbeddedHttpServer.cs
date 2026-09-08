@@ -21,6 +21,7 @@ public sealed class EmbeddedHttpServer : IDisposable
     private readonly IPrintTransport _transport;
     private readonly IPrinterStatusProvider? _status;
     private readonly PcTemplateClient? _pc;
+    private readonly Android.Content.Context _context;
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
     private Task? _loop;
@@ -32,6 +33,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         LabelJobQueue queue,
         ILabelJobStore store,
         IPrintTransport transport,
+        Android.Content.Context context,
         PcTemplateClient? pcClient = null)
     {
         _port = port;
@@ -40,6 +42,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         _store = store;
         _transport = transport;
         _status = transport as IPrinterStatusProvider;
+        _context = context;
         _pc = pcClient;
     }
 
@@ -265,6 +268,17 @@ public sealed class EmbeddedHttpServer : IDisposable
             return TestPrinter(cancellationToken);
         }
 
+        // ---- 宿主配置（与 WinHost GET/POST /api/host/config 同构；保存后重启宿主生效）----
+        if (method == "GET" && basePath == "/api/host/config")
+        {
+            return Json(200, HostConfigView.From(LabelHostConfig.Load(_context)));
+        }
+
+        if (method == "POST" && basePath == "/api/host/config")
+        {
+            return SaveHostConfig(body);
+        }
+
         // ---- PDA 测试模式（从 PC 单机服务拉模板 / 测试打印 / 日志回传）----
         if (method == "GET" && basePath == "/api/pc/templates")
         {
@@ -375,6 +389,31 @@ public sealed class EmbeddedHttpServer : IDisposable
                 : Json(409, new ErrorView(ex.Code, ex.Message));
         }
     }
+
+    /// <summary>宿主配置视图（GET /api/host/config 响应形状）。</summary>
+    private sealed record HostConfigView(string TcpHost, string? ServerUrl, string? PcHostUrl, string DeviceId, string LocalPort)
+    {
+        public static HostConfigView From(LabelHostConfig config)
+            => new(config.TcpHost, config.ServerUrl, config.PcHostUrl, config.DeviceId, $"127.0.0.1:{LabelHostConfig.LocalPort}");
+    }
+
+    /// <summary>保存宿主配置到 SharedPreferences（null / 空白字段保持原值）；传输与路由在下次宿主启动时按新配置创建。</summary>
+    private (int, string, byte[]) SaveHostConfig(string body)
+    {
+        try
+        {
+            var dto = System.Text.Json.JsonSerializer.Deserialize<HostConfigUpdateDto>(body, HostJson.Options);
+            var config = LabelHostConfig.Load(_context);
+            config.Persist(_context, dto?.TcpHost, dto?.ServerUrl, dto?.PcHostUrl, dto?.DeviceId);
+            return Json(200, HostConfigView.From(config));
+        }
+        catch (Exception ex)
+        {
+            return Json(400, new ErrorView(JobErrorCodes.InvalidRequest, $"配置解析失败：{ex.Message}"));
+        }
+    }
+
+    private sealed record HostConfigUpdateDto(string? TcpHost, string? ServerUrl, string? PcHostUrl, string? DeviceId);
 
     private (int, string, byte[]) GetPrinterStatus()
     {
