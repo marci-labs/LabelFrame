@@ -225,12 +225,18 @@ public sealed class MainActivity : Activity
     /// <summary>设置入口行：左侧标题 + 当前值摘要，右侧「›」；整行可点、高度 ≥64dp。</summary>
     private LinearLayout EntryRow(string title, Action onClick, out TextView summary)
     {
+        // 行内横向排列：文本列（宽度 0 + weight）+ 箭头。父容器必须是横向，
+        // 竖向容器里宽度 0 的子视图会被压成 0 宽（文字逐字换行、卡片又高又空）。
         var row = Card(Color.White);
+        row.Orientation = Orientation.Horizontal;
         row.SetPadding(Dp(16), Dp(12), Dp(12), Dp(12));
         row.SetMinimumHeight(Dp(64));
 
         var textColumn = new LinearLayout(this) { Orientation = Orientation.Vertical };
-        textColumn.LayoutParameters = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f);
+        textColumn.LayoutParameters = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f)
+        {
+            Gravity = GravityFlags.CenterVertical,
+        };
         var titleView = TextView(title, 15, ColorText, bold: true);
         titleView.LayoutParameters = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
         summary = TextView(string.Empty, 12.5f, ColorTextSecondary);
@@ -241,7 +247,10 @@ public sealed class MainActivity : Activity
 
         var chevron = TextView("›", 22, ColorTextSecondary);
         chevron.SetPadding(Dp(8), 0, 0, 0);
-        chevron.Gravity = GravityFlags.CenterVertical;
+        chevron.LayoutParameters = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent)
+        {
+            Gravity = GravityFlags.CenterVertical,
+        };
         row.AddView(chevron);
 
         row.Click += (_, _) => onClick();
