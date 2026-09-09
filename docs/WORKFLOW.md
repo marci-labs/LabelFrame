@@ -21,7 +21,7 @@
 
 ## 2. 日常迭代流程
 
-1. **立项**：从「迭代任务」模板建 Issue，写清目标与依据 / 范围 / 不在范围 / 验收标准（AC-xx）/ 启动命令。
+1. **立项**：从「迭代任务」模板建 Issue，写清目标与依据 / 范围 / 不在范围 / 验收标准（AC-xx）/ 启动命令。可用工作区 skill `/new-iteration` 辅助起草与创建（`.zcode/skills/new-iteration/`，随仓库版本化）。
 2. **恢复上下文**：新会话读 `AGENTS.md` → 本文件 → Issue 全文（含评论）→ 相关文档（DESIGN / REQUIREMENTS / ROADMAP 状态总览）。不重新初始化流程。
 3. **实施**：从最新 `master` 切短主题分支（建议 `iter/<N>-<slug>`、`fix/<slug>`、`feat/<slug>`）；严格按 Issue 范围，新想法开新 Issue 或记入 DESIGN「未决问题」。
 4. **本地检查**：`dotnet build LabelFrame.slnx` + `dotnet test`（排除 Perf/Soak）；前端改动加 `pnpm lint / test / build`。不用历史结果充当本轮结果。
