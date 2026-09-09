@@ -44,7 +44,7 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 4
 | `device_name` | PDA-xxxx | 设备名称（注册 Server 展示；xxxx 为设备码后 4 位） |
 | `device_uuid` | — | 设备号兜底（仅 ANDROID_ID 取不到时生成一次） |
 
-设备号自动取 `Settings.Secure.ANDROID_ID`（`pda-<id>`），不接受配置（多台设备天然不撞号；恢复出厂后变化，视为新设备）。读写入口：配置页 UI 或 `GET/POST /api/host/config`（POST 持久化，重启宿主生效——配置页「保存并应用」自动完成重启）。
+设备号自动取 `Settings.Secure.ANDROID_ID` 原值（2026-09-09 起不再加 `pda-` 前缀），不接受配置（多台设备天然不撞号；恢复出厂后变化，视为新设备）。读写入口：配置页 UI 或 `GET/POST /api/host/config`（POST 持久化，重启宿主生效——配置页「保存并重启服务」自动完成重启）。
 
 ## 构建
 

@@ -112,21 +112,21 @@ public sealed class LabelHostConfig
     }
 
     /// <summary>
-    /// 设备号取系统唯一码 ANDROID_ID（每台设备唯一、卸载重装不变、恢复出厂后变化——重置后的设备视为新设备）。
-    /// Android 8 之前部分设备会重复返回 9774d56d682e25f8，按取不到处理，本地生成 UUID 兜底。
+    /// 设备号取系统唯一码 ANDROID_ID 原值（每台设备唯一、卸载重装不变、恢复出厂后变化——重置后的设备视为新设备）。
+    /// Android 8 之前部分设备会重复返回 9774d56d682e25f8，按取不到处理，本地生成随机码兜底。
     /// </summary>
     private static string ResolveDeviceId(Context context, ISharedPreferences prefs)
     {
         var androidId = Settings.Secure.GetString(context.ContentResolver!, Settings.Secure.AndroidId);
         if (!string.IsNullOrWhiteSpace(androidId) && androidId != "9774d56d682e25f8")
         {
-            return $"pda-{androidId.ToLowerInvariant()}";
+            return androidId.ToLowerInvariant();
         }
 
         var uuid = prefs.GetString("device_uuid", null);
         if (string.IsNullOrWhiteSpace(uuid))
         {
-            uuid = $"pda-{Guid.NewGuid():N}";
+            uuid = Guid.NewGuid().ToString("N");
             var uuidEditor = prefs.Edit();
             uuidEditor?.PutString("device_uuid", uuid);
             uuidEditor?.Apply();

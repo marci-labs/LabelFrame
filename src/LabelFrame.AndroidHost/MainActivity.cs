@@ -19,7 +19,8 @@ namespace LabelFrame.AndroidHost;
 /// 三个子页各自编辑并保存（保存即重启宿主服务生效）；设备号由系统唯一码自动生成只读展示。
 /// 文案面向不懂技术的仓库用户：只说「这里填什么 / 点按钮会发生什么 / 状态意味着什么与下一步」。
 /// </summary>
-[Activity(Label = "LabelFrame 标签打印", MainLauncher = true, Exported = true, LaunchMode = LaunchMode.SingleTop)]
+[Activity(Label = "LabelFrame 标签打印", MainLauncher = true, Exported = true, LaunchMode = LaunchMode.SingleTop,
+    ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.KeyboardHidden)]
 public sealed class MainActivity : Activity
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(8) };
@@ -495,7 +496,7 @@ public sealed class MainActivity : Activity
         content.AddView(Header("本机信息"));
         content.AddView(Spacing(10));
 
-        content.AddView(FieldLabel("设备号（自动生成，不用改）"));
+        content.AddView(FieldLabel("设备号"));
         var idRow = new LinearLayout(this) { Orientation = Orientation.Horizontal };
         idRow.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
         _deviceIdText = TextView(_config.DeviceId, 14, ColorText);
@@ -514,7 +515,7 @@ public sealed class MainActivity : Activity
         _deviceNameInput = Input("例如：仓库门口 PDA", _config.DeviceName, InputTypes.ClassText);
         content.AddView(_deviceNameInput);
         content.AddView(Spacing(6));
-        content.AddView(Subtle("服务器设备列表里显示的名字，改一个好认的。"));
+        content.AddView(Subtle("服务器设备列表里显示的名字"));
         content.AddView(Spacing(20));
 
         _deviceSaveHint = SaveHint();
@@ -628,7 +629,7 @@ public sealed class MainActivity : Activity
         _statusPrinter.Text = view.PrinterLine;
         _serverEntrySummary.Text = view.ServerEntry;
         _printerEntrySummary.Text = view.PrinterEntry;
-        _deviceEntrySummary.Text = $"{_config.DeviceName} · 设备号自动生成";
+        _deviceEntrySummary.Text = _config.DeviceName;
     }
 
     private sealed record StatusView(
