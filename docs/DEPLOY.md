@@ -124,6 +124,12 @@ docker compose -f .\packaging\e2e\compose.yaml down
   LABELFRAME_SERVER_PENDING_TTL_HOURS=4      # 暂存 4 小时未投递即放弃
   LABELFRAME_SERVER_PENDING_TTL_HOURS=0      # 关闭过期（长期离线设备需人工处理）
   ```
+- 服务端 Claimed 作业超时回收（迭代 43）：作业被设备领取后默认 **30 分钟**未回报终态（宿主崩溃 / 重启后映射丢失），服务端按「宿主失联超时」回收为终态 **Failed**（原因含错误码 `LF_SRV_009` 与「结果未知，可能已实际打印；需重打请用新 requestId 重发」），不再停留 Claimed 直至历史清理；不自动重新投递（防重复打印），迟到的真实回报按幂等重放返回既有终态。判定只以领取时间 + 服务端时钟为准、与设备在线状态无关。配置 `Server.ClaimedJobTimeoutMinutes`（`LABELFRAME_SERVER_CLAIMED_TIMEOUT_MINUTES`），0 或负值 = 关闭回收（沿用现状）。例：
+  ```bash
+  LABELFRAME_SERVER_CLAIMED_TIMEOUT_MINUTES=30   # 默认：领取后 30 分钟未回报即回收为 Failed
+  LABELFRAME_SERVER_CLAIMED_TIMEOUT_MINUTES=720  # 长挂起场景（打印机离线数小时续打）调大余量
+  LABELFRAME_SERVER_CLAIMED_TIMEOUT_MINUTES=0    # 关闭回收（Claimed 永不超时，需人工处理）
+  ```
 - WinHost：`appsettings.json` 的 `WinHost` 节 + `LABELFRAME_*` 环境变量覆盖；常用传输变量示例：
   ```powershell
   $env:LABELFRAME_TRANSPORT = "Zebra"        # Zebra SDK；或 Tcp / WindowsDriver / Log
