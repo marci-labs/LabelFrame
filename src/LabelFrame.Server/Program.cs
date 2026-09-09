@@ -63,6 +63,8 @@ builder.Services.AddSingleton(pluginPackages);
 builder.Services.AddHostedService(sp => new DataCleanupService(db, logStore, serverOptions, sp.GetRequiredService<ILogger<DataCleanupService>>()));
 // Pending 过期扫描（TTL 关闭时任务直接退出）；正确性由领取查询的 TTL 过滤兜底
 builder.Services.AddHostedService(sp => new PendingJobExpirationService(db, serverOptions, timeProvider, sp.GetRequiredService<ILogger<PendingJobExpirationService>>()));
+// Claimed 超时回收扫描（超时关闭时任务直接退出）；回收为终态即最终，不重新投递
+builder.Services.AddHostedService(sp => new ClaimedJobTimeoutService(db, serverOptions, timeProvider, sp.GetRequiredService<ILogger<ClaimedJobTimeoutService>>()));
 // Skia 渲染器实例单例：DI 与共享端点（模板预览 / 调试出图）共用同一实例
 var skiaRenderer = new SkiaLabelRenderer();
 builder.Services.AddSingleton<ILabelBitmapRenderer>(skiaRenderer);

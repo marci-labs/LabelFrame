@@ -47,7 +47,13 @@ public sealed class ServerOptions
     /// <summary>解析后的 Pending 暂存 TTL；null = 关闭过期（不领取过滤、不扫描标记）。</summary>
     public TimeSpan? PendingJobTtl => PendingJobTtlHours > 0 ? TimeSpan.FromHours(PendingJobTtlHours) : null;
 
-    /// <summary>Pending 过期扫描周期（分钟）：后台任务按此周期把超期 Pending 标记为 Expired。</summary>
+    /// <summary>Claimed 作业超时回收时长（分钟）：领取后超过该时长未回报终态视为「宿主失联」，回收为 Failed（LF_SRV_009）；0 或负值 = 关闭回收（行为与现状一致）。</summary>
+    public int ClaimedJobTimeoutMinutes { get; set; } = 30;
+
+    /// <summary>解析后的 Claimed 超时；null = 关闭回收（不扫描标记）。</summary>
+    public TimeSpan? ClaimedJobTimeout => ClaimedJobTimeoutMinutes > 0 ? TimeSpan.FromMinutes(ClaimedJobTimeoutMinutes) : null;
+
+    /// <summary>过期 / 超时扫描周期（分钟）：后台任务按此周期把超期 Pending 标记为 Expired、把失联 Claimed 回收为 Failed。</summary>
     public int ExpirationScanIntervalMinutes { get; set; } = 5;
 
     /// <summary>文本日志文件路径（为空不写文件；Linux 部署挂载到宿主机查看）。</summary>
@@ -119,6 +125,11 @@ public sealed class ServerOptions
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_PENDING_TTL_HOURS") is { } ttlHours && int.TryParse(ttlHours, out var pendingTtl))
         {
             PendingJobTtlHours = pendingTtl;
+        }
+
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_CLAIMED_TIMEOUT_MINUTES") is { } timeoutMinutes && int.TryParse(timeoutMinutes, out var claimedTimeout))
+        {
+            ClaimedJobTimeoutMinutes = claimedTimeout;
         }
 
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_EXPIRATION_SCAN_MINUTES") is { } scanMinutes && int.TryParse(scanMinutes, out var expirationScan))

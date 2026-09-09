@@ -401,6 +401,28 @@ public sealed class ServerDb
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// 把失联 Claimed 作业批量回收为 Failed 终态（原因由调用方给出，含错误码与超时时长）；返回回收条数。
+    /// 与回报的竞态由「status = Claimed」条件收敛：回报先落库（Completed / Failed）则本 UPDATE 不命中；
+    /// 回收先落库则回报走幂等重放返回既有终态——两个方向都不会互相覆盖。
+    /// </summary>
+    public async Task<int> MarkTimedOutClaimedJobsAsync(DateTimeOffset now, DateTimeOffset timeoutCutoff, string reason, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE server_jobs
+            SET status = $failed, finished_at = $now, error_message = $reason
+            WHERE status = $claimed AND COALESCE(claimed_at, created_at) < $cutoff;
+            """;
+        command.Parameters.AddWithValue("$failed", ServerJobStatus.Failed.ToString());
+        command.Parameters.AddWithValue("$claimed", ServerJobStatus.Claimed.ToString());
+        command.Parameters.AddWithValue("$now", SqliteSupport.Format(now));
+        command.Parameters.AddWithValue("$reason", reason);
+        command.Parameters.AddWithValue("$cutoff", SqliteSupport.Format(timeoutCutoff));
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     /// <summary>删除终态（Completed / Failed / Expired）且结束 / 创建时间早于截止时间的作业（历史清理用）。</summary>
     public async Task<int> DeleteTerminalJobsBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
     {

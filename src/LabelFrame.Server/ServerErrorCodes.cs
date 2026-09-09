@@ -26,4 +26,7 @@ public static class ServerErrorCodes
 
     /// <summary>传输插件包不存在。</summary>
     public const string PluginPackageNotFound = "LF_SRV_008";
+
+    /// <summary>宿主失联超时（Claimed 作业超时回收的原因码，嵌入回收后的 ErrorMessage 文案；非 HTTP 错误响应）。</summary>
+    public const string HostLostTimeout = "LF_SRV_009";
 }
