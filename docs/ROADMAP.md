@@ -59,6 +59,7 @@
 | 检查点 | 试点验收（成功衡量） | ✅ 已完成（2026-08-17：扫码枪 50 张 + 连续 100 张压力验证通过） |
 | 42 | 工作流重构：Issue 驱动迭代 + PR 门禁（squash / 双必需检查 / ROADMAP 瘦身） | ✅ 已完成（2026-09-09 门禁演练双通过，[#1](https://github.com/marci-labs/LabelFrame/issues/1)） |
 | 43 | Claimed 作业超时回收（宿主重启后终态化：Failed + LF_SRV_009，默认 30 分钟） | ✅ 已完成（2026-09-09，[#4](https://github.com/marci-labs/LabelFrame/issues/4)） |
+| 44 | Windows 客户端窗口化（WebView2 嵌入界面壳 + MSI 运行时引导） | 🔄 待验收（2026-09-09 代码合并，[#8](https://github.com/marci-labs/LabelFrame/issues/8)；欠真机安装 / 托盘视觉 / 全功能冒烟） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）

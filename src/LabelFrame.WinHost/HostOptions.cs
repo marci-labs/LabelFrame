@@ -130,7 +130,7 @@ public sealed class HostOptions
         "LabelFrame",
         "host.log");
 
-    /// <summary>启动后自动打开默认浏览器（单机模式默认开启，可用 LABELFRAME_OPEN_BROWSER=0 关闭）。</summary>
+    /// <summary>启动时显示界面（迭代 44 起语义演进：默认开 = 显示应用窗口，WebView2 运行时不可用时回退打开默认浏览器；LABELFRAME_OPEN_BROWSER=0 关闭）。--autostart 强制关闭（仅托盘常驻）。</summary>
     public bool OpenBrowser { get; set; } = true;
 
     /// <summary>系统托盘图标（默认开启，可用 LABELFRAME_TRAY=0 关闭）。</summary>

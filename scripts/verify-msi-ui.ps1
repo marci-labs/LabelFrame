@@ -33,7 +33,7 @@ foreach ($path in $MsiPaths) {
 
     Write-Host '-- InstallUISequence（关键顺序）--'
     # MSI SQL 不支持 IN，用 OR 链
-    $seqSql = "SELECT Action, Sequence FROM InstallUISequence WHERE Action = 'RuntimeMissingDlg' OR Action = 'ClearDataDlg' OR Action = 'WelcomeDlg' OR Action = 'LicenseAgreementDlg' OR Action = 'InstallDirDlg' OR Action = 'VerifyReadyDlg' OR Action = 'ExitDialog' OR Action = 'ExecuteAction' ORDER BY Sequence"
+    $seqSql = "SELECT Action, Sequence FROM InstallUISequence WHERE Action = 'RuntimeMissingDlg' OR Action = 'WebView2MissingDlg' OR Action = 'ClearDataDlg' OR Action = 'WelcomeDlg' OR Action = 'LicenseAgreementDlg' OR Action = 'InstallDirDlg' OR Action = 'VerifyReadyDlg' OR Action = 'ExitDialog' OR Action = 'ExecuteAction' ORDER BY Sequence"
     $seq = Invoke-MsiQuery $db $seqSql
     $seq | ForEach-Object { Write-Host ("  {0} = {1}" -f $_[0], $_[1]) }
 
@@ -76,17 +76,38 @@ foreach ($path in $MsiPaths) {
     if ($nextText -notlike '*下一步*') { throw '向导文案未中文化（-culture zh-cn 未生效）' }
 
     # 关键断言：向导齐全 + 运行时检查在欢迎页之前
+    # 取行模式说明：管道过滤后的单行结果是裸行数组，[1] = 该行第 2 列（序号）；
+    # 转数值用 [int]::Parse——非数值直接抛错（PS 的 [int] 比较转换失败会静默回退字符串比较，形成空转断言）
     $dialogs = Invoke-MsiQuery $db 'SELECT Dialog FROM Dialog' | ForEach-Object { $_[0] }
-    foreach ($required in @('WelcomeDlg', 'LicenseAgreementDlg', 'InstallDirDlg', 'VerifyReadyDlg', 'ExitDialog', 'RuntimeMissingDlg', 'ClearDataDlg')) {
+    foreach ($required in @('WelcomeDlg', 'LicenseAgreementDlg', 'InstallDirDlg', 'VerifyReadyDlg', 'ExitDialog', 'RuntimeMissingDlg', 'WebView2MissingDlg', 'ClearDataDlg')) {
         if ($required -notin $dialogs) { throw "缺少对话框：$required" }
     }
     $runtimeSeq = ($seq | Where-Object { $_[0] -eq 'RuntimeMissingDlg' })[1]
     $welcomeSeq = ($seq | Where-Object { $_[0] -eq 'WelcomeDlg' })[1]
-    if ([int]$runtimeSeq -ge [int]$welcomeSeq) { throw "RuntimeMissingDlg($runtimeSeq) 应早于 WelcomeDlg($welcomeSeq)" }
-    $clearSeq = ($seq | Where-Object { $_[0] -eq 'ClearDataDlg' })[0][1]
-    $execSeq = ($seq | Where-Object { $_[0] -eq 'ExecuteAction' })[0][1]
-    if ([int]$clearSeq -ge [int]$execSeq) { throw "ClearDataDlg($clearSeq) 应早于 ExecuteAction($execSeq)，否则勾选属性传不进清理动作" }
-    Write-Host "断言通过：向导齐全，运行时检查（$runtimeSeq）先于欢迎页（$welcomeSeq）。"
+    if ([int]::Parse($runtimeSeq) -ge [int]::Parse($welcomeSeq)) { throw "RuntimeMissingDlg($runtimeSeq) 应早于 WelcomeDlg($welcomeSeq)" }
+    $webview2Seq = ($seq | Where-Object { $_[0] -eq 'WebView2MissingDlg' })[1]
+    if ([int]::Parse($webview2Seq) -ge [int]::Parse($welcomeSeq)) { throw "WebView2MissingDlg($webview2Seq) 应早于 WelcomeDlg($welcomeSeq)" }
+    if ([int]::Parse($webview2Seq) -le [int]::Parse($runtimeSeq)) { throw "WebView2MissingDlg($webview2Seq) 应晚于 RuntimeMissingDlg($runtimeSeq)（两者都缺时先引导 .NET）" }
+    $clearSeq = ($seq | Where-Object { $_[0] -eq 'ClearDataDlg' })[1]
+    $execSeq = ($seq | Where-Object { $_[0] -eq 'ExecuteAction' })[1]
+    if ([int]::Parse($clearSeq) -ge [int]::Parse($execSeq)) { throw "ClearDataDlg($clearSeq) 应早于 ExecuteAction($execSeq)，否则勾选属性传不进清理动作" }
+
+    # WebView2 运行时检测契约（迭代 44）：双注册表视图 + LaunchCondition 拦截 + 向导内重新检测
+    $regLocators = Invoke-MsiQuery $db 'SELECT * FROM RegLocator' | Where-Object { ($_ | Where-Object { "$_" -like '*EdgeUpdate*' }).Count -gt 0 }
+    if ($regLocators.Count -lt 2) { throw "WebView2 注册表检测应含 per-machine / per-user 双视图（RegLocator EdgeUpdate 行数 $($regLocators.Count)）" }
+    Write-Host "WebView2 注册表检测：$($regLocators.Count) 个 EdgeUpdate 视图 OK"
+    $webview2Launch = Invoke-MsiQuery $db 'SELECT Condition, Description FROM LaunchCondition' |
+        Where-Object { "$($_[0])" -like '*WEBVIEW2*' }
+    if ($webview2Launch.Count -lt 1) { throw '缺少 WebView2 LaunchCondition（静默 / 基础 UI 拦截提示）' }
+    Write-Host 'WebView2 LaunchCondition：OK'
+    $customActions = Invoke-MsiQuery $db 'SELECT Action FROM CustomAction' | ForEach-Object { $_[0] }
+    if ('RecheckWebView2' -notin $customActions) { throw '缺少 RecheckWebView2 自定义动作（重新检测）' }
+    $retryChain = Invoke-MsiQuery $db 'SELECT * FROM ControlEvent' |
+        Where-Object { $_[0] -eq 'WebView2MissingDlg' -and $_[1] -eq 'RetryButton' -and $_[3] -eq 'RecheckWebView2' }
+    if ($retryChain.Count -lt 1) { throw 'WebView2MissingDlg.RetryButton 应触发 RecheckWebView2（装完运行时无需重启安装程序）' }
+    Write-Host 'WebView2 缺失对话框：重新检测链路 OK'
+
+    Write-Host "断言通过：向导齐全，运行时检查（.NET $runtimeSeq / WebView2 $webview2Seq）先于欢迎页（$welcomeSeq）。"
     Write-Host ''
     [System.Runtime.InteropServices.Marshal]::ReleaseComObject($db) | Out-Null
 }

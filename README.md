@@ -28,8 +28,8 @@
 
 ### 文员：一台电脑一台打印机（单机模式）
 
-1. 从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载并安装 `LabelFrame-Server-x.x.x.msi` 与 `LabelFrame-Client-x.x.x.msi`（需 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)，缺失时安装包会给出官方下载链接）。
-2. Client 装完会自动打开浏览器 `http://127.0.0.1:53960`（没弹出就手动访问）。
+1. 从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载并安装 `LabelFrame-Server-x.x.x.msi` 与 `LabelFrame-Client-x.x.x.msi`（需 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) 与 [Microsoft Edge WebView2 运行时](https://go.microsoft.com/fwlink/p/?LinkId=2124703)，缺失时安装包会给出官方下载链接）。
+2. Client 装完会自动打开 **LabelFrame 应用窗口**（自有窗口与任务栏图标，也可从桌面快捷方式打开）；窗口关闭后服务驻留系统托盘，打印不受影响。
 3. 「设计器」页新建模板：画布拖入文本 / 条码 / 二维码，毫米级排版，实时预览。
 4. 「数据与打印」页填数据（或「下载 Excel 模板」→ 填好 → 导入）。
 5. 点打印。第一次使用先在「设置 → 连接方式」选连接（无打印机时选 `log` 模拟验证，出图在 `%LOCALAPPDATA%\LabelFrame\print`）。
