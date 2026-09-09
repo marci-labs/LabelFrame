@@ -58,8 +58,8 @@
 
 | 演练 | 结果 | 证据 |
 |---|---|---|
-| 失败阻断：故意失败 PR 应被禁止合并 | 待结项 PR 填写 | 待结项 PR 填写 |
-| 正常合并：合法变更全绿后可 squash 合并 | 待结项 PR 填写 | 待结项 PR 填写 |
+| 失败阻断：故意失败 PR 应被禁止合并 | ✅ 通过——两项必需检查失败（注入 `DrillGateFail.cs` 语法错误，dotnet build 报 `CS1525`，因果确认），`mergeStateStatus=BLOCKED`，平台禁止合并；PR 关闭、分支删除 | [PR #2](https://github.com/marci-labs/LabelFrame/pull/2)（job 日志见 Actions run 34326168208） |
+| 正常合并：合法变更全绿后可 squash 合并 | ✅ 通过——本表所在的 PR（首个正式 PR）两项必需检查针对最新提交全绿后 squash 合并入 master | [PR #3](https://github.com/marci-labs/LabelFrame/pull/3) |
 
 ## 6. 选配未启用
 
