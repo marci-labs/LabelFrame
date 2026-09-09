@@ -19,11 +19,11 @@
 下载：[GitHub Releases](https://github.com/marci-labs/LabelFrame/releases)。
 
 - **LabelFrame-Server-x.x.x.msi** → `C:\Program Files\LabelFrame\Server`：无头服务端（模板库 / 作业中心 / 设备投递 / 调试出图 / 日志 / Excel），不接打印机、不提供 Web UI；安装为 Windows 服务 `LabelFrameServer`，数据在 `%ProgramData%\LabelFrame\server`。
-- **LabelFrame-Client-x.x.x.msi** → `C:\Program Files\LabelFrame\Client`：打印客户端，托管完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史），浏览器打开 `http://127.0.0.1:53960`。
+- **LabelFrame-Client-x.x.x.msi** → `C:\Program Files\LabelFrame\Client`：打印客户端，以应用窗口（WebView2 嵌入界面壳）托管完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史），本机地址 `http://127.0.0.1:53960`；窗口关闭后服务驻留系统托盘（真正退出走托盘「退出」）。
 
 要点：
 
-- 前置：.NET 10 Desktop Runtime（x64）。MSI 内置官方自检（NetCoreCheck）：缺失时弹出可点击的官方下载链接（不自动安装）。
+- 前置：.NET 10 Desktop Runtime（x64）+ Microsoft Edge WebView2 运行时（Evergreen，Win10/11 多数已随 Edge 预装）。MSI 内置检测：.NET 缺失时 NetCoreCheck 自检弹出可点击的官方下载链接（不自动安装）；WebView2 缺失时全 UI 安装显示带官方下载链接的中文对话框（装完点「重新检测」即可继续，无需重启安装程序），静默 / 基础 UI 由 LaunchCondition 拦截提示。客户端启动时若 WebView2 初始化失败，自动回退默认浏览器打开界面并在 host.log 记录原因。
 - 单机使用 = 同机安装两个包；多台打印电脑 = 每台装 Client，设置页把服务端地址指向服务端 IP。
 - 两个包的 appsettings.json 均为独立用户配置组件：覆盖安装 / 修复不覆盖、卸载保留。卸载时可选是否清除用户数据（默认不清除）。
 - 公开下载的 MSI 若未用受信任商业证书签名，Windows 可能提示「未知发布者」，点「仍要运行」即可；内网可把自签根证书加入受信任根消除提示（见 §7 签名）。

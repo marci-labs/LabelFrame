@@ -17,18 +17,24 @@
     <OutputType>WinExe</OutputType>
     <ApplicationIcon>..\..\assets\labelframe.ico</ApplicationIcon>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- WebView2 包的 buildTransitive 同时引用 Wpf 变体（本项目未用 WPF），与框架 WindowsBase 版本解析产生 MSB3277，属良性冲突 -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Zebra 官方 Link-OS SDK：USB / TCP / 驱动 / 蓝牙 统一连接与打印机状态 -->
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
     <PackageReference Include="Zebra.Printer.SDK" Version="3.0.3355" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <!-- 界面壳：WebView2 嵌入窗口（迭代 44，决策 #99；原生 WebView2Loader.dll 随发布产物进 MSI） -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
     <!-- 文件日志：Serilog.AspNetCore 传递依赖 Serilog.Sinks.File，无需单独引用 -->
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <Compile Remove="TrayIconService.cs" />
+    <Compile Remove="Ui\UiShell.cs" />
+    <Compile Remove="Ui\WindowShell.cs" />
     <Compile Remove="Transport\RawPrinterTransport.cs" />
     <Compile Remove="Transport\WinspoolTransportPlugin.cs" />
     <Compile Remove="Transport\ZebraPrinterTransport.cs" />

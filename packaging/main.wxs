@@ -36,6 +36,22 @@
     <Launch Condition="DOTNET10_PRESENT = &quot;0&quot; OR UILevel = 5 OR REMOVE"
       Message="本机未检测到 .NET Desktop Runtime，请先安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
 
+    <!-- 检测 WebView2 Evergreen 运行时（迭代 44，决策 #99 D2=C）：界面窗口（WebView2 嵌入）依赖；
+         注册表 EdgeUpdate Clients 的 WebView2 产品键（per-machine 走 WOW6432Node 视图 / per-user HKCU），
+         键随运行时安装即写入 → 向导内「重新检测」装完即可继续（无需重启安装程序）。
+         全 UI 缺失时由 WebView2MissingDlg 引导（下方）；静默 / 基础 UI 由 LaunchCondition 拦截。 -->
+    <Property Id="WEBVIEW2_HKLM">
+      <RegistrySearch Id="WebView2PerMachine" Root="HKLM" Key="SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" Name="pv" Type="raw" />
+    </Property>
+    <Property Id="WEBVIEW2_HKCU">
+      <RegistrySearch Id="WebView2PerUser" Root="HKCU" Key="SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" Name="pv" Type="raw" />
+    </Property>
+    <!-- 「重新检测」实现：外部 VBScript 立即时动作重读注册表（WiX v7 移除内联脚本，须 ScriptSourceFile）；
+         VBScript 为已弃用组件（WIX1163）：仅用于本按钮的重新检测，退出按钮不依赖它 -->
+    <CustomAction Id="RecheckWebView2" Script="vbscript" ScriptSourceFile="$(var.PackagingDir)/recheck-webview2.vbs" />
+    <Launch Condition="WEBVIEW2_HKLM OR WEBVIEW2_HKCU OR UILevel = 5 OR REMOVE"
+      Message="本机未检测到 Microsoft Edge WebView2 运行时（LabelFrame 界面窗口依赖），请先安装后重新运行安装程序。下载：https://go.microsoft.com/fwlink/p/?LinkId=2124703" />
+
     <!-- 运行时缺失对话框：可点击官方下载链接（MSI Hyperlink 控件） -->
     <UI Id="RuntimeCheckUI">
       <Dialog Id="RuntimeMissingDlg" X="50" Y="50" Width="370" Height="180"
@@ -49,6 +65,26 @@
         <Control Id="ExitButton" Type="PushButton" X="280" Y="140" Width="75" Height="25"
                  Text="退出" Default="yes" Cancel="yes">
           <Publish Event="EndDialog" Value="Exit" Condition="1" />
+        </Control>
+      </Dialog>
+      <!-- WebView2 运行时缺失（全 UI）：官方下载链接 + 重新检测（注册表键随运行时安装即写入，装完点重新检测即可继续，无需重启安装程序） -->
+      <Dialog Id="WebView2MissingDlg" X="50" Y="50" Width="370" Height="200"
+              Title="LabelFrame 安装 - 缺少 WebView2 运行时" NoMinimize="yes">
+        <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="40"
+                 Text="本机未检测到 Microsoft Edge WebView2 运行时（LabelFrame 界面窗口需要），请先安装。" />
+        <Control Id="HintText" Type="Text" X="15" Y="62" Width="340" Height="20"
+                 Text="点击下方链接打开微软官方下载页（Evergreen 版本）：" />
+        <Control Id="WebView2Link" Type="Hyperlink" X="15" Y="87" Width="340" Height="25"
+                 Text="&lt;a href=&quot;https://go.microsoft.com/fwlink/p/?LinkId=2124703&quot;&gt;https://go.microsoft.com/fwlink/p/?LinkId=2124703&lt;/a&gt;" />
+        <Control Id="HintText2" Type="Text" X="15" Y="118" Width="340" Height="20"
+                 Text="安装完成后点击「重新检测」继续本安装程序。" />
+        <Control Id="RetryButton" Type="PushButton" X="177" Y="160" Width="90" Height="25" Text="重新检测">
+          <Publish Event="DoAction" Value="RecheckWebView2" />
+          <Publish Event="EndDialog" Value="Return" Condition="WEBVIEW2_OK = &quot;1&quot;" />
+        </Control>
+        <Control Id="ExitButton" Type="PushButton" X="280" Y="160" Width="75" Height="25"
+                 Text="退出" Default="yes" Cancel="yes">
+          <Publish Event="EndDialog" Value="Exit" />
         </Control>
       </Dialog>
       <!-- 卸载时询问是否清除用户数据（默认不勾选；仅手动卸载，不适用于升级） -->
@@ -77,7 +113,7 @@
         <Control Id="AutoStartCheck" Type="CheckBox" X="20" Y="80" Width="300" Height="17"
                  Property="AUTO_START" CheckBoxValue="1" Text="开机自动启动 LabelFrame" />
         <Control Id="AutoStartHint" Type="Text" X="20" Y="105" Width="320" Height="40"
-                 Text="开机自启以托盘方式常驻运行，不自动打开浏览器界面；可随时从托盘图标退出或暂停。" />
+                 Text="开机自启以托盘方式常驻运行，不自动打开界面窗口；可随时从托盘图标打开界面或退出。" />
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="上一步(&amp;B)">
           <Publish Event="NewDialog" Value="InstallDirDlg" />
         </Control>
@@ -100,6 +136,9 @@
     <InstallUISequence>
       <Show Dialog="RuntimeMissingDlg" Sequence="1150"
             Condition="NOT DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
+      <!-- WebView2 检测在 .NET 检测之后（两者都缺时先引导 .NET）；全 UI 才显示，静默 / 基础 UI 由 LaunchCondition 拦截 -->
+      <Show Dialog="WebView2MissingDlg" Sequence="1160"
+            Condition="NOT WEBVIEW2_HKLM AND NOT WEBVIEW2_HKCU AND DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
       <Show Dialog="ClearDataDlg" Sequence="1290"
             Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
     </InstallUISequence>
@@ -128,7 +167,7 @@
       <Directory Id="ApplicationProgramsFolder" Name="LabelFrame">
         <Component Id="StartMenuShortcut">
           <Shortcut Id="StartMenuShortcut" Name="LabelFrame Client"
-                    Description="启动 LabelFrame 并打开浏览器编辑模板"
+                    Description="打开 LabelFrame 界面编辑与打印标签"
                     Target="[#WinHostExe]"
                     WorkingDirectory="INSTALLFOLDER" />
           <RemoveFolder Id="ApplicationProgramsRemove" Directory="ApplicationProgramsFolder" On="uninstall" />
@@ -141,7 +180,7 @@
     <StandardDirectory Id="DesktopFolder">
       <Component Id="DesktopShortcut">
         <Shortcut Id="DesktopShortcut" Name="LabelFrame Client"
-                  Description="启动 LabelFrame 并打开浏览器编辑模板"
+                  Description="打开 LabelFrame 界面编辑与打印标签"
                   Target="[#WinHostExe]"
                   WorkingDirectory="INSTALLFOLDER" />
         <RemoveFolder Id="DesktopRemove" Directory="DesktopFolder" On="uninstall" />

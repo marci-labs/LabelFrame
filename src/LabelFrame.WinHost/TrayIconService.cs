@@ -144,24 +144,24 @@ public sealed class TrayIconService : IDisposable
     }
 
     /// <summary>启动托盘（独立消息循环线程）。</summary>
-    /// <param name="listenUrl">界面地址（双击 / 菜单打开）。</param>
+    /// <param name="openUi">打开界面回调（界面壳：显示并前置窗口；浏览器兜底：打开默认浏览器）。</param>
     /// <param name="shutdown">退出回调（停止宿主）。</param>
-    public void Start(string listenUrl, Func<Task> shutdown)
+    public void Start(Action openUi, Func<Task> shutdown)
     {
-        _thread = new Thread(() => RunTrayLoop(listenUrl, shutdown))
+        _thread = new Thread(() => RunTrayLoop(openUi, shutdown))
         {
             IsBackground = true,
         };
         _thread.Start();
     }
 
-    private void RunTrayLoop(string listenUrl, Func<Task> shutdown)
+    private void RunTrayLoop(Action openUi, Func<Task> shutdown)
     {
         try
         {
             _threadId = GetCurrentThreadId();
             var instance = GetModuleHandle(null);
-            _wndProc = (hWnd, msg, wParam, lParam) => WndProc(hWnd, msg, wParam, lParam, listenUrl, shutdown);
+            _wndProc = (hWnd, msg, wParam, lParam) => WndProc(hWnd, msg, wParam, lParam, openUi, shutdown);
 
             // 注册窗口类并创建隐藏消息窗口
             var wc = new WNDCLASS
@@ -213,18 +213,18 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, string listenUrl, Func<Task> shutdown)
+    private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, Action openUi, Func<Task> shutdown)
     {
         if (msg == WM_USER + 1)
         {
             var mouseMsg = (uint)lParam.ToInt64();
             if (mouseMsg == WM_RBUTTONUP)
             {
-                ShowMenu(listenUrl, shutdown);
+                ShowMenu(openUi, shutdown);
             }
             else if (mouseMsg == WM_LBUTTONDBLCLK)
             {
-                OpenBrowser(listenUrl);
+                openUi();
             }
 
             return IntPtr.Zero;
@@ -238,7 +238,7 @@ public sealed class TrayIconService : IDisposable
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
-    private void ShowMenu(string listenUrl, Func<Task> shutdown)
+    private void ShowMenu(Action openUi, Func<Task> shutdown)
     {
         GetCursorPos(out var pt);
         var menu = CreatePopupMenu();
@@ -250,7 +250,7 @@ public sealed class TrayIconService : IDisposable
 
         if (cmd == CmdOpen)
         {
-            OpenBrowser(listenUrl);
+            openUi();
         }
         else if (cmd == CmdExit)
         {
@@ -265,22 +265,6 @@ public sealed class TrayIconService : IDisposable
                     // 退出回调异常由宿主记录
                 }
             });
-        }
-    }
-
-    private static void OpenBrowser(string url)
-    {
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true,
-            });
-        }
-        catch
-        {
-            // 打开浏览器失败忽略
         }
     }
 
