@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## v0.24.0 迭代 40-47 汇总发布 · 2026-09-10
+
+- **打包范围**：PDA 宿主配置与测试体验（迭代 40，含本机 HTTP 配置端点）、PDA 配置界面文案与视觉优化（迭代 41）、服务端 Claimed 作业超时回收（迭代 43）、Windows 客户端窗口化（迭代 44）、批次首张节奏修正 + 设置页布局自适应 + 工作台小修（迭代 45）、工作台模板缩略图预览（迭代 46）、作业可观测性——进度增量上报 + 日志细化 + 缺陷 #14 修复（迭代 47）；迭代 42（工作流重构）与流程治理（worktree 并行）为流程 / 文档变更，不影响产物。详见各迭代条目。
+- **服务端行为变更（部署注意）**：Claimed 作业超时回收默认开启（30 分钟；`Server.ClaimedJobTimeoutMinutes` / `LABELFRAME_SERVER_CLAIMED_TIMEOUT_MINUTES`，0 或负值 = 关闭）——宿主失联的领取作业超期终态化 Failed（`LF_SRV_009`，文案明示「结果未知，可能已实际打印」，禁止自动重投）；长挂起场景（如打印机离线挂起数小时）可调大或关闭规避误判。
+- **跨端公共契约新增（决策 #101，向后兼容）**：宿主→Server 新增 `POST /api/devices/{deviceId}/jobs/{jobId}/progress` 进度增量上报端点；旧版宿主不调用行为不变，新版宿主对旧版 Server 的 progress 上报收到 404 时静默降级、不影响打印主链路。**进度逐张增长需 Server 与宿主（客户端 / PDA）双侧均升级到本版本**。
+- **客户端可感知变更**：客户端安装后为自有应用窗口（WebView2 嵌入、托盘常驻、单实例激活；MSI 自动引导安装 WebView2 运行时）；批次作业每个作业首张不再等待批间间隔（决策 #100，作业内节流语义不变）；日志级别可配置（`LABELFRAME_LOG_LEVEL` / `WinHost:LogLevel`，默认 Information）；修复 Serilog 逐张日志不再落盘缺陷（#14，`app-*.log` 恢复写入）。
+- **版本同步**：`/api/server/info` 版本与稳定版 Compose 默认版本更新为 `0.24.0`。
+- **发布产物**：GitHub Release 附件（Server / Client MSI、服务端 webui 插件 zip、linux-x64 归档）+ ghcr 镜像 `ghcr.io/marci-labs/labelframe-server:0.24.0` / `labelframe-client:0.24.0`（均含 `latest`）。AndroidHost（PDA）不随 Release 分发，需本地构建安装。
+
 ## 迭代 47 作业可观测性（进度增量上报 + 日志细化 + 缺陷 #14 修复） · 2026-09-10
 
 - **进度增量上报（决策 #101，跨端公共契约——强化路径）**：Server 新增 `POST /api/devices/{deviceId}/jobs/{jobId}/progress`——请求体 `{ completedItems, failedItems }`（无宿主时间戳，服务端时钟唯一权威）；仅 `Claimed` 接受，计数**按字段取 max 单调递增**（乱序 / 迟到 / 重复上报不回退）；只增不改终态（不写 status / finished_at、不刷新 claimed_at，与决策 #98 超时回收正交）；终态收到 progress 幂等 no-op 返回当前视图、`Pending` 409、错误语义与 result 端点完全一致；result 仍是唯一终态写入者（绝对值覆盖）。打印中查询 `GET /api/jobs/{jobId}` / 作业历史的计数逐步增长，不再终态一次跳变（本机联调实证：10 张节流作业轮询序列 Claimed 1→2→…→9→Completed 10）。
