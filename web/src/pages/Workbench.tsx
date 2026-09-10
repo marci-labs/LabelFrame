@@ -1,8 +1,9 @@
 // 工作台：模板列表（名称搜索 + 分组过滤）/ 新建 / 编辑 / 删除 / 导出 / 导入
 // 迭代 18：业务 API 跟随模式——服务端 = serverApi（模板中心）；单机降级 = localApi（本机 WinHost 模板库）。
 // 迭代 45：模板名搜索（子串匹配、大小写不敏感，与分组过滤叠加生效）。
+// 迭代 46：模板行悬停按需预览（防抖触发、会话内缓存随列表刷新失效）。
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { TemplateSummary } from '../lib/api/types'
@@ -10,6 +11,9 @@ import { useApp } from '../state/AppContext'
 import type { DesignerRequest } from '../state/types'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
+import { PREVIEW_HOVER_DELAY_MS, useTemplatePreviewCache } from './useTemplatePreview'
+import { TemplatePreviewPop } from './WorkbenchPreview'
+import type { PreviewAnchor } from './WorkbenchPreview'
 
 export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRequest) => void }) {
   const app = useApp()
@@ -25,6 +29,18 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
   const [deleting, setDeleting] = useState<TemplateSummary | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
+  // 悬停预览（迭代 46）：缓存随 biz 模式切换后的重新 load 失效
+  const preview = useTemplatePreviewCache(biz.previewTemplate)
+  const [previewAnchor, setPreviewAnchor] = useState<PreviewAnchor | null>(null)
+  const previewTimer = useRef<number | null>(null)
+  const clearPreviewTimer = useCallback(() => {
+    if (previewTimer.current !== null) {
+      window.clearTimeout(previewTimer.current)
+      previewTimer.current = null
+    }
+  }, [])
+  useEffect(() => clearPreviewTimer, [clearPreviewTimer])
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -32,12 +48,14 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
       const list = await biz.listTemplates()
       setTemplates(list)
       setGroups([...new Set(list.map((t) => t.group))].sort())
+      // 列表刷新 = 新周期：模板可能已修改，预览缓存整体失效（释放 blob URL）
+      preview.invalidate()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '加载模板列表失败。')
     } finally {
       setLoading(false)
     }
-  }, [biz])
+  }, [biz, preview])
 
   useEffect(() => {
     if (serverMode === 'unknown') return
@@ -184,7 +202,24 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
             </thead>
             <tbody>
               {filtered.map((t, i) => (
-                <tr key={t.name} onDoubleClick={() => onOpenDesigner({ kind: 'edit', name: t.name })} title="双击打开设计器">
+                <tr
+                  key={t.name}
+                  onDoubleClick={() => onOpenDesigner({ kind: 'edit', name: t.name })}
+                  title="双击打开设计器"
+                  onMouseEnter={(ev) => {
+                    clearPreviewTimer()
+                    const row = ev.currentTarget
+                    previewTimer.current = window.setTimeout(() => {
+                      const rect = row.getBoundingClientRect()
+                      setPreviewAnchor({ name: t.name, top: rect.top, left: rect.left, right: rect.right })
+                      preview.ensure(t.name)
+                    }, PREVIEW_HOVER_DELAY_MS)
+                  }}
+                  onMouseLeave={() => {
+                    clearPreviewTimer()
+                    setPreviewAnchor(null)
+                  }}
+                >
                   <td className="mono" style={{ color: 'var(--ink-3)' }}>{i + 1}</td>
                   <td style={{ fontWeight: 600 }}>{t.name}</td>
                   <td>
@@ -215,6 +250,11 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
           </table>
         )}
       </div>
+
+      {previewAnchor && (() => {
+        const entry = preview.get(previewAnchor.name)
+        return entry ? <TemplatePreviewPop anchor={previewAnchor} entry={entry} /> : null
+      })()}
 
       {deleting && (
         <Modal
