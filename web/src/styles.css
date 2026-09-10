@@ -448,6 +448,53 @@ label.field > .input, label.field > select.input { width: 100%; }
 .preview-modal-state small { font-size: 11px; color: var(--ink-3); }
 @keyframes previewFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+/* ---------- 工作台信息架构（迭代 48，用户定稿方案 A：卡片网格，缩略图主视觉） ---------- */
+.wb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+.wb-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.wb-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(29, 38, 51, 0.1); }
+.wb-card-thumb {
+  height: 136px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafbfc;
+  border-bottom: 1px solid var(--line-soft);
+}
+/* 卡片内大号缩略图（覆盖迭代 46 行内 40px 规格） */
+.preview-thumb.card { height: auto; max-height: 112px; max-width: calc(100% - 20px); }
+.preview-thumb-skel.card, .preview-thumb-err.card { width: 118px; height: 74px; }
+.wb-card-body { padding: 8px 10px 7px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.wb-card-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wb-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--ink-3); }
+.wb-card-foot {
+  display: flex;
+  gap: 4px;
+  padding: 7px 10px 8px;
+  border-top: 1px solid var(--line-soft);
+}
+.wb-card-foot .btn { flex: 1; justify-content: center; padding: 3px 4px; }
+
+
 
 /* ---------- 底部状态栏 ---------- */
 .statusbar {
