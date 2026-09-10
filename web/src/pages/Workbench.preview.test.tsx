@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-// 迭代 46：工作台模板悬停预览——防抖触发（AC-01/05）、会话缓存命中不重复请求（AC-02）、
-// 列表刷新后缓存失效并释放 blob URL（AC-03）、失败态优雅降级（AC-04）、双模式（服务端 / 单机降级）。
+// 迭代 46（2026-09-10 修订：预览列内嵌缩略图）——列表加载后按需拉取全部预览（AC-01）、
+// 会话缓存命中不重复请求（AC-02）、列表刷新后缓存失效并释放 blob URL（AC-03）、
+// 失败态优雅降级（AC-04）、点击缩略图放大且放大不重复请求、遮罩 / Esc 关闭（AC-05）、双模式（服务端 / 单机降级）。
 // mock 覆盖组件树用到的全部 client 方法（含 AppContext 启动链）；URL.createObjectURL / revokeObjectURL 为 jsdom 缺失项，手动打桩。
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -56,18 +57,14 @@ function renderWorkbench() {
 }
 
 function rowOf(name: string): HTMLTableRowElement {
-  // 浮层标题也会显示模板名，用 td 选择器锁定列表行单元格
+  // 放大浮层标题也含模板名，用 td 选择器锁定列表行单元格
   return screen.getByText(name, { selector: 'td' }).closest('tr') as HTMLTableRowElement
 }
 
-const hover = (name: string) => fireEvent.mouseEnter(rowOf(name))
-const leave = (name: string) => fireEvent.mouseLeave(rowOf(name))
-
-/** 停满触发延迟（PREVIEW_HOVER_DELAY_MS = 400）。 */
-const dwell = () =>
-  act(() => {
-    vi.advanceTimersByTime(400)
-  })
+/** 缩略图（单元格内小图，与放大图以 alt 区分）。 */
+const thumbOf = (name: string) => screen.getByAltText(`模板「${name}」缩略图`) as HTMLImageElement
+/** 放大图（浮层内大图）。 */
+const enlargedOf = (name: string) => screen.getByAltText(`模板「${name}」预览`) as HTMLImageElement
 
 /** 冲洗微任务链（探测 → 列表加载 → 预览 promise 等）。 */
 async function flush() {
@@ -101,38 +98,27 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('工作台模板悬停预览（迭代 46）', () => {
-  it('AC-01：悬停防抖后拉取 preview 并浮层显示（加载中 → 图片）；单机降级走本机 API', async () => {
+describe('工作台模板预览列（迭代 46 修订：内嵌缩略图）', () => {
+  it('AC-01：列表加载即为全部模板拉取预览——加载中骨架 → 缩略图渲染（blob URL）', async () => {
+    const pending: Array<(v: { blob: Blob; filename: string }) => void> = []
+    mocks.server.previewTemplate.mockImplementation(
+      () => new Promise((res) => pending.push(res)),
+    )
     renderWorkbench()
     await flush()
     expect(screen.getByText('Carton-Label-A')).toBeTruthy()
 
-    let resolvePng!: (v: { blob: Blob; filename: string }) => void
-    mocks.server.previewTemplate.mockImplementation(() => new Promise((res) => (resolvePng = res)))
-
-    // 触发前 1ms 尚未请求；停满 400ms 才拉取
-    hover('Carton-Label-A')
-    act(() => {
-      vi.advanceTimersByTime(399)
-    })
-    expect(mocks.server.previewTemplate).not.toHaveBeenCalled()
-    act(() => {
-      vi.advanceTimersByTime(1)
-    })
-    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(1)
-    expect(mocks.server.previewTemplate).toHaveBeenCalledWith('Carton-Label-A')
-    expect(screen.getByText('正在生成预览…')).toBeTruthy()
+    // 全部模板立即进入加载态（骨架占位，各一次请求）
+    expect(screen.getAllByTitle('正在生成预览…').length).toBe(3)
+    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
 
     await act(async () => {
-      resolvePng({ blob: png(), filename: 'a.png' })
+      for (const res of pending) res({ blob: png(), filename: 'a.png' })
     })
     await flush()
-    const img = screen.getByAltText('模板「Carton-Label-A」预览') as HTMLImageElement
-    expect(img.getAttribute('src')).toBe('blob:preview-1')
-
-    // 离开行 → 浮层关闭
-    leave('Carton-Label-A')
-    expect(screen.queryByAltText('模板「Carton-Label-A」预览')).toBeNull()
+    expect(thumbOf('Carton-Label-A').getAttribute('src')).toBe('blob:preview-1')
+    expect(thumbOf('carton-label-b').getAttribute('src')).toBe('blob:preview-2')
+    expect(thumbOf('Shelf-Tag').getAttribute('src')).toBe('blob:preview-3')
   })
 
   it('AC-01：单机降级（服务端不可达）时预览走本机 WinHost API', async () => {
@@ -141,111 +127,87 @@ describe('工作台模板悬停预览（迭代 46）', () => {
     await flush()
     expect(screen.getByText('Carton-Label-A')).toBeTruthy()
 
-    hover('Carton-Label-A')
-    await dwell()
-    await flush()
-    expect(mocks.local.previewTemplate).toHaveBeenCalledTimes(1)
-    expect(mocks.local.previewTemplate).toHaveBeenCalledWith('Carton-Label-A')
+    expect(mocks.local.previewTemplate).toHaveBeenCalledTimes(3)
     expect(mocks.server.previewTemplate).not.toHaveBeenCalled()
-    expect((screen.getByAltText('模板「Carton-Label-A」预览') as HTMLImageElement).getAttribute('src')).toBe('blob:preview-1')
+    expect(thumbOf('Carton-Label-A').getAttribute('src')).toBe('blob:preview-1')
   })
 
-  it('AC-02：同一模板再次悬停命中会话缓存，不重复请求、不重复建 blob URL', async () => {
+  it('AC-02：分组过滤切换（列表未刷新）命中会话缓存——不重复请求、不重复建 blob URL', async () => {
     renderWorkbench()
     await flush()
+    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
+    expect(mocks.createObjectURL).toHaveBeenCalledTimes(3)
 
-    hover('Carton-Label-A')
-    await dwell()
+    // 切到「华东仓」：Shelf-Tag 行隐藏，其余缩略图来自缓存
+    fireEvent.change(screen.getByTitle('按分组过滤'), { target: { value: '华东仓' } })
     await flush()
-    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Shelf-Tag')).toBeNull()
+    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
+    expect(mocks.createObjectURL).toHaveBeenCalledTimes(3)
+    expect(thumbOf('Carton-Label-A').getAttribute('src')).toBe('blob:preview-1')
 
-    // 离开后再悬停（列表未刷新）：浮层直接显示缓存图
-    leave('Carton-Label-A')
-    hover('Carton-Label-A')
-    await dwell()
+    // 切回全部分组：缓存依旧命中
+    fireEvent.change(screen.getByTitle('按分组过滤'), { target: { value: '' } })
     await flush()
-    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(1)
-    expect(mocks.createObjectURL).toHaveBeenCalledTimes(1)
-    expect((screen.getByAltText('模板「Carton-Label-A」预览') as HTMLImageElement).getAttribute('src')).toBe('blob:preview-1')
+    expect(thumbOf('Shelf-Tag').getAttribute('src')).toBe('blob:preview-3')
+    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
   })
 
-  it('AC-03：列表刷新（删除触发重新 load）后缓存失效——释放旧 blob URL 并重新拉取', async () => {
+  it('AC-03：列表刷新（删除触发重新 load）后缓存失效——释放全部旧 blob URL 并对剩余模板重新拉取', async () => {
     renderWorkbench()
     await flush()
+    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
 
-    hover('Carton-Label-A')
-    await dwell()
-    await flush()
-    expect((screen.getByAltText('模板「Carton-Label-A」预览') as HTMLImageElement).getAttribute('src')).toBe('blob:preview-1')
-    leave('Carton-Label-A')
-
-    // 删除另一模板 → doDelete 成功后重新 load = 新列表周期
+    // 删除一个模板 → 服务端列表少一项 → 重新 load = 新列表周期
     mocks.server.deleteTemplate.mockResolvedValue(undefined)
+    mocks.server.listTemplates.mockResolvedValue(TEMPLATES.filter((t) => t.name !== 'Shelf-Tag'))
     fireEvent.click(within(rowOf('Shelf-Tag')).getByText('删除'))
     fireEvent.click(screen.getByText('确认删除'))
     await flush()
     expect(mocks.server.deleteTemplate).toHaveBeenCalledWith('Shelf-Tag')
-    expect(mocks.revokeObjectURL).toHaveBeenCalledWith('blob:preview-1')
 
-    // 再悬停同一模板：重新请求、新 blob URL
-    hover('Carton-Label-A')
-    await dwell()
-    await flush()
-    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(2)
-    expect((screen.getByAltText('模板「Carton-Label-A」预览') as HTMLImageElement).getAttribute('src')).toBe('blob:preview-2')
+    // 旧周期 3 个 blob URL 全部释放；新周期对剩余 2 个模板重新拉取
+    expect(mocks.revokeObjectURL).toHaveBeenCalledTimes(3)
+    expect(mocks.revokeObjectURL).toHaveBeenCalledWith('blob:preview-1')
+    expect(mocks.revokeObjectURL).toHaveBeenCalledWith('blob:preview-3')
+    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(5)
+    expect(thumbOf('Carton-Label-A').getAttribute('src')).toBe('blob:preview-4')
   })
 
-  it('AC-04：preview 请求失败——浮层占位提示，不影响列表；失败结果同周期内缓存不重复请求', async () => {
+  it('AC-04：preview 失败——单元格占位提示（title 携带原因），列表不受影响，同周期不重复请求', async () => {
+    mocks.server.previewTemplate.mockRejectedValue(new Error('请求失败（HTTP 404）。'))
     renderWorkbench()
     await flush()
 
-    mocks.server.previewTemplate.mockRejectedValue(new Error('请求失败（HTTP 404）。'))
-    hover('Carton-Label-A')
-    await dwell()
-    await flush()
-    expect(screen.getByText('预览不可用')).toBeTruthy()
-    expect(screen.getByText('请求失败（HTTP 404）。')).toBeTruthy()
+    const errs = screen.getAllByTitle(/^预览不可用：/)
+    expect(errs.length).toBe(3)
+    expect(errs[0].getAttribute('title')).toBe('预览不可用：请求失败（HTTP 404）。')
     // 列表与其余功能不受影响
     expect(rowOf('Carton-Label-A')).toBeTruthy()
     expect(rowOf('Shelf-Tag')).toBeTruthy()
-
-    // 失败也进会话缓存：同周期再次悬停不重复请求
-    leave('Carton-Label-A')
-    hover('Carton-Label-A')
-    await dwell()
-    await flush()
-    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('预览不可用')).toBeTruthy()
+    // 失败也进会话缓存：无重试风暴（每模板仍只请求一次）
+    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
   })
 
-  it('AC-05：鼠标快速扫过多行不产生请求风暴；停留足够时长才触发一次', async () => {
+  it('AC-05：点击缩略图放大——浮层显示大图且不再发请求；遮罩点击 / Esc 关闭', async () => {
     renderWorkbench()
     await flush()
 
-    hover('Carton-Label-A')
-    act(() => {
-      vi.advanceTimersByTime(200)
-    })
-    leave('Carton-Label-A')
-    hover('carton-label-b')
-    act(() => {
-      vi.advanceTimersByTime(200)
-    })
-    leave('carton-label-b')
-    hover('Shelf-Tag')
-    act(() => {
-      vi.advanceTimersByTime(200)
-    })
-    leave('Shelf-Tag')
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000)
-    })
-    expect(mocks.server.previewTemplate).not.toHaveBeenCalled()
-
-    hover('Carton-Label-A')
-    await dwell()
+    fireEvent.click(thumbOf('Carton-Label-A'))
     await flush()
-    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(1)
-    expect(mocks.server.previewTemplate).toHaveBeenCalledWith('Carton-Label-A')
+    // 放大图与缩略图同源（缓存命中，无新请求）
+    expect(enlargedOf('Carton-Label-A').getAttribute('src')).toBe('blob:preview-1')
+    expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
+    expect(screen.getByText('按模板测试数据渲染')).toBeTruthy()
+
+    // 点击遮罩关闭
+    fireEvent.click(document.querySelector('.preview-overlay') as HTMLElement)
+    expect(screen.queryByAltText('模板「Carton-Label-A」预览')).toBeNull()
+
+    // 重新放大，Esc 关闭
+    fireEvent.click(thumbOf('Shelf-Tag'))
+    expect(enlargedOf('Shelf-Tag').getAttribute('src')).toBe('blob:preview-3')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByAltText('模板「Shelf-Tag」预览')).toBeNull()
   })
 })

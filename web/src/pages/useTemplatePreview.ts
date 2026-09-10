@@ -1,10 +1,7 @@
-// 工作台模板悬停预览缓存（迭代 46）：会话内「模板名 → blob URL」缓存 + 在途去重 + 周期失效。
+// 工作台模板预览缓存（迭代 46，2026-09-10 修订为预览列内嵌缩略图）：会话内「模板名 → blob URL」缓存 + 在途去重 + 周期失效。
 // 路线定稿（Issue #15）：复用既有 POST /api/templates/{name}/preview（按模板 TestData 渲染 PNG），零契约变更。
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
-
-/** 悬停触发延迟：快速扫过整列不足以触发，停留即出图（AC-05 防请求风暴）。 */
-export const PREVIEW_HOVER_DELAY_MS = 400
 
 export type TemplatePreviewEntry =
   | { status: 'loading' }
@@ -18,7 +15,7 @@ function releaseAll(cache: Map<string, TemplatePreviewEntry>): void {
 }
 
 /**
- * 会话内预览缓存：同一次列表周期内重复悬停同一模板不重复请求（含在途去重与失败缓存）；
+ * 会话内预览缓存：列表周期内每个模板只请求一次（含在途去重与失败缓存）；
  * 刷新周期（invalidate，随列表重新 load 调用）后整体失效并释放全部 blob URL；卸载时兜底释放。
  */
 export function useTemplatePreviewCache(
