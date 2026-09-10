@@ -61,6 +61,7 @@
 | 43 | Claimed 作业超时回收（宿主重启后终态化：Failed + LF_SRV_009，默认 30 分钟） | ✅ 已完成（2026-09-09，[#4](https://github.com/marci-labs/LabelFrame/issues/4)） |
 | 44 | Windows 客户端窗口化（WebView2 嵌入界面壳 + MSI 运行时引导） | ✅ 已完成（2026-09-10 用户真机验收通过，[#8](https://github.com/marci-labs/LabelFrame/issues/8)） |
 | 45 | 批次首张节奏修正 + 设置页布局自适应 + 工作台小修（批间计数按作业重置 #100 / 多列网格 / 模板名搜索 + 操作列修正） | ✅ 已完成（2026-09-10 用户真机验收通过，[#11](https://github.com/marci-labs/LabelFrame/issues/11)） |
+| 流程治理 | 启用多会话 worktree 并行（试行，WORKFLOW §7） | ✅ 已完成（2026-09-10 试行开始，演练记录待首次并行回填，[#17](https://github.com/marci-labs/LabelFrame/issues/17)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
