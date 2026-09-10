@@ -13,7 +13,7 @@ namespace LabelFrame.WinHost.Tests.Jobs;
 /// <summary>
 /// JobPrintWorker 批次节流集成测试：FakeTransport 记录发送时间戳，
 /// 断言「发送前暂停」的批间间隔——25 张/批 5 → 第 6/11/16/21 张前各停一次（共 4 次）；
-/// 跨作业累计（两个作业各 5 张 → 第 5 张后、B 首张前等待一次）；不足一批不等待；禁用无间隔。
+/// 批间计数按作业重置（两个作业各 5 张 → 双方首张均不等待；B 作业内仍按批 5 节流）；不足一批不等待；禁用无间隔。
 /// 判定双通道：① 批次节流日志的「已发送张数」序列（确定性主通道——代码中日志与 Task.Delay 同分支，
 /// 无日志即无延迟，CI 高负载下依然精确）；② 发送时间序列大间隔落在预期张序（辅助，证明延迟真实发生）。
 /// </summary>
@@ -50,15 +50,30 @@ public class JobPrintWorkerThrottleTests
     }
 
     [Fact]
-    public async Task Enabled_cross_job_should_pause_once_before_second_job_first_label()
+    public async Task Enabled_cross_job_should_not_pause_before_second_job_first_label()
     {
-        // 作业 A 5 张 + 作业 B 5 张：A 第 5 张发完后、B 首张发送前等待一次（计数跨作业全局累计）
+        // 作业 A 5 张 + 作业 B 5 张：批间计数按作业重置（迭代 45 决议），B 首张发送前不等待
         var result = await RunWorkerAsync(new PrintSettingsDto(true, 5, IntervalMs), 5, 5);
 
         Assert.Equal(10, result.Offsets.Count);
+        // 确定性主通道：全程无批次节流决策（旧「跨作业累计」语义此处会记录 1 次、已发送 5 张）
+        Assert.Equal(0, result.ThrottleLogCount);
+        Assert.Empty(result.SentCounts);
+    }
+
+    [Fact]
+    public async Task Enabled_new_job_should_restart_batch_counting_from_zero()
+    {
+        // 作业 A 5 张 + 作业 B 7 张：B 首张前不等待（计数归零）；B 作业内第 6 张前仍按批 5 等待
+        var result = await RunWorkerAsync(new PrintSettingsDto(true, 5, IntervalMs), 5, 7);
+
+        Assert.Equal(12, result.Offsets.Count);
+        // 确定性主通道：全程仅 1 次节流决策，且发生在「B 作业内已发送 5 张」时——证明 B 从 0 重新计数
         Assert.Equal(1, result.ThrottleLogCount);
         Assert.Equal(new[] { 5 }, result.SentCounts);
-        Assert.Contains(5, PauseIndices(result.Offsets));
+        // 辅助通道仅断言正向 Contains：真实节流延迟（400ms 假时间）必在 B 第 6 张（0 基序号 10）前产生大间隔；
+        // 不做 DoesNotContain 反向断言——驱动循环按 500ms 步进推进假时间，调度噪声可能在任意张序产生假间隔
+        Assert.Contains(10, PauseIndices(result.Offsets));
     }
 
     [Fact]

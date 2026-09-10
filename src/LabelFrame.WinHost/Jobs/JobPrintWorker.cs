@@ -8,7 +8,7 @@ namespace LabelFrame.WinHost.Jobs;
 /// 打印 Worker：串行领取作业中的下一张标签并通过传输发送；
 /// 发送失败记 Failed 并由队列决定挂起 / 结束。每台打印机一次只处理一张。
 /// 按「批次作业」设置节流——每发满 N 张后、下一张发送前暂停间隔（claim-then-delay），
-/// 本机作业与服务端作业统一生效；批次计数内存态、跨作业全局累计、不持久化（重启清零）。
+/// 本机作业与服务端作业统一生效；批次计数内存态、按作业重置（每个作业首张不等待批间间隔）、不持久化。
 /// </summary>
 public sealed class JobPrintWorker : BackgroundService
 {
@@ -24,8 +24,11 @@ public sealed class JobPrintWorker : BackgroundService
     private readonly PrintSettings _printSettings;
     private readonly TimeProvider _time;
 
-    /// <summary>批次节流内存计数：发送成功张数，跨作业全局累计，不持久化（服务重启清零）。</summary>
+    /// <summary>批次节流内存计数：当前作业内发送成功张数，切换作业时归零（作业首张不等待批间间隔）。</summary>
     private int _sendsSinceBatch;
+
+    /// <summary>最近一次发送所属作业：领取到不同作业时将批次计数归零（按作业重置，迭代 45 决议）。</summary>
+    private string? _lastSentJobId;
 
     /// <summary>创建打印 Worker。</summary>
     public JobPrintWorker(LabelJobQueue queue, ITransportManager transportManager, ILogger<JobPrintWorker> logger, PrintSettings printSettings)
@@ -82,6 +85,14 @@ public sealed class JobPrintWorker : BackgroundService
                 }
 
                 var (jobId, item) = next.Value;
+
+                // 批间计数按作业重置：切换到不同作业时归零，保证每个作业的首张立即发送
+                // （作业内仍按 batchSize / 批间间隔节流；连续作业之间不再有批间停顿）
+                if (!string.Equals(_lastSentJobId, jobId, StringComparison.Ordinal))
+                {
+                    _lastSentJobId = jobId;
+                    Volatile.Write(ref _sendsSinceBatch, 0);
+                }
 
                 // 批次节流（发送前暂停）：领取到下一张后、发送前，若已发送数满批次倍数则先延迟
                 var settings = _printSettings.Snapshot();

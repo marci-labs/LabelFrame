@@ -1,6 +1,7 @@
 // 设置页（迭代 18 F2-F4）：服务端地址（机器级配置，保存即生效）+ 连接方式（本机 Client）+ 打印机状态 / 测试打印
 // 迭代 22 §2.3：新增「更新与安装包」卡片——列出服务端可用客户端安装包（下载指向 {serverBaseUrl}/api/client-packages/{file}）；单机模式提示需先连接服务端。
 // 迭代 23 §5.6：新增「插件管理」卡片（置于「更新与安装包」之下）——服务端可用插件区（仅 valid 可安装，安装 = 下载 blob → 本机 WinHost multipart）+ 已安装插件区（始终渲染，徽标 + 卸载）。
+// 迭代 45：内容容器改多列自适应网格（决策 B）——宽窗多列、窄窗单列，替代原固定 640 左对齐窄列。
 
 import { useCallback, useEffect, useState } from 'react'
 import { clientPackageDownloadUrl, localApi, serverApi } from '../lib/api/client'
@@ -278,7 +279,8 @@ export function Settings() {
       </div>
 
       {/* 迭代 21+：内容容器与其他页面对齐——flex:1 + overflowY:auto，低屏高可滚动（此前被 .page overflow:hidden 裁剪，小分辨率看不到「打印机」卡片）；minWidth:0 防长文本（%ProgramData% 路径）撑破 */}
-      <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 }}>
+      {/* 迭代 45（决策定稿 B）：布局随可用宽度自适应——多列网格（每列 ≥560px，列数随宽度自动增减），窄窗自动回退单列、不破版 */}
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: 'auto', padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(560px, 1fr))', gap: 14, alignItems: 'start' }}>
         <section className="panel">
           <div className="panel-head">服务端地址</div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

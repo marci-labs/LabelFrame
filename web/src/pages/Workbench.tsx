@@ -1,5 +1,6 @@
-// 工作台：模板列表（分组过滤）/ 新建 / 编辑 / 删除 / 导出 / 导入
+// 工作台：模板列表（名称搜索 + 分组过滤）/ 新建 / 编辑 / 删除 / 导出 / 导入
 // 迭代 18：业务 API 跟随模式——服务端 = serverApi（模板中心）；单机降级 = localApi（本机 WinHost 模板库）。
+// 迭代 45：模板名搜索（子串匹配、大小写不敏感，与分组过滤叠加生效）。
 
 import { useCallback, useEffect, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
@@ -18,6 +19,7 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
   const [groups, setGroups] = useState<string[]>([])
   const [group, setGroup] = useState('')
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<TemplateSummary | null>(null)
@@ -42,7 +44,13 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
     void load()
   }, [serverMode, load])
 
-  const filtered = group ? templates.filter((t) => t.group === group) : templates
+  // 名称搜索（子串、大小写不敏感）与分组过滤叠加：两者都为空时即完整列表
+  const keyword = search.trim().toLowerCase()
+  const filtered = templates.filter((t) => {
+    if (group && t.group !== group) return false
+    if (keyword && !t.name.toLowerCase().includes(keyword)) return false
+    return true
+  })
 
   const doDelete = async () => {
     if (!deleting) return
@@ -100,6 +108,18 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
           <small>模板管理</small>
         </div>
         <div className="spacer" />
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <Icon name="search" size={13} style={{ position: 'absolute', left: 7, color: 'var(--ink-3)', pointerEvents: 'none' }} />
+          <input
+            className="input"
+            value={search}
+            onChange={(ev) => setSearch(ev.target.value)}
+            placeholder="搜索模板名称"
+            title="按模板名称搜索（子串匹配，不分大小写）"
+            spellCheck={false}
+            style={{ width: 170, paddingLeft: 26 }}
+          />
+        </div>
         <select className="input" value={group} onChange={(ev) => setGroup(ev.target.value)} title="按分组过滤">
           <option value="">全部分组</option>
           {groups.map((g) => (
@@ -144,6 +164,12 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
             <Icon name="workbench" />
             <div className="empty-title">还没有模板</div>
             <div className="hint">点击「新建模板」开始设计第一张标签，或导入已有的 .lfpkg 模板包。</div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="empty">
+            <Icon name="search" />
+            <div className="empty-title">没有匹配的模板</div>
+            <div className="hint">当前搜索词或分组下没有模板，请调整关键词或分组后重试。</div>
           </div>
         ) : (
           <table className="table">
