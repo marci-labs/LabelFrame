@@ -60,7 +60,7 @@
 | 42 | 工作流重构：Issue 驱动迭代 + PR 门禁（squash / 双必需检查 / ROADMAP 瘦身） | ✅ 已完成（2026-09-09 门禁演练双通过，[#1](https://github.com/marci-labs/LabelFrame/issues/1)） |
 | 43 | Claimed 作业超时回收（宿主重启后终态化：Failed + LF_SRV_009，默认 30 分钟） | ✅ 已完成（2026-09-09，[#4](https://github.com/marci-labs/LabelFrame/issues/4)） |
 | 44 | Windows 客户端窗口化（WebView2 嵌入界面壳 + MSI 运行时引导） | ✅ 已完成（2026-09-10 用户真机验收通过，[#8](https://github.com/marci-labs/LabelFrame/issues/8)） |
-| 45 | 批次首张节奏修正 + 设置页布局自适应 + 工作台小修（批间计数按作业重置 #100 / 多列网格 / 模板名搜索 + 操作列修正） | ✅ 已完成（2026-09-10 AC-03 真机待验收，[#11](https://github.com/marci-labs/LabelFrame/issues/11)） |
+| 45 | 批次首张节奏修正 + 设置页布局自适应 + 工作台小修（批间计数按作业重置 #100 / 多列网格 / 模板名搜索 + 操作列修正） | ✅ 已完成（2026-09-10 用户真机验收通过，[#11](https://github.com/marci-labs/LabelFrame/issues/11)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
