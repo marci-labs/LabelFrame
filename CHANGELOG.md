@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 47 作业可观测性（进度增量上报 + 日志细化 + 缺陷 #14 修复） · 2026-09-10
+
+- **进度增量上报（决策 #101，跨端公共契约——强化路径）**：Server 新增 `POST /api/devices/{deviceId}/jobs/{jobId}/progress`——请求体 `{ completedItems, failedItems }`（无宿主时间戳，服务端时钟唯一权威）；仅 `Claimed` 接受，计数**按字段取 max 单调递增**（乱序 / 迟到 / 重复上报不回退）；只增不改终态（不写 status / finished_at、不刷新 claimed_at，与决策 #98 超时回收正交）；终态收到 progress 幂等 no-op 返回当前视图、`Pending` 409、错误语义与 result 端点完全一致；result 仍是唯一终态写入者（绝对值覆盖）。打印中查询 `GET /api/jobs/{jobId}` / 作业历史的计数逐步增长，不再终态一次跳变（本机联调实证：10 张节流作业轮询序列 Claimed 1→2→…→9→Completed 10）。
+- **宿主接入（WinHost / Linux Client / AndroidHost 同迭代）**：进度上报放在既有回报循环（1s 周期）——**默认 1s 节流 + 计数有变化才发**（无变化零流量，`LABELFRAME_PROGRESS_INTERVAL_MS` 可调）；Server 不可达静默降级（失败不告警刷屏、不阻塞打印主链路，下一轮携带最新计数自然重试）；作业终态后停发、终态只走 result。WinHost 节流判定抽为 `ProgressThrottle`（TimeProvider 注入，FakeTimeProvider 确定性测试）；AndroidHost 同构内联实现。
+- **缺陷 #14 修复（Serilog 逐张日志不再落盘）**：根因 = 迭代 32 装配抽取（0aca4dd）后 `UseSerilog` 留在 `Program.Main` 中只用于配置绑定、**从不 Build 的 builder** 上，文件日志配置自 2026-08-25 起即死代码（08-25～09-03 的 `app-*.log` 由更旧安装版写入，此后换装含缺陷构建即停写）。修复：配置收拢为 `SerilogSetup.Apply`，经 `WinHostApp.BuildAsync` 的 `configureBuilder` 扩展点挂到**真实 builder**；启用 SelfLog 落盘（同目录 `serilog-self.log`，sink 失败可见化）+ 启动自检事件；回归测试以生产同装配路径构建应用→写事件→断言 `app-*.log` 创建且含事件，结构性防止「配置挂在错误的 builder 上」复发。
+- **日志细化（决策 #102）**：级别可配置——`LABELFRAME_LOG_LEVEL` 环境变量 / `WinHost:LogLevel` 配置节（默认 Information，启动读取生效，非法值回退并可用），Server 沿用标准 `Logging:LogLevel`；失败上下文结构化——发送失败日志在作业 / 项索引 / 原因之外补**传输插件 ID / 打印目标端点 / 错误码（LF_IO_001）**，经 Serilog 文件通道逐字段断言（测试锚定）。
+- **测试**：新增 19 项——Server 服务级 3（max 单调 / 不改 claimed_at / 终态与错误语义）+ Server 端点级 2（视图增长 + result 唯一终态 / 409·404·403·400 错误对齐）+ WinHost 路由 3（FakeTimeProvider 节流时间轴 / 进度失败静默降级不阻塞终态回报 / poller progress 端点形状）+ `ProgressThrottle` 3 + Serilog 回归 3（文件创建含事件 / Warning 过滤 Information / 级别解析）+ 失败上下文日志 1，另有级别解析理论项内联；日常 `dotnet test` 384 项全绿（排除 Perf / Soak），前端 `pnpm lint / test` 通过（无前端改动）。
+
 ## 迭代 46 工作台模板缩略图预览（悬停按需出图） · 2026-09-10
 
 - **悬停按需预览（路线定稿：复用既有 preview 端点，零契约变更）**：工作台模板行悬停 400ms 防抖后调用既有 `POST /api/templates/{name}/preview`（按模板 TestData 渲染 PNG，Server 与 WinHost 双宿主均已实现）拉取预览，浮层展示在悬停行右侧（视口不足自动翻到左侧）——不进设计器即可辨认同组同类模板；浮层 `pointer-events: none`，永不拦截列表 hover 与操作按钮。前端新增 `previewTemplate(name)` blob 封装（与 renderImage 同构，serverApi / localApi 双 base 自动跟随业务模式——Client 与 Server UI 共享工作台组件，双端同时受益）。

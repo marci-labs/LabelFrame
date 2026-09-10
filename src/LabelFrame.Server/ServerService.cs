@@ -229,6 +229,48 @@ public sealed class ServerService : IDisposable
         return await ToJobViewAsync(updated!, cancellationToken);
     }
 
+    /// <summary>
+    /// 设备进度增量上报：仅 Claimed 接受，计数按字段取 max 单调递增；只描述过程——
+    /// 不改终态字段、不刷新 claimed_at（不干预超时回收计龄）。终态作业幂等 no-op 返回当前视图。
+    /// </summary>
+    public async Task<ServerJobView> ReportProgressAsync(string deviceId, string jobId, ReportProgressRequest progress, CancellationToken cancellationToken = default)
+    {
+        var job = await _db.GetJobAsync(jobId, cancellationToken)
+                ?? throw new ServerException(ServerErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+        if (job.TargetDeviceId != deviceId)
+        {
+            throw new ServerException(ServerErrorCodes.NotJobOwner, $"设备 {deviceId} 不是作业 {jobId} 的领取者。");
+        }
+
+        // 幂等 no-op：终态作业（含已被超时回收的 Failed）直接返回既有视图，计数不再变化
+        if (job.Status is ServerJobStatus.Completed or ServerJobStatus.Failed or ServerJobStatus.Expired)
+        {
+            return await ToJobViewAsync(job, cancellationToken);
+        }
+
+        if (job.Status != ServerJobStatus.Claimed)
+        {
+            throw new ServerException(ServerErrorCodes.InvalidTransition, $"作业 {jobId} 当前状态 {job.Status} 不允许上报进度。");
+        }
+
+        var affected = await _db.UpdateJobProgressAsync(
+            jobId,
+            progress.CompletedItems ?? 0,
+            progress.FailedItems ?? 0,
+            cancellationToken);
+        if (affected == 0)
+        {
+            // 与终态回报 / 超时回收的竞态：领取后已转终态，按幂等 no-op 返回当前视图
+            job = await _db.GetJobAsync(jobId, cancellationToken) ?? job;
+        }
+        else
+        {
+            job = (await _db.GetJobAsync(jobId, cancellationToken))!;
+        }
+
+        return await ToJobViewAsync(job, cancellationToken);
+    }
+
     /// <summary>查询作业（含设备在线状态）。</summary>
     public async Task<ServerJobView> GetJobAsync(string jobId, CancellationToken cancellationToken = default)
     {

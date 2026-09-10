@@ -169,7 +169,9 @@ public static class WinHostApp
                 sp.GetRequiredService<JobSubmissionService>(),
                 queue,
                 TimeSpan.FromSeconds(Math.Max(1, options.PollIntervalSeconds)),
-                sp.GetRequiredService<ILogger<Routing.ServerRoutingWorker>>()));
+                sp.GetRequiredService<ILogger<Routing.ServerRoutingWorker>>(),
+                TimeProvider.System,
+                TimeSpan.FromMilliseconds(Math.Max(100, options.ProgressIntervalMs))));
         }
 
         // 服务层扩展点：在全部注册完成后执行（测试 RemoveAll<IHostedService> 等需要看到完整注册列表）

@@ -46,6 +46,12 @@ public sealed class JobPrintWorker : BackgroundService
         _time = timeProvider;
     }
 
+    /// <summary>打印目标摘要（失败日志用）：插件参数字典压成 k=v 逗号串，空参数回退插件 ID 自述。</summary>
+    private static string DescribeTarget(Transport.TransportConfig connection)
+        => connection.Params.Count == 0
+            ? "(无参数)"
+            : string.Join(",", connection.Params.Select(kv => $"{kv.Key}={kv.Value}"));
+
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -118,7 +124,16 @@ public sealed class JobPrintWorker : BackgroundService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "作业 {JobId} 第 {Index} 张发送失败。", jobId, item.Index);
+                    // 失败上下文结构化（决策 #102）：作业 / 项索引 / 传输插件 / 打印目标 / 错误码，排障可直接检索
+                    var connection = _transportManager.CurrentConfig;
+                    _logger.LogError(
+                        ex,
+                        "作业 {JobId} 第 {Index} 张发送失败（插件 {PluginId}，目标 {Target}，错误码 {ErrorCode}）。",
+                        jobId,
+                        item.Index,
+                        connection.PluginId,
+                        DescribeTarget(connection),
+                        JobErrorCodes.TransportSendFailed);
                     await _queue.FailItemAsync(
                         jobId,
                         item.Id,

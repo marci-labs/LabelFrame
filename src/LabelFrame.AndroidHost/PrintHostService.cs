@@ -252,13 +252,14 @@ public sealed class PrintHostService : Service
         CancellationToken cancellationToken)
     {
         // 与 WinHost ServerRoutingWorker 同构：主循环负责注册 / 长轮询 / 领取 / 投入队列，
-        // 回报循环每 1s 检查本地作业终态并立即回报，避免被长轮询等待（最长 20s）阻塞。
+        // 回报循环每 1s 检查本地作业——终态立即回报、进行中节流上报进度（决策 #101，计数有变化才发）。
         var localToServer = new System.Collections.Concurrent.ConcurrentDictionary<string, string>();
+        var lastReported = new System.Collections.Concurrent.ConcurrentDictionary<string, (int Completed, int Failed)>();
         var interval = TimeSpan.FromSeconds(Math.Max(1, LabelHostConfig.PollIntervalSeconds));
         var notifyTimeout = TimeSpan.FromSeconds(20);
 
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var reportLoop = ReportFinishedLoopAsync(poller, localToServer, queue, linked.Token);
+        var reportLoop = ReportFinishedLoopAsync(poller, localToServer, lastReported, queue, linked.Token);
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -332,10 +333,11 @@ public sealed class PrintHostService : Service
         }
     }
 
-    /// <summary>回报循环：周期检查本地作业终态并回报 Server（不依赖长轮询）。</summary>
+    /// <summary>回报 / 进度循环：周期检查本地作业——终态回报结果，进行中节流上报进度（计数有变化才发）。</summary>
     private static async Task ReportFinishedLoopAsync(
         ServerPoller poller,
         System.Collections.Concurrent.ConcurrentDictionary<string, string> localToServer,
+        System.Collections.Concurrent.ConcurrentDictionary<string, (int Completed, int Failed)> lastReported,
         LabelJobQueue queue,
         CancellationToken cancellationToken)
     {
@@ -346,20 +348,45 @@ public sealed class PrintHostService : Service
                 foreach (var (localJobId, serverJobId) in localToServer.ToList())
                 {
                     var local = await queue.GetAsync(localJobId, cancellationToken);
-                    if (local is null || local.Status is not (LabelJobStatus.Completed or LabelJobStatus.Failed or LabelJobStatus.Cancelled))
+                    if (local is null)
                     {
                         continue;
                     }
 
-                    await poller.ReportResultAsync(
-                        serverJobId,
-                        new JobResult(
-                            local.Status == LabelJobStatus.Completed ? "Completed" : "Failed",
-                            local.Items.Count(i => i.Status == LabelJobItemStatus.Completed),
-                            local.Items.Count(i => i.Status is LabelJobItemStatus.Failed or LabelJobItemStatus.Cancelled),
-                            local.Items.FirstOrDefault(i => i.ErrorMessage is not null)?.ErrorMessage),
-                        cancellationToken);
-                    localToServer.TryRemove(localJobId, out _);
+                    var completed = local.Items.Count(i => i.Status == LabelJobItemStatus.Completed);
+                    var failed = local.Items.Count(i => i.Status is LabelJobItemStatus.Failed or LabelJobItemStatus.Cancelled);
+
+                    if (local.Status is LabelJobStatus.Completed or LabelJobStatus.Failed or LabelJobStatus.Cancelled)
+                    {
+                        await poller.ReportResultAsync(
+                            serverJobId,
+                            new JobResult(
+                                local.Status == LabelJobStatus.Completed ? "Completed" : "Failed",
+                                completed,
+                                failed,
+                                local.Items.FirstOrDefault(i => i.ErrorMessage is not null)?.ErrorMessage),
+                            cancellationToken);
+                        localToServer.TryRemove(localJobId, out _);
+                        lastReported.TryRemove(localJobId, out _);
+                        continue;
+                    }
+
+                    // 打印中：计数有变化才上报（回报循环 1s 周期即节流间隔）；
+                    // 失败静默降级——Server 不可达不阻塞打印主链路，下一轮携带最新计数自然重试
+                    if (lastReported.GetOrAdd(localJobId, (0, 0)) == (completed, failed))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        await poller.ReportProgressAsync(serverJobId, new JobProgress(completed, failed), cancellationToken);
+                        lastReported[localJobId] = (completed, failed);
+                    }
+                    catch
+                    {
+                        // 进度上报失败：不重试风暴、不翻转通知状态，下一轮重试
+                    }
                 }
 
                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);

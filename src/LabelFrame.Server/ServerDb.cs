@@ -328,6 +328,32 @@ public sealed class ServerDb
         return await LoadJobCoreAsync(connection, jobId, cancellationToken);
     }
 
+    /// <summary>
+    /// 进度增量更新：仅 Claimed 作业接受，计数按字段取 max 单调递增（乱序 / 迟到 / 重复上报不回退）。
+    /// 只更新两个计数字段——不改 status / finished_at / error_message，也不刷新 claimed_at（不干预超时回收计龄）。
+    /// 返回受影响行数（0 = 作业已非 Claimed，调用方按竞态重读处理）。
+    /// </summary>
+    public async Task<int> UpdateJobProgressAsync(
+        string jobId,
+        int completedItems,
+        int failedItems,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE server_jobs
+            SET completed_items = MAX(completed_items, $completedItems),
+                failed_items = MAX(failed_items, $failedItems)
+            WHERE id = $id AND status = $claimed;
+            """;
+        command.Parameters.AddWithValue("$completedItems", Math.Max(0, completedItems));
+        command.Parameters.AddWithValue("$failedItems", Math.Max(0, failedItems));
+        command.Parameters.AddWithValue("$id", jobId);
+        command.Parameters.AddWithValue("$claimed", ServerJobStatus.Claimed.ToString());
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     /// <summary>作业列表（按创建时间倒序；可选 deviceId 过滤——客户端只看自己的作业，服务端 UI 不传看全部）。</summary>
     public async Task<IReadOnlyList<ServerJob>> ListJobsAsync(int limit = 100, string? deviceId = null, CancellationToken cancellationToken = default)
     {

@@ -20,10 +20,14 @@ public class ServerRoutingWorkerTests
     {
         private readonly Queue<ServerJobPayload> _pending = new();
         public List<(string JobId, ServerJobResult Result)> Reported { get; } = [];
+        public List<(string JobId, ServerJobProgress Progress)> ProgressReports { get; } = [];
         public int RegisterCount { get; private set; }
 
         /// <summary>长轮询等待时长（默认 20ms；可调大模拟服务端长时间挂起，验证回报不依赖它）。</summary>
         public TimeSpan WaitDelay { get; set; } = TimeSpan.FromMilliseconds(20);
+
+        /// <summary>模拟 Server 不可达：进度上报抛异常（静默降级用）。</summary>
+        public bool FailProgress { get; set; }
 
         public void Enqueue(ServerJobPayload payload) => _pending.Enqueue(payload);
 
@@ -58,6 +62,17 @@ public class ServerRoutingWorkerTests
         public Task ReportResultAsync(string jobId, ServerJobResult result, CancellationToken cancellationToken = default)
         {
             Reported.Add((jobId, result));
+            return Task.CompletedTask;
+        }
+
+        public Task ReportProgressAsync(string jobId, ServerJobProgress progress, CancellationToken cancellationToken = default)
+        {
+            if (FailProgress)
+            {
+                throw new HttpRequestException("模拟 Server 不可达");
+            }
+
+            ProgressReports.Add((jobId, progress));
             return Task.CompletedTask;
         }
     }
@@ -195,6 +210,176 @@ public class ServerRoutingWorkerTests
             }
         }
     }
+    [Fact]
+    public async Task Worker_should_report_throttled_progress_with_fake_time_provider()
+    {
+        // AC-03：FakeTimeProvider 驱动回报循环时钟——打印中间隔性上报、节流生效、终态后停发
+        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroute-{Guid.NewGuid():N}.db");
+        try
+        {
+            var store = new SqliteLabelJobStore(dbPath);
+            await store.InitializeAsync();
+            var queue = new LabelJobQueue(store);
+            var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
+            var templates = new TemplateStore(templatesDb);
+            await templates.InitializeAsync();
+            var submission = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, TestTransportRegistry.CreateManager(new HostOptions { Transport = TransportMode.Log }), TextWriter.Null);
+
+            var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(DateTimeOffset.UtcNow);
+            var poller = new FakePoller();
+            poller.Enqueue(new ServerJobPayload(
+                "server-job-prog",
+                "req-route-prog",
+                3,
+                new TemplateDto(SampleContract, SampleLayout),
+                [
+                    new LabelDto(new Dictionary<string, string> { ["zone"] = "A", ["locationCode"] = "A-1" }),
+                    new LabelDto(new Dictionary<string, string> { ["zone"] = "B", ["locationCode"] = "B-1" }),
+                    new LabelDto(new Dictionary<string, string> { ["zone"] = "C", ["locationCode"] = "C-1" }),
+                ]));
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var worker = new ServerRoutingWorker(
+                poller, submission, queue, TimeSpan.FromMilliseconds(100),
+                NullLogger<ServerRoutingWorker>.Instance, time,
+                progressInterval: TimeSpan.FromSeconds(1),
+                reportInterval: TimeSpan.FromSeconds(1));
+            await worker.StartAsync(cts.Token);
+
+            LabelJob? localJob = null;
+            for (var i = 0; i < 100 && localJob is null; i++)
+            {
+                await Task.Delay(50, cts.Token);
+                localJob = await store.GetJobByRequestIdAsync("req-route-prog", cts.Token);
+            }
+
+            Assert.NotNull(localJob);
+
+            // 第 1 张完成 → 虚拟时钟推进过一个间隔 → 收到首条进度 (1,0)
+            await CompleteNextItemAsync(queue, cts.Token);
+            await UntilAdvancedAsync(() => poller.ProgressReports.Count == 1, time, cts.Token);
+            Assert.Equal(("server-job-prog", new ServerJobProgress(1, 0)), poller.ProgressReports[0]);
+
+            // 第 2 张完成、时钟冻结 0.5s（间隔内）→ 抑制，不新增上报
+            //（清扫若恰在此间运行也由节流器按「距上次上报不足间隔」抑制，语义不依赖清扫时机）
+            await CompleteNextItemAsync(queue, cts.Token);
+            await Task.Delay(500, cts.Token);
+            Assert.Single(poller.ProgressReports);
+
+            // 推进满间隔 → 上报 (2,0)
+            await UntilAdvancedAsync(() => poller.ProgressReports.Count == 2, time, cts.Token);
+            Assert.Equal(("server-job-prog", new ServerJobProgress(2, 0)), poller.ProgressReports[1]);
+
+            // 终态：第 3 张完成后只走 result，不再有进度上报
+            await CompleteNextItemAsync(queue, cts.Token);
+            await UntilAdvancedAsync(() => poller.Reported.Count == 1, time, cts.Token);
+            Assert.Equal(("server-job-prog", "Completed", 3), (poller.Reported[0].JobId, poller.Reported[0].Result.Status, poller.Reported[0].Result.CompletedItems));
+            Assert.Equal(2, poller.ProgressReports.Count);
+
+            await worker.StopAsync(cts.Token);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath))
+            {
+                File.Delete(dbPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Progress_failure_should_degrade_silently_and_not_block_result()
+    {
+        // AC-03：Server 不可达（进度上报持续抛异常）不影响打印主链路，终态回报仍送达
+        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroute-{Guid.NewGuid():N}.db");
+        try
+        {
+            var store = new SqliteLabelJobStore(dbPath);
+            await store.InitializeAsync();
+            var queue = new LabelJobQueue(store);
+            var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
+            var templates = new TemplateStore(templatesDb);
+            await templates.InitializeAsync();
+            var submission = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, TestTransportRegistry.CreateManager(new HostOptions { Transport = TransportMode.Log }), TextWriter.Null);
+
+            var poller = new FakePoller { FailProgress = true };
+            poller.Enqueue(new ServerJobPayload(
+                "server-job-down",
+                "req-route-down",
+                1,
+                new TemplateDto(SampleContract, SampleLayout),
+                [new LabelDto(new Dictionary<string, string> { ["zone"] = "A", ["locationCode"] = "A-9" })]));
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var worker = new ServerRoutingWorker(
+                poller, submission, queue, TimeSpan.FromMilliseconds(100),
+                NullLogger<ServerRoutingWorker>.Instance,
+                TimeProvider.System,
+                progressInterval: TimeSpan.FromMilliseconds(100),
+                reportInterval: TimeSpan.FromMilliseconds(100));
+            await worker.StartAsync(cts.Token);
+
+            LabelJob? localJob = null;
+            for (var i = 0; i < 100 && localJob is null; i++)
+            {
+                await Task.Delay(50, cts.Token);
+                localJob = await store.GetJobByRequestIdAsync("req-route-down", cts.Token);
+            }
+
+            Assert.NotNull(localJob);
+
+            // 打印（模拟）完成 → 终态回报在独立循环内送达，进度持续失败不拖垮循环
+            var claimed = await queue.ClaimNextItemAsync(cts.Token);
+            Assert.NotNull(claimed);
+            await queue.CompleteItemAsync(claimed!.Value.JobId, claimed.Value.Item.Id, cts.Token);
+
+            for (var i = 0; i < 100 && poller.Reported.Count == 0; i++)
+            {
+                await Task.Delay(50, cts.Token);
+            }
+
+            var report = Assert.Single(poller.Reported);
+            Assert.Equal("server-job-down", report.JobId);
+            Assert.Equal("Completed", report.Result.Status);
+            Assert.Empty(poller.ProgressReports);
+
+            await worker.StopAsync(cts.Token);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath))
+            {
+                File.Delete(dbPath);
+            }
+        }
+    }
+
+    /// <summary>领取并完成下一张（模拟打印 Worker 的串行领取-完成路径）。</summary>
+    private static async Task CompleteNextItemAsync(LabelJobQueue queue, CancellationToken cancellationToken)
+    {
+        var claimed = await queue.ClaimNextItemAsync(cancellationToken);
+        Assert.NotNull(claimed);
+        await queue.CompleteItemAsync(claimed!.Value.JobId, claimed.Value.Item.Id, cancellationToken);
+    }
+
+    /// <summary>
+    /// 真实时钟等待条件满足，期间小步推进虚拟时钟——回报循环停泊在 Task.Delay(fakeTime) 时，
+    /// 若一次大步 Advance 恰落在循环未停泊的空档会被错过，导致虚拟时钟冻结、条件永不成真；
+    /// 小步推进保证已停泊的延迟最终到期（条件语义仍由节流器保证，不受清扫时机影响）。
+    /// </summary>
+    private static async Task UntilAdvancedAsync(Func<bool> condition, Microsoft.Extensions.Time.Testing.FakeTimeProvider time, CancellationToken cancellationToken)
+    {
+        for (var i = 0; i < 200 && !condition(); i++)
+        {
+            await Task.Delay(50, cancellationToken);
+            time.Advance(TimeSpan.FromMilliseconds(100));
+        }
+
+        Assert.True(condition(), "等待条件超时未满足。");
+    }
+
     private static LabelFrame.Core.Contracts.LabelContract SampleContract { get; } = new()
     {
         Name = "location-label",

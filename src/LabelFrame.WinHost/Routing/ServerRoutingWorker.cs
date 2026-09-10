@@ -8,8 +8,9 @@ namespace LabelFrame.WinHost.Routing;
 
 /// <summary>
 /// Server 路由 Worker：周期注册（心跳）→ 领取定向作业 → 投入本地作业队列打印 →
-/// 本地作业终态后回报 Server。未配置 ServerUrl 时不启用。
-/// 回报由独立循环负责（反馈）：本地作业终态后约 1s 内回报，不被长轮询等待阻塞。
+/// 打印中节流上报进度（决策 #101）→ 本地作业终态后回报 Server。未配置 ServerUrl 时不启用。
+/// 回报与进度由独立循环负责：本地作业终态后约 1s 内回报，不被长轮询等待阻塞；
+/// 进度上报失败静默降级（不阻塞打印主链路，下一轮自然重试）。
 /// </summary>
 public sealed class ServerRoutingWorker : BackgroundService
 {
@@ -17,14 +18,21 @@ public sealed class ServerRoutingWorker : BackgroundService
     private readonly JobSubmissionService _submission;
     private readonly LabelJobQueue _queue;
     private readonly TimeSpan _interval;
+    private readonly TimeSpan _reportInterval;
+    private readonly TimeSpan _progressInterval;
+    private readonly TimeProvider _time;
     private readonly ILogger<ServerRoutingWorker> _logger;
     private readonly ConcurrentDictionary<string, string> _localToServer = new();
+    private readonly ConcurrentDictionary<string, ProgressThrottle> _progress = new();
 
     /// <summary>长轮询通知超时（服务端挂起等待作业，作业到达立即唤醒）。</summary>
     public static readonly TimeSpan NotifyTimeout = TimeSpan.FromSeconds(20);
 
     /// <summary>完成回报周期：独立于长轮询，本地作业终态后尽快回报。</summary>
     public static readonly TimeSpan ReportInterval = TimeSpan.FromSeconds(1);
+
+    /// <summary>进度上报默认节流间隔（决策 #101：计数有变化才发，无变化零流量）。</summary>
+    public static readonly TimeSpan DefaultProgressInterval = TimeSpan.FromSeconds(1);
 
     /// <summary>创建路由 Worker。</summary>
     public ServerRoutingWorker(
@@ -33,21 +41,38 @@ public sealed class ServerRoutingWorker : BackgroundService
         LabelJobQueue queue,
         TimeSpan interval,
         ILogger<ServerRoutingWorker> logger)
+        : this(poller, submission, queue, interval, logger, TimeProvider.System)
+    {
+    }
+
+    /// <summary>创建路由 Worker（注入 TimeProvider 与节流参数：进度 / 回报测试用 FakeTimeProvider 或短间隔确定性驱动）。</summary>
+    public ServerRoutingWorker(
+        IServerJobPoller poller,
+        JobSubmissionService submission,
+        LabelJobQueue queue,
+        TimeSpan interval,
+        ILogger<ServerRoutingWorker> logger,
+        TimeProvider timeProvider,
+        TimeSpan? progressInterval = null,
+        TimeSpan? reportInterval = null)
     {
         _poller = poller;
         _submission = submission;
         _queue = queue;
         _interval = interval;
         _logger = logger;
+        _time = timeProvider;
+        _progressInterval = progressInterval ?? DefaultProgressInterval;
+        _reportInterval = reportInterval ?? ReportInterval;
     }
 
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // 回报循环与主循环并行：主循环负责注册 / 长轮询 / 领取 / 投入队列，
-        // 回报循环每 1s 检查本地作业终态并立即回报，避免等长轮询超时（最长 20s）。
+        // 回报 / 进度循环与主循环并行：主循环负责注册 / 长轮询 / 领取 / 投入队列，
+        // 回报循环每周期检查本地作业状态——终态立即回报、进行中节流上报进度。
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-        var reportLoop = ReportFinishedLoopAsync(linked.Token);
+        var reportLoop = ReportLoopAsync(linked.Token);
         try
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -81,7 +106,7 @@ public sealed class ServerRoutingWorker : BackgroundService
                     _logger.LogWarning(ex, "Server 路由异常，稍后重试。");
                     try
                     {
-                        await Task.Delay(_interval, stoppingToken);
+                        await Task.Delay(_interval, _time, stoppingToken);
                     }
                     catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                     {
@@ -104,15 +129,15 @@ public sealed class ServerRoutingWorker : BackgroundService
         }
     }
 
-    /// <summary>回报循环：周期检查本地作业终态并回报 Server（不依赖长轮询）。</summary>
-    private async Task ReportFinishedLoopAsync(CancellationToken cancellationToken)
+    /// <summary>回报 / 进度循环：周期检查本地作业——终态回报结果，进行中节流上报进度（不依赖长轮询）。</summary>
+    private async Task ReportLoopAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                await ReportFinishedAsync(cancellationToken);
-                await Task.Delay(ReportInterval, cancellationToken);
+                await ReportAsync(cancellationToken);
+                await Task.Delay(_reportInterval, _time, cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -123,7 +148,7 @@ public sealed class ServerRoutingWorker : BackgroundService
                 _logger.LogWarning(ex, "回报 Server 作业结果异常，稍后重试。");
                 try
                 {
-                    await Task.Delay(ReportInterval, cancellationToken);
+                    await Task.Delay(_reportInterval, _time, cancellationToken);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -153,31 +178,59 @@ public sealed class ServerRoutingWorker : BackgroundService
 
         // 幂等重放：同一 requestId 可能返回既有本地作业
         _localToServer[result.Job.Id] = job.JobId;
+        _progress[result.Job.Id] = new ProgressThrottle();
         _logger.LogInformation("Server 作业 {JobId} 已投入本地队列 {LocalJobId}（{Items} 张）", job.JobId, result.Job.Id, job.TotalItems);
     }
 
-    private async Task ReportFinishedAsync(CancellationToken cancellationToken)
+    /// <summary>终态回报 + 进行中进度上报；进度失败按作业吞掉（静默降级），不影响同批其他作业与终态回报。</summary>
+    private async Task ReportAsync(CancellationToken cancellationToken)
     {
         foreach (var (localJobId, serverJobId) in _localToServer.ToArray())
         {
             var local = await _queue.GetAsync(localJobId, cancellationToken);
-            if (local is null || local.Status is not (LabelJobStatus.Completed or LabelJobStatus.Failed or LabelJobStatus.Cancelled))
+            if (local is null)
             {
                 continue;
             }
 
-            var status = local.Status == LabelJobStatus.Completed ? "Completed" : "Failed";
-            var errorMessage = local.Items.FirstOrDefault(i => i.ErrorMessage is not null)?.ErrorMessage;
-            await _poller.ReportResultAsync(
-                serverJobId,
-                new ServerJobResult(
-                    status,
-                    local.Items.Count(i => i.Status == LabelJobItemStatus.Completed),
-                    local.Items.Count(i => i.Status is LabelJobItemStatus.Failed or LabelJobItemStatus.Cancelled),
-                    errorMessage),
-                cancellationToken);
-            _localToServer.TryRemove(localJobId, out _);
-            _logger.LogInformation("Server 作业 {ServerJobId} 已回报：{Status}", serverJobId, status);
+            var completed = local.Items.Count(i => i.Status == LabelJobItemStatus.Completed);
+            var failed = local.Items.Count(i => i.Status is LabelJobItemStatus.Failed or LabelJobItemStatus.Cancelled);
+
+            if (local.Status is LabelJobStatus.Completed or LabelJobStatus.Failed or LabelJobStatus.Cancelled)
+            {
+                var status = local.Status == LabelJobStatus.Completed ? "Completed" : "Failed";
+                var errorMessage = local.Items.FirstOrDefault(i => i.ErrorMessage is not null)?.ErrorMessage;
+                await _poller.ReportResultAsync(
+                    serverJobId,
+                    new ServerJobResult(status, completed, failed, errorMessage),
+                    cancellationToken);
+                _localToServer.TryRemove(localJobId, out _);
+                _progress.TryRemove(localJobId, out _);
+                _logger.LogInformation("Server 作业 {ServerJobId} 已回报：{Status}", serverJobId, status);
+                continue;
+            }
+
+            // 打印中：节流上报进度（计数有变化才发）；失败静默降级——不重试风暴、不阻塞主链路，下一轮携带最新计数自然重试
+            var throttle = _progress.GetOrAdd(localJobId, _ => new ProgressThrottle());
+            var now = _time.GetUtcNow();
+            if (!throttle.ShouldReport(completed, failed, now, _progressInterval))
+            {
+                continue;
+            }
+
+            try
+            {
+                await _poller.ReportProgressAsync(serverJobId, new ServerJobProgress(completed, failed), cancellationToken);
+                throttle.MarkReported(completed, failed, now);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Server 作业 {ServerJobId} 进度上报失败（Server 不可达时静默降级，下一轮重试）。", serverJobId);
+            }
         }
     }
 }
