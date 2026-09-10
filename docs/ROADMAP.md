@@ -63,15 +63,15 @@
 | 45 | 批次首张节奏修正 + 设置页布局自适应 + 工作台小修（批间计数按作业重置 #100 / 多列网格 / 模板名搜索 + 操作列修正） | ✅ 已完成（2026-09-10 用户真机验收通过，[#11](https://github.com/marci-labs/LabelFrame/issues/11)） |
 | 46 | 工作台模板缩略图预览（预览列内嵌缩略图 + 居中灯箱放大，零契约变更） | ✅ 已完成（2026-09-10 用户真机验收通过，经三轮验收修订定稿，[#15](https://github.com/marci-labs/LabelFrame/issues/15)） |
 | 47 | 作业可观测性（进度增量上报 #101/#102 + 日志细化 + 缺陷 #14 修复） | ✅ 已完成（2026-09-10 验收收尾：真机日志落盘 / 级别切换、真实 Server 进度复验（v0.24.0 升级后）通过，PDA 复验跳过（未单独测试，异常再开缺陷），[#16](https://github.com/marci-labs/LabelFrame/issues/16)） |
+| 48 | 工作台信息架构重构（卡片网格定稿 #103）+ 作业历史自动轮询（1.5s / 仅进行中 / 隐藏暂停） | ✅ 已完成（2026-09-10 用户验收通过，[#27](https://github.com/marci-labs/LabelFrame/issues/27)） |
 | 流程治理 | 启用多会话 worktree 并行（试行，WORKFLOW §7） | ✅ 已完成（2026-09-10 首次并行演练完成并转正，记录见 WORKFLOW §7.1，[#17](https://github.com/marci-labs/LabelFrame/issues/17)） |
 | 发布 | v0.24.0 迭代 40-47 汇总发布（PDA 配置与文案 / Claimed 超时回收 / 客户端窗口化 / 批次节奏与工作台小修 / 缩略图预览 / 作业可观测性） | ✅ 已完成（2026-09-10，tag v0.24.0，含跨端 progress 契约 #101 与批次节奏语义 #100） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
 
-> 2026-09-10 迭代 44 验收后用户提出五项候选，已全部交付：批次首张节奏 / 设置页布局 / 工作台搜索与操作列（迭代 45，[#11](https://github.com/marci-labs/LabelFrame/issues/11)）、缩略图预览（迭代 46，[#15](https://github.com/marci-labs/LabelFrame/issues/15)）、进度增量上报与日志细化（迭代 47，[#16](https://github.com/marci-labs/LabelFrame/issues/16)）；其中工作台整体信息架构重构仍待专门讨论（见下）。
+> 2026-09-10 迭代 44 验收后用户提出五项候选，已全部交付：批次首张节奏 / 设置页布局 / 工作台搜索与操作列（迭代 45，[#11](https://github.com/marci-labs/LabelFrame/issues/11)）、缩略图预览（迭代 46，[#15](https://github.com/marci-labs/LabelFrame/issues/15)）、进度增量上报与日志细化（迭代 47，[#16](https://github.com/marci-labs/LabelFrame/issues/16)）；工作台整体信息架构重构亦随候选讨论定稿排期（迭代 48，[#27](https://github.com/marci-labs/LabelFrame/issues/27)，卡片网格形态交付）。
 
-- **工作台整体信息架构重构**（卡片网格 / 列表+详情面板等）：待专门讨论（缩略图已由迭代 46 以预览列形态交付）。
 - net48 版 WinHost（Win7 / Win8 老电脑，尽量兼容）。
 - WMS 模板下发（复用模板包格式）。
 - 其他打印机指令集（TSPL / CPCL）。
