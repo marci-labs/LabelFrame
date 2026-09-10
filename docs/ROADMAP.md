@@ -62,7 +62,7 @@
 | 44 | Windows 客户端窗口化（WebView2 嵌入界面壳 + MSI 运行时引导） | ✅ 已完成（2026-09-10 用户真机验收通过，[#8](https://github.com/marci-labs/LabelFrame/issues/8)） |
 | 45 | 批次首张节奏修正 + 设置页布局自适应 + 工作台小修（批间计数按作业重置 #100 / 多列网格 / 模板名搜索 + 操作列修正） | ✅ 已完成（2026-09-10 用户真机验收通过，[#11](https://github.com/marci-labs/LabelFrame/issues/11)） |
 | 46 | 工作台模板缩略图预览（预览列内嵌缩略图 + 居中灯箱放大，零契约变更） | ✅ 已完成（2026-09-10 用户真机验收通过，经三轮验收修订定稿，[#15](https://github.com/marci-labs/LabelFrame/issues/15)） |
-| 47 | 作业可观测性（进度增量上报 #101/#102 + 日志细化 + 缺陷 #14 修复） | ✅ 已完成（2026-09-10 真机①日志落盘②级别切换通过；③PDA / ④真实 Server 进度复验待 Server 升级发版，[#16](https://github.com/marci-labs/LabelFrame/issues/16)） |
+| 47 | 作业可观测性（进度增量上报 #101/#102 + 日志细化 + 缺陷 #14 修复） | ✅ 已完成（2026-09-10 验收收尾：真机日志落盘 / 级别切换、真实 Server 进度复验（v0.24.0 升级后）通过，PDA 复验跳过（未单独测试，异常再开缺陷），[#16](https://github.com/marci-labs/LabelFrame/issues/16)） |
 | 流程治理 | 启用多会话 worktree 并行（试行，WORKFLOW §7） | ✅ 已完成（2026-09-10 首次并行演练完成并转正，记录见 WORKFLOW §7.1，[#17](https://github.com/marci-labs/LabelFrame/issues/17)） |
 | 发布 | v0.24.0 迭代 40-47 汇总发布（PDA 配置与文案 / Claimed 超时回收 / 客户端窗口化 / 批次节奏与工作台小修 / 缩略图预览 / 作业可观测性） | ✅ 已完成（2026-09-10，tag v0.24.0，含跨端 progress 契约 #101 与批次节奏语义 #100） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
