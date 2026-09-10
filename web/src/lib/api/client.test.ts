@@ -11,6 +11,7 @@ type ClientModule = {
   getServerBaseUrl: typeof GetServerBaseUrlFn
   setServerBaseUrl: typeof SetServerBaseUrlFn
   pluginPackageDownloadUrl: typeof import('./client')['pluginPackageDownloadUrl']
+  localApi: typeof import('./client')['localApi']
 }
 
 const KEY = 'labelframe.baseUrl'
@@ -81,5 +82,31 @@ describe('pluginPackageDownloadUrl（迭代 23 §2.1：与 clientPackageDownload
   it('server 构建：同源相对路径', async () => {
     const mod = await loadClient('server')
     expect(mod.pluginPackageDownloadUrl('sample-1.0.0.lfplugin')).toBe('/api/plugin-packages/sample-1.0.0.lfplugin')
+  })
+})
+
+describe('previewTemplate 请求形态（迭代 46 真机验收回归：旧版 Server 兼容）', () => {
+  it('POST 携带 Content-Type: application/json 与空 JSON 体；返回 blob 与文件名', async () => {
+    const mod = await loadClient('client')
+    const fetchStub = vi.fn().mockResolvedValue(
+      new Response(new Blob(['png-bytes'], { type: 'image/png' }), {
+        status: 200,
+        headers: { 'Content-Disposition': 'attachment; filename="70x50.png"' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchStub)
+    try {
+      const result = await mod.localApi.previewTemplate('70*50 容器码')
+      expect(fetchStub).toHaveBeenCalledTimes(1)
+      const [url, init] = fetchStub.mock.calls[0] as [string, RequestInit]
+      expect(url).toBe(`${window.location.origin}/api/templates/${encodeURIComponent('70*50 容器码')}/preview`)
+      expect(init.method).toBe('POST')
+      expect((init.headers as Record<string, string>)['Content-Type']).toBe('application/json')
+      expect(init.body).toBe('{}')
+      expect(result.filename).toBe('70x50.png')
+      expect(result.blob.size).toBeGreaterThan(0)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

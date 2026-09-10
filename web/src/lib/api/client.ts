@@ -203,10 +203,17 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
         body: JSON.stringify(req),
       }, 'label-print.png', '出图失败'),
 
-    /** 模板预览 PNG（迭代 46：按模板 TestData 渲染，工作台悬停浮层用；Server 与 WinHost 双宿主已实现，
-     *  旧宿主 404 由调用方按失败态处理）。与 renderImage 同构的 blob 封装。 */
+    /** 模板预览 PNG（迭代 46：按模板 TestData 渲染，工作台预览列用；Server 与 WinHost 双宿主已实现，
+     *  模板不存在等业务失败由调用方按失败态处理）。与 renderImage 同构的 blob 封装。
+     *  空 JSON 体 + 显式 Content-Type 必须携带：旧版 Server 对无 Content-Type 的裸 POST 按路由不匹配
+     *  返回空体 404（2026-09-10 真机验收发现——新版宽容、旧版不宽容，显式携带两端通吃）。 */
     previewTemplate: (name: string): Promise<{ blob: Blob; filename: string }> =>
-      fetchBlob(`/api/templates/${encodeURIComponent(name)}/preview`, { method: 'POST' }, `${name}.png`, '生成预览失败'),
+      fetchBlob(
+        `/api/templates/${encodeURIComponent(name)}/preview`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
+        `${name}.png`,
+        '生成预览失败',
+      ),
 
     /** 调试批量出图：后端渲染全部标签为 PNG 打包 zip 下载（迭代 15，不建作业）。 */
     renderImages: (req: SubmitJobRequest) =>
