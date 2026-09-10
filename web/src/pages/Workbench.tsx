@@ -1,9 +1,10 @@
 // 工作台：模板列表（名称搜索 + 分组过滤）/ 新建 / 编辑 / 删除 / 导出 / 导入
 // 迭代 18：业务 API 跟随模式——服务端 = serverApi（模板中心）；单机降级 = localApi（本机 WinHost 模板库）。
-// 迭代 45：模板名搜索（子串匹配、大小写不敏感，与分组过滤叠加生效）。
-// 迭代 46：模板行悬停按需预览（防抖触发、会话内缓存随列表刷新失效）。
+// 迭代 45：模板名搜索（子串、大小写不敏感，与分组过滤叠加生效）。
+// 迭代 46：预览列内嵌缩略图（2026-09-10 验收修订——纯悬停触发不可发现）：列表加载后按需拉取全部预览，
+// 会话内缓存随列表刷新失效；点击缩略图放大查看（遮罩 / Esc 关闭）。
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { TemplateSummary } from '../lib/api/types'
@@ -11,8 +12,8 @@ import { useApp } from '../state/AppContext'
 import type { DesignerRequest } from '../state/types'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
-import { PREVIEW_HOVER_DELAY_MS, useTemplatePreviewCache } from './useTemplatePreview'
-import { TemplatePreviewPop } from './WorkbenchPreview'
+import { useTemplatePreviewCache } from './useTemplatePreview'
+import { PreviewOverlay, TemplatePreviewPop } from './WorkbenchPreview'
 import type { PreviewAnchor } from './WorkbenchPreview'
 
 export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRequest) => void }) {
@@ -29,17 +30,18 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
   const [deleting, setDeleting] = useState<TemplateSummary | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
-  // 悬停预览（迭代 46）：缓存随 biz 模式切换后的重新 load 失效
+  // 预览缩略图（迭代 46 修订）：缓存随 biz 模式切换后的重新 load 失效
   const preview = useTemplatePreviewCache(biz.previewTemplate)
-  const [previewAnchor, setPreviewAnchor] = useState<PreviewAnchor | null>(null)
-  const previewTimer = useRef<number | null>(null)
-  const clearPreviewTimer = useCallback(() => {
-    if (previewTimer.current !== null) {
-      window.clearTimeout(previewTimer.current)
-      previewTimer.current = null
+  /** 当前放大的预览（锚点 = 被点击的缩略图单元格）。 */
+  const [enlarged, setEnlarged] = useState<PreviewAnchor | null>(null)
+  useEffect(() => {
+    if (!enlarged) return
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setEnlarged(null)
     }
-  }, [])
-  useEffect(() => clearPreviewTimer, [clearPreviewTimer])
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [enlarged])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -48,8 +50,11 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
       const list = await biz.listTemplates()
       setTemplates(list)
       setGroups([...new Set(list.map((t) => t.group))].sort())
-      // 列表刷新 = 新周期：模板可能已修改，预览缓存整体失效（释放 blob URL）
+      // 列表刷新 = 新周期：模板可能已修改，预览缓存整体失效（释放 blob URL）后按需重拉全部
       preview.invalidate()
+      for (const t of list) {
+        preview.ensure(t.name)
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '加载模板列表失败。')
     } finally {
@@ -195,6 +200,7 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
               <tr>
                 <th style={{ width: 60 }}>#</th>
                 <th>模板名称</th>
+                <th style={{ width: 108 }}>预览</th>
                 <th style={{ width: 160 }}>分组</th>
                 <th style={{ width: 190 }}>更新时间</th>
                 <th style={{ width: 240 }} className="actions">操作</th>
@@ -202,26 +208,34 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
             </thead>
             <tbody>
               {filtered.map((t, i) => (
-                <tr
-                  key={t.name}
-                  onDoubleClick={() => onOpenDesigner({ kind: 'edit', name: t.name })}
-                  title="双击打开设计器"
-                  onMouseEnter={(ev) => {
-                    clearPreviewTimer()
-                    const row = ev.currentTarget
-                    previewTimer.current = window.setTimeout(() => {
-                      const rect = row.getBoundingClientRect()
-                      setPreviewAnchor({ name: t.name, top: rect.top, left: rect.left, right: rect.right })
-                      preview.ensure(t.name)
-                    }, PREVIEW_HOVER_DELAY_MS)
-                  }}
-                  onMouseLeave={() => {
-                    clearPreviewTimer()
-                    setPreviewAnchor(null)
-                  }}
-                >
+                <tr key={t.name} onDoubleClick={() => onOpenDesigner({ kind: 'edit', name: t.name })} title="双击打开设计器">
                   <td className="mono" style={{ color: 'var(--ink-3)' }}>{i + 1}</td>
                   <td style={{ fontWeight: 600 }}>{t.name}</td>
+                  <td>{(() => {
+                    const entry = preview.get(t.name)
+                    if (!entry || entry.status === 'loading') {
+                      return <div className="preview-thumb-skel" title="正在生成预览…" />
+                    }
+                    if (entry.status === 'error') {
+                      return (
+                        <div className="preview-thumb-err" title={`预览不可用：${entry.message}`}>
+                          <Icon name="alert" size={12} />
+                        </div>
+                      )
+                    }
+                    return (
+                      <img
+                        className="preview-thumb"
+                        src={entry.url}
+                        alt={`模板「${t.name}」缩略图`}
+                        title="点击放大预览"
+                        onClick={(ev) => {
+                          const rect = ev.currentTarget.getBoundingClientRect()
+                          setEnlarged({ name: t.name, top: rect.top, left: rect.left, right: rect.right })
+                        }}
+                      />
+                    )
+                  })()}</td>
                   <td>
                     <span className="badge neutral">{t.group}</span>
                   </td>
@@ -251,9 +265,14 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
         )}
       </div>
 
-      {previewAnchor && (() => {
-        const entry = preview.get(previewAnchor.name)
-        return entry ? <TemplatePreviewPop anchor={previewAnchor} entry={entry} /> : null
+      {enlarged && (() => {
+        const entry = preview.get(enlarged.name)
+        return (
+          <>
+            <PreviewOverlay onClose={() => setEnlarged(null)} />
+            {entry ? <TemplatePreviewPop anchor={enlarged} entry={entry} onClose={() => setEnlarged(null)} /> : null}
+          </>
+        )
       })()}
 
       {deleting && (

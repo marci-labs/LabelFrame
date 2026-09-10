@@ -329,20 +329,66 @@ label.field > .input, label.field > select.input { width: 100%; }
   border-top: 1px solid var(--line-soft);
 }
 
-/* ---------- 工作台模板悬停预览浮层（迭代 46） ---------- */
+/* ---------- 工作台模板预览（迭代 46，修订：预览列内嵌缩略图 + 点击放大） ---------- */
+/* 缩略图（单元格内）：等比缩到 40px 高，点击放大 */
+.preview-thumb {
+  display: block;
+  height: 40px;
+  max-width: 92px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 1px;
+  cursor: zoom-in;
+  transition: border-color 100ms, box-shadow 100ms;
+  /* 透明底 PNG 衬浅格，白底标签不至于「隐形」 */
+  background-image: linear-gradient(45deg, #f0f2f5 25%, transparent 25%, transparent 75%, #f0f2f5 75%),
+    linear-gradient(45deg, #f0f2f5 25%, transparent 25%, transparent 75%, #f0f2f5 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 6px 6px;
+}
+.preview-thumb:hover { border-color: var(--accent); box-shadow: var(--shadow-1); }
+/* 加载中骨架与失败占位（单元格内同尺寸） */
+.preview-thumb-skel, .preview-thumb-err {
+  width: 68px;
+  height: 40px;
+  border: 1px dashed var(--line);
+  border-radius: 3px;
+}
+.preview-thumb-skel { animation: previewSkel 1.1s ease-in-out infinite; }
+.preview-thumb-err {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-color: #e4b8b5;
+  color: var(--danger);
+}
+@keyframes previewSkel { 0%, 100% { background: #f4f6f9; } 50% { background: #e9edf2; } }
+/* 放大遮罩：点击关闭（浮层在其上） */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 89;
+  background: rgba(29, 38, 51, 0.08);
+}
+/* 放大浮层 */
 .preview-pop {
   position: fixed;
-  z-index: 90; /* 低于模态（100）：删除确认等模态在最上 */
+  z-index: 90; /* 低于模态（100）：删除确认等模态在最上；高于遮罩 */
   width: 296px;
   padding: 8px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(23, 31, 41, 0.16);
-  pointer-events: none; /* 浮层不拦截鼠标，列表 hover / 操作不受影响 */
+  cursor: zoom-out;
   animation: popIn 120ms ease-out;
 }
 .preview-pop-title {
+  display: flex;
+  align-items: center;
   font-size: 11px;
   font-weight: 600;
   color: var(--ink-2);
