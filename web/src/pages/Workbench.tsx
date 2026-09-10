@@ -2,7 +2,7 @@
 // 迭代 18：业务 API 跟随模式——服务端 = serverApi（模板中心）；单机降级 = localApi（本机 WinHost 模板库）。
 // 迭代 45：模板名搜索（子串、大小写不敏感，与分组过滤叠加生效）。
 // 迭代 46：预览列内嵌缩略图（2026-09-10 验收修订——纯悬停触发不可发现）：列表加载后按需拉取全部预览，
-// 会话内缓存随列表刷新失效；点击缩略图放大查看（遮罩 / Esc 关闭）。
+// 会话内缓存随列表刷新失效；点击缩略图居中灯箱放大（Esc / 点背景 / 点 × 关闭，二次验收修订 B 形态）。
 
 import { useCallback, useEffect, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
@@ -13,8 +13,7 @@ import type { DesignerRequest } from '../state/types'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { useTemplatePreviewCache } from './useTemplatePreview'
-import { PreviewOverlay, TemplatePreviewPop } from './WorkbenchPreview'
-import type { PreviewAnchor } from './WorkbenchPreview'
+import { TemplatePreviewModal } from './WorkbenchPreview'
 
 export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRequest) => void }) {
   const app = useApp()
@@ -32,8 +31,8 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
 
   // 预览缩略图（迭代 46 修订）：缓存随 biz 模式切换后的重新 load 失效
   const preview = useTemplatePreviewCache(biz.previewTemplate)
-  /** 当前放大的预览（锚点 = 被点击的缩略图单元格）。 */
-  const [enlarged, setEnlarged] = useState<PreviewAnchor | null>(null)
+  /** 当前放大查看的模板名（居中灯箱）。 */
+  const [enlarged, setEnlarged] = useState<string | null>(null)
   useEffect(() => {
     if (!enlarged) return
     const onKey = (ev: KeyboardEvent) => {
@@ -229,10 +228,7 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
                         src={entry.url}
                         alt={`模板「${t.name}」缩略图`}
                         title="点击放大预览"
-                        onClick={(ev) => {
-                          const rect = ev.currentTarget.getBoundingClientRect()
-                          setEnlarged({ name: t.name, top: rect.top, left: rect.left, right: rect.right })
-                        }}
+                        onClick={() => setEnlarged(t.name)}
                       />
                     )
                   })()}</td>
@@ -266,13 +262,8 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
       </div>
 
       {enlarged && (() => {
-        const entry = preview.get(enlarged.name)
-        return (
-          <>
-            <PreviewOverlay onClose={() => setEnlarged(null)} />
-            {entry ? <TemplatePreviewPop anchor={enlarged} entry={entry} onClose={() => setEnlarged(null)} /> : null}
-          </>
-        )
+        const entry = preview.get(enlarged)
+        return entry ? <TemplatePreviewModal name={enlarged} entry={entry} onClose={() => setEnlarged(null)} /> : null
       })()}
 
       {deleting && (

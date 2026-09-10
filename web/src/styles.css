@@ -366,56 +366,74 @@ label.field > .input, label.field > select.input { width: 100%; }
   color: var(--danger);
 }
 @keyframes previewSkel { 0%, 100% { background: #f4f6f9; } 50% { background: #e9edf2; } }
-/* 放大遮罩：点击关闭（浮层在其上） */
-.preview-overlay {
+/* 放大灯箱（迭代 46 二次验收修订 B：居中模态）——背景点击关闭，卡片本体不关闭 */
+.preview-modal {
   position: fixed;
   inset: 0;
-  z-index: 89;
-  background: rgba(29, 38, 51, 0.08);
-}
-/* 放大浮层 */
-.preview-pop {
-  position: fixed;
-  z-index: 90; /* 低于模态（100）：删除确认等模态在最上；高于遮罩 */
-  width: 296px;
-  padding: 8px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(23, 31, 41, 0.16);
-  cursor: zoom-out;
-  animation: popIn 120ms ease-out;
-}
-.preview-pop-title {
+  z-index: 95; /* 低于删除确认等业务模态（100） */
+  background: rgba(23, 31, 41, 0.34);
   display: flex;
   align-items: center;
-  font-size: 11px;
+  justify-content: center;
+  animation: previewFadeIn 120ms ease-out;
+}
+.preview-modal-card {
+  max-width: min(900px, 75vw); /* 视口 75% 且 ≤900px；203 DPI 原生约 560px，再往上为插值放大 */
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(23, 31, 41, 0.32);
+  animation: popIn 120ms ease-out;
+}
+.preview-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-2);
-  padding: 0 2px 6px;
+  padding: 0 2px 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.preview-pop-img {
-  display: block;
-  width: 100%;
-  max-height: 220px;
-  object-fit: contain;
+.preview-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: none;
   border-radius: 4px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.preview-modal-close:hover { background: var(--bg); color: var(--ink); }
+.preview-modal-img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(84vh - 78px);
+  object-fit: contain;
+  border-radius: 6px;
   /* 透明底 PNG 衬浅格，白底标签不至于「隐形」 */
   background-image: linear-gradient(45deg, #f0f2f5 25%, transparent 25%, transparent 75%, #f0f2f5 75%),
     linear-gradient(45deg, #f0f2f5 25%, transparent 25%, transparent 75%, #f0f2f5 75%);
   background-size: 16px 16px;
   background-position: 0 0, 8px 8px;
 }
-.preview-pop-foot {
+.preview-modal-foot {
   font-size: 10px;
   color: var(--ink-3);
   text-align: center;
-  padding-top: 6px;
+  padding-top: 8px;
 }
-.preview-pop-state {
+.preview-modal-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -425,8 +443,10 @@ label.field > .input, label.field > select.input { width: 100%; }
   font-size: 12px;
   color: var(--ink-3);
 }
-.preview-pop-state.err { color: var(--danger); }
-.preview-pop-state small { font-size: 11px; color: var(--ink-3); }
+.preview-modal-state { min-height: 200px; }
+.preview-modal-state.err { color: var(--danger); }
+.preview-modal-state small { font-size: 11px; color: var(--ink-3); }
+@keyframes previewFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 
 /* ---------- 底部状态栏 ---------- */
