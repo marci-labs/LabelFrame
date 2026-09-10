@@ -255,27 +255,24 @@ public class ServerRoutingWorkerTests
 
             Assert.NotNull(localJob);
 
-            // 第 1 张完成 → 推进虚拟时钟过一个间隔 → 收到首条进度 (1,0)
+            // 第 1 张完成 → 虚拟时钟推进过一个间隔 → 收到首条进度 (1,0)
             await CompleteNextItemAsync(queue, cts.Token);
-            time.Advance(TimeSpan.FromSeconds(2));
-            await UntilAsync(() => poller.ProgressReports.Count == 1, cts.Token);
+            await UntilAdvancedAsync(() => poller.ProgressReports.Count == 1, time, cts.Token);
             Assert.Equal(("server-job-prog", new ServerJobProgress(1, 0)), poller.ProgressReports[0]);
 
-            // 第 2 张完成但只推进 0.3s（间隔内）→ 抑制，不新增上报
+            // 第 2 张完成、时钟冻结 0.5s（间隔内）→ 抑制，不新增上报
+            //（清扫若恰在此间运行也由节流器按「距上次上报不足间隔」抑制，语义不依赖清扫时机）
             await CompleteNextItemAsync(queue, cts.Token);
-            time.Advance(TimeSpan.FromMilliseconds(300));
             await Task.Delay(500, cts.Token);
             Assert.Single(poller.ProgressReports);
 
             // 推进满间隔 → 上报 (2,0)
-            time.Advance(TimeSpan.FromSeconds(1));
-            await UntilAsync(() => poller.ProgressReports.Count == 2, cts.Token);
+            await UntilAdvancedAsync(() => poller.ProgressReports.Count == 2, time, cts.Token);
             Assert.Equal(("server-job-prog", new ServerJobProgress(2, 0)), poller.ProgressReports[1]);
 
             // 终态：第 3 张完成后只走 result，不再有进度上报
             await CompleteNextItemAsync(queue, cts.Token);
-            time.Advance(TimeSpan.FromSeconds(2));
-            await UntilAsync(() => poller.Reported.Count == 1, cts.Token);
+            await UntilAdvancedAsync(() => poller.Reported.Count == 1, time, cts.Token);
             Assert.Equal(("server-job-prog", "Completed", 3), (poller.Reported[0].JobId, poller.Reported[0].Result.Status, poller.Reported[0].Result.CompletedItems));
             Assert.Equal(2, poller.ProgressReports.Count);
 
@@ -367,12 +364,17 @@ public class ServerRoutingWorkerTests
         await queue.CompleteItemAsync(claimed!.Value.JobId, claimed.Value.Item.Id, cancellationToken);
     }
 
-    /// <summary>真实时钟等待条件满足（FakeTimeProvider 只驱动 Worker 内部时钟，测试等待用真实时间）。</summary>
-    private static async Task UntilAsync(Func<bool> condition, CancellationToken cancellationToken)
+    /// <summary>
+    /// 真实时钟等待条件满足，期间小步推进虚拟时钟——回报循环停泊在 Task.Delay(fakeTime) 时，
+    /// 若一次大步 Advance 恰落在循环未停泊的空档会被错过，导致虚拟时钟冻结、条件永不成真；
+    /// 小步推进保证已停泊的延迟最终到期（条件语义仍由节流器保证，不受清扫时机影响）。
+    /// </summary>
+    private static async Task UntilAdvancedAsync(Func<bool> condition, Microsoft.Extensions.Time.Testing.FakeTimeProvider time, CancellationToken cancellationToken)
     {
         for (var i = 0; i < 200 && !condition(); i++)
         {
             await Task.Delay(50, cancellationToken);
+            time.Advance(TimeSpan.FromMilliseconds(100));
         }
 
         Assert.True(condition(), "等待条件超时未满足。");
