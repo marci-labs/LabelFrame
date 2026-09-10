@@ -38,3 +38,6 @@ public sealed record JobPayload(TemplateDto Template, IReadOnlyList<LabelDto> La
 
 /// <summary>设备回报结果（POST 体）。</summary>
 public sealed record ReportResultRequest(string? Status, int? CompletedItems, int? FailedItems, string? ErrorMessage);
+
+/// <summary>设备进度增量上报（POST 体）。计数按字段取 max 单调递增，只描述过程不改终态。</summary>
+public sealed record ReportProgressRequest(int? CompletedItems, int? FailedItems);

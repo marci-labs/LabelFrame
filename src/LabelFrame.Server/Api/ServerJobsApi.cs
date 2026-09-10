@@ -106,6 +106,29 @@ app.MapPost("/api/devices/{deviceId}/jobs/{jobId}/result", async (string deviceI
     }
 });
 
+// 进度增量上报：仅 Claimed 接受，计数 max 单调；终态幂等 no-op。错误语义与 result 端点一致（决策 #101）。
+app.MapPost("/api/devices/{deviceId}/jobs/{jobId}/progress", async (string deviceId, string jobId, ReportProgressRequest? progress, ServerService svc, CancellationToken ct) =>
+{
+    if (progress is null)
+    {
+        return Results.BadRequest(new ErrorView(ServerErrorCodes.InvalidRequest, "请求体不能为空。"));
+    }
+
+    try
+    {
+        return Results.Ok(await svc.ReportProgressAsync(deviceId, jobId, progress, ct));
+    }
+    catch (ServerException ex)
+    {
+        return ex.Code switch
+        {
+            ServerErrorCodes.JobNotFound => Results.NotFound(new ErrorView(ex.Code, ex.Message)),
+            ServerErrorCodes.NotJobOwner => Results.StatusCode(StatusCodes.Status403Forbidden),
+            _ => Results.Conflict(new ErrorView(ex.Code, ex.Message)),
+        };
+    }
+});
+
         return app;
     }
 }
