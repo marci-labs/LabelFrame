@@ -189,24 +189,31 @@ describe('工作台模板预览列（迭代 46 修订：内嵌缩略图）', () 
     expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
   })
 
-  it('AC-05：点击缩略图放大——浮层显示大图且不再发请求；遮罩点击 / Esc 关闭', async () => {
+  it('AC-05：点击缩略图居中灯箱放大——大图不再发请求；卡片点击不关闭，背景点击 / × / Esc 关闭', async () => {
     renderWorkbench()
     await flush()
 
     fireEvent.click(thumbOf('Carton-Label-A'))
     await flush()
-    // 放大图与缩略图同源（缓存命中，无新请求）
+    // 灯箱大图与缩略图同源（缓存命中，无新请求）
     expect(enlargedOf('Carton-Label-A').getAttribute('src')).toBe('blob:preview-1')
     expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
     expect(screen.getByText('按模板测试数据渲染')).toBeTruthy()
 
-    // 点击遮罩关闭
-    fireEvent.click(document.querySelector('.preview-overlay') as HTMLElement)
+    // 点卡片本体（图片）不关闭
+    fireEvent.click(enlargedOf('Carton-Label-A'))
+    expect(screen.queryByAltText('模板「Carton-Label-A」预览')).not.toBeNull()
+
+    // 点击背景（灯箱容器）关闭
+    fireEvent.click(document.querySelector('.preview-modal') as HTMLElement)
     expect(screen.queryByAltText('模板「Carton-Label-A」预览')).toBeNull()
 
-    // 重新放大，Esc 关闭
+    // 重新放大：× 按钮与 Esc 均可关闭
     fireEvent.click(thumbOf('Shelf-Tag'))
     expect(enlargedOf('Shelf-Tag').getAttribute('src')).toBe('blob:preview-3')
+    fireEvent.click(screen.getByTitle('关闭预览（Esc）'))
+    expect(screen.queryByAltText('模板「Shelf-Tag」预览')).toBeNull()
+    fireEvent.click(thumbOf('Shelf-Tag'))
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByAltText('模板「Shelf-Tag」预览')).toBeNull()
   })
