@@ -9,7 +9,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationId>com.labelframe.androidhost</ApplicationId>
     <ApplicationTitle>LabelFrame AndroidHost</ApplicationTitle>
+    <!-- 版本兜底值：CI 发版由 v* tag 注入（-p:ApplicationDisplayVersion / -p:ApplicationVersion），本地构建保持 1.0 -->
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
     <AndroidManifest>Properties/AndroidManifest.xml</AndroidManifest>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>

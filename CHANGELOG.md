@@ -2,6 +2,16 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 49 PDA 宿主自动化构建与品牌化 · 2026-09-10
+
+- **CI 自动化（决策 #104，含流程治理：修改 workflows）**：`ci.yml` 新增「Android 构建（PDA 宿主）」job（ubuntu；JDK 17 + Android SDK 36 + .NET Android workload；Release 配置 + `-p:EmbedAssembliesIntoApk=true`），用户拍板**直接设为第三项必需检查**——master 门禁由双必需升三必需（既有两项名称与语义不变；落地顺序 = 先合入 job 的 PR 验证全绿、合并后立即补进门禁 ruleset）；AndroidHost 仍不进 `LabelFrame.slnx`（CI 单独构建该工程，不拖慢日常全仓构建）。
+- **随发版出 APK**：`release.yml` 随 `v*` tag 构建 Release APK 上传 GitHub Release 附件（`LabelFrame-AndroidHost-<版本>.apk`；`ApplicationDisplayVersion` / versionCode 由 tag 注入，csproj 默认 `1.0`/`1` 兜底）。
+- **签名（三项待决议用户拍板：自签 keystore + Secrets）**：CI 发版检测到 `ANDROID_KEYSTORE_BASE64` 等 4 个 Secrets 时用专用自签 keystore 签名，缺失回退 debug 签名并告警（对齐 MSI 自签过渡决策 #65 思路）；`scripts/create-android-keystore.ps1` 一次性生成并可选写入 Secrets。**换签名影响（README 已写明）**：已装真机（DT50）从 debug 签名包升级到正式签名包需**卸载重装**——配置清空需重填，且 Android 8+ 设备号（ANDROID_ID）绑定签名密钥、**设备号会变**（Server 设备目录出现新条目、旧条目停留离线）。
+- **应用图标（品牌化）**：沿用 L 型品牌体系（主蓝 #1668DC + 白 L，与 MSI / 桌面图标同源）——`generate-android-icons.ps1` 生成各密度启动器位图（方形圆角 / 圆形），API 26+ 自适应图标（矢量前景 + 主蓝底），常驻通知小图标换为白色单色 L 矢量（替换系统默认机器人图标）；Manifest 补 `icon` / `roundIcon`。
+- **版本信息（待决议拍板：配置页 + 本地 HTTP）**：配置页「本机信息」子页新增「程序版本」（只读）；本地 HTTP `GET /healthz` 与 `GET /api/host/config` 新增只读 `version` 字段（宿主本地契约向后兼容增量，DESIGN §5.3 已先行更新）。
+- **脚本**：`build-androidhost.ps1` 支持 `-Configuration Release` 与 `-Version`（对齐 CI 参数）；`generate-android-icons.ps1`、`create-android-keystore.ps1` 新增。
+- **测试**：AndroidHost 无测试体系（不在范围），AC 以构建产物与真机验收为证据；本轮 `dotnet build / test`（排除 Perf/Soak）全绿（slnx 无涉改动），AndroidHost Release 本地构建通过（含图标资源编译）。
+
 ## v0.25.0 迭代 48 发布 · 2026-09-10
 
 - **打包范围**：工作台信息架构重构 + 作业历史自动轮询（迭代 48，决策 #103）。详见迭代条目。

@@ -114,7 +114,7 @@ public sealed class PrintHostService : Service
         return builder
             .SetContentTitle("LabelFrame 标签打印")
             .SetContentText(text)
-            .SetSmallIcon(Android.Resource.Drawable.SymDefAppIcon)
+            .SetSmallIcon(Resource.Drawable.ic_stat_labelframe)
             .SetOngoing(true)
             .SetContentIntent(pending)
             .Build();

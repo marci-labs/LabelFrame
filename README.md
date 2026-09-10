@@ -77,7 +77,7 @@ curl -X POST http://<服务器>:53961/api/jobs \
 | `src/LabelFrame.Api` | Server / WinHost 共享的 HTTP 契约（DTO / 错误码）与端点实现 |
 | `src/LabelFrame.Server` | 无头服务端：模板库 / 作业中心 / 设备投递 / 调试出图 / 日志 |
 | `src/LabelFrame.WinHost` | Client Host 共享实现：Windows 完整客户端；Linux 无头 Log 测试客户端 |
-| `src/LabelFrame.AndroidHost` | Android / PDA 打印宿主（真机验收通过，不随发布构建，见其 README） |
+| `src/LabelFrame.AndroidHost` | Android / PDA 打印宿主（真机验收通过；CI 构建并随发版出 APK，见其 README） |
 | `web/` | Web 前端（Vite + React + TS + Konva）：客户端界面与服务端管理界面双构建 |
 
 ## 开发
@@ -92,8 +92,8 @@ cd web && pnpm install && pnpm dev  # 前端开发（连本机 WinHost）
 
 - 无打印机验证打印闭环：`powershell -ExecutionPolicy Bypass -File .\scripts\demo-winhost.ps1`。
 - Docker 验证 Server / Linux Client 路由闭环：源码候选运行 `powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1`；正式同版本镜像运行 `powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1 -ComposeFile packaging/e2e/compose.release.yaml -SkipBuild`，详见 [docs/LINUX-CLIENT-E2E.md](docs/LINUX-CLIENT-E2E.md)。
-- 提交即跑 CI（`.github/workflows/ci.yml`：dotnet 构建 / 测试 + 前端 lint / 双模式测试 / 构建）；迭代 42 起 `master` 受门禁保护——变更走短分支 + PR，两项必需检查全绿后 squash 合并（流程见 [docs/WORKFLOW.md](docs/WORKFLOW.md)）。
-- 发版：更新 ROADMAP / CHANGELOG 后推送 `v*` tag，由 `release.yml` 自动构建发布（见 [docs/DEPLOY.md](docs/DEPLOY.md) §7）。
+- 提交即跑 CI（`.github/workflows/ci.yml`：dotnet 构建 / 测试 + 前端 lint / 双模式测试 / 构建 + Android 构建）；迭代 42 起 `master` 受门禁保护——变更走短分支 + PR，三项必需检查全绿后 squash 合并（流程见 [docs/WORKFLOW.md](docs/WORKFLOW.md)）。
+- 发版：更新 ROADMAP / CHANGELOG 后推送 `v*` tag，由 `release.yml` 自动构建发布（MSI / Linux 归档 / Android APK / ghcr 镜像，见 [docs/DEPLOY.md](docs/DEPLOY.md) §7）。
 
 ## 文档
 

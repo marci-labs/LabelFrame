@@ -1,8 +1,8 @@
 # LabelFrame.AndroidHost
 
-Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 40 配置面补齐）。
+Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 40 配置面补齐，迭代 49 自动化构建与品牌化）。
 
-> **真机验收已通过（2026-09-08，UROVO DT50 / Android 11）**：注册 / 心跳 / 模板下发 / 作业打印（路由 + 直连）/ 离线恢复 / 断网重连（挂起 → 续打 → 失败项重打）/ 开机自启 / 前台服务保活 / JS 桥 CORS 全部通过。仍不在 `LabelFrame.slnx` 解决方案中、不随发布构建（纳入自动发布另行排期，见 ROADMAP 迭代 25）；遗留验收项（16KB 运行时验证）见 [ACCEPTANCE-BACKLOG.md](../../docs/ACCEPTANCE-BACKLOG.md)。
+> **真机验收已通过（2026-09-08，UROVO DT50 / Android 11）**：注册 / 心跳 / 模板下发 / 作业打印（路由 + 直连）/ 离线恢复 / 断网重连（挂起 → 续打 → 失败项重打）/ 开机自启 / 前台服务保活 / JS 桥 CORS 全部通过。仍不在 `LabelFrame.slnx` 解决方案中（CI 单独构建本工程，见下）；遗留验收项（16KB 运行时验证）见 [ACCEPTANCE-BACKLOG.md](../../docs/ACCEPTANCE-BACKLOG.md)。
 
 ## 定位（决策 #95 / #96）
 
@@ -46,16 +46,33 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 4
 
 设备号自动取 `Settings.Secure.ANDROID_ID` 原值（2026-09-09 起不再加 `pda-` 前缀），不接受配置（多台设备天然不撞号；恢复出厂后变化，视为新设备）。读写入口：配置页 UI 或 `GET/POST /api/host/config`（POST 持久化，重启宿主生效——配置页「保存并重启服务」自动完成重启）。
 
-## 构建
+## 构建（迭代 49 起：CI 自动化 + 随发版出包）
+
+- **日常 CI**：任一 PR / push master 触发 `ci.yml` 的「Android 构建（PDA 宿主）」job（第三项必需检查），Release 配置 + `-p:EmbedAssembliesIntoApk=true`，产物可下载。
+- **发版**：推 `v*` tag 后 `release.yml` 构建 `LabelFrame-AndroidHost-<版本>.apk` 上传 GitHub Release 附件（版本号 `ApplicationDisplayVersion` / versionCode 由 tag 注入；配置页「本机信息」子页与 `/healthz`、`/api/host/config` 可见）。
+- **本地构建**（需要 .NET 10 SDK + Android workload、Android SDK（platforms;android-36、build-tools 36.0.0）、JDK 17）：
 
 ```powershell
-.\scripts\build-androidhost.ps1
+.\scripts\build-androidhost.ps1                        # Debug（默认，联调）
+.\scripts\build-androidhost.ps1 -Configuration Release # 交付真机（约 25MB）
+.\scripts\build-androidhost.ps1 -Configuration Release -Version 0.26.0   # 带版本号
 ```
 
-要求：.NET 10 SDK + Android workload、Android SDK（platforms;android-36、build-tools 36.0.0）、JDK 17。
-产出：`src\LabelFrame.AndroidHost\bin\Debug\net10.0-android\com.labelframe.androidhost-Signed.apk`（脚本已传 `-p:EmbedAssembliesIntoApk=true`，程序集打包进 APK，可脱离开发环境独立 `adb install`）。
+产出：`src\LabelFrame.AndroidHost\bin\<Configuration>\net10.0-android\com.labelframe.androidhost-Signed.apk`。`.NET Android 36.1.x` 起 `AndroidFastDeployment` 属性已失效（决策 #95⑦），关闭 Fast Deployment 必须用 `EmbedAssembliesIntoApk`。
 
-注意：交付真机请用 **Release** 配置（`dotnet build -c Release`，约 25MB 自包含 APK）；Debug + 嵌入程序集约 74MB。`.NET Android 36.1.x` 起 `AndroidFastDeployment` 属性已失效（决策 #95 ⑦），关闭 Fast Deployment 必须用 `EmbedAssembliesIntoApk`。
+## 签名与升级（决策 #104）
+
+- **正式签名**：CI 发版检测到 Secrets（`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`）时用专用自签 keystore 签名；**Secrets 缺失则回退 debug 签名并在流水线告警**。keystore 一次性生成：
+
+  ```powershell
+  .\scripts\create-android-keystore.ps1 -Password '<强密码>' -SetGithubSecrets
+  ```
+
+  keystore 与密码丢失 = 无法再发同签名升级包，务必备份（不在仓库内）。
+- **升级路径**：
+  - **同签名版本之间**（正式 → 正式）：直接 `adb install -r` 或 PDA 端覆盖安装，配置与设备号保留。
+  - **换签名**（历史 debug 签名包 → 正式签名包，仅一次性）：**需先卸载旧版再安装**——卸载会清空配置（服务器地址 / 打印机 IP / 设备名称需重填）；且 Android 8+ 的设备号（ANDROID_ID）绑定签名密钥，**换签名后设备号会变**，Server 设备目录会出现新条目（旧条目停留显示离线，可忽略）。
+- 品牌化（迭代 49）：启动器图标 = 主蓝 + 白 L（与 MSI / 桌面图标同体系；`scripts\generate-android-icons.ps1` 生成各密度位图，API 26+ 自适应图标为矢量）；常驻通知小图标为白色单色矢量。
 
 ## 原生库注意（决策 #94）
 
