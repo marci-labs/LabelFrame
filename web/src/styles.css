@@ -238,8 +238,11 @@ label.field > .input, label.field > select.input { width: 100%; }
 .table tbody tr { cursor: pointer; transition: background 90ms; }
 .table tbody tr:hover { background: #f5f8fc; }
 .table tbody tr.selected { background: var(--accent-soft); }
-.table .actions { display: flex; gap: 4px; justify-content: flex-end; }
 .table .mono { font-size: 12px; }
+/* 操作列：th 保持 table-cell 并右对齐文字（迭代 45 修正——display:flex 会让表头退出列宽分配，
+   宽窗口下表头浅底在操作列右侧提前截断，露出灰底空带）；表体内的按钮容器仍用 flex 右对齐 */
+.table td .actions { display: flex; gap: 4px; justify-content: flex-end; }
+.table th.actions { text-align: right; }
 
 /* 徽标（状态/分组） */
 .badge {
