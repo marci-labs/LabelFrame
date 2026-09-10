@@ -1,4 +1,11 @@
 ﻿# 构建 LabelFrame.AndroidHost（需要 Android workload / SDK / JDK17）
+param(
+    # 交付真机用 Release（约 25MB）；日常联调 Debug 即可
+    [ValidateSet('Debug', 'Release')]
+    [string]$Configuration = 'Debug',
+    # 版本号（发版 tag，如 0.26.0）；不传用 csproj 默认值 1.0
+    [string]$Version
+)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 
@@ -28,9 +35,16 @@ try {
     # EmbedAssembliesIntoApk=true：程序集打包进 APK，产物可脱离开发环境独立安装
     # （Debug 默认 Fast Deployment 只装壳到设备、程序集放 files/.__override__/，纯 adb install 会启动 abort；
     #   .NET Android 36.1.x 起开关由 AndroidFastDeployment 改名为 EmbedAssembliesIntoApk，Release 构建天然满足）。
-    dotnet build src\LabelFrame.AndroidHost\LabelFrame.AndroidHost.csproj -p:AndroidSdkDirectory="$sdk" -p:EmbedAssembliesIntoApk=true
+    $versionArgs = @()
+    if ($Version) {
+        $parts = $Version.Split('.')
+        $code = [int]$parts[0] * 10000 + [int]$parts[1] * 100 + $(if ($parts.Length -gt 2) { [int]$parts[2] } else { 0 })
+        # 注意用插值成单个元素：'+ $x, ...' 形式会因运算符优先级把两个参数并成一个字符串
+        $versionArgs = @("-p:ApplicationDisplayVersion=$Version", "-p:ApplicationVersion=$code")
+    }
+    dotnet build src\LabelFrame.AndroidHost\LabelFrame.AndroidHost.csproj -c $Configuration -p:AndroidSdkDirectory="$sdk" -p:EmbedAssembliesIntoApk=true @versionArgs
     if ($LASTEXITCODE -ne 0) { throw 'AndroidHost 构建失败。' }
-    $apk = Get-ChildItem src\LabelFrame.AndroidHost\bin\Debug\net10.0-android\*-Signed.apk | Select-Object -First 1
+    $apk = Get-ChildItem "src\LabelFrame.AndroidHost\bin\$Configuration\net10.0-android\*-Signed.apk" | Select-Object -First 1
     Write-Host "构建成功：$($apk.FullName)"
 }
 finally {

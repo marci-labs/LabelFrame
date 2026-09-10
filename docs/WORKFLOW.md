@@ -1,6 +1,6 @@
 # LabelFrame 工作流（GitHub）
 
-> 版本：2 · 落地：2026-09-09（迭代 42，决策 #97）；2026-09-10 增补 §7 多会话 worktree 并行试行（流程治理 #17）。
+> 版本：2 · 落地：2026-09-09（迭代 42，决策 #97）；2026-09-10 增补 §7 多会话 worktree 并行试行（流程治理 #17）；2026-09-10 增第三必需检查「Android 构建（PDA 宿主）」（迭代 49，决策 #104）。
 > 参考外部通用「产品迭代工作流」资料 v1.1，已按本仓库事实实例化；仓库运行不依赖外部资料。
 > 修改本文件、门禁规则或流程模板属于**流程治理迭代**，普通迭代不做。
 
@@ -14,10 +14,10 @@
 | 变更载体 | 短主题分支 + PR |
 | 合并方式 | squash；PR 标题 = Conventional Commits（中文说明为主） |
 | 分支清理 | 仓库开启合并后自动删除远端分支；本地分支合并后手动清理 |
-| 门禁 | ruleset「master 门禁」：必须 PR + 双必需检查（strict，要求目标分支新鲜度）+ 禁强推；**管理员无豁免名单** |
-| 必需检查 | 「构建与测试（dotnet + 前端）」与「MSI 结构断言（安装包 UI 契约）」（来自 [ci.yml](../.github/workflows/ci.yml)）。改名必须**先改门禁再改 ci.yml**，避免出现无保护窗口 |
-| 日常 CI | push master / 全部 PR / 手动：dotnet 构建 + 测试（排除 Perf/Soak）+ 前端 lint / 双模式测试 / 双构建 + MSI 结构断言；Perf/Soak 由 [nightly-perf.yml](../.github/workflows/nightly-perf.yml) 周一 04:00 跑 |
-| 发布 | 记账 PR 合并后推 `v*` tag → [release.yml](../.github/workflows/release.yml) 自动构建发布（ghcr 镜像 + MSI / 插件 zip / Linux 归档上传 Release）；除发版 tag 外不推其他 tag |
+| 门禁 | ruleset「master 门禁」：必须 PR + 三项必需检查（strict，要求目标分支新鲜度）+ 禁强推；**管理员无豁免名单** |
+| 必需检查 | 「构建与测试（dotnet + 前端）」「MSI 结构断言（安装包 UI 契约）」「Android 构建（PDA 宿主）」（均来自 [ci.yml](../.github/workflows/ci.yml)；第三项为迭代 49 引入——先合入 job 的 PR 验证全绿、合并后立即补进门禁，避免 job 未入库时必需检查自锁）。改名 / 增删必须**先改门禁再改 ci.yml**（删除方向），避免出现无保护窗口 |
+| 日常 CI | push master / 全部 PR / 手动：dotnet 构建 + 测试（排除 Perf/Soak）+ 前端 lint / 双模式测试 / 双构建 + MSI 结构断言 + Android 构建（Release APK）；Perf/Soak 由 [nightly-perf.yml](../.github/workflows/nightly-perf.yml) 周一 04:00 跑 |
+| 发布 | 记账 PR 合并后推 `v*` tag → [release.yml](../.github/workflows/release.yml) 自动构建发布（ghcr 镜像 + MSI / 插件 zip / Linux 归档 / Android APK 上传 Release）；除发版 tag 外不推其他 tag |
 
 ## 2. 日常迭代流程
 
@@ -26,7 +26,7 @@
 3. **实施**：从最新 `master` 切短主题分支（建议 `iter/<N>-<slug>`、`fix/<slug>`、`feat/<slug>`）；严格按 Issue 范围，新想法开新 Issue 或记入 DESIGN「未决问题」。
 4. **本地检查**：`dotnet build LabelFrame.slnx` + `dotnet test`（排除 Perf/Soak）；前端改动加 `pnpm lint / test / build`。不用历史结果充当本轮结果。
 5. **提 PR**：正文按 PR 模板；关联 Issue 用 `#N` 普通引用——**验收未完成时禁用 `Closes` / `Fixes` 等关闭关键词**（避免代码一合并就提前结项）。
-6. **CI 与复审**：两项必需检查必须针对**最新提交**全绿；旧提交的绿灯不覆盖新提交。自查清单按 PR 模板如实勾选。
+6. **CI 与复审**：三项必需检查必须针对**最新提交**全绿；旧提交的绿灯不覆盖新提交。自查清单按 PR 模板如实勾选。
 7. **合并**：squash；合并后回读 master 提交与 PR 状态确认落地；清理本地分支。
 8. **结项或待验收**：
    - 验收完成 → 验收证据（AC-xx 逐条：通过 / 失败 / 跳过 + 证据链接）回写 Issue → 关闭 Issue；ROADMAP 状态总览更新一行（✅ + Issue 链接），CHANGELOG 随 PR 更新。

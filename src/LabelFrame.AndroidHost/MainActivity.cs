@@ -521,6 +521,12 @@ public sealed class MainActivity : Activity
         _deviceSaveHint = SaveHint();
         content.AddView(_deviceSaveHint);
         content.AddView(SaveButton(() => RunAsync(SaveDeviceAsync)));
+        content.AddView(Spacing(16));
+
+        content.AddView(FieldLabel("程序版本"));
+        content.AddView(TextView(HostInfo.GetVersion(this), 14, ColorText));
+        content.AddView(Spacing(4));
+        content.AddView(Subtle("有问题上报时把这个号告诉管理员"));
 
         return WrapScroll(content);
     }

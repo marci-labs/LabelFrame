@@ -113,8 +113,9 @@ docker compose -f .\packaging\e2e\compose.yaml down
 ## 7. 自动化发布与签名
 
 - 发版两步：① 更新 `docs/ROADMAP.md` 与 `CHANGELOG.md` 提交推送；② 例如 `git tag v0.22.2 && git push origin v0.22.2`。
-- CI 自动：构建测试 → 双 MSI（可签名）→ 管理界面插件 zip → Linux 归档 → 同一次构建的 Server / Linux Client 候选镜像通过 Compose E2E → 原镜像推 ghcr.io（版本号 + `latest`）→ GitHub Release。
+- CI 自动：构建测试 → 双 MSI（可签名）→ 管理界面插件 zip → Linux 归档 → **Android APK（PDA 宿主，迭代 49 起）** → 同一次构建的 Server / Linux Client 候选镜像通过 Compose E2E → 原镜像推 ghcr.io（版本号 + `latest`）→ GitHub Release。
 - MSI 签名：配置 Secret `MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD` 时自动签名，否则跳过。当前为自签证书过渡方案（公开下载仍可能 SmartScreen 提示），正式对外分发建议购买 OV 代码签名证书。本地签名：`scripts\create-signing-cert.ps1` 生成证书，`scripts\build-msi.ps1 -Sign` 使用。
+- Android APK 签名（迭代 49）：配置 Secrets `ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` 时用专用自签 keystore 签名，**缺失则回退 debug 签名并告警**。一次性生成并写入 Secrets：`scripts\create-android-keystore.ps1 -Password '<强密码>' -SetGithubSecrets`。PDA 安装 / 覆盖升级 / 换签名（卸载重装、设备号变化）见 [AndroidHost README](../src/LabelFrame.AndroidHost/README.md)。
 
 ## 8. 配置与环境变量
 

@@ -210,7 +210,7 @@ public sealed class EmbeddedHttpServer : IDisposable
 
         if (method == "GET" && basePath == "/healthz")
         {
-            return Json(200, new { service = "LabelFrame.AndroidHost", status = "ok" });
+            return Json(200, new { service = "LabelFrame.AndroidHost", status = "ok", version = HostInfo.GetVersion(_context) });
         }
 
         if (method == "GET" && basePath == "/")
@@ -267,7 +267,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         // ---- 宿主配置（与 WinHost GET/POST /api/host/config 同构；保存后重启宿主生效）----
         if (method == "GET" && basePath == "/api/host/config")
         {
-            return Json(200, HostConfigView.From(LabelHostConfig.Load(_context)));
+            return Json(200, HostConfigView.From(LabelHostConfig.Load(_context), _context));
         }
 
         if (method == "POST" && basePath == "/api/host/config")
@@ -380,16 +380,16 @@ public sealed class EmbeddedHttpServer : IDisposable
         }
     }
 
-    /// <summary>宿主配置视图（GET /api/host/config 响应形状）。</summary>
+    /// <summary>宿主配置视图（GET /api/host/config 响应形状）；Version 为只读应用版本（POST 不可改）。</summary>
     private sealed record HostConfigView(
         string TcpHost, int TcpPort, string PrinterBrand, string ConnectionType,
-        string ServerUrl, string DeviceId, string DeviceName, string LocalPort)
+        string ServerUrl, string DeviceId, string DeviceName, string LocalPort, string Version)
     {
-        public static HostConfigView From(LabelHostConfig config)
+        public static HostConfigView From(LabelHostConfig config, Android.Content.Context context)
             => new(
                 config.TcpHost, config.TcpPort, config.PrinterBrand, config.ConnectionType,
                 config.ServerUrl, config.DeviceId, config.DeviceName,
-                $"127.0.0.1:{LabelHostConfig.LocalPort}");
+                $"127.0.0.1:{LabelHostConfig.LocalPort}", HostInfo.GetVersion(context));
     }
 
     /// <summary>保存宿主配置到 SharedPreferences（null / 空白 / 越界字段保持原值）；传输与路由在下次宿主启动时按新配置创建。</summary>
@@ -407,7 +407,7 @@ public sealed class EmbeddedHttpServer : IDisposable
                 dto?.TcpHost,
                 dto?.TcpPort,
                 dto?.DeviceName);
-            return Json(200, HostConfigView.From(config));
+            return Json(200, HostConfigView.From(config, _context));
         }
         catch (Exception ex)
         {

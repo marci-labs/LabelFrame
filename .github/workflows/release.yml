@@ -1,7 +1,8 @@
-# LabelFrame 自动发布流水线（迭代 21）
+# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK）
 # 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
-# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Linux 归档）→ 双镜像候选 E2E → 推送 ghcr.io → 创建 GitHub Release。
+# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 创建 GitHub Release。
 # MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
+# APK 签名：仓库配置 ANDROID_KEYSTORE_BASE64 等 Secret 时自动签名，否则回退 debug 签名并告警（决策 #104）。
 name: release
 
 on:
@@ -211,6 +212,86 @@ jobs:
             artifacts/labelframe-server-*-linux-x64.tar.gz
           if-no-files-found: error
 
+  android:
+    name: 打包 Android APK（PDA 宿主）
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Android SDK 组件（platforms;android-36 / build-tools 36.0.0）
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+
+      - name: 安装 .NET Android workload
+        run: dotnet workload install android
+
+      - name: 计算数值版本号（versionCode，如 0.26.0 → 2600）
+        run: |
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          echo "VERSION_CODE=$((MAJOR*10000 + MINOR*100 + ${PATCH:-0}))" >> "$GITHUB_ENV"
+
+      - name: 准备签名 keystore（配置 Secret 时；缺失回退 debug 签名）
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            mkdir -p "$HOME/keystore"
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$HOME/keystore/labelframe-release.keystore"
+            echo "keystore_ready=1" >> "$GITHUB_ENV"
+            echo "将使用配置的 keystore 签名 Release APK"
+          else
+            echo "::warning::未配置 ANDROID_KEYSTORE_BASE64，本次 APK 为 debug 签名（正式分发前请按 docs/DEPLOY.md §7 配置签名 Secret）"
+          fi
+
+      - name: 构建 Release APK（版本号由 tag 注入）
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          SIGN_ARGS=()
+          if [ "${keystore_ready:-0}" = "1" ]; then
+            SIGN_ARGS+=(
+              -p:AndroidKeyStore=true
+              -p:AndroidSigningKeyStore="$HOME/keystore/labelframe-release.keystore"
+              -p:AndroidSigningStorePass="$ANDROID_KEYSTORE_PASSWORD"
+              -p:AndroidSigningKeyAlias="$ANDROID_KEY_ALIAS"
+              -p:AndroidSigningKeyPass="$ANDROID_KEY_PASSWORD"
+            )
+          fi
+          dotnet build src/LabelFrame.AndroidHost/LabelFrame.AndroidHost.csproj \
+            -c Release -p:EmbedAssembliesIntoApk=true -p:AndroidSdkDirectory=$ANDROID_HOME \
+            -p:ApplicationDisplayVersion="$VERSION" -p:ApplicationVersion="$VERSION_CODE" \
+            "${SIGN_ARGS[@]}"
+
+      - name: 整理发布产物
+        run: |
+          mkdir -p artifacts
+          cp src/LabelFrame.AndroidHost/bin/Release/net10.0-android/*-Signed.apk \
+            "artifacts/LabelFrame-AndroidHost-$VERSION.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: artifacts/LabelFrame-AndroidHost-*.apk
+          if-no-files-found: error
+
   docker:
     name: Docker 双镜像（候选 E2E → ghcr.io）
     needs: [version, test]
@@ -284,7 +365,7 @@ jobs:
 
   release:
     name: 创建 GitHub Release
-    needs: [version, package, docker]
+    needs: [version, package, docker, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -293,6 +374,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-assets
+          path: release
+
+      - name: 下载 Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
           path: release
 
       - name: 创建 Release（v${{ needs.version.outputs.version }}）
@@ -305,5 +392,6 @@ jobs:
           files: |
             release/LabelFrame-Server-*.msi
             release/LabelFrame-Client-*.msi
+            release/LabelFrame-AndroidHost-*.apk
             release/labelframe-server-webui-*.zip
             release/labelframe-server-*-linux-x64.tar.gz

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 常驻通知小图标：白色单色 L（通知栏只保留 alpha 通道着色，不能带彩色底）；
+     几何与 ic_launcher_foreground 同构（24dp 画布等比缩放） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <path
+      android:fillColor="#FFFFFFFF"
+      android:pathData="M6.72,5.76 L12,5.76 L12,12 L17.76,12 L17.76,17.28 L6.72,17.28 Z" />
+</vector>

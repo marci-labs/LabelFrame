@@ -1,5 +1,5 @@
-# 日常 CI（迭代 27）：push / PR 触发——dotnet 全量构建测试 + 前端 lint / 双模式测试 / 双模式构建。
-# 与 release.yml 的 test job 命令一致（不含打包 / 发布）；让主干回归在提交时即被发现，而不是发版时。
+# 日常 CI（迭代 27）：push / PR 触发——dotnet 全量构建测试 + 前端 lint / 双模式测试 / 双模式构建 + Android 构建（迭代 49）。
+# 与 release.yml 的 test / android job 命令一致（不含打包 / 发布）；让主干回归在提交时即被发现，而不是发版时。
 name: ci
 
 on:
@@ -115,3 +115,42 @@ jobs:
           & .\scripts/build-msi.ps1 -Version 0.0.1 -WixPath (Join-Path $HOME '.dotnet/tools/wix.exe')
           if (-not $?) { throw 'Client MSI 打包失败' }
           & .\scripts/verify-msi-ui.ps1 -MsiPaths @('artifacts\LabelFrame-Client-0.0.1.msi')
+
+  # Android 构建迭代 49 起为第三项必需检查（先合入本 job、验证全绿后补进门禁 ruleset）；
+  # AndroidHost 不在 LabelFrame.slnx，本 job 单独构建该工程（决策 #104）。
+  android:
+    name: Android 构建（PDA 宿主）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Android SDK 组件（platforms;android-36 / build-tools 36.0.0）
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+
+      - name: 安装 .NET Android workload
+        run: dotnet workload install android
+
+      # Release + EmbedAssembliesIntoApk：程序集打包进 APK，产物可脱离开发环境独立安装（决策 #95⑦）
+      - name: 构建 Release APK
+        run: >
+          dotnet build src/LabelFrame.AndroidHost/LabelFrame.AndroidHost.csproj
+          -c Release -p:EmbedAssembliesIntoApk=true -p:AndroidSdkDirectory=$ANDROID_HOME
+
+      - name: 上传 APK 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: src/LabelFrame.AndroidHost/bin/Release/net10.0-android/*-Signed.apk
+          if-no-files-found: error

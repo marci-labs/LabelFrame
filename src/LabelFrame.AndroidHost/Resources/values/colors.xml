@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- 启动器自适应图标底色：品牌主蓝（22,104,220），与 MSI / 应用图标同体系 -->
+  <color name="launcher_background">#1668DC</color>
+</resources>
