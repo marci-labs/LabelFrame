@@ -3,7 +3,7 @@
 // mock 覆盖组件树用到的全部 client 方法（含 AppContext 启动链）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { JobView } from '../lib/api/types'
 import { AppProvider } from '../state/AppContext'
 import { JobHistory } from './JobHistory'
@@ -170,5 +170,99 @@ describe('作业历史页（迭代 18 F6）', () => {
     mocks.server.getJobs.mockRejectedValue(new Error('network down'))
     renderJobHistory()
     expect(await screen.findByText(/获取作业历史失败/)).toBeTruthy()
+  })
+})
+
+describe('作业历史自动轮询（迭代 48，用户定稿：1.5s / 仅进行中 / 隐藏暂停）', () => {
+  /** 冲洗挂载链（探测 → 模式确定 → 列表加载）与各 promise 微任务。 */
+  async function flush() {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+      await vi.advanceTimersByTimeAsync(0)
+    })
+  }
+
+  async function advance(ms: number) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms)
+    })
+  }
+
+  let hiddenFlag = false
+  function setHidden(v: boolean) {
+    hiddenFlag = v
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => hiddenFlag })
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    delete (document as { hidden?: boolean }).hidden
+    vi.useRealTimers()
+  })
+
+  it('存在进行中作业时 1.5s 自动轮询；列表全终态后停止', async () => {
+    // 初始：含 Printing（进行中）→ 续排轮询
+    mocks.server.getJobs.mockResolvedValueOnce(JOBS)
+    renderJobHistory()
+    await flush()
+    expect(mocks.server.getJobs).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('打印中')).toBeTruthy()
+
+    // 1.5s 后自动拉取：Printing → Completed（计数 5/5），全终态 → 停止
+    mocks.server.getJobs.mockResolvedValueOnce(
+      JOBS.map((j) => (j.status === 'Printing' ? { ...j, status: 'Completed', completedItems: 5 } : j)),
+    )
+    await advance(1500)
+    expect(mocks.server.getJobs).toHaveBeenCalledTimes(2)
+    expect(screen.queryByText('打印中')).toBeNull()
+    expect(screen.getByText(/5\/5/)).toBeTruthy()
+
+    await advance(5000)
+    expect(mocks.server.getJobs).toHaveBeenCalledTimes(2)
+  })
+
+  it('页面隐藏时轮询暂停；恢复可见立即拉取一次', async () => {
+    mocks.server.getJobs.mockResolvedValue(JOBS) // 恒含 Printing
+    renderJobHistory()
+    await flush()
+    expect(mocks.server.getJobs).toHaveBeenCalledTimes(1)
+
+    // 隐藏：到点的轮询跳过且不再续排
+    setHidden(true)
+    await advance(4500)
+    expect(mocks.server.getJobs).toHaveBeenCalledTimes(1)
+
+    // 恢复可见：visibilitychange 立即拉取（不等待间隔）
+    setHidden(false)
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(mocks.server.getJobs).toHaveBeenCalledTimes(2)
+  })
+
+  it('轮询失败：保留既有列表与错误横幅，2s 退避后重试', async () => {
+    mocks.server.getJobs.mockResolvedValueOnce(JOBS)
+    renderJobHistory()
+    await flush()
+    expect(mocks.server.getJobs).toHaveBeenCalledTimes(1)
+
+    // 1.5s 轮询失败：列表不清空、出横幅；因已知存在进行中作业 → 2s 退避重试
+    mocks.server.getJobs.mockRejectedValueOnce(new Error('network down'))
+    await advance(1500)
+    expect(mocks.server.getJobs).toHaveBeenCalledTimes(2)
+    expect(screen.getByText(/获取作业历史失败/)).toBeTruthy()
+    expect(screen.getByText('已完成')).toBeTruthy()
+
+    // 退避间隔为 2s（1.9s 时未重试，2s 到点重试成功 → 全终态停止）
+    mocks.server.getJobs.mockResolvedValueOnce([])
+    await advance(1900)
+    expect(mocks.server.getJobs).toHaveBeenCalledTimes(2)
+    await advance(100)
+    expect(mocks.server.getJobs).toHaveBeenCalledTimes(3)
+    expect(screen.queryByText(/获取作业历史失败/)).toBeNull()
   })
 })

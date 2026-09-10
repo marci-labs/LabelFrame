@@ -1,7 +1,9 @@
-// 作业历史页（迭代 18 F6）：服务端 / 本机作业列表（GET /api/jobs?limit=100），刷新按钮，终态 / 进行中徽标。
+// 作业历史页（迭代 18 F6）：服务端 / 本机作业列表（GET /api/jobs?limit=100），终态 / 进行中徽标。
 // 单机降级：指向本机时显示本机作业列表（localBase GET /api/jobs，后端 B10 新增）；空态文案按模式区分。
+// 迭代 48（用户定稿建议组合）：自动轮询——存在进行中（非终态）作业时 1.5s 轮询，列表全终态即停；
+// 页面隐藏时暂停，恢复可见立即拉取一次；轮询失败保留既有列表、2s 退避重试；手动「刷新」保留。
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { JobView } from '../lib/api/types'
@@ -23,6 +25,10 @@ const JOB_STATUS_LABEL: Record<string, string> = {
 const jobLabel = (s: string) => JOB_STATUS_LABEL[s] ?? s
 const isTerminal = (s: string) => s === 'Completed' || s === 'Failed' || s === 'Cancelled' || s === 'Expired'
 
+/** 迭代 48：轮询节奏（对齐 DataPrint useJobPolling——1.5s 常规 / 2s 失败退避）。 */
+const POLL_INTERVAL_MS = 1500
+const POLL_ERROR_RETRY_MS = 2000
+
 /** 时间列：本地时间 MM-dd HH:mm:ss。 */
 function formatTime(iso?: string): string {
   if (!iso) return '—'
@@ -40,36 +46,77 @@ export function JobHistory() {
   const [jobs, setJobs] = useState<JobView[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  /** 轮询定时器（存在进行中作业时续排；全终态即停）。 */
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** 最近一次成功列表（失败退避判断是否仍有进行中作业需要重试）。 */
+  const jobsRef = useRef<JobView[] | null>(null)
 
   // 迭代 22 §2.1：作业历史可见性——客户端构建在服务端模式下传本机 deviceId（只看自己的作业）；
   // 服务端构建不传（看全部）；单机降级看本机历史本就不传。
   const deviceFilter = isServerUi || serverMode !== 'server' ? undefined : (app.hostDeviceId ?? undefined)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const list = await biz.getJobs(100, deviceFilter)
-      setJobs(list)
-    } catch (err) {
-      setJobs([])
-      setError(err instanceof ApiError ? err.message : '获取作业历史失败。')
-    } finally {
-      setLoading(false)
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
     }
-  }, [biz, deviceFilter])
+  }, [])
+
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      // 周期轮询在页面隐藏时暂停（恢复可见由 visibilitychange 立即拉取，不走此分支）
+      if (opts?.silent && document.hidden) return
+      if (!opts?.silent) setLoading(true)
+      /** 本轮结束后是否续排下一轮轮询。 */
+      let keepPolling = false
+      let failed = false
+      try {
+        const list = await biz.getJobs(100, deviceFilter)
+        jobsRef.current = list
+        setJobs(list)
+        setError(null)
+        keepPolling = list.some((j) => !isTerminal(j.status))
+      } catch (err) {
+        // 轮询失败不清空既有列表（瞬时错误只出横幅）；已知存在进行中作业则退避重试
+        failed = true
+        setJobs((prev) => prev ?? [])
+        setError(err instanceof ApiError ? err.message : '获取作业历史失败。')
+        keepPolling = jobsRef.current?.some((j) => !isTerminal(j.status)) ?? false
+      } finally {
+        if (!opts?.silent) setLoading(false)
+      }
+      clearTimer()
+      if (keepPolling) {
+        timerRef.current = setTimeout(() => void load({ silent: true }), failed ? POLL_ERROR_RETRY_MS : POLL_INTERVAL_MS)
+      }
+    },
+    [biz, deviceFilter, clearTimer],
+  )
 
   useEffect(() => {
     if (serverMode === 'unknown') return
+    jobsRef.current = null
     void load()
-  }, [serverMode, load])
+    // 页面隐藏暂停轮询；恢复可见立即拉取一次（是否续排由结果决定）
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        clearTimer()
+        void load({ silent: true })
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      clearTimer()
+    }
+  }, [serverMode, load, clearTimer])
 
   return (
     <div className="page">
       <div className="page-head">
         <div className="page-title">
           作业历史
-          <small>最近 100 条作业（服务端队列 / 单机降级本机队列）</small>
+          <small>最近 100 条作业（服务端队列 / 单机降级本机队列）；存在进行中作业时自动刷新</small>
         </div>
         <div className="spacer" />
         <button className="btn" onClick={() => void load()} disabled={loading || serverMode === 'unknown'} title="重新拉取作业列表">

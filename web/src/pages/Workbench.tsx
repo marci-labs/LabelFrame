@@ -1,8 +1,9 @@
-// 工作台：模板列表（名称搜索 + 分组过滤）/ 新建 / 编辑 / 删除 / 导出 / 导入
+// 工作台：模板管理（搜索 / 分组过滤 / 新建 / 编辑 / 删除 / 导出 / 导入）
 // 迭代 18：业务 API 跟随模式——服务端 = serverApi（模板中心）；单机降级 = localApi（本机 WinHost 模板库）。
 // 迭代 45：模板名搜索（子串、大小写不敏感，与分组过滤叠加生效）。
-// 迭代 46：预览列内嵌缩略图（2026-09-10 验收修订——纯悬停触发不可发现）：列表加载后按需拉取全部预览，
-// 会话内缓存随列表刷新失效；点击缩略图居中灯箱放大（Esc / 点背景 / 点 × 关闭，二次验收修订 B 形态）。
+// 迭代 46：预览缩略图（列表加载后按需拉取全部预览，会话内缓存随列表刷新失效；点击居中灯箱放大）。
+// 迭代 48：整体信息架构重构（用户定稿方案 A）——表格形态收敛为卡片网格（缩略图主视觉），
+//   自适应多列卡片，名称 / 分组 / 日期 / 操作收于卡片下部；既有能力全部保留。
 
 import { useCallback, useEffect, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
@@ -13,7 +14,39 @@ import type { DesignerRequest } from '../state/types'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { useTemplatePreviewCache } from './useTemplatePreview'
+import type { TemplatePreviewEntry } from './useTemplatePreview'
 import { TemplatePreviewModal } from './WorkbenchPreview'
+
+/** 预览缩略图呈现（迭代 48 卡片形态）：加载中骨架 / 失败占位 / 成功图片（点击放大）。 */
+function PreviewThumb({
+  name,
+  entry,
+  onEnlarge,
+}: {
+  name: string
+  entry: TemplatePreviewEntry | undefined
+  onEnlarge: (name: string) => void
+}) {
+  if (!entry || entry.status === 'loading') {
+    return <div className="preview-thumb-skel card" title="正在生成预览…" />
+  }
+  if (entry.status === 'error') {
+    return (
+      <div className="preview-thumb-err card" title={`预览不可用：${entry.message}`}>
+        <Icon name="alert" size={12} />
+      </div>
+    )
+  }
+  return (
+    <img
+      className="preview-thumb card"
+      src={entry.url}
+      alt={`模板「${name}」缩略图`}
+      title="点击放大预览"
+      onClick={() => onEnlarge(name)}
+    />
+  )
+}
 
 export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRequest) => void }) {
   const app = useApp()
@@ -194,70 +227,38 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
             <div className="hint">当前搜索词或分组下没有模板，请调整关键词或分组后重试。</div>
           </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th style={{ width: 60 }}>#</th>
-                <th>模板名称</th>
-                <th style={{ width: 108 }}>预览</th>
-                <th style={{ width: 160 }}>分组</th>
-                <th style={{ width: 190 }}>更新时间</th>
-                <th style={{ width: 240 }} className="actions">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t, i) => (
-                <tr key={t.name} onDoubleClick={() => onOpenDesigner({ kind: 'edit', name: t.name })} title="双击打开设计器">
-                  <td className="mono" style={{ color: 'var(--ink-3)' }}>{i + 1}</td>
-                  <td style={{ fontWeight: 600 }}>{t.name}</td>
-                  <td>{(() => {
-                    const entry = preview.get(t.name)
-                    if (!entry || entry.status === 'loading') {
-                      return <div className="preview-thumb-skel" title="正在生成预览…" />
-                    }
-                    if (entry.status === 'error') {
-                      return (
-                        <div className="preview-thumb-err" title={`预览不可用：${entry.message}`}>
-                          <Icon name="alert" size={12} />
-                        </div>
-                      )
-                    }
-                    return (
-                      <img
-                        className="preview-thumb"
-                        src={entry.url}
-                        alt={`模板「${t.name}」缩略图`}
-                        title="点击放大预览"
-                        onClick={() => setEnlarged(t.name)}
-                      />
-                    )
-                  })()}</td>
-                  <td>
+          <div className="wb-grid">
+            {filtered.map((t) => (
+              <div key={t.name} className="wb-card" onDoubleClick={() => onOpenDesigner({ kind: 'edit', name: t.name })} title="双击打开设计器">
+                <div className="wb-card-thumb">
+                  <PreviewThumb name={t.name} entry={preview.get(t.name)} onEnlarge={setEnlarged} />
+                </div>
+                <div className="wb-card-body">
+                  <div className="wb-card-name" title={t.name}>{t.name}</div>
+                  <div className="wb-card-meta">
                     <span className="badge neutral">{t.group}</span>
-                  </td>
-                  <td className="mono" style={{ color: 'var(--ink-2)' }}>
-                    {new Date(t.updatedAt).toLocaleString('zh-CN', { hour12: false })}
-                  </td>
-                  <td>
-                    <div className="actions">
-                      <button className="btn sm" onClick={() => onOpenDesigner({ kind: 'edit', name: t.name })}>
-                        <Icon name="edit" size={12} />
-                        编辑
-                      </button>
-                      <button className="btn sm" onClick={() => void doExport(t)} disabled={busy !== null}>
-                        <Icon name="download" size={12} />
-                        导出
-                      </button>
-                      <button className="btn sm danger" onClick={() => setDeleting(t)}>
-                        <Icon name="trash" size={12} />
-                        删除
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <span className="mono" title={new Date(t.updatedAt).toLocaleString('zh-CN', { hour12: false })}>
+                      {new Date(t.updatedAt).toLocaleDateString('zh-CN')}
+                    </span>
+                  </div>
+                </div>
+                <div className="wb-card-foot">
+                  <button className="btn sm" onClick={() => onOpenDesigner({ kind: 'edit', name: t.name })}>
+                    <Icon name="edit" size={12} />
+                    编辑
+                  </button>
+                  <button className="btn sm" onClick={() => void doExport(t)} disabled={busy !== null}>
+                    <Icon name="download" size={12} />
+                    导出
+                  </button>
+                  <button className="btn sm danger" onClick={() => setDeleting(t)}>
+                    <Icon name="trash" size={12} />
+                    删除
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

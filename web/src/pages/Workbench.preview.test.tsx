@@ -56,9 +56,9 @@ function renderWorkbench() {
   )
 }
 
-function rowOf(name: string): HTMLTableRowElement {
-  // 放大浮层标题也含模板名，用 td 选择器锁定列表行单元格
-  return screen.getByText(name, { selector: 'td' }).closest('tr') as HTMLTableRowElement
+function cardOf(name: string): HTMLElement {
+  // 放大浮层标题也含模板名，用卡片名元素定位所属卡片（迭代 48：表格行 → 卡片）
+  return screen.getByText(name).closest('.wb-card') as HTMLElement
 }
 
 /** 缩略图（单元格内小图，与放大图以 alt 区分）。 */
@@ -161,7 +161,7 @@ describe('工作台模板预览列（迭代 46 修订：内嵌缩略图）', () 
     // 删除一个模板 → 服务端列表少一项 → 重新 load = 新列表周期
     mocks.server.deleteTemplate.mockResolvedValue(undefined)
     mocks.server.listTemplates.mockResolvedValue(TEMPLATES.filter((t) => t.name !== 'Shelf-Tag'))
-    fireEvent.click(within(rowOf('Shelf-Tag')).getByText('删除'))
+    fireEvent.click(within(cardOf('Shelf-Tag')).getByText('删除'))
     fireEvent.click(screen.getByText('确认删除'))
     await flush()
     expect(mocks.server.deleteTemplate).toHaveBeenCalledWith('Shelf-Tag')
@@ -183,8 +183,8 @@ describe('工作台模板预览列（迭代 46 修订：内嵌缩略图）', () 
     expect(errs.length).toBe(3)
     expect(errs[0].getAttribute('title')).toBe('预览不可用：请求失败（HTTP 404）。')
     // 列表与其余功能不受影响
-    expect(rowOf('Carton-Label-A')).toBeTruthy()
-    expect(rowOf('Shelf-Tag')).toBeTruthy()
+    expect(cardOf('Carton-Label-A')).toBeTruthy()
+    expect(cardOf('Shelf-Tag')).toBeTruthy()
     // 失败也进会话缓存：无重试风暴（每模板仍只请求一次）
     expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
   })
