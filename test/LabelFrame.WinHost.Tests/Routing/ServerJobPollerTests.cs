@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Json;
 using LabelFrame.Core.Layout;
 using LabelFrame.WinHost.Routing;
 
@@ -98,5 +99,22 @@ public class ServerJobPollerTests
         var request = Assert.Single(handler.Requests);
         Assert.Equal(HttpMethod.Post, request.Method);
         Assert.Equal("/api/devices/dev-1/jobs/job-9/result", request.RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task ReportProgressAsync_should_post_counts_to_progress_url()
+    {
+        var handler = new FakeHttpMessageHandler(_ => FakeHttpMessageHandler.Json(new { status = "Claimed" }));
+        var poller = new ServerJobPoller(new HttpClient(handler), "http://server", "dev-1");
+
+        await poller.ReportProgressAsync("job-10", new ServerJobProgress(2, 1));
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal("/api/devices/dev-1/jobs/job-10/progress", request.RequestUri!.AbsolutePath);
+        var body = await request.Content!.ReadFromJsonAsync<System.Text.Json.JsonElement>(
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+        Assert.Equal(2, body.GetProperty("completedItems").GetInt32());
+        Assert.Equal(1, body.GetProperty("failedItems").GetInt32());
     }
 }

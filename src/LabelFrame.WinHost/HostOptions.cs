@@ -65,6 +65,18 @@ public sealed class HostOptions
     /// <summary>Server 轮询间隔（秒）。</summary>
     public int PollIntervalSeconds { get; set; } = 5;
 
+    /// <summary>进度增量上报节流间隔毫秒（决策 #101；默认 1000，且计数有变化才发；0 或负值取默认）。</summary>
+    public int ProgressIntervalMs { get; set; } = 1000;
+
+    /// <summary>Serilog 文件日志级别（决策 #102；Trace/Debug/Information/Warning/Error；默认 Information；LABELFRAME_LOG_LEVEL 优先）。</summary>
+    public string LogLevel { get; set; } = "Information";
+
+    /// <summary>Serilog 文件日志目录（默认 %LOCALAPPDATA%\LabelFrame\logs；测试 / 联调可重定向）。</summary>
+    public string AppLogDirectory { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "LabelFrame",
+        "logs");
+
     /// <summary>TCP 打印机主机 / IP。</summary>
     public string TcpHost { get; set; } = "127.0.0.1";
 
@@ -207,6 +219,21 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_POLL_INTERVAL") is { } poll && int.TryParse(poll, out var pollSeconds))
         {
             PollIntervalSeconds = pollSeconds;
+        }
+
+        if (GetEnv("LABELFRAME_PROGRESS_INTERVAL_MS") is { } progressMs && int.TryParse(progressMs, out var progressInterval))
+        {
+            ProgressIntervalMs = progressInterval;
+        }
+
+        if (GetEnv("LABELFRAME_LOG_LEVEL") is { } logLevel)
+        {
+            LogLevel = logLevel;
+        }
+
+        if (GetEnv("LABELFRAME_APP_LOG_DIR") is { } appLogDir)
+        {
+            AppLogDirectory = appLogDir;
         }
 
         if (GetEnv("LABELFRAME_DPI") is { } dpi && int.TryParse(dpi, out var dpiValue))

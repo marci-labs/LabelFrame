@@ -17,6 +17,9 @@ public sealed record ServerJobPayload(
 /// <summary>回报给 Server 的作业结果。</summary>
 public sealed record ServerJobResult(string Status, int CompletedItems, int FailedItems, string? ErrorMessage);
 
+/// <summary>上报给 Server 的作业进度（计数口径与结果回报一致：完成 + 失败 / 取消）。</summary>
+public sealed record ServerJobProgress(int CompletedItems, int FailedItems);
+
 /// <summary>Server 作业载荷 DTO（与 Server API 响应同构）。</summary>
 internal sealed record ClaimedJobDto(string? JobId, string? RequestId, int TotalItems, JobPayloadDto? Payload);
 
@@ -101,6 +104,21 @@ public sealed class ServerJobPoller : IServerJobPoller
                 completedItems = result.CompletedItems,
                 failedItems = result.FailedItems,
                 errorMessage = result.ErrorMessage,
+            },
+            _json,
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>进度增量上报（决策 #101）。</summary>
+    public async Task ReportProgressAsync(string jobId, ServerJobProgress progress, CancellationToken cancellationToken = default)
+    {
+        var response = await _http.PostAsJsonAsync(
+            $"{_serverUrl}/api/devices/{_deviceId}/jobs/{jobId}/progress",
+            new
+            {
+                completedItems = progress.CompletedItems,
+                failedItems = progress.FailedItems,
             },
             _json,
             cancellationToken);

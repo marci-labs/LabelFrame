@@ -1,6 +1,5 @@
 using LabelFrame.WinHost.Transport;
 using LabelFrame.WinHost.Ui;
-using Serilog;
 
 namespace LabelFrame.WinHost;
 
@@ -32,20 +31,9 @@ public static class Program
 #endif
 
 #if WINDOWS
-        // Serilog 文件日志（ILogger 逐张日志落盘；与 host.log 分开文件）
-        // 文件名 app-20260818.log：Serilog.Sinks.File 的 {Date} 是字面量（不会替换），
-        // 正确做法是 app-.log + RollingInterval.Day（Serilog 自动追加日期后缀）。
-        var appLogDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "LabelFrame",
-            "logs");
-        builder.Host.UseSerilog((_, loggerConfig) => loggerConfig
-            .MinimumLevel.Information()
-            .WriteTo.File(
-                Path.Combine(appLogDirectory, "app-.log"),
-                formatProvider: System.Globalization.CultureInfo.InvariantCulture,
-                rollingInterval: RollingInterval.Day,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
+        // Serilog 文件日志（决策 #102，缺陷 #14 修复）：装配收拢到 SerilogSetup，
+        // 必须经 BuildAsync 的 configureBuilder 挂到真实 builder——
+        // 此前 UseSerilog 写在本 builder 上（只用于配置绑定、从不 Build），自迭代 32 起文件日志从未生效。
 #endif
 
         var hostLogWriter = OpenHostLogWriter(options);
@@ -78,8 +66,19 @@ public static class Program
 
         HostInfo($"LabelFrame 启动：监听 {options.ListenUrl}，DPI {options.Dpi}，OpenBrowser={options.OpenBrowser}，ServerUrl={options.ServerUrl ?? "(未配置路由)"}");
 
-        // 应用装配（DI + 全部端点 + Web UI 托管）；宿主层职责（界面壳 / 托盘 / 退出）留在 Main
+        // 应用装配（DI + 全部端点 + Web UI 托管）；宿主层职责（界面壳 / 托盘 / 退出）留在 Main。
+        // Windows：Serilog 文件日志经 configureBuilder 挂到 BuildAsync 内部的真实 builder（缺陷 #14 修复）。
+#if WINDOWS
+        var app = await WinHostApp.BuildAsync(
+            options,
+            hostLogWriter,
+            HostInfo,
+            configureBuilder: b => SerilogSetup.Apply(b, options));
+        // 启动自检：经 ILogger 写一条启动事件——文件通道失效时文件不出现，原因见 serilog-self.log（失败可见化）
+        app.Logger.LogInformation("文件日志自检：Serilog 文件通道已装配（级别 {LogLevel}，目录 {LogDirectory}）。", options.LogLevel, options.AppLogDirectory);
+#else
         var app = await WinHostApp.BuildAsync(options, hostLogWriter, HostInfo);
+#endif
 
 #if WINDOWS
         // 界面壳（迭代 44，决策 #99）：窗口形态（WebView2）优先，运行时不可用回退浏览器；
