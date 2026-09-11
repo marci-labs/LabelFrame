@@ -31,6 +31,11 @@ export function PdaLogs() {
         // 全量拉取（后端返回 id DESC 最新在前，上限 500 条）；
         // 数据量小、5 秒一次，比 since 增量更可靠（避免时间戳边界重复/遗漏）
         const list = await biz.getLogs(filter || undefined)
+        // 迭代 51：解析失败显式报错——旧版客户端 /api/logs 命中 SPA 回退时 200 + HTML，
+        // fetch 封装按文本回退会得到非数组结果，静默按「暂无日志」渲染会掩盖故障
+        if (!Array.isArray(list)) {
+          throw new ApiError('PARSE_ERROR', '获取日志失败（响应格式异常），请确认客户端 / 服务端版本。')
+        }
         if (!stopped) {
           setLogs(list)
           setError(null)
@@ -38,6 +43,7 @@ export function PdaLogs() {
       } catch (err) {
         if (!stopped) setError(err instanceof ApiError ? err.message : '获取日志失败。')
       } finally {
+        // 失败保持自动刷新：下一轮继续重试，恢复后错误条自动消失
         if (!stopped) timer = setTimeout(() => void tick(), POLL_MS)
       }
     }

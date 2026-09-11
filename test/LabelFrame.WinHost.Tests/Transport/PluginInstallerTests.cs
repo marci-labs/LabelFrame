@@ -80,7 +80,7 @@ public class PluginInstallerTests
     [Fact]
     public async Task Install_non_zip_message_should_be_chinese_and_actionable()
     {
-        // 四类高频之一：非 zip → 具体中文可行动消息（不直出英文框架原话，决策 #105）
+        // 四类高频之一：非 zip → 具体中文可行动消息（不直出英文框架原话，决策 #107）
         var (installer, _, pluginsDir) = Create();
         try
         {

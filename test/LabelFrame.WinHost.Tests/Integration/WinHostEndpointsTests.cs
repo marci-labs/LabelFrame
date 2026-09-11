@@ -119,7 +119,7 @@ public sealed class WinHostEndpointsTests : WinHostIntegrationTestBase
     [Fact]
     public async Task Jobs_submit_malformed_json_should_be_400_with_bad_body_code()
     {
-        // 此前落入全局异常处理器 → 500 LF_INTERNAL_001；现为调用方错误 400 + LF_API_BAD_BODY（决策 #105）
+        // 此前落入全局异常处理器 → 500 LF_INTERNAL_001；现为调用方错误 400 + LF_API_BAD_BODY（决策 #107）
         var response = await Client.PostAsync("/api/jobs", Json("""{ "requestId": "w-1", "labels": """));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await JsonAsync(response);
@@ -215,7 +215,7 @@ public sealed class WinHostEndpointsTests : WinHostIntegrationTestBase
     [Fact]
     public async Task Plugins_install_non_zip_should_be_400_with_chinese_message()
     {
-        // 非 zip 文件：400 + LF_PLUGIN_INVALID + 纯中文可行动消息（不直出英文框架原话，决策 #105）
+        // 非 zip 文件：400 + LF_PLUGIN_INVALID + 纯中文可行动消息（不直出英文框架原话，决策 #107）
         using var form = new MultipartFormDataContent();
         var file = new ByteArrayContent(Encoding.UTF8.GetBytes("this is definitely not a zip archive"));
         form.Add(file, "file", "bad.lfplugin");
@@ -246,6 +246,33 @@ public sealed class WinHostEndpointsTests : WinHostIntegrationTestBase
         var body = await JsonAsync(response);
         Assert.True(body.GetProperty("sent").GetBoolean());
         Assert.True(body.GetProperty("bytes").GetInt32() > 0);
+    }
+
+    [Fact]
+    public async Task Logs_endpoints_should_return_json_and_store_per_line()
+    {
+        // AC-01：客户端实例 GET /api/logs 返回 JSON（补挂 MapLogApi 前命中 SPA 回退返回 index.html，决策 #106）
+        var empty = await Client.GetAsync("/api/logs");
+        Assert.Equal(HttpStatusCode.OK, empty.StatusCode);
+        Assert.Equal("application/json", empty.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(0, (await JsonAsync(empty)).GetArrayLength());
+
+        // AC-04：POST 两行 → GET 回查为两条独立记录（按行拆分入库）
+        var push = await Client.PostAsync("/api/logs",
+            Json("""{ "deviceId": "pda-1", "lines": ["第一行", "第二行"] }"""));
+        Assert.Equal(HttpStatusCode.OK, push.StatusCode);
+        Assert.Equal(2, (await JsonAsync(push)).GetProperty("received").GetInt32());
+
+        var logs = await JsonAsync("/api/logs");
+        Assert.Equal(2, logs.GetArrayLength());
+        // 查询按 id 倒序（最新在前），两行内容各自独立
+        Assert.Equal("第二行", logs[0].GetProperty("line").GetString());
+        Assert.Equal("第一行", logs[1].GetProperty("line").GetString());
+
+        // 缺少 deviceId：400 + LF_API_001（与宿主其他共享端点错误码一致）
+        var bad = await Client.PostAsync("/api/logs", Json("""{ "lines": ["x"] }"""));
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+        Assert.Equal("LF_API_001", (await JsonAsync(bad)).GetProperty("code").GetString());
     }
 }
 

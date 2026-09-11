@@ -323,8 +323,9 @@ public sealed class MainActivity : Activity
                 SetResult(_serverTestText, $"✗ 连不上——请检查地址是否正确（服务器返回码 {(int)response.StatusCode}）", ColorErr);
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            HostLog.Warn(HostLog.Tags.Ui, $"测试服务器连接失败（{url}）：{ex.Message}");
             SetResult(_serverTestText, "✗ 连不上服务器——请检查地址是否正确、PDA 是否连着 WiFi", ColorErr);
         }
     }
@@ -451,8 +452,9 @@ public sealed class MainActivity : Activity
 
             SetResult(_printTestText, "等了 1 分钟还没打完——请再点一次；反复失败就看看打印机是不是卡纸或缺纸", ColorWarn);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            HostLog.Warn(HostLog.Tags.Ui, $"测试打印失败：{ex.Message}");
             SetResult(_printTestText, "✗ 打印服务没反应——请点「保存并重启服务」后再试", ColorErr);
         }
     }
@@ -915,8 +917,9 @@ public sealed class MainActivity : Activity
         {
             await work();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            HostLog.Warn(HostLog.Tags.Ui, $"操作执行失败：{ex.Message}");
             RunOnUiThread(() => Toast.MakeText(this, "出错了，请再试一次", ToastLength.Short)?.Show());
         }
     }

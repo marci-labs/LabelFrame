@@ -4,12 +4,28 @@
 
 ## 迭代 50 错误响应分类修正 · 2026-09-11
 
-- **请求体反序列化失败分类（决策 #105）**：共享层 `AddLabelFrameExceptionHandler` 固定开启 `RouteHandlerOptions.ThrowOnBadRequest`（框架默认仅 Development 开启，Production 下参数绑定失败被短路为「400 空 body」，无法给出统一 ErrorView）——非法 JSON / 非 UTF-8 / 类型不匹配等绑定失败统一交给共享 `GlobalExceptionHandler` 分类为 **400 + `LF_API_BAD_BODY` + 中文可行动消息**（新增错误码入 `ApiErrorCodes`），不再落入 500 兜底误导业务方排查服务端；原始解析异常（含行 / 列位置）记 Warning 日志供排障，不透出客户端。Server 与 WinHost 双宿主经共享层自动一致。
+- **请求体反序列化失败分类（决策 #107）**：共享层 `AddLabelFrameExceptionHandler` 固定开启 `RouteHandlerOptions.ThrowOnBadRequest`（框架默认仅 Development 开启，Production 下参数绑定失败被短路为「400 空 body」，无法给出统一 ErrorView）——非法 JSON / 非 UTF-8 / 类型不匹配等绑定失败统一交给共享 `GlobalExceptionHandler` 分类为 **400 + `LF_API_BAD_BODY` + 中文可行动消息**（新增错误码入 `ApiErrorCodes`），不再落入 500 兜底误导业务方排查服务端；原始解析异常（含行 / 列位置）记 Warning 日志供排障，不透出客户端。Server 与 WinHost 双宿主经共享层自动一致。
 - **测试页传输错误分类**：`POST /api/printer/test` 发送失败（打印机连接不可达 / 超时等传输故障）由裸 500 改为 **400 + 新增错误码 `LF_TRANSPORT_TEST_FAILED`**，消息含打印目标地址（host:port / 打印机名 / USB 名）与失败原因（口径对齐 `/api/printer/status` 降级信息）；客户端经 ILogger 留痕（目标 / 插件 / 原因）。
 - **403 补 ErrorView**：result / progress 端点非归属设备回报（`NotJobOwner` / LF_SRV_004）由**空 body 403** 改为 403 + ErrorView——全系统错误响应契约统一为 `{ code, message }`，前端不再显示裸 `HTTP_403`。
 - **`LF_INTERNAL_001` 常量化**：入 `ApiErrorCodes.InternalError`，全仓仅注册表一处字面量，其余引用常量。
 - **插件包无效消息中文化（待决议三项按 Issue #33 评论用户确认）**：Core 业务性校验失败统一抛新增的 `PluginPackageException`（消息全中文可行动），四类高频——**非 zip / zip 损坏 / manifest 缺失或非法 / DLL 无效**（`PluginProbe` 增逐 DLL 失败原因区分 BadImageFormatException）——给具体中文消息；其余框架 `InvalidDataException` 在 API 边界（WinHost 插件安装 / 卸载、Server 插件包上传）转通用中文提示，不再直出英文原话（如 `End of Central Directory record could not be found.`）。
 - **测试**：`LabelFrame.Api.Tests` 新增共享处理器分类用例（语法错误 / 非 UTF-8 / 类型不匹配 → 400 LF_API_BAD_BODY；未分类异常 → 500 常量码）；`LabelFrame.Server.Tests` 新增错误契约端点用例（绑定失败三类 + result/progress 403 ErrorView + 非 zip 上传中文消息）；`LabelFrame.WinHost.Tests` 新增绑定失败用例、测试页传输失败（connection.json 指向已关闭回环端口 → 400 LF_TRANSPORT_TEST_FAILED + 日志留痕断言）、Log 传输测试页成功路径回归、插件四类中文消息用例；既有插件包用例断言随异常类型同步更新。Debug / Release 全量 `dotnet test`（排除 Perf/Soak，403 项）与 `pnpm lint / test`（260 项）通过。
+## 迭代 51 客户端设备日志链路与前端可观测 · 2026-09-11
+
+- **WinHost 补挂设备日志端点（决策 #106，AC-01）**：审计发现 WinHost 装配了 `SqliteLogStore` 却从未调用共享 `MapLogApi`——客户端实例 `GET/POST /api/logs` 命中 SPA 回退返回 `index.html`（HTTP 200 + HTML）。修复 = `WinHostApp` 补挂共享端点（错误码 `LF_API_001`，与宿主其他共享端点一致），客户端实例返回 JSON。补挂后客户端 53960 开放日志写入接口，与决策 #79 局域网信任模型的关系已在 DESIGN 决策 #106 记录（无新增攻击面：Windows 客户端默认仅回环监听，Linux 容器与 Server 同暴露面）。
+- **设备日志按行存储（决策 #106，AC-04，共享契约先文档后代码）**：`SqliteLogStore.AppendAsync` 按物理行拆分入库——多行提交（`lines` 多元素或元素内含 `\r\n` / `\n` / `\r`）拆为独立记录（每行一条、同一提交共用时间戳、单事务原子写入、空白行不落库），与前端按行展示对齐；Server 与 WinHost 同源共享实现，一处修复两端生效。既有 logs.db 历史「合并行」数据**不迁移**（用户确认：旧记录仍为含换行符的单条 line，`pre-wrap` 原样多行呈现）。
+- **日志页失败显错（AC-02）**：查询失败（非 2xx / 解析失败——如旧版客户端 SPA 回退返回 HTML 的 200）显示明确错误条（复用现有错误横幅样式），解析失败新增数组形状校验（`响应格式异常` 文案），不再静默「暂无日志」；失败后自动刷新保持（5s 继续重试，恢复后错误条消失）。
+- **前端全局错误兜底（AC-03）**：`ErrorBoundary`（错误页**仅文案 + 重新加载按钮**，不附错误摘要——用户确认，避免透出内部细节）挂应用根（`main.tsx` 最外层）；`window.onerror` / `unhandledrejection` 统一 `console.error` 留痕（开发线索，不做后端上报）。
+- **测试**：新增 / 改写 13 项——WinHost 集成 1（`/api/logs` JSON 响应 + 两行两条独立记录 + 缺参 400 / LF_API_001）+ `SqliteLogStore` 3（多行提交拆为两条 / 元素内换行拆分 / 空白行跳过与全空提交不落库）+ 前端 9（日志页 4：非 2xx 显错 / 解析失败显错 / 成功按行渲染 / 失败后 5s 自动重试恢复；ErrorBoundary 3：错误页 + console.error 留痕不透出细节 / 点击重新加载 / 正常子树透传；全局监听 2：window.onerror / unhandledrejection 各自留痕）。
+
+## 迭代 53 PDA 可观测性（logcat + 崩溃捕获 + 本地滚动日志） · 2026-09-11
+
+- **logcat 日志封装（决策 #105）**：`HostLog` 轻量静态门面（Info / Warn / Error，tag 前缀 `LabelFrame.` + 区域名 Host / Http / Print / Server / Ui / Crash），零新依赖、写失败静默。关键路径埋点：本地 HTTP 请求失败（method / path / 异常消息 + 完整堆栈）、打印循环发送失败（作业 / 项 / 打印机目标 / 原因）与领取失败、Server 轮询与回报失败（目标地址 / 原因）、前台服务生命周期（启动一行含版本 / 设备 / 服务器 / 打印机配置、停止、开机自启广播）、配置页操作失败。
+- **本地滚动日志（用户确认的新增交付，原 Issue 默认仅 adb 可查）**：与 logcat 同一封装同步落应用私有目录 `{FilesDir}/logs/host-<yyyyMMdd>-<NNN>.log`；单文件 512KB 上限滚动到下一序号，目录保留最近 6 个（名字序即时间序）——现场无法 adb 时可直接取证。
+- **全局崩溃捕获**：Java 层 `SetDefaultUncaughtExceptionHandler`（记录后交回原处理器，保持系统崩溃流程）+ .NET `AppDomain.UnhandledException` 双通道 → logcat Error 完整堆栈（长堆栈分片）+ 崩溃摘要 `{FilesDir}/crash/crash-<时间戳>.txt`（时间 / 来源 / 版本 / 系统 / 设备 / 堆栈，保留最近 3 份）；注册时机 = 新增 `[Application]` 子类 `HostApplication` 进程创建首行（早于一切组件）+ 服务 OnCreate 首行幂等兜底；服务启动检测到上次崩溃摘要记录 Warn 提示（即「下次启动可读」）。崩溃摘要**不回传服务端**——回传管道登记 DESIGN「风险与未决问题」。
+- **请求级吞错可见化（语义保持）**：`EmbeddedHttpServer` 每请求 catch 仍吞掉异常（单请求失败不影响服务），只加日志——请求行已解析出的处理期失败记 Error（含 method / path），对端断开 / 畸形请求（未解析出请求行）记 Warn 防噪；`/api/printer/test` 5xx 自身原因补 Error。
+- **进度上报失败保持静默**（决策 #101「不告警刷屏」），仅 Server 轮询主循环与终态回报失败记周期 Warn。
+- **测试**：AndroidHost 无测试体系（不在范围），AC 以 CI「Android 构建（PDA 宿主）」+ 真机验收为证据；本轮 `dotnet build / test`（排除 Perf/Soak，384 项）全绿（slnx 无涉改动），AndroidHost Release 本地构建通过（0 警告 0 错误）。
 
 ## 迭代 49 PDA 宿主自动化构建与品牌化 · 2026-09-10
 

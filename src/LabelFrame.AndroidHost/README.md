@@ -1,6 +1,6 @@
 # LabelFrame.AndroidHost
 
-Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 40 配置面补齐，迭代 49 自动化构建与品牌化）。
+Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 40 配置面补齐，迭代 49 自动化构建与品牌化，迭代 53 可观测性）。
 
 > **真机验收已通过（2026-09-08，UROVO DT50 / Android 11）**：注册 / 心跳 / 模板下发 / 作业打印（路由 + 直连）/ 离线恢复 / 断网重连（挂起 → 续打 → 失败项重打）/ 开机自启 / 前台服务保活 / JS 桥 CORS 全部通过。仍不在 `LabelFrame.slnx` 解决方案中（CI 单独构建本工程，见下）；遗留验收项（16KB 运行时验证）见 [ACCEPTANCE-BACKLOG.md](../../docs/ACCEPTANCE-BACKLOG.md)。
 
@@ -22,6 +22,28 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 4
 - IP 9100 打印机传输（复用 Core 的 `Tcp9100PrintTransport`）。
 - 向 Server 注册设备并经 notify 长轮询（20s）领取定向作业 + 独立 1s 回报循环（与 WinHost `ServerRoutingWorker` 同构）。
 - 中文栅格化：Android.Graphics 渲染为 1bpp 位图（^GF），与 WinHost 同契约。
+- 可观测性（迭代 53，决策 #105）：`HostLog` 轻量静态门面（logcat + 本地滚动文件）+ `CrashGuard` 全局崩溃捕获，见下节。
+
+## 可观测性（迭代 53，决策 #105）
+
+现场排障三条通道（轻量实现，零新依赖）：
+
+1. **adb logcat**：tag 前缀 `LabelFrame.` + 区域名——`Host`（前台服务生命周期 / 开机自启）、`Http`（本地 HTTP 请求失败，含 method / path / 异常消息）、`Print`（打印循环发送 / 领取失败）、`Server`（轮询 / 回报失败，含目标地址）、`Ui`（配置页操作失败）、`Crash`（未捕获异常完整堆栈）。
+
+   ```bash
+   adb logcat -s LabelFrame.*:V
+   ```
+
+2. **本地滚动日志**（现场无法 adb 时取证）：`{FilesDir}/logs/host-<yyyyMMdd>-<NNN>.log`，与 logcat 同一封装同步写入；单文件 512KB 上限滚动到下一序号，目录保留最近 6 个。
+
+   ```bash
+   adb shell run-as com.labelframe.androidhost ls files/logs/
+   adb shell run-as com.labelframe.androidhost cat files/logs/host-$(date +%Y%m%d)-001.log
+   ```
+
+3. **崩溃摘要**：未捕获异常（Java 层默认处理器 + .NET `AppDomain.UnhandledException` 双通道，进程创建首行即注册于 `HostApplication`）→ logcat Error 完整堆栈 + `{FilesDir}/crash/crash-<时间戳>.txt`（时间 / 来源 / 版本 / 系统 / 设备 / 堆栈；保留最近 3 份）；下次服务启动检测到上次崩溃摘要会记录 Warn 提示。摘要与本地日志**不回传服务端**（回传管道见 DESIGN「风险与未决问题」）。
+
+语义约束：`EmbeddedHttpServer` 每请求 catch 仍吞掉异常（单请求失败不影响服务），只加日志；循环失败的重试节奏不变；进度上报失败保持静默（决策 #101「不告警刷屏」，Server 轮询主循环与终态回报失败记周期 Warn）。
 
 ## 第三方 PDA 程序集成（决策 #93）
 
