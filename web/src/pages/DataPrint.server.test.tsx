@@ -91,6 +91,15 @@ const DEVICES: DeviceView[] = [
   { deviceId: 'device-2', name: '仓库-2 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-10T23:00:00Z', status: 'Offline', lastIp: '192.168.1.6' },
 ]
 
+/** 无字段模板（静态标签，迭代 65 · #62）：contract.fields 空 + 版式无 field 元素 → fieldKeys 为空。 */
+const STATIC_PKG: TemplatePackage = {
+  name: '固定警示标签',
+  group: '默认',
+  contract: { name: 'contract-static', version: '1', fields: [] },
+  layout: { name: 'layout-static', contractName: 'contract-static', contractVersion: '1', widthMm: 70, heightMm: 50, elements: [] },
+  testData: {},
+}
+
 const DEFAULT_TARGET_KEY = 'labelframe.defaultTargetDeviceId'
 
 function Harness() {
@@ -222,5 +231,41 @@ describe('DataPrint server 构建：隐藏逐张失败重试表格（G4）', () 
     expect(screen.queryByText(/可在下方表格中单独重试/)).toBeNull()
     // 失败原因提示走汇总文案
     expect(screen.getByText(/详见作业状态与客户端回报的失败原因/)).toBeTruthy()
+  })
+})
+
+// 迭代 65（#62）：无字段模板 = 静态标签——server 构建下同样可打印测试（空数据提交到所选在线设备）
+describe('DataPrint server 构建：无字段模板（静态标签）打印测试（迭代 65 · #62）', () => {
+  /** 渲染无字段模板并等待操作区与目标设备就绪（无字段输入框可等，以打印按钮 + 设备选择器为锚点）。 */
+  async function renderStaticPrint() {
+    mocks.server.getTemplate.mockResolvedValue(STATIC_PKG)
+    render(<Harness />)
+    await screen.findByRole('button', { name: /打印测试（单张）/ }, MOUNT_WAIT)
+    await waitFor(() => expect(screen.getByLabelText('目标设备')).toBeTruthy(), MOUNT_WAIT)
+  }
+
+  it('操作区照常渲染且可用：打印测试提交单张空数据（labels: [{ data: {} }]）到所选在线设备（AC-02）', async () => {
+    await renderStaticPrint()
+    expect(screen.getByText(/该模板为静态标签（无字段填充）/)).toBeTruthy()
+    // 无字段无列可生成：Excel 模板维持禁用（tooltip 不变）
+    const excelBtn = screen.getByRole('button', { name: /下载 Excel 模板/ }) as HTMLButtonElement
+    expect(excelBtn.disabled).toBe(true)
+    expect(excelBtn.title).toBe('当前模板没有字段，无法生成 Excel 模板')
+
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    await waitFor(() => expect(mocks.server.submitJob).toHaveBeenCalledTimes(1))
+    const req = mocks.server.submitJob.mock.calls[0][0]
+    expect(req).toMatchObject({ templateName: '固定警示标签', targetDeviceId: 'device-1', labels: [{ data: {} }] })
+    // 双 base 守门：server 构建恒 serverApi，localApi 不提交
+    expect(mocks.local.submitJob).not.toHaveBeenCalled()
+  })
+
+  it('出图预览：空数据 render-image 渲染（不建作业）（AC-03）', async () => {
+    await renderStaticPrint()
+    fireEvent.click(screen.getByRole('button', { name: '出图预览' }))
+    await waitFor(() => {
+      expect(mocks.server.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: {} }] }))
+    })
+    expect(mocks.server.submitJob).not.toHaveBeenCalled()
   })
 })

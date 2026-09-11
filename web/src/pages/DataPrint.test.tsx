@@ -389,15 +389,18 @@ describe('下载 Excel 模板（迭代 22 §2.1）', () => {
     await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('库位标签.xlsx'))
   })
 
-  it('模板无契约字段：按钮禁用', async () => {
+  it('模板无契约字段（静态标签）：显示说明性提示、操作区可用，「下载 Excel 模板」仍禁用', async () => {
     mocks.local.getTemplate.mockResolvedValue({
       ...PKG,
       contract: { ...PKG.contract, fields: [] },
       layout: { ...PKG.layout, elements: [] },
     })
     render(<Harness show />)
-    // 无字段模板：测试数据区提示无字段，无示例值输入框；等模板加载后按钮禁用
-    await waitFor(() => expect(screen.getByText(/该模板没有字段/)).toBeTruthy())
+    // 迭代 65（#62）：无字段模板改为说明性提示（不再是「请先绑定字段」），操作区照常渲染；
+    // testData 残留键不影响——无输入框渲染，Excel 模板无列可生成维持禁用
+    expect(await screen.findByText(/该模板为静态标签（无字段填充）/)).toBeTruthy()
+    expect(screen.queryByDisplayValue('A-01')).toBeNull()
+    expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(false)
     expect((screen.getByRole('button', { name: /下载 Excel 模板/ }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
@@ -417,5 +420,67 @@ describe('连接状态徽标（迭代 18 F5）', () => {
     mocks.server.healthz.mockRejectedValue(new Error('down'))
     await renderDataPrint()
     expect(await screen.findByText('未连接（单机模式可用）')).toBeTruthy()
+  })
+})
+
+// 迭代 65（#62）：无字段模板 = 静态标签——合法模板，可在数据与打印页打印测试（空数据提交）
+describe('无字段模板（静态标签）打印测试（迭代 65 · #62）', () => {
+  /** 无字段模板：contract.fields 空 + 版式无 field 元素 → fieldKeys 为空。 */
+  const STATIC_PKG: TemplatePackage = {
+    name: '固定警示标签',
+    group: '默认',
+    contract: { name: 'contract-static', version: '1', fields: [] },
+    layout: { name: 'layout-static', contractName: 'contract-static', contractVersion: '1', widthMm: 70, heightMm: 50, elements: [] },
+    testData: {},
+  }
+
+  /** 渲染无字段模板并等待操作区就绪（无字段输入框可等，以打印测试按钮为锚点）。 */
+  async function renderStaticPrint() {
+    mocks.local.getTemplate.mockResolvedValue(STATIC_PKG)
+    render(<Harness show />)
+    await screen.findByRole('button', { name: /打印测试（单张）/ }, MOUNT_WAIT)
+  }
+
+  it('操作区照常渲染且可用：静态标签说明提示 + 调试模式复选框 + 出图预览；Excel 模板仍禁用（AC-01）', async () => {
+    await renderStaticPrint()
+    expect(screen.getByText(/该模板为静态标签（无字段填充）/)).toBeTruthy()
+    expect(screen.getByText('静态标签无需填写数据；打印测试提交 1 张空数据标签（内容按版式原样输出）。')).toBeTruthy()
+    expect(screen.getByRole('checkbox', { name: /调试模式/ })).toBeTruthy()
+    expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: '出图预览' }) as HTMLButtonElement).disabled).toBe(false)
+    // 无字段无列可生成：Excel 模板维持禁用，tooltip 不变
+    const excelBtn = screen.getByRole('button', { name: /下载 Excel 模板/ }) as HTMLButtonElement
+    expect(excelBtn.disabled).toBe(true)
+    expect(excelBtn.title).toBe('当前模板没有字段，无法生成 Excel 模板')
+  })
+
+  it('打印测试（调试关）：提交单张空数据作业（labels: [{ data: {} }]），进度面板正常显示（AC-02）', async () => {
+    await renderStaticPrint()
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    await waitFor(() => {
+      expect(mocks.local.submitJob).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: {} }] }))
+    })
+    expect(await screen.findByText('已完成 1 / 1 张')).toBeTruthy()
+    expect(mocks.local.renderImage).not.toHaveBeenCalled()
+  })
+
+  it('调试关：出图预览空数据渲染（不建作业）；调试开：打印测试改为调试出图（空数据）（AC-03）', async () => {
+    await renderStaticPrint()
+    // 调试关：出图预览 → render-image 空数据，不建作业
+    fireEvent.click(screen.getByRole('button', { name: '出图预览' }))
+    await waitFor(() => {
+      expect(mocks.local.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: {} }] }))
+    })
+    expect(mocks.local.submitJob).not.toHaveBeenCalled()
+    await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
+
+    // 调试开：按钮文案联动为调试出图（单张），仍空数据、不建作业
+    fireEvent.click(screen.getByRole('checkbox', { name: /调试模式/ }))
+    expect(screen.getByRole('button', { name: '调试出图（单张）' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '出图预览' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '调试出图（单张）' }))
+    await waitFor(() => expect(mocks.local.renderImage).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(clickSpy.mock.instances[1]?.download).toBe('label-1.png'))
+    expect(mocks.local.submitJob).not.toHaveBeenCalled()
   })
 })
