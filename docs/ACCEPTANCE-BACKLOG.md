@@ -11,13 +11,20 @@
 
 ## 2. Zebra 打印机状态字段真实设备确认（DESIGN 未决）
 
-- [ ] `~HS` 状态解析的字段映射（缺纸 / 卡纸 / 打印头温度）与 Zebra SDK 3.x `PrinterStatus` 语义，接真实 Zebra 打印机确认 `GET /api/printer/status` 展示是否准确。
+- [x] `~HS` 状态解析的字段映射（缺纸 / 卡纸 / 打印头温度）与 Zebra SDK 3.x `PrinterStatus` 语义，接真实 Zebra 打印机确认 `GET /api/printer/status` 展示是否准确。
   —— 2026-09-11 迭代 55：实现已按官方 ~HS 字段表与 SDK `GetCurrentStatus()` 修正（决策 #109，消除恒 false 与两处字段误映射），模拟报文单测矩阵随代码合入；**本条本轮不划账**——真机三场景实证（正常 / 人工缺纸 / 人工暂停，192.168.2.121:9100）转 `待验收`（Issue #45），验收通过后随结项划掉并回写 ROADMAP。
+  —— 2026-09-11 **划账**：真机三场景（正常 / 人工缺纸 / 人工暂停）× 双路径（PDA SDK `GetCurrentStatus` / WinHost TCP `~HS`）× 恢复复核全部通过，口径一致；`~HS` 原文与字段核对见 [Issue #45 验收评论](https://github.com/marci-labs/LabelFrame/issues/45#issuecomment-5633161373)。
 
 ## 3. Niimbot 蓝牙插件真机（已取消）
 
 - [ ] ~~连接 / 打印 / 状态 / 异常恢复真机验收（随迭代 26 实施执行）。~~
   —— 2026-09-07：迭代 26 已放弃（PDA 宿主走 IP 打印、无蓝牙承接需求，见 ROADMAP），本项随之取消，不再承接。
+
+## 3B. PDA 蓝牙 / USB 连接类型真机（迭代 56 实现完成，2026-09-11）
+
+- [ ] 蓝牙（SPP，MAC 手输 + BLUETOOTH_CONNECT 运行时权限流）配对后测试打印出纸、连接测试通过；
+- [ ] USB（OTG，UsbDiscoverer 自动发现锁定第一台 + 首连系统授权弹窗）连接后测试打印出纸、连接测试通过。
+  —— 2026-09-11 迭代 56（#49）结项时登记：tcp（IP 直连 + Server 路由）与 WinHost Zebra 升级回归真机验收已通过；蓝牙 / USB 打印机不可得，实现与配置面已完整交付（决策 #111），设备可得时补验后划账。
 
 ## 4. Excel 导入续填冒烟（TemplateFrame 2.0.0 升级后，2026-08-25）
 
