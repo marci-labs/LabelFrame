@@ -3,19 +3,25 @@ using Microsoft.Extensions.Hosting;
 namespace LabelFrame.WinHost;
 
 /// <summary>
-/// 宿主统一退出协调器（缺陷 #58）：托盘菜单「退出」与 /api/host/shutdown 共用同一
-/// 「优雅停止 + 限时兜底强退」路径——StopApplication 后有限等待主流程自然退出
-/// （RunAsync 返回并完成清理），超时则执行注册的清理（托盘图标移除 / 界面壳释放）后强制退出。
-/// 两条退出入口不得再有强弱退差异；退出链路各阶段均写 host.log 记账，
-/// 用户侧「点了退出没反应」时可定位具体阶段。
+/// 宿主统一退出协调器（缺陷 #58；Issue #64 退出提速）：托盘菜单「退出」与 /api/host/shutdown 共用同一
+/// 「优雅停止 + 事件驱动提前退出 + 限时兜底强退」路径——StopApplication 后优先等待主流程自然退出
+/// （RunAsync 返回并完成清理）；宿主已停止（ApplicationStopped）而主流程仍未返回（Issue #58 证据链的
+/// 托盘 / 界面消息循环卡死场景）时，不再烧满固定宽限，仅再留稳定窗（默认 500 毫秒）即执行注册的
+/// 清理（托盘图标移除 / 界面壳释放）后强制退出；宽限上限保留为兜底（宿主停止本身挂死、
+/// ApplicationStopped 未在宽限期内到来时按现状超时强退）。两条退出入口不得再有强弱退差异；
+/// 退出链路各阶段均写 host.log 记账，用户侧「点了退出没反应」时可定位具体阶段。
 /// </summary>
 public sealed class HostExitCoordinator
 {
-    /// <summary>优雅等待上限（主流程自然退出的宽限；Issue #58 修复方向：2~3 秒量级）。</summary>
+    /// <summary>优雅等待上限（宽限兜底；Issue #58 修复方向：2~3 秒量级。Issue #64 起仅兜底极端挂死，不再决定常见路径耗时）。</summary>
     public static readonly TimeSpan DefaultGracefulTimeout = TimeSpan.FromSeconds(2.5);
+
+    /// <summary>宿主已停止后的主流程观察稳定窗（Issue #64：ApplicationStopped 已到而 RunAsync 未返回时再留的卡死判定缓冲；500 毫秒常量，不打配置面）。</summary>
+    public static readonly TimeSpan DefaultStabilizationWindow = TimeSpan.FromMilliseconds(500);
 
     private readonly Action<string> _log;
     private readonly TimeSpan _gracefulTimeout;
+    private readonly TimeSpan _stabilizationWindow;
     private readonly Action<int> _forceExit;
     private readonly TaskCompletionSource _naturalExitCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly object _cleanupGate = new();
@@ -27,11 +33,13 @@ public sealed class HostExitCoordinator
     /// <param name="log">host.log 记账回调。</param>
     /// <param name="gracefulTimeout">优雅等待上限（默认 <see cref="DefaultGracefulTimeout"/>）。</param>
     /// <param name="forceExit">强退动作（默认 Environment.Exit；测试注入替身以便进程内观测）。</param>
-    public HostExitCoordinator(Action<string> log, TimeSpan? gracefulTimeout = null, Action<int>? forceExit = null)
+    /// <param name="stabilizationWindow">宿主停止后的主流程观察稳定窗（默认 <see cref="DefaultStabilizationWindow"/>；测试注入取值以便时序断言）。</param>
+    public HostExitCoordinator(Action<string> log, TimeSpan? gracefulTimeout = null, Action<int>? forceExit = null, TimeSpan? stabilizationWindow = null)
     {
         _log = log;
         _gracefulTimeout = gracefulTimeout ?? DefaultGracefulTimeout;
         _forceExit = forceExit ?? Environment.Exit;
+        _stabilizationWindow = stabilizationWindow ?? DefaultStabilizationWindow;
     }
 
     /// <summary>绑定宿主生命周期（应用 Build 后由装配方调用一次；退出请求据此发起 StopApplication）。</summary>
@@ -50,7 +58,8 @@ public sealed class HostExitCoordinator
     }
 
     /// <summary>
-    /// 收到退出请求（来源：托盘菜单 / HTTP）。幂等：首个请求执行「优雅停止 + 限时兜底强退」序列，
+    /// 收到退出请求（来源：托盘菜单 / HTTP）。幂等：首个请求执行「优雅停止 + 事件驱动提前退出 + 限时兜底强退」序列
+    /// （宿主停止信号先于主流程返回到达时，经稳定窗判定卡死即提前清理强退，Issue #64），
     /// 后续请求只记账不重复执行。返回的 Task 在序列结束时完成（强退路径实际不会完成——进程已退出）。
     /// </summary>
     /// <param name="source">请求来源（写入 host.log 记账，如「托盘菜单『退出』」/「HTTP /api/host/shutdown」）。</param>
@@ -110,38 +119,81 @@ public sealed class HostExitCoordinator
             await Task.Delay(delayBeforeStop).ConfigureAwait(false);
         }
 
+        // Issue #64 事件驱动提前退出：订阅 ApplicationStopped 作为「宿主已停止」信号。
+        // 先挂回调再查已置位，覆盖「订阅时宿主已停止」的竞态（两者任一命中都置位，
+        // 已停止时 StopApplication 前后到达不影响判定）。
         var lifetime = _lifetime;
-        if (lifetime is null)
+        var hostStopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stoppedRegistration = default(CancellationTokenRegistration);
+        if (lifetime is not null)
         {
-            _log("宿主生命周期未绑定，跳过 StopApplication（直接进入清理与强退兜底）。");
-        }
-        else
-        {
-            try
+            stoppedRegistration = lifetime.ApplicationStopped.Register(() => hostStopped.TrySetResult());
+            if (lifetime.ApplicationStopped.IsCancellationRequested)
             {
-                _log("发起 StopApplication（停止宿主与全部后台服务）。");
-                lifetime.StopApplication();
-            }
-            catch (Exception ex)
-            {
-                _log($"StopApplication 异常（继续走退出兜底）：{ex}");
+                hostStopped.TrySetResult();
             }
         }
 
-        var naturalExit = _naturalExitCompleted.Task;
-        var gracePeriod = Task.Delay(_gracefulTimeout);
-        var finished = await Task.WhenAny(naturalExit, gracePeriod).ConfigureAwait(false);
-        if (finished == naturalExit)
+        try
         {
-            _log("主流程自然退出确认，兜底看门狗收手（退出收尾由主流程完成）。");
-            return;
-        }
+            if (lifetime is null)
+            {
+                _log("宿主生命周期未绑定，跳过 StopApplication（直接进入清理与强退兜底）。");
+            }
+            else
+            {
+                try
+                {
+                    _log("发起 StopApplication（停止宿主与全部后台服务）。");
+                    lifetime.StopApplication();
+                }
+                catch (Exception ex)
+                {
+                    _log($"StopApplication 异常（继续走退出兜底）：{ex}");
+                }
+            }
 
-        // RunAsync 未自然返回（托盘 / 界面消息循环在场的已知问题，Issue #58 证据链）或清理未完成：
-        // 显式清理（托盘 NIM_DELETE / 界面壳释放）后强制退出，进程不再僵死、图标不再残留。
-        _log($"优雅等待超时（{_gracefulTimeout.TotalSeconds:0.##} 秒，RunAsync 未返回或清理未完成），执行清理后强制退出。");
-        RunCleanup();
-        _log("强制退出：Environment.Exit(0)。");
-        _forceExit(0);
+            var naturalExit = _naturalExitCompleted.Task;
+            var gracePeriod = Task.Delay(_gracefulTimeout);
+            // 自然退出优先于宿主停止信号（两者均已完成时按参数序取 naturalExit）；
+            // 宽限计时与宿主停止信号并行——ApplicationStopped 未在宽限期内到来时按现状超时强退兜底。
+            var finished = await Task.WhenAny(naturalExit, hostStopped.Task, gracePeriod).ConfigureAwait(false);
+            if (finished == naturalExit)
+            {
+                _log("主流程自然退出确认，兜底看门狗收手（退出收尾由主流程完成）。");
+                return;
+            }
+
+            if (finished == hostStopped.Task)
+            {
+                // 宿主已停止而主流程（RunAsync）仍未返回（Issue #58 证据链的卡死场景）：
+                // 不再烧满固定宽限，仅留稳定窗观察——期间自然退出则看门狗收手（不强杀不回归），
+                // 届满仍未返回即判定卡死，提前执行清理与强退（稳定窗提前退出）。
+                _log($"宿主已停止（ApplicationStopped）而主流程未返回，进入稳定窗观察（{_stabilizationWindow.TotalMilliseconds:0} 毫秒）。");
+                var stabilized = await Task.WhenAny(naturalExit, Task.Delay(_stabilizationWindow)).ConfigureAwait(false);
+                if (stabilized == naturalExit)
+                {
+                    _log("稳定窗内主流程自然退出，兜底看门狗收手（退出收尾由主流程完成）。");
+                    return;
+                }
+
+                _log($"稳定窗（{_stabilizationWindow.TotalMilliseconds:0} 毫秒）届满主流程仍未返回，判定卡死——稳定窗提前退出：执行清理后强制退出。");
+                RunCleanup();
+                _log("强制退出：Environment.Exit(0)。");
+                _forceExit(0);
+                return;
+            }
+
+            // 宽限期内既未自然返回也未收到 ApplicationStopped（宿主停止本身挂死）或清理未完成：
+            // 显式清理（托盘 NIM_DELETE / 界面壳释放）后强制退出，进程不再僵死、图标不再残留。
+            _log($"优雅等待超时（{_gracefulTimeout.TotalSeconds:0.##} 秒，RunAsync 未返回或清理未完成），执行清理后强制退出。");
+            RunCleanup();
+            _log("强制退出：Environment.Exit(0)。");
+            _forceExit(0);
+        }
+        finally
+        {
+            stoppedRegistration.Dispose();
+        }
     }
 }
