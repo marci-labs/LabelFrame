@@ -6,7 +6,8 @@ namespace LabelFrame.Core.Transport;
 
 /// <summary>
 /// TCP 9100 打印传输：连接打印机 IP 的 9100 端口并发送指令（Zebra 等网络打印机）。
-/// 状态查询：发送 ~HS 主机状态查询并做基础解析。
+/// 状态查询：发送 ~HS 主机状态查询并按官方 ZPL 指南字段表解析（缺纸 / 暂停位在首行第 2 / 3 字段）；
+/// 无响应 / 超时 / 响应不完整按异常态处理。
 /// </summary>
 public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvider, LabelFrame.Core.Transport.Plugins.ITestableTransport
 {
@@ -121,8 +122,10 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
 
     /// <inheritdoc />
     /// <remarks>
-    /// Zebra ~HS 主机状态响应为逗号分隔字段：第 2 个字段为暂停位，第 5 个字段为缺纸位；
-    /// 字段映射以真实设备联调为准。
+    /// Zebra ~HS 主机状态响应为三行逗号分隔字段（每行以 STX 开头、ETX+CR+LF 结尾）；
+    /// 缺纸 / 暂停位均在首行：第 2 字段 = 缺纸、第 3 字段 = 暂停（官方 ZPL 指南 ~HS 字段表，迭代 55 修正）。
+    /// 官方声明缺纸 / 耗材用尽 / 打印头打开 / 回卷器满 / 打印头过热等状态下打印机可能完全不响应 ~HS——
+    /// 「无响应 / 超时 / 响应不完整」按异常态处理（离线 + 原因），绝不映射为正常。
     /// </remarks>
     public async Task<PrinterStatusInfo> GetStatusAsync(CancellationToken cancellationToken = default)
     {
@@ -138,8 +141,8 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
             await stream.WriteAsync(payload, timeoutCts.Token);
             await stream.FlushAsync(timeoutCts.Token);
 
-            var buffer = new byte[1024];
             var response = new StringBuilder();
+            var buffer = new byte[1024];
             while (response.Length < 1024)
             {
                 var read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), timeoutCts.Token);
@@ -148,6 +151,7 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
                     break;
                 }
 
+                // ~HS 为 ASCII 协议，按块解码追加；读到首行行尾（换行）即足够解析缺纸 / 暂停位
                 response.Append(System.Text.Encoding.UTF8.GetString(buffer, 0, read));
                 if (response.ToString().Contains('\n'))
                 {
@@ -155,24 +159,84 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
                 }
             }
 
-            var text = response.ToString().Trim();
-            if (text.Length == 0)
-            {
-                return new PrinterStatusInfo(true, IsPaperOut: false, IsPaused: false, "已连接，但状态无响应。");
-            }
-
-            var fields = text.Split(',');
-            var paperOut = fields.Length > 4 && fields[4] == "1";
-            var paused = fields.Length > 1 && fields[1] == "1";
-            return new PrinterStatusInfo(true, paperOut, paused, null);
+            return ParseHostStatus(response.ToString());
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new PrinterStatusInfo(true, IsPaperOut: false, IsPaused: false, "状态查询超时。");
+            // 一等异常态：官方声明缺纸 / 耗材用尽 / 打印头打开等状态下打印机可能不响应 ~HS，超时不得映射为正常
+            return new PrinterStatusInfo(
+                false,
+                IsPaperOut: false,
+                IsPaused: false,
+                $"状态查询超时（{_timeout.TotalSeconds:0.#} 秒无响应，{_host}:{_port}）——打印机可能离线、缺纸或打印头打开。");
         }
         catch (SocketException ex)
         {
             return new PrinterStatusInfo(false, IsPaperOut: false, IsPaused: false, $"连接失败：{ex.Message}");
+        }
+        catch (IOException ex)
+        {
+            return new PrinterStatusInfo(false, IsPaperOut: false, IsPaused: false, $"与打印机通讯失败：{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 解析 ~HS 主机状态响应（纯函数，供传输与单测共用）。
+    /// 官方格式为三行逗号分隔字段（每行以 STX 开头、ETX+CR+LF 结尾），缺纸 = 首行第 2 字段、暂停 = 首行第 3 字段；
+    /// 响应为空或字段不足（截断）时返回异常态（离线 + 中文原因），绝不映射为正常。
+    /// </summary>
+    /// <param name="rawResponse">~HS 原始响应文本（可含 STX / ETX / CR / LF 控制字符）。</param>
+    public static PrinterStatusInfo ParseHostStatus(string rawResponse)
+    {
+        ArgumentNullException.ThrowIfNull(rawResponse);
+
+        // 取第一个非空行（剥离行首 STX 与行尾 ETX / CR 等控制字符）；缺纸 / 暂停位均在首行
+        var firstLine = rawResponse
+            .Split('\n')
+            .Select(line => line.Trim('\r', '\x02', '\x03', ' ', '\t'))
+            .FirstOrDefault(line => line.Length > 0)
+            ?? string.Empty;
+
+        if (firstLine.Length == 0)
+        {
+            return new PrinterStatusInfo(
+                false,
+                IsPaperOut: false,
+                IsPaused: false,
+                "已连上打印机，但未返回状态响应（缺纸 / 耗材用尽 / 打印头打开等状态下打印机可能不响应状态查询）。");
+        }
+
+        var fields = firstLine.Split(',');
+        if (fields.Length < 3
+            || !TryParseStatusFlag(fields[1], out var paperOut)
+            || !TryParseStatusFlag(fields[2], out var paused))
+        {
+            return new PrinterStatusInfo(
+                false,
+                IsPaperOut: false,
+                IsPaused: false,
+                $"状态响应不完整，无法解析（首行仅 {fields.Length} 个字段，期望至少 3 个）。");
+        }
+
+        // Message 最小口径：只报缺纸 / 暂停（决策 #109，其余异常位不纳入文案）
+        string? message = paperOut ? "缺纸，请装纸。" : paused ? "已暂停，按打印机的暂停键恢复。" : null;
+        return new PrinterStatusInfo(true, paperOut, paused, message);
+    }
+
+    /// <summary>解析 ~HS 标志位字段（0 / 1），非 0/1 取值视为不可解析。</summary>
+    private static bool TryParseStatusFlag(string field, out bool value)
+    {
+        switch (field.Trim())
+        {
+            case "1":
+                value = true;
+                return true;
+            case "0":
+                value = false;
+                return true;
+            default:
+                value = false;
+                return false;
         }
     }
 }
