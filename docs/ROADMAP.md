@@ -68,6 +68,8 @@
 | 流程治理 | 启用多会话 worktree 并行（试行，WORKFLOW §7） | ✅ 已完成（2026-09-10 首次并行演练完成并转正，记录见 WORKFLOW §7.1，[#17](https://github.com/marci-labs/LabelFrame/issues/17)） |
 | 发布 | v0.24.0 迭代 40-47 汇总发布（PDA 配置与文案 / Claimed 超时回收 / 客户端窗口化 / 批次节奏与工作台小修 / 缩略图预览 / 作业可观测性） | ✅ 已完成（2026-09-10，tag v0.24.0，含跨端 progress 契约 #101 与批次节奏语义 #100） |
 | 51 | 客户端设备日志链路与前端可观测（WinHost 补挂 /api/logs + 日志页失败显错 + ErrorBoundary 全局兜底 + 设备日志按行存储 #106） | ✅ 已完成（2026-09-11 用户验收通过，[#34](https://github.com/marci-labs/LabelFrame/issues/34)） |
+| 50 | 错误响应分类修正（请求体失败 400 LF_API_BAD_BODY + 传输测试失败 LF_TRANSPORT_TEST_FAILED + 403 补 ErrorView + 错误码注册表 + 插件消息中文化 #107） | ✅ 已完成（2026-09-11 验收证据闭环（沙箱实测），用户委托自动结项，[#33](https://github.com/marci-labs/LabelFrame/issues/33)） |
+| 53 | PDA 可观测性（logcat 日志封装 HostLog + 全局崩溃捕获 CrashGuard + 本地滚动日志 #105） | ✅ 已完成（2026-09-11 真机（DT50）取证通过，用户委托自动结项，[#36](https://github.com/marci-labs/LabelFrame/issues/36)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
