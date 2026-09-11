@@ -89,7 +89,7 @@ public sealed class HostExitCoordinatorTests
             Assert.Fail($"等待记账阶段行「{fragment}」超时（{timeout.TotalSeconds:0.#} 秒），实际：{string.Join(Environment.NewLine, SnapshotLogs())}");
         }
 
-        public IReadOnlyList<string> SnapshotLogs()
+        public List<string> SnapshotLogs()
         {
             lock (_logGate)
             {
@@ -99,7 +99,13 @@ public sealed class HostExitCoordinatorTests
 
         public HostExitCoordinator Create(TimeSpan? gracefulTimeout = null, TimeSpan? stabilizationWindow = null)
             => new(
-                message => lock (_logGate) { Logs.Add(message); },
+                message =>
+                {
+                    lock (_logGate)
+                    {
+                        Logs.Add(message);
+                    }
+                },
                 gracefulTimeout ?? TimeSpan.FromSeconds(5),
                 Exits.Add,
                 stabilizationWindow);
