@@ -5,6 +5,8 @@ namespace LabelFrame.Core.Transport.Plugins.Package;
 /// <summary>
 /// 插件包 zip 读取：根 manifest.json + 插件 DLL；
 /// zip-slip 防护（拒绝绝对路径 / 盘符 / .. 段）；不落地解压（服务端列表 / 上传校验用）。
+/// 校验失败抛 <see cref="PluginPackageException"/>（中文可行动消息）；
+/// 框架 zip 解析抛出的英文异常在此归类转译（非 zip / zip 损坏），不外泄英文原话。
 /// </summary>
 public static class PluginPackageReader
 {
@@ -16,22 +18,27 @@ public static class PluginPackageReader
 
     /// <summary>
     /// 读取插件包：校验 zip / 根 manifest / 必填字段 / 条目名安全（zip-slip）。
-    /// 失败抛 InvalidDataException（中文消息）。
+    /// 失败抛 <see cref="PluginPackageException"/>（中文消息）。
     /// </summary>
     public static PluginPackageContent Read(byte[] zipBytes)
     {
         ArgumentNullException.ThrowIfNull(zipBytes);
 
-        using var stream = new MemoryStream(zipBytes, writable: false);
-        using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+        using var archive = OpenArchive(zipBytes);
 
         var manifestEntry = archive.GetEntry(ManifestFileName)
-            ?? throw new InvalidDataException($"插件包缺少根 {ManifestFileName}。");
+            ?? throw new PluginPackageException($"插件包缺少根 {ManifestFileName}。");
         string manifestJson;
-        using (var entryStream = manifestEntry.Open())
-        using (var reader = new StreamReader(entryStream))
+        try
         {
+            using var entryStream = manifestEntry.Open();
+            using var reader = new StreamReader(entryStream);
             manifestJson = reader.ReadToEnd();
+        }
+        catch (InvalidDataException ex)
+        {
+            // 条目数据损坏（CRC / 压缩数据非法）由 zip 框架以英文抛出 → 归类为 zip 损坏
+            throw new PluginPackageException("插件包已损坏（条目数据读取失败），请重新导出插件包后再试。", ex);
         }
 
         var manifest = PluginPackageManifest.Parse(manifestJson);
@@ -41,7 +48,7 @@ public static class PluginPackageReader
         {
             if (!IsSafeEntryName(entry.FullName))
             {
-                throw new InvalidDataException($"插件包含不安全的条目名：{entry.FullName}。");
+                throw new PluginPackageException($"插件包含不安全的条目名：{entry.FullName}。");
             }
 
             if (entry.FullName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
@@ -52,7 +59,7 @@ public static class PluginPackageReader
 
         if (dlls.Count == 0)
         {
-            throw new InvalidDataException("插件包未包含任何 DLL（至少需要实现 ITransportPlugin 的主 DLL）。");
+            throw new PluginPackageException("插件包未包含任何 DLL（至少需要实现 ITransportPlugin 的主 DLL）。");
         }
 
         return new PluginPackageContent(manifest, dlls);
@@ -84,8 +91,7 @@ public static class PluginPackageReader
         Directory.CreateDirectory(targetDirectory);
         var rootFull = Path.GetFullPath(targetDirectory);
 
-        using var stream = new MemoryStream(zipBytes, writable: false);
-        using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+        using var archive = OpenArchive(zipBytes);
         foreach (var entry in archive.Entries)
         {
             if (string.IsNullOrEmpty(entry.Name))
@@ -95,14 +101,14 @@ public static class PluginPackageReader
 
             if (!IsSafeEntryName(entry.FullName))
             {
-                throw new InvalidDataException($"插件包含不安全的条目名：{entry.FullName}。");
+                throw new PluginPackageException($"插件包含不安全的条目名：{entry.FullName}。");
             }
 
             var destPath = Path.Combine(rootFull, entry.FullName.Replace('\\', '/'));
             var fullPath = Path.GetFullPath(destPath);
             if (!fullPath.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidDataException($"插件包含越界条目：{entry.FullName}。");
+                throw new PluginPackageException($"插件包含越界条目：{entry.FullName}。");
             }
 
             var dir = Path.GetDirectoryName(fullPath);
@@ -111,9 +117,17 @@ public static class PluginPackageReader
                 Directory.CreateDirectory(dir);
             }
 
-            using var entryStream = entry.Open();
-            using var fileStream = File.Create(fullPath);
-            entryStream.CopyTo(fileStream);
+            try
+            {
+                using var entryStream = entry.Open();
+                using var fileStream = File.Create(fullPath);
+                entryStream.CopyTo(fileStream);
+            }
+            catch (InvalidDataException ex)
+            {
+                // 条目数据损坏（CRC / 压缩数据非法）由 zip 框架以英文抛出 → 归类为 zip 损坏
+                throw new PluginPackageException($"插件包已损坏（条目 {entry.FullName} 数据读取失败），请重新导出插件包后再试。", ex);
+            }
         }
     }
 
@@ -145,5 +159,32 @@ public static class PluginPackageReader
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// 打开 zip：缺 zip 魔数（PK 头）判「非 zip」；有魔数但结构读不出（EOCD 缺失 / 中央目录损坏）判「zip 损坏」。
+    /// 框架英文异常转中文并保留原始异常为 InnerException。
+    /// </summary>
+    private static ZipArchive OpenArchive(byte[] zipBytes)
+    {
+        // zip 局部文件头 / 跨卷 / 空包魔数（PK\x03\x04 / PK\x07\x08 / PK\x05\x06）
+        var hasZipMagic = zipBytes.Length >= 4
+            && zipBytes[0] == 0x50 && zipBytes[1] == 0x4B
+            && ((zipBytes[2] == 0x03 && zipBytes[3] == 0x04)
+                || (zipBytes[2] == 0x05 && zipBytes[3] == 0x06)
+                || (zipBytes[2] == 0x07 && zipBytes[3] == 0x08));
+        if (!hasZipMagic)
+        {
+            throw new PluginPackageException("文件不是 zip 格式的插件包，无法安装。请使用「导出插件包」生成的 .zip 文件。");
+        }
+
+        try
+        {
+            return new ZipArchive(new MemoryStream(zipBytes, writable: false), ZipArchiveMode.Read);
+        }
+        catch (InvalidDataException ex)
+        {
+            throw new PluginPackageException("插件包已损坏（zip 结构不完整或中央目录损坏），请重新导出插件包后再试。", ex);
+        }
     }
 }

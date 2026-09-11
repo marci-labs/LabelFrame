@@ -5,6 +5,7 @@ using LabelFrame.Core.Documents;
 using LabelFrame.Core.Layout;
 using LabelFrame.Core.Transport;
 using LabelFrame.Core.Transport.Plugins;
+using LabelFrame.Core.Transport.Plugins.Package;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
 using LabelFrame.WinHost.Transport;
@@ -38,9 +39,17 @@ internal static class PluginApi
         {
             return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginBusy, ex.Message));
         }
-        catch (InvalidDataException ex)
+        catch (PluginPackageException ex)
         {
-            return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginInvalid, $"插件包无效：{ex.Message}"));
+            // 业务性失败（非 zip / zip 损坏 / manifest 缺失或非法 / DLL 无效等）：消息已是中文可行动提示
+            return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginInvalid, ex.Message));
+        }
+        catch (InvalidDataException)
+        {
+            // 其余框架抛出的 InvalidDataException：不透出英文原话，给通用中文可行动提示
+            return Results.BadRequest(new ErrorView(
+                ApiErrorCodes.PluginInvalid,
+                "插件包无效，无法完成安装。请使用「导出插件包」生成的 .zip 文件重试；问题持续请联系插件提供方。"));
         }
         // 其余意外异常（解压 / 写入故障等）交给全局异常处理器 → 500，不再误报 400 或透出内部信息
     }).DisableAntiforgery();
@@ -61,9 +70,15 @@ internal static class PluginApi
         {
             return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginBusy, ex.Message));
         }
-        catch (InvalidDataException ex)
+        catch (PluginPackageException ex)
         {
             return Results.BadRequest(new ErrorView(ApiErrorCodes.PluginInvalid, ex.Message));
+        }
+        catch (InvalidDataException)
+        {
+            return Results.BadRequest(new ErrorView(
+                ApiErrorCodes.PluginInvalid,
+                "无法卸载该插件：插件包信息无效。请确认其为「导出插件包」安装的插件后重试。"));
         }
     }).DisableAntiforgery();
 

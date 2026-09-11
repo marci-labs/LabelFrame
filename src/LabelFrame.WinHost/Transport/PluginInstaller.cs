@@ -114,7 +114,8 @@ public sealed class PluginInstaller
 
     /// <summary>
     /// 安装插件包：三层校验（zip + 根 manifest / 内置 id 拒绝 / 临时 ALC 预检核对插件 id）→
-    /// 解压到 plugins/&lt;pluginId&gt;/（覆盖旧目录）。失败抛 InvalidDataException / IOException（中文消息）。
+    /// 解压到 plugins/&lt;pluginId&gt;/（覆盖旧目录）。失败抛 <see cref="PluginPackageException"/> /
+    /// IOException（中文消息）。
     /// </summary>
     public async Task<InstalledPluginView> InstallAsync(Stream packageStream, string? fileName, CancellationToken cancellationToken)
     {
@@ -124,12 +125,12 @@ public sealed class PluginInstaller
         await packageStream.CopyToAsync(buffer, cancellationToken);
         if (buffer.Length == 0)
         {
-            throw new InvalidDataException("插件包为空。");
+            throw new PluginPackageException("插件包为空。");
         }
 
         if (buffer.Length > PluginPackageLimits.MaxBytes)
         {
-            throw new InvalidDataException($"插件包超过大小上限（{PluginPackageLimits.Display}）。");
+            throw new PluginPackageException($"插件包超过大小上限（{PluginPackageLimits.Display}）。");
         }
 
         var bytes = buffer.ToArray();
@@ -141,27 +142,35 @@ public sealed class PluginInstaller
         var existing = _registry.GetPlugin(content.Manifest.PluginId);
         if (existing is { IsExternal: false })
         {
-            throw new InvalidDataException($"插件 ID「{content.Manifest.PluginId}」与内置插件冲突，禁止安装。");
+            throw new PluginPackageException($"插件 ID「{content.Manifest.PluginId}」与内置插件冲突，禁止安装。");
         }
 
         // pluginId 目录名安全校验（防解压路径穿越）
         var safeId = SafeFileName.Normalize(content.Manifest.PluginId)
-            ?? throw new InvalidDataException($"pluginId「{content.Manifest.PluginId}」不是合法的插件目录名。");
+            ?? throw new PluginPackageException($"pluginId「{content.Manifest.PluginId}」不是合法的插件目录名。");
 
         // ③ 临时目录解压 + 预检（临时 collectible ALC 发现插件并核对 id，不 Create 传输实例）
         var tempDir = Path.Combine(Path.GetTempPath(), $"lfplugin-install-{Guid.NewGuid():N}");
         try
         {
             PluginPackageReader.ExtractTo(bytes, tempDir);
-            var discovered = PluginProbe.DiscoverPluginIds(tempDir, _hostLog);
-            if (discovered.Count == 0)
+            var probe = PluginProbe.Discover(tempDir, _hostLog);
+            if (probe.PluginIds.Count == 0)
             {
-                throw new InvalidDataException("插件包内未发现 ITransportPlugin 实现。");
+                // DLL 无效（不是 .NET 程序集）给具体可行动消息；其他加载失败维持通用提示
+                var invalidDll = probe.LoadErrors.FirstOrDefault(e => e.Exception is BadImageFormatException);
+                if (invalidDll is not null)
+                {
+                    throw new PluginPackageException(
+                        $"插件包内「{invalidDll.FileName}」不是有效的 .NET 程序集（DLL 无效或已损坏），请重新导出插件包后再试。");
+                }
+
+                throw new PluginPackageException("插件包内未发现 ITransportPlugin 实现。");
             }
 
-            if (!discovered.Contains(content.Manifest.PluginId, StringComparer.OrdinalIgnoreCase))
+            if (!probe.PluginIds.Contains(content.Manifest.PluginId, StringComparer.OrdinalIgnoreCase))
             {
-                throw new InvalidDataException($"manifest.pluginId「{content.Manifest.PluginId}」与插件实际 ID（{string.Join(" / ", discovered)}）不一致。");
+                throw new PluginPackageException($"manifest.pluginId「{content.Manifest.PluginId}」与插件实际 ID（{string.Join(" / ", probe.PluginIds)}）不一致。");
             }
 
             // 覆盖安装：删除旧目录（已加载插件被 Windows 文件锁占用 → 明确提示重启后重试）
@@ -210,27 +219,27 @@ public sealed class PluginInstaller
 
     /// <summary>
     /// 卸载已安装插件包：删除 plugins/&lt;pluginId&gt;/（仅 source=package，需包内 manifest）。
-    /// 失败抛 InvalidDataException / IOException（中文消息）。
+    /// 失败抛 <see cref="PluginPackageException"/> / IOException（中文消息）。
     /// </summary>
     public void Uninstall(string pluginId)
     {
         if (string.IsNullOrWhiteSpace(pluginId))
         {
-            throw new InvalidDataException("缺少插件 ID。");
+            throw new PluginPackageException("缺少插件 ID。");
         }
 
         var safeId = SafeFileName.Normalize(pluginId)
-            ?? throw new InvalidDataException($"pluginId「{pluginId}」不是合法的插件目录名。");
+            ?? throw new PluginPackageException($"pluginId「{pluginId}」不是合法的插件目录名。");
 
         var targetDir = Path.Combine(_pluginsPath, safeId);
         if (!Directory.Exists(targetDir))
         {
-            throw new InvalidDataException($"插件「{pluginId}」未安装。");
+            throw new PluginPackageException($"插件「{pluginId}」未安装。");
         }
 
         if (!File.Exists(Path.Combine(targetDir, PluginPackageReader.ManifestFileName)))
         {
-            throw new InvalidDataException("该插件为手动放置（无安装包 manifest），不支持界面卸载，请手动删除插件目录。");
+            throw new PluginPackageException("该插件为手动放置（无安装包 manifest），不支持界面卸载，请手动删除插件目录。");
         }
 
         try

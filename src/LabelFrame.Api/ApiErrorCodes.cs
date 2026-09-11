@@ -4,6 +4,8 @@ namespace LabelFrame.Api;
 /// API 问题码注册表（Server / WinHost 共用端点的语义化错误码）。
 /// 约定：LF_TPL_xxx（模板）/ LF_TRANSPORT_xxx（连接）/ LF_PLUGIN_xxx（插件）；
 /// 通用请求 / 作业 / IO 错误沿用 Core 的 LF_API_xxx / LF_JOB_xxx / LF_IO_xxx，服务端专属错误沿用 LF_SRV_xxx。
+/// LF_INTERNAL_001（未捕获异常兜底）与 LF_API_BAD_BODY（请求体反序列化失败）也定义于此——
+/// 全仓仅本注册表一处字面量，其余代码一律引用常量（迭代 50，决策 #105）。
 /// </summary>
 public static class ApiErrorCodes
 {
@@ -13,6 +15,9 @@ public static class ApiErrorCodes
     /// <summary>连接配置无效（pluginId / 参数校验失败）。</summary>
     public const string TransportInvalid = "LF_TRANSPORT_INVALID";
 
+    /// <summary>测试页发送失败（打印机连接不可达 / 超时等传输故障；消息含目标地址与原因）。</summary>
+    public const string TransportTestFailed = "LF_TRANSPORT_TEST_FAILED";
+
     /// <summary>插件包无效（zip / manifest / 预检校验失败）。</summary>
     public const string PluginInvalid = "LF_PLUGIN_INVALID";
 
@@ -21,4 +26,10 @@ public static class ApiErrorCodes
 
     /// <summary>插件安装失败（解压 / 写入等 IO 异常）。</summary>
     public const string PluginInstallFailed = "LF_PLUGIN_INSTALL_FAILED";
+
+    /// <summary>请求体反序列化失败（非法 JSON / 非 UTF-8 编码 / 字段类型不匹配 → 400；属调用方错误）。</summary>
+    public const string BadBody = "LF_API_BAD_BODY";
+
+    /// <summary>未捕获的服务器内部错误（全局异常处理器 500 兜底；全仓唯一字面量定义处）。</summary>
+    public const string InternalError = "LF_INTERNAL_001";
 }

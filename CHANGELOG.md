@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 50 错误响应分类修正 · 2026-09-11
+
+- **请求体反序列化失败分类（决策 #105）**：共享层 `AddLabelFrameExceptionHandler` 固定开启 `RouteHandlerOptions.ThrowOnBadRequest`（框架默认仅 Development 开启，Production 下参数绑定失败被短路为「400 空 body」，无法给出统一 ErrorView）——非法 JSON / 非 UTF-8 / 类型不匹配等绑定失败统一交给共享 `GlobalExceptionHandler` 分类为 **400 + `LF_API_BAD_BODY` + 中文可行动消息**（新增错误码入 `ApiErrorCodes`），不再落入 500 兜底误导业务方排查服务端；原始解析异常（含行 / 列位置）记 Warning 日志供排障，不透出客户端。Server 与 WinHost 双宿主经共享层自动一致。
+- **测试页传输错误分类**：`POST /api/printer/test` 发送失败（打印机连接不可达 / 超时等传输故障）由裸 500 改为 **400 + 新增错误码 `LF_TRANSPORT_TEST_FAILED`**，消息含打印目标地址（host:port / 打印机名 / USB 名）与失败原因（口径对齐 `/api/printer/status` 降级信息）；客户端经 ILogger 留痕（目标 / 插件 / 原因）。
+- **403 补 ErrorView**：result / progress 端点非归属设备回报（`NotJobOwner` / LF_SRV_004）由**空 body 403** 改为 403 + ErrorView——全系统错误响应契约统一为 `{ code, message }`，前端不再显示裸 `HTTP_403`。
+- **`LF_INTERNAL_001` 常量化**：入 `ApiErrorCodes.InternalError`，全仓仅注册表一处字面量，其余引用常量。
+- **插件包无效消息中文化（待决议三项按 Issue #33 评论用户确认）**：Core 业务性校验失败统一抛新增的 `PluginPackageException`（消息全中文可行动），四类高频——**非 zip / zip 损坏 / manifest 缺失或非法 / DLL 无效**（`PluginProbe` 增逐 DLL 失败原因区分 BadImageFormatException）——给具体中文消息；其余框架 `InvalidDataException` 在 API 边界（WinHost 插件安装 / 卸载、Server 插件包上传）转通用中文提示，不再直出英文原话（如 `End of Central Directory record could not be found.`）。
+- **测试**：`LabelFrame.Api.Tests` 新增共享处理器分类用例（语法错误 / 非 UTF-8 / 类型不匹配 → 400 LF_API_BAD_BODY；未分类异常 → 500 常量码）；`LabelFrame.Server.Tests` 新增错误契约端点用例（绑定失败三类 + result/progress 403 ErrorView + 非 zip 上传中文消息）；`LabelFrame.WinHost.Tests` 新增绑定失败用例、测试页传输失败（connection.json 指向已关闭回环端口 → 400 LF_TRANSPORT_TEST_FAILED + 日志留痕断言）、Log 传输测试页成功路径回归、插件四类中文消息用例；既有插件包用例断言随异常类型同步更新。Debug / Release 全量 `dotnet test`（排除 Perf/Soak，403 项）与 `pnpm lint / test`（260 项）通过。
+
 ## 迭代 49 PDA 宿主自动化构建与品牌化 · 2026-09-10
 
 - **CI 自动化（决策 #104，含流程治理：修改 workflows）**：`ci.yml` 新增「Android 构建（PDA 宿主）」job（ubuntu；JDK 17 + Android SDK 36 + .NET Android workload；Release 配置 + `-p:EmbedAssembliesIntoApk=true`），用户拍板**直接设为第三项必需检查**——master 门禁由双必需升三必需（既有两项名称与语义不变；落地顺序 = 先合入 job 的 PR 验证全绿、合并后立即补进门禁 ruleset）；AndroidHost 仍不进 `LabelFrame.slnx`（CI 单独构建该工程，不拖慢日常全仓构建）。

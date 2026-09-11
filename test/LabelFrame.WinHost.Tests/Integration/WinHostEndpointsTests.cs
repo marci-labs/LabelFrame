@@ -117,6 +117,30 @@ public sealed class WinHostEndpointsTests : WinHostIntegrationTestBase
     }
 
     [Fact]
+    public async Task Jobs_submit_malformed_json_should_be_400_with_bad_body_code()
+    {
+        // 此前落入全局异常处理器 → 500 LF_INTERNAL_001；现为调用方错误 400 + LF_API_BAD_BODY（决策 #105）
+        var response = await Client.PostAsync("/api/jobs", Json("""{ "requestId": "w-1", "labels": """));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await JsonAsync(response);
+        Assert.Equal("LF_API_BAD_BODY", body.GetProperty("code").GetString());
+        Assert.Contains("JSON", body.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task Jobs_submit_non_utf8_body_should_be_400_with_bad_body_code()
+    {
+        // GBK 编码的中文值：对 UTF-8 JSON 解析是非法字节序列
+        var content = new ByteArrayContent([0x7B, 0x22, 0x6C, 0x61, 0x62, 0x65, 0x6C, 0x73, 0x22, 0x3A, 0x22, 0xD6, 0xD0, 0xCE, 0xC4, 0x22, 0x7D]);
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+
+        var response = await Client.PostAsync("/api/jobs", content);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await JsonAsync(response);
+        Assert.Equal("LF_API_BAD_BODY", body.GetProperty("code").GetString());
+    }
+
+    [Fact]
     public async Task Host_config_get_post_and_loopback_guard()
     {
         // GET：默认 serverUrl 为空 + deviceId 透出
@@ -189,10 +213,39 @@ public sealed class WinHostEndpointsTests : WinHostIntegrationTestBase
     }
 
     [Fact]
+    public async Task Plugins_install_non_zip_should_be_400_with_chinese_message()
+    {
+        // 非 zip 文件：400 + LF_PLUGIN_INVALID + 纯中文可行动消息（不直出英文框架原话，决策 #105）
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(Encoding.UTF8.GetBytes("this is definitely not a zip archive"));
+        form.Add(file, "file", "bad.lfplugin");
+
+        var response = await Client.PostAsync("/api/plugins/install", form);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await JsonAsync(response);
+        Assert.Equal("LF_PLUGIN_INVALID", body.GetProperty("code").GetString());
+        var message = body.GetProperty("message").GetString();
+        Assert.Contains("不是 zip 格式", message);
+        // 此前直出 .NET 英文原话（"End of Central Directory record could not be found."）
+        Assert.DoesNotContain("End of Central Directory", message);
+    }
+
+    [Fact]
     public async Task Printer_status_should_report_log_transport_online()
     {
         var status = await JsonAsync("/api/printer/status");
         Assert.True(status.GetProperty("isOnline").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Printer_test_should_send_via_log_transport()
+    {
+        // Log 传输不失败：测试页正常发送（回归保护——错误分类不影响成功路径）
+        var response = await Client.PostAsync("/api/printer/test", null);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await JsonAsync(response);
+        Assert.True(body.GetProperty("sent").GetBoolean());
+        Assert.True(body.GetProperty("bytes").GetInt32() > 0);
     }
 }
 
