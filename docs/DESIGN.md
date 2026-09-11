@@ -182,6 +182,11 @@ flowchart LR
 | 111 | 双端复用 Zebra 官方 SDK 5.0.3685：AndroidHost 接入 + WinHost 升级统一（迭代 56，2026-09-11；三项待决议按 Issue #49 评论预授权——蓝牙 = MAC 地址手输（首版最简）/ USB = 自动发现锁定第一台 Zebra 设备（无可选设备给可行动中文错误）/ PDA 状态与连接测试直接切 SDK `PrinterStatus` 语义替换 `~HS` 手撕、**不保留双轨**；用户补充确认：tcp 是默认且一级交付路径，蓝牙 / USB 不得挤占） | ① **AndroidHost 传输切换官方 SDK**：`ZebraSdkTransport`（实现 `IPrintTransport` / `IPrinterStatusProvider` / `ITestableTransport` 三接口，对齐 Core 传输契约）替换裸 socket `Tcp9100PrintTransport`；连接类型 `tcp`（**默认**，SDK `TcpConnection`）/ `bluetooth`（SPP `BluetoothConnection` 按 MAC 手输）/ `usb`（OTG `UsbDiscoverer` 自动发现锁定第一台，超时 3 秒、无可选设备给可行动中文错误）；每次发送 / 测试 / 状态查询独立建连（与裸 socket 时代行为一致）。**存量 `tcp_host` / `tcp_port` 配置键沿用**——已装设备升级后零操作直入 SDK TCP 路径（AC-03 无感迁移）。② **PDA 状态 / 连接测试直接切 SDK 语义**：`ZebraPrinterFactory.GetInstance(connection).GetCurrentStatus()` 官方布尔属性（`isPaperOut` / `isPaused`），不保留 `~HS` 手撕双轨；缺纸 / 暂停口径与迭代 55（#109）实证结论对齐，Message 最小口径只报缺纸与暂停，不回退其 AC。③ **WinHost 升级 3.0.3355 → 5.0.3685**：`GetInstance` / `GetCurrentStatus` / `UsbDiscoverer.GetZebraUsbPrinters` 在 5.x 均保留，`ZebraPrinterTransport` / `ZebraTransportPlugin` 适配面极小，四模式（log / tcp9100 / winspool / zebra）行为不回退；双端 SDK 版本统一。④ **偏离官方支持矩阵声明**：官方声明非 MAUI .NET 10 的 Android 不受支持，实测成因是依赖链毒化（`System.Drawing.Common` 夹带 `System.Private.Windows.Core.dll` 致 Android AOT 失败；MAUI 链经 buildTransitive 注入 AOT profile），毒丸排除后原生 `net10.0-android` Release + `EmbedAssembliesIntoApk` 构建打包全绿；**SDK 升级时毒丸清单需复查，疑难问题官方支持渠道可能不受理**。⑤ **毒丸引用清单（全部 `ExcludeAssets="all"`，随 csproj 注释入库；ExcludeAssets 不裁剪传递闭包，须逐包显式排除）**——Android 实证版：`System.Drawing.Common 10.0.7`、`SkiaSharp.Views.Maui.Controls` / `SkiaSharp.Views` / `SkiaSharp.Views.Maui.Core`（3.119.2）、`Microsoft.Maui.Controls` / `.Controls.Core` / `.Controls.Xaml` / `.Core` / `.Essentials` / `.Graphics` / `.Controls.Build.Tasks`（8.0.82）；保留 `SkiaSharp` + `SkiaSharp.NativeAssets.Android`（SDK 图形工具引用）。Windows 本轮验证版：MAUI 链同 Android 清单**另加** `SkiaSharp.Views.WinUI` / `SkiaSharp.NativeAssets.WinUI`（3.119.2）、`Microsoft.Maui.Graphics.Win2D.WinUI.Desktop` / `.Resizetizer`（8.0.82）、`Microsoft.Graphics.Win2D 1.2.0`、`Microsoft.WindowsAppSDK 1.5.240627000`、`Microsoft.Windows.SDK.BuildTools 10.0.22621.756`（后两者 buildTransitive 注入 win10-* RID 图，win-x64 framework-dependent 工程不识别即 NETSDK1083；不排除则 MAUI 程序集混入编译——WinForms `Label` 与 MAUI `Label` 二义、`Microsoft.WinUI` 与 WebView2 投影类型冲突）；`System.Drawing.Common` Windows 可用不排除。⑥ **SkiaSharp 原生 pdb 发布清理**（Windows）：`SkiaSharp.NativeAssets.Win32` 的 runtimes 资产附带 81MB `libSkiaSharp.pdb`（非编译产物，`-p:DebugType=None` 不影响），WinHost csproj 加 Publish 后 Delete 目标，发布产物回到基线量级。⑦ **AndroidHost 收敛单 arm64 ABI**：引入 SDK 后多 ABI（arm64/arm/x64）APK 约 53MB 超出「不劣于现状量级」，收敛 `RuntimeIdentifiers` 为 `android-arm64`（现役 PDA UROVO DT50 均为 arm64）后 21.7MB < 现状 24.8MB（预研 19MB 同量级）；32 位 arm 与 x64 模拟器不再覆盖，有需要恢复多 ABI。⑧ **许可证分发依据**：Development Tool License §3.3.3 允许以目标码形式随 Licensee Application 集成分发、禁止单独分发 SDK 本体（§3.4）——**SDK 包本体不得进任何 GitHub Release 附件**。⑨ Core 的 `Tcp9100PrintTransport` **保留为跨平台兜底**（Linux 客户端 log / tcp9100 现状不变，不删除）。⑩ **AndroidManifest 蓝牙权限**：API 31+ `BLUETOOTH_CONNECT`（选蓝牙保存时请求运行时权限，拒绝不阻塞保存、打印 / 测试时再给可行动提示）；legacy `BLUETOOTH` / `BLUETOOTH_ADMIN` 限 maxSdk 30；USB 无需静态权限，首次连接由 SDK 触发系统授权弹窗（重新插拔后需再次允许） | PDA 传输从自研协议实现收敛到官方 SDK（TCP / 蓝牙 / USB 三形态 + 官方状态语义），蓝牙 / USB 真机验收滞后转待验收；APK 体积 +无感迁移达成（21.7MB / 存量 tcp 配置零操作）；WinHost / PDA 双端 SDK 版本统一，后续 SDK 升级单点验证；代价：偏离官方支持矩阵（毒丸清单是我们的维护责任）、APK 不再覆盖 32 位 arm 与 x64 模拟器；传输 / 状态公共契约零变更（`PrinterStatusInfo` 等不动，超出范围） |
 | 112 | WinHost 退出路径统一：优雅停止 + 限时兜底强退 + 托盘清理（缺陷 #58，2026-09-11；修复方向按 Issue #58 证据链实施——根因 = `RunAsync` 在托盘 / 界面消息循环在场时不自然返回，托盘退出回调只调 `StopApplication()` 无强退兜底，Main 的 `finally`（含 `Environment.Exit`）永不执行致进程僵死 + 幽灵图标） | ① **统一退出协调器 `HostExitCoordinator`**（WinHost 装配注册、`Bind(app.Lifetime)`）：托盘菜单「退出」与 `/api/host/shutdown` 共用同一「优雅停止 + 限时兜底强退」序列——`StopApplication` → 有限等待（默认 **2.5 秒**）主流程自然退出（`MarkNaturalExitCompleted` 由 Main 的 finally 在清理完成后置位）→ 超时执行注册清理后 `Environment.Exit(0)`；两条入口不再有强弱退差异（HTTP 路径保留 200ms 响应送达缓冲），重复退出请求幂等记账忽略。② **退出清理单入口 `RunCleanup`**（幂等 + 并发串行）：自然路径（Main finally）与强退兜底共用——托盘 `Dispose`（投递 `WM_QUIT` + 限时 Join 2 秒，消息循环退出后在**托盘线程内**执行 `Shell_NotifyIcon(NIM_DELETE)`，消除幽灵图标）+ `uiShell?.Dispose()`；清理异常记账后继续退出。③ **托盘退出信号器 `TrayQuitSignaler`**：从 `TrayIconService` 抽出 WM_QUIT 投递逻辑（线程登记 / 幂等投递 / 限时 Join），线程消息投递函数可注入供单测替代 Win32 调用；托盘线程在 `NIM_ADD` 完成后才登记（登记即可退出语义）。④ **退出链路记账**：收到退出请求（来源：托盘 / HTTP）→ StopApplication 发起（异常续走兜底）→ 优雅等待超时与否 → 清理执行 / 完成 → 最终退出方式（自然完成 / 强制 `Environment.Exit(0)`），host.log 可定位「点了退出没反应」的具体阶段。⑤ **Linux 无头端不受影响**：协调器为纯 BCL 装配（无 Windows 依赖），Linux 上 `RunAsync` 自然返回、看门狗收手，行为同现状 | 托盘退出后进程 ≤5 秒退出（AC-01，强退最坏 = 2.5 秒宽限 + 清理限时，典型 2.6 秒内）；退出即 NIM_DELETE 托盘图标不残留（AC-03）；`/api/host/shutdown` 响应契约不变（`{ shuttingDown: true }`）且同享清理（AC-04）；真机项（AC-01 / AC-03）转待验收由用户按 Issue #58 复现步骤复核；已知边界：强退清理的 Join 为限时等待（菜单模态循环极端吞掉 WM_QUIT 时到时即退出，进程终止后 Explorer 悬停刷新即清图标） |
 | 113 | 服务端按 IP 解析设备「最近活跃优先」（缺陷 #46，2026-09-11；Issue 候选方向 A / B / A+B 中评估取 **A**，径行小决策） | `ServerDb.FindDeviceByIpAsync` 由「`WHERE last_ip = $ip COLLATE NOCASE LIMIT 1`（**无 ORDER BY**——SQLite 无索引全表扫描按 rowid 序，稳定命中**先注册的旧行**；缺陷复现：同 IP 旧行 stale / 新行活跃，by-ip 与 targetIp 投递均解析到旧设备号）」改为 **`ORDER BY last_seen_at DESC, registered_at DESC, id LIMIT 1`**：同 IP 多行并存时命中**最近活跃**设备——设备号变更（重装 / 配置重置 / ANDROID_ID 变）后新行活跃、旧行 `last_seen_at` 停滞，必命中新行；`registered_at DESC` + `id` 为确定性平手序（两列均存 UTC 往返 "O" 格式文本，字典序即时间序）。**不取 B（注册 / 心跳写入时清除同 IP 其他行）**：NAT 共网出口下多台真机合法共用一个出口 IP，B 会让每次心跳抹掉其他设备的 `last_ip`（设备目录 IP 显示丢失、by-ip 退化为「最后写者」）且每次心跳多一次写放大；A 在多设备同 IP 且都活跃时跟随最近一次心跳，尽力而为且不破坏目录数据。排查佐证：全仓仅 `ServerDb` 三处写 devices（注册 upsert / notify 心跳 / 领取事务），均单行更新，**无任何跨行清理 `last_ip` 的补偿路径** | 消费方 `GET /api/devices/by-ip/{ip}` 与 `SubmitJobAsync` 的 targetIp 解析共用该方法一并修复——按 IP 投递不再路由到已停用的旧设备号（长期 Pending 收不到）；行为变化仅在「同 IP 多行」场景（先注册行 → 最近活跃行），单行场景零变化；无需数据迁移（旧行保留，仅在解析时被最近活跃行压过） |
+| 114 |安装引导程序形态与技术选型（迭代 57，2026-09-11 用户确认——自研 .NET 轻量向导；设计细节见 §6.1） | 自研 `LabelFrame.Bootstrapper`：WinForms 分步向导（欢迎 → 拓扑预设 → 品牌多选 → 管理界面开关 → 确认 / 进度 / 完成），**self-contained win-x64 单文件发布**（目标机可能是裸机，不假设 .NET 在位；体积量级目标 ≤ 20MB）；UI 选 WinForms（向导交互简单、依赖最少，与界面壳 #99 同栈）。**WiX Burn 不采用**：迭代 10（#44）已因 Bal 扩展加载与依赖链复杂、收益低放弃过一次；本专项核心（manifest 解析 / 拓扑编排 / 多源回退 / 中文问卷 / 品牌一致 UI）无论如何自研，Burn 只省「下载 + msiexec 封装」一小段，换来 UI 定制与长期维护成本。**Velopack 不用于引导程序**（专项评估）：模型错位——其为「单应用安装器 + 应用内增量自更新」框架，无多组件拓扑编排层（没有「按问卷选组件集合」概念）；核心卖点增量自更新是第一期明确不做项（#118）；采用即更换整套安装 / 打包契约，与既有 WiX / MSI 体系冲突大——**记为未来「客户端应用内自更新」立项时的首选候选**（届时 delta 更新收益直接、GitHub Releases 源开箱即用） | 引导程序不受安装引擎框架约束（拓扑预设 / 开关问卷自由实现）；下载 / 安装编排自研成本可控（#54 / #55 承接）；Velopack 不进本期依赖，未来自更新立项有现成评估结论 |
+| 115 |安装清单（install manifest）格式（迭代 57，2026-09-11；schema 与约束见 §6.2） | 版本化 JSON（`schemaVersion` 首版 1；不兼容变更递增，引导程序超支持范围 fail-closed 拒绝并提示升级自身）；组件条目：id / type（`msi` / `lfplugin` / `webui-zip` / `apk` / `runtime` / `archive`）/ version / dependsOn / **urls 多源数组（顺序即优先级、逐源回退）** / **sha256 强制（小写 hex，CI 实测；引导程序下载后逐源强制校验，不符即停）** / sizeBytes / silentArgs / topologies 拓扑标记。**由 CI 发版流水线从当次真实产物计算生成并随 Release 发布，禁止人工维护**（workflow 字段完整性断言：缺产物 / 缺哈希 / schema 不符 = 构建失败）；当版无对应产物的条目不出现。runtime 条目 urls 指向厂商官方直链、哈希由 CI 锁定（厂商轮转固定 URL 背后文件 → 校验失败 fail-closed，重发版修复）。Docker 镜像不进首版条目（完整性由 registry digest 机制保证，server-docker 预设 = compose 生成 + 拉取指引）。随发版同步生成 `latest.json` 最新版本指针（供升级检查，是否生成属 #51 待决议） | 发布产物之间首次有机器可读关联（对标 VS channel manifest 模式）；镜像源追加零信任成本（哈希即背书，见 #117）；专项 2/8（#51）按此 schema 生成、4/8（#53）按此解析；runtime 引导器哈希漂移 fail-closed 属安全方向失效，接受 |
+| 116 |安装引导拓扑预设与组件组装（迭代 57，2026-09-11；映射表见 §6.3） | 预设有限枚举：单机一体（standalone）/ 服务端 · Windows 服务（server-win）/ 服务端 · Docker（server-docker，**无下载组件**——生成 compose 文件 + ghcr 镜像拉取指引，管理界面开关 = compose 启用镜像内置 web-ui）/ 服务端 · Linux systemd（server-linux，归档 + 部署指引）/ 追加打印客户端（client）/ **离线全量包（offline，一等形态——工厂内网现实：单 zip 全组件 + 内嵌 manifest，sha256 校验同样强制）**。**自由开关仅两项**：打印机品牌多选（品牌 → `plugin-<brand>` 映射；首版 Zebra 内置 WinHost、manifest 无该条目，选项在 #56 外置化后生效）、是否带管理界面（webui-zip 落位服务端 `plugins/web-ui`；standalone 默认关，分离部署建议开）；**不提供任意组件勾选**（防组合爆炸与未测试组合）。「预设 + 开关 → 组件集合」解析器契约（`ITopologyResolver`）入 §6.3，为 #53（实现）/ #54 / #55 的公共契约 | 问卷三问（拓扑 / 品牌 / 管理界面）即全部决策面；组合空间有限可全矩阵测试（#53 AC-02）；离线场景从特权需求升为一等预设；后续新增预设 / 插件条目只需扩 manifest 与映射表，不动开关模型 |
+| 117 |安装引导信任模型与分发源（迭代 57，2026-09-11；与决策 #79 边界关系的显式结论，见 §6.4） | **manifest sha256 强制校验 = 公网分发完整性背书基线**：哈希由 CI 在受控流水线从当次真实产物计算、与产物同 Release 发布，引导程序逐源强制校验（fail-closed）——镜像 / 代理 / 传输链对产物的替换与损坏一律拦截，**镜像位因此不需要自己的信任背书（哈希即背书）**。**不推翻决策 #79**（局域网信任、插件不签名）：公网经引导程序分发的 `.lfplugin`（含未来官方插件 #56）受 manifest sha256 背书，**强于** #79 的局域网三层校验（后者不含哈希）；局域网 #72 分发通道维持不签名；引导程序把已装服务端设为下载源时组件哈希校验同样强制（等于给该通道补上哈希层）。**签名升级触发条件显式衔接 #79**：出现「公网分发的陌生第三方插件生态」时先加 manifest 签名或插件包签名（强化路径：先改 DESIGN 再实施）。manifest 自身真实性残余风险显式记录：与产物同信道分发，对「源被整体接管」（GitHub 账号失陷）无密码学防护——信任根 = GitHub 账号安全 + TLS + 发版 tag 不可变；首期不引入 manifest 签名（证书决策 #118）。**分发源**：GitHub Release 主源（首期唯一）+ urls 数组镜像位预留（国内镜像 / 自托管另行排期，落地零 schema 变更）；已装服务端（#71 client-packages / #72 plugin-packages）可作局域网优先源（追加客户端预设探测到内网服务端时插入 urls 首位，内网多台装机不重复走公网） | 引导分发通道在 #79 局域网模型之外有显式边界与升级条件（AC-03 结论落账）；镜像位预留使源扩展零返工；服务端集中分发能力复用为引导下载源；不购证书不阻塞完整性保障 |
+| 118 |安装引导更新策略与代码签名（迭代 57，2026-09-11 用户确认——「检查新版本 + 重跑引导」/ 首期不购证书；见 §6.5 / §6.6） | **更新策略**：第一期 = 引导程序按 `latest.json` 指针比对已装版本（Windows 卸载信息 / 本地安装记录，#57 实现定案），有新版提示**重跑引导程序升级**——重走问卷 → 下载新版组件 → MSI 覆盖升级（既有语义不变：appsettings.json 不覆盖 #48、服务升级不弹完成窗 #54；重跑幂等口径归 #55）。**明确不做**：无人值守静默更新、服务端进程内自更新、Velopack 增量更新（#57 收尾确认同口径）；依据：局域网部署 + 低频发版 + 升级应由管理员在场选择打印低峰窗口。客户端「应用内自更新」为未来独立立项（Velopack 首选候选，#114）。**代码签名**：首期不购证书；现状盘点（构建配置实证）——MSI 自签证书过渡（#65：Secret 在即 signtool 签名、缺失跳过；SmartScreen「未知发布者」仍在）、APK 专用自签 keystore（#104 ③：Android 生态常态，风险在签名变更致设备号变化）、引导 EXE 首期无签名（SmartScreen / 杀软拦截风险最高，自签可复用 MSI 通道）；**缓解 = manifest sha256 强制校验（完整性不依赖签名）+ 发布页哈希与「未知发布者」绕过说明**（内网 / 域环境可推自签证书入受信任根，#65 既有口径）；证书采购（OV / EV）另行决策（未决登记，触发：公开分发量增长或拦截反馈集中） | 升级路径零新机制（复用 MSI 覆盖升级 + 引导重跑）；签名不阻塞专项推进；SmartScreen 风险如实入表并有缓解路径；购证书后引导 EXE / MSI 同链签名、manifest 签名为自然增强位 |
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`（常量定义于 `ApiErrorCodes.InternalError`，全仓仅此一处字面量）。分类修正（决策 #107）：请求体反序列化失败（非法 JSON / 非 UTF-8 / 类型不匹配）→ 400 + `LF_API_BAD_BODY`（中文消息，原始解析异常详情只进服务端日志）；`POST /api/printer/test` 发送失败 → 400 + `LF_TRANSPORT_TEST_FAILED`（消息含目标地址与原因）；403（非归属设备回报 / 进度）同样返回 ErrorView——错误响应不存在空 body 形态。
@@ -246,7 +251,260 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 可观测性（迭代 53，决策 #105）：轻量静态日志门面 `HostLog`（logcat，tag 前缀 `LabelFrame.` + 区域名 Host / Http / Print / Server / Ui / Crash）+ 同一封装同步落**本地滚动文件**（应用私有目录 `{FilesDir}/logs/host-yyyyMMdd-NNN.log`，单文件 512KB 上限滚动、目录保留最近 6 个；现场无法 adb 时取证）。关键路径埋点：本地 HTTP 请求失败（method / path / 异常消息——请求行未解析出的读失败记 Warn、处理期失败记 Error，「单请求失败不影响服务」语义不变）、打印循环发送失败（作业 / 项 / 打印机目标 / 原因）、Server 轮询与回报失败（目标地址 / 原因）、前台服务生命周期（启动参数一行、停止、开机自启广播）。全局崩溃捕获 `CrashGuard`：Java 层 `SetDefaultUncaughtExceptionHandler` + .NET `AppDomain.UnhandledException` → logcat 完整堆栈（Error）+ 崩溃摘要落 `{FilesDir}/crash/crash-<时间戳>.txt`（保留最近 3 份，下次启动服务时检测并记录提示）；注册时机 = 应用进程创建首行（`HostApplication`，早于一切组件）+ 服务 OnCreate 首行幂等兜底；崩溃摘要**不回传服务端**（回传管道见「风险与未决问题」）。
 
-## 6. 风险与未决问题
+## 6. 安装引导（Bootstrapper）
+
+> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）。
+
+定位：**安装引导程序（setup）**——首次接触 LabelFrame 的部署者运行一个小 EXE，回答少量问题（部署拓扑、打印机品牌、是否带管理界面），程序解析安装清单（install manifest）、按需下载组件并完成静默安装 / 落位；PDA 不进 PC 引导（经服务端下载中心扫码下载，专项 3/8 #52）。目标：把「装什么、怎么装」从「读懂 DEPLOY 文档 + 手工排组件」降为「回答三个问题」。语言边界：引导问卷与向导文案**中文单语**，i18n 不进 setup 问卷（REQUIREMENTS §7「多语言」边界不变）。
+
+### 6.1 引导程序形态与技术选型（决策 #114）
+
+- 形态 = **自研 .NET 轻量向导**：`src/LabelFrame.Bootstrapper`，WinForms 分步向导（欢迎 → 拓扑预设 → 打印机品牌多选 → 管理界面开关 → 确认（dry-run 预览）→ 下载 / 安装进度 → 完成），**self-contained win-x64 单文件发布**（目标机可能是裸机，不假设 .NET 在位；体积量级目标 ≤ 20MB）。UI 选 WinForms：向导交互简单、依赖最少，与界面壳先例（决策 #99）同栈。
+- **WiX Burn Bundle 不采用**：迭代 10（决策 #44）已因 Bal 扩展加载与依赖链复杂、收益低放弃过一次；本专项核心（manifest 解析、拓扑编排、多源回退、中文问卷、品牌一致 UI）无论如何要自研，Burn 只省「下载 + msiexec 封装」一小段，换来 UI 定制与长期维护成本。
+- **Velopack 不用于引导程序**（专项评估结论）：模型错位——它是「单应用安装器 + 应用内增量自更新」框架，无多组件拓扑编排层（没有「按问卷选组件集合」概念）；核心卖点增量自更新是第一期明确不做项（§6.5）；采用即更换整套安装 / 打包契约，与既有 WiX / MSI 体系冲突大。**结论：Velopack 记为未来「客户端应用内自更新」立项时的首选候选**（届时 delta 更新收益直接、GitHub Releases 源开箱即用；见 §7 开放点）。
+
+### 6.2 安装清单（install manifest，决策 #115）
+
+文件 `install-manifest.json`，随每次发版（`v*` tag）由 release workflow 生成并作为 Release 附件发布（实现 = 专项 2/8 #51）；稳定通道 URL = `https://github.com/marci-labs/LabelFrame/releases/latest/download/install-manifest.json`（GitHub latest 语义），具体版本 URL 随各 Release。
+
+**顶层字段**：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `schemaVersion` | int | schema 版本，首版 `1`（演进规则见下） |
+| `labelframeVersion` | string | 对应 LabelFrame 版本（= 发版 tag 去 `v`） |
+| `generatedAt` | string | CI 生成时间（ISO 8601 UTC） |
+| `components` | array | 组件条目（下表） |
+
+**组件条目字段**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `id` | string | ✅ | 组件稳定 id：`server-msi` / `client-msi` / `webui` / `linux-server` / `pda-apk` / `runtime-desktop` / `runtime-webview2` / `plugin-<brand>` |
+| `type` | string | ✅ | `msi` / `lfplugin` / `webui-zip` / `apk` / `runtime` / `archive` |
+| `version` | string | ✅ | 组件版本（对齐产物版本；runtime / 官方插件为自身版本） |
+| `dependsOn` | string[] | — | 依赖组件 id 列表（只约束**同集合内**组件的安装顺序，如 `client-msi` → `runtime-desktop`；跨形态互斥组件如 `server-msi` / `linux-server` 不会同集合出现） |
+| `urls` | string[] | ✅ | **多源 URL 数组，顺序即优先级、逐源回退**；首期仅 GitHub Release 主源，镜像位预留（§6.4） |
+| `sha256` | string | ✅ | 文件 SHA-256（小写 hex）。**强制**：CI 从当次真实产物实测；引导程序下载后**逐源强制校验**，不符即停（fail-closed，不装不明文件） |
+| `sizeBytes` | long | ✅ | 文件字节数（进度估算 / 磁盘预检） |
+| `silentArgs` | string | — | 静默安装参数：`msi` = msiexec 属性串（如 `INSTALLDIR=...`，语义由 #55 编排定案）；`runtime` = 官方引导器参数（`/install /quiet /norestart`） |
+| `topologies` | string[] | ✅ | 拓扑标记（预设 id 集合，见 §6.3）：核心组件 = 命中预设即默认纳入；开关组件（`webui`、`plugin-<brand>`）= 标记适用预设，由开关决定是否纳入 |
+| `notes` | string | — | 中文展示备注（确认页可显示） |
+
+**生成约束：manifest 由 CI 生成、禁止人工维护**——哈希与体积是构建产物事实，人工编辑必然漂移；workflow 对字段完整性断言（缺产物 / 缺哈希 / schema 不符 = 构建失败，#51 AC-03）。当版无对应产物的条目不出现（首版无官方插件产物则无 `plugin-*` 条目，问卷对应选项不出现）。
+
+**runtime 条目特殊语义**：`runtime-desktop`（.NET 10 Desktop Runtime x64）/ `runtime-webview2`（WebView2 Evergreen 引导器）的 `urls` 指向**厂商官方直链**；sha256 由 CI 生成时对当次下载实测锁定。厂商可能轮转固定 URL 背后的文件——哈希漂移表现为引导程序校验失败拒绝安装（fail-closed，安全方向失效），修复 = 重新发版刷新 manifest。属接受的残余风险（强于「不校验厂商文件」）。
+
+**Docker 镜像不进首版条目**：镜像无独立可哈希文件产物（完整性由 registry digest 机制保证）；`server-docker` 预设的下载组件集合为空（§6.3），引导程序生成 compose 文件与镜像拉取指引。digest 收录按需再议（§7 开放点）。
+
+**最新版本指针 `latest.json`**：随发版生成（内容 = 最新版本号 + 该版 manifest URL），供升级检查消费（§6.5、#57）；是否生成是 #51 待决议，契约预留该消费形态。
+
+**schema 演进规则**：新增可选字段 = 兼容（旧引导程序忽略未知字段）；修改 / 删除既有字段语义、新增必填字段 = 不兼容 → `schemaVersion` 递增；引导程序声明支持的 schemaVersion 上限，遇到更照新清单即拒绝并提示「先升级引导程序」（fail-closed）。
+
+**示例 JSON**（首版 schema 形态；URL / sha256 / sizeBytes 为占位示意，实际由 CI 从真实产物填充）：
+
+```json
+{
+  "schemaVersion": 1,
+  "labelframeVersion": "0.26.0",
+  "generatedAt": "2026-09-12T03:00:00Z",
+  "components": [
+    {
+      "id": "runtime-desktop",
+      "type": "runtime",
+      "version": "10.0.1",
+      "dependsOn": [],
+      "urls": [
+        "https://builds.dotnet.microsoft.com/builds/windowsdesktop-runtime-10.0.1-win-x64.exe"
+      ],
+      "sha256": "18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a",
+      "sizeBytes": 58396456,
+      "silentArgs": "/install /quiet /norestart",
+      "topologies": ["standalone", "server-win", "client", "offline"],
+      "notes": ".NET 10 Desktop Runtime（x64），缺失时由引导程序补装"
+    },
+    {
+      "id": "runtime-webview2",
+      "type": "runtime",
+      "version": "1.0.2903.40",
+      "dependsOn": [],
+      "urls": [
+        "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+      ],
+      "sha256": "2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b",
+      "sizeBytes": 22020096,
+      "silentArgs": "/silent /install",
+      "topologies": ["standalone", "client", "offline"],
+      "notes": "WebView2 Evergreen 引导器（客户端界面壳依赖，缺失时补装）"
+    },
+    {
+      "id": "server-msi",
+      "type": "msi",
+      "version": "0.26.0",
+      "dependsOn": ["runtime-desktop"],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-Server-0.26.0.msi"
+      ],
+      "sha256": "3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c",
+      "sizeBytes": 11534336,
+      "silentArgs": "",
+      "topologies": ["standalone", "server-win", "offline"],
+      "notes": "服务端（Windows 服务 LabelFrameServer）"
+    },
+    {
+      "id": "client-msi",
+      "type": "msi",
+      "version": "0.26.0",
+      "dependsOn": ["runtime-desktop", "runtime-webview2"],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-Client-0.26.0.msi"
+      ],
+      "sha256": "4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d",
+      "sizeBytes": 12582912,
+      "silentArgs": "",
+      "topologies": ["standalone", "client", "offline"],
+      "notes": "打印客户端（Web UI 托管 + 界面壳 + 托盘）"
+    },
+    {
+      "id": "webui",
+      "type": "webui-zip",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/labelframe-server-webui-0.26.0.zip"
+      ],
+      "sha256": "5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e",
+      "sizeBytes": 4194304,
+      "silentArgs": "",
+      "topologies": ["standalone", "server-win", "server-linux", "offline"],
+      "notes": "服务端管理界面插件（开关组件，落位 plugins/web-ui）"
+    },
+    {
+      "id": "linux-server",
+      "type": "archive",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/labelframe-server-0.26.0-linux-x64.tar.gz"
+      ],
+      "sha256": "6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f",
+      "sizeBytes": 78643200,
+      "silentArgs": "",
+      "topologies": ["server-linux", "offline"],
+      "notes": "Linux 服务端归档（systemd 部署）"
+    },
+    {
+      "id": "pda-apk",
+      "type": "apk",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-AndroidHost-0.26.0.apk"
+      ],
+      "sha256": "7e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b290",
+      "sizeBytes": 22754918,
+      "silentArgs": "",
+      "topologies": ["pda", "offline"],
+      "notes": "PDA 宿主 APK（拓扑标记 pda：经服务端下载中心扫码下载，不进 PC 引导预设）"
+    }
+  ]
+}
+```
+
+### 6.3 拓扑预设（决策 #116）
+
+预设 = 有限枚举 + 仅两项自由开关；**不提供任意组件勾选**（防组合爆炸与未测试组合）。
+
+| 预设（id） | 场景 | 核心组件（默认纳入） | 开关适用性 |
+|---|---|---|---|
+| 单机一体（`standalone`） | 一台 Windows PC 承载全部（Server 服务 + Client 同机，客户端托管 Web UI） | `runtime-desktop`、`runtime-webview2`、`server-msi`、`client-msi` | 管理界面（默认关）/ 品牌插件 |
+| 服务端 · Windows 服务（`server-win`） | 分离部署：Windows 服务器跑服务 | `runtime-desktop`、`server-msi` | 管理界面（建议开） |
+| 服务端 · Docker（`server-docker`） | Docker 宿主跑服务 | **无下载组件**——引导程序生成 compose 文件 + ghcr 镜像拉取指引；管理界面开关 = compose 启用镜像内置 web-ui（镜像携带文件默认无头，决策 #87） | 管理界面（= compose 启用） |
+| 服务端 · Linux systemd（`server-linux`） | Ubuntu 裸机 systemd（决策 #59） | `linux-server` 归档（下载 + 输出部署指引，编排口径 #55） | 管理界面（webui-zip 落位 `plugins/web-ui`） |
+| 追加打印客户端（`client`） | 已有服务端的网络追加一台打印 PC | `runtime-desktop`、`runtime-webview2`、`client-msi` | 品牌插件（多选）；问卷可探测内网服务端并将其设为下载优先源（§6.4） |
+| 离线全量包（`offline`） | 工厂内网 / 无外网机器（**一等形态**） | 全部组件（含 runtime、APK、官方插件）打包为自包含 zip，内嵌 manifest，引导程序从本地文件读清单（无需网络） | 两项开关在离线引导流程内同样生效 |
+
+拓扑标记补充语义：`pda` 仅用于 `pda-apk` 条目（PDA 不进 PC 引导预设，该条目由服务端下载中心 #52 消费）；`offline` 标记组件是否进全量包。
+
+**仅有的两项自由开关**：
+
+1. **打印机品牌多选**：品牌 → `plugin-<brand>` 组件映射（如 Zebra → `plugin-zebra`，#56 外置化后出现；首版 Zebra 内置 WinHost、manifest 无该条目，选项只在条目出现后生效）；适用于含客户端的预设（`standalone` / `client`）。
+2. **是否带管理界面**：`webui`（webui-zip）落位服务端 `plugins/web-ui`（放入即生效，决策 #62）；`standalone` 默认关（客户端本机 UI 已完整），分离部署建议开；Docker 形态 = 启用镜像内置界面（不下载 zip）。
+
+**「预设 + 开关 → 组件集合」解析契约**（专项 4/8 #53 实现；输出是 #54 下载引擎 / #55 安装编排的公共契约）：
+
+```csharp
+// LabelFrame.Bootstrapper；#53 实现，#54 / #55 消费——接口形状先契约后实现（强化路径）
+public interface ITopologyResolver
+{
+    // preset：standalone / server-win / server-docker / server-linux / client
+    // options：品牌多选 + 是否带管理界面（仅此两项）
+    // 输出：按依赖序排列的组件清单（含依赖闭包；server-docker 为空集合 + compose 产物描述）
+    IReadOnlyList<ManifestComponent> Resolve(InstallManifest manifest, TopologyPreset preset, TopologyOptions options);
+}
+```
+
+（dry-run 契约、缓存路径、安装记录等实现细节归 #53~#55；本节只锁定映射语义与开关边界。）
+
+### 6.4 信任模型与分发源（决策 #117）
+
+**基线结论：manifest sha256 强制校验 = 公网分发完整性背书；不推翻决策 #79（局域网信任、插件不签名）；插件 / manifest 签名的升级触发条件显式衔接 #79。**
+
+1. **sha256 防护「传输损坏与产物篡改」**：哈希由 CI 在受控流水线从当次真实产物计算、与产物同 Release 发布；引导程序逐源强制校验（fail-closed）——镜像源 / 代理 / 传输链对产物的替换与损坏一律拦截（多源回退每源同一哈希）。由此**镜像位不需要自己的信任背书，哈希即背书**。
+2. **与决策 #79 的边界关系（显式结论）**：#79 是局域网信任模型（插件包经服务端通道分发不签名、三层校验兜传输损坏）。公网引导分发**不推翻**该结论——
+   - 公网经引导程序分发的 `.lfplugin`（含未来官方插件，#56）：受 manifest sha256 背书，**强于** #79 的局域网三层校验（后者不含哈希）；不额外引入插件签名；
+   - 局域网 #72 分发通道维持现状不签名；引导程序把已装服务端设为下载源时，组件哈希校验同样强制——等于给该通道补上哈希层；
+   - **签名升级触发条件**（衔接 #79）：出现「公网分发的陌生第三方插件生态」（非官方、非用户自行上传）时，先加 manifest 签名或插件包签名（强化路径：先改 DESIGN 再实施）；此前 sha256 + 部署边界是接受的基线。
+3. **manifest 自身的真实性（残余风险，显式记录）**：manifest 与产物同信道（GitHub Release）分发，对「源被整体接管」（GitHub 账号失陷、产物 + manifest 一并替换）无密码学防护——实际信任根 = GitHub 账号安全 + TLS + 发版 tag 不可变。首期不引入 manifest 签名（不购证书，决策 #118）；购证书后 manifest 签名是自然增强位。
+
+**分发源策略**：
+
+- **主源**：GitHub Release（首期 `urls` 仅此一项）；
+- **镜像位**：`urls` 数组预留——国内镜像 / 自托管源落地另行排期（专项最大现实风险，不允许「默认直连、无对策」的空档由 §7 开放点追踪），落地即追加源，零 schema 变更、零信任成本（哈希即背书）；
+- **已装服务端作为局域网优先源**：服务端已有 `client-packages` / `plugin-packages` 集中分发能力（决策 #71 / #72）；「追加打印客户端」预设探测到内网服务端时，把其地址插入 `urls` 首位（管理员预先上传组件，内网多台装机不重复走公网）。定位：优先源，非必选；
+- **离线全量包 = 一等形态**（工厂内网现实）：单 zip 收录当版全部组件 + 内嵌 manifest；引导程序从本地文件读清单（无需网络），sha256 校验同样强制；制作与分发形态（发版附带 / 按需生成）由 #51 / #55 细化。
+
+### 6.5 更新策略（决策 #118 前半）
+
+第一期 = **「检查新版本 + 重跑引导程序升级」**：引导程序按 `latest.json` 指针比对已装版本（Windows 卸载信息 / 本地安装记录，#57 实现定案），有新版即提示重跑引导程序；升级 = 重走问卷（预设默认记住上次选择，属 #53 / #57 实现细节）→ 下载新版组件 → MSI 覆盖升级（既有语义不变：`appsettings.json` 不覆盖（决策 #48）、服务升级不弹完成窗（决策 #54）；重跑幂等口径归 #55）。
+
+**明确不做**：无人值守静默更新、服务端进程内自更新、Velopack 增量更新（专项 8/8 #57 收尾确认同口径）。依据：局域网部署、发版频率低、升级应由管理员在场选择打印低峰窗口。客户端「应用内自更新」（打开客户端直接提示 / 自下载升级）为未来独立立项——届时 Velopack 为首选候选（决策 #114）。
+
+### 6.6 代码签名现状与策略（决策 #118 后半）
+
+**首期不购证书**；现状盘点（构建配置实证，2026-09-11）与缓解措施如下。
+
+| 产物 | 签名现状 | 公开分发风险 |
+|---|---|---|
+| Server / Client MSI | 自签证书过渡（决策 #65）：Secret `MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD` 在即 signtool 签名（openssl 自签 `/CN=LabelFrame`，RSA 2048 / 1095 天），缺失跳过 | 自签不在公共信任链——SmartScreen「未知发布者」（可「仍要运行」绕过）；杀软启发式可能拦 |
+| PDA APK | 专用自签 keystore（决策 #104 ③）：4 个 `ANDROID_*` Secret 在即正式签名，缺失回退 debug 签名并告警 | Android 生态自签常态、无 SmartScreen 等价物；真实风险在**签名变更**（卸载重装 + ANDROID_ID 设备号变化，#104 已录） |
+| 引导程序 EXE（新增） | 首期无签名；自签可复用 MSI 通道（Secret 在即签） | **风险最高**：未知发布者 EXE + 低 prevalence，SmartScreen / 杀软拦截概率大，直接打击「降低尝试成本」目标 |
+
+**缓解措施（首期）**：① manifest sha256 强制校验——完整性不依赖签名；② 发布页（Release 说明 / README）公布当版产物哈希 + 「未知发布者」提示的绕过说明；内网 / 域环境可把自签证书推入受信任根消除警告（决策 #65 既有口径）。**证书采购（OV / EV）另行决策**（§7 开放点登记）：购入后引导 EXE 与 MSI 同链签名（EV 兼即时 SmartScreen 信誉）；触发条件 = 公开分发量增长或拦截反馈集中。
+
+### 6.7 专项迭代与依赖（8 迭代清单）
+
+依赖链总览（全部已立项，Issue 链接即执行会话接续入口）：
+
+```
+#50 契约 ──► #51 CI manifest ──► #53 引导骨架 ──► #54 下载引擎 ──► #55 安装编排 ──► #57 升级收尾
+   │                │                   │
+   │                │                   └──► #56 品牌插件外置化（与 #54/#55 可并行，最终联调）
+   └────────────────┴──（无前置，可随时先行）#52 PDA 签名稳定化 + 下载中心
+```
+
+| 顺序 | Issue | 迭代 | 主题 | 前置 |
+|---|---|---|---|---|
+| 1 | [#50](https://github.com/marci-labs/LabelFrame/issues/50) | 迭代 57 | 设计契约：安装清单格式、拓扑预设与信任模型（本节） | 无（专项起点） |
+| 2 | [#51](https://github.com/marci-labs/LabelFrame/issues/51) | 迭代 58 | CI 自动生成 install-manifest.json（+ latest.json 指针待决议） | #50 |
+| 3 | [#52](https://github.com/marci-labs/LabelFrame/issues/52) | 迭代 59 | PDA 签名稳定化 + 服务端下载中心（扫码下载） | 无（可先行、价值独立） |
+| 4 | [#53](https://github.com/marci-labs/LabelFrame/issues/53) | 迭代 60 | 引导程序骨架：问卷与预设→组件集合（dry-run） | #50、#51 |
+| 5 | [#54](https://github.com/marci-labs/LabelFrame/issues/54) | 迭代 61 | 下载引擎：多源回退、sha256 校验、续传、缓存 | #53、#51 |
+| 6 | [#55](https://github.com/marci-labs/LabelFrame/issues/55) | 迭代 62 | 安装编排：运行时前置补装 + MSI 静默链 + 组件落位 | #54 |
+| 7 | [#56](https://github.com/marci-labs/LabelFrame/issues/56) | 迭代 63 | 品牌传输插件外置化与按需组装（官方插件 manifest 条目） | #50、#53；与 #54 / #55 可并行 |
+| 8 | [#57](https://github.com/marci-labs/LabelFrame/issues/57) | 迭代 64 | 升级路径（检查新版本 + 重跑引导）+ 专项收尾记账 | #53~#55、#51 |
+
+## 7. 风险与未决问题
 
 **真机 / 联调待确认**（集中管理见 [ACCEPTANCE-BACKLOG.md](ACCEPTANCE-BACKLOG.md)）：
 
@@ -279,4 +537,13 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 - 传输插件运行时热卸载 / 热替换（卸载 = 删文件 + 重启生效）。
 - Server UI「仅在线设备可选」的提交竞态：现为前端提交时校验在线（尽力而为）；彻底消除需后端原子校验，会改变离线暂存语义（决策 #22），需要时再评估。
 - 工程治理遗留：WinHost 专属端点 HTTP 集成测试（需先抽 host builder）；ServerService 提交幂等下沉 DB（多实例需求出现再做）；覆盖率阈值门禁（数据已在 CI 收集）。
-- 插件包签名 / 服务端鉴权：升级触发条件见决策 #79；正式对外分发需购买 OV 代码签名证书（自签证书无法消除公开下载的 SmartScreen 提示）。
+- 插件包签名 / 服务端鉴权：升级触发条件见决策 #79；正式对外分发需购买 OV 代码签名证书（自签证书无法消除公开下载的 SmartScreen 提示）；安装引导公网分发通道的结论与升级触发条件见决策 #117 / #118。
+
+**安装引导专项开放点（迭代 57 起，决策 #114~#118）**：
+
+- 国内镜像 / 自托管分发源落地：manifest `urls` 多源位已预留（#117），首期仅 GitHub Release 主源——国内可达性是专项最大现实风险，镜像源选型与运维另行排期（届时只填数组、零 schema 变更、零信任成本）。
+- 代码签名证书采购（OV / EV）：首期不购（#118）——引导 EXE / MSI 公开下载有 SmartScreen「未知发布者」提示（缓解 = manifest sha256 强制校验 + 发布页哈希与绕过说明）；触发条件 = 公开分发量增长或拦截反馈集中。
+- 客户端应用内自更新：不在本专项（更新 = 重跑引导程序，#118）；未来独立立项时 Velopack 为首选候选（#114 评估结论：delta 更新收益直接、GitHub Releases 源开箱即用）。
+- manifest / 插件包签名：升级触发条件 = 公网分发的陌生第三方插件生态出现（衔接 #79，#117）；购证书后 manifest 签名是自然增强位。
+- Docker 镜像 digest 收录 manifest：首版不含（registry digest 机制兜底，#115）；引导程序对 Docker 拓扑只做 compose 生成与拉取指引。
+- i18n 不进 setup 问卷：引导问卷与向导文案中文单语（REQUIREMENTS §7「多语言」边界不变，专项各迭代不新增语言项）。
