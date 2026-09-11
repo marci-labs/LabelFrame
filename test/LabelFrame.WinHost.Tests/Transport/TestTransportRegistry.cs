@@ -20,8 +20,8 @@ public static class TestTransportRegistry
         return registry;
     }
 
-    /// <summary>创建连接管理器（connection.json 可注入临时路径）。</summary>
-    public static TransportManager CreateManager(HostOptions? options = null, string? configFilePath = null)
+    /// <summary>创建连接管理器（connection.json 可注入临时路径；hostLogWriter 可注入捕获回退留痕）。</summary>
+    public static TransportManager CreateManager(HostOptions? options = null, string? configFilePath = null, TextWriter? hostLogWriter = null)
     {
         options ??= new HostOptions { Transport = TransportMode.Log, TcpHost = "127.0.0.1", TcpPort = 9100, PrinterName = "Test Printer" };
         var path = configFilePath ?? System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfconn-{Guid.NewGuid():N}.json");
@@ -29,7 +29,7 @@ public static class TestTransportRegistry
             Create(),
             new TransportPluginContext(TextWriter.Null, System.IO.Path.GetTempPath()),
             options,
-            TextWriter.Null,
+            hostLogWriter ?? TextWriter.Null,
             path);
     }
 }

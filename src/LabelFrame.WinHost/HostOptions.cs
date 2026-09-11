@@ -77,6 +77,9 @@ public sealed class HostOptions
         "LabelFrame",
         "logs");
 
+    /// <summary>app-*.log 按日文件保留上限（决策 #108；默认 31；0 或负值 = 不清理；LABELFRAME_APP_LOG_RETENTION_DAYS 优先）。</summary>
+    public int AppLogRetentionDays { get; set; } = 31;
+
     /// <summary>TCP 打印机主机 / IP。</summary>
     public string TcpHost { get; set; } = "127.0.0.1";
 
@@ -136,11 +139,14 @@ public sealed class HostOptions
         "LabelFrame",
         "print");
 
-    /// <summary>Log 传输 / 宿主日志文件路径（默认 %LOCALAPPDATA%\LabelFrame\host.log）。</summary>
+    /// <summary>Log 传输 / 宿主日志文件路径（默认 %LOCALAPPDATA%\LabelFrame\host.log）。按日轮转：实际写入 host-yyyyMMdd.log（决策 #108）。</summary>
     public string HostLogPath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "LabelFrame",
         "host.log");
+
+    /// <summary>host-*.log 按日文件保留上限（决策 #108；默认 31；0 或负值 = 不清理；LABELFRAME_HOST_LOG_RETENTION_DAYS 优先）。</summary>
+    public int HostLogRetentionDays { get; set; } = 31;
 
     /// <summary>启动时显示界面（迭代 44 起语义演进：默认开 = 显示应用窗口，WebView2 运行时不可用时回退打开默认浏览器；LABELFRAME_OPEN_BROWSER=0 关闭）。--autostart 强制关闭（仅托盘常驻）。</summary>
     public bool OpenBrowser { get; set; } = true;
@@ -264,6 +270,16 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_HOST_LOG") is { } hostLog)
         {
             HostLogPath = hostLog;
+        }
+
+        if (GetEnv("LABELFRAME_APP_LOG_RETENTION_DAYS") is { } appRetention && int.TryParse(appRetention, out var appRetentionDays))
+        {
+            AppLogRetentionDays = appRetentionDays;
+        }
+
+        if (GetEnv("LABELFRAME_HOST_LOG_RETENTION_DAYS") is { } hostRetention && int.TryParse(hostRetention, out var hostRetentionDays))
+        {
+            HostLogRetentionDays = hostRetentionDays;
         }
 
         if (GetEnv("LABELFRAME_PRINT_SETTINGS") is { } printSettings)

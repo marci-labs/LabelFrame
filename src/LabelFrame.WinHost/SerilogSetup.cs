@@ -50,6 +50,8 @@ public static class SerilogSetup
                 Path.Combine(options.AppLogDirectory, "app-.log"),
                 formatProvider: System.Globalization.CultureInfo.InvariantCulture,
                 rollingInterval: RollingInterval.Day,
+                // 保留上限（决策 #108）：按日轮转下文件数即天数，默认 31；0 或负值 = 不清理（retainedFileCountLimit 传 null）
+                retainedFileCountLimit: options.AppLogRetentionDays > 0 ? options.AppLogRetentionDays : null,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
     }
 
