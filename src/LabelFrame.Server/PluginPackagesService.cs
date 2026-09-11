@@ -37,22 +37,22 @@ public sealed class PluginPackagesService : FilePackageService<PluginPackageView
     {
         ArgumentNullException.ThrowIfNull(content);
         var path = ResolveSafePath(fileName)
-            ?? throw new InvalidDataException("文件名无效（只允许普通文件名，不允许路径 / 特殊字符）。");
+            ?? throw new PluginPackageException("文件名无效（只允许普通文件名，不允许路径 / 特殊字符）。");
 
         using var buffer = new MemoryStream();
         await content.CopyToAsync(buffer, cancellationToken);
         if (buffer.Length == 0)
         {
-            throw new InvalidDataException("插件包为空。");
+            throw new PluginPackageException("插件包为空。");
         }
 
         if (buffer.Length > PluginPackageLimits.MaxBytes)
         {
-            throw new InvalidDataException($"插件包超过大小上限（{PluginPackageLimits.Display}）。");
+            throw new PluginPackageException($"插件包超过大小上限（{PluginPackageLimits.Display}）。");
         }
 
         var bytes = buffer.ToArray();
-        _ = PluginPackageReader.Read(bytes); // 非法抛 InvalidDataException（中文原因）
+        _ = PluginPackageReader.Read(bytes); // 非法抛 PluginPackageException（中文原因）
 
         await using (var stream = File.Create(path))
         {

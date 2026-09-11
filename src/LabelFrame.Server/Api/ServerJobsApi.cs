@@ -100,7 +100,7 @@ app.MapPost("/api/devices/{deviceId}/jobs/{jobId}/result", async (string deviceI
         return ex.Code switch
         {
             ServerErrorCodes.JobNotFound => Results.NotFound(new ErrorView(ex.Code, ex.Message)),
-            ServerErrorCodes.NotJobOwner => Results.StatusCode(StatusCodes.Status403Forbidden),
+            ServerErrorCodes.NotJobOwner => Results.Json(new ErrorView(ex.Code, ex.Message), statusCode: StatusCodes.Status403Forbidden),
             _ => Results.Conflict(new ErrorView(ex.Code, ex.Message)),
         };
     }
@@ -123,7 +123,7 @@ app.MapPost("/api/devices/{deviceId}/jobs/{jobId}/progress", async (string devic
         return ex.Code switch
         {
             ServerErrorCodes.JobNotFound => Results.NotFound(new ErrorView(ex.Code, ex.Message)),
-            ServerErrorCodes.NotJobOwner => Results.StatusCode(StatusCodes.Status403Forbidden),
+            ServerErrorCodes.NotJobOwner => Results.Json(new ErrorView(ex.Code, ex.Message), statusCode: StatusCodes.Status403Forbidden),
             _ => Results.Conflict(new ErrorView(ex.Code, ex.Message)),
         };
     }

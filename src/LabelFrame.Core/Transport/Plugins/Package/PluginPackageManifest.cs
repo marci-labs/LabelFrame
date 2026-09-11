@@ -20,7 +20,7 @@ public sealed record PluginPackageManifest(
         PropertyNameCaseInsensitive = true,
     };
 
-    /// <summary>解析 manifest JSON；必填字段缺失 / 类型错误抛 InvalidDataException（中文消息）。</summary>
+    /// <summary>解析 manifest JSON；必填字段缺失 / 类型错误抛 <see cref="PluginPackageException"/>（中文消息）。</summary>
     public static PluginPackageManifest Parse(string json)
     {
         ManifestDto? dto;
@@ -30,27 +30,31 @@ public sealed record PluginPackageManifest(
         }
         catch (JsonException ex)
         {
-            throw new InvalidDataException($"manifest.json 不是有效 JSON：{ex.Message}");
+            // 不透出英文解析详情；行 / 列位置足以定位，原始异常保留在 InnerException 供日志排障
+            var position = ex.LineNumber is >= 0
+                ? $"（第 {ex.LineNumber + 1} 行第 {ex.BytePositionInLine + 1} 列附近）"
+                : string.Empty;
+            throw new PluginPackageException($"manifest.json 不是有效的 JSON{position}，请检查格式后重新导出插件包。", ex);
         }
 
         if (dto is null)
         {
-            throw new InvalidDataException("manifest.json 内容为空。");
+            throw new PluginPackageException("manifest.json 内容为空。");
         }
 
         if (string.IsNullOrWhiteSpace(dto.PluginId))
         {
-            throw new InvalidDataException("manifest.json 缺少必填字段 pluginId。");
+            throw new PluginPackageException("manifest.json 缺少必填字段 pluginId。");
         }
 
         if (string.IsNullOrWhiteSpace(dto.Name))
         {
-            throw new InvalidDataException("manifest.json 缺少必填字段 name。");
+            throw new PluginPackageException("manifest.json 缺少必填字段 name。");
         }
 
         if (string.IsNullOrWhiteSpace(dto.Version))
         {
-            throw new InvalidDataException("manifest.json 缺少必填字段 version。");
+            throw new PluginPackageException("manifest.json 缺少必填字段 version。");
         }
 
         return new PluginPackageManifest(

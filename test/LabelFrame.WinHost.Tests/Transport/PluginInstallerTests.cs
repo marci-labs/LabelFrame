@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using System.Text;
 using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.Core.Transport.Plugins.Package;
@@ -68,8 +68,97 @@ public class PluginInstallerTests
         var (installer, _, pluginsDir) = Create();
         try
         {
-            await Assert.ThrowsAsync<InvalidDataException>(() => installer.InstallAsync(new MemoryStream(Encoding.UTF8.GetBytes("not a zip")), "bad.lfplugin", CancellationToken.None));
+            await Assert.ThrowsAsync<PluginPackageException>(() => installer.InstallAsync(new MemoryStream(Encoding.UTF8.GetBytes("not a zip")), "bad.lfplugin", CancellationToken.None));
             Assert.False(Directory.Exists(pluginsDir));
+        }
+        finally
+        {
+            TryDeleteDirectory(pluginsDir);
+        }
+    }
+
+    [Fact]
+    public async Task Install_non_zip_message_should_be_chinese_and_actionable()
+    {
+        // 四类高频之一：非 zip → 具体中文可行动消息（不直出英文框架原话，决策 #107）
+        var (installer, _, pluginsDir) = Create();
+        try
+        {
+            var ex = await Assert.ThrowsAsync<PluginPackageException>(() =>
+                installer.InstallAsync(new MemoryStream(Encoding.UTF8.GetBytes("plain text file, not a zip")), "bad.txt", CancellationToken.None));
+            Assert.Contains("不是 zip 格式", ex.Message);
+            Assert.DoesNotContain("End of Central Directory", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            TryDeleteDirectory(pluginsDir);
+        }
+    }
+
+    [Fact]
+    public async Task Install_corrupted_zip_message_should_be_chinese_and_actionable()
+    {
+        // 四类高频之二：有 zip 魔数但结构损坏（截断的 zip）→ 具体中文消息
+        var (installer, _, pluginsDir) = Create();
+        try
+        {
+            var valid = BuildPackage();
+            // 截断后半段：保留局部文件头魔数、丢失中央目录 → zip 损坏
+            var corrupted = valid.Take(valid.Length / 2).ToArray();
+
+            var ex = await Assert.ThrowsAsync<PluginPackageException>(() =>
+                installer.InstallAsync(new MemoryStream(corrupted), "broken.lfplugin", CancellationToken.None));
+            Assert.Contains("已损坏", ex.Message);
+            Assert.DoesNotContain("End of Central Directory", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            TryDeleteDirectory(pluginsDir);
+        }
+    }
+
+    [Fact]
+    public async Task Install_invalid_manifest_json_message_should_be_chinese_with_position()
+    {
+        // 四类高频之三：manifest 缺失或非法 → 具体中文消息（含定位提示，不透出英文解析详情）
+        var (installer, _, pluginsDir) = Create();
+        try
+        {
+            var ex = await Assert.ThrowsAsync<PluginPackageException>(() =>
+                installer.InstallAsync(new MemoryStream(BuildPackage(manifestJson: """{"pluginId": "x", "name": }""")), "bad-manifest.lfplugin", CancellationToken.None));
+            Assert.Contains("manifest.json", ex.Message);
+            Assert.Contains("不是有效的 JSON", ex.Message);
+        }
+        finally
+        {
+            TryDeleteDirectory(pluginsDir);
+        }
+    }
+
+    [Fact]
+    public async Task Install_invalid_dll_message_should_be_chinese_and_actionable()
+    {
+        // 四类高频之四：DLL 无效（不是 .NET 程序集）→ 具体中文消息
+        var (installer, _, pluginsDir) = Create();
+        try
+        {
+            using var ms = new MemoryStream();
+            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                var manifest = zip.CreateEntry(PluginPackageReader.ManifestFileName);
+                using (var w = new StreamWriter(manifest.Open(), new UTF8Encoding(false)))
+                {
+                    w.Write("""{"pluginId":"sample","name":"x","version":"1.0.0"}""");
+                }
+                var dll = zip.CreateEntry("Fake.Plugin.dll");
+                using var dllStream = dll.Open();
+                dllStream.Write(Encoding.UTF8.GetBytes("this text file pretends to be a managed dll"));
+            }
+
+            var ex = await Assert.ThrowsAsync<PluginPackageException>(() =>
+                installer.InstallAsync(new MemoryStream(ms.ToArray()), "bad-dll.lfplugin", CancellationToken.None));
+            Assert.Contains("Fake.Plugin.dll", ex.Message);
+            Assert.Contains("不是有效的 .NET 程序集", ex.Message);
         }
         finally
         {
@@ -83,7 +172,7 @@ public class PluginInstallerTests
         var (installer, _, pluginsDir) = Create();
         try
         {
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var ex = await Assert.ThrowsAsync<PluginPackageException>(() =>
                 installer.InstallAsync(new MemoryStream(BuildPackage(pluginId: "log")), "log.lfplugin", CancellationToken.None));
             Assert.Contains("内置插件", ex.Message);
         }
@@ -100,7 +189,7 @@ public class PluginInstallerTests
         try
         {
             // manifest.pluginId=other，但包内 DLL 实际实现 id=sample
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var ex = await Assert.ThrowsAsync<PluginPackageException>(() =>
                 installer.InstallAsync(new MemoryStream(BuildPackage(pluginId: "other")), "other.lfplugin", CancellationToken.None));
             Assert.Contains("不一致", ex.Message);
         }
@@ -127,7 +216,7 @@ public class PluginInstallerTests
                 zip.CreateEntry("README.txt").Open().Dispose(); // 无 DLL
             }
 
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var ex = await Assert.ThrowsAsync<PluginPackageException>(() =>
                 installer.InstallAsync(new MemoryStream(ms.ToArray()), "x.lfplugin", CancellationToken.None));
             Assert.Contains("DLL", ex.Message);
         }
@@ -168,7 +257,7 @@ public class PluginInstallerTests
             installer.Uninstall("sample");
 
             Assert.False(Directory.Exists(Path.Combine(pluginsDir, "sample")));
-            Assert.Throws<InvalidDataException>(() => installer.Uninstall("sample")); // 再次卸载报未安装
+            Assert.Throws<PluginPackageException>(() => installer.Uninstall("sample")); // 再次卸载报未安装
         }
         finally
         {
@@ -182,7 +271,7 @@ public class PluginInstallerTests
         var (installer, _, pluginsDir) = Create();
         try
         {
-            var ex = Assert.Throws<InvalidDataException>(() => installer.Uninstall("no-such"));
+            var ex = Assert.Throws<PluginPackageException>(() => installer.Uninstall("no-such"));
             Assert.Contains("未安装", ex.Message);
         }
         finally
@@ -200,7 +289,7 @@ public class PluginInstallerTests
             Directory.CreateDirectory(Path.Combine(pluginsDir, "manual"));
             File.WriteAllText(Path.Combine(pluginsDir, "manual", "x.dll"), "not real");
 
-            var ex = Assert.Throws<InvalidDataException>(() => installer.Uninstall("manual"));
+            var ex = Assert.Throws<PluginPackageException>(() => installer.Uninstall("manual"));
             Assert.Contains("手动放置", ex.Message);
         }
         finally

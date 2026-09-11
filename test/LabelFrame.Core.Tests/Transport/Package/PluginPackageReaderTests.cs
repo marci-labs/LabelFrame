@@ -48,16 +48,16 @@ public class PluginPackageReaderTests
             zip.CreateEntry("other.json").Open().Dispose();
         }
 
-        var ex = Assert.Throws<InvalidDataException>(() => PluginPackageReader.Read(ms.ToArray()));
+        var ex = Assert.Throws<PluginPackageException>(() => PluginPackageReader.Read(ms.ToArray()));
         Assert.Contains("manifest.json", ex.Message);
     }
 
     [Fact]
     public void Read_missing_required_field_should_throw()
     {
-        Assert.Throws<InvalidDataException>(() => PluginPackageReader.Read(BuildPackage(manifestJson: """{"name":"x","version":"1.0.0"}""")));
-        Assert.Throws<InvalidDataException>(() => PluginPackageReader.Read(BuildPackage(manifestJson: """{"pluginId":"x","version":"1.0.0"}""")));
-        Assert.Throws<InvalidDataException>(() => PluginPackageReader.Read(BuildPackage(manifestJson: """{"pluginId":"x","name":"x"}""")));
+        Assert.Throws<PluginPackageException>(() => PluginPackageReader.Read(BuildPackage(manifestJson: """{"name":"x","version":"1.0.0"}""")));
+        Assert.Throws<PluginPackageException>(() => PluginPackageReader.Read(BuildPackage(manifestJson: """{"pluginId":"x","version":"1.0.0"}""")));
+        Assert.Throws<PluginPackageException>(() => PluginPackageReader.Read(BuildPackage(manifestJson: """{"pluginId":"x","name":"x"}""")));
     }
 
     [Fact]
@@ -74,14 +74,14 @@ public class PluginPackageReaderTests
             zip.CreateEntry("../../evil.dll").Open().Dispose();
         }
 
-        var ex = Assert.Throws<InvalidDataException>(() => PluginPackageReader.Read(ms.ToArray()));
+        var ex = Assert.Throws<PluginPackageException>(() => PluginPackageReader.Read(ms.ToArray()));
         Assert.Contains("不安全", ex.Message);
     }
 
     [Fact]
     public void Read_non_zip_should_throw()
     {
-        Assert.Throws<InvalidDataException>(() => PluginPackageReader.Read(System.Text.Encoding.UTF8.GetBytes("not a zip at all")));
+        Assert.Throws<PluginPackageException>(() => PluginPackageReader.Read(System.Text.Encoding.UTF8.GetBytes("not a zip at all")));
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class PluginPackageReaderTests
         var target = Path.Combine(Path.GetTempPath(), $"lfextract-{Guid.NewGuid():N}");
         try
         {
-            Assert.Throws<InvalidDataException>(() => PluginPackageReader.ExtractTo(ms.ToArray(), target));
+            Assert.Throws<PluginPackageException>(() => PluginPackageReader.ExtractTo(ms.ToArray(), target));
         }
         finally
         {

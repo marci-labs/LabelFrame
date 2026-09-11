@@ -58,7 +58,7 @@ public class PluginPackagesServiceTests
         var (svc, dir) = Create();
         try
         {
-            await Assert.ThrowsAsync<InvalidDataException>(() => svc.SaveAsync("bad.lfplugin", new MemoryStream(Encoding.UTF8.GetBytes("not a zip"))));
+            await Assert.ThrowsAsync<PluginPackageException>(() => svc.SaveAsync("bad.lfplugin", new MemoryStream(Encoding.UTF8.GetBytes("not a zip"))));
             Assert.Empty(svc.List());
         }
         finally
@@ -79,8 +79,8 @@ public class PluginPackagesServiceTests
                 zip.CreateEntry("other.json").Open().Dispose();
             }
 
-            await Assert.ThrowsAsync<InvalidDataException>(() => svc.SaveAsync("no-manifest.lfplugin", new MemoryStream(ms.ToArray())));
-            await Assert.ThrowsAsync<InvalidDataException>(() => svc.SaveAsync("no-field.lfplugin", new MemoryStream(BuildPackage(manifestJson: """{"pluginId":"x","name":"y"}"""))));
+            await Assert.ThrowsAsync<PluginPackageException>(() => svc.SaveAsync("no-manifest.lfplugin", new MemoryStream(ms.ToArray())));
+            await Assert.ThrowsAsync<PluginPackageException>(() => svc.SaveAsync("no-field.lfplugin", new MemoryStream(BuildPackage(manifestJson: """{"pluginId":"x","name":"y"}"""))));
             Assert.Empty(svc.List());
         }
         finally
@@ -95,7 +95,7 @@ public class PluginPackagesServiceTests
         var (svc, dir) = Create();
         try
         {
-            await Assert.ThrowsAsync<InvalidDataException>(() => svc.SaveAsync("..\\..\\evil.lfplugin", new MemoryStream(BuildPackage())));
+            await Assert.ThrowsAsync<PluginPackageException>(() => svc.SaveAsync("..\\..\\evil.lfplugin", new MemoryStream(BuildPackage())));
             Assert.Null(svc.GetDownloadPath("..\\..\\evil.lfplugin"));
             Assert.Null(svc.GetDownloadPath("../evil.lfplugin"));
             Assert.Empty(svc.List());
@@ -170,7 +170,7 @@ public class PluginPackagesServiceTests
         {
             // 65MB 空字节（超 64MB 上限；不落盘）
             var big = new byte[PluginPackageLimits.MaxBytes + 1];
-            await Assert.ThrowsAsync<InvalidDataException>(() => svc.SaveAsync("big.lfplugin", new MemoryStream(big)));
+            await Assert.ThrowsAsync<PluginPackageException>(() => svc.SaveAsync("big.lfplugin", new MemoryStream(big)));
             Assert.Empty(svc.List());
         }
         finally
