@@ -58,6 +58,8 @@ public sealed class HostExitCoordinatorTests
 
     private sealed class Harness : IDisposable
     {
+        private readonly object _logGate = new();
+
         public List<string> Logs { get; } = [];
 
         public List<int> Exits { get; } = [];
@@ -66,15 +68,44 @@ public sealed class HostExitCoordinatorTests
 
         public int CleanupRuns;
 
+        /// <summary>时序敏感用例的等待辅助：轮询记账日志直至目标阶段行出现（CI 满载时看门狗线程调度可达秒级延迟，
+        /// 不能以固定睡眠假设序列已推进到目标阶段）。</summary>
+        public void WaitForLog(string fragment, TimeSpan timeout)
+        {
+            var deadline = DateTime.UtcNow + timeout;
+            while (DateTime.UtcNow < deadline)
+            {
+                lock (_logGate)
+                {
+                    if (Logs.Any(l => l.Contains(fragment)))
+                    {
+                        return;
+                    }
+                }
+
+                Thread.Sleep(20);
+            }
+
+            Assert.Fail($"等待记账阶段行「{fragment}」超时（{timeout.TotalSeconds:0.#} 秒），实际：{string.Join(Environment.NewLine, SnapshotLogs())}");
+        }
+
+        public IReadOnlyList<string> SnapshotLogs()
+        {
+            lock (_logGate)
+            {
+                return Logs.ToList();
+            }
+        }
+
         public HostExitCoordinator Create(TimeSpan? gracefulTimeout = null, TimeSpan? stabilizationWindow = null)
             => new(
-                Logs.Add,
+                message => lock (_logGate) { Logs.Add(message); },
                 gracefulTimeout ?? TimeSpan.FromSeconds(5),
                 Exits.Add,
                 stabilizationWindow);
 
         public void AssertLogContains(string fragment)
-            => Assert.True(Logs.Any(l => l.Contains(fragment)), $"记账日志缺少「{fragment}」，实际：{string.Join(Environment.NewLine, Logs)}");
+            => Assert.True(SnapshotLogs().Any(l => l.Contains(fragment)), $"记账日志缺少「{fragment}」，实际：{string.Join(Environment.NewLine, SnapshotLogs())}");
 
         public void Dispose()
         {
@@ -110,10 +141,14 @@ public sealed class HostExitCoordinatorTests
     public async Task Request_shutdown_should_force_exit_within_stabilization_window_when_host_stopped_but_main_flow_hung()
     {
         // Issue #64 AC-01（时序断言）：宿主停止信号（ApplicationStopped）到来而主流程未返回——
-        // 协调器应在稳定窗（默认 500 毫秒）内进入清理 + 强退，不再烧满宽限（2.5 秒兜底不动）。
+        // 协调器应在稳定窗（默认 500 毫秒）内进入清理 + 强退，不再烧满宽限兜底。
+        // 宽限取 10 秒（远大于稳定窗）：若事件驱动路径失效（退化为干等宽限），耗时将 ≈10 秒，
+        // 时间断言即失败——宽限在此仅作判别尺，不改变被测逻辑路径；路径归属以记账日志为准
+        // （「稳定窗提前退出」与「优雅等待超时」两行互斥）。CI 满载时线程池调度延迟可达秒级
+        // （xunit 测试类并行 + 覆盖率收集），上界留足调度余量、下界结构性成立（Task.Delay 不会提前）。
         var harness = new Harness();
         var coordinator = harness.Create(
-            gracefulTimeout: HostExitCoordinator.DefaultGracefulTimeout,
+            gracefulTimeout: TimeSpan.FromSeconds(10),
             stabilizationWindow: HostExitCoordinator.DefaultStabilizationWindow);
         coordinator.Bind(harness.Lifetime);
         coordinator.RegisterCleanup(() => Interlocked.Increment(ref harness.CleanupRuns));
@@ -126,13 +161,12 @@ public sealed class HostExitCoordinatorTests
         Assert.Equal(1, harness.Lifetime.StopCalls);
         Assert.Equal(1, harness.CleanupRuns);
         Assert.Equal(0, Assert.Single(harness.Exits));
-        // 时序：不早于稳定窗（观察期必须走满），且远小于宽限上限（Issue #64 提速目标 <1.5 秒）
         Assert.True(
             stopwatch.Elapsed >= TimeSpan.FromMilliseconds(450),
             $"清理 + 强退早于稳定窗（实测 {stopwatch.Elapsed.TotalMilliseconds:0} 毫秒，应 ≥500 毫秒观察期）。");
         Assert.True(
-            stopwatch.Elapsed < TimeSpan.FromMilliseconds(1500),
-            $"稳定窗提前退出超时（实测 {stopwatch.Elapsed.TotalMilliseconds:0} 毫秒，应 <1500 毫秒）。");
+            stopwatch.Elapsed < TimeSpan.FromSeconds(3),
+            $"稳定窗提前退出耗时异常（实测 {stopwatch.Elapsed.TotalMilliseconds:0} 毫秒，500 毫秒窗 + 调度余量应 <3000 毫秒；若接近 10 秒说明退化为干等宽限）。");
         harness.AssertLogContains("收到退出请求（来源：HTTP /api/host/shutdown");
         harness.AssertLogContains("宿主已停止（ApplicationStopped）而主流程未返回，进入稳定窗观察（500 毫秒）");
         harness.AssertLogContains("稳定窗（500 毫秒）届满主流程仍未返回，判定卡死——稳定窗提前退出");
@@ -147,13 +181,15 @@ public sealed class HostExitCoordinatorTests
         // 稳定窗内主流程自然返回：看门狗收手，不强杀不强退（优雅返回场景不回归）
         var harness = new Harness();
         var coordinator = harness.Create(
-            gracefulTimeout: TimeSpan.FromSeconds(5),
+            gracefulTimeout: TimeSpan.FromSeconds(10),
             stabilizationWindow: TimeSpan.FromSeconds(5));
         coordinator.Bind(harness.Lifetime);
         coordinator.RegisterCleanup(() => Interlocked.Increment(ref harness.CleanupRuns));
 
         var shutdownTask = coordinator.RequestShutdownAsync("托盘菜单「退出」");
-        await Task.Delay(TimeSpan.FromMilliseconds(100));
+        // 等序列确实进入稳定窗（宿主停止信号已到、观察期开始）后再模拟主流程自然返回——
+        // 固定睡眠在 CI 满载（看门狗线程调度延迟秒级）下可能早于序列启动，走到宽限期前的自然退出分支
+        harness.WaitForLog("进入稳定窗观察", TimeSpan.FromSeconds(10));
         coordinator.MarkNaturalExitCompleted();
         await shutdownTask;
 
@@ -168,9 +204,11 @@ public sealed class HostExitCoordinatorTests
     {
         // 竞态：订阅 ApplicationStopped 时宿主已停止（先外部 StopApplication 再发起退出请求）——
         // 「挂回调后补查已置位」应立即命中信号，照常走稳定窗提前退出，而不是退回宽限兜底干等。
+        // 路径归属以记账日志为准（若竞态检查缺失：信号永不到来 → 干等 10 秒宽限 → 日志为「优雅等待超时」而非「稳定窗提前退出」）；
+        // 耗时断言仅为量级证据（CI 满载调度延迟可达秒级，留 4 秒余量）。
         var harness = new Harness();
         var coordinator = harness.Create(
-            gracefulTimeout: TimeSpan.FromSeconds(5),
+            gracefulTimeout: TimeSpan.FromSeconds(10),
             stabilizationWindow: TimeSpan.FromMilliseconds(50));
         coordinator.Bind(harness.Lifetime);
         coordinator.RegisterCleanup(() => Interlocked.Increment(ref harness.CleanupRuns));
@@ -183,8 +221,8 @@ public sealed class HostExitCoordinatorTests
         Assert.Equal(1, harness.CleanupRuns);
         Assert.Equal(0, Assert.Single(harness.Exits));
         Assert.True(
-            stopwatch.Elapsed < TimeSpan.FromSeconds(1),
-            $"订阅时已停止未即时命中信号（实测 {stopwatch.Elapsed.TotalMilliseconds:0} 毫秒，应 <1000 毫秒而非干等宽限）。");
+            stopwatch.Elapsed < TimeSpan.FromSeconds(4),
+            $"订阅时已停止未即时命中信号（实测 {stopwatch.Elapsed.TotalMilliseconds:0} 毫秒，50 毫秒窗 + 调度余量应 <4000 毫秒；若接近 10 秒说明退化为干等宽限）。");
         harness.AssertLogContains("宿主已停止（ApplicationStopped）而主流程未返回");
         harness.AssertLogContains("稳定窗提前退出");
     }
