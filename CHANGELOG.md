@@ -2,6 +2,11 @@
 
 本文件记录每个迭代的变更。
 
+## 缺陷 #46 同 IP 双设备号按 IP 解析命中旧行修复（最近活跃优先） · 2026-09-11
+
+- **排查确认（缺陷成立，本地复现不依赖真机）**：`devices.last_ip` 无唯一约束 / 无索引，设备号变更后新设备号从同 IP 注册**插入新行**，旧行 `last_ip` 无人清除（全仓仅 `ServerDb` 三处写 devices——注册 upsert / notify 心跳 / 领取事务，均单行更新，**无跨行清理路径**）；`FindDeviceByIpAsync` 原为 `WHERE last_ip = $ip COLLATE NOCASE LIMIT 1` **无 ORDER BY**——SQLite 无索引全表扫描按 rowid 序，稳定命中先注册的旧行。修复前实测：同 IP「旧行 stale / 新行活跃」场景，`FindDeviceByIpAsync`、`SubmitJobAsync` targetIp 解析、`GET /api/devices/by-ip/{ip}` 三路全部返回旧设备号（新增 4 项复现测试在未修复代码上全部失败，与用户现象一致）。
+- **修复 = 按 IP 解析改「最近活跃优先」（决策 #113，Issue 候选方向 A）**：`FindDeviceByIpAsync` 加 `ORDER BY last_seen_at DESC, registered_at DESC, id`（后两项为确定性平手序）——设备号变更后必命中活跃新行；两个消费方（by-ip 端点与 targetIp 投递解析）共用该方法一并修复，按 IP 投递不再路由到已停用的旧设备号（长期 Pending 收不到）。**不取方向 B（写入时清除同 IP 其他行）**：NAT 共网出口下多台真机合法共用一个出口 IP，B 会让每次心跳抹掉其他设备的 last_ip（目录 IP 显示丢失、by-ip 退化为「最后写者」）且写放大；同 IP 多设备都活跃时 A 跟随最近一次心跳，尽力而为且不破坏目录数据。行为变化仅在「同 IP 多行」场景（先注册行 → 最近活跃行），单行场景零变化；无需数据迁移。
+- **测试**：新增 4 项——服务级 3 项（FakeTimeProvider 时间确定：同 IP 旧行 stale / 新行活跃 → by-ip 与 targetIp 均命中新行；同 IP 双活跃设备解析跟随最近心跳）+ 端点集成 1 项（`RemoteIp` 请求头模拟同来源 IP 双注册，`/api/devices/by-ip/{ip}` 命中新行且在线）；`TempServer` 支持注入时间源。顺带修正 `ServerDb` 一处错位的文档注释（`CreateJobAsync` 的 summary 误置于 `FindDeviceByIpAsync` 上）。
 ## 缺陷 #62 无字段模板打印测试修复（数据与打印页静态标签可打印） · 2026-09-11
 
 - **无字段模板（静态标签）可在「数据与打印」页打印测试（AC-01 / AC-02）**：模板无可填充字段（`contract.fields` 空且版式无字段填充元素，即 `fieldKeys` 为空）时，测试数据面板此前整体只渲染一条「不允许」语义提示（操作区不渲染），且 `testPrint()` 内还有同条件拦截——静态标签（固定文本 / 条码 / 二维码 / 线条 / 图片）完全无法打印测试。修复（纯前端，`web/src/pages/DataPrint.tsx`）：无字段时操作区照常渲染（调试模式复选框 / 「打印测试（单张）」/「出图预览」），提示改为说明性语义——静态标签按版式原样打印、无需填写数据；提交等价空数据 `labels: [{ data: {} }]`（模板包遗留 `testData` 键不外带）；移除 `testPrint()` 的无字段拦截守卫（`!pkg` 空守卫保留）。后端受理（空 `data` 兜底）/ 校验（空 `fields` 直接通过）/ 渲染（literal 全容错）三层本就支持，本轮零后端改动、公共契约零变更。

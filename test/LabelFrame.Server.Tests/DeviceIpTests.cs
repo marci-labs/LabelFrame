@@ -3,10 +3,15 @@ using LabelFrame.Api;
 using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Layout;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Time.Testing;
 
 namespace LabelFrame.Server.Tests;
 
-/// <summary>设备 last_ip 记录 / 迁移、by-ip 查找、targetIp 提交、IP 规范化。</summary>
+/// <summary>
+/// 设备 last_ip 记录 / 迁移、by-ip 查找、targetIp 提交、IP 规范化。
+/// 含「同 IP 双设备号」场景（缺陷 #46）：设备号变更后新设备号从同 IP 注册，旧行 last_ip 无人清除——
+/// 解析必须命中最近活跃的新行，而非先注册的旧行（FakeTimeProvider 驱动保证时间确定）。
+/// </summary>
 public class DeviceIpTests
 {
     private static SubmitJobRequest CreateRequest(string requestId, string? targetDeviceId = null, string? targetIp = null) => new(
@@ -78,6 +83,57 @@ public class DeviceIpTests
 
         Assert.Null(await db.Service.FindDeviceByIpAsync("192.168.1.99"));
         Assert.Null(await db.Service.FindDeviceByIpAsync("   "));
+    }
+
+    [Fact]
+    public async Task Find_by_ip_should_prefer_recently_active_device_when_same_ip_reused()
+    {
+        // 缺陷 #46 复现路径：设备号 A 在某 IP 注册 → 设备号变更后新设备号 B 从同 IP 注册（旧行 stale、新行活跃）
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 11, 8, 0, 0, TimeSpan.Zero));
+        using var db = new TempServer(time);
+        await db.Service.RegisterDeviceAsync("device-a", "旧设备号", "192.168.7.77");
+
+        time.Advance(TimeSpan.FromHours(1)); // 旧设备号此后不再心跳（last_seen_at 停滞）
+        await db.Service.RegisterDeviceAsync("device-b", "新设备号", "192.168.7.77");
+        time.Advance(TimeSpan.FromMinutes(1));
+
+        var found = await db.Service.FindDeviceByIpAsync("192.168.7.77");
+        Assert.NotNull(found);
+        Assert.Equal("device-b", found!.DeviceId);
+    }
+
+    [Fact]
+    public async Task Submit_job_target_ip_should_resolve_to_recently_active_device()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 11, 8, 0, 0, TimeSpan.Zero));
+        using var db = new TempServer(time);
+        await db.Service.RegisterDeviceAsync("device-a", "旧设备号", "192.168.7.77");
+
+        time.Advance(TimeSpan.FromHours(1));
+        await db.Service.RegisterDeviceAsync("device-b", "新设备号", "192.168.7.77");
+        time.Advance(TimeSpan.FromMinutes(1));
+
+        var job = await db.Service.SubmitJobAsync(CreateRequest("req-ip-reuse", targetIp: "192.168.7.77"));
+
+        Assert.Equal("device-b", job.TargetDeviceId);
+    }
+
+    [Fact]
+    public async Task Find_by_ip_should_follow_most_recent_heartbeat_when_same_ip()
+    {
+        // 同 IP 两行并存且都活跃（如 NAT 后两台真机）：解析跟随最近一次心跳的设备
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 11, 8, 0, 0, TimeSpan.Zero));
+        using var db = new TempServer(time);
+        await db.Service.RegisterDeviceAsync("device-a", "甲机", "192.168.7.77");
+        time.Advance(TimeSpan.FromMinutes(1));
+        await db.Service.RegisterDeviceAsync("device-b", "乙机", "192.168.7.77");
+
+        Assert.Equal("device-b", (await db.Service.FindDeviceByIpAsync("192.168.7.77"))!.DeviceId);
+
+        // 甲机随后心跳（同 IP）：最近活跃换回甲机
+        time.Advance(TimeSpan.FromMinutes(1));
+        await db.Service.TouchDeviceAsync("device-a", time.GetUtcNow(), "192.168.7.77");
+        Assert.Equal("device-a", (await db.Service.FindDeviceByIpAsync("192.168.7.77"))!.DeviceId);
     }
 
     [Fact]
