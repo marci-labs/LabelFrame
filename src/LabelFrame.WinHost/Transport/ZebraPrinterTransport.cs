@@ -104,9 +104,11 @@ public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvi
         return printers[0].GetConnection();
     }
 
-    /// <inheritdoc />
+    /// <summary>ITestableTransport：连接测试失败消息含打印目标与提示（对齐决策 #108 不泛化）。</summary>
     public Task<string?> TestAsync(CancellationToken cancellationToken = default)
-        => TestConnectionAsync(cancellationToken).ContinueWith(t => t.Result ? null : "连接测试失败：Zebra 打印机不可达（请检查连接方式与地址）。", cancellationToken);
+        => TestConnectionAsync(cancellationToken).ContinueWith(
+            t => t.Result ? null : $"连接测试失败：Zebra 打印机不可达（{DescribeTarget()}，请检查连接方式与地址）。",
+            cancellationToken);
 
     /// <summary>连接测试：建立连接 + `~HS` 主机状态探测（SDK SendAndWaitForResponse）——收到打印机响应才算成功。</summary>
     public Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)

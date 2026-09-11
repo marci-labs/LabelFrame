@@ -2,6 +2,20 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 56 双端复用 Zebra 官方 SDK 5.0.3685（AndroidHost 接入 + WinHost 升级统一） · 2026-09-11
+
+- **AndroidHost 接入官方 SDK（决策 #111，AC-01）**：打印传输从自研裸 socket `Tcp9100PrintTransport` 切换到 Zebra 官方 Link-OS SDK `5.0.3685`（net10.0-android36.0 纯托管 DLL，无 .so / 无 jar）——新 `ZebraSdkTransport` 实现 `IPrintTransport` / `IPrinterStatusProvider` / `ITestableTransport` 三接口（对齐 Core 传输契约，公共契约零变更）。连接类型扩展：`tcp`（**默认且一级交付路径**，SDK `TcpConnection`）/ `bluetooth`（SPP `BluetoothConnection`，MAC 地址手输——预授权决议 1）/ `usb`（OTG `UsbDiscoverer` 自动发现锁定第一台 Zebra 设备，无可选设备给可行动中文错误——预授权决议 2）；每次发送 / 测试 / 状态独立建连，与裸 socket 时代行为一致。**存量 `tcp_host` / `tcp_port` 配置键沿用，已装设备升级后零操作直入 SDK TCP 路径（AC-03 无感迁移）**。
+- **PDA 状态 / 连接测试切 SDK `PrinterStatus` 语义（决策 #111 ②，预授权决议 3——不保留 `~HS` 双轨）**：`ZebraPrinterFactory.GetInstance(connection).GetCurrentStatus()` 官方布尔属性（`isPaperOut` / `isPaused`）；缺纸 / 暂停口径与迭代 55（#109）实证结论对齐，Message 最小口径只报缺纸与暂停，不回退其 AC。
+- **WinHost 升级 3.0.3355 → 5.0.3685（决策 #111 ③，AC-08）**：`GetInstance` / `GetCurrentStatus` / `UsbDiscoverer.GetZebraUsbPrinters` 在 5.x 均保留，`ZebraPrinterTransport` 适配面极小；顺带把连接测试失败消息补上打印目标（对齐 #108 不泛化）。四模式（log / tcp9100 / winspool / zebra）行为回归由既有测试套件锚定；Core 的 `Tcp9100PrintTransport` 保留为跨平台兜底（Linux 客户端现状不变）。
+- **毒丸引用清单入库（决策 #111 ④⑤，AC-01 / AC-02）**：官方支持矩阵「非 MAUI .NET 10 → Android ✗」的实测成因是依赖链毒化，全部 `ExcludeAssets="all"` 逐包排除（ExcludeAssets 不裁剪传递闭包）。**Android 实证版**：`System.Drawing.Common`（net10.0 lib 夹带 `System.Private.Windows.Core.dll`，Android AOT 失败）+ `SkiaSharp.Views.Maui.Controls` / `SkiaSharp.Views` / `SkiaSharp.Views.Maui.Core` + `Microsoft.Maui.*` 全家（含 `.Controls.Build.Tasks` 注入 MAUI AOT profile）；保留 `SkiaSharp` + `SkiaSharp.NativeAssets.Android`。**Windows 本轮验证版**：MAUI 链同 Android 清单**另加** `SkiaSharp.Views.WinUI` / `SkiaSharp.NativeAssets.WinUI` / `Microsoft.Maui.Graphics.Win2D.WinUI.Desktop` / `.Resizetizer` / `Microsoft.Graphics.Win2D` / `Microsoft.WindowsAppSDK` / `Microsoft.Windows.SDK.BuildTools`（后两者 buildTransitive 注入 win10-* RID 图触发 NETSDK1083；不排除则 MAUI 程序集混入编译——WinForms `Label` 二义、与 WebView2 投影类型冲突）；`System.Drawing.Common` Windows 可用不排除。
+- **APK 产物收敛（决策 #111 ⑦，AC-02）**：`RuntimeIdentifiers` 收敛为单 `android-arm64`（现役 PDA 均为 arm64）——多 ABI 下 `libSkiaSharp.so` 与 SDK 依赖按 ABI 复制使 APK 达 53MB 超量级，单 arm64 后 **21.7MB < 现状 24.8MB**（对齐预研 19MB 量级）；构建级断言通过——APK 内无 `System.Private.Windows.Core.dll` / MAUI 产物（grep 0 命中）、`libSkiaSharp.so` ELF 全部 `PT_LOAD` 段 p_align=16384（16KB 对齐）。
+- **SkiaSharp 原生 pdb 发布清理（Windows，决策 #111 ⑥）**：`SkiaSharp.NativeAssets.Win32` 的 runtimes 资产附带 81MB `libSkiaSharp.pdb`（非编译产物，`-p:DebugType=None` 不影响包内文件），WinHost csproj 加 Publish 后 Delete 目标，发布产物回到基线量级（win-x64 framework-dependent 55MB / 52 文件，MAUI 0 混入）。
+- **配置页与权限（决策 #95 结构不变）**：打印机子页连接方式三选一（网线 / 蓝牙 / USB 数据线），参数随类型切换，配置存储 `{ brand, connectionType, ... }` 增量 `bluetooth_mac` 键；本地 HTTP `GET/POST /api/host/config` 增 `bluetoothMac` / 只读 `printerAddress` 字段（向后兼容增量）；AndroidManifest 蓝牙权限（API 31+ `BLUETOOTH_CONNECT` 运行时请求——选蓝牙保存时触发，legacy `BLUETOOTH` / `BLUETOOTH_ADMIN` 限 maxSdk 30）；USB 无需静态权限，首次连接由 SDK 触发系统授权弹窗。
+- **许可证分发依据（决策 #111 ⑧）**：Development Tool License §3.3.3 允许以目标码随 Licensee Application 集成分发、禁止单独分发 SDK 本体——SDK 包本体不进任何 GitHub Release 附件。
+- **顺带修复**：master 上 CHANGELOG.md 存在迭代 54 squash 合并引入的 Git 冲突残块（`=======` / `>>>>>>>` 重复块，c686342），本轮清理。
+- **真机验收滞后（AC-04～07 及 AC-03 / AC-08 真机部分）**：SDK 三连接类型物理出纸与状态语义取证转 `待验收`（Issue #49，恢复条件：蓝牙 / USB 打印机与 192.168.2.121:9100 可得）；本地交付模拟级验证全绿。
+- **测试**：新增 WinHost Zebra 传输 2 项（连接测试失败消息含目标 / 状态查询不可达时离线含原因，锚定 5.x 升级行为口径）；既有 Zebra 传输 3 项与传输配置 / 状态矩阵随升级回归通过。
+
 ## 迭代 54 区域水平锚定修正（自动宽度文本对齐语义） · 2026-09-11
 
 - **区域水平锚定按实测文本宽度计算（决策 #110，AC-01，三项待决议按 Issue #44 评论用户确认——方案 A / 度量经字宽度量接口注入 / 兼容护栏全部生效）**：文本无显式 `WidthMm` 且锚定区域时，`LabelLayoutResolver.ResolveBounds` 的水平锚定偏移由「（区域宽 − 块宽）× 因子」（块宽被扩为区域全宽 → 偏移恒 ≈ 0，迭代 32 测试发现的缺陷）修正为按**实测文本宽度**计算——锚定宽度 = 实测单行宽度 + 2×有效水平内边距（夹取到区域宽），区域内 Start / Center / End 三种对齐可区分且符合直觉；**块宽仍为区域全宽（减单值内边距），块内 TextAlign / 边框 / 裁剪 / 缩小适应语义不变**（渲染器块内排版逻辑零改动）。三端一致：Web 预览与 ZPL 图片打印（Skia 渲染器）、PDA（Android 渲染器）同一解析结果驱动。
@@ -18,15 +32,6 @@
 - **WinHost Zebra SDK 路径细状态（决策 #109）**：`GetStatusCore` 改用官方 `ZebraPrinterFactory.GetInstance(connection).GetCurrentStatus()`（`isPaperOut` / `isPaused` 等官方布尔属性，字段映射由 SDK 维护），消除「细状态恒 false + 待真实设备联调」欠账；连接 / 状态读取失败返回 `IsOnline=false` + 含目标与原因的中文消息（对齐决策 #108 不泛化）。**依赖调查结论**：既有 `Zebra.Printer.SDK` 3.0.3355 已具备 `GetCurrentStatus` 与全套 `PrinterStatus` 布尔属性（经 NuGet 包 XML 文档核对 + windows TFM 编译验证，与 5.0.3685 同构），**无需升级**——原代码注释「3.x 无公开状态字段」判断有误；winspool 驱动路径维持「默认在线」（不在范围）。Message 最小口径只报缺纸 / 暂停，`PrinterStatusInfo` 契约不动。
 - **测试**：模拟报文单测矩阵 15 项替换原按旧映射构造的用例——解析级（官方三行报文四象限标志位 / 无控制字符单行 / 截断 / 非 0/1 标志 / 空响应两态 / null 入参）+ 端到端 socket（正常 / 缺纸 / 暂停 / 零字节关闭 / 静默超时）。
 - **真机取证不在本轮执行（安全边界）**：三场景（正常 / 人工缺纸 / 人工暂停，打印机 192.168.2.121:9100）留待验收阶段用户配合取证（`~HS` 响应原文留存），Issue #45 转 `待验收`；AC-01~04 恢复条件见 Issue 自评表。
-=======
-## 迭代 54 区域水平锚定修正（自动宽度文本对齐语义） · 2026-09-11
-
-- **区域水平锚定按实测文本宽度计算（决策 #109，AC-01，三项待决议按 Issue #44 评论用户确认——方案 A / 度量经字宽度量接口注入 / 兼容护栏全部生效）**：文本无显式 `WidthMm` 且锚定区域时，`LabelLayoutResolver.ResolveBounds` 的水平锚定偏移由「（区域宽 − 块宽）× 因子」（块宽被扩为区域全宽 → 偏移恒 ≈ 0，迭代 32 测试发现的缺陷）修正为按**实测文本宽度**计算——锚定宽度 = 实测单行宽度 + 2×有效水平内边距（夹取到区域宽），区域内 Start / Center / End 三种对齐可区分且符合直觉；**块宽仍为区域全宽（减单值内边距），块内 TextAlign / 边框 / 裁剪 / 缩小适应语义不变**（渲染器块内排版逻辑零改动）。三端一致：Web 预览与 ZPL 图片打印（Skia 渲染器）、PDA（Android 渲染器）同一解析结果驱动。
-- **字宽度量接口 `ITextWidthMeasurer`（Core.Layout，毫米口径、与渲染 DPI 无关）**：解析器保持纯几何层、不直接依赖 Skia；默认实现 `SkiaTextWidthMeasurer`（字型查找与渲染器同源——抽取 `SkiaTypefaceLookup` 共享（含中文回退），Embolden 与加粗渲染一致），AndroidHost 提供 `AndroidTextWidthMeasurer`（Android.Graphics Paint 同一文本管线）。设计意图：解析几何（含锚定偏移）与渲染方式解耦，未来命令直发打印插件可提供打印机字体度量的接口实现复用同一解析几何（供后续插件模块重构迭代承接）。
-- **兼容护栏全部生效（用户拍板接受渲染漂移）**：含 `RegionHAlign` 缺省 Center 的已发布模板——无显式宽度的已锚定文本位置随锚定语义修正而变化（此前水平锚定实际不生效，文本恒贴近块内对齐位置）；垂直锚定（按字高）与显式宽度路径零变化；未注入度量器的纯几何调用方回退既有行为（API 向后兼容）。
-- **DESIGN 记账**：决策表新增 #109；「风险与未决问题」迭代 32 遗留的区域锚定条目清账移除。
-- **测试**：新增 Core 解析器用例 8 项（自动宽度水平锚定实测宽度计算 / 锚定宽度含水平内边距 / 超宽夹取 / 3×3 水平垂直组合矩阵 / 无度量器回退 / 显式宽度公式不变 / 未锚定绝对坐标 / 非文本元素自然尺寸锚定）+ Skia 渲染端改写 1 项、新增 2 项（自动宽度三种水平锚定墨迹重心递增与文本不越区域、显式宽度块内 TextAlign 防回归）。
->>>>>>> acef5e2 (fix: 迭代 54——区域水平锚定修正（自动宽度文本按实测宽度对齐）（#44）)
 
 ## 迭代 52 日志基础设施加固（轮转 / 启动防护 / 业务事件） · 2026-09-11
 

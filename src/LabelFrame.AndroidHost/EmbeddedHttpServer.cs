@@ -399,14 +399,17 @@ public sealed class EmbeddedHttpServer : IDisposable
         }
     }
 
-    /// <summary>宿主配置视图（GET /api/host/config 响应形状）；Version 为只读应用版本（POST 不可改）。</summary>
+    /// <summary>宿主配置视图（GET /api/host/config 响应形状）；Version 为只读应用版本（POST 不可改）。
+    /// PrinterAddress 为按连接类型生成的用户可读连接摘要（迭代 56：tcp / bluetooth / usb）。</summary>
     private sealed record HostConfigView(
         string TcpHost, int TcpPort, string PrinterBrand, string ConnectionType,
+        string BluetoothMac, string PrinterAddress,
         string ServerUrl, string DeviceId, string DeviceName, string LocalPort, string Version)
     {
         public static HostConfigView From(LabelHostConfig config, Android.Content.Context context)
             => new(
                 config.TcpHost, config.TcpPort, config.PrinterBrand, config.ConnectionType,
+                config.BluetoothMac, config.PrinterDisplay(),
                 config.ServerUrl, config.DeviceId, config.DeviceName,
                 $"127.0.0.1:{LabelHostConfig.LocalPort}", HostInfo.GetVersion(context));
     }
@@ -425,6 +428,7 @@ public sealed class EmbeddedHttpServer : IDisposable
                 dto?.ConnectionType,
                 dto?.TcpHost,
                 dto?.TcpPort,
+                dto?.BluetoothMac,
                 dto?.DeviceName);
             return Json(200, HostConfigView.From(config, _context));
         }
@@ -436,7 +440,7 @@ public sealed class EmbeddedHttpServer : IDisposable
 
     private sealed record HostConfigUpdateDto(
         string? ServerUrl, string? PrinterBrand, string? ConnectionType,
-        string? TcpHost, int? TcpPort, string? DeviceName);
+        string? TcpHost, int? TcpPort, string? BluetoothMac, string? DeviceName);
 
     private (int, string, byte[]) GetPrinterStatus()
     {
@@ -542,7 +546,7 @@ public sealed class EmbeddedHttpServer : IDisposable
               '<div class="row"><b>设备号</b><span>' + c.DeviceId + '</span></div>' +
               '<div class="row"><b>设备名称</b><span>' + c.DeviceName + '</span></div>';
             document.getElementById('server').textContent = c.ServerUrl || '未设置';
-            document.getElementById('printerAddr').textContent = c.TcpHost + ':' + c.TcpPort;
+            document.getElementById('printerAddr').textContent = c.PrinterAddress || (c.TcpHost + ':' + c.TcpPort);
           } catch (ex) {
             document.getElementById('device').innerHTML =
               '<h2>本机</h2><div class="row err">读取失败，刷新页面试试</div>';
@@ -558,7 +562,7 @@ public sealed class EmbeddedHttpServer : IDisposable
               else if (s.IsPaused) { el.textContent = '已暂停'; el.className = 'warn'; }
               else { el.textContent = '在线，可以打印'; el.className = 'ok'; }
             } else {
-              el.textContent = '连不上——请检查打印机电源和 IP 地址';
+              el.textContent = '连不上——请检查打印机电源和连接方式';
               el.className = 'err';
             }
           } catch (ex) {
@@ -581,7 +585,7 @@ public sealed class EmbeddedHttpServer : IDisposable
                   setResult('✓ 打印成功，已出纸（' + j.CompletedItems + '/' + j.TotalItems + '）', 'ok');
                 } else {
                   const err = (j.Items || []).find(x => x.ErrorMessage)?.ErrorMessage || '';
-                  setResult('✗ 没打出来——请检查打印机是否开机、IP 是否正确' + (err ? '（原因：' + err + '）' : ''), 'err');
+                  setResult('✗ 没打出来——请检查打印机是否开机、连接方式与地址是否正确' + (err ? '（原因：' + err + '）' : ''), 'err');
                 }
               } else {
                 setResult('正在打印…（' + j.CompletedItems + '/' + j.TotalItems + '）', 'muted');

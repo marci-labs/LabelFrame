@@ -71,6 +71,7 @@
 | 50 | 错误响应分类修正（请求体失败 400 LF_API_BAD_BODY + 传输测试失败 LF_TRANSPORT_TEST_FAILED + 403 补 ErrorView + 错误码注册表 + 插件消息中文化 #107） | ✅ 已完成（2026-09-11 验收证据闭环（沙箱实测），用户委托自动结项，[#33](https://github.com/marci-labs/LabelFrame/issues/33)） |
 | 53 | PDA 可观测性（logcat 日志封装 HostLog + 全局崩溃捕获 CrashGuard + 本地滚动日志 #105） | ✅ 已完成（2026-09-11 真机（DT50）取证通过，用户委托自动结项，[#36](https://github.com/marci-labs/LabelFrame/issues/36)） |
 | 52 | 日志基础设施加固（FileLoggerProvider 启动防护 + 日志按日轮转与保留 #108 + Server 业务事件日志 + 杂项吞错留痕） | ✅ 已完成（2026-09-11 沙箱实证验收通过，跨天滚动随部署观察；用户委托自动结项，[#35](https://github.com/marci-labs/LabelFrame/issues/35)） |
+| 56 | 双端复用 Zebra 官方 SDK 5.0.3685（AndroidHost 接入 tcp/蓝牙/USB + WinHost 升级统一 #111） | ✅ 已完成（2026-09-11 模拟级验证全绿，真机 AC-04~07 转待验收，[#49](https://github.com/marci-labs/LabelFrame/issues/49)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
