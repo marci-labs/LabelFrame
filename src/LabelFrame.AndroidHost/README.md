@@ -83,18 +83,19 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 4
 
 产出：`src\LabelFrame.AndroidHost\bin\<Configuration>\net10.0-android\com.labelframe.androidhost-Signed.apk`。`.NET Android 36.1.x` 起 `AndroidFastDeployment` 属性已失效（决策 #95⑦），关闭 Fast Deployment 必须用 `EmbedAssembliesIntoApk`。
 
-## 签名与升级（决策 #104）
+## 签名与升级（决策 #104；迭代 59 签名稳定化见决策 #119）
 
-- **正式签名**：CI 发版检测到 Secrets（`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`）时用专用自签 keystore 签名；**Secrets 缺失则回退 debug 签名并在流水线告警**。keystore 一次性生成：
+- **正式签名**：CI 发版要求四个 Secrets（`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`）**全部齐备**，用专用自签 keystore 签名；**任一缺失即 Release 构建失败，不回退 debug 签名**（迭代 59 移除了 debug 回退路径——保证发版签名输出稳定可预期，杜绝两次构建签名不一致导致无法覆盖升级 / 设备号漂移）。keystore 一次性生成：
 
   ```powershell
   .\scripts\create-android-keystore.ps1 -Password '<强密码>' -SetGithubSecrets
   ```
 
-  keystore 与密码丢失 = 无法再发同签名升级包，务必备份（不在仓库内）。
-- **升级路径**：
+- **证书管理**：keystore 与密码只存两处——GitHub 仓库 Secrets + 生成方离线备份（密码管理器 / 加密盘），**不得提交进仓库**；生成后立即备份别名与两个密码（store / key）。**keystore 或密码丢失 = 无法再发同签名升级包**（只能换签名，见下）；GitHub Secrets 可随时重写，keystore 文件还在即可恢复。
+- **装机与升级路径**：
+  - **装机**：推荐「服务端下载中心扫码下载」——把 Release 的 APK 放入服务端 `pda-packages` 目录（或经管理界面「下载中心」上传），PDA 与服务器同网扫条目旁二维码即可下载安装（详见 [docs/DEPLOY.md](../../docs/DEPLOY.md) §6）；也可 `adb install` GitHub Release 下载的 APK。
   - **同签名版本之间**（正式 → 正式）：直接 `adb install -r` 或 PDA 端覆盖安装，配置与设备号保留。
-  - **换签名**（历史 debug 签名包 → 正式签名包，仅一次性）：**需先卸载旧版再安装**——卸载会清空配置（服务器地址 / 打印机 IP / 设备名称需重填）；且 Android 8+ 的设备号（ANDROID_ID）绑定签名密钥，**换签名后设备号会变**，Server 设备目录会出现新条目（旧条目停留显示离线，可忽略）。
+  - **换签名**：**需先卸载旧版再安装**——卸载会清空配置（服务器地址 / 打印机 IP / 设备名称需重填）；且 Android 8+ 的设备号（ANDROID_ID）绑定签名密钥，**换签名后设备号会变**，Server 设备目录会出现新条目（旧条目停留显示离线，可忽略）。
 - 品牌化（迭代 49）：启动器图标 = 主蓝 + 白 L（与 MSI / 桌面图标同体系；`scripts\generate-android-icons.ps1` 生成各密度位图，API 26+ 自适应图标为矢量）；常驻通知小图标为白色单色矢量。
 
 ## 原生库注意（决策 #94 / #111）

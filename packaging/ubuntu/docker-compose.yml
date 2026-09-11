@@ -14,8 +14,11 @@ services:
       # （即容器内 /var/lib/labelframe/server/plugins/web-ui），放进去即生效、移除即无头；不启用可注释掉本行
       - ./plugins/web-ui:/var/lib/labelframe/server/plugins/web-ui
       # 客户端安装包目录（迭代 22 §2.3）：宿主机 ./client-packages 即容器内 /var/lib/labelframe/server/client-packages——
-      # 管理员把客户端 MSI 放进去（或经管理界面「客户端下载」上传），客户端设置页即可从服务端下载更新；不启用可注释掉本行
+      # 管理员把客户端 MSI 放进去（或经管理界面「下载中心」上传），客户端设置页即可从服务端下载更新；不启用可注释掉本行
       - ./client-packages:/var/lib/labelframe/server/client-packages
+      # PDA（Android 宿主）安装包目录（迭代 59 决策 #119）：宿主机 ./pda-packages 即容器内 /var/lib/labelframe/server/pda-packages——
+      # 管理员把 APK 放进去（或经管理界面「下载中心」上传），PDA 同网扫「下载中心」二维码即可下载安装；不启用可注释掉本行
+      - ./pda-packages:/var/lib/labelframe/server/pda-packages
       # 传输插件包目录（迭代 23 §5.3）：宿主机 ./plugin-packages 即容器内 /var/lib/labelframe/server/plugin-packages——
       # 管理员把 .lfplugin 插件包放进去（或经管理界面「插件管理」上传），客户端「设置 → 插件管理」即可安装；不启用可注释掉本行
       - ./plugin-packages:/var/lib/labelframe/server/plugin-packages

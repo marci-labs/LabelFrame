@@ -442,7 +442,7 @@ export function Settings() {
               <div className="hint">加载安装包列表…</div>
             ) : packages.length === 0 ? (
               <div className="hint">
-                {packagesError ? `获取安装包列表失败：${packagesError}` : '服务端暂无客户端安装包。可在服务端管理界面「客户端下载」页上传后，从此处下载更新。'}
+                {packagesError ? `获取安装包列表失败：${packagesError}` : '服务端暂无客户端安装包。可在服务端管理界面「下载中心」页上传后，从此处下载更新。'}
               </div>
             ) : (
               <>

@@ -15,7 +15,7 @@ import { Devices } from './pages/Devices'
 import { PdaLogs } from './pages/PdaLogs'
 import { JobHistory } from './pages/JobHistory'
 import { Settings } from './pages/Settings'
-import { ClientPackages } from './pages/ClientPackages'
+import { DownloadCenter } from './pages/DownloadCenter'
 import { PluginPackages } from './pages/PluginPackages'
 
 const TABS: { id: TabId; label: string; icon: IconName }[] = isServerUi
@@ -25,8 +25,8 @@ const TABS: { id: TabId; label: string; icon: IconName }[] = isServerUi
       { id: 'data', label: '数据与打印', icon: 'data' },
       { id: 'devices', label: '在线设备', icon: 'grid' },
       { id: 'jobs', label: '作业历史', icon: 'history' },
-      // 迭代 22 §2.3：Server UI「客户端下载」页（安装包列表 / 上传 / 下载 / 删除）
-      { id: 'packages', label: '客户端下载', icon: 'download' },
+      // 迭代 59（决策 #119）：Server UI「客户端下载」页升级为统一「下载中心」——客户端安装包 + PDA APK 同页分区、扫码下载
+      { id: 'packages', label: '下载中心', icon: 'download' },
       // 迭代 23 §5.4：Server UI「插件管理」页（插件包列表 / 上传 / 下载 / 删除，与「客户端下载」并列）
       { id: 'plugin-packages', label: '插件管理', icon: 'puzzle' },
       // 迭代 20（Y5）：Server 版命名「设备日志」（集中查看全部设备日志）；client 版保持「PDA 日志」
@@ -101,7 +101,7 @@ function Shell() {
           {tab === 'data' && <DataPrint />}
           {tab === 'devices' && <Devices />}
           {tab === 'jobs' && <JobHistory />}
-          {tab === 'packages' && <ClientPackages />}
+          {tab === 'packages' && <DownloadCenter />}
           {tab === 'plugin-packages' && <PluginPackages />}
           {tab === 'logs' && <PdaLogs />}
           {tab === 'settings' && <Settings />}

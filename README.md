@@ -39,7 +39,7 @@
 1. 服务器安装 Server（[部署指南](docs/DEPLOY.md) 四种形态任选：MSI / Docker / Ubuntu / 单机同装）。
 2. 每台打印电脑安装 `LabelFrame-Client-x.x.x.msi`。
 3. 每台 Client 的「设置」页把服务端地址改为 `http://<服务器IP>:53961` → 测试连接 → 保存并**重启 Client**。
-4. 模板集中在服务端维护，各电脑打印与历史互不干扰；可选用管理界面插件（服务端网页管理）与「客户端下载」页集中分发安装包。
+4. 模板集中在服务端维护，各电脑打印与历史互不干扰；可选用管理界面插件（服务端网页管理）与「下载中心」页集中分发安装包（客户端 MSI + PDA APK，PDA 可扫码下载）。
 
 ### 业务系统开发者：HTTP 提交作业
 
@@ -93,7 +93,7 @@ cd web && pnpm install && pnpm dev  # 前端开发（连本机 WinHost）
 - 无打印机验证打印闭环：`powershell -ExecutionPolicy Bypass -File .\scripts\demo-winhost.ps1`。
 - Docker 验证 Server / Linux Client 路由闭环：源码候选运行 `powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1`；正式同版本镜像运行 `powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1 -ComposeFile packaging/e2e/compose.release.yaml -SkipBuild`，详见 [docs/LINUX-CLIENT-E2E.md](docs/LINUX-CLIENT-E2E.md)。
 - 提交即跑 CI（`.github/workflows/ci.yml`：dotnet 构建 / 测试 + 前端 lint / 双模式测试 / 构建 + Android 构建）；迭代 42 起 `master` 受门禁保护——变更走短分支 + PR，三项必需检查全绿后 squash 合并（流程见 [docs/WORKFLOW.md](docs/WORKFLOW.md)）。
-- 发版：更新 ROADMAP / CHANGELOG 后推送 `v*` tag，由 `release.yml` 自动构建发布（MSI / Linux 归档 / Android APK / ghcr 镜像，见 [docs/DEPLOY.md](docs/DEPLOY.md) §7）。
+- 发版：更新 ROADMAP / CHANGELOG 后推送 `v*` tag，由 `release.yml` 自动构建发布（MSI / Linux 归档 / Android APK / ghcr 镜像，见 [docs/DEPLOY.md](docs/DEPLOY.md) §7）。Release 构建要求 Android 签名 Secrets 齐备（缺失即失败、不回退 debug 签名）；keystore 证书管理与换签名影响（卸载重装 + 设备号变化）见 DEPLOY §7 与 [AndroidHost README](src/LabelFrame.AndroidHost/README.md)。
 
 ## 文档
 

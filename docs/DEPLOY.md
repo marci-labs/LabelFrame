@@ -92,15 +92,23 @@ docker compose -f .\packaging\e2e\compose.yaml down
 - Windows：`%ProgramData%\LabelFrame\server\plugins\web-ui`
 - Linux / Docker：`/var/lib/labelframe/server/plugins/web-ui`（compose 默认挂载 `./plugins/web-ui`）
 
-打包脚本：`scripts/package-server-webui.ps1`。管理界面与客户端界面是同一前端的两种构建（工作台 / 设计器 / 在线设备 / 作业历史 / 客户端下载 / 插件管理），无打印机相关内容。
+打包脚本：`scripts/package-server-webui.ps1`。管理界面与客户端界面是同一前端的两种构建（工作台 / 设计器 / 在线设备 / 作业历史 / 下载中心 / 插件管理），无打印机相关内容。
 
 ## 6. 分发通道
 
 ### 客户端安装包分发（服务端集中下载）
 
 - 目录 `client-packages`（Windows `%ProgramData%\LabelFrame\server\client-packages`；Linux `/var/lib/labelframe/server/client-packages`；环境变量 `LABELFRAME_SERVER_CLIENT_PACKAGES` 可覆盖）。
-- 目录直放文件或经管理界面「客户端下载」页上传；客户端设置页「更新与安装包」列出并可下载（不自动升级，下载后自行运行安装）。
+- 目录直放文件或经管理界面「下载中心」页上传；客户端设置页「更新与安装包」列出并可下载（不自动升级，下载后自行运行安装）。
 - API：`GET/POST /api/client-packages`、`GET/DELETE /api/client-packages/{file}`（路径穿越防护）。
+
+### PDA（Android 宿主）安装包分发与扫码下载（迭代 59，决策 #119）
+
+- 目录 `pda-packages`（Windows `%ProgramData%\LabelFrame\server\pda-packages`；Linux `/var/lib/labelframe/server/pda-packages`；环境变量 `LABELFRAME_SERVER_PDA_PACKAGES` 可覆盖；Docker compose 默认挂载 `./pda-packages`）——与 `client-packages` 模式对称。
+- 目录直放 APK 或经管理界面「下载中心」页「PDA 下载」区上传（上传仅接受 `.apk`；目录直放不限制扩展名）。
+- API：`GET/POST /api/pda-packages`、`GET/DELETE /api/pda-packages/{file}`（路径穿越防护；不存在 404 + `LF_SRV_010`）。**APK 下载响应 MIME 固定 `application/vnd.android.package-archive`**——Android 浏览器据此识别为安装包直接拉起安装。
+- **PDA 扫码装机（推荐路径）**：PDA 与服务器连同一局域网 → 打开服务端管理界面「下载中心」页 → PDA 相机 / 扫码工具扫条目旁二维码 → 浏览器下载 APK → 按页面提示完成「未知来源 / 安装未知应用」一次性授权后安装。二维码内容 = 管理员浏览器正在访问的局域网地址 + 该条目下载路径。
+- 升级安装请使用同一签名来源的 APK（GitHub Release 与本目录分发的都是同一 keystore 签名的 Release 构建，可直接覆盖安装）；换签名的影响见 §7。
 
 ### 传输插件分发（`.lfplugin`）
 
@@ -115,7 +123,12 @@ docker compose -f .\packaging\e2e\compose.yaml down
 - 发版两步：① 更新 `docs/ROADMAP.md` 与 `CHANGELOG.md` 提交推送；② 例如 `git tag v0.22.2 && git push origin v0.22.2`。
 - CI 自动：构建测试 → 双 MSI（可签名）→ 管理界面插件 zip → Linux 归档 → **Android APK（PDA 宿主，迭代 49 起）** → 同一次构建的 Server / Linux Client 候选镜像通过 Compose E2E → 原镜像推 ghcr.io（版本号 + `latest`）→ GitHub Release。
 - MSI 签名：配置 Secret `MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD` 时自动签名，否则跳过。当前为自签证书过渡方案（公开下载仍可能 SmartScreen 提示），正式对外分发建议购买 OV 代码签名证书。本地签名：`scripts\create-signing-cert.ps1` 生成证书，`scripts\build-msi.ps1 -Sign` 使用。
-- Android APK 签名（迭代 49）：配置 Secrets `ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` 时用专用自签 keystore 签名，**缺失则回退 debug 签名并告警**。一次性生成并写入 Secrets：`scripts\create-android-keystore.ps1 -Password '<强密码>' -SetGithubSecrets`。PDA 安装 / 覆盖升级 / 换签名（卸载重装、设备号变化）见 [AndroidHost README](../src/LabelFrame.AndroidHost/README.md)。
+- Android APK 签名（迭代 49；**迭代 59 签名稳定化，决策 #119**）：必须配置全部四个 Secrets——`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`——用专用自签 keystore 签名；**任一缺失即构建失败（`::error::` 后 exit 1），绝不回退 debug 签名**（此前「缺失回退 debug 签名并告警」的过渡路径已移除：回退路径存在 = 两次构建可能签名不一致，用户无法覆盖升级且换签名会重置 ANDROID_ID 致设备号漂移）。日常 CI 的 Android 构建检查（ci.yml 第三必需检查）仍用 debug 签名验证可构建，不对外分发。
+- **keystore 证书管理（重要）**：
+  - 一次性生成并写入 Secrets：`scripts\create-android-keystore.ps1 -Password '<强密码>' -SetGithubSecrets`（生成 `labelframe-release.keystore` 并把四个 Secret 写入仓库）。
+  - **托管位置**：keystore 文件与密码只存两处——GitHub 仓库 Secrets（发版流水线使用）+ 生成方离线备份（密码管理器 / 加密盘）。**不得提交进仓库**。
+  - **备份要求**：keystore 或密码丢失 = 无法再发同签名升级包（只能换签名，见下），务必在生成后立即离线备份并记录别名与两个密码；GitHub Secrets 可随时重写（keystore 文件还在即可恢复）。
+  - **换签名影响**（对齐 DESIGN 决策 #104）：换签名后已装设备**需先卸载旧版再安装**——卸载会清空配置（服务器地址 / 打印机 IP / 设备名称需重填）；且 Android 8+ 的设备号（ANDROID_ID）绑定签名密钥，**换签名后设备号会变**，Server 设备目录出现新条目（旧条目停留显示离线，可忽略）。PDA 安装 / 覆盖升级详见 [AndroidHost README](../src/LabelFrame.AndroidHost/README.md)。
 
 ## 8. 配置与环境变量
 
