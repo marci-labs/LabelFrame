@@ -49,6 +49,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         _listener.Start();
         _cts = new CancellationTokenSource();
         _loop = Task.Run(() => LoopAsync(_cts.Token));
+        HostLog.Info(HostLog.Tags.Http, $"本地 HTTP 服务启动：127.0.0.1:{_port}");
     }
 
     /// <inheritdoc />
@@ -57,6 +58,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         _cts?.Cancel();
         try { _listener?.Stop(); } catch { }
         _cts?.Dispose();
+        HostLog.Info(HostLog.Tags.Http, "本地 HTTP 服务停止");
     }
 
     private async Task LoopAsync(CancellationToken cancellationToken)
@@ -72,8 +74,10 @@ public sealed class EmbeddedHttpServer : IDisposable
             {
                 return;
             }
-            catch
+            catch (Exception ex)
             {
+                // 接受连接失败（监听已停等罕见场景）：记录后继续
+                HostLog.Warn(HostLog.Tags.Http, $"接受新连接失败：{ex.Message}");
                 continue;
             }
 
@@ -83,16 +87,31 @@ public sealed class EmbeddedHttpServer : IDisposable
 
     private async Task HandleAsync(TcpClient client, CancellationToken cancellationToken)
     {
+        // 请求行解析成功前 method/path 未知，先占位；解析成功后更新供失败日志定位
+        var method = "-";
+        var path = "-";
         try
         {
             using var stream = client.GetStream();
-            var (method, path, headers, body) = await ReadRequestAsync(stream, cancellationToken);
+            var (m, p, headers, body) = await ReadRequestAsync(stream, cancellationToken);
+            method = m;
+            path = p;
             var response = Route(method, path, body, cancellationToken);
             await WriteResponseAsync(stream, response, cancellationToken);
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // 单请求失败不影响服务
+            // 服务停止时的在途请求：正常关闭路径
+        }
+        catch (Exception ex) when (method == "-")
+        {
+            // 请求头尚未读完就失败（对端断开 / 畸形请求）：单请求失败不影响服务（语义保持），仅记录
+            HostLog.Warn(HostLog.Tags.Http, $"读取请求失败：{ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            // 单请求失败不影响服务（语义保持），仅记录——method / path / 异常消息入 logcat 与本地日志
+            HostLog.Error(HostLog.Tags.Http, $"请求处理失败 {method} {path}：{ex.Message}", ex.ToString());
         }
         finally
         {
@@ -442,6 +461,8 @@ public sealed class EmbeddedHttpServer : IDisposable
         }
         catch (Exception ex)
         {
+            // 5xx 响应自身的原因此前完全不可见（连接重置 / 无日志），此处补记录
+            HostLog.Error(HostLog.Tags.Http, $"打印机测试发送失败（POST /api/printer/test）：{ex.Message}", ex.ToString());
             return Json(500, new ErrorView(JobErrorCodes.TransportSendFailed, $"发送失败：{ex.Message}"));
         }
     }

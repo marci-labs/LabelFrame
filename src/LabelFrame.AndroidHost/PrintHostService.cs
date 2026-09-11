@@ -32,6 +32,12 @@ public sealed class PrintHostService : Service
     public override void OnCreate()
     {
         base.OnCreate();
+
+        // 崩溃捕获兜底注册（幂等；进程创建时 HostApplication 已注册，防应用对象被绕过的极端情况）；
+        // 顺带检测上次运行是否留有崩溃摘要（下次启动可读的取证入口）
+        CrashGuard.Register();
+        CrashGuard.NotePreviousRunCrash();
+
         StartForegroundCompat();
 
         // SQLitePCLRaw 的 e_sqlite3 原生库需先经 System.loadLibrary 装载进 Android 链接器命名空间，
@@ -39,7 +45,13 @@ public sealed class PrintHostService : Service
         Java.Lang.JavaSystem.LoadLibrary("e_sqlite3");
 
         var config = LabelHostConfig.Load(this);
-        HostStatus.NoteServiceStarted(config.ServerUrl, $"{config.TcpHost}:{config.TcpPort}");
+        var printerEndpoint = $"{config.TcpHost}:{config.TcpPort}";
+        HostStatus.NoteServiceStarted(config.ServerUrl, printerEndpoint);
+        HostLog.Info(
+            HostLog.Tags.Host,
+            $"打印服务启动：版本 {HostInfo.GetVersion(this)}，设备 {config.DeviceId}（{config.DeviceName}），" +
+            $"服务器 {(config.ServerUrl.Length == 0 ? "未设置" : config.ServerUrl)}，打印机 {printerEndpoint}，" +
+            $"本地 HTTP 127.0.0.1:{LabelHostConfig.LocalPort}");
         var store = new SqliteLabelJobStore(config.DatabasePath);
         store.InitializeAsync().GetAwaiter().GetResult();
         _queue = new LabelJobQueue(store);
@@ -50,7 +62,7 @@ public sealed class PrintHostService : Service
         _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, store, _transport, this);
         _http.Start();
 
-        _printLoop = Task.Run(() => PrintLoopAsync(_cts.Token));
+        _printLoop = Task.Run(() => PrintLoopAsync(printerEndpoint, _cts.Token));
         _notifyLoop = Task.Run(() => NotificationLoopAsync(_cts.Token));
         if (!string.IsNullOrWhiteSpace(config.ServerUrl))
         {
@@ -71,6 +83,7 @@ public sealed class PrintHostService : Service
         _poller?.Dispose();
         _cts?.Dispose();
         HostStatus.NoteServiceStopped();
+        HostLog.Info(HostLog.Tags.Host, "打印服务停止");
         base.OnDestroy();
     }
 
@@ -173,14 +186,15 @@ public sealed class PrintHostService : Service
             {
                 return;
             }
-            catch
+            catch (Exception ex)
             {
                 // 通知刷新失败不影响服务
+                HostLog.Warn(HostLog.Tags.Host, $"通知刷新失败：{ex.Message}");
             }
         }
     }
 
-    private async Task PrintLoopAsync(CancellationToken cancellationToken)
+    private async Task PrintLoopAsync(string printerEndpoint, CancellationToken cancellationToken)
     {
         try
         {
@@ -190,9 +204,10 @@ public sealed class PrintHostService : Service
         {
             return;
         }
-        catch
+        catch (Exception ex)
         {
-            // 忽略启动恢复异常
+            // 忽略启动恢复异常（作业仍可手动失败项重打），但留痕
+            HostLog.Warn(HostLog.Tags.Print, $"启动恢复中断作业失败：{ex.Message}");
         }
 
         while (!cancellationToken.IsCancellationRequested)
@@ -219,6 +234,9 @@ public sealed class PrintHostService : Service
                 catch (Exception ex)
                 {
                     HostStatus.NotePrintError(ex.Message);
+                    HostLog.Warn(
+                        HostLog.Tags.Print,
+                        $"发送失败：作业 {next.Value.JobId} 项 {next.Value.Item.Index} → {printerEndpoint}：{ex.Message}");
                     await _queue.FailItemAsync(
                         next.Value.JobId,
                         next.Value.Item.Id,
@@ -231,8 +249,9 @@ public sealed class PrintHostService : Service
             {
                 return;
             }
-            catch
+            catch (Exception ex)
             {
+                HostLog.Warn(HostLog.Tags.Print, $"领取待打项失败：{ex.Message}");
                 try
                 {
                     await Task.Delay(1000, cancellationToken);
@@ -286,6 +305,9 @@ public sealed class PrintHostService : Service
                             }
                             else
                             {
+                                HostLog.Warn(
+                                    HostLog.Tags.Server,
+                                    $"Server 作业本地提交失败：作业 {job.JobId}（请求 {job.RequestId}）：{result.ErrorMessage}");
                                 await poller.ReportResultAsync(
                                     job.JobId,
                                     new JobResult("Failed", 0, job.TotalItems, result.ErrorMessage),
@@ -307,7 +329,8 @@ public sealed class PrintHostService : Service
                 catch (Exception ex)
                 {
                     HostStatus.NoteServerError(ex.Message);
-                    // 网络异常下一轮重试
+                    // 网络异常下一轮重试（周期 Warn 含原因与目标，现场可循迹）
+                    HostLog.Warn(HostLog.Tags.Server, $"服务器通讯失败：目标 {poller.ServerUrl}：{ex.Message}");
                     try
                     {
                         await Task.Delay(interval, cancellationToken);
@@ -395,9 +418,10 @@ public sealed class PrintHostService : Service
             {
                 return;
             }
-            catch
+            catch (Exception ex)
             {
                 // 回报异常下一轮重试
+                HostLog.Warn(HostLog.Tags.Server, $"结果回报 / 进度上报失败：目标 {poller.ServerUrl}：{ex.Message}");
                 try
                 {
                     await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);

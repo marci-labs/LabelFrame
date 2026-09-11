@@ -43,6 +43,9 @@ public sealed class ServerPoller : IDisposable
         };
     }
 
+    /// <summary>Server 基地址（去除尾部斜杠；日志目标用）。</summary>
+    public string ServerUrl => _serverUrl;
+
     /// <summary>注册设备（同时作为心跳）。</summary>
     public Task RegisterAsync(CancellationToken cancellationToken = default)
         => PostAsync($"{_serverUrl}/api/devices", new { deviceId = _deviceId, name = _deviceName }, RequestTimeout, cancellationToken);
