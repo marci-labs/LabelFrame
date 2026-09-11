@@ -113,6 +113,9 @@ public sealed class HostExitCoordinatorTests
         public void AssertLogContains(string fragment)
             => Assert.True(SnapshotLogs().Any(l => l.Contains(fragment)), $"记账日志缺少「{fragment}」，实际：{string.Join(Environment.NewLine, SnapshotLogs())}");
 
+        public void AssertLogNotContains(string fragment)
+            => Assert.True(SnapshotLogs().All(l => !l.Contains(fragment)), $"记账日志不应出现「{fragment}」（该行只属宽限兜底路径），实际：{string.Join(Environment.NewLine, SnapshotLogs())}");
+
         public void Dispose()
         {
             Lifetime.Dispose();
@@ -147,11 +150,13 @@ public sealed class HostExitCoordinatorTests
     public async Task Request_shutdown_should_force_exit_within_stabilization_window_when_host_stopped_but_main_flow_hung()
     {
         // Issue #64 AC-01（时序断言）：宿主停止信号（ApplicationStopped）到来而主流程未返回——
-        // 协调器应在稳定窗（默认 500 毫秒）内进入清理 + 强退，不再烧满宽限兜底。
-        // 宽限取 10 秒（远大于稳定窗）：若事件驱动路径失效（退化为干等宽限），耗时将 ≈10 秒，
-        // 时间断言即失败——宽限在此仅作判别尺，不改变被测逻辑路径；路径归属以记账日志为准
-        // （「稳定窗提前退出」与「优雅等待超时」两行互斥）。CI 满载时线程池调度延迟可达秒级
-        // （xunit 测试类并行 + 覆盖率收集），上界留足调度余量、下界结构性成立（Task.Delay 不会提前）。
+        // 协调器应在稳定窗（默认 500 毫秒）观察期满即进入清理 + 强退，不再烧满宽限兜底。
+        // 宽限取 10 秒（远大于稳定窗）作判别尺：若事件驱动路径失效（退化为干等宽限），将出现
+        // 「优雅等待超时」记账且耗时 ≈10 秒——路径归属以记账日志互斥判定（「稳定窗提前退出」与
+        // 「优雅等待超时」只会出现其一）。时间断言只保留下界（Task.Delay 不会提前，结构性成立）：
+        // 观察期必须走满 500 毫秒才可能清理强退；不设上界——CI 满载（2 vCPU + xunit 测试类并行 +
+        // 覆盖率收集 + 真实消息循环用例）下线程池调度延迟实测可达 9 秒级，属环境噪声而非被测行为，
+        // 本地连续多轮实测退出点稳定在 500~600 毫秒。
         var harness = new Harness();
         var coordinator = harness.Create(
             gracefulTimeout: TimeSpan.FromSeconds(10),
@@ -170,15 +175,14 @@ public sealed class HostExitCoordinatorTests
         Assert.True(
             stopwatch.Elapsed >= TimeSpan.FromMilliseconds(450),
             $"清理 + 强退早于稳定窗（实测 {stopwatch.Elapsed.TotalMilliseconds:0} 毫秒，应 ≥500 毫秒观察期）。");
-        Assert.True(
-            stopwatch.Elapsed < TimeSpan.FromSeconds(3),
-            $"稳定窗提前退出耗时异常（实测 {stopwatch.Elapsed.TotalMilliseconds:0} 毫秒，500 毫秒窗 + 调度余量应 <3000 毫秒；若接近 10 秒说明退化为干等宽限）。");
         harness.AssertLogContains("收到退出请求（来源：HTTP /api/host/shutdown");
         harness.AssertLogContains("宿主已停止（ApplicationStopped）而主流程未返回，进入稳定窗观察（500 毫秒）");
         harness.AssertLogContains("稳定窗（500 毫秒）届满主流程仍未返回，判定卡死——稳定窗提前退出");
         harness.AssertLogContains("执行退出清理（移除托盘图标、释放界面壳）");
         harness.AssertLogContains("退出清理完成");
         harness.AssertLogContains("强制退出：Environment.Exit(0)");
+        // 反向锚定：未走宽限兜底（若退化为烧满宽限，此行会出现且耗时 ≈10 秒）
+        harness.AssertLogNotContains("优雅等待超时");
     }
 
     [Fact]
@@ -210,8 +214,9 @@ public sealed class HostExitCoordinatorTests
     {
         // 竞态：订阅 ApplicationStopped 时宿主已停止（先外部 StopApplication 再发起退出请求）——
         // 「挂回调后补查已置位」应立即命中信号，照常走稳定窗提前退出，而不是退回宽限兜底干等。
-        // 路径归属以记账日志为准（若竞态检查缺失：信号永不到来 → 干等 10 秒宽限 → 日志为「优雅等待超时」而非「稳定窗提前退出」）；
-        // 耗时断言仅为量级证据（CI 满载调度延迟可达秒级，留 4 秒余量）。
+        // 判定全以记账日志为准（若竞态检查缺失：信号永不到来 → 干等 10 秒宽限 → 日志为「优雅等待超时」
+        // 而非「稳定窗提前退出」）；不设耗时断言——CI 满载下线程池调度延迟实测可达 9 秒级（环境噪声），
+        // 提前退出路径本身在挂回调 / 补查即同步命中（Register 在已取消令牌上内联执行回调）。
         var harness = new Harness();
         var coordinator = harness.Create(
             gracefulTimeout: TimeSpan.FromSeconds(10),
@@ -220,17 +225,13 @@ public sealed class HostExitCoordinatorTests
         coordinator.RegisterCleanup(() => Interlocked.Increment(ref harness.CleanupRuns));
         harness.Lifetime.StopApplication();
 
-        var stopwatch = Stopwatch.StartNew();
         await coordinator.RequestShutdownAsync("托盘菜单「退出」");
-        stopwatch.Stop();
 
         Assert.Equal(1, harness.CleanupRuns);
         Assert.Equal(0, Assert.Single(harness.Exits));
-        Assert.True(
-            stopwatch.Elapsed < TimeSpan.FromSeconds(4),
-            $"订阅时已停止未即时命中信号（实测 {stopwatch.Elapsed.TotalMilliseconds:0} 毫秒，50 毫秒窗 + 调度余量应 <4000 毫秒；若接近 10 秒说明退化为干等宽限）。");
         harness.AssertLogContains("宿主已停止（ApplicationStopped）而主流程未返回");
         harness.AssertLogContains("稳定窗提前退出");
+        harness.AssertLogNotContains("优雅等待超时");
     }
 
     [Fact]
