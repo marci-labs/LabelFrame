@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 53 PDA 可观测性（logcat + 崩溃捕获 + 本地滚动日志） · 2026-09-11
+
+- **logcat 日志封装（决策 #105）**：`HostLog` 轻量静态门面（Info / Warn / Error，tag 前缀 `LabelFrame.` + 区域名 Host / Http / Print / Server / Ui / Crash），零新依赖、写失败静默。关键路径埋点：本地 HTTP 请求失败（method / path / 异常消息 + 完整堆栈）、打印循环发送失败（作业 / 项 / 打印机目标 / 原因）与领取失败、Server 轮询与回报失败（目标地址 / 原因）、前台服务生命周期（启动一行含版本 / 设备 / 服务器 / 打印机配置、停止、开机自启广播）、配置页操作失败。
+- **本地滚动日志（用户确认的新增交付，原 Issue 默认仅 adb 可查）**：与 logcat 同一封装同步落应用私有目录 `{FilesDir}/logs/host-<yyyyMMdd>-<NNN>.log`；单文件 512KB 上限滚动到下一序号，目录保留最近 6 个（名字序即时间序）——现场无法 adb 时可直接取证。
+- **全局崩溃捕获**：Java 层 `SetDefaultUncaughtExceptionHandler`（记录后交回原处理器，保持系统崩溃流程）+ .NET `AppDomain.UnhandledException` 双通道 → logcat Error 完整堆栈（长堆栈分片）+ 崩溃摘要 `{FilesDir}/crash/crash-<时间戳>.txt`（时间 / 来源 / 版本 / 系统 / 设备 / 堆栈，保留最近 3 份）；注册时机 = 新增 `[Application]` 子类 `HostApplication` 进程创建首行（早于一切组件）+ 服务 OnCreate 首行幂等兜底；服务启动检测到上次崩溃摘要记录 Warn 提示（即「下次启动可读」）。崩溃摘要**不回传服务端**——回传管道登记 DESIGN「风险与未决问题」。
+- **请求级吞错可见化（语义保持）**：`EmbeddedHttpServer` 每请求 catch 仍吞掉异常（单请求失败不影响服务），只加日志——请求行已解析出的处理期失败记 Error（含 method / path），对端断开 / 畸形请求（未解析出请求行）记 Warn 防噪；`/api/printer/test` 5xx 自身原因补 Error。
+- **进度上报失败保持静默**（决策 #101「不告警刷屏」），仅 Server 轮询主循环与终态回报失败记周期 Warn。
+- **测试**：AndroidHost 无测试体系（不在范围），AC 以 CI「Android 构建（PDA 宿主）」+ 真机验收为证据；本轮 `dotnet build / test`（排除 Perf/Soak，384 项）全绿（slnx 无涉改动），AndroidHost Release 本地构建通过（0 警告 0 错误）。
+
 ## 迭代 49 PDA 宿主自动化构建与品牌化 · 2026-09-10
 
 - **CI 自动化（决策 #104，含流程治理：修改 workflows）**：`ci.yml` 新增「Android 构建（PDA 宿主）」job（ubuntu；JDK 17 + Android SDK 36 + .NET Android workload；Release 配置 + `-p:EmbedAssembliesIntoApk=true`），用户拍板**直接设为第三项必需检查**——master 门禁由双必需升三必需（既有两项名称与语义不变；落地顺序 = 先合入 job 的 PR 验证全绿、合并后立即补进门禁 ruleset）；AndroidHost 仍不进 `LabelFrame.slnx`（CI 单独构建该工程，不拖慢日常全仓构建）。
