@@ -1,6 +1,8 @@
 // 数据与打印：测试数据表单 / 打印测试 / Excel 导入映射 / 批量打印 / 作业进度与失败重试
 // 迭代 15：会话草稿提升全局（模板 / 字段值 / 调试开关 / 作业进度保留；Excel 不保留）；
 // 调试模式独立开关——开：打印按钮改为后端渲染出图下载（单张 PNG / 批量 zip），不建作业不发驱动。
+// 迭代 65（#62）：无字段模板 = 静态标签（合法模板），操作区照常渲染可打印测试（提交空数据单张），
+// Excel 模板 / 导入维持无字段禁用（无列可生成 / 映射）。
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
@@ -456,25 +458,27 @@ export function DataPrint() {
     }
   }
 
-  /** 调试关：打印测试（单张）提交正常作业。 */
+  /** 测试打印 / 出图的单张数据：有字段模板提交当前表单值（含预填）；
+   *  无字段模板（静态标签，迭代 65 · #62）提交空字典——即使模板包携带遗留 testData 也不外带，
+   *  后端受理 / 校验 / 渲染三层均支持空 data，静态内容按版式原样输出。 */
+  const singleTestData = () => (fieldKeys.length === 0 ? {} : { ...values })
+
+  /** 调试关：打印测试（单张）提交正常作业（无字段拦截守卫已随 #62 移除）。 */
   const testPrint = () => {
-    if (!pkg || fieldKeys.length === 0) {
-      app.setStatus('当前模板没有字段，请先在设计器中绑定字段填充。')
-      return
-    }
-    void submit([{ data: { ...values } }])
+    if (!pkg) return
+    void submit([{ data: singleTestData() }])
   }
 
   /** 调试开：单张出图下载（后端渲染 PNG，不建作业不发驱动）。 */
   const debugSingle = () => {
     if (!pkg) return
-    void downloadDebug([{ data: { ...values } }], false)
+    void downloadDebug([{ data: singleTestData() }], false)
   }
 
   /** 调试关：出图预览（即时预览，不建作业）。 */
   const previewImage = () => {
     if (!pkg) return
-    void downloadDebug([{ data: { ...values } }], false)
+    void downloadDebug([{ data: singleTestData() }], false)
   }
 
   const [excelTplBusy, setExcelTplBusy] = useState(false)
@@ -665,21 +669,25 @@ export function DataPrint() {
                 <div className="hint">加载中…</div>
               ) : !pkg ? (
                 <div className="hint">请先在左侧选择模板。</div>
-              ) : fieldKeys.length === 0 ? (
-                <div className="hint">该模板没有字段。请在设计器中为元素绑定「字段填充」后保存。</div>
               ) : (
                 <>
-                  {fieldKeys.map((k) => (
-                    <label className="field" key={k}>
-                      {k}
-                      <input
-                        className="input mono"
-                        value={values[k] ?? ''}
-                        placeholder={`字段 ${k} 的值（打印时使用）`}
-                        onChange={(ev) => setFieldValue(k, ev.target.value)}
-                      />
-                    </label>
-                  ))}
+                  {fieldKeys.length === 0 ? (
+                    // 迭代 65（#62）：无字段模板 = 静态标签（合法模板），说明性提示替代旧「不允许」语义；
+                    // 操作区（调试开关 / 打印测试 / 出图预览）照常渲染，行为与有字段模板一致
+                    <div className="hint">该模板为静态标签（无字段填充）：内容将按版式原样打印，无需填写数据。</div>
+                  ) : (
+                    fieldKeys.map((k) => (
+                      <label className="field" key={k}>
+                        {k}
+                        <input
+                          className="input mono"
+                          value={values[k] ?? ''}
+                          placeholder={`字段 ${k} 的值（打印时使用）`}
+                          onChange={(ev) => setFieldValue(k, ev.target.value)}
+                        />
+                      </label>
+                    ))
+                  )}
                   <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     <input type="checkbox" checked={debugMode} onChange={(ev) => app.setDraftDebug(ev.target.checked)} />
                     调试模式：只生成图片，不发送打印驱动（后端渲染）
@@ -719,7 +727,9 @@ export function DataPrint() {
                   <div className="hint">
                     {debugMode
                       ? '调试模式：出图为后端渲染的实际打印位图（同一 Skia / DPI），不提交作业、不发送打印驱动。'
-                      : isServerUi
+                      : fieldKeys.length === 0
+                        ? '静态标签无需填写数据；打印测试提交 1 张空数据标签（内容按版式原样输出）。'
+                        : isServerUi
                         ? '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到所选在线设备（仅在线设备可选，由设备客户端执行打印）。'
                         : deviceMode === 'server'
                           ? routeMode === 'server'
