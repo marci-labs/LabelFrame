@@ -38,7 +38,7 @@ public sealed class SqliteLogStore
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    /// <summary>追加设备日志。</summary>
+    /// <summary>追加设备日志（按行拆分入库：lines 各元素及元素内换行符均按物理行拆为独立记录，决策 #106）。</summary>
     public async Task AppendAsync(string deviceId, IReadOnlyList<string> lines, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(deviceId) || lines.Count == 0)
@@ -46,17 +46,36 @@ public sealed class SqliteLogStore
             return;
         }
 
+        // 按物理行拆分（\r\n / \n / \r 统一处理），空白行不落库；同一提交共用同一时间戳、单事务原子写入
+        var rows = lines
+            .SelectMany(line => line.Split(["\u000D\u000A", "\n", "\r"], StringSplitOptions.RemoveEmptyEntries))
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .ToList();
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
         var now = DateTimeOffset.UtcNow;
         await using var connection = await OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
             INSERT INTO logs (device_id, time, line)
             VALUES ($device, $time, $line);
             """;
-        command.Parameters.AddWithValue("$device", deviceId);
-        command.Parameters.AddWithValue("$time", SqliteSupport.Format(now));
-        command.Parameters.AddWithValue("$line", string.Join(Environment.NewLine, lines));
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        var deviceParameter = command.Parameters.Add("$device", SqliteType.Text);
+        var timeParameter = command.Parameters.Add("$time", SqliteType.Text);
+        var lineParameter = command.Parameters.Add("$line", SqliteType.Text);
+        deviceParameter.Value = deviceId;
+        timeParameter.Value = SqliteSupport.Format(now);
+        foreach (var row in rows)
+        {
+            lineParameter.Value = row;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
     }
 
     /// <summary>查询日志（可按设备 / 时间过滤，最多返回 500 条）。</summary>

@@ -197,9 +197,10 @@ public class LogEndpointTests : SharedEndpointsTestBase
         var push = await client.PostAsync("/api/logs", new StringContent("""{ "deviceId": "dev-1", "lines": ["line-a", "line-b"] }""", Encoding.UTF8, "application/json"));
         Assert.Equal(HttpStatusCode.OK, push.StatusCode);
 
-        // 存储语义：一次回传的多行合并为一条日志（line 内换行分隔）
+        // 存储语义（迭代 51，决策 #106）：一次回传的多行按物理行拆为独立记录（查询 id 倒序，最新在前）
         var entries = await client.GetFromJsonAsync<JsonElement>("/api/logs?deviceId=dev-1");
-        Assert.Equal(1, entries.GetArrayLength());
-        Assert.Equal("line-a" + Environment.NewLine + "line-b", entries[0].GetProperty("line").GetString());
+        Assert.Equal(2, entries.GetArrayLength());
+        Assert.Equal("line-b", entries[0].GetProperty("line").GetString());
+        Assert.Equal("line-a", entries[1].GetProperty("line").GetString());
     }
 }

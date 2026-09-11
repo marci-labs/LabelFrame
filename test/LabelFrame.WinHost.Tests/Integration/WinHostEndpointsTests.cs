@@ -194,6 +194,33 @@ public sealed class WinHostEndpointsTests : WinHostIntegrationTestBase
         var status = await JsonAsync("/api/printer/status");
         Assert.True(status.GetProperty("isOnline").GetBoolean());
     }
+
+    [Fact]
+    public async Task Logs_endpoints_should_return_json_and_store_per_line()
+    {
+        // AC-01：客户端实例 GET /api/logs 返回 JSON（补挂 MapLogApi 前命中 SPA 回退返回 index.html，决策 #106）
+        var empty = await Client.GetAsync("/api/logs");
+        Assert.Equal(HttpStatusCode.OK, empty.StatusCode);
+        Assert.Equal("application/json", empty.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(0, (await JsonAsync(empty)).GetArrayLength());
+
+        // AC-04：POST 两行 → GET 回查为两条独立记录（按行拆分入库）
+        var push = await Client.PostAsync("/api/logs",
+            Json("""{ "deviceId": "pda-1", "lines": ["第一行", "第二行"] }"""));
+        Assert.Equal(HttpStatusCode.OK, push.StatusCode);
+        Assert.Equal(2, (await JsonAsync(push)).GetProperty("received").GetInt32());
+
+        var logs = await JsonAsync("/api/logs");
+        Assert.Equal(2, logs.GetArrayLength());
+        // 查询按 id 倒序（最新在前），两行内容各自独立
+        Assert.Equal("第二行", logs[0].GetProperty("line").GetString());
+        Assert.Equal("第一行", logs[1].GetProperty("line").GetString());
+
+        // 缺少 deviceId：400 + LF_API_001（与宿主其他共享端点错误码一致）
+        var bad = await Client.PostAsync("/api/logs", Json("""{ "lines": ["x"] }"""));
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+        Assert.Equal("LF_API_001", (await JsonAsync(bad)).GetProperty("code").GetString());
+    }
 }
 
 /// <summary>集成测试装配：临时目录 HostOptions + 生产 WinHostApp + TestServer。</summary>
