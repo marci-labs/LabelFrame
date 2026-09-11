@@ -108,19 +108,26 @@ public static class Program
         app.Lifetime.ApplicationStopping.Register(() => HostInfo("ApplicationStopping"));
         app.Lifetime.ApplicationStopped.Register(() => HostInfo("ApplicationStopped"));
 
+        // 统一退出协调器（缺陷 #58）：托盘「退出」与 /api/host/shutdown 共用「优雅停止 + 限时兜底强退」
+        var exit = app.Services.GetRequiredService<HostExitCoordinator>();
+
 #if WINDOWS
         using var tray = new TrayIconService(HostInfo);
         if (options.EnableTray)
         {
             tray.Start(
                 () => uiShell?.OpenUi(),
-                () =>
-                {
-                    app.Lifetime.StopApplication();
-                    return Task.CompletedTask;
-                });
+                () => exit.RequestShutdownAsync("托盘菜单「退出」"));
             HostInfo("系统托盘已启用（双击或右键托盘图标可打开界面，退出请用托盘菜单）。");
         }
+
+        // 退出清理统一注册（缺陷 #58）：主流程 finally 与强退兜底共用同一入口——
+        // 托盘 WM_QUIT 投递（消息循环退出后在托盘线程内 NIM_DELETE，消除幽灵图标）+ 界面壳释放。
+        exit.RegisterCleanup(() =>
+        {
+            tray.Dispose();
+            uiShell?.Dispose();
+        });
 #endif
 
 #if WINDOWS
@@ -167,10 +174,11 @@ public static class Program
 #endif
         finally
         {
-#if WINDOWS
-            uiShell?.Dispose();
-#endif
+            // 缺陷 #58：RunAsync 在托盘 / 界面消息循环在场时可能不自然返回——能走到本 finally 的都是自然路径。
+            // 清理统一走协调器（与强退兜底同一入口）；完成后标记自然退出（看门狗收手），再退出进程。
+            exit.RunCleanup();
             HostInfo("宿主退出流程完成。");
+            exit.MarkNaturalExitCompleted();
 #if WINDOWS
             Environment.Exit(exitCode);
 #endif

@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 缺陷 #58 托盘菜单「退出」不生效修复（统一退出路径 + 幽灵图标清理） · 2026-09-11
+
+- **退出路径统一为「优雅停止 + 限时兜底强退」（决策 #112，AC-01 / AC-02 / AC-04）**：托盘菜单「退出」与 `/api/host/shutdown`（Web UI 设置页「退出程序」）此前一弱一强——托盘回调只调 `StopApplication()`，而 `RunAsync` 在托盘 / 界面消息循环在场时不自然返回（Issue #58 证据链：本机 2/2 复现进程僵死 >2 分钟，主线程停在 Main 的阻塞等待，`finally` 中的 `Environment.Exit` 永不执行）。修复 = 新增 `HostExitCoordinator` 统一入口：`StopApplication` → 有限等待（默认 2.5 秒）主流程自然退出 → 超时执行清理后 `Environment.Exit(0)` 强退兜底；两条入口共用同一序列（HTTP 路径保留 200ms 响应送达缓冲），不再有强弱退差异。
+- **强退前显式托盘清理，消除幽灵图标（AC-03）**：托盘退出清理抽为 `TrayQuitSignaler`——向托盘消息循环线程投递 `WM_QUIT` 并限时 `Join`（默认 2 秒），消息循环退出后在托盘线程内执行 `Shell_NotifyIcon(NIM_DELETE)`（此前两条退出路径都到不了 `using` Dispose——托盘线程收不到 WM_QUIT，图标残留，本机已见幽灵 tooltip 累积）；自然退出路径与强退兜底共用同一清理（`uiShell?.Dispose()` 一并纳入），HTTP 退出路径同享收益。
+- **退出链路阶段记账（AC-02）**：host.log 可定位「点了退出没反应」的具体阶段——收到退出请求（来源：托盘菜单 / HTTP）、StopApplication 发起（含异常续走兜底）、优雅等待超时与否（含超时秒数）、清理执行 / 完成 / 异常、最终退出方式（自然完成 / 强制 Environment.Exit(0)）。
+- **测试（AC-05）**：新增 13 项——`HostExitCoordinator`（自然退出看门狗收手且不重复清理 / 超时强退 + 清理全序列记账 / 幂等重复请求 / 未绑定生命周期仍兜底 / StopApplication 异常仍强退 / 清理幂等 / 清理异常不阻断）+ `TrayQuitSignaler`（WM_QUIT 投递到登记线程 / 未登记不投递 / 幂等 / Dispose 默认路径 / Join 限时）+ `TrayIconService` 真实消息循环退出回收（Start → Dispose → 循环线程限时结束）。
+- **真机验收滞后（AC-01 / AC-03）**：全局单实例互斥锁与端口 53960 归用户真机验收（Issue 复现步骤即恢复条件），本轮自动化验证到单测层；Issue #58 转 `待验收`——托盘「退出」≤5 秒进程退出、退出后图标即失不残留。
+
 ## 迭代 56 双端复用 Zebra 官方 SDK 5.0.3685（AndroidHost 接入 + WinHost 升级统一） · 2026-09-11
 
 - **AndroidHost 接入官方 SDK（决策 #111，AC-01）**：打印传输从自研裸 socket `Tcp9100PrintTransport` 切换到 Zebra 官方 Link-OS SDK `5.0.3685`（net10.0-android36.0 纯托管 DLL，无 .so / 无 jar）——新 `ZebraSdkTransport` 实现 `IPrintTransport` / `IPrinterStatusProvider` / `ITestableTransport` 三接口（对齐 Core 传输契约，公共契约零变更）。连接类型扩展：`tcp`（**默认且一级交付路径**，SDK `TcpConnection`）/ `bluetooth`（SPP `BluetoothConnection`，MAC 地址手输——预授权决议 1）/ `usb`（OTG `UsbDiscoverer` 自动发现锁定第一台 Zebra 设备，无可选设备给可行动中文错误——预授权决议 2）；每次发送 / 测试 / 状态独立建连，与裸 socket 时代行为一致。**存量 `tcp_host` / `tcp_port` 配置键沿用，已装设备升级后零操作直入 SDK TCP 路径（AC-03 无感迁移）**。
