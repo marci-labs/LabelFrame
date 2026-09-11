@@ -75,6 +75,7 @@
 | 55 | Zebra 状态映射真机确认（~HS 字段实证修正 + 无响应一等异常态 + SDK GetCurrentStatus 细状态 #109） | ✅ 已完成（2026-09-11 真机三场景双路径取证通过（正常 / 缺纸 / 暂停），[#45](https://github.com/marci-labs/LabelFrame/issues/45)） |
 | 56 | 双端复用 Zebra 官方 SDK 5.0.3685（AndroidHost 接入 tcp/蓝牙/USB + WinHost 升级统一 #111） | ✅ 已完成（2026-09-11 真机验收通过（tcp 直发 + Server 路由双路径 + WinHost Zebra 回归），蓝牙 / USB 转验收欠账，[#49](https://github.com/marci-labs/LabelFrame/issues/49)） |
 | 57 | 安装引导专项 1/8——设计契约（install manifest 格式 / 拓扑预设与开关模型 / 信任模型与分发源 / 选型与签名策略 #114~#118） | ✅ 已完成（2026-09-11 纯文档契约迭代，AC 自证；专项 2/8~8/8 以此为契约依据，[#50](https://github.com/marci-labs/LabelFrame/issues/50)） |
+| 57 | 客户端退出提速（事件驱动提前退出 + 500ms 稳定窗，决策 #112 修订） | ✅ 已完成（2026-09-12 带托盘沙箱实测 <1.5s，用户委托自动结项，[#64](https://github.com/marci-labs/LabelFrame/issues/64)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
