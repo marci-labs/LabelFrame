@@ -128,9 +128,8 @@ public class SkiaRendererElementTests
     [Fact]
     public void Region_anchored_element_should_align_when_configured()
     {
-        // 对比式断言：同一文本分别以 Start（左上）与 Center（居中）锚定，居中版墨迹重心应更靠区域中心。
-        // 已知限制（测试发现，记 DESIGN 风险）：文本无显式 WidthMm 时块宽被扩为区域全宽，
-        // RegionHAlign 对自动宽度文本不生效（水平锚定需显式宽度参与计算）；垂直锚定按字高正常工作。
+        // 对比式断言：同一文本以不同锚定渲染，墨迹重心应随锚定方向移动。
+        // 显式宽度（块位置由对齐系数计算）与自动宽度（迭代 54 决策 #110：按实测文本宽度计算偏移）都应生效。
         LabelBitmap RenderWith(LabelRegionAlign h, LabelRegionAlign v, double widthMm) => Render(new LabelLayout
         {
             Name = "anchor-" + h + "-" + v, ContractName = "c", ContractVersion = "1.0", WidthMm = 60, HeightMm = 30,
@@ -146,10 +145,58 @@ public class SkiaRendererElementTests
         var (_, centerY) = InkCenter(RenderWith(LabelRegionAlign.Start, LabelRegionAlign.Center, 0));
         Assert.True(centerY > startY + 2, $"垂直锚定未生效：start y={startY:F1}, center y={centerY:F1}");
 
-        // 水平锚定（显式宽度，块位置由对齐系数计算）：Center 的墨迹应明显靠右
+        // 水平锚定——显式宽度：Center 的墨迹应明显靠右
         var (startX, _) = InkCenter(RenderWith(LabelRegionAlign.Start, LabelRegionAlign.Start, 12));
         var (centerX, _) = InkCenter(RenderWith(LabelRegionAlign.Center, LabelRegionAlign.Center, 12));
         Assert.True(centerX > startX + 5, $"水平锚定未生效：start x={startX:F1}, center x={centerX:F1}");
+
+        // 水平锚定——自动宽度（决策 #110 方案 A，实测文本宽度参与计算）：Start / Center / End 墨迹重心递增
+        var (autoStartX, _) = InkCenter(RenderWith(LabelRegionAlign.Start, LabelRegionAlign.Start, 0));
+        var (autoCenterX, _) = InkCenter(RenderWith(LabelRegionAlign.Center, LabelRegionAlign.Center, 0));
+        var (autoEndX, _) = InkCenter(RenderWith(LabelRegionAlign.End, LabelRegionAlign.End, 0));
+        Assert.True(autoCenterX > autoStartX + 5, $"自动宽度水平锚定未生效：start x={autoStartX:F1}, center x={autoCenterX:F1}");
+        Assert.True(autoEndX > autoCenterX + 5, $"自动宽度水平锚定未生效：center x={autoCenterX:F1}, end x={autoEndX:F1}");
+    }
+
+    [Fact]
+    public void Region_anchored_auto_width_text_should_stay_inside_region_for_all_aligns()
+    {
+        // 方案 A 语义：自动宽度文本按实测宽度锚定，Start 贴左 / End 贴右，文本不越出区域
+        LabelBitmap RenderWith(LabelRegionAlign h) => Render(new LabelLayout
+        {
+            Name = "auto-" + h, ContractName = "c", ContractVersion = "1.0", WidthMm = 60, HeightMm = 30,
+            Elements =
+            [
+                new LabelRegionElement { Id = "r1", XMm = 2, YMm = 2, WidthMm = 56, HeightMm = 26 },
+                new LabelTextElement { Literal = "文本", XMm = 0, YMm = 0, FontHeightMm = 4, RegionId = "r1", RegionHAlign = h, RegionVAlign = LabelRegionAlign.Center },
+            ],
+        });
+
+        // Start：区域左缘外（0~2mm）空白、左缘内侧有墨迹；End：区域右缘外（58~60mm）空白、右缘内侧有墨迹
+        var start = RenderWith(LabelRegionAlign.Start);
+        var end = RenderWith(LabelRegionAlign.End);
+        Assert.Equal(0, CountBlack(start, 0, 2, 1.8, 26));
+        Assert.True(CountBlack(start, 2.2, 2, 8, 26) > 20, "Start 锚定文本应在区域左缘内侧");
+        Assert.Equal(0, CountBlack(end, 58.2, 2, 1.8, 26));
+        Assert.True(CountBlack(end, 49, 2, 8, 26) > 20, "End 锚定文本应在区域右缘内侧");
+    }
+
+    [Fact]
+    public void Explicit_width_text_block_text_align_should_keep_working()
+    {
+        // 防回归（AC-02）：显式宽度块内 TextAlign 既有行为——Left 与 Right 墨迹重心应明显不同
+        LabelBitmap RenderWith(LabelTextAlign align) => Render(new LabelLayout
+        {
+            Name = "talign-" + align, ContractName = "c", ContractVersion = "1.0", WidthMm = 60, HeightMm = 30,
+            Elements =
+            [
+                new LabelTextElement { Literal = "块内对齐文本", XMm = 5, YMm = 5, FontHeightMm = 4, WidthMm = 50, HeightMm = 8, TextAlign = align, VerticalAlign = LabelVerticalAlign.Middle },
+            ],
+        });
+
+        var (leftX, _) = InkCenter(RenderWith(LabelTextAlign.Left));
+        var (rightX, _) = InkCenter(RenderWith(LabelTextAlign.Right));
+        Assert.True(rightX > leftX + 10, $"块内 TextAlign 未生效：left x={leftX:F1}, right x={rightX:F1}");
     }
 
     /// <summary>墨迹重心（毫米）。</summary>

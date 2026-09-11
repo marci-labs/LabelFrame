@@ -28,8 +28,6 @@ public interface ILabelBitmapRenderer
 /// </summary>
 public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
 {
-    private const string FontFamily = "Microsoft YaHei";
-
     /// <summary>池上限：留出并发渲染（多请求提交 + 出图 / 预览）的余量，超出即释放不再复用。</summary>
     private const int MaxPooledSurfaces = 4;
 
@@ -167,7 +165,8 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         int dpi)
     {
         LabelElementContent.TryGet(text, document.Data, out var value);
-        var bounds = LabelLayoutResolver.ResolveBounds(text, regions);
+        // 区域水平锚定按实测文本宽度计算（决策 #110）：度量与绘制同源（字型查找 / 加粗一致）
+        var bounds = LabelLayoutResolver.ResolveBounds(text, regions, SkiaTextWidthMeasurer.Instance, value);
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
         var boxWidth = ToDots(bounds.WidthMm, dpi);
@@ -178,7 +177,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
             ? text.HeightMm
             : Math.Max(text.FontHeightMm + 2 * Math.Max(text.EffectivePaddingHMm, text.EffectivePaddingVMm), 10);
         var boxHeight = ToDots(boxHeightMm, dpi);
-        using var typeface = CreateTypeface(text.FontFamily, value);
+        using var typeface = SkiaTypefaceLookup.CreateTypeface(text.FontFamily, value);
 
         // 边框 = 元素框；内边距在框内（与前端 ElementNode 一致）
         if (text.BorderMm > 0 && boxWidth > 0)
@@ -413,7 +412,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         if (barcode.DisplayValue)
         {
             textSize = Math.Max(ToDots(1.5, dpi), contentH * 0.15f);
-            using var measureFont = new SKFont(CreateTypeface(LabelTextElement.DefaultFontFamily, value), textSize);
+            using var measureFont = new SKFont(SkiaTypefaceLookup.CreateTypeface(LabelTextElement.DefaultFontFamily, value), textSize);
             var measured = measureFont.MeasureText(value);
             if (measured > contentW)
             {
@@ -439,7 +438,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
 
         if (barcode.DisplayValue)
         {
-            using var typeface = CreateTypeface(LabelTextElement.DefaultFontFamily, value);
+            using var typeface = SkiaTypefaceLookup.CreateTypeface(LabelTextElement.DefaultFontFamily, value);
             using var textFont = new SKFont(typeface, textSize);
             using var textPaint = new SKPaint { IsAntialias = true, Color = SKColors.Black };
             var textWidth = textFont.MeasureText(value);
@@ -654,30 +653,6 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// 创建文本字型：优先指定字体族（fontFamily，缺省回退微软雅黑）；文本含非 ASCII（中文等）时用系统字体回退
-    /// 匹配常见中文字符，避免指定字体缺字型导致整段文本不绘制。
-    /// </summary>
-    private static SKTypeface CreateTypeface(string fontFamily, string value)
-    {
-        var family = string.IsNullOrWhiteSpace(fontFamily) ? LabelTextElement.DefaultFontFamily : fontFamily;
-        var preferred = SKTypeface.FromFamilyName(family) ?? SKTypeface.FromFamilyName(FontFamily) ?? SKTypeface.Default;
-        if (string.IsNullOrEmpty(value))
-        {
-            return preferred;
-        }
-
-        if (value.Any(c => c > 0x7F))
-        {
-            // 含中文等非 ASCII：用常见 CJK 字符匹配系统回退字体。
-            // 不能用文本首字符匹配——首字符若是生僻字，会匹配到只含该字的小字体，
-            // 其余字符无字型导致整段文本只剩一两个字。
-            return SKFontManager.Default.MatchCharacter('中') ?? preferred;
-        }
-
-        return preferred;
     }
 
     /// <summary>毫米 → 点（DPI），四舍五入远离零。</summary>
