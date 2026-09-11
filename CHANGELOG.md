@@ -2,6 +2,12 @@
 
 本文件记录每个迭代的变更。
 
+## 缺陷 #46 同 IP 双设备号按 IP 解析命中旧行修复（最近活跃优先） · 2026-09-11
+
+- **排查确认（缺陷成立，本地复现不依赖真机）**：`devices.last_ip` 无唯一约束 / 无索引，设备号变更后新设备号从同 IP 注册**插入新行**，旧行 `last_ip` 无人清除（全仓仅 `ServerDb` 三处写 devices——注册 upsert / notify 心跳 / 领取事务，均单行更新，**无跨行清理路径**）；`FindDeviceByIpAsync` 原为 `WHERE last_ip = $ip COLLATE NOCASE LIMIT 1` **无 ORDER BY**——SQLite 无索引全表扫描按 rowid 序，稳定命中先注册的旧行。修复前实测：同 IP「旧行 stale / 新行活跃」场景，`FindDeviceByIpAsync`、`SubmitJobAsync` targetIp 解析、`GET /api/devices/by-ip/{ip}` 三路全部返回旧设备号（新增 4 项复现测试在未修复代码上全部失败，与用户现象一致）。
+- **修复 = 按 IP 解析改「最近活跃优先」（决策 #113，Issue 候选方向 A）**：`FindDeviceByIpAsync` 加 `ORDER BY last_seen_at DESC, registered_at DESC, id`（后两项为确定性平手序）——设备号变更后必命中活跃新行；两个消费方（by-ip 端点与 targetIp 投递解析）共用该方法一并修复，按 IP 投递不再路由到已停用的旧设备号（长期 Pending 收不到）。**不取方向 B（写入时清除同 IP 其他行）**：NAT 共网出口下多台真机合法共用一个出口 IP，B 会让每次心跳抹掉其他设备的 last_ip（目录 IP 显示丢失、by-ip 退化为「最后写者」）且写放大；同 IP 多设备都活跃时 A 跟随最近一次心跳，尽力而为且不破坏目录数据。行为变化仅在「同 IP 多行」场景（先注册行 → 最近活跃行），单行场景零变化；无需数据迁移。
+- **测试**：新增 4 项——服务级 3 项（FakeTimeProvider 时间确定：同 IP 旧行 stale / 新行活跃 → by-ip 与 targetIp 均命中新行；同 IP 双活跃设备解析跟随最近心跳）+ 端点集成 1 项（`RemoteIp` 请求头模拟同来源 IP 双注册，`/api/devices/by-ip/{ip}` 命中新行且在线）；`TempServer` 支持注入时间源。顺带修正 `ServerDb` 一处错位的文档注释（`CreateJobAsync` 的 summary 误置于 `FindDeviceByIpAsync` 上）。
+
 ## 缺陷 #58 托盘菜单「退出」不生效修复（统一退出路径 + 幽灵图标清理） · 2026-09-11
 
 - **退出路径统一为「优雅停止 + 限时兜底强退」（决策 #112，AC-01 / AC-02 / AC-04）**：托盘菜单「退出」与 `/api/host/shutdown`（Web UI 设置页「退出程序」）此前一弱一强——托盘回调只调 `StopApplication()`，而 `RunAsync` 在托盘 / 界面消息循环在场时不自然返回（Issue #58 证据链：本机 2/2 复现进程僵死 >2 分钟，主线程停在 Main 的阻塞等待，`finally` 中的 `Environment.Exit` 永不执行）。修复 = 新增 `HostExitCoordinator` 统一入口：`StopApplication` → 有限等待（默认 2.5 秒）主流程自然退出 → 超时执行清理后 `Environment.Exit(0)` 强退兜底；两条入口共用同一序列（HTTP 路径保留 200ms 响应送达缓冲），不再有强弱退差异。
