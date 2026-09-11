@@ -206,6 +206,17 @@ export interface ClientPackageInfo {
   url?: string
 }
 
+// ── PDA（Android 宿主）安装包分发（迭代 59 决策 #119：服务端 pda-packages 目录 + API，与 client-packages 对称）──
+
+/** 服务端可用 PDA 安装包（GET /api/pda-packages；下载 MIME 为 application/vnd.android.package-archive）。 */
+export interface PdaPackageInfo {
+  fileName: string
+  sizeBytes: number
+  modifiedAt: string
+  /** 下载 URL（后端提供；前端也可按 {serverBaseUrl}/api/pda-packages/{fileName} 自行构造）。 */
+  url?: string
+}
+
 // ── 迭代 23：客户端插件分发（服务端 plugin-packages + 客户端 /api/plugins 安装 / 卸载）──
 
 /** 服务端插件包列表项（GET /api/plugin-packages；invalid 条目元数据字段缺失，仅文件信息有效）。 */

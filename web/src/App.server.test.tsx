@@ -28,6 +28,9 @@ const mocks = vi.hoisted(() => ({
     listClientPackages: vi.fn(),
     uploadClientPackage: vi.fn(),
     deleteClientPackage: vi.fn(),
+    listPdaPackages: vi.fn(),
+    uploadPdaPackage: vi.fn(),
+    deletePdaPackage: vi.fn(),
     listPluginPackages: vi.fn(),
     uploadPluginPackage: vi.fn(),
     deletePluginPackage: vi.fn(),
@@ -67,6 +70,7 @@ vi.mock('./lib/api/client', () => ({
   setServerBaseUrl: vi.fn(),
   probeHealthz: mocks.probeHealthz,
   clientPackageDownloadUrl: (fileName: string) => `/api/client-packages/${encodeURIComponent(fileName)}`,
+  pdaPackageDownloadUrl: (fileName: string) => `/api/pda-packages/${encodeURIComponent(fileName)}`,
   pluginPackageDownloadUrl: (fileName: string) => `/api/plugin-packages/${encodeURIComponent(fileName)}`,
 }))
 
@@ -82,6 +86,7 @@ beforeEach(() => {
     { deviceId: 'device-1', name: '仓库-1 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online', lastIp: '192.168.1.5' },
   ])
   mocks.server.listClientPackages.mockResolvedValue([])
+  mocks.server.listPdaPackages.mockResolvedValue([])
   mocks.server.listPluginPackages.mockResolvedValue([])
   mocks.local.listTemplates.mockResolvedValue([])
 })
@@ -91,7 +96,7 @@ afterEach(() => {
 })
 
 describe('server 构建：菜单裁剪（迭代 20 §2.2 / Y5）', () => {
-  it('含 在线设备 / 设备日志 / 客户端下载 / 插件管理 / 工作台 / 设计器 / 数据与打印 / 作业历史；不含 设置 / PDA 日志', async () => {
+  it('含 在线设备 / 设备日志 / 下载中心 / 插件管理 / 工作台 / 设计器 / 数据与打印 / 作业历史；不含 设置 / PDA 日志', async () => {
     render(<App />)
     expect(await screen.findByRole('button', { name: '在线设备' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '设备日志' })).toBeTruthy()
@@ -99,9 +104,9 @@ describe('server 构建：菜单裁剪（迭代 20 §2.2 / Y5）', () => {
     expect(screen.getByRole('button', { name: '设计器' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '数据与打印' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '作业历史' })).toBeTruthy()
-    // 迭代 22 §2.3：Server UI「客户端下载」页入口
-    expect(screen.getByRole('button', { name: '客户端下载' })).toBeTruthy()
-    // 迭代 23 §5.4：Server UI「插件管理」页入口（与「客户端下载」并列）
+    // 迭代 59（决策 #119）：Server UI 统一「下载中心」页入口（原「客户端下载」页升级）
+    expect(screen.getByRole('button', { name: '下载中心' })).toBeTruthy()
+    // 迭代 23 §5.4：Server UI「插件管理」页入口（与「下载中心」并列）
     expect(screen.getByRole('button', { name: '插件管理' })).toBeTruthy()
     // 设置页与 PDA 日志（client 版命名）不存在
     expect(screen.queryByRole('button', { name: '设置' })).toBeNull()
@@ -136,19 +141,31 @@ describe('server 构建：在线设备页入口', () => {
   })
 })
 
-describe('server 构建：客户端下载页入口（迭代 22 §2.3）', () => {
-  it('点击「客户端下载」tab：列表 / 上传 / 刷新按钮齐全（GET /api/client-packages）', async () => {
+describe('server 构建：下载中心页入口（迭代 22 §2.3；迭代 59 升级为统一下载中心）', () => {
+  it('点击「下载中心」tab：客户端 + PDA 双分区列表 / 上传 / 刷新齐全（GET /api/client-packages + /api/pda-packages）', async () => {
     mocks.server.listClientPackages.mockResolvedValue([
       { fileName: 'LabelFrame.Client-0.18.0.msi', sizeBytes: 2 * 1024 * 1024, modifiedAt: '2026-08-17T10:00:00Z', url: '/api/client-packages/LabelFrame.Client-0.18.0.msi' },
     ])
+    mocks.server.listPdaPackages.mockResolvedValue([
+      { fileName: 'LabelFrame-AndroidHost-0.26.0.apk', sizeBytes: 22 * 1024 * 1024, modifiedAt: '2026-09-10T08:00:00Z', url: '/api/pda-packages/LabelFrame-AndroidHost-0.26.0.apk' },
+    ])
     render(<App />)
-    fireEvent.click(await screen.findByRole('button', { name: '客户端下载' }))
+    fireEvent.click(await screen.findByRole('button', { name: '下载中心' }))
     expect(await screen.findByText('LabelFrame.Client-0.18.0.msi')).toBeTruthy()
+    expect(screen.getByText('LabelFrame-AndroidHost-0.26.0.apk')).toBeTruthy()
     expect(screen.getByText('2.0 MB')).toBeTruthy()
-    expect(screen.getByRole('button', { name: '上传安装包' })).toBeTruthy()
-    // 下载链接（server 构建同源相对路径）
-    const link = screen.getByRole('link', { name: /下载/ })
-    expect(link.getAttribute('href')).toBe('/api/client-packages/LabelFrame.Client-0.18.0.msi')
+    expect(screen.getByRole('button', { name: /上传客户端安装包/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /上传 APK/ })).toBeTruthy()
+    // 下载链接（server 构建同源相对路径；链接可访问名取内容「下载」，故按 title 定位）
+    const clientLink = screen.getByTitle('下载 LabelFrame.Client-0.18.0.msi')
+    expect(clientLink.tagName).toBe('A')
+    expect(clientLink.getAttribute('href')).toBe('/api/client-packages/LabelFrame.Client-0.18.0.msi')
+    const pdaLink = screen.getByTitle('下载 LabelFrame-AndroidHost-0.26.0.apk')
+    expect(pdaLink.tagName).toBe('A')
+    expect(pdaLink.getAttribute('href')).toBe('/api/pda-packages/LabelFrame-AndroidHost-0.26.0.apk')
+    // 二维码（title = origin + 下载路径）与 Android 授权文案
+    expect(screen.getByTitle(`${window.location.origin}/api/pda-packages/LabelFrame-AndroidHost-0.26.0.apk`)).toBeTruthy()
+    expect(screen.getByText(/未知来源/)).toBeTruthy()
   })
 })
 

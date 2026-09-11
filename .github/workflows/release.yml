@@ -2,7 +2,7 @@
 # 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
 # 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 创建 GitHub Release。
 # MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
-# APK 签名：仓库配置 ANDROID_KEYSTORE_BASE64 等 Secret 时自动签名，否则回退 debug 签名并告警（决策 #104）。
+# APK 签名：四个 ANDROID_KEYSTORE_* / ANDROID_KEY_* Secret 必须齐备，缺失即构建失败——不回退 debug 签名（签名稳定化，迭代 59 决策 #119）。
 name: release
 
 on:
@@ -246,39 +246,44 @@ jobs:
           PATCH=$(echo "$VERSION" | cut -d. -f3)
           echo "VERSION_CODE=$((MAJOR*10000 + MINOR*100 + ${PATCH:-0}))" >> "$GITHUB_ENV"
 
-      - name: 准备签名 keystore（配置 Secret 时；缺失回退 debug 签名）
+      # 签名稳定化（迭代 59 决策 #119）：Release 构建绝不回退 debug 签名——Secrets 缺失即失败。
+      # 回退路径意味着两次构建可能签名不一致：用户无法覆盖升级，且换签名会重置 ANDROID_ID（设备号绑定签名），
+      # 服务端设备目录错乱。证书管理与换签名影响见 docs/DEPLOY.md §7。
+      - name: 校验并准备签名 keystore（Secrets 缺失即失败）
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            mkdir -p "$HOME/keystore"
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$HOME/keystore/labelframe-release.keystore"
-            echo "keystore_ready=1" >> "$GITHUB_ENV"
-            echo "将使用配置的 keystore 签名 Release APK"
-          else
-            echo "::warning::未配置 ANDROID_KEYSTORE_BASE64，本次 APK 为 debug 签名（正式分发前请按 docs/DEPLOY.md §7 配置签名 Secret）"
+          MISSING=0
+          for VAR in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!VAR}" ]; then
+              echo "::error::缺少 Android 签名 Secret：$VAR（Release 构建不回退 debug 签名；请按 docs/DEPLOY.md §7 配置，keystore 生成后务必备份）"
+              MISSING=1
+            fi
+          done
+          if [ "$MISSING" = "1" ]; then
+            exit 1
           fi
+          mkdir -p "$HOME/keystore"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$HOME/keystore/labelframe-release.keystore"
+          echo "签名 Secrets 齐备，将使用配置的 keystore 签名 Release APK"
 
-      - name: 构建 Release APK（版本号由 tag 注入）
+      - name: 构建 Release APK（版本号由 tag 注入，keystore 签名）
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          SIGN_ARGS=()
-          if [ "${keystore_ready:-0}" = "1" ]; then
-            SIGN_ARGS+=(
-              -p:AndroidKeyStore=true
-              -p:AndroidSigningKeyStore="$HOME/keystore/labelframe-release.keystore"
-              -p:AndroidSigningStorePass="$ANDROID_KEYSTORE_PASSWORD"
-              -p:AndroidSigningKeyAlias="$ANDROID_KEY_ALIAS"
-              -p:AndroidSigningKeyPass="$ANDROID_KEY_PASSWORD"
-            )
-          fi
           dotnet build src/LabelFrame.AndroidHost/LabelFrame.AndroidHost.csproj \
             -c Release -p:EmbedAssembliesIntoApk=true -p:AndroidSdkDirectory=$ANDROID_HOME \
             -p:ApplicationDisplayVersion="$VERSION" -p:ApplicationVersion="$VERSION_CODE" \
-            "${SIGN_ARGS[@]}"
+            -p:AndroidKeyStore=true \
+            -p:AndroidSigningKeyStore="$HOME/keystore/labelframe-release.keystore" \
+            -p:AndroidSigningStorePass="$ANDROID_KEYSTORE_PASSWORD" \
+            -p:AndroidSigningKeyAlias="$ANDROID_KEY_ALIAS" \
+            -p:AndroidSigningKeyPass="$ANDROID_KEY_PASSWORD"
 
       - name: 整理发布产物
         run: |

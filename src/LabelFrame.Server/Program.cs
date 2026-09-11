@@ -56,6 +56,7 @@ var timeProvider = TimeProvider.System;
 // ServerService 经 DI 工厂构造：注入宿主 ILogger<ServerService>（含文件日志通道），
 // 业务事件日志（作业创建 / 认领 / 终态，决策 #108）与框架日志走同一条管道，级别经标准 Logging:LogLevel 可降级。
 var clientPackages = new ClientPackagesService(serverOptions.ClientPackagesPath);
+var pdaPackages = new PdaPackagesService(serverOptions.PdaPackagesPath);
 var pluginPackages = new PluginPackagesService(serverOptions.PluginPackagesPath);
 
 builder.Services.ConfigureHttpJsonOptions(json =>
@@ -78,6 +79,7 @@ builder.Services.AddSingleton(timeProvider);
 builder.Services.AddSingleton(templateStore);
 builder.Services.AddSingleton(logStore);
 builder.Services.AddSingleton(clientPackages);
+builder.Services.AddSingleton(pdaPackages);
 builder.Services.AddSingleton(pluginPackages);
 builder.Services.AddHostedService(sp => new DataCleanupService(db, logStore, serverOptions, sp.GetRequiredService<ILogger<DataCleanupService>>()));
 // Pending 过期扫描（TTL 关闭时任务直接退出）；正确性由领取查询的 TTL 过滤兜底

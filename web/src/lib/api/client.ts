@@ -14,6 +14,7 @@ import type {
   InstalledPluginInfo,
   JobView,
   LogEntry,
+  PdaPackageInfo,
   PluginInstallResult,
   PluginPackageInfo,
   PluginUninstallResult,
@@ -249,6 +250,15 @@ export const serverApi = {
   },
   deleteClientPackage: (fileName: string) => serverRequest<void>(`/api/client-packages/${encodeURIComponent(fileName)}`, { method: 'DELETE' }),
 
+  // ── PDA（Android 宿主）安装包分发（迭代 59 决策 #119：仅 Server 实现；与客户端安装包同模式）──
+  listPdaPackages: () => serverRequest<PdaPackageInfo[]>('/api/pda-packages'),
+  uploadPdaPackage: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return serverRequest<PdaPackageInfo[]>('/api/pda-packages', { method: 'POST', body: form })
+  },
+  deletePdaPackage: (fileName: string) => serverRequest<void>(`/api/pda-packages/${encodeURIComponent(fileName)}`, { method: 'DELETE' }),
+
   // ── 插件包分发（迭代 23 §2.1：仅 Server 实现；64MB 上限与校验在后端，前端按 sizeBytes 预检）──
   listPluginPackages: () => serverRequest<PluginPackageInfo[]>('/api/plugin-packages'),
   uploadPluginPackage: (file: File) => {
@@ -270,6 +280,11 @@ export const serverApi = {
 /** 客户端安装包下载 URL（Server UI 与客户端设置「更新与安装包」共用；server 构建下 base 为空 = 同源相对路径）。 */
 export function clientPackageDownloadUrl(fileName: string): string {
   return `${getServerBaseUrl()}/api/client-packages/${encodeURIComponent(fileName)}`
+}
+
+/** PDA（Android 宿主）安装包下载 URL（迭代 59：Server UI「下载中心」页与二维码共用；server 构建下 base 为空 = 同源相对路径）。 */
+export function pdaPackageDownloadUrl(fileName: string): string {
+  return `${getServerBaseUrl()}/api/pda-packages/${encodeURIComponent(fileName)}`
 }
 
 /** 插件包下载 URL（迭代 23：Server UI「插件管理」页下载链接；与 clientPackageDownloadUrl 同模式）。 */

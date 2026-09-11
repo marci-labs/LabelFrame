@@ -29,4 +29,7 @@ public static class ServerErrorCodes
 
     /// <summary>宿主失联超时（Claimed 作业超时回收的原因码，嵌入回收后的 ErrorMessage 文案；非 HTTP 错误响应）。</summary>
     public const string HostLostTimeout = "LF_SRV_009";
+
+    /// <summary>PDA（Android 宿主）安装包不存在（迭代 59 决策 #119）。</summary>
+    public const string PdaPackageNotFound = "LF_SRV_010";
 }

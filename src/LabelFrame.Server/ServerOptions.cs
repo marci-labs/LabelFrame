@@ -68,6 +68,9 @@ public sealed class ServerOptions
     /// <summary>客户端安装包目录（服务端统一分发客户端安装包；Windows %ProgramData%\\LabelFrame\\server\\client-packages；Linux /var/lib/labelframe/server/client-packages）。</summary>
     public static string DefaultClientPackagesPath => Path.Combine(DefaultDataDirectory, "client-packages");
 
+    /// <summary>PDA（Android 宿主）安装包目录（服务端统一分发 PDA 的 APK；Windows %ProgramData%\\LabelFrame\\server\\pda-packages；Linux /var/lib/labelframe/server/pda-packages；迭代 59 决策 #119）。</summary>
+    public static string DefaultPdaPackagesPath => Path.Combine(DefaultDataDirectory, "pda-packages");
+
     /// <summary>传输插件包目录（插件包上传服务端独立目录；Windows %ProgramData%\LabelFrame\server\plugin-packages；Linux /var/lib/labelframe/server/plugin-packages）。</summary>
     public static string DefaultPluginPackagesPath => Path.Combine(DefaultDataDirectory, "plugin-packages");
 
@@ -75,6 +78,8 @@ public sealed class ServerOptions
     public string PluginPackagesPath { get; set; } = DefaultPluginPackagesPath;
     /// <summary>客户端安装包目录（存在即列出；目录直放文件或经 API 上传都支持）。</summary>
     public string ClientPackagesPath { get; set; } = DefaultClientPackagesPath;
+    /// <summary>PDA（Android 宿主）安装包目录（存在即列出；目录直放文件或经 API 上传都支持，上传仅接受 .apk；迭代 59 决策 #119）。</summary>
+    public string PdaPackagesPath { get; set; } = DefaultPdaPackagesPath;
 
     /// <summary>默认服务端管理界面插件目录（Windows %ProgramData%\LabelFrame\server\plugins\web-ui；Linux /var/lib/labelframe/server/plugins/web-ui）。</summary>
     public static string DefaultWebUiPath => Path.Combine(DefaultDataDirectory, "plugins", "web-ui");
@@ -158,6 +163,10 @@ public sealed class ServerOptions
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_CLIENT_PACKAGES") is { } clientPackages)
         {
             ClientPackagesPath = string.IsNullOrWhiteSpace(clientPackages) ? DefaultClientPackagesPath : clientPackages;
+        }
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_PDA_PACKAGES") is { } pdaPackages)
+        {
+            PdaPackagesPath = string.IsNullOrWhiteSpace(pdaPackages) ? DefaultPdaPackagesPath : pdaPackages;
         }
 
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_WEB_UI") is { } webUi)

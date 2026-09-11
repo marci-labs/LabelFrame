@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 59 安装引导专项（3/8）：PDA 签名稳定化 + 服务端下载中心（扫码下载） · 2026-09-11
+
+- **`pda-packages` 目录 + API（决策 #119，与 client-packages 模式对称，三项待决议用户确认）**：服务端数据目录新增 `pda-packages`（`LABELFRAME_SERVER_PDA_PACKAGES` 可覆盖；Docker compose 默认挂载 `./pda-packages`）+ `GET/POST /api/pda-packages`、`GET/DELETE /api/pda-packages/{file}` 列表 / 上传 / 下载 / 删除——路径穿越防护共享 `FilePackageService`；**上传仅接受 `.apk`**（目录直放不限制扩展名，照常列出）；**APK 下载响应 MIME 固定 `application/vnd.android.package-archive`**（Android 浏览器识别为安装包直接拉起安装）；错误码增量 `LF_SRV_010`（不存在 404）。API 属服务端本体，无头服务端直放文件即可分发，管理界面（可选插件）只是操作入口。
+- **统一「下载中心」页（Server UI，原「客户端下载」页升级）**：客户端安装包与 PDA 安装包同页分区展示（各自上传按钮、空态提示目录直放方式），条目按修改时间**倒序（最新在上）**（页面内排序先行，`latest.json` 落地后再对齐「推荐 / 最新」标记）；**每条目旁展示二维码**（`qrcode-generator` 渲染，内容 = 管理员浏览器正在访问的局域网地址 + 该条目下载路径）——PDA 与服务器同网扫码即得下载 URL；PDA 区常驻「未知来源 / 安装未知应用」授权步骤与同签名覆盖升级提示文案。**client-packages 既有行为不动**：客户端设置页「更新与安装包」卡片与既有端点零变更，仅并入下载中心展示。
+- **release.yml 签名稳定化（流程治理授权范围；三项必需检查名称与语义不变）**：移除 debug 签名回退——Release 构建前逐项校验四个签名 Secrets（`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`），任一缺失 `::error::` + exit 1 构建失败，**绝不静默降级**（回退路径 = 两次构建可能签名不一致：用户无法覆盖升级且换签名重置 ANDROID_ID 致设备号漂移，对决策 #104③ 过渡路径收口）；构建步骤签名参数由条件拼接改为恒定传入。日常 CI 第三必需检查「Android 构建（PDA 宿主）」（ci.yml）不动——仍 debug 签名验证可构建，不对外分发。
+- **证书管理与换签名影响文档化（README / DEPLOY §7 / AndroidHost README）**：keystore 托管位置（GitHub Secrets + 生成方离线备份，不得入库）、备份要求（丢失 = 无法再发同签名升级包）、换签名影响（卸载重装 + ANDROID_ID 变 → 设备号变，对齐决策 #104 口径）与 PDA 扫码装机路径（DEPLOY §6 新增小节）。
+- **测试**：服务端新增 12 项——服务级 7 项（`PdaPackagesServiceTests`：保存 / 列表 / URL、.apk 上传限制（含大小写）、路径穿越拒绝、目录直放非 apk 照常列出、下载路径解析、删除、同名覆盖）+ HTTP 集成 5 项（`PdaPackagesEndpointsTests`：上传后下载 **Content-Type = application/vnd.android.package-archive**、非 apk 上传 400 + 中文消息、缺失 404 + `LF_SRV_010`、目录直放列出、删除后二次 404）；前端新增 `DownloadCenter.test.tsx` 9 项（双分区列表 / 时间排序最新在上 / 二维码 title = origin + 下载路径 / Android 授权文案 / 双空态 / 加载失败 / 双分区上传与刷新 / PDA 删除确认与取消 / 客户端删除），`App.server.test.tsx` 随页更名与入口断言更新。
+- **真机验收滞后（AC-02 / AC-03）**：PDA 真机扫码下载与同签名覆盖升级（设备号不变）转 `待验收`（恢复条件：UROVO DT50 等 PDA 与同网服务端可得）；AC-01（Secrets 缺失构建失败）以 workflow 文件审阅 + 逻辑推演自证，真实触发依赖发版 tag 属验收范畴。
 ## 迭代 57 安装引导专项（1/8）——设计契约：安装清单格式、拓扑预设与信任模型 · 2026-09-11
 
 - **纯文档契约迭代（不写产品代码）**：`docs/DESIGN.md` 新增「安装引导（Bootstrapper）」章节（新 §6，原「风险与未决问题」顺延为 §7，PERF-BASELINE 两处引用同步），决策表新增 #114~#118——专项 2/8（#51 CI manifest）起的实现以此契约为准（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码）。
@@ -17,7 +25,7 @@
 ## 缺陷 #46 同 IP 双设备号按 IP 解析命中旧行修复（最近活跃优先） · 2026-09-11
 
 - **排查确认（缺陷成立，本地复现不依赖真机）**：`devices.last_ip` 无唯一约束 / 无索引，设备号变更后新设备号从同 IP 注册**插入新行**，旧行 `last_ip` 无人清除（全仓仅 `ServerDb` 三处写 devices——注册 upsert / notify 心跳 / 领取事务，均单行更新，**无跨行清理路径**）；`FindDeviceByIpAsync` 原为 `WHERE last_ip = $ip COLLATE NOCASE LIMIT 1` **无 ORDER BY**——SQLite 无索引全表扫描按 rowid 序，稳定命中先注册的旧行。修复前实测：同 IP「旧行 stale / 新行活跃」场景，`FindDeviceByIpAsync`、`SubmitJobAsync` targetIp 解析、`GET /api/devices/by-ip/{ip}` 三路全部返回旧设备号（新增 4 项复现测试在未修复代码上全部失败，与用户现象一致）。
-- **修复 = 按 IP 解析改「最近活跃优先」（决策 #114，Issue 候选方向 A）**：`FindDeviceByIpAsync` 加 `ORDER BY last_seen_at DESC, registered_at DESC, id`（后两项为确定性平手序）——设备号变更后必命中活跃新行；两个消费方（by-ip 端点与 targetIp 投递解析）共用该方法一并修复，按 IP 投递不再路由到已停用的旧设备号（长期 Pending 收不到）。**不取方向 B（写入时清除同 IP 其他行）**：NAT 共网出口下多台真机合法共用一个出口 IP，B 会让每次心跳抹掉其他设备的 last_ip（目录 IP 显示丢失、by-ip 退化为「最后写者」）且写放大；同 IP 多设备都活跃时 A 跟随最近一次心跳，尽力而为且不破坏目录数据。行为变化仅在「同 IP 多行」场景（先注册行 → 最近活跃行），单行场景零变化；无需数据迁移。
+- **修复 = 按 IP 解析改「最近活跃优先」（决策 #113，Issue 候选方向 A）**：`FindDeviceByIpAsync` 加 `ORDER BY last_seen_at DESC, registered_at DESC, id`（后两项为确定性平手序）——设备号变更后必命中活跃新行；两个消费方（by-ip 端点与 targetIp 投递解析）共用该方法一并修复，按 IP 投递不再路由到已停用的旧设备号（长期 Pending 收不到）。**不取方向 B（写入时清除同 IP 其他行）**：NAT 共网出口下多台真机合法共用一个出口 IP，B 会让每次心跳抹掉其他设备的 last_ip（目录 IP 显示丢失、by-ip 退化为「最后写者」）且写放大；同 IP 多设备都活跃时 A 跟随最近一次心跳，尽力而为且不破坏目录数据。行为变化仅在「同 IP 多行」场景（先注册行 → 最近活跃行），单行场景零变化；无需数据迁移。
 - **测试**：新增 4 项——服务级 3 项（FakeTimeProvider 时间确定：同 IP 旧行 stale / 新行活跃 → by-ip 与 targetIp 均命中新行；同 IP 双活跃设备解析跟随最近心跳）+ 端点集成 1 项（`RemoteIp` 请求头模拟同来源 IP 双注册，`/api/devices/by-ip/{ip}` 命中新行且在线）；`TempServer` 支持注入时间源。顺带修正 `ServerDb` 一处错位的文档注释（`CreateJobAsync` 的 summary 误置于 `FindDeviceByIpAsync` 上）。
 ## 缺陷 #62 无字段模板打印测试修复（数据与打印页静态标签可打印） · 2026-09-11
 
