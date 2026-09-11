@@ -206,6 +206,10 @@ public static class WinHostApp
         // 图片资源解析统一：请求附带 base64 优先、按名回退本地模板库（两端点行为一致）
         app.MapRenderApi(new RenderApiOptions(templateStore, skiaRenderer, options.Dpi, JobErrorCodes.InvalidRequest));
 
+        // 设备日志端点（迭代 51 补挂：与 Server 共享实现，决策 #106）——客户端实例 /api/logs 返回 JSON，
+        // 不再命中下方 SPA 回退；错误码与宿主其他共享端点一致 LF_API_001
+        app.MapLogApi(new LogApiOptions(logStore, JobErrorCodes.InvalidRequest));
+
         // ---- 宿主专属端点（分组实现见 Api/ 目录）----
         app.MapTransportApi();
 #if WINDOWS
