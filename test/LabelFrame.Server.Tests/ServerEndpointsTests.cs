@@ -3,7 +3,11 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using LabelFrame.Server;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace LabelFrame.Server.Tests;
@@ -156,6 +160,27 @@ public sealed class ServerEndpointsTests : IDisposable
             Json("""{ "status": "Completed", "completedItems": 1 }"""))).StatusCode);
     }
 
+    [Fact]
+    public async Task By_ip_lookup_should_prefer_recently_active_device_when_same_ip()
+    {
+        // 缺陷 #46 集成复现：同 IP 双设备号（设备号变更后新设备号从同 IP 注册）——
+        // by-ip 端点须命中最近活跃（新）行，而非先注册的旧行（旧行 stale 但 last_ip 保留）
+        using var factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+                services.AddSingleton<IStartupFilter>(new RemoteIpHeaderStartupFilter("X-Test-Remote-IP"))));
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Test-Remote-IP", "192.168.7.77");
+
+        var first = await client.PostAsync("/api/devices", Json("""{ "deviceId": "pc-old", "name": "旧设备号" }"""));
+        Assert.True(first.IsSuccessStatusCode, $"旧设备号注册失败：{(int)first.StatusCode}");
+        var second = await client.PostAsync("/api/devices", Json("""{ "deviceId": "pc-new", "name": "新设备号" }"""));
+        Assert.True(second.IsSuccessStatusCode, $"新设备号注册失败：{(int)second.StatusCode}");
+
+        var found = await client.GetFromJsonAsync<JsonElement>("/api/devices/by-ip/192.168.7.77");
+        Assert.Equal("pc-new", found.GetProperty("deviceId").GetString());
+        Assert.Equal("Online", found.GetProperty("status").GetString());
+    }
+
     private async Task PostOkAsync(string url, string json)
     {
         var response = await _client.PostAsync(url, Json(json));
@@ -163,6 +188,26 @@ public sealed class ServerEndpointsTests : IDisposable
     }
 
     private static StringContent Json(string body) => new(body, Encoding.UTF8, "application/json");
+
+    /// <summary>测试来源模拟：按请求头改写 RemoteIpAddress（模拟同 IP 双设备号注册），插入管道最前。</summary>
+    private sealed class RemoteIpHeaderStartupFilter(string headerName) : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
+            app =>
+            {
+                app.Use((context, forward) =>
+                {
+                    // TestServer 默认来源为 null——带请求头时按头改写（模拟同一来源 IP 的两次注册）
+                    if (context.Request.Headers.TryGetValue(headerName, out var ip))
+                    {
+                        context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(ip.ToString());
+                    }
+
+                    return forward();
+                });
+                next(app);
+            };
+    }
 
     public void Dispose()
     {

@@ -168,13 +168,23 @@ public sealed class ServerDb
         return devices;
     }
 
-    /// <summary>创建作业；requestId 已存在时返回已有作业。</summary>
-    /// <summary>按 last_ip 精确查找设备（忽略大小写；未找到返回 null）。</summary>
+    /// <summary>
+    /// 按 last_ip 精确查找设备（忽略大小写；未找到返回 null）。
+    /// 同 IP 多行并存（设备号变更后新行插入、旧行 last_ip 无人清除，缺陷 #46）时按
+    /// 最近活跃优先（last_seen_at DESC，注册时间与 id 作确定性平手序）——旧行 stale、新行活跃必命中新行；
+    /// 同 IP 多设备且都活跃（如 NAT 共网出口）时跟随最近一次心跳的设备。
+    /// </summary>
     public async Task<Device?> FindDeviceByIpAsync(string ip, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id, name, registered_at, last_seen_at, last_ip FROM devices WHERE last_ip = $ip COLLATE NOCASE LIMIT 1;";
+        command.CommandText = """
+            SELECT id, name, registered_at, last_seen_at, last_ip
+            FROM devices
+            WHERE last_ip = $ip COLLATE NOCASE
+            ORDER BY last_seen_at DESC, registered_at DESC, id
+            LIMIT 1;
+            """;
         command.Parameters.AddWithValue("$ip", ip);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -193,6 +203,7 @@ public sealed class ServerDb
     }
 
 
+    /// <summary>创建作业；requestId 已存在时返回已有作业。</summary>
     public async Task<ServerJob?> CreateJobAsync(ServerJob job, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
