@@ -22,9 +22,34 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Zebra 官方 Link-OS SDK：USB / TCP / 驱动 / 蓝牙 统一连接与打印机状态 -->
+    <!-- Zebra 官方 Link-OS SDK：USB / TCP / 驱动 / 蓝牙 统一连接与打印机状态。5.0.3685 与 AndroidHost 统一双端版本（迭代 56，决策 #111）。 -->
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
-    <PackageReference Include="Zebra.Printer.SDK" Version="3.0.3355" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Zebra.Printer.SDK" Version="5.0.3685" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <!-- 毒丸引用清单（Windows 验证版，全部 ExcludeAssets="all"，迭代 56 实证）：
+         Zebra SDK 5.x 传递依赖 SkiaSharp.Views.Maui.Controls，其 MAUI / WinUI 程序集链会——
+         ① 混入编译（Microsoft.Maui.Controls.Label 与 WinForms Label 二义、Microsoft.WinUI 与
+            WebView2.Core.Projection 的 CoreWebView2* 类型冲突）；
+         ② WindowsAppSDK 的 buildTransitive 注入 win10-* RID 图（本工程 win-x64 framework-dependent 不识别，NETSDK1083）。
+         ExcludeAssets="all" 不裁剪传递闭包，故须逐包显式排除整条 MAUI / WinUI 链；NuGet 解析器对未排除的
+         MAUI 资产按 RID / 平台不匹配处理，不进发布产物。保留 SkiaSharp + SkiaSharp.NativeAssets.Win32
+         （SDK 图形工具引用）。System.Drawing.Common 在 Windows 可用，无需排除（与 Android 清单的差异）。 -->
+    <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="3.119.2" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="SkiaSharp.Views" Version="3.119.2" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="SkiaSharp.Views.Maui.Core" Version="3.119.2" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="SkiaSharp.Views.WinUI" Version="3.119.2" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="SkiaSharp.NativeAssets.WinUI" Version="3.119.2" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="8.0.82" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Maui.Controls.Core" Version="8.0.82" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Maui.Controls.Xaml" Version="8.0.82" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Maui.Core" Version="8.0.82" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Maui.Essentials" Version="8.0.82" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Maui.Graphics" Version="8.0.82" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Maui.Graphics.Win2D.WinUI.Desktop" Version="8.0.82" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Maui.Resizetizer" Version="8.0.82" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Maui.Controls.Build.Tasks" Version="8.0.82" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Graphics.Win2D" Version="1.2.0" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240627000" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.756" ExcludeAssets="all" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
     <!-- 界面壳：WebView2 嵌入窗口（迭代 44，决策 #99；原生 WebView2Loader.dll 随发布产物进 MSI） -->
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
     <!-- 文件日志：Serilog.AspNetCore 传递依赖 Serilog.Sinks.File，无需单独引用 -->
@@ -46,5 +71,14 @@
     <ProjectReference Include="..\LabelFrame.Api\LabelFrame.Api.csproj" />
     <ProjectReference Include="..\LabelFrame.Rendering\LabelFrame.Rendering.csproj" />
   </ItemGroup>
+
+  <!-- SkiaSharp.NativeAssets.Win32 包内附带 81MB 的原生 libSkiaSharp.pdb（runtimes 资产，非编译产物，
+       -p:DebugType=None 不影响包内文件），进发布产物会让 MSI 体积失控——发布后删除（迭代 56，决策 #111）。 -->
+  <Target Name="RemoveSkiaSharpNativePdb" AfterTargets="Publish" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'">
+    <ItemGroup>
+      <SkiaSharpNativePdbs Include="$(PublishDir)libSkiaSharp.pdb" />
+    </ItemGroup>
+    <Delete Files="@(SkiaSharpNativePdbs)" />
+  </Target>
 
 </Project>

@@ -8,5 +8,11 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <!-- 蓝牙连接类型（迭代 56，决策 #111）：API 31+ 走 BLUETOOTH_CONNECT 运行时权限；
+       legacy 蓝牙权限限 maxSdk 30（Zebra SDK SPP 连接需要） -->
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+  <!-- USB 连接类型：无需静态权限，首次连接由 Zebra SDK 触发系统授权弹窗 -->
   <application android:label="LabelFrame 标签打印" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:usesCleartextTraffic="true" />
 </manifest>

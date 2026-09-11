@@ -61,8 +61,13 @@ public sealed class MainActivity : Activity
     private TextView _serverSaveHint = null!;
 
     // 打印机子页
+    private RadioGroup _connectionTypeGroup = null!;
+    private LinearLayout _tcpFields = null!;
     private EditText _ipInput = null!;
     private EditText _portInput = null!;
+    private LinearLayout _bluetoothFields = null!;
+    private EditText _macInput = null!;
+    private LinearLayout _usbFields = null!;
     private TextView _printTestText = null!;
     private TextView _printerSaveHint = null!;
 
@@ -353,6 +358,26 @@ public sealed class MainActivity : Activity
         content.AddView(Header("连接打印机"));
         content.AddView(Spacing(10));
 
+        // 连接类型（网口默认且一级路径；蓝牙 / USB 为增量类型，迭代 56 决策 #111）
+        content.AddView(FieldLabel("连接方式"));
+        _connectionTypeGroup = new RadioGroup(this);
+        _connectionTypeGroup.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+        var tcpRadio = ConnectionRadio("网线（推荐）", "插网线的打印机，填 IP 地址");
+        tcpRadio.Id = 0x1001;
+        var bluetoothRadio = ConnectionRadio("蓝牙", "在打印机设置里能找到蓝牙地址");
+        bluetoothRadio.Id = 0x1002;
+        var usbRadio = ConnectionRadio("USB 数据线", "打印机用数据线连着这台 PDA");
+        usbRadio.Id = 0x1003;
+        _connectionTypeGroup.AddView(tcpRadio);
+        _connectionTypeGroup.AddView(bluetoothRadio);
+        _connectionTypeGroup.AddView(usbRadio);
+        _connectionTypeGroup.Check(SelectedConnectionRadio());
+        _connectionTypeGroup.CheckedChange += (_, _) => UpdateConnectionFields();
+        content.AddView(_connectionTypeGroup);
+        content.AddView(Spacing(10));
+
+        // 网口参数：IP + 端口
+        _tcpFields = new LinearLayout(this) { Orientation = Orientation.Vertical };
         var fieldRow = new LinearLayout(this) { Orientation = Orientation.Horizontal };
         fieldRow.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
         var ipColumn = new LinearLayout(this) { Orientation = Orientation.Vertical };
@@ -370,9 +395,29 @@ public sealed class MainActivity : Activity
         portColumn.AddView(_portInput);
         fieldRow.AddView(ipColumn);
         fieldRow.AddView(portColumn);
-        content.AddView(fieldRow);
-        content.AddView(Spacing(6));
-        content.AddView(Subtle("不知道 IP 就问管理员；端口一般填 9100，不用改。"));
+        _tcpFields.AddView(fieldRow);
+        _tcpFields.AddView(Spacing(6));
+        _tcpFields.AddView(Subtle("不知道 IP 就问管理员；端口一般填 9100，不用改。"));
+        _tcpFields.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+        content.AddView(_tcpFields);
+
+        // 蓝牙参数：MAC 地址手输（迭代 56 预授权决议 1：首版最简）
+        _bluetoothFields = new LinearLayout(this) { Orientation = Orientation.Vertical };
+        _bluetoothFields.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+        _bluetoothFields.AddView(FieldLabel("打印机蓝牙地址"));
+        _macInput = Input("例如 00:11:22:33:44:55", _config.BluetoothMac, InputTypes.ClassText | InputTypes.TextVariationVisiblePassword);
+        _bluetoothFields.AddView(_macInput);
+        _bluetoothFields.AddView(Spacing(6));
+        _bluetoothFields.AddView(Subtle("打印机开机后在设置里找「蓝牙地址」或问管理员；先用蓝牙配对不需要，直接填地址就行。"));
+        content.AddView(_bluetoothFields);
+
+        // USB 参数：自动发现锁定第一台（无可选设备给可行动错误，迭代 56 预授权决议 2）
+        _usbFields = new LinearLayout(this) { Orientation = Orientation.Vertical };
+        _usbFields.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+        var usbNote = TextView("保存后自动识别用数据线连着的第一台 Zebra 打印机；第一次用会弹「允许访问 USB 设备」，点允许。", 12.5f, ColorTextSecondary);
+        _usbFields.AddView(usbNote);
+        content.AddView(_usbFields);
+        UpdateConnectionFields();
         content.AddView(Spacing(10));
 
         var testRow = new LinearLayout(this) { Orientation = Orientation.Horizontal };
@@ -394,6 +439,41 @@ public sealed class MainActivity : Activity
         content.AddView(SaveButton(() => RunAsync(SavePrinterAsync)));
 
         return WrapScroll(content);
+    }
+
+    /// <summary>连接方式单选项：圆角卡片行 + 标题说明，触达 ≥48dp。</summary>
+    private RadioButton ConnectionRadio(string title, string hint)
+    {
+        var button = new RadioButton(this) { Text = title, TextSize = 15 };
+        button.SetTextColor(ColorText);
+        button.SetPadding(Dp(8), Dp(10), Dp(8), Dp(10));
+        button.SetMinimumHeight(Dp(48));
+        return button;
+    }
+
+    /// <summary>当前选中连接类型对应的存储值。</summary>
+    private string SelectedConnectionType() => _connectionTypeGroup.CheckedRadioButtonId switch
+    {
+        0x1002 => LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeBluetooth,
+        0x1003 => LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeUsb,
+        _ => LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeTcp,
+    };
+
+    /// <summary>当前配置连接类型对应的单选项 Id。</summary>
+    private int SelectedConnectionRadio() => LabelFrame.AndroidHost.Transport.ZebraSdkTransport.NormalizeConnectionType(_config.ConnectionType) switch
+    {
+        LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeBluetooth => 0x1002,
+        LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeUsb => 0x1003,
+        _ => 0x1001,
+    };
+
+    /// <summary>按选中的连接方式切换参数区（只显示当前类型的参数）。</summary>
+    private void UpdateConnectionFields()
+    {
+        var type = SelectedConnectionType();
+        _tcpFields.Visibility = type == LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeTcp ? ViewStates.Visible : ViewStates.Gone;
+        _bluetoothFields.Visibility = type == LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeBluetooth ? ViewStates.Visible : ViewStates.Gone;
+        _usbFields.Visibility = type == LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeUsb ? ViewStates.Visible : ViewStates.Gone;
     }
 
     /// <summary>测试打印：经本地 HTTP 提交内置测试标签，轮询终态。用的是已保存的地址——输入未保存时先提示保存。</summary>
@@ -461,32 +541,77 @@ public sealed class MainActivity : Activity
 
     /// <summary>打印失败的可行动提示；原始原因作为第二行小字附后，供管理员远程排障。</summary>
     private static string PrintFailText(string reason) =>
-        $"✗ 没打出来——请检查打印机是否开机、IP 是否正确、是否缺纸卡纸\n原因：{reason}";
+        $"✗ 没打出来——请检查打印机是否开机、连接方式与地址是否正确、是否缺纸卡纸\n原因：{reason}";
 
-    /// <summary>输入的打印机地址与已保存（正在使用）的是否不一致。</summary>
+    /// <summary>输入的打印机配置与已保存（正在使用）的是否不一致（按连接类型比较对应参数）。</summary>
     private bool PrinterInputDirty()
     {
+        if (SelectedConnectionType() != LabelFrame.AndroidHost.Transport.ZebraSdkTransport.NormalizeConnectionType(_config.ConnectionType))
+        {
+            return true;
+        }
+
+        if (SelectedConnectionType() == LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeBluetooth)
+        {
+            return (_macInput.Text?.Trim() ?? string.Empty) != _config.BluetoothMac;
+        }
+
         var ip = _ipInput.Text?.Trim() ?? string.Empty;
         var port = int.TryParse(_portInput.Text?.Trim(), out var parsed) ? parsed : -1;
         return ip != _config.TcpHost || port != _config.TcpPort;
     }
 
+    /// <summary>蓝牙地址格式校验：12 位十六进制，冒号分隔（AA:BB:CC:DD:EE:FF）或连写（AABBCCDDEEFF）均可。</summary>
+    private static bool IsValidBluetoothMac(string value) =>
+        value.Length is 12 or 17 && value.Replace(":", string.Empty).Length == 12
+        && value.Replace(":", string.Empty).All(char.IsAsciiHexDigit);
+
     private async Task SavePrinterAsync()
     {
-        var ip = _ipInput.Text?.Trim() ?? string.Empty;
-        if (ip.Length == 0)
+        var type = SelectedConnectionType();
+        string? mac = null;
+        if (type == LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeBluetooth)
         {
-            ShowSaveHint(_printerSaveHint, "还没保存——请先填写打印机 IP 地址");
+            mac = _macInput.Text?.Trim() ?? string.Empty;
+            if (!IsValidBluetoothMac(mac))
+            {
+                ShowSaveHint(_printerSaveHint, "还没保存——蓝牙地址要像 00:11:22:33:44:55 这样（12 位数字和字母），问管理员要");
+                return;
+            }
+
+            RequestBluetoothPermissionIfNeeded();
+        }
+
+        if (type == LabelFrame.AndroidHost.Transport.ZebraSdkTransport.ConnectionTypeTcp)
+        {
+            var ip = _ipInput.Text?.Trim() ?? string.Empty;
+            if (ip.Length == 0)
+            {
+                ShowSaveHint(_printerSaveHint, "还没保存——请先填写打印机 IP 地址");
+                return;
+            }
+
+            if (!int.TryParse(_portInput.Text?.Trim(), out var port) || port is < 1 or > 65535)
+            {
+                ShowSaveHint(_printerSaveHint, "还没保存——端口要填 1 到 65535 之间的数字，一般填 9100");
+                return;
+            }
+
+            await ApplyAsync(connectionType: type, tcpHost: ip, tcpPort: port);
             return;
         }
 
-        if (!int.TryParse(_portInput.Text?.Trim(), out var port) || port is < 1 or > 65535)
-        {
-            ShowSaveHint(_printerSaveHint, "还没保存——端口要填 1 到 65535 之间的数字，一般填 9100");
-            return;
-        }
+        await ApplyAsync(connectionType: type, bluetoothMac: mac);
+    }
 
-        await ApplyAsync(tcpHost: ip, tcpPort: port);
+    /// <summary>Android 12+ 蓝牙连接需要「附近的设备」运行时权限：选蓝牙保存时顺带请求（拒绝不阻塞保存，打印 / 测试时会再提示）。</summary>
+    private void RequestBluetoothPermissionIfNeeded()
+    {
+        if (OperatingSystem.IsAndroidVersionAtLeast(31)
+            && CheckSelfPermission(Android.Manifest.Permission.BluetoothConnect) != Android.Content.PM.Permission.Granted)
+        {
+            RequestPermissions([Android.Manifest.Permission.BluetoothConnect], 2);
+        }
     }
 
     // ---------- 本机信息子页 ----------
@@ -546,10 +671,16 @@ public sealed class MainActivity : Activity
     // ---------- 保存并重启 ----------
 
     /// <summary>保存配置并重启宿主服务使其生效（传输 / 路由实例在服务启动时创建）。</summary>
-    private async Task ApplyAsync(string? serverUrl = null, string? tcpHost = null, int? tcpPort = null, string? deviceName = null)
+    private async Task ApplyAsync(
+        string? serverUrl = null,
+        string? connectionType = null,
+        string? tcpHost = null,
+        int? tcpPort = null,
+        string? bluetoothMac = null,
+        string? deviceName = null)
     {
         Toast.MakeText(this, "已保存，正在重启打印服务…", ToastLength.Short)?.Show();
-        _config.Persist(this, serverUrl, tcpHost: tcpHost, tcpPort: tcpPort, deviceName: deviceName);
+        _config.Persist(this, serverUrl, connectionType: connectionType, tcpHost: tcpHost, tcpPort: tcpPort, bluetoothMac: bluetoothMac, deviceName: deviceName);
 
         StopService(new Intent(this, typeof(PrintHostService)));
         await Task.Delay(800);
@@ -588,10 +719,13 @@ public sealed class MainActivity : Activity
             _serverInput.Text = _config.ServerUrl;
         }
 
-        if (_ipInput is not null && _portInput is not null)
+        if (_connectionTypeGroup is not null && _ipInput is not null && _portInput is not null && _macInput is not null)
         {
+            _connectionTypeGroup.Check(SelectedConnectionRadio());
             _ipInput.Text = _config.TcpHost;
             _portInput.Text = _config.TcpPort.ToString(CultureInfo.InvariantCulture);
+            _macInput.Text = _config.BluetoothMac;
+            UpdateConnectionFields();
         }
 
         if (_deviceIdText is not null)
@@ -675,23 +809,24 @@ public sealed class MainActivity : Activity
             serverEntry = $"正在连接 · {UrlHost(s.ActiveServerUrl)}";
         }
 
-        var printerIp = EndpointHost(s.ActivePrinterEndpoint);
+        // ActivePrinterEndpoint 已是按连接类型生成的用户可读摘要（网口 IP / 蓝牙地址 / USB 数据线）
+        var printerDisplay = s.ActivePrinterEndpoint;
         var printerError = s.LastPrintError is not null;
         string printerLine, printerEntry;
         if (printerError)
         {
-            printerLine = "打印机：连不上——请检查打印机是否开机、IP 是否正确";
-            printerEntry = $"{printerIp} · 连不上";
+            printerLine = "打印机：连不上——请检查打印机是否开机、连接方式与地址是否正确";
+            printerEntry = $"{printerDisplay} · 连不上";
         }
         else if (s.LastPrintUtc is not null)
         {
-            printerLine = $"打印机：正常 · {Local(s.LastPrintUtc)} 出过纸（{printerIp}）";
-            printerEntry = $"{printerIp} · 正常";
+            printerLine = $"打印机：正常 · {Local(s.LastPrintUtc)} 出过纸（{printerDisplay}）";
+            printerEntry = $"{printerDisplay} · 正常";
         }
         else
         {
-            printerLine = $"打印机：还没打印过（{printerIp}）";
-            printerEntry = $"{printerIp} · 还没打印过";
+            printerLine = $"打印机：还没打印过（{printerDisplay}）";
+            printerEntry = $"{printerDisplay} · 还没打印过";
         }
 
         Color summaryColor, summaryBg;
@@ -737,12 +872,6 @@ public sealed class MainActivity : Activity
             .Replace("https://", string.Empty, StringComparison.OrdinalIgnoreCase);
         var colon = noScheme.IndexOf(':');
         return colon > 0 ? noScheme[..colon] : noScheme;
-    }
-
-    private static string EndpointHost(string endpoint)
-    {
-        var colon = endpoint.IndexOf(':');
-        return colon > 0 ? endpoint[..colon] : endpoint;
     }
 
     // ---------- 通用控件（代码布局，无资源依赖） ----------

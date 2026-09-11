@@ -1,6 +1,6 @@
 # LabelFrame.AndroidHost
 
-Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 40 配置面补齐，迭代 49 自动化构建与品牌化，迭代 53 可观测性）。
+Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 40 配置面补齐，迭代 49 自动化构建与品牌化，迭代 53 可观测性，迭代 56 Zebra 官方 SDK 传输）。
 
 > **真机验收已通过（2026-09-08，UROVO DT50 / Android 11）**：注册 / 心跳 / 模板下发 / 作业打印（路由 + 直连）/ 离线恢复 / 断网重连（挂起 → 续打 → 失败项重打）/ 开机自启 / 前台服务保活 / JS 桥 CORS 全部通过。仍不在 `LabelFrame.slnx` 解决方案中（CI 单独构建本工程，见下）；遗留验收项（16KB 运行时验证）见 [ACCEPTANCE-BACKLOG.md](../../docs/ACCEPTANCE-BACKLOG.md)。
 
@@ -10,7 +10,7 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 4
 
 - **主页**：当前状态卡（语义色摘要——绿「一切正常」/ 红「连不上」/ 灰「服务未运行」+ 服务器 / 打印机明细）与三个设置入口（每行带当前值摘要）。
 - **① 连接服务器**子页：地址 + 「测试连接」（用的是输入框地址，不用先保存）。
-- **② 连接打印机**子页：IP + 端口（默认 9100）+ 「打印测试标签」——本地提交内置测试标签走完整链路（校验 → 渲染 → `^GF` → TCP 发送 → 终态）；输入地址未保存时提示「先保存再测试」（测试打印走已保存地址）。品牌 / 连接类型仍是未来传输插件的路由键（存配置，不在界面占位）。
+- **② 连接打印机**子页（迭代 56 起三选一连接方式）：**网线**（IP + 端口默认 9100，默认且一级路径）/ **蓝牙**（MAC 地址手输，Android 12+ 选蓝牙保存时请求「附近的设备」权限）/ **USB 数据线**（自动识别第一台 Zebra 打印机，首次连接弹系统授权）+ 「打印测试标签」——本地提交内置测试标签走完整链路（校验 → 渲染 → `^GF` → SDK 发送 → 终态）；输入未保存时提示「先保存再测试」（测试打印走已保存配置）。品牌 / 连接类型是未来传输插件的路由键（决策 #95）。
 - **③ 本机信息**子页：设备号取系统唯一码（ANDROID_ID）自动生成只读展示（等宽字体 + 复制）；设备名称可选编辑（默认 `PDA-<码后 4 位>`，注册 Server 随 name 上报）。
 - 每个子页自带「**保存并重启服务**」：写配置后自动重启宿主服务生效，无需 force-stop。
 - 常驻通知点击打开配置页，一句话文案（服务器状态 + 打印机地址）；浏览器打开 `http://127.0.0.1:53970` 为轻量状态页（本机 / 服务器 / 打印机三卡片 + 测试打印）。
@@ -19,7 +19,7 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 4
 
 - 前台服务（`PrintHostService`）常驻 + 开机自启（`BootReceiver`，BOOT_COMPLETED / MY_PACKAGE_REPLACED）。
 - 本地 HTTP 服务（仅 127.0.0.1:53970，TcpListener 极简实现）：健康检查、提交 / 列表 / 查询 / 挂起 / 恢复 / 取消作业、失败项重打、打印机状态与测试、宿主配置、测试打印、状态页；宽松 CORS + OPTIONS 预检（JS 桥）。
-- IP 9100 打印机传输（复用 Core 的 `Tcp9100PrintTransport`）。
+- 打印机传输（迭代 56，决策 #111）：Zebra 官方 Link-OS SDK `5.0.3685`（`ZebraSdkTransport`）——tcp（`TcpConnection`）/ 蓝牙 SPP（`BluetoothConnection` 按 MAC）/ USB（`UsbDiscoverer` 自动发现锁定第一台）；状态与连接测试走 SDK `GetCurrentStatus()` 官方语义（不保留 `~HS` 双轨）。Core 的 `Tcp9100PrintTransport` 保留为跨平台兜底（Linux 客户端使用）。
 - 向 Server 注册设备并经 notify 长轮询（20s）领取定向作业 + 独立 1s 回报循环（与 WinHost `ServerRoutingWorker` 同构）。
 - 中文栅格化：Android.Graphics 渲染为 1bpp 位图（^GF），与 WinHost 同契约。
 - 可观测性（迭代 53，决策 #105）：`HostLog` 轻量静态门面（logcat + 本地滚动文件）+ `CrashGuard` 全局崩溃捕获，见下节。
@@ -60,9 +60,10 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 4
 |---|---|---|
 | `server_url` | 空 | Server 地址，为空不启用路由 |
 | `printer_brand` | zebra | 打印机品牌（未来插件路由键） |
-| `connection_type` | tcp | 连接类型（未来蓝牙等扩展） |
-| `tcp_host` | 192.168.1.50 | 打印机 IP |
-| `tcp_port` | 9100 | 打印机端口 |
+| `connection_type` | tcp | 连接类型（tcp / bluetooth / usb，迭代 56 起；未识别值按 tcp） |
+| `tcp_host` | 192.168.1.50 | 打印机 IP（connection_type=tcp） |
+| `tcp_port` | 9100 | 打印机端口（connection_type=tcp） |
+| `bluetooth_mac` | 空 | 蓝牙打印机 MAC 地址（connection_type=bluetooth） |
 | `device_name` | PDA-xxxx | 设备名称（注册 Server 展示；xxxx 为设备码后 4 位） |
 | `device_uuid` | — | 设备号兜底（仅 ANDROID_ID 取不到时生成一次） |
 
@@ -76,7 +77,7 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 4
 
 ```powershell
 .\scripts\build-androidhost.ps1                        # Debug（默认，联调）
-.\scripts\build-androidhost.ps1 -Configuration Release # 交付真机（约 25MB）
+.\scripts\build-androidhost.ps1 -Configuration Release # 交付真机（单 arm64，约 22MB）
 .\scripts\build-androidhost.ps1 -Configuration Release -Version 0.26.0   # 带版本号
 ```
 
@@ -96,15 +97,16 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 4
   - **换签名**（历史 debug 签名包 → 正式签名包，仅一次性）：**需先卸载旧版再安装**——卸载会清空配置（服务器地址 / 打印机 IP / 设备名称需重填）；且 Android 8+ 的设备号（ANDROID_ID）绑定签名密钥，**换签名后设备号会变**，Server 设备目录会出现新条目（旧条目停留显示离线，可忽略）。
 - 品牌化（迭代 49）：启动器图标 = 主蓝 + 白 L（与 MSI / 桌面图标同体系；`scripts\generate-android-icons.ps1` 生成各密度位图，API 26+ 自适应图标为矢量）；常驻通知小图标为白色单色矢量。
 
-## 原生库注意（决策 #94）
+## 原生库注意（决策 #94 / #111）
 
 - `SQLitePCLRaw.lib.e_sqlite3.android` 定版 **2.1.11**：2.1.12/2.1.13 误装 glibc 构建的 so（装载即 LinkageError）；升级前必须核对 android 包 so 为 NDK 构建（DT_NEEDED 应为 liblog/libc/libm 等，而非 libc.so.6）。
 - 桌面版 `SQLitePCLRaw.lib.e_sqlite3` 不得回到 Core 引用——经 RID 回退图（android-arm64 → linux-arm64）会把 glibc so 打进 APK 压过 android 包。
 - 服务启动已先 `JavaSystem.LoadLibrary("e_sqlite3")`（Android 链接器命名空间要求）。
+- **Zebra SDK 毒丸引用清单**（csproj 内注释同步维护）：`Zebra.Printer.SDK 5.0.3685` 的传递依赖链含 MAUI / `System.Private.Windows.Core` 毒化物，须逐包 `ExcludeAssets="all"` 排除后才能 Android AOT 打包（官方支持矩阵偏离声明见 DESIGN 决策 #111）；SDK 升级时复查清单。许可证 §3.3.3：SDK 只随应用目标码分发，本体不单独进 Release 附件。
 
 ## 16KB 页
 
-构建级验证通过（全部 arm64 so ELF 段对齐 ≥ 16KB、`zipalign -c -P 16`、无 XA0141）；运行时验证需 Android 15+ 16KB 内核设备（见 ACCEPTANCE-BACKLOG）。
+构建级验证通过（全部 arm64 so ELF 段对齐 ≥ 16KB——含 SDK 引入的 `libSkiaSharp.so`（实测 p_align=16384）、`zipalign -c -P 16`、无 XA0141）；运行时验证需 Android 15+ 16KB 内核设备（见 ACCEPTANCE-BACKLOG）。
 
 ## 说明
 

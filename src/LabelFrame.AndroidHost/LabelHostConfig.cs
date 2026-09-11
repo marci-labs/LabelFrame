@@ -15,7 +15,7 @@ public sealed class LabelHostConfig
     /// <summary>打印机默认品牌（当前唯一；品牌是未来传输插件的路由键，见 DESIGN 决策 #95）。</summary>
     public const string DefaultPrinterBrand = "zebra";
 
-    /// <summary>默认连接类型（TCP；蓝牙等将来随插件扩展）。</summary>
+    /// <summary>默认连接类型（TCP 网口，默认且一级交付路径，迭代 56 决策 #111）。</summary>
     public const string DefaultConnectionType = "tcp";
 
     /// <summary>TCP 打印机默认地址（可被 SharedPreferences 覆盖）。</summary>
@@ -36,7 +36,7 @@ public sealed class LabelHostConfig
     /// <summary>打印机品牌（当前仅 Zebra，等未来插件机制扩展）。</summary>
     public string PrinterBrand { get; set; } = DefaultPrinterBrand;
 
-    /// <summary>打印机连接类型（当前仅 TCP）。</summary>
+    /// <summary>打印机连接类型（tcp 网口 / bluetooth 蓝牙 / usb USB 数据线，迭代 56 决策 #111；未识别值按 tcp）。</summary>
     public string ConnectionType { get; set; } = DefaultConnectionType;
 
     /// <summary>打印机 IP。</summary>
@@ -44,6 +44,9 @@ public sealed class LabelHostConfig
 
     /// <summary>打印机端口。</summary>
     public int TcpPort { get; set; } = DefaultTcpPort;
+
+    /// <summary>蓝牙打印机 MAC 地址（SPP 手输，迭代 56 预授权决议 1；连接类型为 bluetooth 时使用）。</summary>
+    public string BluetoothMac { get; set; } = string.Empty;
 
     /// <summary>设备号（系统唯一码自动生成）。</summary>
     public string DeviceId { get; set; } = string.Empty;
@@ -54,7 +57,8 @@ public sealed class LabelHostConfig
     /// <summary>数据库路径（宿主私有目录）。</summary>
     public required string DatabasePath { get; set; }
 
-    /// <summary>从 SharedPreferences 加载（旧装机数据自动迁移：tcp_host 键沿用，端口与品牌缺失取默认值）。</summary>
+    /// <summary>从 SharedPreferences 加载（旧装机数据自动迁移：tcp_host 键沿用，端口与品牌缺失取默认值；
+    /// 存量 tcp 配置零迁移直入 SDK TCP 路径，AC-03）。</summary>
     public static LabelHostConfig Load(Context context)
     {
         var prefs = context.GetSharedPreferences("labelframe", FileCreationMode.Private)!;
@@ -65,9 +69,10 @@ public sealed class LabelHostConfig
             DatabasePath = System.IO.Path.Combine(context.FilesDir!.AbsolutePath, "labelframe", "jobs.db"),
             ServerUrl = prefs.GetString("server_url", string.Empty) ?? string.Empty,
             PrinterBrand = prefs.GetString("printer_brand", DefaultPrinterBrand) ?? DefaultPrinterBrand,
-            ConnectionType = prefs.GetString("connection_type", DefaultConnectionType) ?? DefaultConnectionType,
+            ConnectionType = Transport.ZebraSdkTransport.NormalizeConnectionType(prefs.GetString("connection_type", DefaultConnectionType)),
             TcpHost = prefs.GetString("tcp_host", DefaultTcpHost) ?? DefaultTcpHost,
             TcpPort = prefs.GetInt("tcp_port", DefaultTcpPort),
+            BluetoothMac = prefs.GetString("bluetooth_mac", string.Empty) ?? string.Empty,
             DeviceId = deviceId,
             DeviceName = prefs.GetString("device_name", null) is { Length: > 0 } name ? name : DefaultDeviceName(deviceId),
         };
@@ -84,17 +89,20 @@ public sealed class LabelHostConfig
         string? connectionType = null,
         string? tcpHost = null,
         int? tcpPort = null,
+        string? bluetoothMac = null,
         string? deviceName = null)
     {
         ServerUrl = string.IsNullOrWhiteSpace(serverUrl) ? ServerUrl : serverUrl.Trim();
         PrinterBrand = string.IsNullOrWhiteSpace(printerBrand) ? PrinterBrand : printerBrand.Trim();
-        ConnectionType = string.IsNullOrWhiteSpace(connectionType) ? ConnectionType : connectionType.Trim();
+        ConnectionType = Transport.ZebraSdkTransport.NormalizeConnectionType(
+            string.IsNullOrWhiteSpace(connectionType) ? ConnectionType : connectionType);
         TcpHost = string.IsNullOrWhiteSpace(tcpHost) ? TcpHost : tcpHost.Trim();
         if (tcpPort is > 0 and <= 65535)
         {
             TcpPort = tcpPort.Value;
         }
 
+        BluetoothMac = string.IsNullOrWhiteSpace(bluetoothMac) ? BluetoothMac : bluetoothMac.Trim();
         DeviceName = string.IsNullOrWhiteSpace(deviceName) ? DeviceName : deviceName.Trim();
 
         var prefs = context.GetSharedPreferences("labelframe", FileCreationMode.Private)!;
@@ -106,10 +114,20 @@ public sealed class LabelHostConfig
             editor.PutString("connection_type", ConnectionType);
             editor.PutString("tcp_host", TcpHost);
             editor.PutInt("tcp_port", TcpPort);
+            editor.PutString("bluetooth_mac", BluetoothMac);
             editor.PutString("device_name", DeviceName);
             editor.Apply();
         }
     }
+
+    /// <summary>打印机连接方式的用户可读摘要（主页状态卡 / 通知 / 状态页共用，按连接类型给一句话）。</summary>
+    public string PrinterDisplay() => Transport.ZebraSdkTransport.NormalizeConnectionType(ConnectionType) switch
+    {
+        Transport.ZebraSdkTransport.ConnectionTypeBluetooth =>
+            string.IsNullOrWhiteSpace(BluetoothMac) ? "蓝牙（地址未填）" : $"蓝牙 {BluetoothMac}",
+        Transport.ZebraSdkTransport.ConnectionTypeUsb => "USB 数据线",
+        _ => string.IsNullOrWhiteSpace(TcpHost) ? "网口（地址未填）" : TcpHost,
+    };
 
     /// <summary>
     /// 设备号取系统唯一码 ANDROID_ID 原值（每台设备唯一、卸载重装不变、恢复出厂后变化——重置后的设备视为新设备）。
