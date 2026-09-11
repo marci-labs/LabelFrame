@@ -98,7 +98,8 @@ public static class AndroidLabelRenderer
             return;
         }
 
-        var bounds = LabelLayoutResolver.ResolveBounds(text, regions);
+        // 区域水平锚定按实测文本宽度计算（决策 #110）：度量与绘制同一 Paint 管线（TextSize / FakeBoldText）
+        var bounds = LabelLayoutResolver.ResolveBounds(text, regions, AndroidTextWidthMeasurer.Instance, value);
         var x = ToDots(bounds.XMm, dpi);
         var y = ToDots(bounds.YMm, dpi);
         var boxWidth = ToDots(bounds.WidthMm, dpi);
