@@ -54,8 +54,8 @@ internal static class HostApi
     app.MapPost("/api/host/print-settings", (HttpContext context, PrintSettingsDto? request, PrintSettingsStore store, PrintSettings printSettings) =>
         Api.PrintSettingsApi.Post(context.Connection.RemoteIpAddress, request, store, printSettings));
 
-    // ---- 本机服务关闭（Web UI 设置页「退出程序」用）----
-    app.MapPost("/api/host/shutdown", (HttpContext context, IHostApplicationLifetime lifetime) =>
+    // ---- 本机服务关闭（Web UI 设置页「退出程序」用；与托盘菜单共用统一退出路径，缺陷 #58）----
+    app.MapPost("/api/host/shutdown", (HttpContext context, HostExitCoordinator exit) =>
     {
         var remote = context.Connection.RemoteIpAddress;
         if (remote is null || !System.Net.IPAddress.IsLoopback(remote))
@@ -63,16 +63,9 @@ internal static class HostApi
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
 
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(200);
-            hostInfo("收到关闭请求，正在停止宿主…");
-            lifetime.StopApplication();
-            // 托盘线程（WinForms 消息循环）可能阻止 RunAsync 自然返回，延迟后强制退出
-            await Task.Delay(500);
-            hostInfo("关闭完成。");
-            Environment.Exit(0);
-        });
+        // 200ms 缓冲让本响应先送达客户端，再进入「优雅停止 + 限时兜底强退」序列——
+        // 与托盘菜单退出同一协调器（HostExitCoordinator），两条路径无强弱退差异
+        _ = exit.RequestShutdownAsync("HTTP /api/host/shutdown（Web UI 设置页「退出程序」）", TimeSpan.FromMilliseconds(200));
         return Results.Ok(new { shuttingDown = true });
     });
 
