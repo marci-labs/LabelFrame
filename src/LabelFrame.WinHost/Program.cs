@@ -136,7 +136,23 @@ public static class Program
             exitCode = 1;
             var friendly = DescribeStartupFailure(ex, options.ListenUrl);
             HostInfo(friendly);
-            uiShell?.ShowFatalError(friendly);
+            if (uiShell is null)
+            {
+                // 无界面壳（LABELFRAME_OPEN_BROWSER=0 且 LABELFRAME_TRAY=0）：消息框无处展示，
+                // 启动失败提示同时写控制台 / stderr（决策 #108——此前只入 host.log，控制台不可见）
+                try
+                {
+                    Console.Error.WriteLine($"[LabelFrame] {friendly}");
+                }
+                catch
+                {
+                    // 无控制台附着时忽略
+                }
+            }
+            else
+            {
+                uiShell.ShowFatalError(friendly);
+            }
         }
 #else
         try
@@ -192,18 +208,12 @@ public static class Program
             => Task.FromResult(new Core.Transport.PrinterStatusInfo(false, false, false, "当前传输不支持状态查询。"));
     }
 
-    /// <summary>Log 传输写入宿主日志文件（WinExe 无控制台，避免 Console 不可用）。</summary>
+    /// <summary>Log 传输 / 宿主日志写入器（WinExe 无控制台，避免 Console 不可用）。host.log 按日轮转（决策 #108）：实际写入 host-yyyyMMdd.log，默认保留 31 个；打开失败回退空写入器（不阻断启动）。</summary>
     private static TextWriter OpenHostLogWriter(HostOptions options)
     {
         try
         {
-            var directory = Path.GetDirectoryName(options.HostLogPath);
-            if (!string.IsNullOrEmpty(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-            var writer = new StreamWriter(options.HostLogPath, append: true) { AutoFlush = true };
-            return TextWriter.Synchronized(writer);
+            return TextWriter.Synchronized(new DailyRotatingFileWriter(options.HostLogPath, options.HostLogRetentionDays));
         }
         catch
         {

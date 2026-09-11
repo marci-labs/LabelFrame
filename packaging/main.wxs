@@ -206,9 +206,10 @@
     <!-- 完成页「立即打开」：Finish 按钮在勾选时触发（见 Publish），异步启动不阻塞向导关闭 -->
     <CustomAction Id="LaunchClientOnExit" Directory="INSTALLFOLDER" Execute="immediate" Return="asyncNoWait"
                   ExeCommand="&quot;[#WinHostExe]&quot;" />
-    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；新增机器级配置 settings.json，迭代 18） -->
+    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；新增机器级配置 settings.json，迭代 18）。
+         host 日志迭代 52 起按日轮转（host-yyyyMMdd.log），清理一并覆盖单名历史文件与轮转文件 -->
     <CustomAction Id="ClearDataDelFiles" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
-      ExeCommand="cmd.exe /c del /q &quot;%LOCALAPPDATA%\LabelFrame\jobs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\templates.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\logs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\host.log&quot; &quot;%LOCALAPPDATA%\LabelFrame\connection.json&quot;" />
+      ExeCommand="cmd.exe /c del /q &quot;%LOCALAPPDATA%\LabelFrame\jobs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\templates.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\logs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\host.log&quot; &quot;%LOCALAPPDATA%\LabelFrame\host-*.log&quot; &quot;%LOCALAPPDATA%\LabelFrame\connection.json&quot;" />
     <CustomAction Id="ClearDataDelPrintDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c rmdir /s /q &quot;%LOCALAPPDATA%\LabelFrame\print&quot;" />
     <CustomAction Id="ClearDataDelMachineConfig" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"

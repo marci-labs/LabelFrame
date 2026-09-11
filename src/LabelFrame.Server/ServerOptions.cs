@@ -56,8 +56,11 @@ public sealed class ServerOptions
     /// <summary>过期 / 超时扫描周期（分钟）：后台任务按此周期把超期 Pending 标记为 Expired、把失联 Claimed 回收为 Failed。</summary>
     public int ExpirationScanIntervalMinutes { get; set; } = 5;
 
-    /// <summary>文本日志文件路径（为空不写文件；Linux 部署挂载到宿主机查看）。</summary>
+    /// <summary>文本日志文件路径（为空不写文件；Linux 部署挂载到宿主机查看）。按日轮转：实际写入 <名>-yyyyMMdd.log（决策 #108）。</summary>
     public string? LogFilePath { get; set; }
+
+    /// <summary>文本日志按日文件保留上限（默认 31；0 或负值 = 不清理）。LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS 可覆盖。</summary>
+    public int LogFileRetentionDays { get; set; } = 31;
 
     /// <summary>产品版本（与打包脚本 -Version 保持一致）。</summary>
     public const string ProductVersion = "0.25.0";
@@ -140,6 +143,12 @@ public sealed class ServerOptions
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_LOG_FILE") is { } logFile)
         {
             LogFilePath = logFile;
+        }
+
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS") is { } logRetentionFiles
+            && int.TryParse(logRetentionFiles, out var logFileRetention))
+        {
+            LogFileRetentionDays = logFileRetention;
         }
 
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_PLUGIN_PACKAGES") is { } pluginPackages)

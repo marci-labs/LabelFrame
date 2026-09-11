@@ -19,9 +19,21 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 var serverOptions = new ServerOptions();
 builder.Configuration.GetSection("Server").Bind(serverOptions);
 serverOptions.ApplyEnvironmentOverrides();
+// 文本日志通道（决策 #108）：按日轮转 + 保留上限；路径无效（目录不可创建 / 磁盘不可用）不崩溃——
+// 跳过文件通道、控制台输出中文告警（含配置项名与降级事实），宿主正常启动。
 if (!string.IsNullOrWhiteSpace(serverOptions.LogFilePath))
 {
-    builder.Logging.AddProvider(new FileLoggerProvider(serverOptions.LogFilePath));
+    var fileLoggerProvider = new FileLoggerProvider(serverOptions.LogFilePath, serverOptions.LogFileRetentionDays);
+    if (fileLoggerProvider.FileChannelEnabled)
+    {
+        builder.Logging.AddProvider(fileLoggerProvider);
+    }
+    else
+    {
+        Console.WriteLine(
+            $"[LabelFrame] 警告：日志文件通道不可用，已跳过文件日志（LABELFRAME_SERVER_LOG_FILE={serverOptions.LogFilePath}）：{fileLoggerProvider.InactiveReason}。"
+            + $"日志仅输出到控制台，服务继续运行；请修正日志路径配置（目录不存在或磁盘不可用）后重启。");
+    }
 }
 builder.WebHost.UseUrls(serverOptions.ListenUrl);
 // 插件包上传端点大小上限 64MB（Kestrel 默认约 30MB，超出会返回 413 且无错误体）
@@ -41,7 +53,8 @@ var logStore = new SqliteLogStore(serverOptions.LogsDbPath);
 await logStore.InitializeAsync();
 var notifier = new PendingJobNotifier();
 var timeProvider = TimeProvider.System;
-var service = new ServerService(db, templateStore, notifier, serverOptions, timeProvider);
+// ServerService 经 DI 工厂构造：注入宿主 ILogger<ServerService>（含文件日志通道），
+// 业务事件日志（作业创建 / 认领 / 终态，决策 #108）与框架日志走同一条管道，级别经标准 Logging:LogLevel 可降级。
 var clientPackages = new ClientPackagesService(serverOptions.ClientPackagesPath);
 var pluginPackages = new PluginPackagesService(serverOptions.PluginPackagesPath);
 
@@ -52,7 +65,13 @@ builder.Services.ConfigureHttpJsonOptions(json =>
     json.SerializerOptions.Converters.Add(new LabelFrame.Core.Layout.LabelElementJsonConverter());
 });
 builder.Services.AddSingleton(db);
-builder.Services.AddSingleton(service);
+builder.Services.AddSingleton(sp => new ServerService(
+    db,
+    templateStore,
+    notifier,
+    serverOptions,
+    timeProvider,
+    sp.GetRequiredService<ILogger<ServerService>>()));
 builder.Services.AddSingleton(notifier);
 builder.Services.AddSingleton(serverOptions);
 builder.Services.AddSingleton(timeProvider);

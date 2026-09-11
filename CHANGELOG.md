@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 52 日志基础设施加固（轮转 / 启动防护 / 业务事件） · 2026-09-11
+
+- **FileLoggerProvider 启动防护（决策 #108，AC-01）**：`LABELFRAME_SERVER_LOG_FILE` 指向无效路径（目录不存在且不可创建 / 磁盘不可用）不再启动即崩——构造不抛异常、跳过文件通道、控制台输出中文告警（含配置项名、失败原因与降级事实），宿主正常启动；运行中防护：每日轮转开新文件失败继续写旧文件（下次写入再试），实际写入失败自我禁用通道并告警一次，`Log` 永不抛出（不打断请求路径）。
+- **轮转与保留统一口径「按日 + 默认保留 31 个」（AC-02，三项待决议按 Issue #35 评论用户确认）**：服务端 `server.log` 与客户端 `host.log` 改**按日轮转**——实际文件 `<名>-<yyyyMMdd>.log`（`LABELFRAME_SERVER_LOG_FILE` / `LABELFRAME_HOST_LOG` 仍是基准路径；历史单名文件不迁移不删除），保留上限默认 31、`LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS` / `LABELFRAME_HOST_LOG_RETENTION_DAYS` 可调（0 或负值 = 不清理；超期清理在启动与每日轮转时执行）；客户端 Serilog `app-*.log` 显式接线 `retainedFileCountLimit`（`LABELFRAME_APP_LOG_RETENTION_DAYS`，≤0 = 不清理；Serilog 包默认本为 31，此前未显式声明未开放配置）。客户端 MSI 卸载「清理用户数据」同步覆盖 `host-*.log` 轮转文件。
+- **服务端业务事件日志（AC-03）**：作业创建（requestId → jobId / 目标设备 / 标签数）、设备认领、回报终态三条 **INFO**（`[LoggerMessage]` 源生成、作业粒度——批量作业不逐张一行、幂等重放不重复记录），正向生命周期可在 server.log 追溯（对照客户端双 ID 行）；默认 INFO，经标准 `Logging:LogLevel` 降级（`Logging__LogLevel__LabelFrame.Server.ServerService=Warning`，沿用决策 #102「不新造轮子」）。
+- **杂项吞错留痕（AC-04 / AC-05）**：connection.json 读取 / 解析失败回退默认连接时写 host.log（含原因与回退目标——此前静默回退，用户打印机配置「消失」无痕迹）；TCP 连接测试失败原因透传——`TestAsync` 返回具体原因（连接被拒（SocketError）/ 3 秒超时 / 已连上但 ~HS 无响应等，含目标地址），连接测试结果消息不再泛化失败（迭代 50 的 `LF_TRANSPORT_TEST_FAILED` 测试页链路不变）；无界面壳（`LABELFRAME_OPEN_BROWSER=0` 且 `LABELFRAME_TRAY=0`）启动失败提示同时写控制台 / stderr（此前只入 host.log）。
+- **范围外登记**：跨组件关联 ID（TraceId / Activity）按 Issue「不在范围」登记 DESIGN「风险与未决问题」（P2-9），不实现。
+- **测试**：新增 15 项——Server 7（FileLoggerProvider：无效路径不抛异常 / 按日文件写入 / 启动清理超期 / 非日期文件不动 / 停用后写入不抛异常；集成：无效日志路径宿主正常启动 /healthz、全流程三条业务行落 server-<yyyyMMdd>.log（含幂等不重复））+ WinHost 8（DailyRotatingFileWriter：按日文件 / 清理超期 / 非日期文件不动 / 停用后写入不抛异常；connection.json 损坏与独占锁定回退留痕 2 项；TCP 测试失败原因具体化 2 项）。`dotnet build` / `dotnet test`（排除 Perf/Soak，421 项）通过；轮转跨天与长期清理行为属长测，建议随部署观察。
+
 ## 迭代 50 错误响应分类修正 · 2026-09-11
 
 - **请求体反序列化失败分类（决策 #107）**：共享层 `AddLabelFrameExceptionHandler` 固定开启 `RouteHandlerOptions.ThrowOnBadRequest`（框架默认仅 Development 开启，Production 下参数绑定失败被短路为「400 空 body」，无法给出统一 ErrorView）——非法 JSON / 非 UTF-8 / 类型不匹配等绑定失败统一交给共享 `GlobalExceptionHandler` 分类为 **400 + `LF_API_BAD_BODY` + 中文可行动消息**（新增错误码入 `ApiErrorCodes`），不再落入 500 兜底误导业务方排查服务端；原始解析异常（含行 / 列位置）记 Warning 日志供排障，不透出客户端。Server 与 WinHost 双宿主经共享层自动一致。

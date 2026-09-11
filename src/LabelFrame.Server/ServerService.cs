@@ -1,12 +1,15 @@
 ﻿using LabelFrame.Api;
+using Microsoft.Extensions.Logging;
 
 namespace LabelFrame.Server;
 
 /// <summary>
 /// Server 业务服务：设备注册 / 心跳、作业定向投递（宿主轮询领取）、结果回报、集中查询。
 /// 设备离线时作业在 Server 暂存（Pending），上线轮询即领取。
+/// 业务事件日志（决策 #108）：作业创建 / 认领 / 回报终态各一条 INFO（作业粒度，含标识字段），
+/// 默认 INFO，可经标准 Logging:LogLevel 按类别 LabelFrame.Server.ServerService 降级。
 /// </summary>
-public sealed class ServerService : IDisposable
+public sealed partial class ServerService : IDisposable
 {
     /// <summary>在线窗口：超过该时长未心跳视为离线。</summary>
     public static readonly TimeSpan OnlineWindow = TimeSpan.FromSeconds(30);
@@ -18,6 +21,7 @@ public sealed class ServerService : IDisposable
     private readonly PendingJobNotifier? _notifier;
     private readonly ServerOptions? _options;
     private readonly TimeProvider _time;
+    private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>创建业务服务。</summary>
@@ -25,19 +29,33 @@ public sealed class ServerService : IDisposable
     /// <param name="notifier">待领取作业通知器（长轮询推送用；为空则不通知）。</param>
     /// <param name="options">服务端配置（Pending 暂存 TTL；为空则关闭过期，行为与现状一致）。</param>
     /// <param name="timeProvider">时间源（测试注入 FakeTimeProvider 保证确定性；默认系统时钟）。</param>
+    /// <param name="logger">业务事件日志（为空则不记录——单测直连场景）。</param>
     public ServerService(
         ServerDb db,
         LabelFrame.Core.Templates.TemplateStore? templates = null,
         PendingJobNotifier? notifier = null,
         ServerOptions? options = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        ILogger<ServerService>? logger = null)
     {
         _db = db;
         _templates = templates!;
         _notifier = notifier;
         _options = options;
         _time = timeProvider ?? TimeProvider.System;
+        _logger = (ILogger?)logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
     }
+
+    // ---- 业务事件日志（决策 #108）：[LoggerMessage] 源生成，默认 INFO、级别可配 ----
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "作业已创建：jobId={JobId}，requestId={RequestId}，目标设备={TargetDeviceId}，标签数={TotalItems}")]
+    private partial void LogJobCreated(string jobId, string requestId, string targetDeviceId, int totalItems);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "作业已被认领：jobId={JobId}，设备={DeviceId}，requestId={RequestId}，标签数={TotalItems}")]
+    private partial void LogJobClaimed(string jobId, string deviceId, string requestId, int totalItems);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "作业终态：jobId={JobId}，设备={DeviceId}，requestId={RequestId}，状态={Status}，完成={CompletedItems}，失败={FailedItems}，原因={ErrorMessage}")]
+    private partial void LogJobFinished(string jobId, string deviceId, string requestId, string status, int completedItems, int failedItems, string? errorMessage);
 
     /// <summary>Pending 暂存 TTL 截止时间：早于该时间创建且仍 Pending 的作业视为超期；TTL 关闭时为 null（不过滤）。</summary>
     private DateTimeOffset? PendingTtlCutoff(DateTimeOffset now)
@@ -163,6 +181,7 @@ public sealed class ServerService : IDisposable
                 TotalItems = request.Labels.Count,
                 PayloadJson = payloadJson,
             }, cancellationToken);
+            LogJobCreated(job!.Id, job.RequestId, targetDeviceId, job.TotalItems);
             _notifier?.Notify(targetDeviceId);
             return await ToJobViewAsync(job!, cancellationToken);
         }
@@ -183,6 +202,11 @@ public sealed class ServerService : IDisposable
         if (touched == 0)
         {
             throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
+        }
+
+        foreach (var job in jobs)
+        {
+            LogJobClaimed(job.Id, deviceId, job.RequestId, job.TotalItems);
         }
 
         return jobs.Select(job => new ClaimedJob(
@@ -226,6 +250,7 @@ public sealed class ServerService : IDisposable
                 report.ErrorMessage,
                 _time.GetUtcNow(),
                 cancellationToken);
+        LogJobFinished(jobId, deviceId, job.RequestId, updated!.Status.ToString(), report.CompletedItems ?? 0, report.FailedItems ?? 0, report.ErrorMessage);
         return await ToJobViewAsync(updated!, cancellationToken);
     }
 

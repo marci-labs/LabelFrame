@@ -58,14 +58,19 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
         }
     }
 
-    /// <summary>ITestableTransport：连接测试（~HS 探测），成功返回 null，失败返回中文错误消息。</summary>
+    /// <summary>ITestableTransport：连接测试（~HS 探测），成功返回 null，失败返回含具体原因的中文错误消息（决策 #108：不再泛化失败）。</summary>
     public async Task<string?> TestAsync(CancellationToken cancellationToken = default)
-        => await TestConnectionAsync(cancellationToken)
-            ? null
-            : "连接测试失败：无法连接打印机（超时或地址不可达）。";
+    {
+        var (_, failureReason) = await TestConnectionCoreAsync(cancellationToken);
+        return failureReason is null ? null : $"连接测试失败：{failureReason}";
+    }
 
     /// <summary>连接测试：TCP 连接（3 秒超时）+ `~HS` 主机状态探测——收到打印机响应才算成功（能连端口≠打印机就绪）。</summary>
     public async Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
+        => (await TestConnectionCoreAsync(cancellationToken)).Success;
+
+    /// <summary>连接测试核心：成功返回 (true, null)；失败返回 (false, 具体原因)——连接被拒 / 超时 / ~HS 无响应等，供测试结果消息透传（AC-05）。</summary>
+    private async Task<(bool Success, string? FailureReason)> TestConnectionCoreAsync(CancellationToken cancellationToken)
     {
         using var client = new TcpClient();
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -89,11 +94,28 @@ public sealed class Tcp9100PrintTransport : IPrintTransport, IPrinterStatusProvi
             await stream.FlushAsync(timeoutCts.Token);
             var buffer = new byte[64];
             var read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), timeoutCts.Token);
-            return read > 0;
+            if (read > 0)
+            {
+                return (true, null);
+            }
+
+            return (false, $"已连上 {_host}:{_port}，但打印机对 ~HS 状态探测无响应（目标可能不是打印机）。");
         }
-        catch
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return false;
+            return (false, $"连接打印机超时（{_host}:{_port}，3 秒内无响应）。");
+        }
+        catch (SocketException ex)
+        {
+            return (false, $"无法连接打印机（{_host}:{_port}）：{ex.SocketErrorCode}——{ex.Message}。");
+        }
+        catch (IOException ex)
+        {
+            return (false, $"与打印机通讯失败（{_host}:{_port}）：{ex.Message}。");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"连接打印机失败（{_host}:{_port}）：{ex.Message}。");
         }
     }
 

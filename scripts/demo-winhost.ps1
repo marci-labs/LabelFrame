@@ -78,7 +78,7 @@ try {
         Write-Host "打印图片目录：$printDir"
         Get-ChildItem $printDir -Filter *.png | ForEach-Object { Write-Host ("  - " + $_.Name + " (" + [Math]::Round($_.Length / 1KB, 1) + " KB)") }
     } else {
-        Write-Host "未找到打印图片目录：$printDir（详见 %LOCALAPPDATA%\LabelFrame\host.log）"
+        Write-Host "未找到打印图片目录：$printDir（详见 %LOCALAPPDATA%\LabelFrame\host-*.log）"
     }
     Write-Host ''
     Write-Host '演示完成。接真实打印机：设置环境变量后启动 WinHost，例如：' -ForegroundColor Green

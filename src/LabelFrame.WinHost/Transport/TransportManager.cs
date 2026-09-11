@@ -266,6 +266,8 @@ public sealed class TransportManager : ITransportManager, IDisposable
             var persisted = TransportConfig.FromJson(json);
             if (persisted is null)
             {
+                // 解析失败（损坏 JSON）回退默认连接：留痕原因与回退目标（决策 #108——此前静默回退，用户打印机配置「消失」无痕迹）
+                WriteHostLog($"connection.json 解析失败（{ConfigFilePath}）：内容不是有效的连接配置，已回退默认连接 {Describe(baseConfig)}。");
                 return baseConfig;
             }
 
@@ -292,10 +294,25 @@ public sealed class TransportManager : ITransportManager, IDisposable
             persisted.SyncLegacyFields();
             return persisted;
         }
+        catch (Exception ex)
+        {
+            // 读取失败（IO / 权限等）回退默认连接：留痕原因与回退目标（决策 #108）
+            WriteHostLog($"connection.json 读取失败（{ConfigFilePath}）：{ex.Message}，已回退默认连接 {Describe(baseConfig)}。");
+            return baseConfig;
+        }
+    }
+
+    /// <summary>回退留痕写宿主日志（host.log）：写入失败不影响回退决策。</summary>
+    private void WriteHostLog(string message)
+    {
+        try
+        {
+            _hostLogWriter.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}");
+            _hostLogWriter.Flush();
+        }
         catch (Exception)
         {
-            // 读取 / 解析失败回退默认
-            return baseConfig;
+            // 宿主日志不可用（降级 TextWriter.Null / 通道已停用）时留痕失败不阻断启动
         }
     }
 

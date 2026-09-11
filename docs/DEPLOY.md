@@ -44,7 +44,7 @@ docker run -d --name labelframe-server -p 53961:53961 \
 curl http://127.0.0.1:53961/healthz   # {"service":"LabelFrame.Server","status":"ok"}
 ```
 
-- 数据（server.db / templates.db / logs.db）在数据卷 `/var/lib/labelframe/server`；文本日志在挂载目录 `./logs/server.log`，`tail -f` 即可。
+- 数据（server.db / templates.db / logs.db）在数据卷 `/var/lib/labelframe/server`；文本日志按日轮转写入挂载目录 `./logs/server-<yyyyMMdd>.log`（`LABELFRAME_SERVER_LOG_FILE` 为基准路径，`tail -f ./logs/server-$(date +%Y%m%d).log` 即可；默认保留 31 天，超期自动清理，`LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS` 可调）。日志路径无效时服务不再启动失败——跳过文件通道、控制台输出中文告警，服务继续运行。
 - Server 镜像已内置 `fonts-wqy-microhei`，服务端管理界面的模板预览 / 出图预览默认使用 `WenQuanYi Micro Hei` 渲染中文文本。
 - compose 已默认挂载 `./plugins/web-ui`（管理界面插件）与 `./client-packages`（客户端安装包分发），见下文 §5 / §6。
 - 自行构建：`docker build -f packaging/ubuntu/Dockerfile -t labelframe-server artifacts/server-linux/linux-x64`。
@@ -137,6 +137,11 @@ docker compose -f .\packaging\e2e\compose.yaml down
   $env:LABELFRAME_TCP_HOST = "192.168.1.50"
   $env:LABELFRAME_PRINTER = "ZDesigner ZD421-203dpi ZPL"
   dotnet run --project src\LabelFrame.WinHost
+  ```
+- 日志轮转与保留（迭代 52）：三处文件日志统一**按日轮转、默认保留 31 个（天）**——服务端 `server-<yyyyMMdd>.log`（`LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS`）、客户端宿主 `host-<yyyyMMdd>.log`（`LABELFRAME_HOST_LOG_RETENTION_DAYS`）、客户端 Serilog `app-*.log`（`LABELFRAME_APP_LOG_RETENTION_DAYS`）；均设 0 或负值 = 不清理（不设上限）。`LABELFRAME_SERVER_LOG_FILE` / `LABELFRAME_HOST_LOG` 给的是基准路径，实际文件名带日期后缀；历史单名 `server.log` / `host.log` 不迁移不删除。
+- 服务端业务事件日志（作业创建 / 设备认领 / 回报终态，作业粒度）默认 **INFO**；高流量需要降噪时按标准 Logging 配置降级，例如环境变量：
+  ```bash
+  Logging__LogLevel__LabelFrame.Server.ServerService=Warning   # 隐藏业务事件 INFO 行
   ```
 
 ## 9. 辅助脚本
