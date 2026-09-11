@@ -177,7 +177,12 @@ public static class WinHostApp
         // 服务层扩展点：在全部注册完成后执行（测试 RemoveAll<IHostedService> 等需要看到完整注册列表）
         configureServices?.Invoke(builder.Services);
 
+        // 统一退出协调器（缺陷 #58）：托盘「退出」与 /api/host/shutdown 共用的「优雅停止 + 限时兜底强退」路径
+        var exitCoordinator = new HostExitCoordinator(hostInfo);
+        builder.Services.AddSingleton(exitCoordinator);
+
         var app = builder.Build();
+        exitCoordinator.Bind(app.Lifetime);
 
         app.UseExceptionHandler();
         app.UseCors();
