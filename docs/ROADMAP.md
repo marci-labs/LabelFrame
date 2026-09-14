@@ -81,6 +81,7 @@
 | 发布 | v0.26.0 迭代 49-59、64、65 汇总发布（可观测性 / Zebra 官方 SDK 双端 / 下载中心扫码下载 / 退出提速与托盘修复 / 无字段模板；APK 与 install-manifest.json 首发随 Release 分发） | ✅ 已完成（2026-09-14，tag v0.26.0） |
 | 58 | 安装引导专项 2/8——CI 自动生成安装清单 install-manifest.json + latest.json（生成与断言一体，#120） | ✅ 已完成（2026-09-14 v0.26.0 实跑发版验证通过（manifest 五条目 + 五产物 sha256 逐项复核 + 值守独立抽查），用户委托自动结项，[#51](https://github.com/marci-labs/LabelFrame/issues/51)） |
 | 49 | PDA 宿主自动化构建与品牌化（CI Android 构建 + release APK 附件 + L 品牌图标 + 版本透出，签名口径 #104/#119） | ✅ 已完成（2026-09-14 v0.26.0 发版 + DT50 真机换签名重装验收通过（图标 / 版本 / 冒烟打印，用户目视确认；设备号按预期变更）），[#31](https://github.com/marci-labs/LabelFrame/issues/31)） |
+| 60 | 安装引导专项 4/8——引导程序骨架：五步问卷与拓扑预设→组件集合（WiX Burn 形态 #122；dry-run 契约；装配缺陷返修 #81） | ✅ 已完成（2026-09-14 桌面自动化五步走查通过（组件集合正确 + Plan 预览一致 + dry-run 零系统改动实机复核），用户委托自动结项，[#53](https://github.com/marci-labs/LabelFrame/issues/53)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
