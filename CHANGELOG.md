@@ -2,6 +2,16 @@
 
 本文件记录每个迭代的变更。
 
+## v0.26.0 迭代 49-59、64、65 汇总发布 · 2026-09-14
+
+- **打包范围**：v0.25.0 之后合入 master 的全部迭代与缺陷修复——迭代 49（PDA 宿主自动化构建与品牌化）、迭代 50（错误响应分类修正）、迭代 51（客户端设备日志链路与前端可观测）、迭代 52（日志基础设施加固）、迭代 53（PDA 可观测性）、迭代 54（区域水平锚定修正）、迭代 55（Zebra 状态映射修正）、迭代 56（双端复用 Zebra 官方 SDK 5.0.3685）、迭代 57（安装引导专项设计契约 + 客户端退出提速）、迭代 58（发布流水线安装清单）、迭代 59（PDA 签名稳定化 + 服务端下载中心）、迭代 65（无字段模板打印测试修复），缺陷 #46（同 IP 双设备号解析最近活跃优先）与 #58（托盘「退出」不生效）。详见各迭代条目。
+- **客户端可感知变更**：托盘「退出」与 Web UI 退出即时生效（统一退出路径 + 事件驱动提前退出，卡死路径约 0.5 秒，托盘图标不再残留）；无字段模板（静态标签）可在「数据与打印」页打印测试；自动宽度文本区域水平锚定按实测宽度对齐；Zebra 状态映射按官方字段表修正；WinHost 升级 Zebra 官方 SDK 5.0.3685。
+- **服务端可感知变更**：同 IP 双设备号按 IP 解析改最近活跃优先（缺陷 #46，targetIp 投递不再路由到已停用旧设备号）；新增下载中心页（客户端与 PDA 安装包同页分区 + 条目二维码扫码下载，`pda-packages` 目录与 API）；日志按日轮转与业务事件日志。
+- **PDA（AndroidHost）**：**APK 首次随 Release 分发**（专用 keystore Release 签名、版本号由 tag 注入、签名 Secrets 缺失即构建失败——换签名设备需卸载重装一次，见 DEPLOY §7）；接入 Zebra 官方 SDK（tcp 默认 / 蓝牙 SPP / USB OTG）；可观测性（HostLog 封装 + 崩溃捕获 + 本地滚动日志）。
+- **发布流水线**：Release 附件新增 `install-manifest.json`（当版全部产物 + sha256 + 多源 URL，CI 实测生成与断言，迭代 58 决策 #115 / #120）与 `latest.json` 最新版本指针（稳定通道 `releases/latest/download/latest.json`）——均首次发布。
+- **版本同步**：`/api/server/info` 版本与稳定版 Compose 默认版本更新为 `0.26.0`。
+- **发布产物**：GitHub Release 附件（Server / Client MSI、服务端 webui 插件 zip、linux-x64 归档、AndroidHost APK（首发）、install-manifest.json + latest.json（首发））+ ghcr 镜像 `ghcr.io/marci-labs/labelframe-server:0.26.0` / `labelframe-client:0.26.0`（均含 `latest`）。
+
 ## 迭代 58 安装引导专项（2/8）：CI 自动生成安装清单（install-manifest.json + latest.json） · 2026-09-14
 
 - **release workflow 新增安装清单生成与断言（Issue #51 范围 1~3，契约 = 决策 #115，实现决议 = 决策 #120；流程治理 + 产品混合立项，对齐迭代 49 / #31 先例——只改 release.yml，不动三项必需检查）**：release job 在创建 GitHub Release 前调用新增脚本 `scripts/generate-install-manifest.ps1`，收集当版全部产物（Server MSI、Client MSI、管理界面插件 zip、Linux 归档、PDA APK），实测 sha256（小写 hex）与 sizeBytes，生成 `install-manifest.json`（`schemaVersion=1`；组件条目 id / type / version / dependsOn / urls / sha256 / sizeBytes / silentArgs / topologies / notes 与 DESIGN §6.2 schema 一致；urls 为**多源 URL 数组**，首期仅 GitHub Release 主源一个元素，镜像位按数组形态预留）；runtime / `plugin-*` 条目按 schema 预留、无产物不出现，dependsOn 首版留空（只引用同集合内条目，runtime 随专项 5/8 #55 落地时补）。manifest 由 CI 生成、禁止人工维护（人工改动会被断言的哈希复核拦截）。
