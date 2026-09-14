@@ -1,6 +1,7 @@
 namespace LabelFrame.Bootstrapper.Ba;
 
 using System.Windows.Forms;
+using LabelFrame.Bootstrapper.Downloads;
 using LabelFrame.Bootstrapper.Prerequisites;
 using LabelFrame.Bootstrapper.Wizard;
 using WixToolset.BootstrapperApplicationApi;
@@ -8,6 +9,8 @@ using WixToolset.BootstrapperApplicationApi;
 /// <summary>
 /// LabelFrame 引导 BA（WiX Burn out-of-proc，决策 #122 / #124）：五步问卷（只读）→ 确认页「安装」→
 /// <see cref="IEngine.Plan"/> + <see cref="IEngine.Apply"/> 真装。执行边界契约见 DESIGN §6.3 / §6.9（确认前绝不 Apply）。
+/// 下载体验（迭代 61 / #54，DESIGN §6.10）：多源回退（CacheAcquireResolving 消费清单 urls，决策核心在
+/// <see cref="CacheSourceFallback"/>）+ 下载侧进度 / 失败分类 / 换源提示的事件映射。
 /// </summary>
 internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 {
@@ -25,6 +28,22 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
     /// <summary>安装状态快照（引擎事件线程写、UI 线程读；整体替换保证一致视图）。</summary>
     private readonly object _stateLock = new();
     private InstallState _state = new();
+
+    /// <summary>多源回退状态机（DESIGN §6.10，迭代 61 / #54）：每次 Apply 从当轮清单重建；引擎事件线程独占访问。</summary>
+    private CacheSourceFallback? _sourceFallback;
+
+    /// <summary>下载侧辅助状态锁（缓存命中识别集合；引擎事件线程读写）。</summary>
+    private readonly object _downloadSideLock = new();
+
+    /// <summary>自本包 CachePackageBegin 起是否发生过获取（Acquire）——用于区分「缓存命中跳过下载」与真实下载。</summary>
+    private readonly HashSet<string> _acquiredSincePackageBegin = new(StringComparer.Ordinal);
+
+    /// <summary>远程载荷键集合（CacheAcquireBegin 时 PayloadContainerId 为空 = 不在内嵌容器中，才走下载源）——
+    /// 排除伴生内嵌载荷（如 PayloadToolDependencies）的获取 / 校验事件对回退计数与换源播报的干扰。</summary>
+    private readonly HashSet<string> _remotePayloadKeys = new(StringComparer.Ordinal);
+
+    /// <summary>已播报换源的（包 id, 源下标）组合——引擎的校验重试会重复触发获取开始，换源只播报一次。</summary>
+    private readonly HashSet<string> _announcedRotations = new(StringComparer.Ordinal);
 
     public LabelFrameBootstrapperBa()
     {
@@ -59,22 +78,73 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
             });
         };
 
-        // ---- 进度 / 分包事件（DESIGN §6.9 UI 事件映射；多源下载体验完整消费属 #54 修订范围） ----
-        CachePackageBegin += (_, args) => UpdateState(state => state with
+        // ---- 进度 / 分包事件（DESIGN §6.9 UI 事件映射 + §6.10 下载侧细化，迭代 61 / #54） ----
+        CachePackageBegin += (_, args) =>
         {
-            Packages = WithPackage(state, args.PackageId, new PackageRunState(PackagePhase.Downloading, 0)),
-            CurrentPackageId = args.PackageId,
-        });
-        CacheAcquireProgress += (_, args) => UpdateState(state => state with
+            lock (_downloadSideLock)
+            {
+                _acquiredSincePackageBegin.Remove(args.PackageId);
+            }
+
+            UpdateState(state => state with
+            {
+                Packages = WithPackage(state, args.PackageId, new PackageRunState(PackagePhase.Downloading, 0)),
+                CurrentPackageId = args.PackageId,
+            });
+        };
+        CacheAcquireProgress += (_, args) => UpdateState(state =>
         {
-            Phase = InstallPhase.Downloading,
-            CurrentPackageId = args.PackageOrContainerId,
-            OverallPercentage = Math.Max(state.OverallPercentage, args.OverallPercentage),
+            // 按组件粒度下载进度（#54：下载侧细化——OverallPercentage 之外补单包百分比）
+            var percent = args.Total > 0 ? (int)Math.Min(100, 100 * args.Progress / args.Total) : 0;
+            return state with
+            {
+                Phase = InstallPhase.Downloading,
+                CurrentPackageId = args.PackageOrContainerId,
+                OverallPercentage = Math.Max(state.OverallPercentage, args.OverallPercentage),
+                Packages = WithPackage(state, args.PackageOrContainerId, run => run with { Percent = percent }),
+            };
         });
-        CachePackageComplete += (_, args) => UpdateState(state => state with
+        CachePackageComplete += (_, args) =>
         {
-            Packages = WithPackage(state, args.PackageId, new PackageRunState(args.Status == 0 ? PackagePhase.Downloaded : PackagePhase.Failed, args.Status)),
-        });
+            UpdateState(state => state with
+            {
+                Packages = WithPackage(state, args.PackageId, new PackageRunState(args.Status == 0 ? PackagePhase.Downloaded : PackagePhase.Failed, args.Status)),
+            });
+
+            // 多源回退兜底驱动（DESIGN §6.10）：包级缓存失败且仍有未试源 → 覆写引擎动作为 Retry，
+            // 下一轮 CacheAcquireResolving 由 CacheSourceFallback 提供下一源（无源则不空转，走失败报告）
+            if (args.Status != 0 && SourceFallback?.HasUntriedSources(args.PackageId) == true)
+            {
+                args.Action = BOOTSTRAPPER_CACHEPACKAGECOMPLETE_ACTION.Retry;
+                Log($"多源回退：组件 {args.PackageId} 获取失败（0x{args.Status:X8}），清单内仍有未尝试的源，驱动引擎重试换源。");
+            }
+        };
+
+        // ---- 多源回退与下载侧事件（§6.10；引擎事件线程调用，状态经 UpdateState 快照发布） ----
+        // WiX 版本对应：Burn v3 的 ResolveSource（BA 以 DownloadSource 提供备选源）在 v4+（本仓 v7）拆为
+        // 「CacheAcquireBegin / CacheAcquireComplete 内调用 IEngine.SetDownloadSource」+ 事件返回 Action=Retry——
+        // 官方文档口径（事件说明："The BA can change the source using SetLocalSource or SetDownloadSource"）。
+        CacheAcquireBegin += (_, args) => HandleCacheAcquireBegin(args);
+        CacheAcquireComplete += (_, args) => HandleCacheAcquireComplete(args);
+        CacheVerifyComplete += (_, args) => HandleCacheVerifyComplete(args);
+        // 缓存命中识别：获取开始前先做「哈希跳过获取」校验（CacheContainerOrPayloadVerify*）——本包未发生获取即命中缓存
+        CacheContainerOrPayloadVerifyBegin += (_, args) =>
+        {
+            bool acquired;
+            lock (_downloadSideLock)
+            {
+                acquired = args.PackageOrContainerId is not null && _acquiredSincePackageBegin.Contains(args.PackageOrContainerId);
+            }
+
+            if (!acquired)
+            {
+                UpdateState(state => state with
+                {
+                    DownloadHint = "组件已在本地缓存（校验通过后跳过下载）。",
+                    Packages = WithPackage(state, args.PackageOrContainerId, run => run with { FromCache = true }),
+                });
+            }
+        };
 
         ExecutePackageBegin += (_, args) =>
         {
@@ -201,6 +271,10 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
             _plannedPackages.Clear();
         }
 
+        // 每轮 Apply 从当轮清单重建多源回退状态机（重试 = 失败计数归零、从头按 urls 顺序；§6.10）
+        _sourceFallback = CacheSourceFallback.FromManifest(session.Manifest
+            ?? throw new InvalidOperationException("尚未加载安装清单，无法开始安装。"));
+
         SetState(new InstallState { Phase = InstallPhase.Planning });
 
         var plan = session.BuildPlan();
@@ -286,8 +360,175 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
     private void AppendError(string message) =>
         UpdateState(state => state with { Errors = [.. state.Errors, message] });
 
+    /// <summary>当前多源回退状态机（引擎事件线程与 Apply 调用线程间仅整体替换，读取不加锁——引用原子性足够）。</summary>
+    private CacheSourceFallback? SourceFallback => _sourceFallback;
+
+    /// <summary>
+    /// 多源回退 · 源注入点（DESIGN §6.10，迭代 61 / #54）：每次获取尝试开始时，按清单 urls 顺序把
+    /// urls[min(失败数, count-1)] 设为引擎下载源（<see cref="IEngine.SetDownloadSource"/>——v3 ResolveSource
+    /// 的 DownloadSource 覆写在 v7 的官方后继；运行时清单是源顺序权威，#115：顺序即优先级）。
+    /// 仅作用于<b>远程载荷</b>（不在内嵌容器中——伴生内嵌载荷经容器解压获取，与下载源无关）；
+    /// 不覆写 <c>CacheOperation</c>：本地 / 容器来源（缓存命中、旁置文件）保持引擎优先，保住断网续装能力。
+    /// </summary>
+    private void HandleCacheAcquireBegin(CacheAcquireBeginEventArgs args)
+    {
+        var payloadKey = PayloadKeyOf(args.PackageOrContainerId, args.PayloadId);
+        var isRemote = string.IsNullOrEmpty(args.PayloadContainerId);
+        if (isRemote)
+        {
+            lock (_downloadSideLock)
+            {
+                _remotePayloadKeys.Add(payloadKey);
+                if (args.PackageOrContainerId is not null)
+                {
+                    _acquiredSincePackageBegin.Add(args.PackageOrContainerId);
+                }
+            }
+        }
+
+        if (SourceFallback is null || !isRemote)
+        {
+            return; // 未装载清单（防御分支）或内嵌容器载荷：不参与多源回退
+        }
+
+        var outcome = SourceFallback.ResolveAcquire(args.PackageOrContainerId);
+        if (outcome.Decision != SourceFallbackDecision.UseSource || string.IsNullOrEmpty(outcome.Url))
+        {
+            return; // 源耗尽 / 未知包：保留引擎当前源（构建期 DownloadUrl）
+        }
+
+        if (!string.Equals(args.DownloadUrl, outcome.Url, StringComparison.Ordinal))
+        {
+            engine.SetDownloadSource(args.PackageOrContainerId, args.PayloadId, outcome.Url, null, null, null);
+        }
+
+        var host = DescribeHost(outcome.Url!);
+        if (outcome.Rotated)
+        {
+            var announcementKey = $"{args.PackageOrContainerId}|{outcome.SourceIndex}";
+            lock (_downloadSideLock)
+            {
+                if (_announcedRotations.Add(announcementKey))
+                {
+                    Log($"多源回退：组件 {args.PackageOrContainerId} 切换到第 {outcome.SourceIndex + 1}/{outcome.SourceCount} 个源（{host}）。");
+                }
+            }
+        }
+
+        UpdateState(state => state with
+        {
+            CurrentSourceIndex = outcome.SourceIndex,
+            CurrentSourceCount = outcome.SourceCount,
+            DownloadHint = outcome.Rotated
+                ? $"主源获取失败，已切换备用下载源（第 {outcome.SourceIndex + 1}/{outcome.SourceCount} 个）：{host}"
+                : $"下载源 {outcome.SourceIndex + 1}/{outcome.SourceCount}：{host}",
+        });
+    }
+
+    /// <summary>获取 / 校验事件的载荷键（包载荷的 payload id = 包 id；容器获取无 payload id 时回退包 id）。</summary>
+    private static string PayloadKeyOf(string? packageOrContainerId, string? payloadId) => payloadId ?? packageOrContainerId ?? string.Empty;
+
+    /// <summary>该载荷是否为远程下载载荷（依据获取开始时的容器归属登记；未登记 = 内嵌或未发生获取）。</summary>
+    private bool IsRemotePayload(string? packageOrContainerId, string? payloadId)
+    {
+        lock (_downloadSideLock)
+        {
+            return _remotePayloadKeys.Contains(PayloadKeyOf(packageOrContainerId, payloadId));
+        }
+    }
+
+    /// <summary>单次获取结束（下载 / 拷贝，仅远程载荷）：失败时计数 + 分类呈现，仍有未试源则驱动引擎逐载荷重试（下一轮换源）。</summary>
+    private void HandleCacheAcquireComplete(CacheAcquireCompleteEventArgs args)
+    {
+        if (args.Status == 0)
+        {
+            UpdateState(state => state with
+            {
+                Packages = WithPackage(state, args.PackageOrContainerId, run => run with { Percent = 100 }),
+            });
+            return;
+        }
+
+        if (!IsRemotePayload(args.PackageOrContainerId, args.PayloadId))
+        {
+            return; // 内嵌容器载荷的获取失败不参与回退计数（其来源为解压，与下载源无关）
+        }
+
+        var category = DownloadFailureClassifier.Classify(args.Status);
+        var fallback = SourceFallback;
+        fallback?.RecordAcquireFailure(args.PackageOrContainerId);
+        var hasUntried = fallback?.HasUntriedSources(args.PackageOrContainerId) == true;
+
+        UpdateState(state => state with
+        {
+            Packages = WithPackage(state, args.PackageOrContainerId, run => new PackageRunState(
+                PackagePhase.Failed,
+                args.Status,
+                Percent: run.Percent,
+                FromCache: run.FromCache,
+                Failure: category)),
+        });
+        var describe = DownloadFailureClassifier.Describe(category);
+        var exhaustion = hasUntried
+            ? string.Empty
+            : $"（清单全部 {SourceFallback?.ResolveAcquire(args.PackageOrContainerId).SourceCount ?? 1} 个源均已尝试失败——源耗尽）";
+        AppendError($"[{args.PackageOrContainerId ?? "引擎"}] 下载获取失败（0x{args.Status:X8}）：{describe}{exhaustion}");
+        Log($"下载获取失败：[{args.PackageOrContainerId ?? "引擎"}] 0x{args.Status:X8}，分类 = {category}。{describe}{exhaustion}");
+
+        if (hasUntried)
+        {
+            args.Action = BOOTSTRAPPER_CACHEACQUIRECOMPLETE_ACTION.Retry; // 逐载荷重试 → 重新 Resolving → 换源
+        }
+    }
+
+    /// <summary>获取后校验（哈希，仅远程载荷）结束：坏哈希（篡改内容 / 传输损坏）同样按序换源——
+    /// 引擎自身最多推荐 2 次重取，用尽后若清单仍有未试源则追加驱动 RetryAcquisition（有界：每次失败推进源游标）。</summary>
+    private void HandleCacheVerifyComplete(CacheVerifyCompleteEventArgs args)
+    {
+        if (args.Status == 0 || !IsRemotePayload(args.PackageOrContainerId, args.PayloadId))
+        {
+            return;
+        }
+
+        var category = DownloadFailureClassifier.Classify(args.Status);
+        var fallback = SourceFallback;
+        fallback?.RecordVerifyFailure(args.PackageOrContainerId);
+        var hasUntried = fallback?.HasUntriedSources(args.PackageOrContainerId) == true;
+
+        UpdateState(state => state with
+        {
+            Packages = WithPackage(state, args.PackageOrContainerId, run => run with { Failure = category }),
+        });
+        var describe = DownloadFailureClassifier.Describe(category);
+        AppendError($"[{args.PackageOrContainerId ?? "引擎"}] 校验失败（0x{args.Status:X8}）：{describe}");
+        Log($"下载校验失败：[{args.PackageOrContainerId ?? "引擎"}] 0x{args.Status:X8}，分类 = {category}。{describe}");
+
+        if (hasUntried && args.Recommendation == BOOTSTRAPPER_CACHEVERIFYCOMPLETE_ACTION.None)
+        {
+            args.Action = BOOTSTRAPPER_CACHEVERIFYCOMPLETE_ACTION.RetryAcquisition;
+            Log($"多源回退：组件 {args.PackageOrContainerId} 校验失败且引擎重取额度用尽，清单内仍有未尝试的源，追加换源重取。");
+        }
+    }
+
+    /// <summary>源 URL → 展示主机（host:port；解析失败回退原串截断）。</summary>
+    private static string DescribeHost(string url)
+    {
+        string candidate;
+        try
+        {
+            var uri = new Uri(url);
+            candidate = uri.IsDefaultPort ? uri.Host : $"{uri.Host}:{uri.Port}";
+        }
+        catch (UriFormatException)
+        {
+            candidate = url.Length <= 64 ? url : url.Substring(0, 64) + "…";
+        }
+
+        return candidate;
+    }
+
     /// <summary>复制并更新单包状态（net48 Dictionary 无 (IDictionary, IComparer) 构造重载）。</summary>
-    private static Dictionary<string, PackageRunState> WithPackage(InstallState state, string packageId, PackageRunState run)
+    private static Dictionary<string, PackageRunState> WithPackage(InstallState state, string? packageId, PackageRunState run)
     {
         var packages = new Dictionary<string, PackageRunState>(StringComparer.Ordinal);
         foreach (var pair in state.Packages)
@@ -295,7 +536,30 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
             packages[pair.Key] = pair.Value;
         }
 
-        packages[packageId] = run;
+        if (packageId is not null)
+        {
+            packages[packageId] = run;
+        }
+
+        return packages;
+    }
+
+    /// <summary>复制并按现有值更新单包状态（保留未知字段；net48 无 Collection 表达式便捷写法）。</summary>
+    private static Dictionary<string, PackageRunState> WithPackage(InstallState state, string? packageId, Func<PackageRunState, PackageRunState> update)
+    {
+        var packages = new Dictionary<string, PackageRunState>(StringComparer.Ordinal);
+        foreach (var pair in state.Packages)
+        {
+            packages[pair.Key] = pair.Value;
+        }
+
+        if (packageId is not null)
+        {
+            packages[packageId] = packages.TryGetValue(packageId, out var existing)
+                ? update(existing)
+                : update(new PackageRunState(PackagePhase.Downloading, 0));
+        }
+
         return packages;
     }
 
@@ -371,8 +635,18 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 /// <summary>Burn Plan 阶段产出的单个包计划状态（RequestState）。</summary>
 internal sealed record PlannedPackage(string PackageId, RequestState State);
 
-/// <summary>单包执行状态（phase + 退出码）。</summary>
-internal sealed record PackageRunState(PackagePhase Phase, int Status);
+/// <summary>单包执行状态（phase + 退出码 + 下载侧细化字段，迭代 61 / #54）。</summary>
+/// <param name="Phase">阶段。</param>
+/// <param name="Status">引擎状态码（失败分类输入）。</param>
+/// <param name="Percent">下载侧单包百分比（0-100；CacheAcquireProgress 的 Progress/Total）。</param>
+/// <param name="FromCache">是否命中本地缓存跳过下载（获取前哈希校验通过）。</param>
+/// <param name="Failure">下载侧失败分类（获取 / 校验失败时写入；null = 未发生或未分类）。</param>
+internal sealed record PackageRunState(
+    PackagePhase Phase,
+    int Status,
+    int Percent = 0,
+    bool FromCache = false,
+    LabelFrame.Bootstrapper.Downloads.DownloadFailureCategory? Failure = null);
 
 /// <summary>单包阶段。</summary>
 internal enum PackagePhase
@@ -426,6 +700,15 @@ internal sealed record InstallState
     public int OverallPercentage { get; init; }
 
     public string? CurrentPackageId { get; init; }
+
+    /// <summary>当前下载源序号（0 起；-1 = 未知——多源回退提示，迭代 61 / #54）。</summary>
+    public int CurrentSourceIndex { get; init; } = -1;
+
+    /// <summary>当前组件清单源总数（0 = 未知）。</summary>
+    public int CurrentSourceCount { get; init; }
+
+    /// <summary>下载侧状态提示（换源发生 / 缓存命中；null = 无）。</summary>
+    public string? DownloadHint { get; init; }
 
     public IReadOnlyDictionary<string, PackageRunState> Packages { get; init; } =
         new Dictionary<string, PackageRunState>(StringComparer.Ordinal);

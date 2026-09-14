@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 61 安装引导专项（5/8）：引导下载体验补全——多源回退与下载行为测试覆盖 · 2026-09-14
+
+- **多源回退（决策 #125，DESIGN §6.10 契约先行；范围 = Issue #54「范围修订 v2（缩编重报）」——原自研下载器范围被 Burn 引擎吸收，本轮补回退消费与体验）**：BA 按 install manifest `urls` 数组顺序（#115：顺序即优先级）逐源回退——WiX v3 `ResolveSource` 在 v7（本仓工具链）的后继 = **`CacheAcquireBegin` / `CacheAcquireComplete` 事件内调用 `IEngine.SetDownloadSource` + 失败时事件返回 `Retry`**（引擎 `AcquireContainerOrPayload` 获取 / 重试循环；`CacheAcquireResolvingEventArgs.DownloadUrl` 在 v7 只读，`SetDownloadSource` 才是覆写入口——引擎源码考古定案）。决策核心入核心库 `CacheSourceFallback`（`src/LabelFrame.Bootstrapper/Downloads/`，net48 / net10 双腿）：每链包失败计数（获取失败与**坏哈希校验失败各计一次**）逐源推进，第 N 次获取提供 `urls[min(N, count-1)]`；**运行时清单是源顺序权威**（每轮 Apply 从当轮清单重建、重试按钮归零从头重试）；源耗尽停止干预并提示「已尝试全部 N 个源」；重试驱动有界（获取失败 Retry / 坏哈希引擎 2 次额度 + BA 追加 RetryAcquisition / 包级兜底 Retry——每次失败推进源游标，无源不空转）；**仅远程载荷参与**（`PayloadContainerId` 空 = 非内嵌容器，伴生 DLL 解压获取不干扰计数）；本地 / 缓存来源不覆写（保住断网续装）。单源清单（首期生产形态）零 schema 变更退化为「失败即耗尽」，**镜像源落地只需填 urls 数组**（#117 镜像位预留兑现为消费链路）。
+- **下载侧进度 / 失败事件映射补全（#55 已交付安装链进度，本轮补下载侧细化）**：`CacheAcquireProgress` 的 `Progress/Total` 映射**单包下载百分比**（进度页分组件行 + 阶段行「下载中 X%（源 i/N）」）；**换源提示**行（「主源获取失败，已切换备用下载源（第 i/N 个）：host」）；**缓存命中标注**（获取前哈希跳过校验通过且本包未发生获取 → 「已缓存（跳过下载）」）；**失败分类** `DownloadFailureClassifier`（纯函数入核心库）——HRESULT → 源不可达（404 / 文件不存在 / 域名未解析 / 无法连接）/ 网络中断（超时 / 连接中止 / 重置）/ 校验失败（0x80091007 坏哈希）/ 未分类，差异化中文提示（换源已自动发生 / 检查网络与代理 / 镜像源部署指引 / 勿绕过校验），失败报告与 Burn 日志双通道呈现（分类结论写日志供回溯）。
+- **Burn 下载行为测试矩阵（`scripts/test-bundle-download-matrix.ps1`，本地脚本化验证不进 CI）**：per-user 测试 Bundle（双 ExePackage id=ServerMsi/ClientMsi——PayloadTool 无参空操作作载体，规避 MSI 与提权，复刻 #55 方法）+ **真实 BA 七页向导 Win32 UI 自动化**（本地清单注入 → 单机一体 → 确认安装）；双 TcpListener 测试源按 URL 路由内嵌行为（`/ok/` `/404/` `/hang/` `/corrupt/` `/truncate/`，访问日志落盘）；多源 url 序由运行时清单驱动（正是被测消费路径）。**七场景三通道断言（Burn 日志 / 退出码 / 访问日志）本地全绿**：S1 正常下载；S2 主源 404 → 换源镜像成功；S3 主源无响应挂起 → 换源成功；S4a 坏哈希 → 换源重取干净副本成功；S4b 坏哈希单源 → 引擎重取额度内同源重试仍坏 → 失败（fail-closed 不装不明文件，exit 0x80091007）；S5 半量截断中断 → 镜像完整重传成功；S6 缓存命中 + 断网续装（run1 挂起下载中强制中断（**实测口径：缓存阶段失败会被引擎回滚清缓存，进程中断才保留 InProgress 注册与包缓存**）→ run2 双源停机：已缓存包零网络请求 + 未缓存包逐源拒绝 → 换源 2/2 → 源耗尽 + 分类提示）。**Burn 载体下「续传」语义 = 失败后重试 / 换源重新获取**（引擎不做 HTTP Range 断点续传）——与原自研下载器 AC 口径的差异如实记录于 DESIGN §6.10。
+- **测试（Bootstrapper 89 → 126 项）**：新增 `CacheSourceFallbackTests`（11 项：首源 / 失败推进 / 校验失败推进 / 耗尽 / 单源退化 / 未知包 / 计数隔离 / Reset / 六包映射 / 三源钳制 / UI 元数据）与 `DownloadFailureClassifierTests`（26 项理论展开：HRESULT 矩阵 + 差异化文案 + 三类互异）；问卷只读契约（#53 AC-03）与 #55 既有契约测试全保留通过。
+- **工程注记（矩阵实测踩坑，入 DESIGN §6.10）**：wix build 会在输出目录留包载荷硬链接中间产物——不清除则 Burn 以 Bundle 同目录为本地源直接 copy 跳过下载；WinForms 控件为注册类名（`WindowsForms10.*`），UI 自动化需 `EnumChildWindows` 递归 + 类名子串匹配。
+- **记账**：DESIGN §6.10（下载体验与多源回退）+ 决策表 #125 + §6.9 / §6.4 / §7 相应注记；CHANGELOG 本条目；ROADMAP 状态行本轮不改（轮值结项时另提 docs PR）。
+
 ## 迭代 62 安装引导专项（6/8）：Apply 启用——运行时前置链与非 MSI 落位 · 2026-09-14
 
 - **Apply 启用（决策 #124，DESIGN §6.9 契约先行；范围 = Issue #55「范围修订 v2」）**：引导 BA 从 dry-run 进入真装——问卷阶段保持 #53 只读契约（零下载 / 零安装 / 零系统改动，测试锚定），**执行边界 = 确认页「安装」**：BA 写入问卷变量 + 运行时探测变量 + 落位目标变量后 `Engine.Plan(Install)` + `Engine.Apply(向导句柄)`；#53「绝不 Apply」口径修订为「确认前绝不 Apply」（确认页横幅文案同步为「确认前只读」）。
