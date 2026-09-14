@@ -28,7 +28,7 @@ public static class InstallTargets
             "archive" => component.Id == "linux-server"
                 ? $"/opt/labelframe/server（systemd 部署；数据目录 {LinuxDataDir}）"
                 : $"/opt/labelframe/{component.Id}",
-            "lfplugin" => $"{programData}\\LabelFrame\\Client\\plugins\\{component.Id}",
+            "lfplugin" => $"{programData}\\LabelFrame\\Client\\plugins\\{BrandPluginMap.PluginIdOf(TopologyResolver.BrandIdOf(component.Id)) ?? component.Id}",
             "runtime" => component.Id switch
             {
                 "runtime-desktop" => ".NET Desktop Runtime（系统级全局安装）",

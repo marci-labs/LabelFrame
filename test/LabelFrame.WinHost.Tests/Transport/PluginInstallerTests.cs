@@ -390,6 +390,123 @@ public class PluginInstallerTests
         }
     }
 
+    // ---- 官方插件体系（迭代 63，决策 #123）：官方 id 放行 + 覆盖安装版本比较 + 真实装配 ----
+
+    [Fact]
+    public async Task Install_official_package_should_pass_builtin_check_and_load_after_restart()
+    {
+        // 官方 id（labelframe-transport-zebra）不再与内置冲突（zebra 已外置）；安装后重启装配可用（AC-02 装配面）
+        var (installer, registry, pluginsDir) = Create();
+        try
+        {
+            var view = await installer.InstallAsync(new MemoryStream(OfficialPackageFactory.Build("0.27.0")), "zebra-official.lfplugin", CancellationToken.None);
+
+            Assert.Equal("labelframe-transport-zebra", view.PluginId);
+            Assert.Equal("0.27.0", view.Version);
+            var dir = Path.Combine(pluginsDir, "labelframe-transport-zebra");
+            Assert.True(Directory.Exists(dir));
+            Assert.True(File.Exists(Path.Combine(dir, PluginPackageReader.ManifestFileName)));
+
+            // 模拟重启：外部插件目录装配 → 官方插件注册（id 与 describe 等价内置时代行为）
+            var loaded = PluginDirectoryLoader.Load(pluginsDir, TextWriter.Null);
+            var plugin = Assert.Single(loaded, item => item.Plugin.Id == "labelframe-transport-zebra").Plugin;
+            Assert.Equal("Zebra", plugin.DisplayName);
+        }
+        finally
+        {
+            TryDeleteDirectory(pluginsDir);
+        }
+    }
+
+    [Fact]
+    public async Task Install_official_newer_version_should_overwrite_older()
+    {
+        var (installer, _, pluginsDir) = Create();
+        try
+        {
+            await installer.InstallAsync(new MemoryStream(OfficialPackageFactory.Build("0.26.0")), "a.lfplugin", CancellationToken.None);
+            var view = await installer.InstallAsync(new MemoryStream(OfficialPackageFactory.Build("0.27.0")), "b.lfplugin", CancellationToken.None);
+
+            Assert.Equal("0.27.0", view.Version);
+            var manifest = PluginPackageManifest.Parse(
+                File.ReadAllText(Path.Combine(pluginsDir, "labelframe-transport-zebra", PluginPackageReader.ManifestFileName)));
+            Assert.Equal("0.27.0", manifest.Version);
+        }
+        finally
+        {
+            TryDeleteDirectory(pluginsDir);
+        }
+    }
+
+    [Fact]
+    public async Task Install_official_same_version_should_be_idempotent_skip()
+    {
+        // 同版本幂等：不重复解压（目录不动——marker 文件保留），返回已装视图
+        var (installer, _, pluginsDir) = Create();
+        try
+        {
+            await installer.InstallAsync(new MemoryStream(OfficialPackageFactory.Build("0.27.0")), "a.lfplugin", CancellationToken.None);
+            var dir = Path.Combine(pluginsDir, "labelframe-transport-zebra");
+            var marker = Path.Combine(dir, "marker.txt");
+            File.WriteAllText(marker, "keep");
+
+            var view = await installer.InstallAsync(new MemoryStream(OfficialPackageFactory.Build("0.27.0")), "b.lfplugin", CancellationToken.None);
+
+            Assert.Equal("0.27.0", view.Version);
+            Assert.True(File.Exists(marker)); // 未重建目录
+        }
+        finally
+        {
+            TryDeleteDirectory(pluginsDir);
+        }
+    }
+
+    [Fact]
+    public async Task Install_official_older_version_should_be_rejected_as_downgrade()
+    {
+        var (installer, _, pluginsDir) = Create();
+        try
+        {
+            await installer.InstallAsync(new MemoryStream(OfficialPackageFactory.Build("0.27.0")), "a.lfplugin", CancellationToken.None);
+
+            var ex = await Assert.ThrowsAsync<PluginPackageException>(() =>
+                installer.InstallAsync(new MemoryStream(OfficialPackageFactory.Build("0.26.0")), "b.lfplugin", CancellationToken.None));
+            Assert.Contains("降级", ex.Message);
+            Assert.Contains("0.27.0", ex.Message);
+
+            // 已装版本不受影响
+            var manifest = PluginPackageManifest.Parse(
+                File.ReadAllText(Path.Combine(pluginsDir, "labelframe-transport-zebra", PluginPackageReader.ManifestFileName)));
+            Assert.Equal("0.27.0", manifest.Version);
+        }
+        finally
+        {
+            TryDeleteDirectory(pluginsDir);
+        }
+    }
+
+    [Fact]
+    public async Task Install_thirdparty_same_version_should_still_overwrite()
+    {
+        // 第三方插件维持「覆盖安装不做版本比较」（决策 #72 4A）：同版本重装仍替换目录（marker 消失）
+        var (installer, _, pluginsDir) = Create();
+        try
+        {
+            await installer.InstallAsync(new MemoryStream(BuildPackage(version: "1.0.0")), "a.lfplugin", CancellationToken.None);
+            var marker = Path.Combine(pluginsDir, "sample", "marker.txt");
+            File.WriteAllText(marker, "stale");
+
+            var view = await installer.InstallAsync(new MemoryStream(BuildPackage(version: "1.0.0")), "b.lfplugin", CancellationToken.None);
+
+            Assert.Equal("1.0.0", view.Version);
+            Assert.False(File.Exists(marker)); // 目录被重建
+        }
+        finally
+        {
+            TryDeleteDirectory(pluginsDir);
+        }
+    }
+
     private static void TryDeleteDirectory(string dir)
     {
         try

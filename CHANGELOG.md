@@ -2,6 +2,19 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 63 安装引导专项（7/8）：品牌传输插件外置化与官方插件体系 · 2026-09-14
+
+- **zebra 传输外置化（决议 1「彻底外置」，决策 #123，DESIGN §6.8 契约先行）**：`ZebraTransportPlugin` / `ZebraPrinterTransport` 从 WinHost 迁入新插件工程 `src/LabelFrame.TransportPlugin.Zebra`（net10.0-windows10.0.26100，Zebra SDK 5.0.3685 与毒丸引用清单随工程迁移），构建为官方 `.lfplugin` 包（`scripts/build-zebra-plugin.ps1`，版本随主版本演进）随 Release 发布；**WinHost 客户端核心不再引用 Zebra.Printer.SDK**（瘦身，SDK 依赖全部随插件包分发）。未装外置包时该品牌不可用（插件列表无此传输；连接引用时回退默认连接 + host.log 中文留痕——`TransportManager` 启动装配护栏，不再因缺插件崩溃）。
+- **官方插件 id 与品牌映射（决议 2）**：官方前缀 `labelframe-`，zebra 插件 id = `labelframe-transport-zebra`（manifest.pluginId / DLL 插件 Id / 连接配置 pluginId 三处一致；Core 新增 `TransportPluginIdPolicy` 统一常量）；旧内置时代 id `zebra`（≤0.26）为读取别名（connection.json 读取时内存态映射，不落盘迁移）；brand → manifest 组件 id（plugin-zebra）→ 插件包 pluginId 三段映射表入 DESIGN §6.8，引导侧 `BrandPluginMap` 同构（后续品牌零契约扩展）。
+- **存量升级兼容（AC-04，随升级包附带渠道）**：客户端 MSI 附带 `plugin-packages\labelframe-transport-zebra-<版本>.lfplugin`（main.wxs 条件编译块 + build-msi.ps1 自动检测产物传入；本地无产物可跳过不影响裸构建）；启动时 `ZebraPluginMigration` 检测「已用 zebra 配置」（connection.json 官方 id / 旧别名 / 旧 Mode=Zebra，或 appsettings / 环境变量 Transport=Zebra）且插件未装 → 自动从附带包安装（复用 PluginInstaller 三层校验），**本次启动即完成装配**（先于外部插件目录扫描）；无附带包 / 附带包损坏均只留痕引导安装，不阻断启动。
+- **覆盖安装版本比较（决议 2，官方插件率先）**：`labelframe-` 前缀插件安装时与已装版本比较——新版本覆盖旧版本、**同版本幂等跳过**（不重复解压）、**降级拒绝**（提示先卸载再装，中文可行动消息）；第三方插件维持「覆盖安装不做版本比较」（决策 #72 4A）。比较语义：双方可解析 `System.Version` 按其比较（缺失段视为 0，1.0 == 1.0.0），否则字符串 Ordinal（Core 新增 `PluginVersionComparer`）。
+- **服务端放行策略（AC-05）**：`plugin-packages` 上传校验新增内置传输保留 id（log / tcp9100 / winspool）拒绝——与客户端安装侧「注册表内置即拒绝」互为纵深；官方 id（`labelframe-` 前缀）放行，官方插件可经服务端集中分发、客户端「插件管理」安装。
+- **manifest 收录与引导接线（AC-03）**：`scripts/generate-install-manifest.ps1` 收录 `plugin-zebra` 条目（type=lfplugin、version=主版本、topologies=standalone/client/offline、sha256 CI 实测）——本地实测：样例产物目录生成 + 断言通过（6 组件、逐条目哈希复核）；引导侧 `InstallPluginZebra` Burn 变量接线随清单条目生效（`BundleVariableMap` 既有映射，无需改代码），品牌页文案更新为外置语义、确认页 lfplugin 安装位置显示真实插件目录（`plugins\labelframe-transport-zebra`）；Bundle 链内 `.lfplugin` 的下载与安装归 #54 / #55。
+- **发布流水线（对齐 #51 混合立项先例，仅改 release.yml）**：package job 新增「构建 Zebra 官方插件包」步骤（先于 Client MSI——MSI 附带该包），release-assets 产物与 GitHub Release 附件均含 `labelframe-transport-zebra-*.lfplugin`；三项必需检查（ci.yml）名称与语义不动。
+- **测试（新增 48 个用例（理论展开计），全解决方案 576 项全绿）**：官方 id 策略 / 版本比较（Core，17 项矩阵）；官方包安装（生产同构包——真实插件 DLL + SDK 全套伴生闭包）通过内置冲突校验且重启装配成功（AC-02 装配面）、新版本覆盖 / 同版本幂等 / 降级拒绝 / 第三方同版本仍覆盖（WinHost，5 项）；存量升级迁移 9 场景（旧别名 / 官方 id / 旧 Mode / 环境变量 / 无配置 / 已装幂等 / 无附带包引导 / 附带包损坏不阻断 / 多版本选最新）；服务端放行 4 项（官方 id 放行 + 三内置 id 拒绝）；引导 fixture 升级（current 含 plugin-zebra 六组件 + 新增 pre-plugin 存量形态清单，既有断言同步）。既有 Zebra 传输行为测试（#49 AC-08 口径：连接失败 / 状态离线 / 测试失败消息含目标）随迁移全数保留通过。
+- **本地验证**：`dotnet build LabelFrame.slnx -c Release`（0 警告 0 错误）+ `dotnet test`（排除 Perf/Soak，576 项全绿）；插件包实测 **9.88 MB**（29 DLL + manifest.json，含 Zebra SDK 全套伴生依赖，上限 64MB）；MSI 冒烟构建（含附带包与不含附带包两种路径）+ `verify-msi-ui.ps1` UI 契约断言通过 + MSI File 表确认 `plugin-packages\labelframe-transport-zebra-0.27.0.lfplugin` 在内；manifest 生成 + 断言 6 组件全过。
+- **记账**：DESIGN §6.8（官方插件体系）+ 决策表 #123 + §6.2 / §6.3 品牌映射与变量契约更新；DEPLOY §6 与 README 传输行同步事实修正；ROADMAP 状态行本轮不改（轮值结项时另提 docs PR）。
+
 ## 迭代 60 安装引导专项（4/8）：引导程序骨架——问卷与拓扑预设→组件集合（dry-run） · 2026-09-14
 
 - **形态返工（决策 #122，Issue #53 决议评论用户拍板）**：首版「自研 WinForms self-contained 向导」实测 51.7MB 超 #114 ≤ 20MB 量级（WinForms/WPF self-contained 框架体积下限、裁剪被 SDK 阻断 NETSDK1175），用户权衡「买引擎」后改用 **WiX Burn Bundle + 托管 BA**——AC-04 口径随形态替换为 **Burn Bundle EXE 实测体积（MB 级）**；DESIGN §6.1 契约修订先行（强化路径），决策表 #122 记账；**迭代 61（#54）/ 62（#55）/ 64（#57）大半自研内容可被 Burn 吸收，各 Issue 拾取时重审范围**。

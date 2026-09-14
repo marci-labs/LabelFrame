@@ -191,6 +191,7 @@ flowchart LR
 | 120 | 安装清单 CI 生成落地：latest.json 同步生成 + 断言粒度（迭代 58 安装引导专项 2/8，2026-09-14；两项待决议按 Issue #51 评论用户确认——同步生成 latest.json / 断言 = 字段完整性 + 产物存在性 + 哈希抽验） | ① **生成点 = release workflow 的 release job**（下载当版全部产物后、创建 Release 前）调用 `scripts/generate-install-manifest.ps1`：对五类产物（Server / Client MSI、管理界面插件 zip、Linux 归档、PDA APK）实测 sha256（小写 hex）与 sizeBytes，生成 `install-manifest.json`（schemaVersion=1；urls 多源数组首期仅 GitHub Release 主源一个元素，镜像位按数组形态预留）与 `latest.json`（最新版本号 + 当版 manifest URL），二者随 Release 附件发布。runtime / `plugin-*` 条目无产物不出现，dependsOn 首版全部留空（只引用同集合内条目；runtime 条目随 #55 落地时补 `server-msi → runtime-desktop`、`client-msi → runtime-desktop + runtime-webview2`）。② **断言粒度 = schema 字段完整性 + 产物存在性 + 哈希抽验**（逐条目重算比对，覆盖且强于抽样）：生成阶段缺产物即失败（空哈希 / 空条目不可能落盘），独立断言步骤（`-VerifyOnly`）重读落盘清单复核——缺产物 / 缺哈希 / schema 不符任一命中即非零退出、job 失败、不创建 Release（#51 AC-03）。③ 脚本兼容 Windows PowerShell 5.1（本地自验）与 PowerShell 7（CI runner），JSON 手写序列化 + UTF-8 无 BOM 落盘保证跨版本输出一致 | manifest 及 latest.json 与产物同 Release 全自动生成（「禁止人工维护」由 workflow 强制——人工编辑会被哈希复核拦截）；后续新增组件条目（runtime #55 / 官方插件 #56）只扩脚本组件表；引导程序（#53 起）与升级检查（#57）获得稳定数据源；端到端真实发版验证（Release 附件含清单、下载复核 sha256）随下一次 `v*` tag（AC-01 / AC-02 待发版验证） |
 | 121 | 引导程序骨架落地：ITopologyResolver 形状细化、dry-run 契约与构建接入（迭代 60 安装引导专项 4/8，2026-09-14；两项待决议按 Issue #53 评论用户确认——离线入口 = 欢迎页给离线全量包下载链接与说明（方案 A，断网自动切换离线引导后置 #75）/ 品牌预选 = 仅 Zebra，读 Windows 已装打印机驱动名 ZDesigner → zebra，完整品牌映射归 #56） | ① **接口形状细化（强化路径：先改 §6.3 再写代码）**：`ITopologyResolver.Resolve` 返回值由「裸组件清单」升级为 `TopologyPlan`（预设 + 按依赖序的 `PlannedComponent` 列表 + 总体积 + server-docker 专属 compose 指引）——compose 产物描述与确认页安装位置不是 `ManifestComponent` 字段，裸 `IReadOnlyList<ManifestComponent>` 无法承载；映射语义与 #116 映射表不变（核心组件 = topologies 命中预设即纳入；`webui` 与 `plugin-<brand>` 为开关组件且仍受 topologies 过滤；dependsOn 闭包纳入 + 拓扑序输出）。② **dry-run 契约（AC-03）**：引导会话全程只读——manifest 获取 = 本地文件读或单次 HTTP GET，无下载 / 写入 / 系统改动代码路径（下载归 #54、安装归 #55，本轮未引入）；确认页 UI 明示「仅预览：尚未下载、尚未安装」。③ **品牌选项与预选**：选项来源仅为 manifest 已有 `plugin-<brand>` 条目（无条目时品牌页说明、勾选不添加组件——映射语义 7/8 完整化）；预选规则本轮仅 ZDesigner → zebra。④ **构建接入**：加入 `LabelFrame.slnx` 走日常 CI PR 构建验证；是否随 Release 附件发布引导 EXE 未定（后续迭代定案），release.yml 本轮不动。⑤ 引导 EXE self-contained win-x64 单文件发布实测体积见 CHANGELOG 当期条目（AC-04 对照 #114 ≤ 20MB 量级，实测超标如实记录） | #54 / #55 获得结构化组件清单接口（含安装位置与 compose 指引）；dry-run 边界由测试锚定（无网络写请求 / 无文件系统改动断言）；品牌映射只有一个规则、扩表零契约变更；Release 附件决策后置不阻塞骨架交付 |
 | 122 | 引导程序形态修订：改用 WiX Burn Bundle + 托管 BA（迭代 60 返工，2026-09-14 用户决议见 Issue #53 决议评论；技术细节实施侧调研定案，见 §6.1 修订） | **修订 #114 形态结论**：自研 WinForms self-contained 向导 → WiX Burn Bundle + 托管 BA。① 起因 = AC-04 体积实测：self-contained WinForms 单文件 51.7MB 超 ≤ 20MB 量级（框架体积下限 + WinForms 裁剪被 SDK 阻断 NETSDK1175）；用户权衡「买引擎」（现成下载 / 校验 / 链装 / 回滚 / 升级 + MB 级体积）后拍板；**AC-04 口径替换为 Burn Bundle EXE 实测体积（MB 级）**。② **BA 形态 = out-of-proc 托管 EXE**（WiX v5.4+ 模型，v7 现役）：`WixToolset.BootstrapperApplicationApi` 7.0.0 + `ManagedBootstrapperApplication.Run` 握手；**目标框架 net48 WinForms**（.NET Framework 4.8 = Win10 1809+ OS 组件，裸机免装运行时；.NET 10 SCD 在 bundle 内复现 51.7MB、FDD 裸机不可用，均不取）。③ 职责重划：拓扑编排 / manifest 解析 / 中文问卷仍自研（核心库 `net48;net10.0-windows` 多目标，`ITopologyResolver` 契约与测试全量复用）；下载 / 校验 / 链装 / 回滚 / 升级改由 Burn 引擎承担——**迭代 61（#54）/ 62（#55）/ 64（#57）大半自研内容可被 Burn 吸收，各 Issue 拾取时重审范围**。④ dry-run = BA 设置 Burn 变量 + `Engine.Plan` 只计划不执行（绝不 Apply）；变量契约 `InstallPreset` / `InstallServer` / `InstallClient` / `InstallWebUi` / `InstallPluginZebra`（§6.3）。⑤ 构建接入：核心库 + BA 工程入 slnx 走 CI；Bundle 由 `scripts/build-bundle.ps1` 构建（需真实 MSI 提取元数据，不能进 slnx），release.yml 不动 | 引导程序体积问题从「换 UI 栈」转为「买引擎」消解（Bundle EXE = 引擎 ~2.5MB + 压缩 BA 载荷数 MB）；专项后半程（#54 / #55 / #57）范围重审有明确契约锚点（Burn 能力清单 + 变量契约）；#44（迭代 10 放弃 Burn）的历史顾虑由 v5.4+ out-of-proc 模型消解；代价 = 问卷 UI 定制受 Burn 进程模型约束 + 维护栈引入原生引擎 |
+| 123 | 品牌传输插件外置化与官方插件体系（迭代 63 安装引导专项 7/8，2026-09-14；两项待决议按 Issue #56 评论用户确认——内置兜底去留 = **彻底外置**（未装则该品牌不可用，达成瘦身目标）/ 官方插件 id 与版本流 = **官方前缀 + 随主版本演进 + 覆盖安装率先支持版本比较**；策略细节见 §6.8） | ① **zebra 传输外置化（WinHost windows 目标）**：`ZebraTransportPlugin` / `ZebraPrinterTransport` 从 WinHost 移入独立插件工程 `src/LabelFrame.TransportPlugin.Zebra`（net10.0-windows10.0.26100），构建为官方 `.lfplugin` 包随 Release 发布；WinHost 不再引用 Zebra.Printer.SDK（客户端瘦身，SDK 依赖随插件包分发；毒丸引用清单随插件工程迁移）。② **官方插件 id**：前缀 `labelframe-`；zebra = `labelframe-transport-zebra`（连接配置 pluginId 同此）；**版本随主版本演进**（发版流水线以当版主版本构建）；旧内置时代 id `zebra`（≤0.26）为读取别名——connection.json 读取时映射为官方 id，不落盘迁移。③ **存量升级兼容（决议 1，AC-04）**：客户端 MSI 附带 `plugin-packages\labelframe-transport-zebra-<版本>.lfplugin`（随升级包附带，零新下载机制——下载链归 #54/#55）；启动时检测「已用 zebra 配置」且插件未装 → 自动从附带包安装（复用 PluginInstaller 三层校验），本次启动即完成装配；无附带包（开发目录裸跑）则 host.log 中文提示、不阻断启动。④ **覆盖安装版本比较（决议 2，官方插件率先）**：新版本覆盖旧版本、同版本幂等跳过、降级拒绝（提示先卸载）；第三方插件维持「覆盖安装不做版本比较」（#72 4A）；比较语义 = 双方可解析 System.Version 按其比较，否则字符串 Ordinal。⑤ **服务端放行策略**：`plugin-packages` 上传校验新增内置传输保留 id（log / tcp9100 / winspool）拒绝，官方 id 放行——官方插件可经服务端集中分发。⑥ **manifest 收录与品牌映射**：install manifest 收录 `plugin-zebra`（type=lfplugin，version=主版本，topologies=standalone/client/offline）；brand → 组件 id → 插件包 pluginId 三段映射表入 §6.8；引导 `InstallPluginZebra` 变量接线生效（BundleVariableMap 既有映射），Bundle 链安装归 #54/#55 | 品牌传输从「客户端全量内置」转为「按品牌组装」（#67 / #95 路线落地首例）；客户端二进制与 SDK 依赖解耦（瘦身 + SDK 升级单点在插件工程）；升级路径无断裂（已用 zebra 配置自动迁移装配）；官方插件覆盖安装有明确版本语义（为引导升级铺路）；后续新品牌（TSPL / CPCL）按同构映射表扩展零契约变更 |
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`（常量定义于 `ApiErrorCodes.InternalError`，全仓仅此一处字面量）。分类修正（决策 #107）：请求体反序列化失败（非法 JSON / 非 UTF-8 / 类型不匹配）→ 400 + `LF_API_BAD_BODY`（中文消息，原始解析异常详情只进服务端日志）；`POST /api/printer/test` 发送失败 → 400 + `LF_TRANSPORT_TEST_FAILED`（消息含目标地址与原因）；403（非归属设备回报 / 进度）同样返回 ErrorView——错误响应不存在空 body 形态。
@@ -257,7 +258,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 ## 6. 安装引导（Bootstrapper）
 
-> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）。
+> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）。
 
 定位：**安装引导程序（setup）**——首次接触 LabelFrame 的部署者运行一个小 EXE，回答少量问题（部署拓扑、打印机品牌、是否带管理界面），程序解析安装清单（install manifest）、按需下载组件并完成静默安装 / 落位；PDA 不进 PC 引导（经服务端下载中心扫码下载，专项 3/8 #52）。目标：把「装什么、怎么装」从「读懂 DEPLOY 文档 + 手工排组件」降为「回答三个问题」。语言边界：引导问卷与向导文案**中文单语**，i18n 不进 setup 问卷（REQUIREMENTS §7「多语言」边界不变）。
 
@@ -287,7 +288,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 |---|---|---|---|
 | `id` | string | ✅ | 组件稳定 id：`server-msi` / `client-msi` / `webui` / `linux-server` / `pda-apk` / `runtime-desktop` / `runtime-webview2` / `plugin-<brand>` |
 | `type` | string | ✅ | `msi` / `lfplugin` / `webui-zip` / `apk` / `runtime` / `archive` |
-| `version` | string | ✅ | 组件版本（对齐产物版本；runtime / 官方插件为自身版本） |
+| `version` | string | ✅ | 组件版本（对齐产物版本；runtime 为自身版本；官方插件版本随主版本演进——§6.8） |
 | `dependsOn` | string[] | — | 依赖组件 id 列表（只约束**同集合内**组件的安装顺序，如 `client-msi` → `runtime-desktop`；跨形态互斥组件如 `server-msi` / `linux-server` 不会同集合出现） |
 | `urls` | string[] | ✅ | **多源 URL 数组，顺序即优先级、逐源回退**；首期仅 GitHub Release 主源，镜像位预留（§6.4） |
 | `sha256` | string | ✅ | 文件 SHA-256（小写 hex）。**强制**：CI 从当次真实产物实测；引导程序下载后**逐源强制校验**，不符即停（fail-closed，不装不明文件） |
@@ -297,6 +298,8 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 | `notes` | string | — | 中文展示备注（确认页可显示） |
 
 **生成约束：manifest 由 CI 生成、禁止人工维护**——哈希与体积是构建产物事实，人工编辑必然漂移；workflow 对字段完整性断言（缺产物 / 缺哈希 / schema 不符 = 构建失败，#51 AC-03）。当版无对应产物的条目不出现（首版无官方插件产物则无 `plugin-*` 条目，问卷对应选项不出现）。
+
+**官方插件条目（迭代 63 起，决策 #123）**：`plugin-zebra`（type=`lfplugin`，version=主版本，topologies=`standalone` / `client` / `offline`）随发版流水线从当版 `.lfplugin` 产物生成（`labelframe-transport-zebra-<版本>.lfplugin` Release 附件）；品牌 → 组件 id → 插件包 pluginId 的三段映射表见 §6.8。
 
 **runtime 条目特殊语义**：`runtime-desktop`（.NET 10 Desktop Runtime x64）/ `runtime-webview2`（WebView2 Evergreen 引导器）的 `urls` 指向**厂商官方直链**；sha256 由 CI 生成时对当次下载实测锁定。厂商可能轮转固定 URL 背后的文件——哈希漂移表现为引导程序校验失败拒绝安装（fail-closed，安全方向失效），修复 = 重新发版刷新 manifest。属接受的残余风险（强于「不校验厂商文件」）。
 
@@ -433,7 +436,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 **仅有的两项自由开关**：
 
-1. **打印机品牌多选**：品牌 → `plugin-<brand>` 组件映射（如 Zebra → `plugin-zebra`，#56 外置化后出现；首版 Zebra 内置 WinHost、manifest 无该条目，选项只在条目出现后生效）；适用于含客户端的预设（`standalone` / `client`）。
+1. **打印机品牌多选**：品牌 → `plugin-<brand>` 组件映射（**已完整化（迭代 63，决策 #123）：Zebra → `plugin-zebra`，manifest 已有条目，选项生效；brand → 组件 id → 插件包 pluginId 完整映射表见 §6.8**）；适用于含客户端的预设（`standalone` / `client`）。
 2. **是否带管理界面**：`webui`（webui-zip）落位服务端 `plugins/web-ui`（放入即生效，决策 #62）；`standalone` 默认关（客户端本机 UI 已完整），分离部署建议开；Docker 形态 = 启用镜像内置界面（不下载 zip）。
 
 **「预设 + 开关 → 组件集合」解析契约**（专项 4/8 #53 实现；输出是 #54 下载引擎 / #55 安装编排的公共契约。**形状细化（迭代 60，#53 实现，决策 #121）**：返回值由「裸组件清单」升级为 `TopologyPlan`——server-docker 的 compose 产物描述、确认页 / 编排所需的安装位置不是 `ManifestComponent` 的字段，裸 `IReadOnlyList<ManifestComponent>` 无法承载；映射语义与上表不变）：
@@ -464,9 +467,9 @@ public interface ITopologyResolver
 **实现要点（迭代 60，#53 骨架落地）**：
 
 - **纳入规则**：核心组件 = `topologies` 命中预设即默认纳入；开关组件 `webui`（id）与 `plugin-<brand>`（id 前缀）由开关决定，且**仍受 `topologies` 过滤**（如 `webui` 未标记 `client`，追加客户端预设开开关也不纳入）；`dependsOn` 闭包递归纳入（仅同 manifest 内条目，缺引用 = 清单非法拒绝），输出按拓扑序（同层按清单声明序，环状依赖拒绝）。
-- **品牌选项来源仅为 manifest 已有 `plugin-<brand>` 条目**（品牌 → 组件映射语义由专项 7/8 #56 完整化）；清单无品牌条目时品牌页展示说明而非报错，勾选 Zebra 不额外添加组件（首版 Zebra 传输内置客户端）。**预选规则（Issue #53 决议 2）**：读 Windows 已装打印机驱动名，`ZDesigner` → `zebra` 预勾选，其余品牌从零勾选——本轮唯一规则，完整品牌映射表归 #56。
+- **品牌选项来源仅为 manifest 已有 `plugin-<brand>` 条目**（品牌 → 组件映射已完整化：映射表见 §6.8；条目 id → 实际安装目录用插件包 pluginId，如 `plugin-zebra` → `plugins\labelframe-transport-zebra`）；清单无品牌条目时品牌页展示说明而非报错，勾选不添加组件。**预选规则（Issue #53 决议 2）**：读 Windows 已装打印机驱动名，`ZDesigner` → `zebra` 预勾选，其余品牌从零勾选——当前唯一规则，后续品牌扩表零契约变更。
 - **dry-run 契约（AC-03）**：引导会话全程只读——manifest 获取 = 本地文件读取或单次 HTTP GET，无任何下载、写入、系统改动的代码路径（下载 / 安装能力归 Burn 引擎与 #54 / #55，本轮不触发）；BA 侧 dry-run = 设置 Burn 变量后调用 `Engine.Plan(LaunchAction, BundleScope.Default)`（只计划不执行），**绝不调用 `Engine.Apply`**；确认页 UI 明示「仅预览：尚未下载、尚未安装，不会对系统做任何改动」。
-- **Burn 变量契约（BA ↔ Bundle 链）**：`InstallPreset`（string：预设 manifest id）+ `InstallServer` / `InstallClient` / `InstallWebUi` / `InstallPluginZebra`（numeric 0/1，按解析结果中 `server-msi` / `client-msi` / `webui` / `plugin-zebra` 是否在集合内置位）——映射为纯函数入核心库（net10 测试锚定），Bundle 链内 `MsiPackage` 以 `<Condition>` 消费；后续新增品牌插件时按 `InstallPlugin<Brand>` 同构扩展（7/8 #56）。
+- **Burn 变量契约（BA ↔ Bundle 链）**：`InstallPreset`（string：预设 manifest id）+ `InstallServer` / `InstallClient` / `InstallWebUi` / `InstallPluginZebra`（numeric 0/1，按解析结果中 `server-msi` / `client-msi` / `webui` / `plugin-zebra` 是否在集合内置位）——映射为纯函数入核心库（net10 测试锚定），Bundle 链内 `MsiPackage` 以 `<Condition>` 消费；后续新增品牌插件时按 `InstallPlugin<Brand>` 同构扩展（映射表 §6.8；Bundle 链内 `.lfplugin` 的下载与安装归 #54 / #55）。
 - **构建接入（Issue #53 范围 3 fallback，#122 修订）**：核心逻辑库与 BA 工程加入 `LabelFrame.slnx` 由日常 CI 做 PR 构建验证；**Bundle 本体**（`wix build`，构建时需真实 MSI 提取包元数据，无法在 slnx 解决方案构建阶段获得 MSI）由 `scripts/build-bundle.ps1` 本地 / 发版时构建——按 #53 fallback「仅 PR 构建验证」口径如实记录，release.yml 本轮不动（是否随 Release 附件发布引导 EXE 未定）。
 
 （缓存路径、安装记录等实现细节归 #54~#55；本节锁定映射语义、开关边界与解析器接口形状。）
@@ -528,6 +531,34 @@ public interface ITopologyResolver
 | 6 | [#55](https://github.com/marci-labs/LabelFrame/issues/55) | 迭代 62 | 安装编排：运行时前置补装 + MSI 静默链 + 组件落位 | #54 |
 | 7 | [#56](https://github.com/marci-labs/LabelFrame/issues/56) | 迭代 63 | 品牌传输插件外置化与按需组装（官方插件 manifest 条目） | #50、#53；与 #54 / #55 可并行 |
 | 8 | [#57](https://github.com/marci-labs/LabelFrame/issues/57) | 迭代 64 | 升级路径（检查新版本 + 重跑引导）+ 专项收尾记账 | #53~#55、#51 |
+
+### 6.8 官方传输插件体系（决策 #123，迭代 63 / #56）
+
+品牌传输插件从客户端内置拆为官方 `.lfplugin` 外置包——首例 Zebra（WinHost windows 目标）；log / tcp9100 / winspool 三内置模式维持内置（跨平台兜底与测试通道，不外置）。AndroidHost 不受影响（外置插件机制为 #95 远期项，PDA 侧 SDK 传输维持现状）。
+
+**官方插件 id 与版本流（决议 2）**：
+
+- 官方前缀 **`labelframe-`**；Zebra 插件 id = **`labelframe-transport-zebra`**（`.lfplugin` manifest.pluginId、DLL `ITransportPlugin.Id`、连接配置 pluginId 三处一致）；后续官方插件按 `labelframe-transport-<brand>` / `labelframe-<功能>` 同构扩展。
+- **版本随主版本演进**：发版流水线以当版主版本构建官方插件（`labelframe-transport-zebra-<主版本>.lfplugin` 随 Release 附件发布）——升级客户端时官方插件与新主版本同步重发，不存在独立版本流。
+- **旧内置时代 id `zebra`（≤0.26）为读取别名**：connection.json 读取时映射为官方 id（内存态，不落盘迁移；用户重新保存连接时自然写新 id）。
+
+**品牌映射表**（brand → install manifest 组件 id → 插件包 pluginId；引导品牌页选项 / 预选 / Burn 变量沿此映射，后续品牌按同构扩展）：
+
+| brand | manifest 组件 id（type=lfplugin） | 插件包 pluginId（安装目录 `plugins\<pluginId>`） | 驱动名预选关键词 |
+|---|---|---|---|
+| `zebra` | `plugin-zebra` | `labelframe-transport-zebra` | `ZDesigner` |
+
+**彻底外置（决议 1，AC-01）**：客户端核心不保留内置 zebra 兜底——未装外置包时该品牌不可用（传输插件列表无此选项；连接配置引用该插件时回退默认连接 + host.log 中文留痕，不崩溃）；WinHost 不再引用 Zebra.Printer.SDK，SDK 依赖随插件包分发（包体积须守 `.lfplugin` 64MB 上限，构建脚本实测断言）。SDK 许可证口径不变（#111 ⑧：SDK 以目标码随应用集成分发——`.lfplugin` 属 LabelFrame 应用集成形态，非单独分发 SDK 本体）。
+
+**存量升级兼容（决议 1，AC-04——升级路径无断裂）**：
+
+- 获取渠道 = **随升级包附带**（现状能力，零新下载机制——下载链归 #54 / #55）：客户端 MSI 附带 `plugin-packages\labelframe-transport-zebra-<版本>.lfplugin`（安装目录下，随 MSI 升级自动更新）。
+- 启动时自动迁移：检测「已用 zebra 配置」——connection.json 引用官方 id / 旧别名 `zebra` / 旧 `Mode=Zebra`，或 appsettings / 环境变量 `Transport=Zebra`——且插件未安装时，自动从附带包安装（复用 `PluginInstaller` 三层校验：zip + manifest / 内置 id 拒绝 / 临时 ALC 预检），**本次启动即完成装配**（迁移先于外部插件目录扫描执行）。
+- 无附带包（开发目录裸跑 / 自定义部署）时 host.log 中文提示引导安装（服务端 `plugin-packages` 下载或 Release 附件），不阻断启动。
+
+**覆盖安装版本比较（决议 2，官方插件率先）**：官方前缀插件安装时与已装版本比较——**新版本 > 旧版本：覆盖安装**（既有覆盖语义）；**相同版本：幂等跳过**（不重复解压，日志留痕，返回已装视图）；**旧版本（降级）：拒绝**（明确提示先卸载再安装）。第三方插件维持「覆盖安装不做版本比较」（决策 #72 4A）。比较语义：双方可解析为 `System.Version` 则按其比较，否则按字符串 Ordinal 比较。
+
+**服务端分发与放行策略（AC-05）**：服务端 `plugin-packages` 上传校验新增**内置传输保留 id 拒绝**——`log` / `tcp9100` / `winspool` 拒绝上传（防「客户端安装与内置冲突的包」，与客户端安装侧「注册表内置即拒绝」动态判定互为纵深）；**官方插件 id（`labelframe-` 前缀）放行**，官方插件可经服务端集中分发（客户端「插件管理」安装）。信任模型不引入插件签名（#117：公网 `.lfplugin` 受 manifest sha256 背书；局域网 #72 通道维持三层校验）。
 
 ## 7. 风险与未决问题
 

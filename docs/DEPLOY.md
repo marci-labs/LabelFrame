@@ -116,7 +116,8 @@ docker compose -f .\packaging\e2e\compose.yaml down
 - 客户端设置页「插件管理」：浏览 → 安装（下载 → 三层校验 → 解压到 `%ProgramData%\LabelFrame\Client\plugins\<pluginId>\`）→ **重启客户端生效**；卸载 = 删目录 + 重启。外部插件字节加载，不锁文件。
 - 外部插件 DLL 也可手动放入 `%ProgramData%\LabelFrame\Client\plugins`（`LABELFRAME_PLUGINS` 可覆盖），单个加载失败只记日志不影响宿主。
 - 连接配置：`%LOCALAPPDATA%\LabelFrame\connection.json`，格式 `{ "pluginId": "tcp9100", "params": { "host": "...", "port": "9100" } }`；旧格式自动迁移。
-- 内置传输插件：`log`（模拟打印）、`tcp9100`、`winspool`（Windows 驱动）、`zebra`（Zebra Link-OS SDK）。插件接口见 DESIGN「传输插件」相关决策记录。
+- 内置传输插件：`log`（模拟打印）、`tcp9100`、`winspool`（Windows 驱动）。插件接口见 DESIGN「传输插件」相关决策记录。
+- **Zebra 品牌传输已外置为官方插件**（迭代 63，决策 #123）：插件 id `labelframe-transport-zebra`，`.lfplugin` 包随 GitHub Release 发布（`labelframe-transport-zebra-<版本>.lfplugin`）并经客户端 MSI 附带（安装目录 `plugin-packages\`）；连接配置引用 Zebra 时插件未装则客户端启动自动从附带包安装（升级无断裂），也可在「插件管理」手动安装 / 升级（官方插件覆盖安装带版本比较：新版本覆盖、同版本幂等、降级需先卸载）。未安装该插件时 Zebra 品牌不可用（连接引用则回退默认连接并在 host.log 留痕）。
 
 ## 7. 自动化发布与签名
 

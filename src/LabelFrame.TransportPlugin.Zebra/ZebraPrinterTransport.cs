@@ -1,15 +1,17 @@
 using LabelFrame.Core.Transport;
+using LabelFrame.Core.Transport.Plugins;
 using Zebra.Sdk.Comm;
 using Zebra.Sdk.Printer;
 using Zebra.Sdk.Printer.Discovery;
 
-namespace LabelFrame.WinHost.Transport;
+namespace LabelFrame.TransportPlugin.Zebra;
 
 /// <summary>
 /// Zebra 官方 Link-OS SDK 传输：统一处理 TCP / USB / Windows 驱动连接，
 /// 发送 ZPL 指令；异常统一转换为中文 InvalidOperationException。
+/// 自 WinHost 迁移（迭代 63 外置化，行为与内置版本等价——#49 AC-08 口径）。
 /// </summary>
-public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvider, LabelFrame.Core.Transport.Plugins.ITestableTransport
+public sealed class ZebraPrinterTransport : IPrintTransport, IPrinterStatusProvider, ITestableTransport
 {
     private readonly ZebraTransportKind _kind;
     private readonly string _address;

@@ -1,6 +1,6 @@
-# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单）
+# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123）
 # 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
-# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 生成安装清单 → 创建 GitHub Release。
+# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Zebra 官方插件包 / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 生成安装清单 → 创建 GitHub Release。
 # MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
 # APK 签名：四个 ANDROID_KEYSTORE_* / ANDROID_KEY_* Secret 必须齐备，缺失即构建失败——不回退 debug 签名（签名稳定化，迭代 59 决策 #119）。
 # 安装清单：install-manifest.json（+ latest.json 指针）由 release job 从当版真实产物生成并断言（schema 见 docs/DESIGN.md §6.2，迭代 58 决策 #115 / #120）；禁止人工维护。
@@ -197,6 +197,13 @@ jobs:
           & .\scripts\package-server-webui.ps1 -Version $env:VERSION
           if (-not $?) { throw '插件包打包失败' }
 
+      # 官方插件包（迭代 63，决策 #123）：先于 Client MSI 构建——MSI 附带该包（plugin-packages\，存量升级自动安装源）
+      - name: 构建 Zebra 官方插件包（.lfplugin）
+        shell: pwsh
+        run: |
+          & .\scripts\build-zebra-plugin.ps1 -Version $env:VERSION
+          if ($LASTEXITCODE -ne 0) { throw 'Zebra 插件包构建失败' }
+
       - name: 发布 Server（linux-x64）并归档
         shell: pwsh
         run: |
@@ -211,6 +218,7 @@ jobs:
             artifacts/LabelFrame-Client-*.msi
             artifacts/labelframe-server-webui-*.zip
             artifacts/labelframe-server-*-linux-x64.tar.gz
+            artifacts/labelframe-transport-zebra-*.lfplugin
           if-no-files-found: error
 
   android:
@@ -426,5 +434,6 @@ jobs:
             release/LabelFrame-AndroidHost-*.apk
             release/labelframe-server-webui-*.zip
             release/labelframe-server-*-linux-x64.tar.gz
+            release/labelframe-transport-zebra-*.lfplugin
             release/install-manifest.json
             release/latest.json

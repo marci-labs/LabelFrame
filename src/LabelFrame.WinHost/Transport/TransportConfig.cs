@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
+using LabelFrame.Core.Transport.Plugins;
 
 namespace LabelFrame.WinHost.Transport;
 
@@ -41,7 +42,8 @@ public sealed class TransportConfig
         TransportMode.Log => "log",
         TransportMode.Tcp => "tcp9100",
         TransportMode.WindowsDriver => "winspool",
-        TransportMode.Zebra => "zebra",
+        // Zebra 外置官方插件（迭代 63，决策 #123）：连接配置 pluginId 用官方 id
+        TransportMode.Zebra => TransportPluginIdPolicy.ZebraPluginId,
         _ => "log",
     };
 
@@ -50,7 +52,8 @@ public sealed class TransportConfig
     {
         "tcp9100" => TransportMode.Tcp,
         "winspool" => TransportMode.WindowsDriver,
-        "zebra" => TransportMode.Zebra,
+        // 官方插件 id 与旧内置时代别名都归入 Zebra（旧字段仅作展示兼容）
+        TransportPluginIdPolicy.ZebraPluginId or TransportPluginIdPolicy.LegacyZebraPluginId => TransportMode.Zebra,
         _ => TransportMode.Log,
     };
 
@@ -136,6 +139,9 @@ public sealed class TransportConfig
             {
                 config.MigrateFromLegacy();
             }
+
+            // 旧内置时代 zebra id（≤0.26）读取别名 → 官方插件 id（内存态，不落盘迁移；决策 #123）
+            config.PluginId = TransportPluginIdPolicy.NormalizeAlias(config.PluginId);
 
             config.SyncLegacyFields();
             return config;

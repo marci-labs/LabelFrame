@@ -1,33 +1,26 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Zebra 品牌传输官方插件工程（迭代 63，决策 #123，DESIGN §6.8）：
+       从 WinHost 内置拆出为外置 .lfplugin 官方插件包（scripts/build-zebra-plugin.ps1 构建）——
+       WinHost 客户端核心不再引用 Zebra.Printer.SDK（瘦身），SDK 依赖随插件包分发。
+       目标框架与 WinHost windows 腿一致（net10.0-windows10.0.26100）：插件 DLL 由宿主运行时字节加载。 -->
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.26100</TargetFramework>
-    <RootNamespace>LabelFrame.WinHost.Tests</RootNamespace>
+    <RootNamespace>LabelFrame.TransportPlugin.Zebra</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <IsPackable>false</IsPackable>
-    <!-- WinHost 的 WebView2 包 buildTransitive 引入 Wpf 变体（未用 WPF），与框架 WindowsBase 解析产生 MSB3277，属良性冲突 -->
-    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="xunit" Version="2.6.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
-  <!-- 毒丸引用清单（自插件工程迁移而来，迭代 63）：引用 LabelFrame.TransportPlugin.Zebra 后其 Zebra SDK 传递的
-       MAUI / WinUI 链需要在消费侧同样显式排除——否则 WindowsAppSDK 的版本特定 RID 图触发 NETSDK1206 告警。 -->
-  <ItemGroup>
+    <!-- Zebra 官方 Link-OS SDK：USB / TCP / 驱动 / 蓝牙 统一连接与打印机状态。5.0.3685 与 AndroidHost 统一双端版本（迭代 56，决策 #111）。 -->
+    <PackageReference Include="Zebra.Printer.SDK" Version="5.0.3685" />
+    <!-- 毒丸引用清单（Windows 验证版，全部 ExcludeAssets="all"，迭代 56 实证，自 WinHost csproj 迁移）：
+         Zebra SDK 5.x 传递依赖 SkiaSharp.Views.Maui.Controls，其 MAUI / WinUI 程序集链会——
+         ① 混入编译（Microsoft.Maui.Controls.Label 等 MAUI 类型与宿主 WinForms / WebView2 投影类型冲突）；
+         ② WindowsAppSDK 的 buildTransitive 注入 win10-* RID 图（win-x64 framework-dependent 工程不识别，NETSDK1083）。
+         ExcludeAssets="all" 不裁剪传递闭包，故须逐包显式排除整条 MAUI / WinUI 链。
+         保留 SkiaSharp + SkiaSharp.NativeAssets.Win32（SDK 图形工具引用；宿主经 LabelFrame.Rendering 已随附）。 -->
     <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="3.119.2" ExcludeAssets="all" />
     <PackageReference Include="SkiaSharp.Views" Version="3.119.2" ExcludeAssets="all" />
     <PackageReference Include="SkiaSharp.Views.Maui.Core" Version="3.119.2" ExcludeAssets="all" />
@@ -48,11 +41,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\LabelFrame.WinHost\LabelFrame.WinHost.csproj" />
-    <ProjectReference Include="..\..\src\LabelFrame.Rendering\LabelFrame.Rendering.csproj" />
-    <ProjectReference Include="..\LabelFrame.TransportPlugin.Sample\LabelFrame.TransportPlugin.Sample.csproj" />
-    <!-- Zebra 官方插件工程（迭代 63 外置化）：迁移后的传输行为测试（#49 AC-08 回归）与官方包安装 / 版本比较用例的程序集来源 -->
-    <ProjectReference Include="..\..\src\LabelFrame.TransportPlugin.Zebra\LabelFrame.TransportPlugin.Zebra.csproj" />
+    <ProjectReference Include="..\LabelFrame.Core\LabelFrame.Core.csproj" />
   </ItemGroup>
 
 </Project>

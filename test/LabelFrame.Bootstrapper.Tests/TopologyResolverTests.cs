@@ -22,18 +22,29 @@ public sealed class TopologyResolverTests
     private static void AssertIds(TopologyPlan plan, params string[] expected) =>
         Assert.Equal(expected.ToList(), plan.Components.Select(item => item.Component.Id).ToList());
 
-    // ---- AC-01：当前清单形态（迭代 58 产物：无 runtime / plugin 条目）----
+    // ---- AC-01：当前清单形态（迭代 63 起产物：plugin-zebra 官方插件条目已收录）----
 
     [Fact]
-    public void Resolve_current_manifest_standalone_zebra_webui_should_be_server_client_webui()
+    public void Resolve_current_manifest_standalone_zebra_webui_should_be_server_client_webui_plugin()
     {
-        // AC-01：单机一体 + Zebra + 带管理界面 → Server MSI + Client MSI + 管理界面 zip
-        // （清单无 plugin-zebra 条目：勾选 Zebra 不额外添加组件——映射语义 7/8 完整化）
+        // AC-01：单机一体 + Zebra + 带管理界面 → Server MSI + Client MSI + 管理界面 zip + Zebra 官方插件
         var plan = _resolver.Resolve(Current, TopologyPreset.Standalone, Options(["zebra"], webUi: true));
 
-        AssertIds(plan, "server-msi", "client-msi", "webui");
-        Assert.Equal(11534336L + 12582912L + 4194304L, plan.TotalSizeBytes);
+        AssertIds(plan, "server-msi", "client-msi", "webui", "plugin-zebra");
+        Assert.Equal(11534336L + 12582912L + 4194304L + 9437184L, plan.TotalSizeBytes);
         Assert.Null(plan.DockerComposeGuidance);
+    }
+
+    [Fact]
+    public void Resolve_pre_plugin_manifest_zebra_selected_should_not_add_component()
+    {
+        // 存量 Release 清单（≤0.26 无 plugin 条目）：勾选 Zebra 不额外添加组件（品牌页无可选项）
+        var plan = _resolver.Resolve(
+            LoadManifest("install-manifest.pre-plugin.json"),
+            TopologyPreset.Standalone,
+            Options(["zebra"], webUi: false));
+
+        AssertIds(plan, "server-msi", "client-msi");
     }
 
     // ---- AC-02：全矩阵（full fixture：含 runtime 条目 + dependsOn 闭包 + plugin-zebra 条目）----

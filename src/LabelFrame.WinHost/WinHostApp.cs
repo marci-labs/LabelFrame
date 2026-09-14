@@ -57,7 +57,7 @@ public static class WinHostApp
         });
         configureBuilder?.Invoke(builder);
 
-        // Windows 注册完整传输能力；Linux 首版固定只注册 Log。
+        // Windows 注册内置传输能力（log / tcp9100 / winspool；zebra 已外置为官方插件，决策 #123）；Linux 首版固定只注册 Log。
         var transportRegistry = new TransportPluginRegistry();
 #if WINDOWS
         foreach (var plugin in BuiltinTransportPlugins.CreateCorePlugins())
@@ -66,7 +66,10 @@ public static class WinHostApp
         }
 
         transportRegistry.Register(new WinspoolTransportPlugin());
-        transportRegistry.Register(new ZebraTransportPlugin());
+
+        // 存量升级兼容（决策 #123，AC-04）：已用 zebra 配置且外置插件未装 → 自动安装随客户端附带的官方插件包；
+        // 须先于下方外部插件目录扫描执行（本次启动即完成装配）。
+        ZebraPluginMigration.Run(options, hostLogWriter, hostInfo);
 #else
         options.Transport = TransportMode.Log;
         transportRegistry.Register(new LogTransportPlugin());

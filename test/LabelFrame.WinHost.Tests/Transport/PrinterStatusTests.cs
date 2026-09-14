@@ -1,5 +1,7 @@
 using LabelFrame.Core.Transport;
+using LabelFrame.TransportPlugin.Zebra;
 using LabelFrame.WinHost.Transport;
+using ZebraTransportKind = LabelFrame.TransportPlugin.Zebra.ZebraTransportKind;
 
 namespace LabelFrame.WinHost.Tests.Transport;
 
