@@ -2,8 +2,8 @@ using LabelFrame.Bootstrapper.Topology;
 
 namespace LabelFrame.Bootstrapper.Wizard;
 
-/// <summary>Burn 变量契约（DESIGN §6.3，决策 #122）：问卷解析结果 → Bundle 链条件变量——BA 在确认页写入引擎，Chain 内 MsiPackage 以 Condition 消费。</summary>
-/// <remarks>纯函数（net10 测试锚定）；后续品牌插件按 <c>InstallPlugin&lt;Brand&gt;</c> 同构扩展（7/8 #56）。</remarks>
+/// <summary>Burn 变量契约（DESIGN §6.3，决策 #122 / #124）：问卷解析结果与探测 / 落位信息 → Bundle 链条件变量——BA 写入引擎，Chain 内包以 Condition / InstallArguments 消费。</summary>
+/// <remarks>纯函数（net10 测试锚定）；后续品牌插件按 <c>InstallPlugin&lt;Brand&gt;</c> / <c>&lt;Brand&gt;TargetDir</c> 同构扩展（7/8 #56）。</remarks>
 public static class BundleVariableMap
 {
     /// <summary>预设 manifest id 变量（standalone / server-win / server-docker / server-linux / client）。</summary>
@@ -15,11 +15,23 @@ public static class BundleVariableMap
     /// <summary>是否安装 Client MSI（链内 client-msi 条件）。</summary>
     public const string ClientVariable = "InstallClient";
 
-    /// <summary>是否带管理界面（webui 落位归 6/8 #55）。</summary>
+    /// <summary>是否带管理界面（webui 落位包条件）。</summary>
     public const string WebUiVariable = "InstallWebUi";
 
-    /// <summary>是否安装 Zebra 品牌插件（plugin-zebra 条目随 7/8 #56 出现）。</summary>
+    /// <summary>是否安装 Zebra 品牌插件（plugin-zebra 落位包条件）。</summary>
     public const string ZebraPluginVariable = "InstallPluginZebra";
+
+    /// <summary>.NET 10 Desktop Runtime 是否已装（链内 DetectCondition 消费，BA 于 Detect 前按 §6.9 口径写入）。</summary>
+    public const string DesktopRuntimeVariable = "DesktopRuntimeInstalled";
+
+    /// <summary>WebView2 是否已装（链内 DetectCondition 消费，BA 于 Detect 前按 §6.9 口径写入）。</summary>
+    public const string WebView2Variable = "WebView2Installed";
+
+    /// <summary>webui 落位目标目录（链内落位包 InstallArguments 以 [变量] 引用）。</summary>
+    public const string WebUiTargetDirVariable = "WebUiTargetDir";
+
+    /// <summary>Zebra 插件落位目标目录（链内落位包 InstallArguments 以 [变量] 引用）。</summary>
+    public const string PluginZebraTargetDirVariable = "PluginZebraTargetDir";
 
     /// <summary>拓扑计划 → 变量集合（string 值；数值变量由 BA 写引擎时转 long）。</summary>
     public static IReadOnlyDictionary<string, string> ToVariables(TopologyPlan plan)
@@ -44,6 +56,16 @@ public static class BundleVariableMap
             [ZebraPluginVariable] = Flag(ids.Contains("plugin-zebra")),
         };
     }
+
+    /// <summary>webui 落位目标目录（DEPLOY §5：放入即生效）。</summary>
+    public static string WebUiTargetDir() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+        "LabelFrame", "server", "plugins", "web-ui");
+
+    /// <summary>Zebra 插件落位目标目录（DEPLOY §6：plugins\&lt;pluginId&gt;；pluginId 映射表见 §6.8）。</summary>
+    public static string PluginZebraTargetDir() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+        "LabelFrame", "Client", "plugins", BrandPluginMap.PluginIdOf("zebra") ?? "plugin-zebra");
 
     private static string Flag(bool enabled) => enabled ? "1" : "0";
 }

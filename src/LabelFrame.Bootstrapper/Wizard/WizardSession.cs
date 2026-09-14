@@ -5,11 +5,11 @@ using LabelFrame.Bootstrapper.Topology;
 
 namespace LabelFrame.Bootstrapper.Wizard;
 
-/// <summary>问卷会话（UI 无关的核心状态机，BA 页面复用）：manifest 来源 → 已加载清单 → 预设 / 品牌多选 / 管理界面开关 → 组件集合（dry-run）。</summary>
+/// <summary>问卷会话（UI 无关的核心状态机，BA 页面复用）：manifest 来源 → 已加载清单 → 预设 / 品牌多选 / 管理界面开关 → 组件集合。</summary>
 /// <remarks>
-/// dry-run 契约（Issue #53 AC-03、DESIGN §6.3 实现要点）：本类没有任何下载、写入或系统改动方法——
-/// 全程只读（清单获取 + 已装打印机名枚举）；实际执行（下载 / 链装）由 Burn 引擎在 Apply 阶段承担，
-/// 本迭代 BA 只设置变量并调用 Plan（只计划不执行）。
+/// 问卷只读契约（Issue #53 AC-03、DESIGN §6.3，决策 #124 修订执行边界）：本类没有任何下载、写入或系统改动方法——
+/// 问卷阶段全程只读（清单获取 + 已装打印机名枚举）；执行边界 = 确认页「安装」，实际下载 / 链装由 Burn 引擎
+/// 在 BA 调用 <c>Engine.Apply</c> 后承担（BA 侧编排见 <c>LabelFrameBootstrapperBa.ExecuteInstallAsync</c>）。
 /// </remarks>
 public sealed class WizardSession
 {
@@ -24,9 +24,6 @@ public sealed class WizardSession
         _resolver = resolver ?? new TopologyResolver();
         _installedPrinterNames = installedPrinterNames ?? InstalledPrinters.GetNames;
     }
-
-    /// <summary>本迭代恒为 dry-run：会话不存在执行动作（测试断言锚点，防止误引入执行模式）。</summary>
-    public bool IsDryRun { get; } = true;
 
     /// <summary>清单来源：本地路径或 URL（默认稳定通道）。</summary>
     public string ManifestSource { get; set; } = StableChannelManifestUrl;
@@ -56,7 +53,7 @@ public sealed class WizardSession
             PrinterBrandDetector.DetectPreselectedBrands(_installedPrinterNames(), AvailableBrands), StringComparer.Ordinal);
     }
 
-    /// <summary>按当前问卷答案计算组件集合（确认页数据源；#54 / #55 的消费入口）。</summary>
+    /// <summary>按当前问卷答案计算组件集合（确认页数据源；Burn 链 InstallCondition 消费其变量映射）。</summary>
     public TopologyPlan BuildPlan()
     {
         if (Manifest is null)

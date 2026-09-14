@@ -2,14 +2,18 @@ using LabelFrame.Bootstrapper.Wizard;
 
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
-/// <summary>向导壳：分步导航（欢迎 → 部署形态 → 打印机品牌 → 管理界面 → 确认预览）；分页内容见各 Page。</summary>
+/// <summary>向导壳：分步导航（欢迎 → 部署形态 → 打印机品牌 → 管理界面 → 确认 → 安装进度 → 完成 / 失败报告）。</summary>
 /// <remarks>
 /// 导航索引 / 惰性装配 / 越界防御由 <see cref="WizardNavigator{TPage}"/> 承担（迭代 60 返修，可单测）；
 /// 本类只做 WinForms 呈现与按钮接线——<see cref="NavigateTo"/> 为<b>绝对</b>页索引（原增量 Navigate(delta)
 /// 的 Navigate(0) 会被越界守卫静默吞掉，即验收回流缺陷，见 Issue #53）。
+/// 确认页「下一步」语义 = 开始安装（进入进度页由进度页驱动 <c>Engine.Apply</c>，决策 #124）；
+/// 执行期间「上一步 / 取消」禁用（中断由引擎 Quit 承担，不自造取消语义）。
 /// </remarks>
 internal sealed class WizardForm : Form
 {
+    private const int ProgressPageIndex = 5;
+
     private readonly WizardSession _session = new();
     private readonly LabelFrameBootstrapperBa _ba;
 
@@ -37,6 +41,8 @@ internal sealed class WizardForm : Form
             () => new BrandPage(_session),
             () => new ManagementUiPage(_session),
             () => new ConfirmPage(_session, _ba),
+            () => new ProgressPage(_session, _ba, this),
+            () => new CompletePage(_session, _ba),
         ]);
 
         // 顶部步骤指示
@@ -88,6 +94,9 @@ internal sealed class WizardForm : Form
         }
     }
 
+    /// <summary>是否处于安装执行中（进度页运行期）：禁用关闭与导航。</summary>
+    internal bool InstallInProgress { get; private set; }
+
     /// <summary>欢迎页加载清单成功后自动进入下一页（避免连点两次）。</summary>
     private void RequestNext()
     {
@@ -110,12 +119,37 @@ internal sealed class WizardForm : Form
 
         if (_navigator.IsLastPage)
         {
-            // 确认页（最后一步）：仅关闭窗口——引擎侧 dry-run 结束，无后续动作
+            // 完成页（最后一步）：关闭向导结束会话
             Close();
             return;
         }
 
+        if (_navigator.CurrentIndex == ProgressPageIndex - 1)
+        {
+            NavigateTo(ProgressPageIndex);
+            return;
+        }
+
         NavigateTo(_navigator.CurrentIndex + 1);
+    }
+
+    /// <summary>进入 / 离开执行态（进度页回调）：执行期间锁定「上一步 / 取消」并拦截关闭。</summary>
+    internal void SetInstallInProgress(bool inProgress)
+    {
+        InstallInProgress = inProgress;
+        _backButton.Enabled = !inProgress && _navigator.CurrentIndex > 0;
+        _cancelButton.Enabled = !inProgress;
+    }
+
+    /// <summary>执行期拦截直接关闭（Alt+F4 / 标题栏 ×）：进度页终态（完成 / 失败）后才允许关闭。</summary>
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        base.OnFormClosing(e);
+        if (InstallInProgress)
+        {
+            e.Cancel = true;
+            MessageBox.Show(this, "正在安装，请等待当前操作完成（失败或成功后可关闭）。", "安装进行中", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
     }
 
     /// <summary>导航到<b>绝对</b>页索引（0 = 首页）；越界 / 非法索引静默拒绝（保持当前页，状态机负责防御）。</summary>
@@ -137,9 +171,11 @@ internal sealed class WizardForm : Form
             var page = _navigator.CurrentPage;
             _contentPanel.Controls.Add((Control)page);
 
-            _stepLabel.Text = $"步骤 {_navigator.CurrentIndex + 1} / {_navigator.PageCount}";
-            _backButton.Enabled = _navigator.CurrentIndex > 0;
-            _nextButton.Text = _navigator.IsLastPage ? "关闭" : "下一步(&N)";
+            _stepLabel.Text = StepLabel(_navigator.CurrentIndex);
+            _backButton.Enabled = !InstallInProgress && _navigator.CurrentIndex > 0;
+            // 进度页无「下一步」（终态后由代码导航到完成页）；完成页「下一步」= 完成
+            _nextButton.Visible = _navigator.CurrentIndex != ProgressPageIndex;
+            _nextButton.Text = _navigator.IsLastPage ? "完成" : "下一步(&N)";
 
             page.OnEnter();
         }
@@ -148,4 +184,14 @@ internal sealed class WizardForm : Form
             ResumeLayout();
         }
     }
+
+    /// <summary>进度页 → 完成页（Apply 成功后由进度页调用）。</summary>
+    internal void NavigateToComplete() => NavigateTo(_navigator.PageCount - 1);
+
+    private string StepLabel(int pageIndex) => pageIndex switch
+    {
+        ProgressPageIndex => "正在安装…",
+        _ when pageIndex == _navigator.PageCount - 1 => "安装完成",
+        _ => $"步骤 {pageIndex + 1} / {_navigator.PageCount}",
+    };
 }

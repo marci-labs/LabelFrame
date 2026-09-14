@@ -123,4 +123,29 @@ public sealed class BundleVariableMapTests
         Assert.Equal("1", variables[BundleVariableMap.WebUiVariable]);
         Assert.Equal("0", variables[BundleVariableMap.ZebraPluginVariable]);
     }
+
+    [Fact]
+    public void Placement_target_directories_should_follow_deploy_conventions()
+    {
+        // 落位目标目录（决策 #124，DEPLOY §5 / §6）：webui → server\plugins\web-ui；插件 → Client\plugins\<pluginId>
+        var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        Assert.Equal(Path.Combine(programData, "LabelFrame", "server", "plugins", "web-ui"), BundleVariableMap.WebUiTargetDir());
+        Assert.Equal(Path.Combine(programData, "LabelFrame", "Client", "plugins", "labelframe-transport-zebra"), BundleVariableMap.PluginZebraTargetDir());
+    }
+
+    [Fact]
+    public void Chain_package_map_should_be_bijective_and_cover_contract_component_ids()
+    {
+        // 链包 ↔ 组件 id 映射（§6.9 链序表）：双向一致，六组件全覆盖（后续品牌按同构扩展）
+        Assert.Equal(6, ChainPackageMap.ComponentByPackageId.Count);
+        foreach (var (packageId, componentId) in ChainPackageMap.ComponentByPackageId)
+        {
+            Assert.Equal(packageId, ChainPackageMap.PackageIdByComponent[componentId]);
+        }
+
+        foreach (var componentId in new[] { "runtime-desktop", "runtime-webview2", "server-msi", "client-msi", "webui", "plugin-zebra" })
+        {
+            Assert.True(ChainPackageMap.PackageIdByComponent.ContainsKey(componentId), $"缺组件映射：{componentId}");
+        }
+    }
 }

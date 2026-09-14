@@ -37,7 +37,7 @@ internal sealed class WelcomePage : UserControl, IWizardPage
 
         var dryRun = new Label
         {
-            Text = DryRunNotice.WelcomeHint,
+            Text = ExecuteBoundaryNotice.WelcomeHint,
             AutoSize = true,
             ForeColor = Color.FromArgb(154, 84, 0),
             Location = new Point(8, 64),
