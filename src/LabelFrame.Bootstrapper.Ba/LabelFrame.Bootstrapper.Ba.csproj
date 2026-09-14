@@ -15,6 +15,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- WiX v7 OSMF EULA 接受（WIX7015，MSBuild 集成消费点要求）：与本仓既有 v7 接受口径一致
+       （build-msi.ps1 / CI msi-verify job 均已执行 `wix eula accept wix7`）；费用阈值评估见 https://wixtoolset.org/osmf/ -->
+  <PropertyGroup>
+    <AcceptEula>wix7</AcceptEula>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="WixToolset.BootstrapperApplicationApi" Version="7.0.0" />
   </ItemGroup>
