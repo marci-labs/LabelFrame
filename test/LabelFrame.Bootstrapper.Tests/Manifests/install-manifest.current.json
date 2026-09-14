@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "labelframeVersion": "0.26.0",
+  "generatedAt": "2026-09-14T03:00:00Z",
+  "components": [
+    {
+      "id": "server-msi",
+      "type": "msi",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-Server-0.26.0.msi"
+      ],
+      "sha256": "3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c",
+      "sizeBytes": 11534336,
+      "silentArgs": "",
+      "topologies": ["standalone", "server-win", "offline"],
+      "notes": "服务端（Windows 服务 LabelFrameServer）"
+    },
+    {
+      "id": "client-msi",
+      "type": "msi",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-Client-0.26.0.msi"
+      ],
+      "sha256": "4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d",
+      "sizeBytes": 12582912,
+      "silentArgs": "",
+      "topologies": ["standalone", "client", "offline"],
+      "notes": "打印客户端（Web UI 托管 + 界面壳 + 托盘）"
+    },
+    {
+      "id": "webui",
+      "type": "webui-zip",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/labelframe-server-webui-0.26.0.zip"
+      ],
+      "sha256": "5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e",
+      "sizeBytes": 4194304,
+      "silentArgs": "",
+      "topologies": ["standalone", "server-win", "server-linux", "offline"],
+      "notes": "服务端管理界面插件（开关组件，落位 plugins/web-ui）"
+    },
+    {
+      "id": "linux-server",
+      "type": "archive",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/labelframe-server-0.26.0-linux-x64.tar.gz"
+      ],
+      "sha256": "6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f",
+      "sizeBytes": 78643200,
+      "silentArgs": "",
+      "topologies": ["server-linux", "offline"],
+      "notes": "Linux 服务端归档（systemd 部署）"
+    },
+    {
+      "id": "pda-apk",
+      "type": "apk",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-AndroidHost-0.26.0.apk"
+      ],
+      "sha256": "7e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b290",
+      "sizeBytes": 22754918,
+      "silentArgs": "",
+      "topologies": ["pda", "offline"],
+      "notes": "PDA 宿主 APK（拓扑标记 pda：经服务端下载中心扫码下载，不进 PC 引导预设）"
+    }
+  ]
+}

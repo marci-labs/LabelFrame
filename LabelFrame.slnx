@@ -5,6 +5,8 @@
     <Project Path="src/LabelFrame.Server/LabelFrame.Server.csproj" />
     <Project Path="src/LabelFrame.WinHost/LabelFrame.WinHost.csproj" />
     <Project Path="src/LabelFrame.Rendering/LabelFrame.Rendering.csproj" />
+    <Project Path="src/LabelFrame.Bootstrapper/LabelFrame.Bootstrapper.csproj" />
+    <Project Path="src/LabelFrame.Bootstrapper.Ba/LabelFrame.Bootstrapper.Ba.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/LabelFrame.Core.Tests/LabelFrame.Core.Tests.csproj" />
@@ -12,6 +14,7 @@
     <Project Path="test/LabelFrame.ClientHost.Tests/LabelFrame.ClientHost.Tests.csproj" />
     <Project Path="test/LabelFrame.Server.Tests/LabelFrame.Server.Tests.csproj" />
     <Project Path="test/LabelFrame.Api.Tests/LabelFrame.Api.Tests.csproj" />
+    <Project Path="test/LabelFrame.Bootstrapper.Tests/LabelFrame.Bootstrapper.Tests.csproj" />
     <Project Path="test/LabelFrame.Benchmarks/LabelFrame.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/tools/">

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  LabelFrame 安装引导 Bundle（WiX Burn，DESIGN §6.1 决策 #122）。
+
+  - BA = src/LabelFrame.Bootstrapper.Ba（net48 托管 BA，out-of-proc：五步问卷 + dry-run）；
+  - 链 = Server / Client MSI，Compressed="no" + DownloadUrl（web bundle：安装时按需下载，产物不进 EXE）；
+  - dry-run = BA 写变量（下方 Variable，契约见 DESIGN §6.3）+ Engine.Plan 只计划不执行，绝不 Apply；
+  - 构建：scripts/build-bundle.ps1（wix build；需真实 MSI 提取包元数据，故不进 LabelFrame.slnx）。
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Bundle Name="LabelFrame 安装引导"
+          Version="$(var.BundleVersion)"
+          Manufacturer="LabelFrame"
+          UpgradeCode="6F14EEB0-8B38-4EBC-A9E1-368E338E3FE6">
+
+    <!-- BA 载荷：EXE 为主文件，发布目录其余文件（含 mbanative.dll / API 程序集 / System.Text.Json 依赖）整体打包 -->
+    <BootstrapperApplication SourceFile="$(var.BaDir)LabelFrame.Bootstrapper.Ba.exe">
+      <Payloads Include="$(var.BaDir)**">
+        <Exclude Files="$(var.BaDir)LabelFrame.Bootstrapper.Ba.exe" />
+        <Exclude Files="$(var.BaDir)*.pdb" />
+      </Payloads>
+    </BootstrapperApplication>
+
+    <!-- 问卷变量契约（DESIGN §6.3，决策 #122）：BA 按问卷解析结果写入，链内条件消费 -->
+    <Variable Name="InstallPreset" Type="string" Value="" />
+    <Variable Name="InstallServer" Type="numeric" Value="0" />
+    <Variable Name="InstallClient" Type="numeric" Value="0" />
+    <Variable Name="InstallWebUi" Type="numeric" Value="0" />
+    <Variable Name="InstallPluginZebra" Type="numeric" Value="0" />
+
+    <Chain>
+      <MsiPackage Id="ServerMsi"
+                  SourceFile="$(var.MsiDir)LabelFrame-Server-$(var.ProductVersion).msi"
+                  Compressed="no"
+                  InstallCondition="InstallServer"
+                  DownloadUrl="$(var.DownloadBase)/LabelFrame-Server-$(var.ProductVersion).msi" />
+      <MsiPackage Id="ClientMsi"
+                  SourceFile="$(var.MsiDir)LabelFrame-Client-$(var.ProductVersion).msi"
+                  Compressed="no"
+                  InstallCondition="InstallClient"
+                  DownloadUrl="$(var.DownloadBase)/LabelFrame-Client-$(var.ProductVersion).msi" />
+    </Chain>
+  </Bundle>
+</Wix>

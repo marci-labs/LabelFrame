@@ -2,6 +2,18 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 60 安装引导专项（4/8）：引导程序骨架——问卷与拓扑预设→组件集合（dry-run） · 2026-09-14
+
+- **形态返工（决策 #122，Issue #53 决议评论用户拍板）**：首版「自研 WinForms self-contained 向导」实测 51.7MB 超 #114 ≤ 20MB 量级（WinForms/WPF self-contained 框架体积下限、裁剪被 SDK 阻断 NETSDK1175），用户权衡「买引擎」后改用 **WiX Burn Bundle + 托管 BA**——AC-04 口径随形态替换为 **Burn Bundle EXE 实测体积（MB 级）**；DESIGN §6.1 契约修订先行（强化路径），决策表 #122 记账；**迭代 61（#54）/ 62（#55）/ 64（#57）大半自研内容可被 Burn 吸收，各 Issue 拾取时重审范围**。
+- **BA 技术形态（调研定案入 #122）**：WiX v5.4+（仓库现役 v7.0.0）BA 为 **out-of-proc 独立 EXE**（v3 工厂模型已废弃）——`src/LabelFrame.Bootstrapper.Ba`（net48 WinForms 五步问卷）引用 `WixToolset.BootstrapperApplicationApi` 7.0.0（支持 net462+），入口 `ManagedBootstrapperApplication.Run` 与引擎握手；**目标框架 net48**：.NET Framework 4.8 是 Win10 1809+ / Win11 的 OS 组件，裸机免装运行时（规避「首个 EXE 依赖 runtime」死循环），BA 载荷仅数 MB；.NET 10 SCD 复现 51.7MB、FDD 裸机不可用，均不取。
+- **职责重划与复用**：拓扑编排仍自研——核心逻辑库 `src/LabelFrame.Bootstrapper` 重构为类库多目标 `net48;net10.0-windows`（BA 复用 + 测试 / #54 / #55 消费；`TopologyOptions.SelectedBrands` 形状微调 `IReadOnlySet`→`ISet`，net48 无前者、语义不变，§6.3 契约同步）；Manifest / Topology / Printing（ZDesigner → zebra 预选，决议 2）与既有测试全量复用；下载 / 校验 / 链装 / 回滚 / 升级引擎职责改由 Burn 承担。
+- **五步问卷 BA**（欢迎含离线全量包指引（决议 1 方案 A）与清单来源本地路径 / URL → 拓扑预设（全五）→ 品牌多选（选项仅为 manifest 已有 plugin 条目）→ 管理界面开关 → 确认页）：确认页展示组件名称 / 版本 / 体积 / 来源 URL / 目标安装位置（对齐 DEPLOY），server-docker 展示 compose 指引。
+- **dry-run 契约（AC-03）**：核心会话全程只读（清单获取 = 本地读或单次 GET，无下载 / 写入 / 系统改动代码路径）；BA 侧 dry-run = 写入 Burn 变量（契约 §6.3：`InstallPreset` / `InstallServer` / `InstallClient` / `InstallWebUi` / `InstallPluginZebra`，映射纯函数 `BundleVariableMap` 入核心库可测）后 `Engine.Plan(LaunchAction, BundleScope.Default)` **只计划不执行，绝不 `Engine.Apply`**；确认页「生成安装计划（仅预览）」展示引擎计划结果（每包 RequestState），UI 明示「仅预览：尚未下载、尚未安装」。
+- **Bundle 与构建**：`packaging/bootstrapper/Bundle.wxs`（链 = Server / Client MSI，`Compressed="no"` + `DownloadUrl` web bundle——产物不进 EXE；`InstallCondition` 消费问卷变量；UpgradeCode 固定 GUID）；`scripts/build-bundle.ps1` 本地 / 发版构建（wix build 需真实 MSI 提取包元数据，故 Bundle 不进 slnx——按 #53 fallback「仅 PR 构建验证」口径如实记录，release.yml 未动）；核心库 + BA 工程入 `LabelFrame.slnx` 随 CI 构建验证。
+- **测试（AC-01 / AC-02 / AC-03，48 项 = 既有 42 全保留 + 新增 6）**：样例 manifest fixture 两份（严格按 DESIGN §6.2 schema——`current` 对齐迭代 58 产物现状、`full` 含 runtime + dependsOn + plugin-zebra 模拟 #55 / #56 后形态）；全矩阵（五预设 × 开关 × 品牌，含依赖闭包顺序不变式、server-docker 空集合 + 双指引、webui 对 client 的 topologies 过滤）；dry-run 断言（探针目录快照一致 + ProgramData 不创建、本地清单零网络请求、URL 清单单次 GET 且组件 URL 不触碰、明示文案断言）；清单校验负例矩阵 + 品牌预选矩阵 + **Burn 变量映射矩阵（新增 6 项：全开 / 默认 / client / server-win / server-docker / 当前清单无插件条目）**。
+- **AC-04 实测（新口径达标）**：`LabelFrame-Bootstrapper-0.26.0.exe` = **1.46 MB**（web bundle：EXE 只含 Burn 引擎 + 压缩 BA 载荷，MSI 按需经 DownloadUrl 下载——对比原 WinForms self-contained 方案 51.7MB）；本地冒烟：bundle 启动 → 引擎 Detect 双 MSI（Absent，含与已装 0.25.0 的 MajorUpgrade 关联识别）→ BA 进程（net48）承载问卷窗口，全程无 Apply、无安装动作。
+- **记账**：DESIGN §6.1 形态修订 + §6.3 实现要点与变量契约 + 决策表 #122；CHANGELOG 本条目（Burn 形态）；ROADMAP 状态行本轮不改（轮值结项时另提 docs PR，对齐先例）。
+
 ## v0.26.0 迭代 49-59、64、65 汇总发布 · 2026-09-14
 
 - **打包范围**：v0.25.0 之后合入 master 的全部迭代与缺陷修复——迭代 49（PDA 宿主自动化构建与品牌化）、迭代 50（错误响应分类修正）、迭代 51（客户端设备日志链路与前端可观测）、迭代 52（日志基础设施加固）、迭代 53（PDA 可观测性）、迭代 54（区域水平锚定修正）、迭代 55（Zebra 状态映射修正）、迭代 56（双端复用 Zebra 官方 SDK 5.0.3685）、迭代 57（安装引导专项设计契约 + 客户端退出提速）、迭代 58（发布流水线安装清单）、迭代 59（PDA 签名稳定化 + 服务端下载中心）、迭代 65（无字段模板打印测试修复），缺陷 #46（同 IP 双设备号解析最近活跃优先）与 #58（托盘「退出」不生效）。详见各迭代条目。

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 安装引导核心逻辑库（DESIGN §6，决策 #114 → #122 形态修订）：
+       net48 腿供 WiX Burn 托管 BA（src/LabelFrame.Bootstrapper.Ba）复用——.NET Framework 4.8 是
+       Win10 1809+ / Win11 的 OS 组件，裸机免装运行时；net10.0-windows 腿供测试与专项 5/8+（#54 / #55）复用。 -->
+  <PropertyGroup>
+    <TargetFrameworks>net48;net10.0-windows</TargetFrameworks>
+    <RootNamespace>LabelFrame.Bootstrapper</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- InstalledPrinters 用 System.Drawing.Printing（PrinterSettings 实际位于 Windows Desktop / System.Windows.Forms） -->
+    <UseWindowsForms Condition="'$(TargetFramework)' == 'net10.0-windows'">true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="10.0.12" />
+  </ItemGroup>
+
+  <!-- net48 腿显式引用（SDK 默认引用集不含 WinForms 与 System.Net.Http） -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+</Project>
