@@ -1,10 +1,8 @@
-using LabelFrame.Bootstrapper.Topology;
 using LabelFrame.Bootstrapper.Wizard;
-using WixToolset.BootstrapperApplicationApi;
 
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
-/// <summary>确认页（dry-run 预览）：组件名称 / 版本 / 体积 / 来源 URL / 目标安装位置；「生成安装计划」= Burn Plan 阶段只计划不执行，明示「仅预览」。</summary>
+/// <summary>确认页：组件名称 / 版本 / 体积 / 来源 URL / 目标安装位置（运行时组件标注「已装则跳过」）；「下一步 = 安装」进入进度页触发引擎 Plan + Apply（执行边界契约，决策 #124）。</summary>
 internal sealed class ConfirmPage : UserControl, IWizardPage
 {
     private readonly WizardSession _session;
@@ -13,7 +11,6 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
     private readonly Label _summaryLabel = new();
     private readonly ListView _listView = new();
     private readonly Label _guidanceLabel = new();
-    private readonly Button _planButton = new();
 
     public ConfirmPage(WizardSession session, LabelFrameBootstrapperBa ba)
     {
@@ -29,7 +26,7 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
             Location = new Point(8, 8),
         };
 
-        _banner.Text = DryRunNotice.Banner;
+        _banner.Text = ExecuteBoundaryNotice.Banner;
         _banner.AutoSize = false;
         _banner.Height = 32;
         _banner.Width = 680;
@@ -46,20 +43,24 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
         _listView.FullRowSelect = true;
         _listView.HideSelection = true;
         _listView.Location = new Point(8, 100);
-        _listView.Size = new Size(680, 280);
-        _listView.Columns.Add("组件", 210);
+        _listView.Size = new Size(680, 320);
+        _listView.Columns.Add("组件", 220);
         _listView.Columns.Add("版本", 70);
         _listView.Columns.Add("体积", 70);
         _listView.Columns.Add("来源 URL", 180);
         _listView.Columns.Add("安装位置", 200);
 
-        _planButton.Text = "生成安装计划（仅预览，不执行）";
-        _planButton.AutoSize = true;
-        _planButton.Location = new Point(8, 392);
-        _planButton.Click += async (_, _) => await PreviewPlanAsync();
+        var installHint = new Label
+        {
+            Text = "点击「下一步」开始安装：将按上表下载组件并安装（需要管理员权限，系统会弹出 UAC 确认）。",
+            AutoSize = true,
+            MaximumSize = new Size(680, 0),
+            Location = new Point(8, 432),
+            ForeColor = SystemColors.GrayText,
+        };
 
         _guidanceLabel.AutoSize = true;
-        _guidanceLabel.Location = new Point(8, 428);
+        _guidanceLabel.Location = new Point(8, 456);
         _guidanceLabel.MaximumSize = new Size(680, 0);
         _guidanceLabel.ForeColor = SystemColors.GrayText;
 
@@ -67,14 +68,14 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
         Controls.Add(_banner);
         Controls.Add(_summaryLabel);
         Controls.Add(_listView);
-        Controls.Add(_planButton);
+        Controls.Add(installHint);
         Controls.Add(_guidanceLabel);
     }
 
     public void OnEnter()
     {
         var plan = _session.BuildPlan();
-        _ba.Log($"dry-run 预览：预设 {_session.Preset}，品牌 [{string.Join(",", _session.SelectedBrands)}]，管理界面 {_session.IncludeWebUi}，组件 [{string.Join(",", plan.Components.Select(item => item.Component.Id))}]");
+        _ba.Log($"确认安装计划：预设 {_session.Preset}，品牌 [{string.Join(",", _session.SelectedBrands)}]，管理界面 {_session.IncludeWebUi}，组件 [{string.Join(",", plan.Components.Select(item => item.Component.Id))}]，.NET Desktop Runtime {(_ba.RuntimeStatus.DesktopRuntimeInstalled ? $"已装 {_ba.RuntimeStatus.DesktopRuntimeVersion}（跳过）" : "未装（将安装）")}，WebView2 {(_ba.RuntimeStatus.WebView2Installed ? "已装（跳过）" : "未装（将安装）")}");
 
         _listView.BeginUpdate();
         _listView.Items.Clear();
@@ -83,6 +84,15 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
         {
             var component = item.Component;
             var displayName = string.IsNullOrWhiteSpace(component.Notes) ? component.Id : $"{component.Id}（{component.Notes}）";
+            if (component.Type == "runtime")
+            {
+                // 运行时组件标注探测结论（AC-02：缺失才装、已装跳过——Burn DetectCondition 消费）
+                displayName += _ba.RuntimeStatus.DesktopRuntimeInstalled && component.Id == "runtime-desktop"
+                    || _ba.RuntimeStatus.WebView2Installed && component.Id == "runtime-webview2"
+                    ? "【已装则跳过】"
+                    : "【缺失将安装】";
+            }
+
             var row = new ListViewItem(displayName)
             {
                 ToolTipText = item.InstallTarget,
@@ -106,42 +116,13 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
 
     public bool CanProceed(out string? reason)
     {
+        if (_session.BuildPlan().Components.Count == 0)
+        {
+            reason = "本形态无下载组件（如 Docker / Linux 部署指引形态），无需在本机执行安装。你可以直接关闭向导，按页面指引部署。";
+            return false;
+        }
+
         reason = null;
         return true;
     }
-
-    /// <summary>dry-run：问卷答案 → Burn 变量 → Engine.Plan（只计划不执行，绝不 Apply）。</summary>
-    private async Task PreviewPlanAsync()
-    {
-        _planButton.Enabled = false;
-        try
-        {
-            var preview = await _ba.PreviewPlanAsync(_session).ConfigureAwait(true);
-
-            var lines = preview.PlannedPackages
-                .Select(package => $"  {package.PackageId}：{Describe(package.State)}")
-                .ToArray();
-            var message = "安装引擎计划结果（仅预览，尚未下载、尚未安装）：\n\n" + string.Join("\n", lines)
-                + "\n\n实际下载与安装将在后续版本提供。";
-            MessageBox.Show(this, message, "LabelFrame 安装引导（dry-run）", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, ex.Message, "生成安装计划失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        finally
-        {
-            _planButton.Enabled = true;
-        }
-    }
-
-    private static string Describe(RequestState state) => state switch
-    {
-        RequestState.Present => "将安装",
-        RequestState.Repair => "将修复",
-        RequestState.Cache => "仅缓存",
-        RequestState.None => "跳过",
-        RequestState.Absent => "将卸载",
-        _ => state.ToString(),
-    };
 }

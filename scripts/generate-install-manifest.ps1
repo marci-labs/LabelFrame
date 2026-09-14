@@ -12,7 +12,9 @@
 #     pwsh ./scripts/generate-install-manifest.ps1 -Version 0.26.0 -AssetsDir release -SkipVerify
 #
 # 断言粒度（用户 2026-09-14 决议，Issue #51）：schema 字段完整性 + 产物存在性 + 哈希抽验
-# （哈希按条目全量重算比对，5 个产物成本可忽略，覆盖且强于抽样）；
+# （哈希按条目全量重算比对，产物成本可忽略，覆盖且强于抽样）；
+# runtime 条目专项（迭代 62，#55）：厂商直链白名单 + 版本规则（desktop=x.y.z / webview2=evergreen）+ silentArgs 非空——
+# 厂商直链不做本地哈希复核（生成阶段已实测锁定，§6.2 残余风险口径）；
 # 缺产物 / 缺哈希 / schema 不符任一命中即非零退出，workflow 构建失败（AC-03）。
 param(
     [Parameter(Mandatory = $true)][string]$Version,
@@ -20,26 +22,38 @@ param(
     [string]$OwnerRepo = 'marci-labs/LabelFrame',
     [string]$OutputDir = '',
     [switch]$VerifyOnly,
-    [switch]$SkipVerify
+    [switch]$SkipVerify,
+    # runtime 前置条目（迭代 62，#55，决策 #124 / §6.2）：.NET 10 Desktop Runtime 钉版本（默认对齐当期补丁，release 可覆写）；
+    # WebView2 Evergreen 固定直链轮转无可钉版本，version 固定 'evergreen'。
+    [string]$DotNetDesktopRuntimeVersion = '10.0.12',
+    # 本地预置 runtime 安装器目录（离线自验：跳过厂商下载，哈希 / 体积仍实测；CI 不传 = 按直链下载实测）。
+    [string]$RuntimeFilesDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
 
 # 当版产物 -> manifest 条目映射（组件稳定 id 与字段语义见 DESIGN §6.2 组件条目表）。
-# runtime 条目按 schema 预留、无产物不出现：runtime（厂商直链 + CI 锁哈希）随专项 5/8（#55）
-# 运行时前置补装落地，届时在下方追加条目即可。
 # 官方插件条目（迭代 63，决策 #123，DESIGN §6.8）：plugin-zebra 随发版流水线产物收录
 # （labelframe-transport-zebra-<版本>.lfplugin，version=主版本，品牌映射表见 §6.8）。
-# dependsOn 首版全部留空：仅引用同集合内存在的条目，runtime 条目未出现前不引用（§6.2 依赖语义），
-# runtime 条目落地时补 dependsOn（server-msi -> runtime-desktop、client-msi -> runtime-desktop + runtime-webview2）。
+# runtime 条目（迭代 62，#55，决策 #124）：runtime-desktop / runtime-webview2 = 厂商直链 + CI 下载实测哈希
+# （无本仓产物、不进 Release 附件；生成逻辑见下方 $runtimeSpecs）。dependsOn 随 runtime 条目落地补齐：
+# server-msi -> runtime-desktop；client-msi -> runtime-desktop + runtime-webview2。
 $componentSpecs = @(
-    @{ id = 'server-msi';   type = 'msi';       pattern = "LabelFrame-Server-$Version.msi";               topologies = @('standalone', 'server-win', 'offline'); notes = '服务端（Windows 服务 LabelFrameServer）' }
-    @{ id = 'client-msi';   type = 'msi';       pattern = "LabelFrame-Client-$Version.msi";               topologies = @('standalone', 'client', 'offline');      notes = '打印客户端（Web UI 托管 + 界面壳 + 托盘）' }
-    @{ id = 'webui';        type = 'webui-zip'; pattern = "labelframe-server-webui-$Version.zip";        topologies = @('standalone', 'server-win', 'server-linux', 'offline'); notes = '服务端管理界面插件（开关组件，落位 plugins/web-ui）' }
-    @{ id = 'linux-server'; type = 'archive';   pattern = "labelframe-server-$Version-linux-x64.tar.gz"; topologies = @('server-linux', 'offline');             notes = 'Linux 服务端归档（systemd 部署）' }
-    @{ id = 'pda-apk';      type = 'apk';       pattern = "LabelFrame-AndroidHost-$Version.apk";          topologies = @('pda', 'offline');                      notes = 'PDA 宿主 APK（拓扑标记 pda：经服务端下载中心扫码下载，不进 PC 引导预设）' }
-    @{ id = 'plugin-zebra'; type = 'lfplugin';  pattern = "labelframe-transport-zebra-$Version.lfplugin"; topologies = @('standalone', 'client', 'offline');    notes = 'Zebra 品牌传输官方插件（开关组件，安装到客户端 plugins 目录；内含 Zebra SDK 5.x 依赖）' }
+    @{ id = 'server-msi';   type = 'msi';       pattern = "LabelFrame-Server-$Version.msi";               topologies = @('standalone', 'server-win', 'offline'); dependsOn = @('runtime-desktop'); notes = '服务端（Windows 服务 LabelFrameServer）' }
+    @{ id = 'client-msi';   type = 'msi';       pattern = "LabelFrame-Client-$Version.msi";               topologies = @('standalone', 'client', 'offline');      dependsOn = @('runtime-desktop', 'runtime-webview2'); notes = '打印客户端（Web UI 托管 + 界面壳 + 托盘）' }
+    @{ id = 'webui';        type = 'webui-zip'; pattern = "labelframe-server-webui-$Version.zip";        topologies = @('standalone', 'server-win', 'server-linux', 'offline'); dependsOn = @(); notes = '服务端管理界面插件（开关组件，落位 plugins/web-ui）' }
+    @{ id = 'linux-server'; type = 'archive';   pattern = "labelframe-server-$Version-linux-x64.tar.gz"; topologies = @('server-linux', 'offline');             dependsOn = @(); notes = 'Linux 服务端归档（systemd 部署）' }
+    @{ id = 'pda-apk';      type = 'apk';       pattern = "LabelFrame-AndroidHost-$Version.apk";          topologies = @('pda', 'offline');                      dependsOn = @(); notes = 'PDA 宿主 APK（拓扑标记 pda：经服务端下载中心扫码下载，不进 PC 引导预设）' }
+    @{ id = 'plugin-zebra'; type = 'lfplugin';  pattern = "labelframe-transport-zebra-$Version.lfplugin"; topologies = @('standalone', 'client', 'offline');    dependsOn = @(); notes = 'Zebra 品牌传输官方插件（开关组件，安装到客户端 plugins 目录；内含 Zebra SDK 5.x 依赖）' }
 )
+
+# runtime 条目（§6.2 特殊语义）：urls = 厂商官方直链（单一源，多源回退属 #54 修订范围）；sha256 / sizeBytes =
+# 生成时下载（或 -RuntimeFilesDir 预置文件）实测锁定；version：desktop = 钉定补丁版本，webview2 = 'evergreen'。
+$runtimeSpecs = @(
+    @{ id = 'runtime-desktop'; version = $DotNetDesktopRuntimeVersion; fileName = "windowsdesktop-runtime-$DotNetDesktopRuntimeVersion-win-x64.exe"; url = "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/$DotNetDesktopRuntimeVersion/windowsdesktop-runtime-$DotNetDesktopRuntimeVersion-win-x64.exe"; silentArgs = '/install /quiet /norestart'; topologies = @('standalone', 'server-win', 'client', 'offline'); notes = '.NET 10 Desktop Runtime（x64），缺失时由引导程序补装' }
+    @{ id = 'runtime-webview2'; version = 'evergreen'; fileName = 'MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe'; url = 'https://go.microsoft.com/fwlink/p/?LinkId=2124703'; silentArgs = '/silent /install'; topologies = @('standalone', 'client', 'offline'); notes = 'WebView2 Evergreen 引导器（客户端界面壳依赖，缺失时补装；固定直链自更新，版本恒为 evergreen）' }
+)
+$runtimeAllowedUrlPrefixes = @('https://builds.dotnet.microsoft.com/', 'https://go.microsoft.com/')
 
 $schemaVersion = 1
 $allowedTypes = @('msi', 'lfplugin', 'webui-zip', 'apk', 'runtime', 'archive')
@@ -95,27 +109,70 @@ if (-not $VerifyOnly) {
         New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
     }
 
-    $entryJsons = New-Object System.Collections.Generic.List[string]
+    # runtime 文件实测（哈希与体积是厂商产物事实）：-RuntimeFilesDir 预置（离线自验）或按直链下载到临时目录。
+    # 下载文件只用于实测，不落入 AssetsDir（runtime 无本仓产物、不进 Release 附件，§6.2）。
+    $runtimeDownloadDir = ''
+    if (-not $RuntimeFilesDir) {
+        $runtimeDownloadDir = Join-Path ([IO.Path]::GetTempPath()) ("labelframe-manifest-runtime-{0}" -f ([IO.Path]::GetRandomFileName() -replace '\.', ''))
+        New-Item -ItemType Directory -Force -Path $runtimeDownloadDir | Out-Null
+    }
+
+    $runtimeFiles = @{}
+    foreach ($spec in $runtimeSpecs) {
+        if ($RuntimeFilesDir) {
+            $candidate = Join-Path $RuntimeFilesDir $spec.fileName
+            if (-not (Test-Path -LiteralPath $candidate)) {
+                Write-Failure "runtime 预置文件缺失：$candidate（-RuntimeFilesDir 指定的目录必须包含 $($spec.fileName)）"
+            }
+            $runtimeFiles[$spec.id] = Get-Item -LiteralPath $candidate
+        } else {
+            Write-Host "下载 runtime 安装器（实测哈希 / 体积）：$($spec.url)"
+            $target = Join-Path $runtimeDownloadDir $spec.fileName
+            Invoke-WebRequest -Uri $spec.url -OutFile $target -UseBasicParsing
+            $runtimeFiles[$spec.id] = Get-Item -LiteralPath $target
+        }
+    }
+
+    # 统一条目视图（本仓产物条目 + runtime 条目；条目顺序：MSI → webui → runtime → linux / pda / plugin）
+    $orderedEntries = New-Object System.Collections.Generic.List[object]
     foreach ($spec in $componentSpecs) {
+        if ($spec.id -eq 'linux-server') {
+            foreach ($runtimeSpec in $runtimeSpecs) {
+                $orderedEntries.Add([pscustomobject]@{
+                    id = $runtimeSpec.id; type = 'runtime'; version = $runtimeSpec.version; file = $runtimeFiles[$runtimeSpec.id]
+                    url = $runtimeSpec.url; dependsOn = @(); silentArgs = $runtimeSpec.silentArgs
+                    topologies = $runtimeSpec.topologies; notes = $runtimeSpec.notes
+                })
+            }
+        }
+
         $full = Join-Path $AssetsDir $spec.pattern
         $file = Get-Item -LiteralPath $full -ErrorAction SilentlyContinue
         if ($null -eq $file) {
             Write-Failure "缺产物：组件 $($spec.id) 对应文件不存在（$full）——manifest 只收录当版真实产物，禁止空条目"
         }
-        $url = "$releaseBase/$($file.Name)"
+        $orderedEntries.Add([pscustomobject]@{
+            id = $spec.id; type = $spec.type; version = $Version; file = $file
+            url = "$releaseBase/$($file.Name)"; dependsOn = $spec.dependsOn; silentArgs = ''
+            topologies = $spec.topologies; notes = $spec.notes
+        })
+    }
+
+    $entryJsons = New-Object System.Collections.Generic.List[string]
+    foreach ($entry in $orderedEntries) {
         # 注意：Windows PowerShell 5.1 会把数组字面量内的裸 + 拼接拆成多个元素，必须用括号包裹为单个表达式
         $entryJsons.Add(@(
             '    {'
-            ('      "id": ' + (ConvertTo-JsonString $spec.id) + ',')
-            ('      "type": ' + (ConvertTo-JsonString $spec.type) + ',')
-            ('      "version": ' + (ConvertTo-JsonString $Version) + ',')
-            '      "dependsOn": [],'
-            ('      "urls": [' + (ConvertTo-JsonString $url) + '],')
-            ('      "sha256": ' + (ConvertTo-JsonString (Get-Sha256 $file.FullName)) + ',')
-            ('      "sizeBytes": ' + $file.Length.ToString() + ',')
-            '      "silentArgs": "",'
-            ('      "topologies": [' + (($spec.topologies | ForEach-Object { ConvertTo-JsonString $_ }) -join ', ') + '],')
-            ('      "notes": ' + (ConvertTo-JsonString $spec.notes))
+            ('      "id": ' + (ConvertTo-JsonString $entry.id) + ',')
+            ('      "type": ' + (ConvertTo-JsonString $entry.type) + ',')
+            ('      "version": ' + (ConvertTo-JsonString $entry.version) + ',')
+            ('      "dependsOn": [' + (($entry.dependsOn | ForEach-Object { ConvertTo-JsonString $_ }) -join ', ') + '],')
+            ('      "urls": [' + (ConvertTo-JsonString $entry.url) + '],')
+            ('      "sha256": ' + (ConvertTo-JsonString (Get-Sha256 $entry.file.FullName)) + ',')
+            ('      "sizeBytes": ' + $entry.file.Length.ToString() + ',')
+            ('      "silentArgs": ' + (ConvertTo-JsonString $entry.silentArgs) + ',')
+            ('      "topologies": [' + (($entry.topologies | ForEach-Object { ConvertTo-JsonString $_ }) -join ', ') + '],')
+            ('      "notes": ' + (ConvertTo-JsonString $entry.notes))
             '    }'
         ) -join "`n")
     }
@@ -172,7 +229,7 @@ $components = @($manifest.components)
 if ($components.Count -eq 0) { $failures.Add('components 为空数组') }
 
 # 组件集合完整性（恰好当版预期集合：缺 = 缺产物 / 漏收录，多 = schema 不符）
-$expectedIds = @($componentSpecs | ForEach-Object { $_.id })
+$expectedIds = @($componentSpecs | ForEach-Object { $_.id }) + @($runtimeSpecs | ForEach-Object { $_.id })
 $actualIds = @($components | ForEach-Object { $_.id })
 foreach ($id in @($expectedIds | Where-Object { $actualIds -notcontains $_ })) {
     $failures.Add("缺组件条目：$id（当版应有产物未收录或产物缺失）")
@@ -214,7 +271,22 @@ foreach ($c in $components) {
     elseif (-not (($size -is [int]) -or ($size -is [long]) -or ($size -is [double]))) { $failures.Add("[$cid] sizeBytes 应为数字，实际：$size") }
     elseif ([double]$size -le 0 -or [Math]::Floor([double]$size) -ne [double]$size) { $failures.Add("[$cid] sizeBytes 应为正整数：$size") }
 
-    # 产物存在性 + 哈希抽验（仅本仓 Release 附件源；URL 形态校验对所有源生效）
+    # runtime 条目专项（§6.2 特殊语义 / 决策 #124）：厂商直链白名单 + 版本规则 + 静默参数非空
+    if ($c.type -eq 'runtime') {
+        foreach ($url in $urls) {
+            $allowed = @($runtimeAllowedUrlPrefixes | Where-Object { $url.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) })
+            if ($allowed.Count -eq 0) { $failures.Add("[$cid] runtime 条目 urls 必须为厂商官方直链（允许前缀：$($runtimeAllowedUrlPrefixes -join ' / ')）：$url") }
+        }
+        if ($c.id -eq 'runtime-desktop') {
+            if ($c.version -notmatch '^\d+\.\d+\.\d+$') { $failures.Add("[$cid] runtime-desktop version 应为钉定的 x.y.z 补丁版本：$($c.version)") }
+            if ([string]::IsNullOrWhiteSpace($c.silentArgs)) { $failures.Add("[$cid] runtime 条目 silentArgs 必填（官方引导器静默参数）") }
+        }
+        if ($c.id -eq 'runtime-webview2') {
+            if ($c.version -ne 'evergreen') { $failures.Add("[$cid] runtime-webview2 version 应固定为 evergreen（固定直链轮转无可钉版本）：$($c.version)") }
+        }
+    }
+
+    # 产物存在性 + 哈希抽验（仅本仓 Release 附件源；runtime 厂商直链不适用本地复核——哈希在生成阶段实测锁定）
     foreach ($url in $urls) {
         if ($url -notmatch '^https://') { $failures.Add("[$cid] urls 含非 https 源：$url") }
         if ($url.StartsWith($releaseUrlPrefix, [StringComparison]::OrdinalIgnoreCase)) {

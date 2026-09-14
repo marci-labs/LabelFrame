@@ -6,8 +6,9 @@ using Xunit;
 
 namespace LabelFrame.Bootstrapper.Tests;
 
-/// <summary>dry-run 契约断言（AC-03）：全程无网络写入（仅 GET 清单）、无系统改动（无文件 / 目录新增）。</summary>
-public sealed class DryRunContractTests
+/// <summary>问卷只读契约断言（#53 AC-03 起源；决策 #124 修订为「确认前只读」——执行边界 = 确认页「安装」后 Engine.Plan + Apply）。</summary>
+/// <remarks>执行能力不在会话层：会话（问卷）保持零下载 / 零安装 / 零系统改动；真装由 BA 调 Burn 引擎承担。</remarks>
+public sealed class QuestionnaireContractTests
 {
     private static string FixturePath(string fileName) =>
         Path.Combine(AppContext.BaseDirectory, "Manifests", fileName);
@@ -35,7 +36,7 @@ public sealed class DryRunContractTests
             };
             await session.LoadManifestAsync();
 
-            // 走完全部预设 × 开关组合（问卷所有路径）
+            // 走完全部预设 × 开关组合（问卷所有路径；问卷层不含执行动作）
             foreach (TopologyPreset preset in Enum.GetValues<TopologyPreset>())
             {
                 session.Preset = preset;
@@ -46,7 +47,7 @@ public sealed class DryRunContractTests
             Assert.Equal(before, Snapshot(probeRoot));
             if (!programDataExistedBefore)
             {
-                Assert.False(Directory.Exists(programDataLabelFrame), "dry-run 不得创建 ProgramData\\LabelFrame");
+                Assert.False(Directory.Exists(programDataLabelFrame), "问卷阶段不得创建 ProgramData\\LabelFrame");
             }
         }
         finally
@@ -70,7 +71,7 @@ public sealed class DryRunContractTests
     [Fact]
     public async Task Url_manifest_load_should_issue_single_readonly_get_and_never_fetch_components()
     {
-        // URL 来源：清单获取是引导全程唯一的网络访问——单次 GET（无网络写入），组件 URL 不被触碰
+        // URL 来源：清单获取是问卷阶段唯一的网络访问——单次 GET（无网络写入），组件 URL 不被触碰
         using var handler = new RecordingHttpMessageHandler(File.ReadAllText(FixturePath("install-manifest.full.json")));
         using var http = new HttpClient(handler);
         const string manifestUrl = "https://example.invalid/install-manifest.json";
@@ -89,20 +90,28 @@ public sealed class DryRunContractTests
     }
 
     [Fact]
-    public void Session_should_always_be_dry_run()
+    public void Session_should_expose_no_execution_apis()
     {
-        // 本迭代不存在执行模式：会话没有任何下载 / 安装 / 写入方法（该断言防执行开关被误引入）
-        Assert.True(new WizardSession().IsDryRun);
+        // 会话层不存在执行模式：公开方法面不得出现下载 / 安装 / 应用 / 写入语义（防执行开关被误引入会话层）
+        var forbidden = new[] { "download", "install", "apply", "write", "execute", "cache", "remove", "delete" };
+        var offending = typeof(WizardSession).GetMethods()
+            .Where(method => !method.IsSpecialName)
+            .Where(method => forbidden.Any(keyword => method.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase)))
+            .Select(method => method.Name)
+            .ToList();
+
+        Assert.Empty(offending);
     }
 
     [Fact]
-    public void Dry_run_notice_should_state_no_download_and_no_install()
+    public void Execute_boundary_notice_should_state_readonly_before_confirm()
     {
-        // AC-03 UI 明示：确认页横幅必须含「仅预览 / 尚未下载 / 尚未安装」语义
-        Assert.Contains("仅预览", DryRunNotice.Banner, StringComparison.Ordinal);
-        Assert.Contains("尚未下载", DryRunNotice.Banner, StringComparison.Ordinal);
-        Assert.Contains("尚未安装", DryRunNotice.Banner, StringComparison.Ordinal);
-        Assert.Contains("改动", DryRunNotice.Banner, StringComparison.Ordinal);
+        // #124 执行边界 UI 明示：确认页横幅必须含「确认前只读 + 尚未下载 / 尚未安装 + 不改动」语义
+        Assert.Contains("确认前", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
+        Assert.Contains("尚未下载", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
+        Assert.Contains("尚未安装", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
+        Assert.Contains("改动", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
+        Assert.Contains("安装", ExecuteBoundaryNotice.WelcomeHint, StringComparison.Ordinal);
     }
 
     /// <summary>递归快照（相对路径 + 文件大小 + 修改时间），用于「无系统改动」比对。</summary>

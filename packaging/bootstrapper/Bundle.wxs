@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  LabelFrame 安装引导 Bundle（WiX Burn，DESIGN §6.1 决策 #122）。
+  LabelFrame 安装引导 Bundle（WiX Burn，DESIGN §6.1 决策 #122；链序与口径 = §6.9 决策 #124）。
 
-  - BA = src/LabelFrame.Bootstrapper.Ba（net48 托管 BA，out-of-proc：五步问卷 + dry-run）；
-  - 链 = Server / Client MSI，Compressed="no" + DownloadUrl（web bundle：安装时按需下载，产物不进 EXE）；
-  - dry-run = BA 写变量（下方 Variable，契约见 DESIGN §6.3）+ Engine.Plan 只计划不执行，绝不 Apply；
-  - 构建：scripts/build-bundle.ps1（wix build；需真实 MSI 提取包元数据，故不进 LabelFrame.slnx）。
+  - BA = src/LabelFrame.Bootstrapper.Ba（net48 托管 BA，out-of-proc：五步问卷（只读）→ 确认页「安装」→ Plan + Apply）；
+  - 链（§6.9 六包，单一回滚边界）：
+      1. DotNetDesktopRuntime（.NET 10 Desktop Runtime x64，厂商直链，Permanent，DetectCondition = BA 探测变量）
+      2. WebView2Runtime（WebView2 Evergreen 引导器，厂商直链，Permanent，DetectCondition = BA 探测变量）
+      3. ServerMsi / 4. ClientMsi（既有，Compressed=no + DownloadUrl）
+      5. WebUiPlacement / 6. ZebraPluginPlacement（非 MSI 落位：PayloadTool 内嵌（Compressed=yes）+ zip 子 Payload 远程下载，
+         InstallArguments 以 [变量] 引用 BA 写入的落位目标目录；插件落位走 #123 版本比较，Permanent——卸载编排不在本轮）
+  - 运行时条目消费 install manifest（#115）：DownloadUrl / sha256 由 scripts/build-bundle.ps1 按 manifest 校验后传入本地产物；
+  - 构建：scripts/build-bundle.ps1（wix build；需真实包文件提取元数据，故不进 LabelFrame.slnx）。
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Bundle Name="LabelFrame 安装引导"
@@ -21,24 +26,110 @@
       </Payloads>
     </BootstrapperApplication>
 
+    <!-- PayloadTool 伴生依赖（net48 framework-dependent 发布目录除 EXE 外全部文件；工具从包缓存目录加载） -->
+    <PayloadGroup Id="PayloadToolDependencies">
+      <Payload SourceFile="$(var.PayloadToolDir)LabelFrame.Bootstrapper.PayloadTool.exe.config" Compressed="yes" />
+      <Payload SourceFile="$(var.PayloadToolDir)LabelFrame.Bootstrapper.dll" Compressed="yes" />
+      <Payload SourceFile="$(var.PayloadToolDir)Microsoft.Bcl.AsyncInterfaces.dll" Compressed="yes" />
+      <Payload SourceFile="$(var.PayloadToolDir)System.Buffers.dll" Compressed="yes" />
+      <Payload SourceFile="$(var.PayloadToolDir)System.IO.Pipelines.dll" Compressed="yes" />
+      <Payload SourceFile="$(var.PayloadToolDir)System.Memory.dll" Compressed="yes" />
+      <Payload SourceFile="$(var.PayloadToolDir)System.Numerics.Vectors.dll" Compressed="yes" />
+      <Payload SourceFile="$(var.PayloadToolDir)System.Runtime.CompilerServices.Unsafe.dll" Compressed="yes" />
+      <Payload SourceFile="$(var.PayloadToolDir)System.Text.Encodings.Web.dll" Compressed="yes" />
+      <Payload SourceFile="$(var.PayloadToolDir)System.Text.Json.dll" Compressed="yes" />
+      <Payload SourceFile="$(var.PayloadToolDir)System.Threading.Tasks.Extensions.dll" Compressed="yes" />
+    </PayloadGroup>
+
     <!-- 问卷变量契约（DESIGN §6.3，决策 #122）：BA 按问卷解析结果写入，链内条件消费 -->
     <Variable Name="InstallPreset" Type="string" Value="" />
     <Variable Name="InstallServer" Type="numeric" Value="0" />
     <Variable Name="InstallClient" Type="numeric" Value="0" />
     <Variable Name="InstallWebUi" Type="numeric" Value="0" />
     <Variable Name="InstallPluginZebra" Type="numeric" Value="0" />
+    <!-- 运行时探测变量（决策 #124，§6.9 检测口径）：BA 于 Detect 前写入，runtime 包 DetectCondition 消费（真 = 已装跳过） -->
+    <Variable Name="DesktopRuntimeInstalled" Type="numeric" Value="0" />
+    <Variable Name="WebView2Installed" Type="numeric" Value="0" />
+    <!-- 落位目标变量（决策 #124，§6.9 落位机制）：BA 写入绝对路径，落位包 InstallArguments 以 [变量] 引用 -->
+    <Variable Name="WebUiTargetDir" Type="string" Value="" />
+    <Variable Name="PluginZebraTargetDir" Type="string" Value="" />
 
     <Chain>
+      <!-- 1) .NET 10 Desktop Runtime x64：缺失才装、已装跳过（AC-02）；共享系统组件不随 bundle 卸载 -->
+      <ExePackage Id="DotNetDesktopRuntime"
+                  SourceFile="$(var.RuntimeDesktopPath)"
+                  Name="windowsdesktop-runtime-$(var.RuntimeDesktopVersion)-win-x64.exe"
+                  Compressed="no"
+                  DownloadUrl="$(var.RuntimeDesktopUrl)"
+                  Permanent="yes"
+                  PerMachine="yes"
+                  DetectCondition="DesktopRuntimeInstalled"
+                  InstallCondition="InstallServer OR InstallClient"
+                  InstallArguments="/install /quiet /norestart">
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+      </ExePackage>
+
+      <!-- 2) WebView2 Evergreen 引导器：仅客户端预设需要；安装器自身幂等（已装时快速成功） -->
+      <ExePackage Id="WebView2Runtime"
+                  SourceFile="$(var.RuntimeWebView2Path)"
+                  Name="MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe"
+                  Compressed="no"
+                  DownloadUrl="$(var.RuntimeWebView2Url)"
+                  Permanent="yes"
+                  PerMachine="yes"
+                  DetectCondition="WebView2Installed"
+                  InstallCondition="InstallClient"
+                  InstallArguments="/silent /install">
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+      </ExePackage>
+
+      <!-- 3) Server MSI（既有，#53） -->
       <MsiPackage Id="ServerMsi"
                   SourceFile="$(var.MsiDir)LabelFrame-Server-$(var.ProductVersion).msi"
                   Compressed="no"
                   InstallCondition="InstallServer"
                   DownloadUrl="$(var.DownloadBase)/LabelFrame-Server-$(var.ProductVersion).msi" />
+
+      <!-- 4) Client MSI（既有，#53） -->
       <MsiPackage Id="ClientMsi"
                   SourceFile="$(var.MsiDir)LabelFrame-Client-$(var.ProductVersion).msi"
                   Compressed="no"
                   InstallCondition="InstallClient"
                   DownloadUrl="$(var.DownloadBase)/LabelFrame-Client-$(var.ProductVersion).msi" />
+
+      <!-- 5) 管理界面 zip 落位：PayloadTool 内嵌（Compressed=yes）+ zip 子 Payload 远程下载；目标目录变量由 BA 写入 -->
+      <ExePackage Id="WebUiPlacement"
+                  CacheId="WebUiPlacement"
+                  SourceFile="$(var.PayloadToolPath)"
+                  Name="LabelFrame.PayloadTool.exe"
+                  Compressed="yes"
+                  Permanent="yes"
+                  PerMachine="yes"
+                  InstallCondition="InstallWebUi"
+                  InstallArguments="-place -archive labelframe-server-webui-$(var.ProductVersion).zip -target &quot;[WebUiTargetDir]&quot;">
+        <PayloadGroupRef Id="PayloadToolDependencies" />
+        <Payload SourceFile="$(var.WebUiZipPath)"
+                 Name="labelframe-server-webui-$(var.ProductVersion).zip"
+                 Compressed="no"
+                 DownloadUrl="$(var.DownloadBase)/labelframe-server-webui-$(var.ProductVersion).zip" />
+      </ExePackage>
+
+      <!-- 6) Zebra 官方插件 .lfplugin 落位（#123 版本比较：新版本覆盖 / 同版本幂等 / 降级拒绝） -->
+      <ExePackage Id="ZebraPluginPlacement"
+                  CacheId="ZebraPluginPlacement"
+                  SourceFile="$(var.PayloadToolPath)"
+                  Name="LabelFrame.PayloadTool.exe"
+                  Compressed="yes"
+                  Permanent="yes"
+                  PerMachine="yes"
+                  InstallCondition="InstallPluginZebra"
+                  InstallArguments="-plugin -archive labelframe-transport-zebra-$(var.ProductVersion).lfplugin -target &quot;[PluginZebraTargetDir]&quot;">
+        <PayloadGroupRef Id="PayloadToolDependencies" />
+        <Payload SourceFile="$(var.ZebraPluginPath)"
+                 Name="labelframe-transport-zebra-$(var.ProductVersion).lfplugin"
+                 Compressed="no"
+                 DownloadUrl="$(var.DownloadBase)/labelframe-transport-zebra-$(var.ProductVersion).lfplugin" />
+      </ExePackage>
     </Chain>
   </Bundle>
 </Wix>

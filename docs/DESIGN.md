@@ -192,6 +192,7 @@ flowchart LR
 | 121 | 引导程序骨架落地：ITopologyResolver 形状细化、dry-run 契约与构建接入（迭代 60 安装引导专项 4/8，2026-09-14；两项待决议按 Issue #53 评论用户确认——离线入口 = 欢迎页给离线全量包下载链接与说明（方案 A，断网自动切换离线引导后置 #75）/ 品牌预选 = 仅 Zebra，读 Windows 已装打印机驱动名 ZDesigner → zebra，完整品牌映射归 #56） | ① **接口形状细化（强化路径：先改 §6.3 再写代码）**：`ITopologyResolver.Resolve` 返回值由「裸组件清单」升级为 `TopologyPlan`（预设 + 按依赖序的 `PlannedComponent` 列表 + 总体积 + server-docker 专属 compose 指引）——compose 产物描述与确认页安装位置不是 `ManifestComponent` 字段，裸 `IReadOnlyList<ManifestComponent>` 无法承载；映射语义与 #116 映射表不变（核心组件 = topologies 命中预设即纳入；`webui` 与 `plugin-<brand>` 为开关组件且仍受 topologies 过滤；dependsOn 闭包纳入 + 拓扑序输出）。② **dry-run 契约（AC-03）**：引导会话全程只读——manifest 获取 = 本地文件读或单次 HTTP GET，无下载 / 写入 / 系统改动代码路径（下载归 #54、安装归 #55，本轮未引入）；确认页 UI 明示「仅预览：尚未下载、尚未安装」。③ **品牌选项与预选**：选项来源仅为 manifest 已有 `plugin-<brand>` 条目（无条目时品牌页说明、勾选不添加组件——映射语义 7/8 完整化）；预选规则本轮仅 ZDesigner → zebra。④ **构建接入**：加入 `LabelFrame.slnx` 走日常 CI PR 构建验证；是否随 Release 附件发布引导 EXE 未定（后续迭代定案），release.yml 本轮不动。⑤ 引导 EXE self-contained win-x64 单文件发布实测体积见 CHANGELOG 当期条目（AC-04 对照 #114 ≤ 20MB 量级，实测超标如实记录） | #54 / #55 获得结构化组件清单接口（含安装位置与 compose 指引）；dry-run 边界由测试锚定（无网络写请求 / 无文件系统改动断言）；品牌映射只有一个规则、扩表零契约变更；Release 附件决策后置不阻塞骨架交付 |
 | 122 | 引导程序形态修订：改用 WiX Burn Bundle + 托管 BA（迭代 60 返工，2026-09-14 用户决议见 Issue #53 决议评论；技术细节实施侧调研定案，见 §6.1 修订） | **修订 #114 形态结论**：自研 WinForms self-contained 向导 → WiX Burn Bundle + 托管 BA。① 起因 = AC-04 体积实测：self-contained WinForms 单文件 51.7MB 超 ≤ 20MB 量级（框架体积下限 + WinForms 裁剪被 SDK 阻断 NETSDK1175）；用户权衡「买引擎」（现成下载 / 校验 / 链装 / 回滚 / 升级 + MB 级体积）后拍板；**AC-04 口径替换为 Burn Bundle EXE 实测体积（MB 级）**。② **BA 形态 = out-of-proc 托管 EXE**（WiX v5.4+ 模型，v7 现役）：`WixToolset.BootstrapperApplicationApi` 7.0.0 + `ManagedBootstrapperApplication.Run` 握手；**目标框架 net48 WinForms**（.NET Framework 4.8 = Win10 1809+ OS 组件，裸机免装运行时；.NET 10 SCD 在 bundle 内复现 51.7MB、FDD 裸机不可用，均不取）。③ 职责重划：拓扑编排 / manifest 解析 / 中文问卷仍自研（核心库 `net48;net10.0-windows` 多目标，`ITopologyResolver` 契约与测试全量复用）；下载 / 校验 / 链装 / 回滚 / 升级改由 Burn 引擎承担——**迭代 61（#54）/ 62（#55）/ 64（#57）大半自研内容可被 Burn 吸收，各 Issue 拾取时重审范围**。④ dry-run = BA 设置 Burn 变量 + `Engine.Plan` 只计划不执行（绝不 Apply）；变量契约 `InstallPreset` / `InstallServer` / `InstallClient` / `InstallWebUi` / `InstallPluginZebra`（§6.3）。⑤ 构建接入：核心库 + BA 工程入 slnx 走 CI；Bundle 由 `scripts/build-bundle.ps1` 构建（需真实 MSI 提取元数据，不能进 slnx），release.yml 不动 | 引导程序体积问题从「换 UI 栈」转为「买引擎」消解（Bundle EXE = 引擎 ~2.5MB + 压缩 BA 载荷数 MB）；专项后半程（#54 / #55 / #57）范围重审有明确契约锚点（Burn 能力清单 + 变量契约）；#44（迭代 10 放弃 Burn）的历史顾虑由 v5.4+ out-of-proc 模型消解；代价 = 问卷 UI 定制受 Burn 进程模型约束 + 维护栈引入原生引擎 |
 | 123 | 品牌传输插件外置化与官方插件体系（迭代 63 安装引导专项 7/8，2026-09-14；两项待决议按 Issue #56 评论用户确认——内置兜底去留 = **彻底外置**（未装则该品牌不可用，达成瘦身目标）/ 官方插件 id 与版本流 = **官方前缀 + 随主版本演进 + 覆盖安装率先支持版本比较**；策略细节见 §6.8） | ① **zebra 传输外置化（WinHost windows 目标）**：`ZebraTransportPlugin` / `ZebraPrinterTransport` 从 WinHost 移入独立插件工程 `src/LabelFrame.TransportPlugin.Zebra`（net10.0-windows10.0.26100），构建为官方 `.lfplugin` 包随 Release 发布；WinHost 不再引用 Zebra.Printer.SDK（客户端瘦身，SDK 依赖随插件包分发；毒丸引用清单随插件工程迁移）。② **官方插件 id**：前缀 `labelframe-`；zebra = `labelframe-transport-zebra`（连接配置 pluginId 同此）；**版本随主版本演进**（发版流水线以当版主版本构建）；旧内置时代 id `zebra`（≤0.26）为读取别名——connection.json 读取时映射为官方 id，不落盘迁移。③ **存量升级兼容（决议 1，AC-04）**：客户端 MSI 附带 `plugin-packages\labelframe-transport-zebra-<版本>.lfplugin`（随升级包附带，零新下载机制——下载链归 #54/#55）；启动时检测「已用 zebra 配置」且插件未装 → 自动从附带包安装（复用 PluginInstaller 三层校验），本次启动即完成装配；无附带包（开发目录裸跑）则 host.log 中文提示、不阻断启动。④ **覆盖安装版本比较（决议 2，官方插件率先）**：新版本覆盖旧版本、同版本幂等跳过、降级拒绝（提示先卸载）；第三方插件维持「覆盖安装不做版本比较」（#72 4A）；比较语义 = 双方可解析 System.Version 按其比较，否则字符串 Ordinal。⑤ **服务端放行策略**：`plugin-packages` 上传校验新增内置传输保留 id（log / tcp9100 / winspool）拒绝，官方 id 放行——官方插件可经服务端集中分发。⑥ **manifest 收录与品牌映射**：install manifest 收录 `plugin-zebra`（type=lfplugin，version=主版本，topologies=standalone/client/offline）；brand → 组件 id → 插件包 pluginId 三段映射表入 §6.8；引导 `InstallPluginZebra` 变量接线生效（BundleVariableMap 既有映射），Bundle 链安装归 #54/#55 | 品牌传输从「客户端全量内置」转为「按品牌组装」（#67 / #95 路线落地首例）；客户端二进制与 SDK 依赖解耦（瘦身 + SDK 升级单点在插件工程）；升级路径无断裂（已用 zebra 配置自动迁移装配）；官方插件覆盖安装有明确版本语义（为引导升级铺路）；后续新品牌（TSPL / CPCL）按同构映射表扩展零契约变更 |
+| 124 | 安装执行链与失败处置：Apply 启用 + 运行时前置链 + 非 MSI 落位（迭代 62 安装引导专项 6/8，2026-09-14；范围 = Issue #55「范围修订 v2」——Burn 已吸收大半自研编排，细节见 §6.9） | ① **Apply 启用边界**：问卷阶段保持 #53 只读契约（清单获取外零网络 / 零系统改动），执行边界 = 确认页「安装」→ 写变量 + `Engine.Plan` + **`Engine.Apply`**；#53「绝不 Apply」修订为「确认前绝不 Apply」。② **链序**：runtime-desktop → runtime-webview2 → ServerMsi → ClientMsi → WebUiPlacement → ZebraPluginPlacement（单一回滚边界；运行时 / 落位包 `Permanent="yes"`）。③ **运行时检测口径**：.NET = 文件版本探测（`dotnet\shared\Microsoft.WindowsDesktop.App` 版本目录枚举 ≥ 10.0.0，latestMajor 前滚对齐 MSI NetCoreCheck；注册表 sharedfx 实证不可靠）；WebView2 = EdgeUpdate Clients `pv` 注册表（对齐 MSI 先例，HKLM+HKCU）；探测入核心库 `RuntimeProbe`（委托注入可测），BA 于 Detect 前写 Burn 探测变量，链内 `DetectCondition` 消费（真 = 已装跳过 = AC-02）。④ **非 MSI 落位机制定案 = ExePackage 包装解压工具**（`LabelFrame.Bootstrapper.PayloadTool.exe` 内嵌 + zip / `.lfplugin` 作子 Payload 远程下载）：Burn 自定义动作被否决（无包获取语义、引擎进程内加载约束）；插件落位版本语义 = #123（覆盖 / 同版幂等 / 降级拒绝）；落位包 Permanent（卸载编排归 #57）。⑤ **失败处置引用 Burn 引擎内建回滚语义（不自造）**：包失败 → 停链 + 逆序回滚本次已执行包，`ApplyComplete.Status` 非零 → BA 失败报告（步骤 / Burn 日志位置 / 建议动作）。⑥ **重跑幂等**：MSI 已装跳过 + 覆盖升级（appsettings.json 不覆盖 = #48）；runtime DetectCondition 跳过；webui 覆盖重写；插件 #123 版本比较；重跑改选 = Burn Modify 语义（条件假即卸载）——版本升级细节归 #57。⑦ **manifest runtime 条目消费（#115 落地）**：`generate-install-manifest.ps1` 随发版生成 runtime 条目（厂商直链 + CI 下载实测哈希；webview2 version=evergreen；MSI dependsOn 补齐）；`build-bundle.ps1` 按 manifest 下载 runtime 安装器并 sha256 校验后交 wix build 内嵌摘要——厂商轮转 = bundle 构建失败（fail-closed） | 引导程序从「预览」进入「可真装」：链序 / 检测 / 落位 / 失败 / 幂等五项口径齐备（VM 取证 = AC-01/AC-03 待验收欠账）；非 MSI 组件复用 Burn 下载 / 校验 / 缓存能力（零自研下载链）；runtime 厂商直链风险以 manifest 哈希 + 构建校验双锚收口；#54（下载体验）与 #57（升级 / 卸载）接手点清晰 |
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`（常量定义于 `ApiErrorCodes.InternalError`，全仓仅此一处字面量）。分类修正（决策 #107）：请求体反序列化失败（非法 JSON / 非 UTF-8 / 类型不匹配）→ 400 + `LF_API_BAD_BODY`（中文消息，原始解析异常详情只进服务端日志）；`POST /api/printer/test` 发送失败 → 400 + `LF_TRANSPORT_TEST_FAILED`（消息含目标地址与原因）；403（非归属设备回报 / 进度）同样返回 ErrorView——错误响应不存在空 body 形态。
@@ -258,7 +259,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 ## 6. 安装引导（Bootstrapper）
 
-> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）。
+> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）/ #124（安装执行链与失败处置，§6.9）。
 
 定位：**安装引导程序（setup）**——首次接触 LabelFrame 的部署者运行一个小 EXE，回答少量问题（部署拓扑、打印机品牌、是否带管理界面），程序解析安装清单（install manifest）、按需下载组件并完成静默安装 / 落位；PDA 不进 PC 引导（经服务端下载中心扫码下载，专项 3/8 #52）。目标：把「装什么、怎么装」从「读懂 DEPLOY 文档 + 手工排组件」降为「回答三个问题」。语言边界：引导问卷与向导文案**中文单语**，i18n 不进 setup 问卷（REQUIREMENTS §7「多语言」边界不变）。
 
@@ -301,7 +302,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 **官方插件条目（迭代 63 起，决策 #123）**：`plugin-zebra`（type=`lfplugin`，version=主版本，topologies=`standalone` / `client` / `offline`）随发版流水线从当版 `.lfplugin` 产物生成（`labelframe-transport-zebra-<版本>.lfplugin` Release 附件）；品牌 → 组件 id → 插件包 pluginId 的三段映射表见 §6.8。
 
-**runtime 条目特殊语义**：`runtime-desktop`（.NET 10 Desktop Runtime x64）/ `runtime-webview2`（WebView2 Evergreen 引导器）的 `urls` 指向**厂商官方直链**；sha256 由 CI 生成时对当次下载实测锁定。厂商可能轮转固定 URL 背后的文件——哈希漂移表现为引导程序校验失败拒绝安装（fail-closed，安全方向失效），修复 = 重新发版刷新 manifest。属接受的残余风险（强于「不校验厂商文件」）。
+**runtime 条目特殊语义**：`runtime-desktop`（.NET 10 Desktop Runtime x64）/ `runtime-webview2`（WebView2 Evergreen 引导器）的 `urls` 指向**厂商官方直链**；sha256 / sizeBytes 由 CI 生成时对当次下载实测锁定（**已实现（迭代 62，#55）**：`generate-install-manifest.ps1` 随发版生成两条 runtime 条目——直链下载实测哈希与体积，`runtime-webview2` version = `evergreen`（固定直链轮转无可钉版本）；MSI 条目 `dependsOn` 同步补齐：`server-msi → runtime-desktop`、`client-msi → runtime-desktop + runtime-webview2`）。厂商可能轮转固定 URL 背后的文件——轮转表现为 **bundle 构建时按 manifest 校验失败**（`build-bundle.ps1` 下载后逐字节 sha256 比对 manifest 值，不符即构建失败；Burn 再从校验过的本地产物内嵌包摘要，安装期下载校验由引擎执行），修复 = 重新发版刷新 manifest（fail-closed，安全方向失效）。属接受的残余风险（强于「不校验厂商文件」）。runtime 无本仓产物，不进 Release 附件。
 
 **Docker 镜像不进首版条目**：镜像无独立可哈希文件产物（完整性由 registry digest 机制保证）；`server-docker` 预设的下载组件集合为空（§6.3），引导程序生成 compose 文件与镜像拉取指引。digest 收录按需再议（§7 开放点）。
 
@@ -323,7 +324,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
       "version": "10.0.1",
       "dependsOn": [],
       "urls": [
-        "https://builds.dotnet.microsoft.com/builds/windowsdesktop-runtime-10.0.1-win-x64.exe"
+        "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.1/windowsdesktop-runtime-10.0.1-win-x64.exe"
       ],
       "sha256": "18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a",
       "sizeBytes": 58396456,
@@ -468,7 +469,8 @@ public interface ITopologyResolver
 
 - **纳入规则**：核心组件 = `topologies` 命中预设即默认纳入；开关组件 `webui`（id）与 `plugin-<brand>`（id 前缀）由开关决定，且**仍受 `topologies` 过滤**（如 `webui` 未标记 `client`，追加客户端预设开开关也不纳入）；`dependsOn` 闭包递归纳入（仅同 manifest 内条目，缺引用 = 清单非法拒绝），输出按拓扑序（同层按清单声明序，环状依赖拒绝）。
 - **品牌选项来源仅为 manifest 已有 `plugin-<brand>` 条目**（品牌 → 组件映射已完整化：映射表见 §6.8；条目 id → 实际安装目录用插件包 pluginId，如 `plugin-zebra` → `plugins\labelframe-transport-zebra`）；清单无品牌条目时品牌页展示说明而非报错，勾选不添加组件。**预选规则（Issue #53 决议 2）**：读 Windows 已装打印机驱动名，`ZDesigner` → `zebra` 预勾选，其余品牌从零勾选——当前唯一规则，后续品牌扩表零契约变更。
-- **dry-run 契约（AC-03）**：引导会话全程只读——manifest 获取 = 本地文件读取或单次 HTTP GET，无任何下载、写入、系统改动的代码路径（下载 / 安装能力归 Burn 引擎与 #54 / #55，本轮不触发）；BA 侧 dry-run = 设置 Burn 变量后调用 `Engine.Plan(LaunchAction, BundleScope.Default)`（只计划不执行），**绝不调用 `Engine.Apply`**；确认页 UI 明示「仅预览：尚未下载、尚未安装，不会对系统做任何改动」。
+- **问卷只读契约（#53 AC-03；#124 修订执行边界）**：问卷阶段（欢迎 → 拓扑 → 品牌 → 管理界面 → 确认页展示）保持只读——manifest 获取 = 本地文件读取或单次 HTTP GET，无任何下载、写入、系统改动的代码路径（下载 / 安装能力归 Burn 引擎，问卷阶段不触发）；**执行边界 = 确认页「安装」**——BA 写入问卷变量与运行时探测变量后调用 `Engine.Plan(LaunchAction.Install, BundleScope.Default)`，Plan 成功即 `Engine.Apply(向导窗口句柄)` 真装（#53 的「绝不 Apply」口径由 #124 修订为「**确认前绝不 Apply**」；确认页 UI 明示「确认前不下载、不安装、不改动系统」）。
+- **Burn 变量契约（BA ↔ Bundle 链）**：`InstallPreset`（string：预设 manifest id）+ `InstallServer` / `InstallClient` / `InstallWebUi` / `InstallPluginZebra`（numeric 0/1，按解析结果中 `server-msi` / `client-msi` / `webui` / `plugin-zebra` 是否在集合内置位）——映射为纯函数入核心库（net10 测试锚定），Bundle 链内包以 `InstallCondition` 消费；**运行时探测变量（#124）**：`DesktopRuntimeInstalled` / `WebView2Installed`（numeric 0/1，BA 在 `engine.Detect()` 前按 §6.9 检测口径写入，链内 runtime ExePackage 以 `DetectCondition` 消费）；**落位目标变量（#124）**：`WebUiTargetDir` / `PluginZebraTargetDir`（string，BA 计算的绝对路径，链内落位包 `InstallArguments` 以 `[变量]` 引用）；后续新增品牌插件时按 `InstallPlugin<Brand>` / `<Brand>TargetDir` 同构扩展（映射表 §6.8）。
 - **Burn 变量契约（BA ↔ Bundle 链）**：`InstallPreset`（string：预设 manifest id）+ `InstallServer` / `InstallClient` / `InstallWebUi` / `InstallPluginZebra`（numeric 0/1，按解析结果中 `server-msi` / `client-msi` / `webui` / `plugin-zebra` 是否在集合内置位）——映射为纯函数入核心库（net10 测试锚定），Bundle 链内 `MsiPackage` 以 `<Condition>` 消费；后续新增品牌插件时按 `InstallPlugin<Brand>` 同构扩展（映射表 §6.8；Bundle 链内 `.lfplugin` 的下载与安装归 #54 / #55）。
 - **构建接入（Issue #53 范围 3 fallback，#122 修订）**：核心逻辑库与 BA 工程加入 `LabelFrame.slnx` 由日常 CI 做 PR 构建验证；**Bundle 本体**（`wix build`，构建时需真实 MSI 提取包元数据，无法在 slnx 解决方案构建阶段获得 MSI）由 `scripts/build-bundle.ps1` 本地 / 发版时构建——按 #53 fallback「仅 PR 构建验证」口径如实记录，release.yml 本轮不动（是否随 Release 附件发布引导 EXE 未定）。
 
@@ -559,6 +561,47 @@ public interface ITopologyResolver
 **覆盖安装版本比较（决议 2，官方插件率先）**：官方前缀插件安装时与已装版本比较——**新版本 > 旧版本：覆盖安装**（既有覆盖语义）；**相同版本：幂等跳过**（不重复解压，日志留痕，返回已装视图）；**旧版本（降级）：拒绝**（明确提示先卸载再安装）。第三方插件维持「覆盖安装不做版本比较」（决策 #72 4A）。比较语义：双方可解析为 `System.Version` 则按其比较，否则按字符串 Ordinal 比较。
 
 **服务端分发与放行策略（AC-05）**：服务端 `plugin-packages` 上传校验新增**内置传输保留 id 拒绝**——`log` / `tcp9100` / `winspool` 拒绝上传（防「客户端安装与内置冲突的包」，与客户端安装侧「注册表内置即拒绝」动态判定互为纵深）；**官方插件 id（`labelframe-` 前缀）放行**，官方插件可经服务端集中分发（客户端「插件管理」安装）。信任模型不引入插件签名（#117：公网 `.lfplugin` 受 manifest sha256 背书；局域网 #72 通道维持三层校验）。
+
+### 6.9 安装执行链与失败处置（决策 #124，迭代 62 / #55）
+
+> 范围基线 = Issue #55「范围修订 v2」（Apply 启用缩编重报）：MSI 静默链、失败回滚、UAC 提权、msiexec 日志、重跑恢复由 Burn 引擎内建（#122 立场），本节只定案**链序 / 检测口径 / 非 MSI 落位机制 / 失败与幂等口径 / UI 事件映射**五项自研边界。卸载编排、升级版本比较 UI、多源回退与缓存策略不在本轮（归 #54 修订 / #57）。
+
+**链序（Bundle Chain，单一回滚边界）**：
+
+| 序 | 包 id | 类型 | 条件 | 说明 |
+|---|---|---|---|---|
+| 1 | `DotNetDesktopRuntime` | ExePackage | InstallCondition = `InstallServer OR InstallClient`；DetectCondition = `DesktopRuntimeInstalled` | .NET 10 Desktop Runtime x64（厂商直链，`Permanent="yes"`） |
+| 2 | `WebView2Runtime` | ExePackage | InstallCondition = `InstallClient`；DetectCondition = `WebView2Installed` | WebView2 Evergreen 引导器（厂商直链，`Permanent="yes"`） |
+| 3 | `ServerMsi` | MsiPackage | InstallCondition = `InstallServer` | 已有（#53） |
+| 4 | `ClientMsi` | MsiPackage | InstallCondition = `InstallClient` | 已有（#53） |
+| 5 | `WebUiPlacement` | ExePackage（包装 PayloadTool） | InstallCondition = `InstallWebUi` | 管理界面 zip → `%ProgramData%\LabelFrame\server\plugins\web-ui` |
+| 6 | `ZebraPluginPlacement` | ExePackage（包装 PayloadTool） | InstallCondition = `InstallPluginZebra` | `.lfplugin` → `%ProgramData%\LabelFrame\Client\plugins\labelframe-transport-zebra` |
+
+运行时置链首（MSI 的 NetCoreCheck / WebView2 LaunchCondition 前置满足，避免「MSI 检测拦截提示手工装」的断链体验）；落位包在 MSI 之后（目标目录由 MSI 创建，ACL 与 MSI 一致）。MSI / 落位包 `Compressed="no"` + `DownloadUrl`（web bundle 产物不进 EXE）；runtime 同（厂商直链）。
+
+**运行时检测口径（AC-02：缺失才装、已装跳过）**：
+
+- **.NET 10 Desktop Runtime = 文件版本探测**：枚举 `%ProgramFiles%\dotnet\shared\Microsoft.WindowsDesktop.App\` 下版本目录名，按 `System.Version` 解析后取最大值与最低版本（10.0.0）比较——对齐 MSI 侧 NetCoreCheck 口径（desktop / 10.0.0 / latestMajor 前滚）。**不采用注册表 `dotnet\Setup\InstalledVersions\...\sharedfx`**：实证（2026-09-14 开发机）运行时已装而该键不存在（本仓 MSI 注释亦记录「版本号是命名值而非默认值，注册表搜索读不到」）；文件枚举是微软官方《How to check that .NET is installed》口径。
+- **WebView2 = 注册表探测**：`HKLM\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}` 值 `pv`，或 HKCU 同键（per-user 安装）——对齐 MSI 侧 `WEBVIEW2_HKLM` / `WEBVIEW2_HKCU` 先例；Evergreen 自更新，只判存在不比版本。
+- 探测实现于核心库（`RuntimeProbe`，net48 / net10 双腿；目录枚举与注册表读取以委托注入可单测），BA 启动时（`engine.Detect()` 前）写入 Burn 探测变量；Burn 语义：`DetectCondition` 真 = 已装（Present）→ 计划跳过，假 = 缺失 → 计划安装。运行时包 `Permanent="yes"`（共享系统组件，不随 bundle 卸载 / 升级移除）。
+
+**非 MSI 落位机制（定案：ExePackage 包装解压工具；备选 Burn 自定义动作否决）**：
+
+- **否决理由（自定义动作）**：Burn 的 DllCustomAction 在引擎进程内执行（native / 托管加载形态受限，与 net48 out-of-proc BA 栈错位），且自定义动作**没有包获取语义**——zip 的下载 / 哈希校验 / 缓存仍需另行自研通道，等于放弃 Burn 对非 MSI 文件的全部既有能力；ExePackage 包装路线天然获得下载、哈希校验、缓存、链序、进度事件与退出码语义，代价仅为一个 net48 小工具 EXE（数十 KB，随 bundle 压缩内嵌）。
+- **机制**：`LabelFrame.Bootstrapper.PayloadTool.exe`（net48 控制台，核心库 `Placement` 逻辑复用，随 bundle 内嵌 `Compressed="yes"`）作为落位包载体；被落位文件（webui zip / `.lfplugin`）为其子 `Payload`（`Compressed="no"` + `DownloadUrl`，构建时以本仓产物为 SourceFile，Burn 内嵌摘要 → 安装期下载校验）。Burn 将包与伴生 Payload 缓存于同一包缓存目录，工具以 `-archive <文件名>` 定位伴生包、`-target <绝对路径>`（来自 Burn 落位目标变量）解压落位。
+- **幂等与版本语义（AC-05 插件覆盖口径 = #123）**：webui = 覆盖解压（无独立版本概念，重跑重写同内容）；`.lfplugin` = 包内 manifest.json 版本与已装目录版本比较——新版本覆盖、**同版本幂等跳过**（Burn 日志留痕）、**降级拒绝**（非零退出 → 链失败，失败报告提示先卸载）。落位包 `Permanent="yes"`：bundle 卸载不清除落位内容（卸载编排不在本轮，#57 收尾评估）。
+
+**进度 / 失败 / 完成 UI（BA 事件映射；多源下载体验完整消费属 #54 修订范围）**：
+
+- 进度页：`CacheAcquireProgress`（下载）与 `ExecuteProgress`（执行）的 OverallPercentage 映射总进度条；`CachePackageBegin/Complete`、`ExecutePackageBegin/Complete` 映射分组件状态（下载中 / 安装中 / 成功 / 跳过 / 失败）；执行期间禁用「上一步 / 取消」。
+- 失败报告：失败步骤（阶段 + 包 + 错误码与消息）、Burn 日志位置（`WixBundleLog` 变量读取，兜底 `%TEMP%\LabelFrame*.log` 通配说明）、建议动作（重试（重新 Plan+Apply）/ 查看日志 / 重新以管理员运行引导程序）。
+- 完成页：装了什么（包 + 版本 + 跳过项）、服务状态（`LabelFrameServer` 查询，尽力而为）、管理界面地址（装 webui 时 `http://127.0.0.1:53961/`）、下一步指引（打开客户端 / 打开管理界面 / **PDA 到管理界面「下载中心」扫码装机**——衔接 #52）与重启提示（`ApplyComplete.Restart` 非空时）。
+
+**失败处置与重跑幂等（AC-05）**：
+
+- **失败即停 + 回滚 = 引用 Burn 引擎内建语义（不自造）**：Execute 阶段任一包失败 → 引擎停止后续包并逆序回滚本次 Apply 已执行的包（runtime 与落位包因 `Permanent="yes"` 不卸载，MSI 回滚卸载）；`ApplyComplete.Status` 非零 → BA 失败报告页。#122 立场维持：链装 / 回滚 / 提权 / 日志由引擎负责，BA 只呈现。
+- **重跑引导程序（幂等口径）**：MSI = Burn 检测已装（Present）→ 计划跳过（同版重跑零动作）；覆盖升级 = MSI 既有语义（**appsettings.json 不覆盖 = 决策 #48**，MSI 独立用户配置组件）；版本升级 = Bundle related-bundle 升级 + MSI MajorUpgrade（细节归 #57）。runtime = DetectCondition 已装跳过（AC-02）。落位 = webui 覆盖重写；插件按 #123 版本比较（同版幂等 / 降级拒绝）。**重跑改变问卷选择 = Burn Modify 语义**：`InstallCondition` 假的包被计划卸载（如从 standalone 改选 client-only → ServerMsi 卸载）——标准 Burn 行为，显式接受。
+
 
 ## 7. 风险与未决问题
 
