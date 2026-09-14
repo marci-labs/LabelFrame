@@ -27,18 +27,65 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         PlanComplete += (_, args) => _planCompleted.TrySetResult(args.Status);
     }
 
+    /// <summary>失败退出码（Windows 安装致命错误惯例 ERROR_INSTALL_FAILURE = 1603）。</summary>
+    private const int ExitCodeFailure = 1603;
+
     protected override void Run()
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+        // UI 线程未处理异常显式诊断（迭代 60 返修：异常不得被吞）：写 Burn 日志 + 对话框后退出，不静默继续
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
 
-        using var wizard = new Ui.WizardForm(this);
+        using var wizard = CreateWizardOrExit();
+        if (wizard is null)
+        {
+            return; // 装配失败已显式处理（诊断 + 非零退出）
+        }
+
+        var exitCode = 0;
+        Application.ThreadException += (_, args) =>
+        {
+            Log($"向导 UI 未处理异常：{args.Exception}");
+            MessageBox.Show(
+                wizard,
+                $"向导发生未处理异常，安装引导即将退出。\n\n{args.Exception.GetType().Name}: {args.Exception.Message}\n\n详情已写入安装日志。",
+                "LabelFrame 安装引导",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            exitCode = ExitCodeFailure;
+            wizard.Close();
+        };
+
         // 触发 Detect（只读探测已装包状态；问卷本身不依赖其结果，Plan 前必须 Detect 完成）
         engine.Detect();
         Application.Run(wizard);
 
         // 问卷关闭即结束 BA（dry-run：全程未调用 Apply，无任何下载 / 安装）
-        engine.Quit(0);
+        engine.Quit(exitCode);
+    }
+
+    /// <summary>
+    /// 装配向导窗体（含首页装配，迭代 60 返修）；失败时显式失败——诊断对话框 + Burn 日志 + 非零退出，
+    /// 绝不带着未装配状态（-1 索引、空白内容区）进入消息循环（Issue #53 验收回流教训）。
+    /// </summary>
+    private Ui.WizardForm? CreateWizardOrExit()
+    {
+        try
+        {
+            return new Ui.WizardForm(this);
+        }
+        catch (Exception ex)
+        {
+            Log($"向导装配失败：{ex}");
+            MessageBox.Show(
+                $"向导装配失败，安装引导无法继续。\n\n{ex.GetType().Name}: {ex.Message}\n\n详情已写入安装日志。",
+                "LabelFrame 安装引导",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            engine.Quit(ExitCodeFailure);
+            return null;
+        }
     }
 
     /// <summary>dry-run 主入口：问卷答案 → Burn 变量（DESIGN §6.3 变量契约）→ 引擎 Plan（只计划不执行）。</summary>
