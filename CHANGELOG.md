@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 58 安装引导专项（2/8）：CI 自动生成安装清单（install-manifest.json + latest.json） · 2026-09-14
+
+- **release workflow 新增安装清单生成与断言（Issue #51 范围 1~3，契约 = 决策 #115，实现决议 = 决策 #120；流程治理 + 产品混合立项，对齐迭代 49 / #31 先例——只改 release.yml，不动三项必需检查）**：release job 在创建 GitHub Release 前调用新增脚本 `scripts/generate-install-manifest.ps1`，收集当版全部产物（Server MSI、Client MSI、管理界面插件 zip、Linux 归档、PDA APK），实测 sha256（小写 hex）与 sizeBytes，生成 `install-manifest.json`（`schemaVersion=1`；组件条目 id / type / version / dependsOn / urls / sha256 / sizeBytes / silentArgs / topologies / notes 与 DESIGN §6.2 schema 一致；urls 为**多源 URL 数组**，首期仅 GitHub Release 主源一个元素，镜像位按数组形态预留）；runtime / `plugin-*` 条目按 schema 预留、无产物不出现，dependsOn 首版留空（只引用同集合内条目，runtime 随专项 5/8 #55 落地时补）。manifest 由 CI 生成、禁止人工维护（人工改动会被断言的哈希复核拦截）。
+- **断言粒度（用户 2026-09-14 决议）：schema 字段完整性 + 产物存在性 + 哈希抽验（AC-03）**：生成阶段任一组件缺产物立即失败（空哈希 / 空条目不可能落盘）；独立断言步骤（`-VerifyOnly`）**重读落盘清单**复核——顶层与条目必填字段齐全性、type / topologies 枚举、sha256 小写 64 位 hex、sizeBytes 正整数、dependsOn 引用存在性、每条 Release 源 URL 对应产物在产物目录存在、逐条目重算 SHA-256 比对（覆盖且强于抽样，5 个产物成本可忽略）；缺产物 / 缺哈希 / schema 不符任一命中即非零退出、job 失败、不创建 Release。
+- **latest.json 最新版本指针同步生成（用户 2026-09-14 决议，Issue #51 待决议 1）**：内容 = 最新版本号 + 当版 manifest URL，随 Release 附件发布；专项 8/8（#57 升级检查）直接消费，稳定通道 URL = `releases/latest/download/latest.json`。
+- **脚本工程约束**：兼容 Windows PowerShell 5.1（本地自验）与 PowerShell 7（GitHub Actions runner）；JSON 手写序列化 + UTF-8 无 BOM 落盘（跨版本输出一致，引导程序解析不假设 BOM）。本地自验 5 用例全数符合预期——样例产物目录正常生成 + 断言通过（sha256 与 sha256sum 独立交叉复核一致，Python 独立解析 JSON 通过）、缺产物失败（exit 1）、篡改 sha256 哈希抽验拦截、删除 sha256 字段（缺哈希）拦截、断言阶段产物缺失拦截；release.yml 改动过 YAML 语法校验。
+- **记账**：DESIGN §6.2 标注 manifest 从契约变实现（生成点 = release workflow 脚本调用）与 latest.json 已实现（含稳定通道 URL），决策表补 #120（实现决议：生成点 / latest.json / 断言粒度）；ROADMAP 状态行本轮不改（轮值结项时另提 docs PR，对齐 #50 / #52 先例）。
+- **AC-01 / AC-02 待发版验证**：Release 附件含清单与下载复核 sha256 依赖真实发版 tag，转待验收口径（恢复条件 = 下一次 `v*` tag）。
+
 ## 迭代 57 客户端退出提速（事件驱动提前退出替代固定宽限） · 2026-09-11
 
 - **退出看门狗改事件驱动：宿主停止信号 + 500 毫秒稳定窗提前退出（Issue #64，用户已确认方案）**：缺陷 #58 修复引入的固定 2.5 秒优雅宽限在卡死场景（托盘 / 界面消息循环在场、`RunAsync` 不自然返回）每次烧满——用户托盘退出体感 2~3 秒。`HostExitCoordinator` 序列改为：`StopApplication` 后**订阅 `ApplicationStopped`**，宿主已停止而主流程仍未返回（卡死判定）时，仅再留**稳定窗 500 毫秒**（`DefaultStabilizationWindow` 常量，不打配置面）即执行清理 + `Environment.Exit(0)` 强退——卡死路径端到端 ≈ 宿主停止延迟 + 500 毫秒（目标 <1 秒，现状 2.7 秒）；订阅采用「先挂回调再查已置位」双检，覆盖「订阅时宿主已停止」竞态。

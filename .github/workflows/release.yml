@@ -1,8 +1,9 @@
-# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK）
+# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单）
 # 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
-# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 创建 GitHub Release。
+# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 生成安装清单 → 创建 GitHub Release。
 # MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
 # APK 签名：四个 ANDROID_KEYSTORE_* / ANDROID_KEY_* Secret 必须齐备，缺失即构建失败——不回退 debug 签名（签名稳定化，迭代 59 决策 #119）。
+# 安装清单：install-manifest.json（+ latest.json 指针）由 release job 从当版真实产物生成并断言（schema 见 docs/DESIGN.md §6.2，迭代 58 决策 #115 / #120）；禁止人工维护。
 name: release
 
 on:
@@ -387,6 +388,31 @@ jobs:
           name: android-apk
           path: release
 
+      # 安装清单（迭代 58，#51）：从当版全部产物生成 install-manifest.json + latest.json（决策 #115 / #120）。
+      # 生成阶段即校验产物齐备：任一组件缺产物立即失败（AC-03 场景之一），空哈希 / 空条目不可能落盘。
+      - name: 生成安装清单（install-manifest.json + latest.json）
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          ./scripts/generate-install-manifest.ps1 `
+            -Version $env:VERSION `
+            -AssetsDir release `
+            -OwnerRepo '${{ github.repository }}'
+
+      # 断言独立于生成重读落盘清单（AC-03）：schema 字段完整性 + 产物存在性 + 哈希抽验（逐条目重算比对）；
+      # 缺产物 / 缺哈希 / schema 不符任一命中即非零退出，本 job 失败、不创建 Release。
+      - name: 断言安装清单（schema 完整性 / 产物存在性 / 哈希抽验）
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          ./scripts/generate-install-manifest.ps1 `
+            -Version $env:VERSION `
+            -AssetsDir release `
+            -OwnerRepo '${{ github.repository }}' `
+            -VerifyOnly
+
       - name: 创建 Release（v${{ needs.version.outputs.version }}）
         uses: softprops/action-gh-release@v2
         with:
@@ -400,3 +426,5 @@ jobs:
             release/LabelFrame-AndroidHost-*.apk
             release/labelframe-server-webui-*.zip
             release/labelframe-server-*-linux-x64.tar.gz
+            release/install-manifest.json
+            release/latest.json
