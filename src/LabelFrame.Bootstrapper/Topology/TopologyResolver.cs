@@ -10,8 +10,21 @@ public sealed class TopologyResolver : ITopologyResolver
 
     public TopologyPlan Resolve(InstallManifest manifest, TopologyPreset preset, TopologyOptions options)
     {
+#if NET10_0_OR_GREATER
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(options);
+#else
+        // net48 腿无 ArgumentNullException.ThrowIfNull（.NET 6+ API）
+        if (manifest is null)
+        {
+            throw new ArgumentNullException(nameof(manifest));
+        }
+
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+#endif
 
         // server-docker：无下载组件（镜像完整性由 registry digest 机制保证，§6.2）——空集合 + compose 产物描述
         if (preset == TopologyPreset.ServerDocker)
@@ -65,7 +78,7 @@ public sealed class TopologyResolver : ITopologyResolver
     internal static bool IsBrandPlugin(ManifestComponent component) => component.Id.StartsWith(PluginIdPrefix, StringComparison.Ordinal);
 
     /// <summary>从组件 id 提取品牌 id（plugin-zebra → zebra）。</summary>
-    internal static string BrandIdOf(string componentId) => componentId[PluginIdPrefix.Length..];
+    internal static string BrandIdOf(string componentId) => componentId.Substring(PluginIdPrefix.Length);
 
     /// <summary>manifest 中可选择的品牌集合：仅为已有 plugin-&lt;brand&gt; 条目（无条目则无可选项）。</summary>
     public static IReadOnlyList<string> AvailableBrands(InstallManifest manifest) =>
@@ -77,10 +90,12 @@ public sealed class TopologyResolver : ITopologyResolver
     /// <summary>纳入组件并递归拉入 dependsOn 闭包（§6.2：依赖只约束同集合内组件的安装顺序；缺引用在清单解析时已拒绝）。</summary>
     private static void IncludeWithDependencies(InstallManifest manifest, ManifestComponent component, Dictionary<string, ManifestComponent> selected)
     {
-        if (!selected.TryAdd(component.Id, component))
+        if (selected.ContainsKey(component.Id))
         {
             return;
         }
+
+        selected.Add(component.Id, component);
 
         foreach (var dependencyId in component.DependsOn)
         {
@@ -108,10 +123,10 @@ public sealed class TopologyResolver : ITopologyResolver
         // 选中集合内的依赖边（dep → component）；只统计选中集合内的依赖（闭包保证依赖已选中）
         var remainingDependencies = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         var dependents = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        foreach (var (id, component) in selected)
+        foreach (var pair in selected)
         {
-            var edges = component.DependsOn.Where(depId => selected.ContainsKey(depId)).ToList();
-            remainingDependencies[id] = edges;
+            var edges = pair.Value.DependsOn.Where(depId => selected.ContainsKey(depId)).ToList();
+            remainingDependencies[pair.Key] = edges;
             foreach (var depId in edges)
             {
                 if (!dependents.TryGetValue(depId, out var list))
@@ -120,7 +135,7 @@ public sealed class TopologyResolver : ITopologyResolver
                     dependents[depId] = list;
                 }
 
-                list.Add(id);
+                list.Add(pair.Key);
             }
         }
 

@@ -10,7 +10,7 @@ public static class PrinterBrandDetector
     ];
 
     /// <summary>从已装打印机驱动名推断应预选的品牌（纯函数，测试矩阵锚点）；只预选 <paramref name="availableBrands"/> 中已有 manifest 条目的品牌。</summary>
-    public static IReadOnlySet<string> DetectPreselectedBrands(IEnumerable<string> installedPrinterNames, IEnumerable<string> availableBrands)
+    public static ISet<string> DetectPreselectedBrands(IEnumerable<string> installedPrinterNames, IEnumerable<string> availableBrands)
     {
         var names = installedPrinterNames.ToList();
         var result = new HashSet<string>(StringComparer.Ordinal);

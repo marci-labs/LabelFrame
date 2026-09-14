@@ -79,7 +79,7 @@ public sealed class DryRunContractTests
         await session.LoadManifestAsync(http);
 
         session.Preset = TopologyPreset.Standalone;
-        session.SetBrandSelected("zebra", true);
+        session.SelectedBrands.Add("zebra");
         session.IncludeWebUi = true;
         _ = session.BuildPlan();
 

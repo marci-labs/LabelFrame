@@ -1,5 +1,7 @@
 namespace LabelFrame.Bootstrapper.Manifest;
 
+using System.Net.Http;
+
 /// <summary>安装清单加载器：来源支持本地路径（含离线全量包内嵌清单场景）或 URL（稳定通道 / 指定版本 Release）。</summary>
 /// <remarks>
 /// dry-run 契约锚点（DESIGN §6.3 实现要点、Issue #53 AC-03）：清单获取是引导全程唯一的网络访问——
@@ -17,9 +19,10 @@ public static class InstallManifestLoader
             throw new InstallManifestFormatException("清单来源为空：请填写本地文件路径或 URL。");
         }
 
+        // 清单为小文件：本地路径同步读取即可（net48 腿无异步文件 API）；URL 走 HttpClient（net48 / net10 同一重载形态）
         var json = IsHttpUrl(source)
             ? await DownloadAsync(source, http ?? SharedClient, cancellationToken).ConfigureAwait(false)
-            : await File.ReadAllTextAsync(source, cancellationToken).ConfigureAwait(false);
+            : File.ReadAllText(source);
 
         return InstallManifest.Parse(json);
     }
@@ -27,13 +30,18 @@ public static class InstallManifestLoader
     private static async Task<string> DownloadAsync(string url, HttpClient http, CancellationToken cancellationToken)
     {
         // 只读 GET（无网络写入；AC-03 测试断言锚点）
-        using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        using var response = await http.GetAsync(url, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
             throw new InstallManifestFormatException($"下载清单失败：HTTP {(int)response.StatusCode}（{url}）。");
         }
 
+#if NET10_0_OR_GREATER
         return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+#else
+        // net48 腿 ReadAsStringAsync 无 CancellationToken 重载（CA2016 同因豁免）
+        return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+#endif
     }
 
     private static bool IsHttpUrl(string source) =>

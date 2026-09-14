@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- WiX Burn 托管 BA（Bootstrapper Application，DESIGN §6.1 决策 #122）：
+       WiX v5.4+ out-of-proc 模型——独立 EXE 进程，经 WixToolset.BootstrapperApplicationApi 与 Burn 引擎握手。
+       目标框架 net48：.NET Framework 4.8 是 Win10 1809+ / Win11 的 OS 组件，裸机免装运行时（BA 载荷 MB 级）。
+       RuntimeIdentifier 使 mbanative.dll（包内 runtimes 资产）复制到输出，随 Bundle 打包为 BA 载荷。 -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <RootNamespace>LabelFrame.Bootstrapper.Ba</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.BootstrapperApplicationApi" Version="7.0.0" />
+  </ItemGroup>
+
+  <!-- 核心库公共 API 暴露 HttpClient（LoadManifestAsync 注入口），net48 需显式引用 -->
+  <ItemGroup>
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LabelFrame.Bootstrapper\LabelFrame.Bootstrapper.csproj" />
+  </ItemGroup>
+
+</Project>

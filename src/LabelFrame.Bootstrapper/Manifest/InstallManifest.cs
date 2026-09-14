@@ -14,11 +14,11 @@ public sealed record InstallManifest(
     public const int SupportedSchemaVersion = 1;
 
     /// <summary>schema 允许的组件 type 枚举（§6.2 组件条目表）。</summary>
-    public static readonly IReadOnlySet<string> AllowedTypes = new HashSet<string>(
+    public static readonly IReadOnlyCollection<string> AllowedTypes = new HashSet<string>(
         ["msi", "lfplugin", "webui-zip", "apk", "runtime", "archive"], StringComparer.Ordinal);
 
     /// <summary>schema 允许的拓扑标记枚举（§6.3 预设 id + offline / pda 补充语义）。</summary>
-    public static readonly IReadOnlySet<string> AllowedTopologies = new HashSet<string>(
+    public static readonly IReadOnlyCollection<string> AllowedTopologies = new HashSet<string>(
         ["standalone", "server-win", "server-docker", "server-linux", "client", "offline", "pda"], StringComparer.Ordinal);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -31,7 +31,15 @@ public sealed record InstallManifest(
     /// <summary>解析并校验清单 JSON（字段完整性与枚举合法性；任何不符抛 <see cref="InstallManifestFormatException"/>，fail-closed）。</summary>
     public static InstallManifest Parse(string json)
     {
+#if NET10_0_OR_GREATER
         ArgumentNullException.ThrowIfNull(json);
+#else
+        // net48 腿无 ArgumentNullException.ThrowIfNull（.NET 6+ API）
+        if (json is null)
+        {
+            throw new ArgumentNullException(nameof(json));
+        }
+#endif
 
         InstallManifest manifest;
         try

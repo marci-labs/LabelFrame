@@ -1,7 +1,7 @@
 using LabelFrame.Bootstrapper.Topology;
 using LabelFrame.Bootstrapper.Wizard;
 
-namespace LabelFrame.Bootstrapper.Ui;
+namespace LabelFrame.Bootstrapper.Ba.Ui;
 
 /// <summary>管理界面开关页（仅有的两项自由开关之二）：webui 组件落位服务端 plugins/web-ui；Docker 形态 = 启用镜像内置界面。</summary>
 internal sealed class ManagementUiPage : UserControl, IWizardPage
@@ -19,7 +19,7 @@ internal sealed class ManagementUiPage : UserControl, IWizardPage
         var title = new Label
         {
             Text = "是否安装服务端管理界面？",
-            Font = new Font(Control.DefaultFont, FontStyle.Bold),
+            Font = new Font(SystemFonts.MessageBoxFont, FontStyle.Bold),
             AutoSize = true,
             Location = new Point(8, 8),
         };

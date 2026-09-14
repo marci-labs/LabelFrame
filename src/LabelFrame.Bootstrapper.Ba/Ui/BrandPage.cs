@@ -1,7 +1,7 @@
 using LabelFrame.Bootstrapper.Topology;
 using LabelFrame.Bootstrapper.Wizard;
 
-namespace LabelFrame.Bootstrapper.Ui;
+namespace LabelFrame.Bootstrapper.Ba.Ui;
 
 /// <summary>打印机品牌多选页（Issue #53 决议 2）：选项来源仅为清单已有 plugin-&lt;brand&gt; 条目；ZDesigner 驱动名预选 Zebra。</summary>
 internal sealed class BrandPage : UserControl, IWizardPage
@@ -9,7 +9,6 @@ internal sealed class BrandPage : UserControl, IWizardPage
     private readonly WizardSession _session;
     private readonly Label _hintLabel = new();
     private readonly FlowLayoutPanel _brandPanel = new();
-    private readonly Dictionary<string, CheckBox> _checkBoxes = [];
 
     public BrandPage(WizardSession session)
     {
@@ -19,7 +18,7 @@ internal sealed class BrandPage : UserControl, IWizardPage
         var title = new Label
         {
             Text = "需要哪些打印机品牌的支持？",
-            Font = new Font(Control.DefaultFont, FontStyle.Bold),
+            Font = new Font(SystemFonts.MessageBoxFont, FontStyle.Bold),
             AutoSize = true,
             Location = new Point(8, 8),
         };
@@ -42,12 +41,11 @@ internal sealed class BrandPage : UserControl, IWizardPage
     {
         // 清单可能被重新加载（品牌集合变化）：每次进入重建
         _brandPanel.SuspendLayout();
-        foreach (var checkBox in _checkBoxes.Values)
+        foreach (Control control in _brandPanel.Controls)
         {
-            checkBox.Dispose();
+            control.Dispose();
         }
 
-        _checkBoxes.Clear();
         _brandPanel.Controls.Clear();
 
         var brands = _session.AvailableBrands;
@@ -76,9 +74,18 @@ internal sealed class BrandPage : UserControl, IWizardPage
                 Checked = applicable && _session.SelectedBrands.Contains(brand),
                 Tag = brand,
             };
-            checkBox.CheckedChanged += (_, _) => _session.SetBrandSelected(brand, checkBox.Checked);
+            checkBox.CheckedChanged += (_, _) =>
+            {
+                if (checkBox.Checked)
+                {
+                    _session.SelectedBrands.Add(brand);
+                }
+                else
+                {
+                    _session.SelectedBrands.Remove(brand);
+                }
+            };
 
-            _checkBoxes[brand] = checkBox;
             _brandPanel.Controls.Add(checkBox);
         }
 

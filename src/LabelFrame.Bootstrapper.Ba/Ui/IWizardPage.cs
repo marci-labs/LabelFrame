@@ -1,4 +1,4 @@
-namespace LabelFrame.Bootstrapper.Ui;
+namespace LabelFrame.Bootstrapper.Ba.Ui;
 
 /// <summary>向导分页接口：进入时刷新内容；离开前校验是否可继续。</summary>
 internal interface IWizardPage

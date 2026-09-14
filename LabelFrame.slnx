@@ -6,6 +6,7 @@
     <Project Path="src/LabelFrame.WinHost/LabelFrame.WinHost.csproj" />
     <Project Path="src/LabelFrame.Rendering/LabelFrame.Rendering.csproj" />
     <Project Path="src/LabelFrame.Bootstrapper/LabelFrame.Bootstrapper.csproj" />
+    <Project Path="src/LabelFrame.Bootstrapper.Ba/LabelFrame.Bootstrapper.Ba.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/LabelFrame.Core.Tests/LabelFrame.Core.Tests.csproj" />

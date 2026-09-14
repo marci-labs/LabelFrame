@@ -12,10 +12,10 @@ public interface ITopologyResolver
     TopologyPlan Resolve(InstallManifest manifest, TopologyPreset preset, TopologyOptions options);
 }
 
-/// <summary>问卷仅有的两项自由开关（决策 #116）。</summary>
+/// <summary>问卷仅有的两项自由开关（决策 #116；形状微调 #122：<see cref="ISet{T}"/>——net48 BA 复用约束，net48 无 IReadOnlySet&lt;T&gt;，集合成员资格语义不变）。</summary>
 /// <param name="SelectedBrands">选中的品牌 id 集合（如 "zebra"，映射 manifest 的 plugin-&lt;brand&gt; 条目）。</param>
 /// <param name="IncludeWebUi">是否带管理界面（webui 组件落位服务端 plugins/web-ui；server-docker 等价于启用镜像内置界面）。</param>
-public sealed record TopologyOptions(IReadOnlySet<string> SelectedBrands, bool IncludeWebUi);
+public sealed record TopologyOptions(ISet<string> SelectedBrands, bool IncludeWebUi);
 
 /// <summary>计划安装的组件：清单条目 + 目标安装位置描述（目录约定对齐 DEPLOY；实际落位 / 修改语义由 #55 定案）。</summary>
 public sealed record PlannedComponent(ManifestComponent Component, string InstallTarget);

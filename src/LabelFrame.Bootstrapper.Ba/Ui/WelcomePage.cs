@@ -1,6 +1,6 @@
 using LabelFrame.Bootstrapper.Wizard;
 
-namespace LabelFrame.Bootstrapper.Ui;
+namespace LabelFrame.Bootstrapper.Ba.Ui;
 
 /// <summary>欢迎页：简介 + dry-run 预期 + 离线全量包入口指引（决议 1 方案 A：下载链接与说明）+ 清单来源（本地路径或 URL）。</summary>
 internal sealed class WelcomePage : UserControl, IWizardPage
@@ -23,7 +23,7 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         var title = new Label
         {
             Text = "欢迎使用 LabelFrame 安装引导",
-            Font = new Font(Control.DefaultFont, FontStyle.Bold),
+            Font = new Font(SystemFonts.MessageBoxFont, FontStyle.Bold),
             AutoSize = true,
             Location = new Point(8, 8),
         };

@@ -12,7 +12,7 @@ public static class InstalledPrinters
         {
             return [.. PrinterSettings.InstalledPrinters.Cast<string>()];
         }
-        catch (Exception ex) when (ex is SystemException)
+        catch (SystemException)
         {
             // 打印后台服务不可用 / 枚举失败：品牌预选退化为全不勾选，不影响问卷继续
             return [];

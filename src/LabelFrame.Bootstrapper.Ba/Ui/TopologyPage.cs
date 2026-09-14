@@ -1,7 +1,7 @@
 using LabelFrame.Bootstrapper.Topology;
 using LabelFrame.Bootstrapper.Wizard;
 
-namespace LabelFrame.Bootstrapper.Ui;
+namespace LabelFrame.Bootstrapper.Ba.Ui;
 
 /// <summary>拓扑预设选择页（DESIGN §6.3 五个 PC 预设，单选）。</summary>
 internal sealed class TopologyPage : UserControl, IWizardPage
@@ -17,7 +17,7 @@ internal sealed class TopologyPage : UserControl, IWizardPage
         var title = new Label
         {
             Text = "这台电脑的部署形态是什么？",
-            Font = new Font(Control.DefaultFont, FontStyle.Bold),
+            Font = new Font(SystemFonts.MessageBoxFont, FontStyle.Bold),
             AutoSize = true,
             Location = new Point(8, 8),
         };

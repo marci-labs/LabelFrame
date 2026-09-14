@@ -1,27 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- 安装引导程序（Bootstrapper，DESIGN §6，决策 #114）：WinForms 分步向导，中文单语问卷。
-       本迭代（#53）为骨架 + dry-run：只解析清单与计算组件集合，不下载 / 不安装 / 不改系统。 -->
+  <!-- 安装引导核心逻辑库（DESIGN §6，决策 #114 → #122 形态修订）：
+       net48 腿供 WiX Burn 托管 BA（src/LabelFrame.Bootstrapper.Ba）复用——.NET Framework 4.8 是
+       Win10 1809+ / Win11 的 OS 组件，裸机免装运行时；net10.0-windows 腿供测试与专项 5/8+（#54 / #55）复用。 -->
   <PropertyGroup>
-    <!-- TFM 用不带平台版本的 net10.0-windows（区别于 WinHost 的 26100）：避免引入 26MB 的
-         Microsoft.Windows.SDK.NET 投影（CsWinRT），向导只用 WinForms 基础控件——AC-04 体积裁剪主手段。 -->
-    <TargetFramework>net10.0-windows</TargetFramework>
-    <OutputType>WinExe</OutputType>
-    <UseWindowsForms>true</UseWindowsForms>
+    <TargetFrameworks>net48;net10.0-windows</TargetFrameworks>
     <RootNamespace>LabelFrame.Bootstrapper</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <ApplicationIcon>..\..\assets\labelframe.ico</ApplicationIcon>
+    <!-- InstalledPrinters 用 System.Drawing.Printing（PrinterSettings 实际位于 Windows Desktop / System.Windows.Forms） -->
+    <UseWindowsForms Condition="'$(TargetFramework)' == 'net10.0-windows'">true</UseWindowsForms>
   </PropertyGroup>
 
-  <!-- 发布形态（决策 #114）：self-contained win-x64 单文件（目标机可能是裸机，不假设 .NET 在位；体积量级目标 ≤ 20MB）。
-       单文件 + 压缩固化在工程属性；SelfContained / RID 由发布命令显式传入，日常构建保持框架依赖（不拖慢 CI 全量构建）：
-       dotnet publish src/LabelFrame.Bootstrapper -c Release -r win-x64 -p:SelfContained=true -->
-  <PropertyGroup>
-    <PublishSingleFile>true</PublishSingleFile>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="10.0.12" />
+  </ItemGroup>
+
+  <!-- net48 腿显式引用（SDK 默认引用集不含 WinForms 与 System.Net.Http） -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
 
 </Project>

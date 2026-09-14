@@ -1,13 +1,15 @@
+using System.Net.Http;
 using LabelFrame.Bootstrapper.Manifest;
 using LabelFrame.Bootstrapper.Printing;
 using LabelFrame.Bootstrapper.Topology;
 
 namespace LabelFrame.Bootstrapper.Wizard;
 
-/// <summary>问卷会话（UI 无关的核心状态机）：manifest 来源 → 已加载清单 → 预设 / 品牌多选 / 管理界面开关 → 组件集合（dry-run）。</summary>
+/// <summary>问卷会话（UI 无关的核心状态机，BA 页面复用）：manifest 来源 → 已加载清单 → 预设 / 品牌多选 / 管理界面开关 → 组件集合（dry-run）。</summary>
 /// <remarks>
 /// dry-run 契约（Issue #53 AC-03、DESIGN §6.3 实现要点）：本类没有任何下载、写入或系统改动方法——
-/// 全程只读（清单获取 + 已装打印机名枚举）；下载归 #54、安装归 #55。
+/// 全程只读（清单获取 + 已装打印机名枚举）；实际执行（下载 / 链装）由 Burn 引擎在 Apply 阶段承担，
+/// 本迭代 BA 只设置变量并调用 Plan（只计划不执行）。
 /// </remarks>
 public sealed class WizardSession
 {
@@ -35,22 +37,8 @@ public sealed class WizardSession
     /// <summary>已选拓扑预设（问卷第 2 步）。</summary>
     public TopologyPreset? Preset { get; set; }
 
-    /// <summary>已选打印机品牌集合（问卷第 3 步；选项来源仅为 manifest 已有 plugin-&lt;brand&gt; 条目）。</summary>
-    public IReadOnlySet<string> SelectedBrands { get; private set; } = new HashSet<string>(StringComparer.Ordinal);
-
-    /// <summary>勾选 / 取消品牌（品牌页写入口；保持集合只读视图不变）。</summary>
-    public void SetBrandSelected(string brand, bool selected)
-    {
-        var mutable = (ISet<string>)SelectedBrands;
-        if (selected)
-        {
-            mutable.Add(brand);
-        }
-        else
-        {
-            mutable.Remove(brand);
-        }
-    }
+    /// <summary>已选打印机品牌集合（问卷第 3 步；选项来源仅为 manifest 已有 plugin-&lt;brand&gt; 条目，BA 品牌页直接增删）。</summary>
+    public ISet<string> SelectedBrands { get; private set; } = new HashSet<string>(StringComparer.Ordinal);
 
     /// <summary>是否带管理界面（问卷第 4 步开关）。</summary>
     public bool IncludeWebUi { get; set; }

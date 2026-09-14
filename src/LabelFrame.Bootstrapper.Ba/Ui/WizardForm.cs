@@ -1,11 +1,12 @@
 using LabelFrame.Bootstrapper.Wizard;
 
-namespace LabelFrame.Bootstrapper.Ui;
+namespace LabelFrame.Bootstrapper.Ba.Ui;
 
 /// <summary>向导壳：分步导航（欢迎 → 部署形态 → 打印机品牌 → 管理界面 → 确认预览）；分页内容见各 Page。</summary>
 internal sealed class WizardForm : Form
 {
     private readonly WizardSession _session = new();
+    private readonly LabelFrameBootstrapperBa _ba;
 
     private readonly Label _stepLabel = new();
     private readonly Panel _contentPanel = new();
@@ -17,8 +18,10 @@ internal sealed class WizardForm : Form
     private readonly List<IWizardPage> _pages = [];
     private int _currentIndex = -1;
 
-    public WizardForm()
+    public WizardForm(LabelFrameBootstrapperBa ba)
     {
+        _ba = ba;
+
         Text = "LabelFrame 安装引导";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(760, 560);
@@ -30,7 +33,7 @@ internal sealed class WizardForm : Form
             session => new TopologyPage(session),
             session => new BrandPage(session),
             session => new ManagementUiPage(session),
-            session => new ConfirmPage(session),
+            session => new ConfirmPage(session, _ba),
         ];
 
         // 顶部步骤指示
@@ -92,13 +95,7 @@ internal sealed class WizardForm : Form
 
         if (_currentIndex == _pageFactories.Count - 1)
         {
-            // 确认页（最后一步）：dry-run 结束，无后续动作
-            MessageBox.Show(
-                this,
-                "预览完成。实际下载与安装将在后续版本提供（当前为 dry-run 预览版）。",
-                "LabelFrame 安装引导",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            // 确认页（最后一步）：仅关闭窗口——引擎侧 dry-run 结束，无后续动作
             Close();
             return;
         }
@@ -128,13 +125,12 @@ internal sealed class WizardForm : Form
             }
 
             var page = _pages[target];
-            var control = (Control)page;
-            _contentPanel.Controls.Add(control);
+            _contentPanel.Controls.Add((Control)page);
             _currentIndex = target;
 
             _stepLabel.Text = $"步骤 {_currentIndex + 1} / {_pageFactories.Count}";
             _backButton.Enabled = _currentIndex > 0;
-            _nextButton.Text = _currentIndex == _pageFactories.Count - 1 ? "完成" : "下一步(&N)";
+            _nextButton.Text = _currentIndex == _pageFactories.Count - 1 ? "关闭" : "下一步(&N)";
 
             page.OnEnter();
         }
