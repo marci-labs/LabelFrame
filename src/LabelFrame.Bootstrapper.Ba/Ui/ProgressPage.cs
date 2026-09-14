@@ -5,7 +5,8 @@ namespace LabelFrame.Bootstrapper.Ba.Ui;
 /// <summary>
 /// 安装进度页（决策 #124，DESIGN §6.9）：引擎事件映射（CacheAcquireProgress / ExecuteProgress → 总进度，
 /// Cache/Execute Package Begin/Complete → 分包状态）；失败时切换为失败报告（失败步骤 / Burn 日志位置 / 建议动作 + 重试）。
-/// 多源下载体验的完整消费（回退 / 续传 / 缓存策略）属 #54 修订范围，本轮保安装链可用。
+/// 下载侧细化（迭代 61 / #54，DESIGN §6.10）：单包下载百分比、下载源序号与换源提示、缓存命中标注、
+/// 失败分类（源不可达 / 网络中断 / 校验失败）差异化提示。
 /// </summary>
 internal sealed class ProgressPage : UserControl, IWizardPage
 {
@@ -25,6 +26,7 @@ internal sealed class ProgressPage : UserControl, IWizardPage
     private readonly WizardForm _wizard;
 
     private readonly Label _phaseLabel = new();
+    private readonly Label _downloadHintLabel = new();
     private readonly ProgressBar _progressBar = new();
     private readonly ListView _listView = new();
 
@@ -55,21 +57,27 @@ internal sealed class ProgressPage : UserControl, IWizardPage
         _phaseLabel.AutoSize = true;
         _phaseLabel.Location = new Point(8, 38);
 
-        _progressBar.Location = new Point(8, 62);
+        // 下载侧提示行（换源 / 缓存命中，#54）：与阶段行错开一行
+        _downloadHintLabel.AutoSize = true;
+        _downloadHintLabel.Location = new Point(8, 60);
+        _downloadHintLabel.MaximumSize = new Size(680, 0);
+        _downloadHintLabel.ForeColor = Color.FromArgb(154, 84, 0);
+
+        _progressBar.Location = new Point(8, 84);
         _progressBar.Width = 680;
         _progressBar.Height = 22;
 
         _listView.View = View.Details;
         _listView.FullRowSelect = true;
         _listView.HideSelection = true;
-        _listView.Location = new Point(8, 96);
-        _listView.Size = new Size(680, 300);
+        _listView.Location = new Point(8, 118);
+        _listView.Size = new Size(680, 278);
         _listView.Columns.Add("组件", 320);
         _listView.Columns.Add("状态", 340);
 
         _failureBox.Text = "安装失败";
-        _failureBox.Location = new Point(8, 96);
-        _failureBox.Size = new Size(680, 300);
+        _failureBox.Location = new Point(8, 118);
+        _failureBox.Size = new Size(680, 278);
         _failureBox.ForeColor = Color.Firebrick;
         _failureBox.Visible = false;
 
@@ -96,6 +104,7 @@ internal sealed class ProgressPage : UserControl, IWizardPage
 
         Controls.Add(title);
         Controls.Add(_phaseLabel);
+        Controls.Add(_downloadHintLabel);
         Controls.Add(_progressBar);
         Controls.Add(_listView);
         Controls.Add(_failureBox);
@@ -154,7 +163,7 @@ internal sealed class ProgressPage : UserControl, IWizardPage
         }
     }
 
-    /// <summary>失败报告（DESIGN §6.9）：失败步骤 + 引擎消息、Burn 日志位置、建议动作。</summary>
+    /// <summary>失败报告（DESIGN §6.9 / §6.10）：失败步骤 + 引擎消息、下载侧失败分类差异化提示、Burn 日志位置、建议动作。</summary>
     private void ShowFailure(InstallState state)
     {
         _listView.Visible = false;
@@ -164,6 +173,11 @@ internal sealed class ProgressPage : UserControl, IWizardPage
         var failedStep = failedPackage.Key is null
             ? $"阶段：{DescribePhase(state.Phase)}"
             : $"组件：{DisplayName(failedPackage.Key)}（阶段 {DescribePhase(state.Phase)}，链已停止并回滚本次已执行组件）";
+
+        // 下载侧失败分类（#54：源不可达 / 网络中断 / 校验失败差异化提示；分类缺失时跳过该节）
+        var categoryText = failedPackage.Value.Failure is { } category && category != LabelFrame.Bootstrapper.Downloads.DownloadFailureCategory.None
+            ? "\n\n失败分类：" + LabelFrame.Bootstrapper.Downloads.DownloadFailureClassifier.Describe(category)
+            : string.Empty;
 
         _failureLogPath = _ba.GetBundleLogPath();
         var logLine = _failureLogPath is null
@@ -175,9 +189,10 @@ internal sealed class ProgressPage : UserControl, IWizardPage
             : "\n\n引擎消息：\n" + string.Join("\n", state.Errors.Take(6));
 
         _failureDetail.Text =
-            $"安装失败（引擎状态 0x{state.ApplyStatus:X8}）。\n\n{failedStep}\n{logLine}{engineMessages}"
-            + "\n\n建议动作：\n  1. 点击「重试」重新计划并安装（已装组件会自动跳过，幂等）；\n  2. 查看安装日志定位失败组件与退出码；\n  3. 关闭后右键「以管理员身份运行」引导程序重试；仍失败请携带日志反馈。";
+            $"安装失败（引擎状态 0x{state.ApplyStatus:X8}）。\n\n{failedStep}{categoryText}\n{logLine}{engineMessages}"
+            + "\n\n建议动作：\n  1. 点击「重试」重新计划并安装（已装组件会自动跳过，幂等；多源清单会从头重试各源）；\n  2. 查看安装日志定位失败组件与退出码；\n  3. 关闭后右键「以管理员身份运行」引导程序重试；仍失败请携带日志反馈。";
         _phaseLabel.Text = "安装失败。";
+        _downloadHintLabel.Text = string.Empty;
     }
 
     /// <summary>状态快照 → UI（引擎事件线程触发，封送到 UI 线程）。</summary>
@@ -201,10 +216,11 @@ internal sealed class ProgressPage : UserControl, IWizardPage
         }
 
         _progressBar.Value = Math.Max(0, Math.Min(100, state.OverallPercentage));
+        _downloadHintLabel.Text = state.DownloadHint ?? string.Empty;
         _phaseLabel.Text = state.Phase switch
         {
             InstallPhase.Planning => "正在生成安装计划（Plan）…",
-            InstallPhase.Downloading => $"正在下载组件{(state.CurrentPackageId is null ? string.Empty : $"：{DisplayName(state.CurrentPackageId)}")}…",
+            InstallPhase.Downloading => $"正在下载组件{DescribeCurrentPackage(state)}…",
             InstallPhase.Installing => $"正在安装组件{(state.CurrentPackageId is null ? string.Empty : $"：{DisplayName(state.CurrentPackageId)}")}…",
             InstallPhase.Completed => "安装完成。",
             InstallPhase.Failed => "安装失败。",
@@ -223,6 +239,19 @@ internal sealed class ProgressPage : UserControl, IWizardPage
         _listView.EndUpdate();
     }
 
+    /// <summary>下载阶段当前组件描述（单包百分比 + 源序号，#54 下载侧细化）。</summary>
+    private string DescribeCurrentPackage(InstallState state)
+    {
+        if (state.CurrentPackageId is null)
+        {
+            return string.Empty;
+        }
+
+        var percent = state.Packages.TryGetValue(state.CurrentPackageId, out var run) ? run.Percent : 0;
+        var source = state.CurrentSourceCount > 0 ? $"，源 {state.CurrentSourceIndex + 1}/{state.CurrentSourceCount}" : string.Empty;
+        return $"：{DisplayName(state.CurrentPackageId)}（{percent}%{source}）";
+    }
+
     private string DescribePackage(string packageId, InstallState state)
     {
         if (!state.Packages.TryGetValue(packageId, out var run))
@@ -230,16 +259,30 @@ internal sealed class ProgressPage : UserControl, IWizardPage
             return InChainForCurrentPlan(packageId) ? "等待中" : "—（本形态未纳入）";
         }
 
+        if (run.FromCache && run.Phase is PackagePhase.Downloading or PackagePhase.Downloaded)
+        {
+            return "已缓存（跳过下载）";
+        }
+
         return run.Phase switch
         {
-            PackagePhase.Downloading => "下载中…",
+            PackagePhase.Downloading => $"下载中… {run.Percent}%",
             PackagePhase.Downloaded => "已下载",
             PackagePhase.Installing => "安装中…",
             PackagePhase.Succeeded => "完成",
-            PackagePhase.Failed => "失败（已回滚）",
+            PackagePhase.Failed => $"失败（已回滚）{DescribeFailureBrief(run.Failure)}",
             _ => "等待中",
         };
     }
+
+    /// <summary>失败分类简述（列表行内；完整差异化提示见失败报告）。</summary>
+    private static string DescribeFailureBrief(LabelFrame.Bootstrapper.Downloads.DownloadFailureCategory? failure) => failure switch
+    {
+        LabelFrame.Bootstrapper.Downloads.DownloadFailureCategory.SourceUnreachable => "：源不可达",
+        LabelFrame.Bootstrapper.Downloads.DownloadFailureCategory.NetworkInterrupted => "：网络中断",
+        LabelFrame.Bootstrapper.Downloads.DownloadFailureCategory.VerificationFailed => "：校验失败",
+        _ => string.Empty,
+    };
 
     /// <summary>包展示名：manifest 组件 notes 优先，兜底链包 id（旧清单无 runtime 条目时仍可读）。</summary>
     private string DisplayName(string packageId)

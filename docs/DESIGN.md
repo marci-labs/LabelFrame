@@ -193,6 +193,7 @@ flowchart LR
 | 122 | 引导程序形态修订：改用 WiX Burn Bundle + 托管 BA（迭代 60 返工，2026-09-14 用户决议见 Issue #53 决议评论；技术细节实施侧调研定案，见 §6.1 修订） | **修订 #114 形态结论**：自研 WinForms self-contained 向导 → WiX Burn Bundle + 托管 BA。① 起因 = AC-04 体积实测：self-contained WinForms 单文件 51.7MB 超 ≤ 20MB 量级（框架体积下限 + WinForms 裁剪被 SDK 阻断 NETSDK1175）；用户权衡「买引擎」（现成下载 / 校验 / 链装 / 回滚 / 升级 + MB 级体积）后拍板；**AC-04 口径替换为 Burn Bundle EXE 实测体积（MB 级）**。② **BA 形态 = out-of-proc 托管 EXE**（WiX v5.4+ 模型，v7 现役）：`WixToolset.BootstrapperApplicationApi` 7.0.0 + `ManagedBootstrapperApplication.Run` 握手；**目标框架 net48 WinForms**（.NET Framework 4.8 = Win10 1809+ OS 组件，裸机免装运行时；.NET 10 SCD 在 bundle 内复现 51.7MB、FDD 裸机不可用，均不取）。③ 职责重划：拓扑编排 / manifest 解析 / 中文问卷仍自研（核心库 `net48;net10.0-windows` 多目标，`ITopologyResolver` 契约与测试全量复用）；下载 / 校验 / 链装 / 回滚 / 升级改由 Burn 引擎承担——**迭代 61（#54）/ 62（#55）/ 64（#57）大半自研内容可被 Burn 吸收，各 Issue 拾取时重审范围**。④ dry-run = BA 设置 Burn 变量 + `Engine.Plan` 只计划不执行（绝不 Apply）；变量契约 `InstallPreset` / `InstallServer` / `InstallClient` / `InstallWebUi` / `InstallPluginZebra`（§6.3）。⑤ 构建接入：核心库 + BA 工程入 slnx 走 CI；Bundle 由 `scripts/build-bundle.ps1` 构建（需真实 MSI 提取元数据，不能进 slnx），release.yml 不动 | 引导程序体积问题从「换 UI 栈」转为「买引擎」消解（Bundle EXE = 引擎 ~2.5MB + 压缩 BA 载荷数 MB）；专项后半程（#54 / #55 / #57）范围重审有明确契约锚点（Burn 能力清单 + 变量契约）；#44（迭代 10 放弃 Burn）的历史顾虑由 v5.4+ out-of-proc 模型消解；代价 = 问卷 UI 定制受 Burn 进程模型约束 + 维护栈引入原生引擎 |
 | 123 | 品牌传输插件外置化与官方插件体系（迭代 63 安装引导专项 7/8，2026-09-14；两项待决议按 Issue #56 评论用户确认——内置兜底去留 = **彻底外置**（未装则该品牌不可用，达成瘦身目标）/ 官方插件 id 与版本流 = **官方前缀 + 随主版本演进 + 覆盖安装率先支持版本比较**；策略细节见 §6.8） | ① **zebra 传输外置化（WinHost windows 目标）**：`ZebraTransportPlugin` / `ZebraPrinterTransport` 从 WinHost 移入独立插件工程 `src/LabelFrame.TransportPlugin.Zebra`（net10.0-windows10.0.26100），构建为官方 `.lfplugin` 包随 Release 发布；WinHost 不再引用 Zebra.Printer.SDK（客户端瘦身，SDK 依赖随插件包分发；毒丸引用清单随插件工程迁移）。② **官方插件 id**：前缀 `labelframe-`；zebra = `labelframe-transport-zebra`（连接配置 pluginId 同此）；**版本随主版本演进**（发版流水线以当版主版本构建）；旧内置时代 id `zebra`（≤0.26）为读取别名——connection.json 读取时映射为官方 id，不落盘迁移。③ **存量升级兼容（决议 1，AC-04）**：客户端 MSI 附带 `plugin-packages\labelframe-transport-zebra-<版本>.lfplugin`（随升级包附带，零新下载机制——下载链归 #54/#55）；启动时检测「已用 zebra 配置」且插件未装 → 自动从附带包安装（复用 PluginInstaller 三层校验），本次启动即完成装配；无附带包（开发目录裸跑）则 host.log 中文提示、不阻断启动。④ **覆盖安装版本比较（决议 2，官方插件率先）**：新版本覆盖旧版本、同版本幂等跳过、降级拒绝（提示先卸载）；第三方插件维持「覆盖安装不做版本比较」（#72 4A）；比较语义 = 双方可解析 System.Version 按其比较，否则字符串 Ordinal。⑤ **服务端放行策略**：`plugin-packages` 上传校验新增内置传输保留 id（log / tcp9100 / winspool）拒绝，官方 id 放行——官方插件可经服务端集中分发。⑥ **manifest 收录与品牌映射**：install manifest 收录 `plugin-zebra`（type=lfplugin，version=主版本，topologies=standalone/client/offline）；brand → 组件 id → 插件包 pluginId 三段映射表入 §6.8；引导 `InstallPluginZebra` 变量接线生效（BundleVariableMap 既有映射），Bundle 链安装归 #54/#55 | 品牌传输从「客户端全量内置」转为「按品牌组装」（#67 / #95 路线落地首例）；客户端二进制与 SDK 依赖解耦（瘦身 + SDK 升级单点在插件工程）；升级路径无断裂（已用 zebra 配置自动迁移装配）；官方插件覆盖安装有明确版本语义（为引导升级铺路）；后续新品牌（TSPL / CPCL）按同构映射表扩展零契约变更 |
 | 124 | 安装执行链与失败处置：Apply 启用 + 运行时前置链 + 非 MSI 落位（迭代 62 安装引导专项 6/8，2026-09-14；范围 = Issue #55「范围修订 v2」——Burn 已吸收大半自研编排，细节见 §6.9） | ① **Apply 启用边界**：问卷阶段保持 #53 只读契约（清单获取外零网络 / 零系统改动），执行边界 = 确认页「安装」→ 写变量 + `Engine.Plan` + **`Engine.Apply`**；#53「绝不 Apply」修订为「确认前绝不 Apply」。② **链序**：runtime-desktop → runtime-webview2 → ServerMsi → ClientMsi → WebUiPlacement → ZebraPluginPlacement（单一回滚边界；运行时 / 落位包 `Permanent="yes"`）。③ **运行时检测口径**：.NET = 文件版本探测（`dotnet\shared\Microsoft.WindowsDesktop.App` 版本目录枚举 ≥ 10.0.0，latestMajor 前滚对齐 MSI NetCoreCheck；注册表 sharedfx 实证不可靠）；WebView2 = EdgeUpdate Clients `pv` 注册表（对齐 MSI 先例，HKLM+HKCU）；探测入核心库 `RuntimeProbe`（委托注入可测），BA 于 Detect 前写 Burn 探测变量，链内 `DetectCondition` 消费（真 = 已装跳过 = AC-02）。④ **非 MSI 落位机制定案 = ExePackage 包装解压工具**（`LabelFrame.Bootstrapper.PayloadTool.exe` 内嵌 + zip / `.lfplugin` 作子 Payload 远程下载）：Burn 自定义动作被否决（无包获取语义、引擎进程内加载约束）；插件落位版本语义 = #123（覆盖 / 同版幂等 / 降级拒绝）；落位包 Permanent（卸载编排归 #57）。⑤ **失败处置引用 Burn 引擎内建回滚语义（不自造）**：包失败 → 停链 + 逆序回滚本次已执行包，`ApplyComplete.Status` 非零 → BA 失败报告（步骤 / Burn 日志位置 / 建议动作）。⑥ **重跑幂等**：MSI 已装跳过 + 覆盖升级（appsettings.json 不覆盖 = #48）；runtime DetectCondition 跳过；webui 覆盖重写；插件 #123 版本比较；重跑改选 = Burn Modify 语义（条件假即卸载）——版本升级细节归 #57。⑦ **manifest runtime 条目消费（#115 落地）**：`generate-install-manifest.ps1` 随发版生成 runtime 条目（厂商直链 + CI 下载实测哈希；webview2 version=evergreen；MSI dependsOn 补齐）；`build-bundle.ps1` 按 manifest 下载 runtime 安装器并 sha256 校验后交 wix build 内嵌摘要——厂商轮转 = bundle 构建失败（fail-closed） | 引导程序从「预览」进入「可真装」：链序 / 检测 / 落位 / 失败 / 幂等五项口径齐备（VM 取证 = AC-01/AC-03 待验收欠账）；非 MSI 组件复用 Burn 下载 / 校验 / 缓存能力（零自研下载链）；runtime 厂商直链风险以 manifest 哈希 + 构建校验双锚收口；#54（下载体验）与 #57（升级 / 卸载）接手点清晰 |
+| 125 | 引导下载体验补全：多源回退与下载行为测试覆盖（迭代 61 安装引导专项 5/8，2026-09-14；范围 = Issue #54「范围修订 v2（缩编重报）」——自研下载器被 Burn 吸收，细节见 §6.10） | ① **多源回退 = BA 消费 manifest `urls`（#115 顺序即优先级）**：v3 `ResolveSource` 在 v7 的后继 = `CacheAcquireBegin`/`Complete` 内 `IEngine.SetDownloadSource` + 事件返回 `Retry`；决策核心入核心库 `CacheSourceFallback`（每链包失败计数逐源推进、源耗尽停止干预；运行时清单是源顺序权威，每轮 Apply 重建、重试归零）；获取失败与坏哈希同样换源；仅远程载荷（`PayloadContainerId` 空）参与；重试驱动有界（无源不空转）。② **下载侧 UI 细化**：单包下载百分比（`CacheAcquireProgress` Progress/Total）+ 源序号 i/N + 换源提示 + 缓存命中标注（「已缓存（跳过下载）」）。③ **失败分类口径**：HRESULT → 源不可达 / 网络中断 / 校验失败（0x80091007）/ 未分类，差异化中文提示（含镜像源部署指引）双通道呈现（失败报告 + Burn 日志）。④ **测试矩阵**：`scripts/test-bundle-download-matrix.ps1`（本地脚本化验证不进 CI）——per-user 测试 Bundle + 真实 BA 七页向导 UI 自动化 + 双 TcpListener 路由源（ok/404/hang/corrupt/truncate），七场景三通道断言（Burn 日志 / 退出码 / 访问日志）；**Burn 载体下「续传」语义 = 失败后重试 / 换源重新获取**（无 HTTP Range 断点）；**缓存命中 + 断网续装前提 = 进程中断**（缓存阶段失败会被引擎回滚清缓存） | 镜像位预留（#117）从 schema 形态兑现为**消费链路**：单源清单零变更退化为「失败即耗尽」，镜像源落地只填 urls 数组；国内可达性风险（专项最大现实风险）出现对策路径；下载失败可诊断性（分类 + 源耗尽 + 日志双通道）；#57（升级收尾）为专项剩余唯一迭代 |
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`（常量定义于 `ApiErrorCodes.InternalError`，全仓仅此一处字面量）。分类修正（决策 #107）：请求体反序列化失败（非法 JSON / 非 UTF-8 / 类型不匹配）→ 400 + `LF_API_BAD_BODY`（中文消息，原始解析异常详情只进服务端日志）；`POST /api/printer/test` 发送失败 → 400 + `LF_TRANSPORT_TEST_FAILED`（消息含目标地址与原因）；403（非归属设备回报 / 进度）同样返回 ErrorView——错误响应不存在空 body 形态。
@@ -259,7 +260,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 ## 6. 安装引导（Bootstrapper）
 
-> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）/ #124（安装执行链与失败处置，§6.9）。
+> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）/ #124（安装执行链与失败处置，§6.9）/ #125（下载体验与多源回退，§6.10）。
 
 定位：**安装引导程序（setup）**——首次接触 LabelFrame 的部署者运行一个小 EXE，回答少量问题（部署拓扑、打印机品牌、是否带管理界面），程序解析安装清单（install manifest）、按需下载组件并完成静默安装 / 落位；PDA 不进 PC 引导（经服务端下载中心扫码下载，专项 3/8 #52）。目标：把「装什么、怎么装」从「读懂 DEPLOY 文档 + 手工排组件」降为「回答三个问题」。语言边界：引导问卷与向导文案**中文单语**，i18n 不进 setup 问卷（REQUIREMENTS §7「多语言」边界不变）。
 
@@ -490,7 +491,7 @@ public interface ITopologyResolver
 **分发源策略**：
 
 - **主源**：GitHub Release（首期 `urls` 仅此一项）；
-- **镜像位**：`urls` 数组预留——国内镜像 / 自托管源落地另行排期（专项最大现实风险，不允许「默认直连、无对策」的空档由 §7 开放点追踪），落地即追加源，零 schema 变更、零信任成本（哈希即背书）；
+- **镜像位**：`urls` 数组预留——国内镜像 / 自托管源落地另行排期（专项最大现实风险，不允许「默认直连、无对策」的空档由 §7 开放点追踪），落地即追加源，零 schema 变更、零信任成本（哈希即背书；**多源回退消费链路已实现（迭代 61，§6.10）——BA 按数组顺序逐源回退，落地只需填数组**）；
 - **已装服务端作为局域网优先源**：服务端已有 `client-packages` / `plugin-packages` 集中分发能力（决策 #71 / #72）；「追加打印客户端」预设探测到内网服务端时，把其地址插入 `urls` 首位（管理员预先上传组件，内网多台装机不重复走公网）。定位：优先源，非必选；
 - **离线全量包 = 一等形态**（工厂内网现实）：单 zip 收录当版全部组件 + 内嵌 manifest；引导程序从本地文件读清单（无需网络），sha256 校验同样强制；制作与分发形态（发版附带 / 按需生成）由 #51 / #55 细化。
 
@@ -591,7 +592,7 @@ public interface ITopologyResolver
 - **机制**：`LabelFrame.Bootstrapper.PayloadTool.exe`（net48 控制台，核心库 `Placement` 逻辑复用，随 bundle 内嵌 `Compressed="yes"`）作为落位包载体；被落位文件（webui zip / `.lfplugin`）为其子 `Payload`（`Compressed="no"` + `DownloadUrl`，构建时以本仓产物为 SourceFile，Burn 内嵌摘要 → 安装期下载校验）。Burn 将包与伴生 Payload 缓存于同一包缓存目录，工具以 `-archive <文件名>` 定位伴生包、`-target <绝对路径>`（来自 Burn 落位目标变量）解压落位。
 - **幂等与版本语义（AC-05 插件覆盖口径 = #123）**：webui = 覆盖解压（无独立版本概念，重跑重写同内容）；`.lfplugin` = 包内 manifest.json 版本与已装目录版本比较——新版本覆盖、**同版本幂等跳过**（Burn 日志留痕）、**降级拒绝**（非零退出 → 链失败，失败报告提示先卸载）。落位包 `Permanent="yes"`：bundle 卸载不清除落位内容（卸载编排不在本轮，#57 收尾评估）。
 
-**进度 / 失败 / 完成 UI（BA 事件映射；多源下载体验完整消费属 #54 修订范围）**：
+**进度 / 失败 / 完成 UI（BA 事件映射；多源下载体验完整消费见 §6.10，迭代 61 已落地）**：
 
 - 进度页：`CacheAcquireProgress`（下载）与 `ExecuteProgress`（执行）的 OverallPercentage 映射总进度条；`CachePackageBegin/Complete`、`ExecutePackageBegin/Complete` 映射分组件状态（下载中 / 安装中 / 成功 / 跳过 / 失败）；执行期间禁用「上一步 / 取消」。
 - 失败报告：失败步骤（阶段 + 包 + 错误码与消息）、Burn 日志位置（`WixBundleLog` 变量读取，兜底 `%TEMP%\LabelFrame*.log` 通配说明）、建议动作（重试（重新 Plan+Apply）/ 查看日志 / 重新以管理员运行引导程序）。
@@ -601,6 +602,30 @@ public interface ITopologyResolver
 
 - **失败即停 + 回滚 = 引用 Burn 引擎内建语义（不自造）**：Execute 阶段任一包失败 → 引擎停止后续包并逆序回滚本次 Apply 已执行的包（runtime 与落位包因 `Permanent="yes"` 不卸载，MSI 回滚卸载）；`ApplyComplete.Status` 非零 → BA 失败报告页。#122 立场维持：链装 / 回滚 / 提权 / 日志由引擎负责，BA 只呈现。
 - **重跑引导程序（幂等口径）**：MSI = Burn 检测已装（Present）→ 计划跳过（同版重跑零动作）；覆盖升级 = MSI 既有语义（**appsettings.json 不覆盖 = 决策 #48**，MSI 独立用户配置组件）；版本升级 = Bundle related-bundle 升级 + MSI MajorUpgrade（细节归 #57）。runtime = DetectCondition 已装跳过（AC-02）。落位 = webui 覆盖重写；插件按 #123 版本比较（同版幂等 / 降级拒绝）。**重跑改变问卷选择 = Burn Modify 语义**：`InstallCondition` 假的包被计划卸载（如从 standalone 改选 client-only → ServerMsi 卸载）——标准 Burn 行为，显式接受。
+
+### 6.10 下载体验与多源回退（决策 #125，迭代 61 / #54）
+
+> 范围基线 = Issue #54「范围修订 v2（缩编重报）」：下载 / 校验 / 断点续传 / 包缓存 / 回滚已由 Burn 引擎内建（#122），本轮补**多源回退消费、下载侧进度 / 失败分类的 UI 映射、下载行为测试覆盖**；镜像源部署、P2P / 增量下载不在范围。
+
+**多源回退机制（BA 消费 manifest `urls`，#115：顺序即优先级、逐源回退）**：
+
+- **WiX 版本对应**：Burn v3 的 `ResolveSource` 事件（BA 以 `DownloadSource` 提供备选源）在 v4+（本仓 v7）演进为「**`CacheAcquireBegin` / `CacheAcquireComplete` 事件内调用 `IEngine.SetDownloadSource(packageOrContainerId, payloadId, url, …)`** + 失败时事件返回 `Retry` 动作」（引擎 `AcquireContainerOrPayload` 的获取 / 重试循环；`CacheAcquireResolvingEventArgs.DownloadUrl` 在 v7 为只读——覆写下载源的正确入口是 `SetDownloadSource`）。
+- **决策核心入核心库**：`CacheSourceFallback`（`src/LabelFrame.Bootstrapper/Downloads/`，net48 / net10 双腿，net10 测试锚定）——每链包维护**失败计数**（获取失败与获取后校验失败各计一次），第 N 次获取开始时提供 `urls[min(N, count-1)]`（**运行时清单是源顺序的权威**——BA 在 `ExecuteInstallAsync` 时从当轮清单重建状态机，重试 = 失败计数归零从头重试）；计数达到 count 即**源耗尽**（不再覆写、不再驱动重试，失败报告提示「已尝试全部 N 个源」）。单源清单（首期生产形态）退化为「失败即耗尽」，**结构不变、零 schema 变更即可追加镜像源**（#117 镜像位预留语义兑现）。
+- **重试驱动（有界）**：获取失败 → BA 在 `CacheAcquireComplete` 置 `Action=Retry`（仅当仍有未试源）；坏哈希（下载成功校验失败）→ 引擎自身最多推荐 2 次 `RetryAcquisition`（重取时 BA 已换源），引擎额度用尽且仍有源时 BA 追加 `RetryAcquisition`；包级 `CachePackageComplete` 兜底 `Action=Retry`。每次失败推进源游标，无源不空转。
+- **仅作用于远程载荷**（`CacheAcquireBegin` 时 `PayloadContainerId` 为空 = 不在内嵌容器中）：伴生内嵌载荷（如 PayloadToolDependencies）经容器解压获取，与下载源无关，不参与计数与换源；本地 / 缓存来源不覆写 `CacheOperation`（保住缓存命中与旁置文件优先，断网续装能力）。
+
+**下载侧 UI 事件映射（进度页细化，补 §6.9 的下载侧）**：
+
+- `CacheAcquireProgress` 的 `Progress/Total` 映射**单包下载百分比**（总进度之外的分包粒度）；当前下载源序号（源 i/N）与主机名入阶段行。
+- **换源提示**：回退发生时展示「主源获取失败，已切换备用下载源（第 i/N 个）：host」；缓存命中（获取开始前的哈希跳过校验通过、本包未发生获取）标注「已缓存（跳过下载）」。
+- **失败分类（`DownloadFailureClassifier`，纯函数入核心库）**：HRESULT → **源不可达**（0x800C0005 / 0x80070002 / 0x80072EE7 / 0x80072EFD 等：404 / 文件不存在 / 域名未解析 / 无法连接）、**网络中断**（0x80072EE2 / 0x80072EFE / 0x80072EFF / 0x800C0008 / 0x80072746 等：超时 / 连接中止 / 重置）、**校验失败**（0x80091007 = CRYPT_E_HASH_VALUE：坏哈希）、其余归**未分类**——对应差异化中文提示（含可操作建议：换源已自动发生 / 检查网络与代理 / 镜像源部署指引 / 勿绕过校验），失败报告与 Burn 日志双通道呈现。
+
+**下载行为测试矩阵（`scripts/test-bundle-download-matrix.ps1`，本地脚本化验证，不进 CI）**：
+
+- **载体** = per-user 测试 Bundle（双 ExePackage：id=ServerMsi / ClientMsi，PayloadTool 无参空操作作包载体，`Compressed=no` + `DownloadUrl`，条件消费问卷变量——复刻 #55 per-user 测试 Bundle 方法规避提权）+ **真实 BA** 驱动七页向导（Win32 UI 自动化：清单来源注入本地测试清单 → 单机一体 → 确认安装）；多源 url 序由**运行时清单**驱动（正是被测消费路径）。
+- **本地 HTTP 测试源**（TcpListener 双实例，行为按 URL 路由内嵌）：`/ok/` 正常、`/404/` 不存在、`/hang/` 无响应挂起（超时；45s 上限 404 兜底）、`/corrupt/` 篡改一字节（哈希不符）、`/truncate/` 半量截断（连接中断）；访问日志落盘供断言。
+- **七场景断言（Burn 日志 + 退出码 + 访问日志三通道）**：S1 正常下载；S2 主源 404 → 换源镜像成功；S3 主源挂起超时 → 换源成功；S4a 坏哈希 → 换源重取干净副本成功；S4b 坏哈希单源 → 引擎重取额度内同源重试仍坏 → **失败（fail-closed，不装不明文件）**；S5 截断中断 → 镜像完整重传成功（**Burn 载体下「续传」语义 = 失败后重试 / 换源重新获取**——引擎不做 HTTP Range 断点续传，与原自研下载器 AC 口径的差异如实记录）；S6 缓存命中 + 断网续装（run1 挂起下载中**强制中断**（无正常回滚——缓存阶段失败会被引擎回滚清缓存，中断才保留 InProgress 注册与已缓存包）→ run2 双源停机：已缓存包零网络请求（缓存命中跳过获取）+ 未缓存包逐源尝试均拒绝 → 换源 2/2 → 源耗尽失败 + 分类提示）。
+- **工程注记**：wix build 会在输出目录留包载荷的硬链接中间产物——构建后必须清除，否则 Burn 以 Bundle 同目录为本地源直接 copy 跳过下载（S1 首跑实测踩坑）；WinForms 控件为注册类名（`WindowsForms10.*`），UI 自动化需 `EnumChildWindows` 递归 + 类名子串匹配。
 
 
 ## 7. 风险与未决问题
@@ -640,7 +665,7 @@ public interface ITopologyResolver
 
 **安装引导专项开放点（迭代 57 起，决策 #114~#118）**：
 
-- 国内镜像 / 自托管分发源落地：manifest `urls` 多源位已预留（#117），首期仅 GitHub Release 主源——国内可达性是专项最大现实风险，镜像源选型与运维另行排期（届时只填数组、零 schema 变更、零信任成本）。
+- 国内镜像 / 自托管分发源落地：manifest `urls` 多源位已预留（#117）且**消费链路已实现**（迭代 61 / §6.10：BA 按 urls 顺序逐源回退、源耗尽分类提示，本地多源矩阵已验证）——首期仅 GitHub Release 主源，国内可达性是专项最大现实风险，镜像源选型与运维另行排期（届时只填数组，零 schema 变更、零信任成本）。
 - 代码签名证书采购（OV / EV）：首期不购（#118）——引导 EXE / MSI 公开下载有 SmartScreen「未知发布者」提示（缓解 = manifest sha256 强制校验 + 发布页哈希与绕过说明）；触发条件 = 公开分发量增长或拦截反馈集中。
 - 客户端应用内自更新：不在本专项（更新 = 重跑引导程序，#118）；未来独立立项时 Velopack 为首选候选（#114 评估结论：delta 更新收益直接、GitHub Releases 源开箱即用）。
 - manifest / 插件包签名：升级触发条件 = 公网分发的陌生第三方插件生态出现（衔接 #79，#117）；购证书后 manifest 签名是自然增强位。
