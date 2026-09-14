@@ -3,6 +3,11 @@ using LabelFrame.Bootstrapper.Wizard;
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
 /// <summary>向导壳：分步导航（欢迎 → 部署形态 → 打印机品牌 → 管理界面 → 确认预览）；分页内容见各 Page。</summary>
+/// <remarks>
+/// 导航索引 / 惰性装配 / 越界防御由 <see cref="WizardNavigator{TPage}"/> 承担（迭代 60 返修，可单测）；
+/// 本类只做 WinForms 呈现与按钮接线——<see cref="NavigateTo"/> 为<b>绝对</b>页索引（原增量 Navigate(delta)
+/// 的 Navigate(0) 会被越界守卫静默吞掉，即验收回流缺陷，见 Issue #53）。
+/// </remarks>
 internal sealed class WizardForm : Form
 {
     private readonly WizardSession _session = new();
@@ -14,9 +19,7 @@ internal sealed class WizardForm : Form
     private readonly Button _nextButton = new();
     private readonly Button _cancelButton = new();
 
-    private readonly List<Func<WizardSession, IWizardPage>> _pageFactories;
-    private readonly List<IWizardPage> _pages = [];
-    private int _currentIndex = -1;
+    private readonly WizardNavigator<IWizardPage> _navigator;
 
     public WizardForm(LabelFrameBootstrapperBa ba)
     {
@@ -27,14 +30,14 @@ internal sealed class WizardForm : Form
         MinimumSize = new Size(760, 560);
         Size = new Size(760, 560);
 
-        _pageFactories =
+        _navigator = new WizardNavigator<IWizardPage>(
         [
-            session => new WelcomePage(session, RequestNext),
-            session => new TopologyPage(session),
-            session => new BrandPage(session),
-            session => new ManagementUiPage(session),
-            session => new ConfirmPage(session, _ba),
-        ];
+            () => new WelcomePage(_session, RequestNext),
+            () => new TopologyPage(_session),
+            () => new BrandPage(_session),
+            () => new ManagementUiPage(_session),
+            () => new ConfirmPage(_session, _ba),
+        ]);
 
         // 顶部步骤指示
         _stepLabel.Dock = DockStyle.Top;
@@ -52,7 +55,7 @@ internal sealed class WizardForm : Form
         _backButton.Text = "上一步(&B)";
         _backButton.AutoSize = true;
         _backButton.Location = new Point(16, 10);
-        _backButton.Click += (_, _) => Navigate(-1);
+        _backButton.Click += (_, _) => NavigateTo(_navigator.CurrentIndex - 1);
 
         _cancelButton.Text = "取消";
         _cancelButton.AutoSize = true;
@@ -76,13 +79,25 @@ internal sealed class WizardForm : Form
         Controls.Add(_stepLabel);
         Controls.Add(navPanel);
 
-        Navigate(0);
+        NavigateTo(0);
+
+        // 装配自检：首页未就位即抛出（由 BA Run 兜底为显式失败 + 诊断），绝不带着 -1 索引进入消息循环
+        if (!_navigator.IsStarted)
+        {
+            throw new InvalidOperationException($"向导首页装配未完成（当前索引 {_navigator.CurrentIndex}），禁止启动。");
+        }
     }
 
     /// <summary>欢迎页加载清单成功后自动进入下一页（避免连点两次）。</summary>
     private void RequestNext()
     {
-        var page = _pages[_currentIndex];
+        if (!_navigator.IsStarted)
+        {
+            // 防御（正常流程不可达）：未装配状态禁止取当前页——显式抛出可诊断异常，而非索引越界
+            throw new InvalidOperationException($"向导尚未装配页面（当前索引 {_navigator.CurrentIndex}），无法执行「下一步」。");
+        }
+
+        var page = _navigator.CurrentPage;
         if (!page.CanProceed(out var reason))
         {
             if (!string.IsNullOrEmpty(reason))
@@ -93,20 +108,20 @@ internal sealed class WizardForm : Form
             return;
         }
 
-        if (_currentIndex == _pageFactories.Count - 1)
+        if (_navigator.IsLastPage)
         {
             // 确认页（最后一步）：仅关闭窗口——引擎侧 dry-run 结束，无后续动作
             Close();
             return;
         }
 
-        Navigate(1);
+        NavigateTo(_navigator.CurrentIndex + 1);
     }
 
-    private void Navigate(int delta)
+    /// <summary>导航到<b>绝对</b>页索引（0 = 首页）；越界 / 非法索引静默拒绝（保持当前页，状态机负责防御）。</summary>
+    private void NavigateTo(int pageIndex)
     {
-        var target = _currentIndex + delta;
-        if (target < 0 || target >= _pageFactories.Count)
+        if (!_navigator.TryNavigateTo(pageIndex))
         {
             return;
         }
@@ -114,23 +129,17 @@ internal sealed class WizardForm : Form
         SuspendLayout();
         try
         {
-            while (_pages.Count <= target)
-            {
-                _pages.Add(_pageFactories[_pages.Count](_session));
-            }
-
-            if (_currentIndex >= 0 && _contentPanel.Controls.Count > 0)
+            if (_contentPanel.Controls.Count > 0)
             {
                 _contentPanel.Controls.RemoveAt(0);
             }
 
-            var page = _pages[target];
+            var page = _navigator.CurrentPage;
             _contentPanel.Controls.Add((Control)page);
-            _currentIndex = target;
 
-            _stepLabel.Text = $"步骤 {_currentIndex + 1} / {_pageFactories.Count}";
-            _backButton.Enabled = _currentIndex > 0;
-            _nextButton.Text = _currentIndex == _pageFactories.Count - 1 ? "关闭" : "下一步(&N)";
+            _stepLabel.Text = $"步骤 {_navigator.CurrentIndex + 1} / {_navigator.PageCount}";
+            _backButton.Enabled = _navigator.CurrentIndex > 0;
+            _nextButton.Text = _navigator.IsLastPage ? "关闭" : "下一步(&N)";
 
             page.OnEnter();
         }
