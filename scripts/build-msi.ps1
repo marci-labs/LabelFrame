@@ -24,7 +24,7 @@ Copy-Item (Join-Path $root 'packaging\appsettings.json') (Join-Path $publishDir 
 
 # 3) 生成 WiX 文件清单（GUID 加盐 client，避免与 Server 包组件 GUID 冲突）
 $filesWxs = Join-Path $root 'packaging\files-client.wxs'
-& (Join-Path $PSScriptRoot 'generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs -GuidSalt 'client'
+& (Join-Path $root 'packaging\generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs -GuidSalt 'client'
 
 # 3b) 官方插件附带包（迭代 63，决策 #123）：检测 artifacts 下的 Zebra .lfplugin → 随 MSI 携带
 #     （plugin-packages\ 目录，供 ZebraPluginMigration 存量升级自动安装；无产物时跳过——本地裸构建）
