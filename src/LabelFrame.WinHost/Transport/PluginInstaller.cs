@@ -20,6 +20,7 @@ public sealed record InstalledPluginView(
 /// <summary>
 /// 客户端插件安装 / 卸载服务：
 /// 安装 = 三层校验（zip + manifest / 内置 id 拒绝 / 临时 ALC 预检）→ 解压到 plugins/&lt;pluginId&gt;/（覆盖旧目录）→ 重启生效；
+/// 官方插件（labelframe- 前缀）覆盖安装先做版本比较：新版本覆盖 / 同版本幂等跳过 / 降级拒绝（决策 #123 ④；第三方维持不做版本比较）；
 /// 卸载 = 删除 plugins/&lt;pluginId&gt;/ → 重启生效；运行时热卸载不做。
 /// </summary>
 public sealed class PluginInstaller
@@ -149,6 +150,25 @@ public sealed class PluginInstaller
         var safeId = SafeFileName.Normalize(content.Manifest.PluginId)
             ?? throw new PluginPackageException($"pluginId「{content.Manifest.PluginId}」不是合法的插件目录名。");
 
+        // ②b 官方插件覆盖安装版本比较（决策 #123 ④，率先于第三方启用）：新版本覆盖 / 同版本幂等 / 降级拒绝
+        var installedManifest = ReadInstalledManifest(safeId);
+        if (installedManifest is not null && TransportPluginIdPolicy.IsOfficial(content.Manifest.PluginId))
+        {
+            var comparison = PluginVersionComparer.Compare(content.Manifest.Version, installedManifest.Version);
+            if (comparison == 0)
+            {
+                // 同版本幂等：不重复解压（避免无谓覆盖），返回已装视图
+                _hostLog.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 官方插件 {content.Manifest.PluginId} 已安装相同版本 {installedManifest.Version}，幂等跳过安装。");
+                return InstalledViewOf(safeId, installedManifest);
+            }
+
+            if (comparison < 0)
+            {
+                throw new PluginPackageException(
+                    $"官方插件「{content.Manifest.PluginId}」已安装较新版本 {installedManifest.Version}，拒绝降级安装 {content.Manifest.Version}——如需降级请先卸载再安装。");
+            }
+        }
+
         // ③ 临时目录解压 + 预检（临时 collectible ALC 发现插件并核对 id，不 Create 传输实例）
         var tempDir = Path.Combine(Path.GetTempPath(), $"lfplugin-install-{Guid.NewGuid():N}");
         try
@@ -257,6 +277,41 @@ public sealed class PluginInstaller
     /// <summary>取目录内首个加载失败的 DLL 错误消息（未加载时透出启动期 loadError）。</summary>
     private string? FindLoadError(string dir)
         => _lastLoadErrors.FirstOrDefault(kv => kv.Key.StartsWith(dir, StringComparison.OrdinalIgnoreCase)).Value;
+
+    /// <summary>读取已安装包目录内的 manifest（无包目录 / 无 manifest / 解析失败返回 null——版本比较按未安装处理）。</summary>
+    private PluginPackageManifest? ReadInstalledManifest(string safeId)
+    {
+        try
+        {
+            var manifestPath = Path.Combine(_pluginsPath, safeId, PluginPackageReader.ManifestFileName);
+            return File.Exists(manifestPath)
+                ? PluginPackageManifest.Parse(File.ReadAllText(manifestPath))
+                : null;
+        }
+        catch (Exception)
+        {
+            // 已装包 manifest 损坏：交由覆盖安装 / ListInstalled 既有路径处理，版本比较按未安装对待
+            return null;
+        }
+    }
+
+    /// <summary>由已装 manifest 构造视图（同版本幂等跳过时返回；加载状态与错误取自当前注册表）。</summary>
+    private InstalledPluginView InstalledViewOf(string safeId, PluginPackageManifest manifest)
+    {
+        var dir = Path.Combine(_pluginsPath, safeId);
+        var loaded = IsLoadedFrom(dir, manifest.PluginId);
+        return new InstalledPluginView(
+            manifest.PluginId,
+            manifest.Name,
+            manifest.Version,
+            manifest.Description,
+            loaded,
+            LoadError: loaded ? null : FindLoadError(dir),
+            safeId,
+            Source: "package",
+            Directory.GetCreationTimeUtc(dir));
+    }
+
     /// <summary>插件是否从指定目录加载（注册表描述 AssemblyPath 位于该目录下且 id 匹配）。</summary>
     private bool IsLoadedFrom(string dir, string pluginId)
     {

@@ -53,11 +53,11 @@ internal sealed class BrandPage : UserControl, IWizardPage
 
         if (brands.Count == 0)
         {
-            _hintLabel.Text = "当前安装清单没有独立的品牌插件条目（Zebra 打印支持已内置于打印客户端，无需选择）。";
+            _hintLabel.Text = "当前安装清单没有品牌插件条目，暂无可选品牌（可跳过此页；品牌插件可稍后在客户端「插件管理」安装）。";
         }
         else if (applicable)
         {
-            _hintLabel.Text = "已检测到本机安装的打印机驱动时会预选对应品牌；未选的品牌将不安装其插件。";
+            _hintLabel.Text = "已检测到本机安装的打印机驱动时会预选对应品牌；未选的品牌将不安装其插件（客户端未装该品牌插件时该品牌不可用）。";
         }
         else
         {

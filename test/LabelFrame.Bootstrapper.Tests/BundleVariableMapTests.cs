@@ -93,11 +93,27 @@ public sealed class BundleVariableMapTests
     }
 
     [Fact]
-    public void To_variables_current_manifest_without_plugin_entry_should_clear_zebra_flag()
+    public void To_variables_current_manifest_with_zebra_selected_should_set_zebra_flag()
     {
-        // 迭代 58 产物现状（无 plugin-zebra 条目）：勾选 Zebra 也不置位（选项来源仅为已有条目）
+        // 迭代 63 起产物现状（plugin-zebra 条目已收录）：勾选 Zebra → InstallPluginZebra 置位（#56 接线主线）
         var plan = Resolver.Resolve(
             LoadManifest("install-manifest.current.json"),
+            TopologyPreset.Standalone,
+            new TopologyOptions(new HashSet<string>(["zebra"], StringComparer.Ordinal), IncludeWebUi: true));
+        var variables = BundleVariableMap.ToVariables(plan);
+
+        Assert.Equal("1", variables[BundleVariableMap.ServerVariable]);
+        Assert.Equal("1", variables[BundleVariableMap.ClientVariable]);
+        Assert.Equal("1", variables[BundleVariableMap.WebUiVariable]);
+        Assert.Equal("1", variables[BundleVariableMap.ZebraPluginVariable]);
+    }
+
+    [Fact]
+    public void To_variables_pre_plugin_manifest_without_plugin_entry_should_clear_zebra_flag()
+    {
+        // 存量 Release 清单（≤0.26 无 plugin-zebra 条目）：勾选 Zebra 也不置位（选项来源仅为已有条目）
+        var plan = Resolver.Resolve(
+            LoadManifest("install-manifest.pre-plugin.json"),
             TopologyPreset.Standalone,
             new TopologyOptions(new HashSet<string>(["zebra"], StringComparer.Ordinal), IncludeWebUi: true));
         var variables = BundleVariableMap.ToVariables(plan);

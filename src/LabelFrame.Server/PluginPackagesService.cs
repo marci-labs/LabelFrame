@@ -1,4 +1,5 @@
 ﻿using LabelFrame.Core.IO;
+using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.Core.Transport.Plugins.Package;
 
 namespace LabelFrame.Server;
@@ -52,7 +53,15 @@ public sealed class PluginPackagesService : FilePackageService<PluginPackageView
         }
 
         var bytes = buffer.ToArray();
-        _ = PluginPackageReader.Read(bytes); // 非法抛 PluginPackageException（中文原因）
+        var packageContent = PluginPackageReader.Read(bytes); // 非法抛 PluginPackageException（中文原因）
+
+        // 内置传输保留 id 拒绝（迭代 63，决策 #123 ⑤，DESIGN §6.8）：log / tcp9100 / winspool 为内置插件 id，
+        // 上传此类包会让客户端安装时与内置冲突——与客户端安装侧「注册表内置即拒绝」互为纵深；
+        // 官方插件 id（labelframe- 前缀，如 labelframe-transport-zebra）放行，官方插件经本通道集中分发。
+        if (TransportPluginIdPolicy.IsReservedBuiltin(packageContent.Manifest.PluginId))
+        {
+            throw new PluginPackageException($"插件 ID「{packageContent.Manifest.PluginId}」与内置传输插件冲突，禁止上传。");
+        }
 
         await using (var stream = File.Create(path))
         {

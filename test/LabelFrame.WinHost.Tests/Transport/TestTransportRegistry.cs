@@ -6,7 +6,7 @@ namespace LabelFrame.WinHost.Tests.Transport;
 /// <summary>测试用传输插件注册表 / 连接管理器工厂（注册表 = Core 内置 + WinHost 内置，同生产装配）。</summary>
 public static class TestTransportRegistry
 {
-    /// <summary>生产同款注册表（log / tcp9100 / winspool / zebra）。</summary>
+    /// <summary>生产同款注册表（log / tcp9100 / winspool；zebra 已外置为官方插件——迭代 63，决策 #123）。</summary>
     public static TransportPluginRegistry Create()
     {
         var registry = new TransportPluginRegistry();
@@ -16,7 +16,6 @@ public static class TestTransportRegistry
         }
 
         registry.Register(new WinspoolTransportPlugin());
-        registry.Register(new ZebraTransportPlugin());
         return registry;
     }
 

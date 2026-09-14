@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
-using LabelFrame.WinHost.Transport;
+using LabelFrame.TransportPlugin.Zebra;
 
 namespace LabelFrame.WinHost.Tests.Transport;
 

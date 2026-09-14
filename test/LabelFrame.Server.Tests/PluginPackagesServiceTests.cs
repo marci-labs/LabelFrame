@@ -178,4 +178,48 @@ public class PluginPackagesServiceTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    // ---- 官方插件放行策略（迭代 63，决策 #123 ⑤，AC-05）----
+
+    [Fact]
+    public async Task Save_official_plugin_id_should_be_allowed()
+    {
+        var (svc, dir) = Create();
+        try
+        {
+            // 官方插件 id（labelframe- 前缀）放行：官方插件经服务端集中分发
+            var saved = await svc.SaveAsync(
+                "labelframe-transport-zebra-0.27.0.lfplugin",
+                new MemoryStream(BuildPackage(pluginId: "labelframe-transport-zebra", name: "Zebra 品牌传输（官方）", version: "0.27.0")));
+
+            Assert.True(saved.Valid);
+            Assert.Equal("labelframe-transport-zebra", saved.PluginId);
+            Assert.Single(svc.List());
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("log")]
+    [InlineData("tcp9100")]
+    [InlineData("winspool")]
+    public async Task Save_reserved_builtin_id_should_be_rejected(string pluginId)
+    {
+        var (svc, dir) = Create();
+        try
+        {
+            // 内置传输保留 id 拒绝上传：客户端安装会与内置插件冲突（与客户端安装侧校验互为纵深）
+            var ex = await Assert.ThrowsAsync<PluginPackageException>(() =>
+                svc.SaveAsync($"{pluginId}.lfplugin", new MemoryStream(BuildPackage(pluginId: pluginId))));
+            Assert.Contains("内置", ex.Message);
+            Assert.Empty(svc.List());
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }

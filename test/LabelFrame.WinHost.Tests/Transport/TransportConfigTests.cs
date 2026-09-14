@@ -30,11 +30,25 @@ public class TransportConfigTests
     [Fact]
     public void FromJson_legacy_zebra_should_migrate_kind_and_params()
     {
+        // 旧 Mode=Zebra → 外置官方插件 id（迭代 63，决策 #123；连接配置 pluginId 用官方 id）
         var config = TransportConfig.FromJson("""{"Mode":"Zebra","ZebraKind":"Tcp","TcpHost":"10.0.0.9","TcpPort":9100}""");
 
         Assert.NotNull(config);
-        Assert.Equal("zebra", config!.PluginId);
+        Assert.Equal("labelframe-transport-zebra", config!.PluginId);
         Assert.Equal("Tcp", config.Params["kind"]);
+        Assert.Equal("10.0.0.9", config.Params["host"]);
+        Assert.Equal(TransportMode.Zebra, config.Mode); // 旧字段展示兼容
+    }
+
+    [Fact]
+    public void FromJson_legacy_zebra_alias_plugin_id_should_normalize_to_official_id()
+    {
+        // 旧内置时代 pluginId "zebra"（≤0.26 存量 connection.json）读取别名 → 官方 id（内存态，不落盘迁移）
+        var config = TransportConfig.FromJson("""{"PluginId":"zebra","Params":{"kind":"Tcp","host":"10.0.0.9","port":"9100"}}""");
+
+        Assert.NotNull(config);
+        Assert.Equal("labelframe-transport-zebra", config!.PluginId);
+        Assert.Equal(TransportMode.Zebra, config.Mode);
         Assert.Equal("10.0.0.9", config.Params["host"]);
     }
 
@@ -68,6 +82,6 @@ public class TransportConfigTests
         Assert.Equal("log", TransportConfig.MapModeToPluginId(TransportMode.Log));
         Assert.Equal("tcp9100", TransportConfig.MapModeToPluginId(TransportMode.Tcp));
         Assert.Equal("winspool", TransportConfig.MapModeToPluginId(TransportMode.WindowsDriver));
-        Assert.Equal("zebra", TransportConfig.MapModeToPluginId(TransportMode.Zebra));
+        Assert.Equal("labelframe-transport-zebra", TransportConfig.MapModeToPluginId(TransportMode.Zebra));
     }
 }

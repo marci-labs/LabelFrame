@@ -1,19 +1,23 @@
-﻿using LabelFrame.Core.Transport;
+using LabelFrame.Core.Transport;
 using LabelFrame.Core.Transport.Plugins;
 
-namespace LabelFrame.WinHost.Transport;
+namespace LabelFrame.TransportPlugin.Zebra;
 
-/// <summary>Zebra 官方 Link-OS SDK 传输插件（TCP / USB / 驱动统一连接）。</summary>
+/// <summary>Zebra 官方 Link-OS SDK 传输插件（TCP / USB / 驱动统一连接）——外置官方插件（迭代 63，决策 #123）。</summary>
+/// <remarks>
+/// 插件 Id = <see cref="TransportPluginIdPolicy.ZebraPluginId"/>（labelframe-transport-zebra）；
+/// 旧内置时代 id "zebra" 由 WinHost 读取配置时按别名映射（DESIGN §6.8），插件侧不再使用。
+/// </remarks>
 public sealed class ZebraTransportPlugin : ITransportPlugin
 {
     /// <inheritdoc />
-    public string Id => "zebra";
+    public string Id => TransportPluginIdPolicy.ZebraPluginId;
 
     /// <inheritdoc />
     public string DisplayName => "Zebra";
 
     /// <inheritdoc />
-    public string Description => "Zebra 官方 Link-OS SDK：TCP / USB（自动发现）/ Windows 驱动统一连接与打印机状态（Win10+）。";
+    public string Description => "Zebra 官方 Link-OS SDK：TCP / USB（自动发现）/ Windows 驱动统一连接与打印机状态（Win10+，官方插件）。";
 
     /// <inheritdoc />
     public IReadOnlyList<TransportParameterSpec> Parameters => new[]

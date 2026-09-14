@@ -4,7 +4,8 @@ namespace LabelFrame.Core.Transport.Plugins;
 
 /// <summary>
 /// 内置传输插件：Core 提供 Log（模拟）与 TCP 9100（跨平台网络打印机）；
-/// Windows 驱动（winspool）与 Zebra SDK 由 WinHost 以同一接口注册。
+/// Windows 驱动（winspool）由 WinHost 以同一接口注册；
+/// Zebra 品牌传输已外置为官方插件（labelframe-transport-zebra，迭代 63 决策 #123）。
 /// </summary>
 public static class BuiltinTransportPlugins
 {

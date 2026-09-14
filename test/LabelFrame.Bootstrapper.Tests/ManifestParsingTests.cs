@@ -9,18 +9,33 @@ public sealed class ManifestParsingTests
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Manifests", fileName));
 
     [Fact]
-    public void Parse_current_manifest_should_load_five_components()
+    public void Parse_current_manifest_should_load_six_components()
     {
-        // 对齐迭代 58（#51）CI 产物现状：五组件、无 runtime / plugin 条目、dependsOn 全空
+        // 对齐迭代 63（#56）起 CI 产物现状：六组件（官方插件 plugin-zebra 随 #123 收录）、dependsOn 全空
         var manifest = InstallManifest.Parse(LoadFixture("install-manifest.current.json"));
 
         Assert.Equal(1, manifest.SchemaVersion);
+        Assert.Equal("0.27.0", manifest.LabelframeVersion);
+        Assert.Equal(
+            new[] { "server-msi", "client-msi", "webui", "linux-server", "pda-apk", "plugin-zebra" }.ToList(),
+            manifest.Components.Select(component => component.Id).ToList());
+        Assert.All(manifest.Components, component => Assert.Empty(component.DependsOn));
+        Assert.All(manifest.Components, component => Assert.Single(component.Urls));
+        var plugin = Assert.Single(manifest.Components, component => component.Id == "plugin-zebra");
+        Assert.Equal("lfplugin", plugin.Type);
+        Assert.Equal("0.27.0", plugin.Version); // 官方插件版本随主版本演进（决策 #123）
+    }
+
+    [Fact]
+    public void Parse_pre_plugin_manifest_should_still_be_accepted()
+    {
+        // 存量 Release 清单（≤0.26，无 plugin 条目）：schema 兼容，旧清单照常解析（品牌页展示「无可选品牌」）
+        var manifest = InstallManifest.Parse(LoadFixture("install-manifest.pre-plugin.json"));
+
         Assert.Equal("0.26.0", manifest.LabelframeVersion);
         Assert.Equal(
             new[] { "server-msi", "client-msi", "webui", "linux-server", "pda-apk" }.ToList(),
             manifest.Components.Select(component => component.Id).ToList());
-        Assert.All(manifest.Components, component => Assert.Empty(component.DependsOn));
-        Assert.All(manifest.Components, component => Assert.Single(component.Urls));
     }
 
     [Fact]
@@ -88,6 +103,6 @@ public sealed class ManifestParsingTests
             .Replace("\"generatedAt\": \"2026-09-14T03:00:00Z\",", "\"generatedAt\": \"2026-09-14T03:00:00Z\", \"futureOptionalField\": \"whatever\",");
 
         var manifest = InstallManifest.Parse(json);
-        Assert.Equal(5, manifest.Components.Count);
+        Assert.Equal(6, manifest.Components.Count);
     }
 }

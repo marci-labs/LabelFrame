@@ -28,12 +28,12 @@ public sealed class WizardSessionTests
     }
 
     [Fact]
-    public async Task Load_manifest_without_plugin_entry_should_select_no_brand()
+    public async Task Load_pre_plugin_manifest_should_select_no_brand()
     {
-        // 当前清单形态（#51 产物无 plugin 条目）：检测到 Zebra 驱动也不预选（无条目可选）
+        // 存量 Release 清单形态（≤0.26 无 plugin 条目）：检测到 Zebra 驱动也不预选（无条目可选）
         var session = new WizardSession(installedPrinterNames: () => ["ZDesigner ZD421-203dpi ZPL"])
         {
-            ManifestSource = FixturePath("install-manifest.current.json"),
+            ManifestSource = FixturePath("install-manifest.pre-plugin.json"),
         };
 
         await session.LoadManifestAsync();

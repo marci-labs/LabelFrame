@@ -26,8 +26,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # 当版产物 -> manifest 条目映射（组件稳定 id 与字段语义见 DESIGN §6.2 组件条目表）。
-# runtime / plugin-<brand> 条目按 schema 预留、无产物不出现：runtime（厂商直链 + CI 锁哈希）随专项 5/8（#55）
-# 运行时前置补装落地，官方插件随专项 7/8（#56）外置化落地，届时在下方追加条目即可。
+# runtime 条目按 schema 预留、无产物不出现：runtime（厂商直链 + CI 锁哈希）随专项 5/8（#55）
+# 运行时前置补装落地，届时在下方追加条目即可。
+# 官方插件条目（迭代 63，决策 #123，DESIGN §6.8）：plugin-zebra 随发版流水线产物收录
+# （labelframe-transport-zebra-<版本>.lfplugin，version=主版本，品牌映射表见 §6.8）。
 # dependsOn 首版全部留空：仅引用同集合内存在的条目，runtime 条目未出现前不引用（§6.2 依赖语义），
 # runtime 条目落地时补 dependsOn（server-msi -> runtime-desktop、client-msi -> runtime-desktop + runtime-webview2）。
 $componentSpecs = @(
@@ -36,6 +38,7 @@ $componentSpecs = @(
     @{ id = 'webui';        type = 'webui-zip'; pattern = "labelframe-server-webui-$Version.zip";        topologies = @('standalone', 'server-win', 'server-linux', 'offline'); notes = '服务端管理界面插件（开关组件，落位 plugins/web-ui）' }
     @{ id = 'linux-server'; type = 'archive';   pattern = "labelframe-server-$Version-linux-x64.tar.gz"; topologies = @('server-linux', 'offline');             notes = 'Linux 服务端归档（systemd 部署）' }
     @{ id = 'pda-apk';      type = 'apk';       pattern = "LabelFrame-AndroidHost-$Version.apk";          topologies = @('pda', 'offline');                      notes = 'PDA 宿主 APK（拓扑标记 pda：经服务端下载中心扫码下载，不进 PC 引导预设）' }
+    @{ id = 'plugin-zebra'; type = 'lfplugin';  pattern = "labelframe-transport-zebra-$Version.lfplugin"; topologies = @('standalone', 'client', 'offline');    notes = 'Zebra 品牌传输官方插件（开关组件，安装到客户端 plugins 目录；内含 Zebra SDK 5.x 依赖）' }
 )
 
 $schemaVersion = 1

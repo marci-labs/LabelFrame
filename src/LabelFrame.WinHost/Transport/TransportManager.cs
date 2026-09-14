@@ -62,7 +62,7 @@ public sealed class TransportManager : ITransportManager, IDisposable
 
         var baseConfig = BuildBaseConfig(options);
         _config = LoadPersisted(baseConfig);
-        _transport = CreateTransport(_config);
+        _transport = CreateTransportOrDefault(_config, baseConfig);
     }
 
     /// <inheritdoc />
@@ -209,6 +209,37 @@ public sealed class TransportManager : ITransportManager, IDisposable
     /// <summary>按配置经注册表创建传输实例。</summary>
     private IPrintTransport CreateTransport(TransportConfig config)
         => _registry.CreateTransport(config.PluginId, new TransportPluginParameters(config.Params), _context);
+
+    /// <summary>
+    /// 启动装配护栏（迭代 63，决策 #123 / AC-01）：生效配置引用的插件未注册（如 zebra 外置后未安装、
+    /// 升级自动安装失败）时回退默认连接并留痕，不因缺插件崩溃——「未装外置包则该品牌不可用」的可控行为；
+    /// 默认连接本身也引用缺失插件（appsettings / 环境变量 Transport=Zebra 而插件未装）时再回退 Log。
+    /// </summary>
+    private IPrintTransport CreateTransportOrDefault(TransportConfig config, TransportConfig baseConfig)
+    {
+        try
+        {
+            return CreateTransport(config);
+        }
+        catch (Exception ex)
+        {
+            _hostLogWriter.WriteLine(
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 当前连接引用的传输插件不可用（{config.PluginId}：{ex.Message}），已回退默认连接 {Describe(baseConfig)}。");
+            try
+            {
+                _config = baseConfig;
+                return CreateTransport(baseConfig);
+            }
+            catch (Exception baseEx)
+            {
+                var logConfig = new TransportConfig();
+                _hostLogWriter.WriteLine(
+                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 默认连接也引用不可用插件（{baseConfig.PluginId}：{baseEx.Message}），回退 Log 模拟连接。");
+                _config = logConfig;
+                return CreateTransport(logConfig);
+            }
+        }
+    }
 
     /// <summary>连接展示文本（状态栏 / 徽标）：插件 Describe 优先，未知插件回退 ID。</summary>
     private string Describe(TransportConfig config)
