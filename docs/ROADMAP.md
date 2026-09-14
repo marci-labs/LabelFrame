@@ -79,6 +79,7 @@
 | 59 | 安装引导专项 3/8——PDA 签名稳定化 + 服务端下载中心扫码下载（pda-packages + 统一下载中心页 + 二维码，#119） | ✅ 已完成（2026-09-14 真机扫码下载 + 同签名覆盖升级验收通过（DT50，设备号不变），AC-01 发版实证随下次 v* 发版（#31 同批），[#52](https://github.com/marci-labs/LabelFrame/issues/52)） |
 | 65 | 无字段模板打印测试修复（数据与打印页静态标签可打印：操作区照常渲染 + 空数据提交 + 出图预览） | ✅ 已完成（2026-09-14 沙箱浏览器自动化界面走查通过（空数据作业 202 + PNG 出图），用户委托自动结项，[#62](https://github.com/marci-labs/LabelFrame/issues/62)） |
 | 发布 | v0.26.0 迭代 49-59、64、65 汇总发布（可观测性 / Zebra 官方 SDK 双端 / 下载中心扫码下载 / 退出提速与托盘修复 / 无字段模板；APK 与 install-manifest.json 首发随 Release 分发） | ✅ 已完成（2026-09-14，tag v0.26.0） |
+| 58 | 安装引导专项 2/8——CI 自动生成安装清单 install-manifest.json + latest.json（生成与断言一体，#120） | ✅ 已完成（2026-09-14 v0.26.0 实跑发版验证通过（manifest 五条目 + 五产物 sha256 逐项复核 + 值守独立抽查），用户委托自动结项，[#51](https://github.com/marci-labs/LabelFrame/issues/51)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
