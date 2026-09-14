@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "labelframeVersion": "0.26.0",
+  "generatedAt": "2026-09-14T03:00:00Z",
+  "components": [
+    {
+      "id": "server-msi",
+      "type": "msi",
+      "version": "0.26.0",
+      "dependsOn": ["runtime-desktop"],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-Server-0.26.0.msi"
+      ],
+      "sha256": "3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c",
+      "sizeBytes": 11534336,
+      "silentArgs": "",
+      "topologies": ["standalone", "server-win", "offline"],
+      "notes": "服务端（Windows 服务 LabelFrameServer）"
+    },
+    {
+      "id": "client-msi",
+      "type": "msi",
+      "version": "0.26.0",
+      "dependsOn": ["runtime-desktop", "runtime-webview2"],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-Client-0.26.0.msi"
+      ],
+      "sha256": "4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d",
+      "sizeBytes": 12582912,
+      "silentArgs": "",
+      "topologies": ["standalone", "client", "offline"],
+      "notes": "打印客户端（Web UI 托管 + 界面壳 + 托盘）"
+    },
+    {
+      "id": "webui",
+      "type": "webui-zip",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/labelframe-server-webui-0.26.0.zip"
+      ],
+      "sha256": "5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e",
+      "sizeBytes": 4194304,
+      "silentArgs": "",
+      "topologies": ["standalone", "server-win", "server-linux", "offline"],
+      "notes": "服务端管理界面插件（开关组件，落位 plugins/web-ui）"
+    },
+    {
+      "id": "runtime-desktop",
+      "type": "runtime",
+      "version": "10.0.1",
+      "dependsOn": [],
+      "urls": [
+        "https://builds.dotnet.microsoft.com/builds/windowsdesktop-runtime-10.0.1-win-x64.exe"
+      ],
+      "sha256": "18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a",
+      "sizeBytes": 58396456,
+      "silentArgs": "/install /quiet /norestart",
+      "topologies": ["standalone", "server-win", "client", "offline"],
+      "notes": ".NET 10 Desktop Runtime（x64），缺失时由引导程序补装"
+    },
+    {
+      "id": "runtime-webview2",
+      "type": "runtime",
+      "version": "1.0.2903.40",
+      "dependsOn": [],
+      "urls": [
+        "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+      ],
+      "sha256": "2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b",
+      "sizeBytes": 22020096,
+      "silentArgs": "/silent /install",
+      "topologies": ["standalone", "client", "offline"],
+      "notes": "WebView2 Evergreen 引导器（客户端界面壳依赖，缺失时补装）"
+    },
+    {
+      "id": "linux-server",
+      "type": "archive",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/labelframe-server-0.26.0-linux-x64.tar.gz"
+      ],
+      "sha256": "6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f",
+      "sizeBytes": 78643200,
+      "silentArgs": "",
+      "topologies": ["server-linux", "offline"],
+      "notes": "Linux 服务端归档（systemd 部署）"
+    },
+    {
+      "id": "pda-apk",
+      "type": "apk",
+      "version": "0.26.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-AndroidHost-0.26.0.apk"
+      ],
+      "sha256": "7e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b290",
+      "sizeBytes": 22754918,
+      "silentArgs": "",
+      "topologies": ["pda", "offline"],
+      "notes": "PDA 宿主 APK（拓扑标记 pda：经服务端下载中心扫码下载，不进 PC 引导预设）"
+    },
+    {
+      "id": "plugin-zebra",
+      "type": "lfplugin",
+      "version": "1.0.0",
+      "dependsOn": [],
+      "urls": [
+        "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/labelframe-plugin-zebra-1.0.0.lfplugin"
+      ],
+      "sha256": "8f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a1",
+      "sizeBytes": 1048576,
+      "silentArgs": "",
+      "topologies": ["standalone", "client"],
+      "notes": "Zebra 传输插件（品牌插件样例条目——模拟专项 7/8 外置化后形态）"
+    }
+  ]
+}

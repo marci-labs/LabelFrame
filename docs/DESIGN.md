@@ -189,6 +189,7 @@ flowchart LR
 | 118 |安装引导更新策略与代码签名（迭代 57，2026-09-11 用户确认——「检查新版本 + 重跑引导」/ 首期不购证书；见 §6.5 / §6.6） | **更新策略**：第一期 = 引导程序按 `latest.json` 指针比对已装版本（Windows 卸载信息 / 本地安装记录，#57 实现定案），有新版提示**重跑引导程序升级**——重走问卷 → 下载新版组件 → MSI 覆盖升级（既有语义不变：appsettings.json 不覆盖 #48、服务升级不弹完成窗 #54；重跑幂等口径归 #55）。**明确不做**：无人值守静默更新、服务端进程内自更新、Velopack 增量更新（#57 收尾确认同口径）；依据：局域网部署 + 低频发版 + 升级应由管理员在场选择打印低峰窗口。客户端「应用内自更新」为未来独立立项（Velopack 首选候选，#114）。**代码签名**：首期不购证书；现状盘点（构建配置实证）——MSI 自签证书过渡（#65：Secret 在即 signtool 签名、缺失跳过；SmartScreen「未知发布者」仍在）、APK 专用自签 keystore（#104 ③：Android 生态常态，风险在签名变更致设备号变化）、引导 EXE 首期无签名（SmartScreen / 杀软拦截风险最高，自签可复用 MSI 通道）；**缓解 = manifest sha256 强制校验（完整性不依赖签名）+ 发布页哈希与「未知发布者」绕过说明**（内网 / 域环境可推自签证书入受信任根，#65 既有口径）；证书采购（OV / EV）另行决策（未决登记，触发：公开分发量增长或拦截反馈集中） | 升级路径零新机制（复用 MSI 覆盖升级 + 引导重跑）；签名不阻塞专项推进；SmartScreen 风险如实入表并有缓解路径；购证书后引导 EXE / MSI 同链签名、manifest 签名为自然增强位 |
 | 119 | PDA 签名稳定化 + 服务端下载中心扫码下载（迭代 59 安装引导专项 3/8，2026-09-11；三项待决议按 Issue #52 评论用户确认——新增 `pda-packages` 目录 + API / MSI 与 APK 并入统一「下载中心」页 / 版本标记以页面内时间排序先行） | ① **`pda-packages` 目录 + API（与 client-packages 模式对称）**：服务端数据目录下新增 `pda-packages`（Windows `%ProgramData%\LabelFrame\server\pda-packages`；Linux `/var/lib/labelframe/server/pda-packages`；`LABELFRAME_SERVER_PDA_PACKAGES` 可覆盖），`GET/POST /api/pda-packages`、`GET/DELETE /api/pda-packages/{file}` 列表 / 上传 / 下载 / 删除——路径穿越防护共享 `FilePackageService` / `SafeFileName`；**上传仅接受 `.apk` 文件**（目录直放不限制扩展名，列表照常列出）；**APK 下载响应 MIME 固定 `application/vnd.android.package-archive`**（客户端安装包维持 `application/octet-stream` 不变），供 Android 浏览器识别为安装包直接拉起安装。错误码增量 `LF_SRV_010`（PDA 安装包不存在，404）。② **统一「下载中心」页（Server UI，原「客户端下载」页升级）**：客户端安装包（client-packages）与 PDA 安装包（pda-packages）同页分区展示，条目按修改时间**倒序（最新在上）**；**每条目旁展示二维码**，内容 = 管理界面页面 origin（即管理员浏览器正在访问的局域网地址）+ 该条目下载路径——PDA 与服务器同网扫码即得局域网下载 URL；页面常驻 Android「未知来源 / 安装未知应用」授权步骤文案。**client-packages 既有行为不动**：客户端设置页「更新与安装包」卡片与 `GET /api/client-packages` 等端点零变更，仅并入下载中心展示。③ **release.yml 签名稳定化**：移除 debug 签名回退——Release 构建前逐项校验四个签名 Secrets（`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`），任一缺失即 `::error::` + 构建失败，**绝不静默降级**（对决策 #104③ 的「缺失回退 debug 签名并告警」路径收口：回退路径存在 = 两次构建可能签名不一致，用户无法覆盖升级且换签名重置 ANDROID_ID 致设备号漂移）；日常 CI 的 Android 构建检查（ci.yml 第三必需检查）仍用 debug 签名（仅验证可构建可打包，不对外分发），名称与语义不变。证书管理与换签名影响记录于 docs/DEPLOY.md §7 与 AndroidHost README（keystore 托管 = GitHub Secrets + 生成方离线备份，丢失即无法再发同签名升级包；换签名 = 卸载重装 + ANDROID_ID 变 → 设备号变，对齐 #104 口径） | PDA 装机链路从「GitHub Release 手动下载 + adb install」简化为「同网扫下载中心二维码 → 浏览器下载 → 安装」（真机验收 AC-02/03 转待验收）；对外分发的 Release APK 签名输出稳定可预期（同签名互相可覆盖升级）；API 属服务端本体（无头服务端同样可直放文件分发，管理界面只是操作入口）；新目录 / 端点为增量约定，旧部署零迁移 |
 | 120 | 安装清单 CI 生成落地：latest.json 同步生成 + 断言粒度（迭代 58 安装引导专项 2/8，2026-09-14；两项待决议按 Issue #51 评论用户确认——同步生成 latest.json / 断言 = 字段完整性 + 产物存在性 + 哈希抽验） | ① **生成点 = release workflow 的 release job**（下载当版全部产物后、创建 Release 前）调用 `scripts/generate-install-manifest.ps1`：对五类产物（Server / Client MSI、管理界面插件 zip、Linux 归档、PDA APK）实测 sha256（小写 hex）与 sizeBytes，生成 `install-manifest.json`（schemaVersion=1；urls 多源数组首期仅 GitHub Release 主源一个元素，镜像位按数组形态预留）与 `latest.json`（最新版本号 + 当版 manifest URL），二者随 Release 附件发布。runtime / `plugin-*` 条目无产物不出现，dependsOn 首版全部留空（只引用同集合内条目；runtime 条目随 #55 落地时补 `server-msi → runtime-desktop`、`client-msi → runtime-desktop + runtime-webview2`）。② **断言粒度 = schema 字段完整性 + 产物存在性 + 哈希抽验**（逐条目重算比对，覆盖且强于抽样）：生成阶段缺产物即失败（空哈希 / 空条目不可能落盘），独立断言步骤（`-VerifyOnly`）重读落盘清单复核——缺产物 / 缺哈希 / schema 不符任一命中即非零退出、job 失败、不创建 Release（#51 AC-03）。③ 脚本兼容 Windows PowerShell 5.1（本地自验）与 PowerShell 7（CI runner），JSON 手写序列化 + UTF-8 无 BOM 落盘保证跨版本输出一致 | manifest 及 latest.json 与产物同 Release 全自动生成（「禁止人工维护」由 workflow 强制——人工编辑会被哈希复核拦截）；后续新增组件条目（runtime #55 / 官方插件 #56）只扩脚本组件表；引导程序（#53 起）与升级检查（#57）获得稳定数据源；端到端真实发版验证（Release 附件含清单、下载复核 sha256）随下一次 `v*` tag（AC-01 / AC-02 待发版验证） |
+| 121 | 引导程序骨架落地：ITopologyResolver 形状细化、dry-run 契约与构建接入（迭代 60 安装引导专项 4/8，2026-09-14；两项待决议按 Issue #53 评论用户确认——离线入口 = 欢迎页给离线全量包下载链接与说明（方案 A，断网自动切换离线引导后置 #75）/ 品牌预选 = 仅 Zebra，读 Windows 已装打印机驱动名 ZDesigner → zebra，完整品牌映射归 #56） | ① **接口形状细化（强化路径：先改 §6.3 再写代码）**：`ITopologyResolver.Resolve` 返回值由「裸组件清单」升级为 `TopologyPlan`（预设 + 按依赖序的 `PlannedComponent` 列表 + 总体积 + server-docker 专属 compose 指引）——compose 产物描述与确认页安装位置不是 `ManifestComponent` 字段，裸 `IReadOnlyList<ManifestComponent>` 无法承载；映射语义与 #116 映射表不变（核心组件 = topologies 命中预设即纳入；`webui` 与 `plugin-<brand>` 为开关组件且仍受 topologies 过滤；dependsOn 闭包纳入 + 拓扑序输出）。② **dry-run 契约（AC-03）**：引导会话全程只读——manifest 获取 = 本地文件读或单次 HTTP GET，无下载 / 写入 / 系统改动代码路径（下载归 #54、安装归 #55，本轮未引入）；确认页 UI 明示「仅预览：尚未下载、尚未安装」。③ **品牌选项与预选**：选项来源仅为 manifest 已有 `plugin-<brand>` 条目（无条目时品牌页说明、勾选不添加组件——映射语义 7/8 完整化）；预选规则本轮仅 ZDesigner → zebra。④ **构建接入**：加入 `LabelFrame.slnx` 走日常 CI PR 构建验证；是否随 Release 附件发布引导 EXE 未定（后续迭代定案），release.yml 本轮不动。⑤ 引导 EXE self-contained win-x64 单文件发布实测体积见 CHANGELOG 当期条目（AC-04 对照 #114 ≤ 20MB 量级，实测超标如实记录） | #54 / #55 获得结构化组件清单接口（含安装位置与 compose 指引）；dry-run 边界由测试锚定（无网络写请求 / 无文件系统改动断言）；品牌映射只有一个规则、扩表零契约变更；Release 附件决策后置不阻塞骨架交付 |
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`（常量定义于 `ApiErrorCodes.InternalError`，全仓仅此一处字面量）。分类修正（决策 #107）：请求体反序列化失败（非法 JSON / 非 UTF-8 / 类型不匹配）→ 400 + `LF_API_BAD_BODY`（中文消息，原始解析异常详情只进服务端日志）；`POST /api/printer/test` 发送失败 → 400 + `LF_TRANSPORT_TEST_FAILED`（消息含目标地址与原因）；403（非归属设备回报 / 进度）同样返回 ErrorView——错误响应不存在空 body 形态。
@@ -433,20 +434,38 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 1. **打印机品牌多选**：品牌 → `plugin-<brand>` 组件映射（如 Zebra → `plugin-zebra`，#56 外置化后出现；首版 Zebra 内置 WinHost、manifest 无该条目，选项只在条目出现后生效）；适用于含客户端的预设（`standalone` / `client`）。
 2. **是否带管理界面**：`webui`（webui-zip）落位服务端 `plugins/web-ui`（放入即生效，决策 #62）；`standalone` 默认关（客户端本机 UI 已完整），分离部署建议开；Docker 形态 = 启用镜像内置界面（不下载 zip）。
 
-**「预设 + 开关 → 组件集合」解析契约**（专项 4/8 #53 实现；输出是 #54 下载引擎 / #55 安装编排的公共契约）：
+**「预设 + 开关 → 组件集合」解析契约**（专项 4/8 #53 实现；输出是 #54 下载引擎 / #55 安装编排的公共契约。**形状细化（迭代 60，#53 实现，决策 #121）**：返回值由「裸组件清单」升级为 `TopologyPlan`——server-docker 的 compose 产物描述、确认页 / 编排所需的安装位置不是 `ManifestComponent` 的字段，裸 `IReadOnlyList<ManifestComponent>` 无法承载；映射语义与上表不变）：
 
 ```csharp
 // LabelFrame.Bootstrapper；#53 实现，#54 / #55 消费——接口形状先契约后实现（强化路径）
+public enum TopologyPreset { Standalone, ServerWin, ServerDocker, ServerLinux, Client }
+
+// 仅两项自由开关：品牌多选（brand id，如 "zebra"，映射 manifest 的 plugin-<brand> 条目）+ 是否带管理界面
+public sealed record TopologyOptions(IReadOnlySet<string> SelectedBrands, bool IncludeWebUi);
+
+// 组件 + 目标安装位置描述（目录约定对齐 DEPLOY；实际落位 / 修改语义由 #55 定案）
+public sealed record PlannedComponent(ManifestComponent Component, string InstallTarget);
+
+public sealed record TopologyPlan(
+    TopologyPreset Preset,
+    IReadOnlyList<PlannedComponent> Components,   // 按依赖序排列（含依赖闭包；同层按清单声明序）
+    long TotalSizeBytes,
+    string? DockerComposeGuidance);               // 仅 server-docker 非空（无下载组件，compose 生成 + 镜像拉取指引）
+
 public interface ITopologyResolver
 {
-    // preset：standalone / server-win / server-docker / server-linux / client
-    // options：品牌多选 + 是否带管理界面（仅此两项）
-    // 输出：按依赖序排列的组件清单（含依赖闭包；server-docker 为空集合 + compose 产物描述）
-    IReadOnlyList<ManifestComponent> Resolve(InstallManifest manifest, TopologyPreset preset, TopologyOptions options);
+    TopologyPlan Resolve(InstallManifest manifest, TopologyPreset preset, TopologyOptions options);
 }
 ```
 
-（dry-run 契约、缓存路径、安装记录等实现细节归 #53~#55；本节只锁定映射语义与开关边界。）
+**实现要点（迭代 60，#53 骨架落地）**：
+
+- **纳入规则**：核心组件 = `topologies` 命中预设即默认纳入；开关组件 `webui`（id）与 `plugin-<brand>`（id 前缀）由开关决定，且**仍受 `topologies` 过滤**（如 `webui` 未标记 `client`，追加客户端预设开开关也不纳入）；`dependsOn` 闭包递归纳入（仅同 manifest 内条目，缺引用 = 清单非法拒绝），输出按拓扑序（同层按清单声明序，环状依赖拒绝）。
+- **品牌选项来源仅为 manifest 已有 `plugin-<brand>` 条目**（品牌 → 组件映射语义由专项 7/8 #56 完整化）；清单无品牌条目时品牌页展示说明而非报错，勾选 Zebra 不额外添加组件（首版 Zebra 传输内置客户端）。**预选规则（Issue #53 决议 2）**：读 Windows 已装打印机驱动名，`ZDesigner` → `zebra` 预勾选，其余品牌从零勾选——本轮唯一规则，完整品牌映射表归 #56。
+- **dry-run 契约（AC-03）**：引导会话全程只读——manifest 获取 = 本地文件读取或单次 HTTP GET，无任何下载、写入、系统改动的代码路径（下载归 #54、安装归 #55，本轮未引入）；确认页 UI 明示「仅预览：尚未下载、尚未安装，不会对系统做任何改动」。
+- **构建接入（Issue #53 范围 3 fallback）**：加入 `LabelFrame.slnx` 由日常 CI 做 PR 构建验证；是否随 Release 附件发布引导 EXE 未定（后续迭代定案），release.yml 本轮不动。
+
+（缓存路径、安装记录等实现细节归 #54~#55；本节锁定映射语义、开关边界与解析器接口形状。）
 
 ### 6.4 信任模型与分发源（决策 #117）
 

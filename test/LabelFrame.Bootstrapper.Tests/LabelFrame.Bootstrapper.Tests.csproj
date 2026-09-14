@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- 对齐被测工程：net10.0-windows（不带平台版本，避免引入 Windows SDK 投影） -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>LabelFrame.Bootstrapper.Tests</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.6.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LabelFrame.Bootstrapper\LabelFrame.Bootstrapper.csproj" />
+  </ItemGroup>
+
+  <!-- 本地样例安装清单（严格按 DESIGN §6.2 schema 构造；AC-01/AC-02 全矩阵与 AC-03 dry-run 断言的数据源） -->
+  <ItemGroup>
+    <None Include="Manifests\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

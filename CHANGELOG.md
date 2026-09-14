@@ -2,6 +2,16 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 60 安装引导专项（4/8）：引导程序骨架——问卷与拓扑预设→组件集合（dry-run） · 2026-09-14
+
+- **新建 `src/LabelFrame.Bootstrapper`（Issue #53 范围 1；形态 = 决策 #114：WinForms 分步向导，中文单语）并加入 `LabelFrame.slnx`**：五步问卷——欢迎页（含离线全量包入口指引：发布页下载链接与说明文字，决议 1 方案 A；断网自动切换离线引导后置 #75；清单来源 = 本地路径或 URL，默认稳定通道）→ 拓扑预设选择（单机一体 / 服务端·Windows 服务 / 服务端·Docker / 服务端·Linux systemd / 追加打印客户端，全五预设）→ 打印机品牌多选（决议 2：仅 Zebra 预选——读 Windows 已装打印机驱动名，`ZDesigner` → `zebra` 预勾选，其余品牌从零勾选；选项来源仅为 manifest 已有 `plugin-<brand>` 条目，映射语义 7/8 #56 完整化，无条目时品牌页展示说明、勾选不添加组件）→ 管理界面开关（§6.3 适用性：standalone 默认关、分离部署建议开、client 不适用）→ 确认页（组件名称 / 版本 / 体积 / 来源 URL / 目标安装位置，安装位置对齐 DEPLOY 目录约定：Program Files / %ProgramData% / /opt / /var/lib；server-docker 展示 compose 生成与镜像拉取指引）。
+- **「预设 + 开关 → 组件集合」解析器（`ITopologyResolver`，DESIGN §6.3 形状细化 = 决策 #121，强化路径先改 DESIGN 再写代码）**：manifest 解析与校验（schemaVersion 上限 fail-closed 提示升级引导程序、必填字段 / type / topologies 枚举 / sha256 小写 64 位 hex / dependsOn 引用存在性、未知可选字段忽略）；解析规则 = 核心组件 topologies 命中预设即纳入、开关组件（`webui` / `plugin-<brand>`）由开关决定且仍受 topologies 过滤、dependsOn 闭包递归纳入、输出按依赖序（Kahn 同层取声明序，环状拒绝）；返回 `TopologyPlan`（预设 + 依赖序 `PlannedComponent` 列表 + 总体积 + server-docker 专属 compose 指引）——#54 下载引擎 / #55 安装编排的公共契约。
+- **dry-run 契约（AC-03）**：引导会话全程只读——清单获取 = 本地文件读取或单次 HTTP GET，无任何下载 / 写入 / 系统改动代码路径；确认页横幅与欢迎页明示「仅预览：尚未下载、尚未安装，不会对系统做任何改动」；完成按钮仅提示后续版本提供实际安装。
+- **测试（AC-01 / AC-02 / AC-03，42 项）**：本地样例 install manifest fixture 两份（严格按 DESIGN §6.2 schema——`current` 对齐迭代 58 产物现状五组件；`full` 含 runtime 条目 + dependsOn 边 + plugin-zebra 条目模拟 #55 / #56 后形态）——AC-01（standalone + Zebra + 管理界面 → Server MSI + Client MSI + webui，无插件条目时勾选 Zebra 不额外添加）、AC-02 全矩阵（五预设 × 开关组合 × 品牌组合，含依赖闭包顺序不变式、server-docker 空集合 + 双指引、webui 对 client 预设的 topologies 过滤）、AC-03 dry-run 断言（探针目录前后快照一致 + ProgramData 不创建、本地清单零网络请求、URL 清单单次 GET 且组件 URL 不被触碰、dry-run 明示文案断言）+ 清单校验负例矩阵（schema 过新 / 缺字段 / 非法枚举 / 坏哈希 / 依赖缺失 / 未知可选字段兼容）+ 品牌预选矩阵（ZDesigner 预选 / 无驱动不选 / 无条目不选 / 其他品牌不预选 / 大小写不敏感）。
+- **EXE 体积实测（AC-04，如实报告：51.7MB > #114 量级目标 20MB）**：self-contained win-x64 单文件发布（命令见工程注释），`EnableCompressionInSingleFile` 已固化开启（实测 143MB→压缩后 51.7MB）；TFM 用不带平台版本的 `net10.0-windows` 裁掉 26MB 的 `Microsoft.Windows.SDK.NET` 投影（区别于 WinHost 的 26100 TFM）。超标根因 = self-contained WinForms 的框架体积下限（WindowsDesktop.App 全量程序集 + CoreCLR）；`PublishTrimmed` 被 SDK 对 WinForms 硬阻断（NETSDK1175「不支持或不推荐」），非官方逃生阀（`_SuppressWinFormsTrimError`）实测可到 16.2MB 但**未采用**（非支持路径、行为可能变化、GUI 无法 CI 验证）——超标处置留验收阶段决议（接受 51.7MB / 评估非官方裁剪 / 或重新评估形态），发布产物启动冒烟通过。
+- **构建接入（范围 3 fallback）**：加入 `LabelFrame.slnx` 由日常 CI 做 PR 构建验证；是否随 Release 附件发布引导 EXE 未定（决策 #121 记账），release.yml 未动。
+- **记账**：DESIGN §6.3 接口形状细化（代码块升级为 `TopologyPlan` 形态）+ 实现要点小节 + 决策表 #121；ROADMAP 状态行本轮不改（轮值结项时另提 docs PR，对齐 #50 / #51 / #52 先例）。
+
 ## v0.26.0 迭代 49-59、64、65 汇总发布 · 2026-09-14
 
 - **打包范围**：v0.25.0 之后合入 master 的全部迭代与缺陷修复——迭代 49（PDA 宿主自动化构建与品牌化）、迭代 50（错误响应分类修正）、迭代 51（客户端设备日志链路与前端可观测）、迭代 52（日志基础设施加固）、迭代 53（PDA 可观测性）、迭代 54（区域水平锚定修正）、迭代 55（Zebra 状态映射修正）、迭代 56（双端复用 Zebra 官方 SDK 5.0.3685）、迭代 57（安装引导专项设计契约 + 客户端退出提速）、迭代 58（发布流水线安装清单）、迭代 59（PDA 签名稳定化 + 服务端下载中心）、迭代 65（无字段模板打印测试修复），缺陷 #46（同 IP 双设备号解析最近活跃优先）与 #58（托盘「退出」不生效）。详见各迭代条目。
