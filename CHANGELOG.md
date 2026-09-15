@@ -2,6 +2,16 @@
 
 本文件记录每个迭代的变更。
 
+## v0.27.0 安装引导专项（迭代 60-64）汇总发布 · 2026-09-15
+
+- **打包范围**：v0.26.0 之后合入 master 的全部迭代与缺陷修复——安装引导专项 4/8~8/8：迭代 60（引导程序骨架——五步问卷与拓扑预设，WiX Burn 形态决策 #122，dry-run 契约）、迭代 61（引导下载体验补全——多源回退决策 #125 与失败分类）、迭代 62（Apply 执行链启用——运行时前置链 + 非 MSI 落位决策 #124；AspNetCore 前置 Server / Client 双链腿两轮返修 #128 / #129）、迭代 63（zebra 传输插件外置化与官方插件体系决策 #123；外置插件 ALC 加载生命周期返修 #127）、迭代 64（升级路径收尾决策 #126——BA 升级清单 + 客户端「检查更新」+ 专项回看记账）。**勘误**：v0.26.0 标题所列「迭代 64」实际晚于 tag v0.26.0 合入（PR #85，2026-09-15），其内容随本版发布。详见各迭代条目。
+- **安装编排（本版主题）**：五步问卷向导（欢迎含离线指引 → 拓扑预设（全五种）→ 品牌多选（ZDesigner 驱动名预选 Zebra）→ 管理界面开关 → 确认页含本机版本列）→ 安装 = 运行时前置链（.NET 10 Desktop / AspNetCore / WebView2，缺失才装、已装跳过）→ Server / Client MSI（覆盖升级，配置保留 #48）→ webui 与 zebra 插件落位（新版本覆盖 / 同版幂等 / 拒绝降级）；失败停链 + 引擎逆序回滚 + 中文失败分类报告（源不可达 / 网络中断 / 校验失败）；改选重跑 = Burn Modify 语义；干净机安装三形态（单机一体 / 服务端 / 客户端分离）已经干净 Win10 VM 验收。
+- **下载体验**：按 install-manifest `urls` 数组顺序多源回退（获取失败与坏哈希均推进源游标；镜像源落地只需填数组）、缓存命中跳过下载、断网 + 缓存齐备可续装；换源 / 缓存命中 / 逐源进度在进度页标注。
+- **插件体系（客户端可感知）**：zebra 传输彻底外置（#123）——WinHost 客户端核心不再内嵌 Zebra SDK（瘦身），官方插件包 `labelframe-transport-zebra`（.lfplugin，约 9.9MB）随 Release 发布并随 Client MSI 附带；存量「已用 zebra 配置」升级本次启动即自动装外置包（连接配置别名兼容读取）；未装外置包该品牌不可用（回退默认连接 + host.log 留痕，不再崩溃）；官方 `labelframe-` 前缀插件安装带版本比较，服务端 `plugin-packages` 放行官方 id。
+- **升级路径（客户端可感知）**：重跑引导程序 = 升级模式（检测本机已装组件版本 → 可升级清单「组件 现版本 → 新版本」→ 复用 Apply 链完成覆盖升级；已是最新明确跳过；latest.json 清单新鲜度提示；ARP 卸载 / 静默参数走非交互路径不再卡向导）；客户端设置页「检查更新」提示闭环（发现新版提示到服务端下载或重跑引导，不做应用内自动安装）。
+- **版本同步**：`/api/server/info` 版本、客户端 `GET /api/host/config` 只读 `version`（HostOptions.ProductVersion 首次随发版更新，决策 #126）与稳定版 Compose 默认版本更新为 `0.27.0`。
+- **发布产物**：GitHub Release 附件（Server / Client MSI、服务端 webui 插件 zip、linux-x64 归档、AndroidHost APK、**Zebra 官方插件 .lfplugin（首发）**、install-manifest.json（本版起收录 runtime 三条目 + plugin-zebra 共 9 组件）+ latest.json）+ ghcr 镜像 `ghcr.io/marci-labs/labelframe-server:0.27.0` / `labelframe-client:0.27.0`（均含 `latest`）。引导程序 Bundle EXE 的 CI 发版构建未排期（迭代 60 记录「release.yml 未动」，本地经 `scripts/build-bundle.ps1` 构建），本版 Release 不含该附件——如实记录。
+
 ## 迭代 62 二次返修：前置链缺 AspNetCore 运行时在 Client 链腿复发（AC-03 预设 B「追加打印客户端」验收不通过回流） · 2026-09-15
 
 - **缺陷与根因（决策 #129，DESIGN §6.2 / §6.3 / §6.9；AC-03 预设 B 干净 VM 取证实证，证据链 `artifacts/accept-55/ac03b/`）**：WinHost 同为 `Microsoft.NET.Sdk.Web`（隐式 FrameworkReference `Microsoft.AspNetCore.App`），但 client 预设下引导链不装 AspNetCore（`runtime-aspnetcore` 条目 topologies 不含 `client`、Bundle `DotNetAspNetCoreRuntime` `InstallCondition="InstallServer"`、`client-msi` dependsOn 缺该条目）——干净机选「追加打印客户端」安装链全绿（Apply 0x0、分离语义完美），但客户端进程启动即挂（.NET Runtime 1023：No frameworks were found）。#87 / 决策 #128 的同型缺陷在 Client 链腿复发。验收边界实证：手动补装 aspnetcore-runtime 10.0.12（sha256 与 manifest 钉定值逐字节一致）后客户端即正常（53960 监听 + 本地 UI HTTP 200）。
