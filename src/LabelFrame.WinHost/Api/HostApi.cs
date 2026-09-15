@@ -20,8 +20,9 @@ internal static class HostApi
     public static IEndpointRouteBuilder MapHostApi(this IEndpointRouteBuilder app, Action<string> hostInfo)
     {
     // ---- 机器级配置（/api/host/config，前端读写 ServerUrl；仅回环可写）----
+    // GET 响应含只读 version（客户端产品版本 HostOptions.ProductVersion，决策 #126——客户端「检查更新」比较口径；POST 忽略该字段）
     app.MapGet("/api/host/config", (HostOptions options) =>
-        Results.Ok(new Api.HostConfigDto(options.ServerUrl ?? string.Empty, options.DeviceId, options.DeviceName, LocalIpAddresses.EnumerateIpv4())));
+        Results.Ok(new Api.HostConfigDto(options.ServerUrl ?? string.Empty, options.DeviceId, options.DeviceName, LocalIpAddresses.EnumerateIpv4(), HostOptions.ProductVersion)));
 
     app.MapPost("/api/host/config", (HttpContext context, Api.HostConfigRequest? request, HostConfigStore store, HostOptions options) =>
     {
@@ -45,7 +46,7 @@ internal static class HostApi
         store.SaveServerUrl(serverUrl);
         options.ServerUrl = serverUrl;
         hostInfo($"机器级配置已更新：ServerUrl={serverUrl}");
-        return Results.Ok(new Api.HostConfigDto(serverUrl, options.DeviceId, options.DeviceName, LocalIpAddresses.EnumerateIpv4()));
+        return Results.Ok(new Api.HostConfigDto(serverUrl, options.DeviceId, options.DeviceName, LocalIpAddresses.EnumerateIpv4(), HostOptions.ProductVersion));
     });
     // ---- 批次作业设置：GET/POST /api/host/print-settings；仅回环可写；保存即生效 ----
     app.MapGet("/api/host/print-settings", (PrintSettings printSettings) =>

@@ -88,32 +88,9 @@ public static class PayloadPlacer
             : null;
     }
 
-    /// <summary>版本比较（#123：双方可解析 System.Version 按其比较（缺失段视为 0），否则字符串 Ordinal）。&gt;0 = 左新，&lt;0 = 左旧。</summary>
+    /// <summary>版本比较（#123 语义；迭代 64 起委托统一实现 <see cref="LabelFrame.Bootstrapper.Upgrade.VersionSemantics"/>——§6.8 / §6.11 单一语义，签名保留兼容既有调用与测试）。&gt;0 = 左新，&lt;0 = 左旧。</summary>
     public static int ComparePluginVersions(string left, string right)
-    {
-        if (string.IsNullOrWhiteSpace(left))
-        {
-            throw new ArgumentException("版本号不能为空。", nameof(left));
-        }
-
-        if (string.IsNullOrWhiteSpace(right))
-        {
-            throw new ArgumentException("版本号不能为空。", nameof(right));
-        }
-
-        var leftVersion = RuntimeProbe.ParseVersion(left);
-        var rightVersion = RuntimeProbe.ParseVersion(right);
-        if (leftVersion is not null && rightVersion is not null)
-        {
-            // 缺失段视为 0（Version.CompareTo 把未指定段按 -1 判小，与 #123 的 1.0 == 1.0.0 语义不符——对齐 Core 的 PluginVersionComparer）
-            return Normalize(leftVersion).CompareTo(Normalize(rightVersion));
-        }
-
-        return string.Compare(left.Trim(), right.Trim(), StringComparison.Ordinal);
-    }
-
-    private static Version Normalize(Version version)
-        => new(version.Major, Math.Max(0, version.Minor), Math.Max(0, version.Build), Math.Max(0, version.Revision));
+        => LabelFrame.Bootstrapper.Upgrade.VersionSemantics.Compare(left, right);
 
     private static void ValidateArchive(string archivePath)
     {

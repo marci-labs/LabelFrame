@@ -1,8 +1,9 @@
+using LabelFrame.Bootstrapper.Upgrade;
 using LabelFrame.Bootstrapper.Wizard;
 
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
-/// <summary>确认页：组件名称 / 版本 / 体积 / 来源 URL / 目标安装位置（运行时组件标注「已装则跳过」）；「下一步 = 安装」进入进度页触发引擎 Plan + Apply（执行边界契约，决策 #124）。</summary>
+/// <summary>确认页：组件名称 / 版本 / <b>本机版本（§6.11 可升级清单：现版本 → 新版本 / 已是最新）</b> / 体积 / 来源 URL / 目标安装位置；升级或已最新横幅；「下一步 = 安装」进入进度页触发引擎 Plan + Apply（执行边界契约，决策 #124）。</summary>
 internal sealed class ConfirmPage : UserControl, IWizardPage
 {
     private readonly WizardSession _session;
@@ -44,11 +45,12 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
         _listView.HideSelection = true;
         _listView.Location = new Point(8, 100);
         _listView.Size = new Size(680, 320);
-        _listView.Columns.Add("组件", 220);
-        _listView.Columns.Add("版本", 70);
-        _listView.Columns.Add("体积", 70);
-        _listView.Columns.Add("来源 URL", 180);
-        _listView.Columns.Add("安装位置", 200);
+        _listView.Columns.Add("组件", 200);
+        _listView.Columns.Add("版本", 64);
+        _listView.Columns.Add("本机版本", 110);
+        _listView.Columns.Add("体积", 62);
+        _listView.Columns.Add("来源 URL", 150);
+        _listView.Columns.Add("安装位置", 190);
 
         var installHint = new Label
         {
@@ -75,7 +77,22 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
     public void OnEnter()
     {
         var plan = _session.BuildPlan();
+        var assessment = _session.Assessment!;
+        var plannedEntries = assessment.Entries
+            .Where(entry => plan.Components.Any(item => item.Component.Id == entry.ComponentId))
+            .ToList();
         _ba.Log($"确认安装计划：预设 {_session.Preset}，品牌 [{string.Join(",", _session.SelectedBrands)}]，管理界面 {_session.IncludeWebUi}，组件 [{string.Join(",", plan.Components.Select(item => item.Component.Id))}]，.NET Desktop Runtime {(_ba.RuntimeStatus.DesktopRuntimeInstalled ? $"已装 {_ba.RuntimeStatus.DesktopRuntimeVersion}（跳过）" : "未装（将安装）")}，WebView2 {(_ba.RuntimeStatus.WebView2Installed ? "已装（跳过）" : "未装（将安装）")}");
+        _ba.Log($"升级评估（§6.11）：{UpgradePresentation.Summarize(assessment.Entries)}");
+
+        // 横幅：升级 / 已最新优先于既有「确认前只读」提示（决策 #126：用户最关心的状态放最上层）
+        var upgradeBanner = UpgradePresentation.ConfirmBanner(plannedEntries);
+        _banner.Text = upgradeBanner ?? ExecuteBoundaryNotice.Banner;
+        _banner.BackColor = upgradeBanner is null
+            ? Color.FromArgb(255, 244, 230)
+            : Color.FromArgb(232, 240, 254);
+        _banner.ForeColor = upgradeBanner is null
+            ? Color.FromArgb(154, 84, 0)
+            : Color.FromArgb(22, 84, 160);
 
         _listView.BeginUpdate();
         _listView.Items.Clear();
@@ -98,6 +115,7 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
                 ToolTipText = item.InstallTarget,
             };
             row.SubItems.Add(component.Version);
+            row.SubItems.Add(DescribeLocalVersion(plannedEntries, component.Id));
             row.SubItems.Add(SizeFormat.Format(component.SizeBytes));
             row.SubItems.Add(component.Urls[0]);
             row.SubItems.Add(item.InstallTarget);
@@ -112,6 +130,25 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
 
         _guidanceLabel.Visible = plan.DockerComposeGuidance is not null;
         _guidanceLabel.Text = plan.DockerComposeGuidance ?? string.Empty;
+    }
+
+    /// <summary>本机版本列（§6.11 可升级清单）：升级 = 现版本 → 新版本；新装 = —（新装）；已最新 = 版本号（已是最新）。</summary>
+    private static string DescribeLocalVersion(IReadOnlyList<ComponentUpgradeEntry> entries, string componentId)
+    {
+        var entry = entries.FirstOrDefault(candidate => candidate.ComponentId == componentId);
+        if (entry is null)
+        {
+            return "—";
+        }
+
+        return entry.Action switch
+        {
+            ComponentUpgradeAction.Upgrade => $"{entry.InstalledVersion} → {entry.TargetVersion}",
+            ComponentUpgradeAction.Install => "—（新装）",
+            ComponentUpgradeAction.UpToDate => $"{entry.InstalledVersion ?? "已装"}（已是最新）",
+            ComponentUpgradeAction.LocalNewer => $"{entry.InstalledVersion}（本机更新）",
+            _ => "—（覆盖更新）", // webui 覆盖重写 / evergreen 已装等不比较形态
+        };
     }
 
     public bool CanProceed(out string? reason)

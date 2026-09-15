@@ -47,7 +47,17 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 
     public LabelFrameBootstrapperBa()
     {
+        // 启动命令（握手期 OnCreate 传入）：动作（Install/Uninstall/…）与显示级别决定交互 / 非交互路径
+        Create += (_, args) => _command = args.Command;
+
         DetectComplete += (_, args) => _detectCompleted.TrySetResult(args.Status);
+
+        // 包级口径（DESIGN §6.11）：记录同 UpgradeCode 相关 Bundle（已装引导程序）版本——升级走查证据 + 日志留痕；
+        // 不驱动安装决策（组件级清单已覆盖用户视角）
+        DetectRelatedBundle += (_, args) =>
+        {
+            Log($"检测到相关引导程序：{args.ProductCode}，版本 {args.Version}，关系 {args.RelationType}，{(args.PerMachine ? "机器级" : "用户级")}。");
+        };
         PlanPackageComplete += (_, args) =>
         {
             lock (_plannedPackagesLock)
@@ -220,6 +230,21 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         engine.SetVariableNumeric(BundleVariableMap.DesktopRuntimeVariable, RuntimeStatus.DesktopRuntimeInstalled ? 1 : 0);
         engine.SetVariableNumeric(BundleVariableMap.WebView2Variable, RuntimeStatus.WebView2Installed ? 1 : 0);
 
+        // 非交互启动（决策 #126 升级链补全）：升级时 Burn 以 Uninstall 动作驱动旧 Bundle（RelatedBundle 升级链尾），
+        // ARP 卸载 / 静默参数同理——此时不进问卷向导（无人应答会卡死升级链），自动 Detect → Plan → Apply → Quit
+        var command = _command;
+        if (command is null)
+        {
+            Log("启动命令不可得（握手未完成），按交互安装路径继续。");
+        }
+        else if (command.Action != LaunchAction.Install
+            || command.Display is Display.None or Display.Passive or Display.Embedded)
+        {
+            Log($"非交互启动：动作 {command.Action}，显示级别 {command.Display}——跳过向导，自动执行。");
+            RunUnattended(command.Action);
+            return;
+        }
+
         using var wizard = CreateWizardOrExit();
         if (wizard is null)
         {
@@ -254,6 +279,63 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         }
 
         engine.Quit(exitCode);
+    }
+
+    /// <summary>非交互执行（Uninstall / 静默启动）：Detect → Plan(action) → Apply → 以 Apply 状态 Quit（无 UI）。</summary>
+    /// <remarks>
+    /// 升级链的真实依赖：新 Bundle Apply 末段以 Uninstall 动作运行旧 Bundle EXE——旧 BA 若弹向导将无人应答、
+    /// 升级链卡死（升级走查 S2 实测暴露）。卸载计划由包已装状态驱动（Present / Obsolete → 移除或跳过），问卷变量不参与。
+    /// Apply 需要有效属主窗口句柄（out-of-proc BA 传 <see cref="IntPtr.Zero"/> 实测抛 ArgumentException）——
+    /// 以隐藏窗口承载（仅用于 UAC / 引擎弹窗的属主，无需消息泵）。
+    /// </remarks>
+    private void RunUnattended(LaunchAction action)
+    {
+        var applyTimeout = TimeSpan.FromMinutes(30); // 无人值守不设 UI 超时；仅防进程滞留的上限
+        try
+        {
+            engine.Detect();
+            if (!_detectCompleted.Task.Wait(StageTimeout))
+            {
+                engine.Quit(ExitCodeFailure);
+                return;
+            }
+
+            engine.Plan(action, BundleScope.Default);
+            if (!CurrentPlanSource().Task.Wait(StageTimeout))
+            {
+                engine.Quit(ExitCodeFailure);
+                return;
+            }
+
+            using var owner = new Form
+            {
+                ShowInTaskbar = false,
+                WindowState = FormWindowState.Minimized,
+                Visible = false,
+            };
+            engine.Apply(owner.Handle);
+            if (!CurrentApplySource().Task.Wait(applyTimeout))
+            {
+                Log("非交互执行 Apply 超时，强制退出。");
+                engine.Quit(ExitCodeFailure);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"非交互执行异常：{ex}");
+            engine.Quit(ExitCodeFailure);
+            return;
+        }
+
+        int status;
+        lock (_stateLock)
+        {
+            status = _state.Phase == InstallPhase.Completed ? _state.ApplyStatus : ExitCodeFailure;
+        }
+
+        Log($"非交互执行完成：动作 {action}，状态 0x{status:X8}。");
+        engine.Quit(status);
     }
 
     /// <summary>安装主入口（确认页「安装」触发）：问卷答案 → Burn 变量（含落位目标）→ Plan → Apply → 终态。</summary>
@@ -360,8 +442,11 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
     private void AppendError(string message) =>
         UpdateState(state => state with { Errors = [.. state.Errors, message] });
 
-    /// <summary>当前多源回退状态机（引擎事件线程与 Apply 调用线程间仅整体替换，读取不加锁——引用原子性足够）。</summary>
+    /// <summary>多源回退状态机（引擎事件线程与 Apply 调用线程间仅整体替换，读取不加锁——引用原子性足够）。</summary>
     private CacheSourceFallback? SourceFallback => _sourceFallback;
+
+    /// <summary>启动命令（握手期 Create 事件传入；Run 时已就位）。</summary>
+    private IBootstrapperCommand? _command;
 
     /// <summary>
     /// 多源回退 · 源注入点（DESIGN §6.10，迭代 61 / #54）：每次获取尝试开始时，按清单 urls 顺序把

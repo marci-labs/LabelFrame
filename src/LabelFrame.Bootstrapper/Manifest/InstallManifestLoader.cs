@@ -14,17 +14,22 @@ public static class InstallManifestLoader
     /// <summary>加载并解析清单。<paramref name="http"/> 可注入用于测试（记录请求以断言「仅一次 GET」）。</summary>
     public static async Task<InstallManifest> LoadAsync(string source, HttpClient? http = null, CancellationToken cancellationToken = default)
     {
+        var json = await LoadTextAsync(source, http, cancellationToken).ConfigureAwait(false);
+        return InstallManifest.Parse(json);
+    }
+
+    /// <summary>加载原始文本（本地路径 = 文件读取；URL = 单次只读 GET）——latest.json 等轻量伴随文件复用同一只读口径（§6.11）。</summary>
+    public static async Task<string> LoadTextAsync(string source, HttpClient? http = null, CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrWhiteSpace(source))
         {
-            throw new InstallManifestFormatException("清单来源为空：请填写本地文件路径或 URL。");
+            throw new InstallManifestFormatException("来源为空：请填写本地文件路径或 URL。");
         }
 
         // 清单为小文件：本地路径同步读取即可（net48 腿无异步文件 API）；URL 走 HttpClient（net48 / net10 同一重载形态）
-        var json = IsHttpUrl(source)
+        return IsHttpUrl(source)
             ? await DownloadAsync(source, http ?? SharedClient, cancellationToken).ConfigureAwait(false)
             : File.ReadAllText(source);
-
-        return InstallManifest.Parse(json);
     }
 
     private static async Task<string> DownloadAsync(string url, HttpClient http, CancellationToken cancellationToken)

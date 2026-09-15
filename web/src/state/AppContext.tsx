@@ -34,6 +34,8 @@ interface AppContextValue {
   hostDeviceName: string | null
   /** 迭代 20：本机 Client 枚举的 IPv4 列表（/api/host/config.ips，客户端状态栏显示；server 构建恒空）。 */
   hostIps: string[]
+  /** 迭代 64（决策 #126）：本机客户端版本（/api/host/config.version，「检查更新」比较口径；旧客户端为 null）。 */
+  hostVersion: string | null
   /** 迭代 20（Y2）：数据与打印「默认目标设备」（在线设备页点选，localStorage 持久化，跨页联动；client 构建不消费）。 */
   defaultTargetDeviceId: string | null
   /** healthz 的传输模式（旧字段，兼容展示兜底）。 */
@@ -108,6 +110,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [hostDeviceId, setHostDeviceId] = useState<string | null>(null)
   const [hostDeviceName, setHostDeviceName] = useState<string | null>(null)
   const [hostIps, setHostIps] = useState<string[]>([])
+  const [hostVersion, setHostVersion] = useState<string | null>(null)
   const [defaultTargetDeviceId, setDefaultTargetDeviceIdState] = useState<string | null>(() => (isServerUi ? readDefaultTargetDevice() : null))
   const [transport, setTransport] = useState<string | null>(null)
   const [transportConfig, setTransportConfig] = useState<TransportConfig | null>(null)
@@ -177,6 +180,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setHostDeviceId(cfg.deviceId ?? null)
         setHostDeviceName(cfg.deviceName ?? null)
         setHostIps(cfg.ips ?? [])
+        setHostVersion(cfg.version ?? null)
         setStatus(`已读取本机配置：服务端 ${cfg.serverUrl}。`)
       })
       .catch(() => {
@@ -264,6 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hostDeviceId,
       hostDeviceName,
       hostIps,
+      hostVersion,
       defaultTargetDeviceId,
       transport,
       transportConfig,
@@ -292,6 +297,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hostDeviceId,
       hostDeviceName,
       hostIps,
+      hostVersion,
       defaultTargetDeviceId,
       transport,
       transportConfig,
