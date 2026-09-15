@@ -82,6 +82,7 @@
 | 58 | 安装引导专项 2/8——CI 自动生成安装清单 install-manifest.json + latest.json（生成与断言一体，#120） | ✅ 已完成（2026-09-14 v0.26.0 实跑发版验证通过（manifest 五条目 + 五产物 sha256 逐项复核 + 值守独立抽查），用户委托自动结项，[#51](https://github.com/marci-labs/LabelFrame/issues/51)） |
 | 49 | PDA 宿主自动化构建与品牌化（CI Android 构建 + release APK 附件 + L 品牌图标 + 版本透出，签名口径 #104/#119） | ✅ 已完成（2026-09-14 v0.26.0 发版 + DT50 真机换签名重装验收通过（图标 / 版本 / 冒烟打印，用户目视确认；设备号按预期变更）），[#31](https://github.com/marci-labs/LabelFrame/issues/31)） |
 | 60 | 安装引导专项 4/8——引导程序骨架：五步问卷与拓扑预设→组件集合（WiX Burn 形态 #122；dry-run 契约；装配缺陷返修 #81） | ✅ 已完成（2026-09-14 桌面自动化五步走查通过（组件集合正确 + Plan 预览一致 + dry-run 零系统改动实机复核），用户委托自动结项，[#53](https://github.com/marci-labs/LabelFrame/issues/53)） |
+| 62 | 安装引导专项 6/8——安装编排：Burn Apply 执行链启用（运行时前置补装 + MSI 链 + 组件落位，#124；AspNetCore 前置两腿补齐 #128/#129） | ✅ 已完成（2026-09-15 干净 Win10 VM 三形态全流程验收通过：单机一体 + 服务端 / 客户端分离双预设组件集合正确 + 检测拦截与链内 AspNetCore 双实证；两轮返修后达成（PR #87 / #90），用户委托自动结项，[#55](https://github.com/marci-labs/LabelFrame/issues/55)） |
 | 安装引导专项 | 迭代 57~64（#50~#57）8 迭代汇总：设计契约（#114~#118）→ CI 生成 manifest / latest.json（#120）→ PDA 签名稳定化 + 下载中心扫码（#119）→ 引导骨架（#114→#122 Burn Pivot）→ 下载多源回退（#125）→ Apply 执行链（#124）→ 官方插件外置化（#123）→ 升级路径收尾（#126：BA 升级清单 + 客户端检查更新）；真机 / VM / 发版依赖项转 `待验收` | ✅ 专项交付完成（2026-09-14；逐迭代状态见上表与各自 Issue；回看串讲见 DESIGN §6.7，[#57](https://github.com/marci-labs/LabelFrame/issues/57) 收尾） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
