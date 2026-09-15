@@ -4,10 +4,11 @@ using System.Runtime.Loader;
 namespace LabelFrame.Core.Transport.Plugins;
 
 /// <summary>
-/// 插件发现探针（安装预检用）——用临时 collectible AssemblyLoadContext **字节加载**
-/// 目录内 DLL 并返回发现的插件 ID；只做发现，不 Create 传输实例。
-/// 与插件目录加载器共用同一发现逻辑；与 LoadFromAssemblyPath 不同，字节加载不锁文件，
-/// 预检后临时目录可正常移动 / 删除。
+/// 插件发现探针（安装预检用，加载口径同 PluginDirectoryLoader = 决策 #127）：
+/// 目录单 collectible ALC 整体字节加载（全部 DLL 预载进同一上下文，消灭惰性解析窗口），
+/// 跨程序集发现 <see cref="ITransportPlugin"/> 并返回插件 ID；只做发现，不 Create 传输实例。
+/// 预检完显式 <see cref="AssemblyLoadContext.Unload"/>（确定性释放，不等 GC）；
+/// 字节加载不锁文件，预检后临时目录可正常移动 / 删除。
 /// </summary>
 public static class PluginProbe
 {
@@ -34,47 +35,61 @@ public static class PluginProbe
             return new PluginProbeResult(ids, errors);
         }
 
-        foreach (var dll in Directory.GetFiles(directory, "*.dll"))
+        var dlls = Directory.GetFiles(directory, "*.dll");
+        if (dlls.Length == 0)
         {
-            try
-            {
-                var alc = new AssemblyLoadContext($"plugin-probe:{Path.GetFileName(dll)}", isCollectible: true);
-                // 依赖优先回退宿主默认上下文（Core 等），其次包内伴生 DLL（字节加载，不锁文件）
-                alc.Resolving += (context, name) => ResolveDependency(context, name, directory);
-                var assembly = alc.LoadFromStream(new MemoryStream(File.ReadAllBytes(dll), writable: false));
-                foreach (var type in assembly.GetTypes())
-                {
-                    if (type.IsAbstract || type.IsInterface || !typeof(ITransportPlugin).IsAssignableFrom(type))
-                    {
-                        continue;
-                    }
+            return new PluginProbeResult(ids, errors);
+        }
 
-                    if (Activator.CreateInstance(type) is ITransportPlugin plugin)
+        // 单目录单 ALC（决策 #127）：全部 DLL 预载同一上下文，跨程序集发现
+        var alc = new AssemblyLoadContext($"plugin-probe:{Path.GetFileName(Path.TrimEndingDirectorySeparator(directory))}", isCollectible: true);
+        alc.Resolving += (context, name) => ResolveDependency(context, name, directory);
+        try
+        {
+            foreach (var dll in dlls)
+            {
+                try
+                {
+                    var assembly = alc.LoadFromStream(new MemoryStream(File.ReadAllBytes(dll), writable: false));
+                    foreach (var type in assembly.GetTypes())
                     {
-                        ids.Add(plugin.Id);
+                        if (type.IsAbstract || type.IsInterface || !typeof(ITransportPlugin).IsAssignableFrom(type))
+                        {
+                            continue;
+                        }
+
+                        if (Activator.CreateInstance(type) is ITransportPlugin plugin)
+                        {
+                            ids.Add(plugin.Id);
+                        }
                     }
                 }
+                catch (Exception ex)
+                {
+                    // 单 DLL 失败不阻断包内其他程序集（逐 DLL 明细透出）
+                    errors.Add(new PluginAssemblyLoadError(Path.GetFileName(dll), ex));
+                    hostLog.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 插件预检加载失败（{Path.GetFileName(dll)}）：{ex.Message}");
+                }
             }
-            catch (Exception ex)
-            {
-                errors.Add(new PluginAssemblyLoadError(Path.GetFileName(dll), ex));
-                hostLog.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 插件预检加载失败（{Path.GetFileName(dll)}）：{ex.Message}");
-            }
+        }
+        finally
+        {
+            // 预检完确定性释放（探针实例仅读取 Id 字符串，卸载后无引用残留）
+            alc.Unload();
         }
 
         return new PluginProbeResult(ids.Distinct(StringComparer.OrdinalIgnoreCase).ToList(), errors);
     }
 
+    /// <summary>包内伴生依赖解析：宿主默认上下文已加载的同名程序集优先（Core 等），其次包内伴生 DLL（字节加载，不锁文件）。</summary>
     private static Assembly? ResolveDependency(AssemblyLoadContext context, AssemblyName name, string directory)
     {
-        // 宿主默认上下文已加载的同名程序集优先（Core 等）
         var inDefault = AssemblyLoadContext.Default.Assemblies.FirstOrDefault(a => a.GetName().Name == name.Name);
         if (inDefault is not null)
         {
             return inDefault;
         }
 
-        // 包内伴生 DLL（插件自己的依赖）
         var candidate = Path.Combine(directory, name.Name + ".dll");
         return File.Exists(candidate) ? context.LoadFromStream(new MemoryStream(File.ReadAllBytes(candidate), writable: false)) : null;
     }

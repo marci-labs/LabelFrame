@@ -79,12 +79,12 @@ public static class WinHostApp
             Path.GetDirectoryName(options.DatabasePath) ?? string.Empty);
 #if WINDOWS
         var pluginLoad = PluginDirectoryLoader.LoadWithErrors(options.PluginsPath, hostLogWriter);
-        foreach (var (plugin, assemblyPath) in pluginLoad.Plugins)
+        foreach (var discovered in pluginLoad.Plugins)
         {
-            // 外部插件不允许覆盖内置插件 ID（冲突时记日志跳过）
-            if (transportRegistry.RegisterExternal(plugin, assemblyPath, hostLogWriter))
+            // 外部插件不允许覆盖内置插件 ID（冲突时记日志跳过）；ALC 根随注册强持有（决策 #127）
+            if (transportRegistry.RegisterExternal(discovered.Plugin, discovered.AssemblyPath, hostLogWriter, discovered.LoadContext))
             {
-                hostInfo($"已加载外部传输插件：{plugin.Id}（{plugin.DisplayName}，来自 {assemblyPath}）");
+                hostInfo($"已加载外部传输插件：{discovered.Plugin.Id}（{discovered.Plugin.DisplayName}，来自 {discovered.AssemblyPath}）");
             }
         }
 #endif

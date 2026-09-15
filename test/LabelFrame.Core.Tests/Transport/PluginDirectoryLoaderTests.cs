@@ -87,9 +87,9 @@ public class PluginDirectoryLoaderTests
             var loaded = PluginDirectoryLoader.Load(dir, writer);
 
             var registry = new TransportPluginRegistry();
-            foreach (var (plugin, path) in loaded)
+            foreach (var discovered in loaded)
             {
-                registry.Register(plugin, isExternal: true, assemblyPath: path);
+                registry.Register(discovered.Plugin, isExternal: true, assemblyPath: discovered.AssemblyPath, loadContext: discovered.LoadContext);
             }
 
             var context = new TransportPluginContext(writer, Path.GetTempPath());
