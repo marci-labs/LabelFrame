@@ -65,11 +65,12 @@ public sealed class TopologyResolverTests
         var plan = _resolver.Resolve(Full, TopologyPreset.Standalone, Options(["zebra"], webUi: true));
 
         AssertIds(plan, "webui", "runtime-desktop", "runtime-aspnetcore", "server-msi", "runtime-webview2", "client-msi", "plugin-zebra");
-        // 依赖序不变式：runtime-desktop / runtime-aspnetcore 在 server-msi 之前，runtime-desktop / runtime-webview2 在 client-msi 之前
+        // 依赖序不变式：runtime-desktop / runtime-aspnetcore 在 server-msi 之前，三条 runtime 均在 client-msi 之前
         var ids = plan.Components.Select(item => item.Component.Id).ToList();
         Assert.True(ids.IndexOf("runtime-desktop") < ids.IndexOf("server-msi"));
         Assert.True(ids.IndexOf("runtime-aspnetcore") < ids.IndexOf("server-msi"));
         Assert.True(ids.IndexOf("runtime-desktop") < ids.IndexOf("client-msi"));
+        Assert.True(ids.IndexOf("runtime-aspnetcore") < ids.IndexOf("client-msi"));
         Assert.True(ids.IndexOf("runtime-webview2") < ids.IndexOf("client-msi"));
     }
 
@@ -131,9 +132,14 @@ public sealed class TopologyResolverTests
     [Fact]
     public void Resolve_client_default_should_include_runtimes_and_client_msi()
     {
+        // 追加客户端核心（迭代 62 二次返修补 aspnetcore，决策 #129——WinHost 亦 Sdk.Web）：
+        // runtime-desktop、runtime-aspnetcore、runtime-webview2、client-msi
         var plan = _resolver.Resolve(Full, TopologyPreset.Client, Options());
 
-        AssertIds(plan, "runtime-desktop", "runtime-webview2", "client-msi");
+        AssertIds(plan, "runtime-desktop", "runtime-aspnetcore", "runtime-webview2", "client-msi");
+        // 依赖序不变式：三条 runtime 均在 client-msi 之前（aspnetcore 含 topologies 命中与 dependsOn 闭包双路径）
+        var ids = plan.Components.Select(item => item.Component.Id).ToList();
+        Assert.True(ids.IndexOf("runtime-aspnetcore") < ids.IndexOf("client-msi"));
     }
 
     [Fact]
@@ -142,7 +148,7 @@ public sealed class TopologyResolverTests
         // webui 未标记 client 预设：开关打开也不纳入（开关组件仍受 topologies 过滤）
         var plan = _resolver.Resolve(Full, TopologyPreset.Client, Options(webUi: true));
 
-        AssertIds(plan, "runtime-desktop", "runtime-webview2", "client-msi");
+        AssertIds(plan, "runtime-desktop", "runtime-aspnetcore", "runtime-webview2", "client-msi");
     }
 
     [Fact]
@@ -150,7 +156,7 @@ public sealed class TopologyResolverTests
     {
         var plan = _resolver.Resolve(Full, TopologyPreset.Client, Options(["zebra"]));
 
-        AssertIds(plan, "runtime-desktop", "runtime-webview2", "client-msi", "plugin-zebra");
+        AssertIds(plan, "runtime-desktop", "runtime-aspnetcore", "runtime-webview2", "client-msi", "plugin-zebra");
         var plugin = Assert.Single(plan.Components, item => item.Component.Id == "plugin-zebra");
         Assert.Contains("plugins", plugin.InstallTarget, StringComparison.OrdinalIgnoreCase);
     }
@@ -161,7 +167,7 @@ public sealed class TopologyResolverTests
         // 品牌选项来源仅为 manifest 已有条目：清单没有的品牌勾选无效
         var plan = _resolver.Resolve(Full, TopologyPreset.Client, Options(["honeywell", "tsc"]));
 
-        AssertIds(plan, "runtime-desktop", "runtime-webview2", "client-msi");
+        AssertIds(plan, "runtime-desktop", "runtime-aspnetcore", "runtime-webview2", "client-msi");
     }
 
     // ---- 安装位置（对齐 DEPLOY 目录约定）----

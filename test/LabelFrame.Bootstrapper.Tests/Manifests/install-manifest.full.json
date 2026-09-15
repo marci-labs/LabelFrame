@@ -21,7 +21,7 @@
       "id": "client-msi",
       "type": "msi",
       "version": "0.26.0",
-      "dependsOn": ["runtime-desktop", "runtime-webview2"],
+      "dependsOn": ["runtime-desktop", "runtime-aspnetcore", "runtime-webview2"],
       "urls": [
         "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-Client-0.26.0.msi"
       ],
@@ -70,8 +70,8 @@
       "sha256": "28f6d4b2907e5c3a28f6d4b2907e5c3a28f6d4b2907e5c3a28f6d4b2907e5c3a",
       "sizeBytes": 11262864,
       "silentArgs": "/install /quiet /norestart",
-      "topologies": ["standalone", "server-win", "offline"],
-      "notes": "ASP.NET Core Runtime（x64，服务端依赖；不含 Desktop Runtime，二者互不包含），缺失时由引导程序补装"
+      "topologies": ["standalone", "server-win", "client", "offline"],
+      "notes": "ASP.NET Core Runtime（x64，服务端与打印客户端依赖；不含 Desktop Runtime，二者互不包含），缺失时由引导程序补装"
     },
     {
       "id": "runtime-webview2",

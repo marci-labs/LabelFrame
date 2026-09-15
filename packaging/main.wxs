@@ -25,16 +25,22 @@
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/marci-labs/LabelFrame/releases" />
 
 
-    <!-- 检测 .NET Desktop Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
+    <!-- 检测 ASP.NET Core Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
+    <!-- RuntimeType = aspnet（迭代 62 二次返修，决策 #129）：WinHost 为 Microsoft.NET.Sdk.Web（隐式 FrameworkReference
+         Microsoft.AspNetCore.App），实际框架需求是 AspNetCore 而非仅 Desktop——两者互不包含，只装 Desktop Runtime 的机器
+         必须在检测阶段拦截，而非装完客户端进程起不来（.NET Runtime 1023，AC-03 预设 B 干净 VM 实证）；与 #128 Server 侧修正同型。
+         注：WinHost 双框架需求（WinForms 的 WindowsDesktop + Web 托管的 AspNetCore）中 Desktop 腿由引导链 runtime-desktop 补装承载，
+         NetCoreCheck 单检测单 RuntimeType，静默直装场景以 AspNetCore 口径为拦截锚点。
+         WiX netfx 扩展的 RuntimeType 合法枚举为 aspnet / desktop / core（构建实测 WIX0021），aspnet 对应 ASP.NET Core Runtime。 -->
     <!-- 之前的注册表搜索读不到运行时，因为版本号是命名值而非默认值，这里不再依赖注册表结构 -->
     <netfx:DotNetCompatibilityCheck Id="DotNet10RuntimeCheck"
                                     Property="DOTNET10_PRESENT"
                                     Platform="x64"
-                                    RuntimeType="desktop"
+                                    RuntimeType="aspnet"
                                     Version="10.0.0"
                                     RollForward="latestMajor" />
     <Launch Condition="DOTNET10_PRESENT = &quot;0&quot; OR UILevel = 5 OR REMOVE"
-      Message="本机未检测到 .NET Desktop Runtime，请先安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
+      Message="本机未检测到 ASP.NET Core Runtime，请先安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
 
     <!-- 检测 WebView2 Evergreen 运行时（迭代 44，决策 #99 D2=C）：界面窗口（WebView2 嵌入）依赖；
          注册表 EdgeUpdate Clients 的 WebView2 产品键（per-machine 走 WOW6432Node 视图 / per-user HKCU），
@@ -55,9 +61,9 @@
     <!-- 运行时缺失对话框：可点击官方下载链接（MSI Hyperlink 控件） -->
     <UI Id="RuntimeCheckUI">
       <Dialog Id="RuntimeMissingDlg" X="50" Y="50" Width="370" Height="180"
-              Title="LabelFrame 安装 - 缺少 .NET Desktop Runtime" NoMinimize="yes">
+              Title="LabelFrame 安装 - 缺少 ASP.NET Core Runtime" NoMinimize="yes">
         <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="30"
-                 Text="本机未检测到 .NET 10 Desktop Runtime，请先安装后再运行本安装程序。" />
+                 Text="本机未检测到 ASP.NET Core 10 Runtime，请先安装后再运行本安装程序。" />
         <Control Id="HintText" Type="Text" X="15" Y="50" Width="340" Height="20"
                  Text="点击下方链接打开微软官方下载页：" />
         <Control Id="RuntimeLink" Type="Hyperlink" X="15" Y="75" Width="340" Height="25"

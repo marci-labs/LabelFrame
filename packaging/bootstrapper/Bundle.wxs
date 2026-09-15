@@ -3,10 +3,10 @@
   LabelFrame 安装引导 Bundle（WiX Burn，DESIGN §6.1 决策 #122；链序与口径 = §6.9 决策 #124）。
 
   - BA = src/LabelFrame.Bootstrapper.Ba（net48 托管 BA，out-of-proc：五步问卷（只读）→ 确认页「安装」→ Plan + Apply）；
-  - 链（§6.9 七包，单一回滚边界；迭代 62 返修补 AspNetCore，决策 #128）：
+  - 链（§6.9 七包，单一回滚边界；迭代 62 返修补 AspNetCore，决策 #128；二次返修补 client 链腿，决策 #129）：
       1. DotNetDesktopRuntime（.NET 10 Desktop Runtime x64，厂商直链，Permanent，DetectCondition = BA 探测变量）
-      2. DotNetAspNetCoreRuntime（ASP.NET Core Runtime x64，厂商直链，Permanent——Server 组件 Sdk.Web 隐式
-         FrameworkReference 所需，与 Desktop Runtime 互不包含；仅服务端预设安装）
+      2. DotNetAspNetCoreRuntime（ASP.NET Core Runtime x64，厂商直链，Permanent——Server 与 Client（WinHost）组件均 Sdk.Web 隐式
+         FrameworkReference 所需，与 Desktop Runtime 互不包含；服务端与客户端预设安装——二次返修补 client 链腿，决策 #129）
       3. WebView2Runtime（WebView2 Evergreen 引导器，厂商直链，Permanent，DetectCondition = BA 探测变量）
       4. ServerMsi / 5. ClientMsi（既有，Compressed=no + DownloadUrl）
       6. WebUiPlacement / 7. ZebraPluginPlacement（非 MSI 落位：PayloadTool 内嵌（Compressed=yes）+ zip 子 Payload 远程下载，
@@ -72,8 +72,9 @@
         <ExitCode Value="3010" Behavior="scheduleReboot" />
       </ExePackage>
 
-      <!-- 2) ASP.NET Core Runtime x64（迭代 62 返修，决策 #128）：Server 组件 Sdk.Web 隐式 FrameworkReference 所需，
-           与 Desktop Runtime 互不包含；仅含服务端的预设安装，缺失才装、已装跳过（AC-02）；共享系统组件不随 bundle 卸载 -->
+      <!-- 2) ASP.NET Core Runtime x64（迭代 62 返修，决策 #128；二次返修补 client 链腿，决策 #129）：Server 与 Client（WinHost）
+           组件均 Sdk.Web 隐式 FrameworkReference 所需，与 Desktop Runtime 互不包含；服务端与客户端预设安装（对齐
+           DotNetDesktopRuntime 双预设条件），缺失才装、已装跳过（AC-02）；共享系统组件不随 bundle 卸载 -->
       <ExePackage Id="DotNetAspNetCoreRuntime"
                   SourceFile="$(var.RuntimeAspNetCorePath)"
                   Name="aspnetcore-runtime-$(var.RuntimeAspNetCoreVersion)-win-x64.exe"
@@ -82,7 +83,7 @@
                   Permanent="yes"
                   PerMachine="yes"
                   DetectCondition="AspNetCoreRuntimeInstalled"
-                  InstallCondition="InstallServer"
+                  InstallCondition="InstallServer OR InstallClient"
                   InstallArguments="/install /quiet /norestart">
         <ExitCode Value="3010" Behavior="scheduleReboot" />
       </ExePackage>
