@@ -320,9 +320,9 @@ public class PluginInstallerTests
             Assert.Equal("manual", manual.PluginId);
 
             // 模拟重启后：从插件目录重新装配注册表 → 安装包 Loaded=true；manual.dll 非插件 → 仍 false
-            foreach (var (plugin, path) in PluginDirectoryLoader.Load(pluginsDir, TextWriter.Null))
+            foreach (var discovered in PluginDirectoryLoader.Load(pluginsDir, TextWriter.Null))
             {
-                registry.RegisterExternal(plugin, path, TextWriter.Null);
+                registry.RegisterExternal(discovered.Plugin, discovered.AssemblyPath, TextWriter.Null, discovered.LoadContext);
             }
 
             var after = installer.ListInstalled();
