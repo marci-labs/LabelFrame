@@ -86,6 +86,7 @@ public static class UpgradeAssessor
             "client-msi" => local.ClientMsiVersion,
             "plugin-zebra" => local.ZebraPluginVersion,
             "runtime-desktop" => local.Runtime.DesktopRuntimeInstalled ? local.Runtime.DesktopRuntimeVersion : null,
+            "runtime-aspnetcore" => local.Runtime.AspNetCoreRuntimeInstalled ? local.Runtime.AspNetCoreRuntimeVersion : null,
             _ => null,
         };
 
@@ -97,7 +98,7 @@ public static class UpgradeAssessor
             "webui" => ComponentUpgradeAction.NotTracked,
             // 非本机安装组件（linux-server / pda-apk / 未知 id）
             "linux-server" or "pda-apk" => ComponentUpgradeAction.NotTracked,
-            _ => CompareAction(installed, component.Version, isRuntime: component.Id == "runtime-desktop"),
+            _ => CompareAction(installed, component.Version, isRuntime: component.Id is "runtime-desktop" or "runtime-aspnetcore"),
         };
 
         return new ComponentUpgradeEntry(component.Id, component.Version, installed, action);
@@ -118,7 +119,7 @@ public static class UpgradeAssessor
 
         if (order > 0)
         {
-            // runtime-desktop 是共享系统组件：本机更新的版本即满足要求（执行侧 DetectCondition 只判 ≥ 10.0.0）
+            // runtime-desktop / runtime-aspnetcore 是共享系统组件：本机更新的版本即满足要求（执行侧 DetectCondition 只判 ≥ 10.0.0）
             return isRuntime ? ComponentUpgradeAction.UpToDate : ComponentUpgradeAction.LocalNewer;
         }
 

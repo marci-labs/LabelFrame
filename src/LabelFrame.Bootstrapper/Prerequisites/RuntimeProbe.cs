@@ -5,18 +5,29 @@ namespace LabelFrame.Bootstrapper.Prerequisites;
 /// <summary>运行时前置探测结果（DESIGN §6.9 检测口径；BA 在 engine.Detect() 前写入 Burn 探测变量）。</summary>
 /// <param name="DesktopRuntimeInstalled">.NET 10 Desktop Runtime（x64）是否已装（文件版本探测，≥ 10.0.0，latestMajor 前滚）。</param>
 /// <param name="DesktopRuntimeVersion">已装的最高 Desktop Runtime 版本（目录名原样；未装为 null）。</param>
+/// <param name="AspNetCoreRuntimeInstalled">ASP.NET Core Runtime（x64）是否已装（文件版本探测，机制同 Desktop；迭代 62 返修，决策 #128——Server 组件 Sdk.Web 隐式 FrameworkReference 所需）。</param>
+/// <param name="AspNetCoreRuntimeVersion">已装的最高 ASP.NET Core Runtime 版本（目录名原样；未装为 null）。</param>
 /// <param name="WebView2Installed">WebView2 Evergreen 是否已装（EdgeUpdate Clients pv 注册表，HKLM + HKCU 双查）。</param>
-public sealed record RuntimeProbeResult(bool DesktopRuntimeInstalled, string? DesktopRuntimeVersion, bool WebView2Installed);
+public sealed record RuntimeProbeResult(
+    bool DesktopRuntimeInstalled,
+    string? DesktopRuntimeVersion,
+    bool AspNetCoreRuntimeInstalled,
+    string? AspNetCoreRuntimeVersion,
+    bool WebView2Installed);
 
 /// <summary>
-/// 运行时前置探测（迭代 62，决策 #124）：.NET Desktop Runtime 用<b>文件版本探测</b>（注册表 sharedfx 实证不可靠——
-/// 运行时已装而键不存在，见 §6.9 与本仓 MSI 注释）；WebView2 用<b>注册表探测</b>（对齐 MSI 侧 WEBVIEW2_HKLM / WEBVIEW2_HKCU 先例）。
+/// 运行时前置探测（迭代 62，决策 #124；迭代 62 返修补 AspNetCore 腿，决策 #128）：.NET Desktop / ASP.NET Core Runtime 用
+/// <b>文件版本探测</b>（注册表 sharedfx 实证不可靠——运行时已装而键不存在，见 §6.9 与本仓 MSI 注释）；
+/// WebView2 用<b>注册表探测</b>（对齐 MSI 侧 WEBVIEW2_HKLM / WEBVIEW2_HKCU 先例）。
 /// 目录枚举与注册表读取以委托注入（net10 测试腿可注入假探针；net48 BA 腿用默认实现）。
 /// </summary>
 public sealed class RuntimeProbe
 {
     /// <summary>Desktop Runtime 最低版本（对齐 MSI 侧 NetCoreCheck：desktop / 10.0.0 / latestMajor 前滚）。</summary>
     public const string DesktopRuntimeMinimumVersion = "10.0.0";
+
+    /// <summary>ASP.NET Core Runtime 最低版本（对齐 MSI 侧 NetCoreCheck：aspnetcore / 10.0.0 / latestMajor 前滚，决策 #128）。</summary>
+    public const string AspNetCoreRuntimeMinimumVersion = "10.0.0";
 
     /// <summary>WebView2 Evergreen per-machine 注册表值（WOW6432Node 视图；MSI 侧 WEBVIEW2_HKLM 同键）。</summary>
     public const string WebView2PerMachineValue = @"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}\pv";
@@ -25,31 +36,41 @@ public sealed class RuntimeProbe
     public const string WebView2PerUserValue = @"HKEY_CURRENT_USER\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}\pv";
 
     private readonly Func<IReadOnlyList<string>> _enumerateDesktopRuntimeVersions;
+    private readonly Func<IReadOnlyList<string>> _enumerateAspNetCoreRuntimeVersions;
     private readonly Func<string, string?> _readRegistryValue;
 
     /// <param name="enumerateDesktopRuntimeVersions">枚举 <c>dotnet\shared\Microsoft.WindowsDesktop.App</c> 下的版本目录名。</param>
+    /// <param name="enumerateAspNetCoreRuntimeVersions">枚举 <c>dotnet\shared\Microsoft.AspNetCore.App</c> 下的版本目录名。</param>
     /// <param name="readRegistryValue">按完整注册表值路径读取（不存在返回 null）。</param>
-    public RuntimeProbe(Func<IReadOnlyList<string>>? enumerateDesktopRuntimeVersions = null, Func<string, string?>? readRegistryValue = null)
+    public RuntimeProbe(
+        Func<IReadOnlyList<string>>? enumerateDesktopRuntimeVersions = null,
+        Func<IReadOnlyList<string>>? enumerateAspNetCoreRuntimeVersions = null,
+        Func<string, string?>? readRegistryValue = null)
     {
-        _enumerateDesktopRuntimeVersions = enumerateDesktopRuntimeVersions ?? ListInstalledDesktopRuntimeVersions;
+        _enumerateDesktopRuntimeVersions = enumerateDesktopRuntimeVersions ?? ListInstalledRuntimeVersions("Microsoft.WindowsDesktop.App");
+        _enumerateAspNetCoreRuntimeVersions = enumerateAspNetCoreRuntimeVersions ?? ListInstalledRuntimeVersions("Microsoft.AspNetCore.App");
         _readRegistryValue = readRegistryValue ?? ReadRegistryValueOrDefault;
     }
 
     /// <summary>执行探测（只读，无任何系统改动）。</summary>
     public RuntimeProbeResult Probe()
     {
-        var (installed, version) = ProbeDesktopRuntime();
-        return new RuntimeProbeResult(installed, version, ProbeWebView2());
+        var desktop = ProbeNetRuntime(_enumerateDesktopRuntimeVersions, DesktopRuntimeMinimumVersion);
+        var aspNetCore = ProbeNetRuntime(_enumerateAspNetCoreRuntimeVersions, AspNetCoreRuntimeMinimumVersion);
+        return new RuntimeProbeResult(
+            desktop.Installed, desktop.Version,
+            aspNetCore.Installed, aspNetCore.Version,
+            ProbeWebView2());
     }
 
-    /// <summary>文件版本探测：版本目录名按 <see cref="Version"/> 解析取最大，与最低版本比较（latestMajor 前滚 = 大版本 ≥ 即满足）。</summary>
-    private (bool Installed, string? Version) ProbeDesktopRuntime()
+    /// <summary>文件版本探测：版本目录名按 <see cref="Version"/> 解析取最大，与最低版本比较（latestMajor 前滚 = 大版本 ≥ 即满足；Desktop / AspNetCore 同机制，决策 #128）。</summary>
+    private static (bool Installed, string? Version) ProbeNetRuntime(Func<IReadOnlyList<string>> enumerateVersions, string minimumVersion)
     {
-        var minimum = ParseVersion(DesktopRuntimeMinimumVersion);
+        var minimum = ParseVersion(minimumVersion);
         string? best = null;
         Version? bestVersion = null;
 
-        foreach (var name in _enumerateDesktopRuntimeVersions())
+        foreach (var name in enumerateVersions())
         {
             var parsed = ParseVersion(name);
             if (parsed is null)
@@ -72,11 +93,11 @@ public sealed class RuntimeProbe
         !string.IsNullOrWhiteSpace(_readRegistryValue(WebView2PerMachineValue))
         || !string.IsNullOrWhiteSpace(_readRegistryValue(WebView2PerUserValue));
 
-    /// <summary>枚举本机 x64 Desktop Runtime 版本目录（官方《How to check that .NET is installed》口径的目录枚举法）。</summary>
-    private static List<string> ListInstalledDesktopRuntimeVersions()
+    /// <summary>枚举本机 x64 运行时版本目录（官方《How to check that .NET is installed》口径的目录枚举法；框架名 = Microsoft.WindowsDesktop.App / Microsoft.AspNetCore.App）。</summary>
+    private static Func<IReadOnlyList<string>> ListInstalledRuntimeVersions(string frameworkName) => () =>
     {
         var frameworkDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "shared", "Microsoft.WindowsDesktop.App");
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "shared", frameworkName);
         if (!Directory.Exists(frameworkDir))
         {
             return [];
@@ -94,7 +115,7 @@ public sealed class RuntimeProbe
         {
             return [];
         }
-    }
+    };
 
     /// <summary>按完整注册表值路径读取（不存在返回 null）。HKLM 固定 64 位视图——BA（net48 AnyCPU/Prefer32Bit）以 32 位进程运行时，<c>SOFTWARE\WOW6432Node</c> 路径会被注册表重定向二次映射而读空（本机实测缺陷）。</summary>
     private static string? ReadRegistryValueOrDefault(string name)

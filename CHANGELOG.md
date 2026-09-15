@@ -2,6 +2,17 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 62 返修：前置链缺 AspNetCore 运行时致干净机 Server 服务启动失败（AC-01 干净 VM 验收不通过回流） · 2026-09-15
+
+- **缺陷与根因（决策 #128，DESIGN §6.2 / §6.9；AC-01 干净 VM 取证实证，证据链 `artifacts/accept-55/`）**：Server 组件为 `Microsoft.NET.Sdk.Web`（隐式 FrameworkReference `Microsoft.AspNetCore.App`），但引导前置 `runtime-desktop` 条目只装 windowsdesktop-runtime（不含 AspNetCore，两者互不包含），且 Server MSI 的 .NET 检测 `RuntimeType="desktop"`——检测放行而运行时缺框架，干净机 `LabelFrameServer` 服务无法向 SCM 报告状态（30 秒超时 → MSI 1920 → 1603 → Burn 全链回滚）。验收边界实证：手动补装 aspnetcore-runtime 10.0.12 后重跑引导全链成功、终态五项全绿。
+- **前置链补齐定案（新增 `runtime-aspnetcore` 条目，厂商直链 + CI 锁哈希，机制同 #115 / runtime-desktop）**：「改用涵盖两者的安装器」否决——微软无「WindowsDesktop + AspNetCore 合一」安装器（Hosting Bundle 不含 WindowsDesktop 且面向 IIS、SDK 含开发工具体积不可接受）。`generate-install-manifest.ps1` 新增条目：钉定与 runtime-desktop 同一 .NET 补丁列车版本（单参数 `-DotNetRuntimePatchVersion` 统管双条目，原 `-DotNetDesktopRuntimeVersion` 随返修并入）、直链 `builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/<版本>/aspnetcore-runtime-<版本>-win-x64.exe`（Runtime 路径段大写）、topologies = standalone / server-win / offline；`server-msi` dependsOn 补齐 = runtime-desktop + runtime-aspnetcore；断言同步（直链白名单 / x.y.z 钉定版本 / silentArgs 非空）。
+- **Bundle 链扩为七包（§6.9）**：`DotNetAspNetCoreRuntime` 置于 Desktop 与 WebView2 之间——DetectCondition = `AspNetCoreRuntimeInstalled`、InstallCondition = `InstallServer`、`Permanent="yes"`；`RuntimeProbe` 补 AspNetCore 腿（文件版本探测 `dotnet\shared\Microsoft.AspNetCore.App` ≥ 10.0.0，机制同 Desktop），BA 启动写 Burn 探测变量、确认页标注与日志同步；`build-bundle.ps1` 消费接线（manifest 缺条目即构建失败）。
+- **Server MSI 检测修正**：`main-server.wxs` NetCoreCheck `RuntimeType` desktop → **aspnet**（WiX netfx 合法枚举 aspnet / desktop / core，构建实测 WIX0021 后定值）——只装 Desktop 的机器在 MSI 检测阶段即被拦截（LaunchCondition + RuntimeMissingDlg 文案同步），而非装完服务起不来 1920；客户端 MSI（WinForms，desktop）维持不动。
+- **观察项裁定（AC-01 验收评论观察 ①，不修代码，决策 #128 ④）**：「品牌页未选 Zebra 时 InstallPluginZebra 仍为 true」非解析器缺陷——standalone 默认集合不含 plugin-zebra（契约测试锚定）；实证机制 = ZDesigner 驱动名预选（`SelectedBrands` 仅驱动预选与复选框勾选两条置位路径；验收自动化品牌页只点「下一步」，Burn 日志「品牌 [zebra]」= 复选框进入页面即已勾选），品牌页提示文案已声明预选语义。AC-01 重验不装品牌插件时在品牌页取消勾选即可。
+- **测试（Bootstrapper 177 → 183，全解决方案 709 项全绿）**：`RuntimeProbeTests` 补 AspNetCore 独立探测 / 最低版本矩阵（3 项）；`UpgradeAssessmentTests` 补 runtime-aspnetcore 共享组件语义（更新即满足 / 落后升级 / 未装新装）；fixture `install-manifest.full.json` 收录 runtime-aspnetcore（9 组件）+ server-msi dependsOn，解析 / 拓扑解析 / 变量映射断言同步；`ChainPackageMap` 七包映射。既有用例全保留适配。
+- **本地验证**：`dotnet build`（0 警告 0 错误）+ 全解决方案 `dotnet test`（排除 Perf/Soak，709 项全绿）；manifest 生成 + 断言（9 组件，runtime 三条目全过）+ 破坏性用例（版本非法 / 直链白名单外 URL 拦截）；AspNetCore 直链下载实测 sha256 与验收方手动补装件逐字节一致；真 Bundle 七包链重建 + 走查（本机 .NET 10 双运行时在位——跳过路径实证；干净机拦截路径无法本机实证，交回验收 VM 复验）。AC-01 + AC-03 转待验收（恢复条件 = 干净 VM 快照还原后重跑）。
+- **记账**：DESIGN §6.2（runtime 条目特殊语义）/ §6.9（链序七包 + 检测口径）/ §6.3（品牌勾选置位路径）/ §6.7 回看表不动（历史快照）+ 决策表 #128；CHANGELOG 本条目；ROADMAP 状态行维持迭代 62 既有口径（返修不另行）。
+
 ## 迭代 63 返修：外置插件加载 ALC 生命周期缺陷修复（AC-02 真机回归不通过回流） · 2026-09-15
 
 - **缺陷与根因（决策 #127，DESIGN §6.8「加载生命周期」；宿主级复现器 100% 实证 + 程序集→ALC 归属转储 + Resolving 处理器内引用相等取证）**：装好外置 zebra 插件后首次实际使用（连接测试）抛 `FileLoadException: Could not load 'SdkApi.Core' → InvalidOperationException: AssemblyLoadContext is unloading or was already unloaded`，此后打印 / 状态 / 测试全部被装配护栏回退 log 模拟，与内置不等价。根因：旧 `PluginDirectoryLoader`「逐 DLL 独立 collectible ALC 扫描 + 依赖惰性 Resolving 字节加载」组合下，**插件主体 ALC 对象扫描后被加载器丢弃（无任何托管强引用）**——GC 对 collectible ALC 发起卸载（状态进入 unloading）；存活插件实例使卸载无法完成（程序集 / 代码持续可用）但状态机已破坏，首用惰性解析 `LoadFromStream → VerifyIsAlive` 命中卸载态上下文即抛。静态强引用对照实验证实持根后同一惰性解析路径完全正常。

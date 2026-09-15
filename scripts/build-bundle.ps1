@@ -96,6 +96,8 @@ function Resolve-RuntimePackage([string]$ComponentId, [string]$CacheFileName) {
 
 $desktopVersion = ($manifest.components | Where-Object { $_.id -eq 'runtime-desktop' } | Select-Object -First 1).version
 $desktopRuntime = Resolve-RuntimePackage 'runtime-desktop' "windowsdesktop-runtime-$desktopVersion-win-x64.exe"
+$aspnetCoreVersion = ($manifest.components | Where-Object { $_.id -eq 'runtime-aspnetcore' } | Select-Object -First 1).version
+$aspnetCoreRuntime = Resolve-RuntimePackage 'runtime-aspnetcore' "aspnetcore-runtime-$aspnetCoreVersion-win-x64.exe"
 $webview2Runtime = Resolve-RuntimePackage 'runtime-webview2' 'MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe'
 
 # 5) wix build（Burn 核心内置，自研 BA 无需 Bal 扩展）
@@ -108,6 +110,7 @@ $global:LASTEXITCODE = 0
     -d "PayloadToolPath=$payloadToolDir\LabelFrame.Bootstrapper.PayloadTool.exe" -d "PayloadToolDir=$payloadToolDir\" `
     -d "WebUiZipPath=$webUiZip" -d "ZebraPluginPath=$zebraPlugin" `
     -d "RuntimeDesktopPath=$($desktopRuntime.Path)" -d "RuntimeDesktopUrl=$($desktopRuntime.Url)" -d "RuntimeDesktopVersion=$($desktopRuntime.Version)" `
+    -d "RuntimeAspNetCorePath=$($aspnetCoreRuntime.Path)" -d "RuntimeAspNetCoreUrl=$($aspnetCoreRuntime.Url)" -d "RuntimeAspNetCoreVersion=$($aspnetCoreRuntime.Version)" `
     -d "RuntimeWebView2Path=$($webview2Runtime.Path)" -d "RuntimeWebView2Url=$($webview2Runtime.Url)" `
     -o $bundleExe -arch x64 2>&1 | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }

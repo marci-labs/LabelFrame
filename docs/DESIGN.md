@@ -195,7 +195,10 @@ flowchart LR
 | 124 | 安装执行链与失败处置：Apply 启用 + 运行时前置链 + 非 MSI 落位（迭代 62 安装引导专项 6/8，2026-09-14；范围 = Issue #55「范围修订 v2」——Burn 已吸收大半自研编排，细节见 §6.9） | ① **Apply 启用边界**：问卷阶段保持 #53 只读契约（清单获取外零网络 / 零系统改动），执行边界 = 确认页「安装」→ 写变量 + `Engine.Plan` + **`Engine.Apply`**；#53「绝不 Apply」修订为「确认前绝不 Apply」。② **链序**：runtime-desktop → runtime-webview2 → ServerMsi → ClientMsi → WebUiPlacement → ZebraPluginPlacement（单一回滚边界；运行时 / 落位包 `Permanent="yes"`）。③ **运行时检测口径**：.NET = 文件版本探测（`dotnet\shared\Microsoft.WindowsDesktop.App` 版本目录枚举 ≥ 10.0.0，latestMajor 前滚对齐 MSI NetCoreCheck；注册表 sharedfx 实证不可靠）；WebView2 = EdgeUpdate Clients `pv` 注册表（对齐 MSI 先例，HKLM+HKCU）；探测入核心库 `RuntimeProbe`（委托注入可测），BA 于 Detect 前写 Burn 探测变量，链内 `DetectCondition` 消费（真 = 已装跳过 = AC-02）。④ **非 MSI 落位机制定案 = ExePackage 包装解压工具**（`LabelFrame.Bootstrapper.PayloadTool.exe` 内嵌 + zip / `.lfplugin` 作子 Payload 远程下载）：Burn 自定义动作被否决（无包获取语义、引擎进程内加载约束）；插件落位版本语义 = #123（覆盖 / 同版幂等 / 降级拒绝）；落位包 Permanent（卸载编排归 #57）。⑤ **失败处置引用 Burn 引擎内建回滚语义（不自造）**：包失败 → 停链 + 逆序回滚本次已执行包，`ApplyComplete.Status` 非零 → BA 失败报告（步骤 / Burn 日志位置 / 建议动作）。⑥ **重跑幂等**：MSI 已装跳过 + 覆盖升级（appsettings.json 不覆盖 = #48）；runtime DetectCondition 跳过；webui 覆盖重写；插件 #123 版本比较；重跑改选 = Burn Modify 语义（条件假即卸载）——版本升级细节归 #57。⑦ **manifest runtime 条目消费（#115 落地）**：`generate-install-manifest.ps1` 随发版生成 runtime 条目（厂商直链 + CI 下载实测哈希；webview2 version=evergreen；MSI dependsOn 补齐）；`build-bundle.ps1` 按 manifest 下载 runtime 安装器并 sha256 校验后交 wix build 内嵌摘要——厂商轮转 = bundle 构建失败（fail-closed） | 引导程序从「预览」进入「可真装」：链序 / 检测 / 落位 / 失败 / 幂等五项口径齐备（VM 取证 = AC-01/AC-03 待验收欠账）；非 MSI 组件复用 Burn 下载 / 校验 / 缓存能力（零自研下载链）；runtime 厂商直链风险以 manifest 哈希 + 构建校验双锚收口；#54（下载体验）与 #57（升级 / 卸载）接手点清晰 |
 | 125 | 引导下载体验补全：多源回退与下载行为测试覆盖（迭代 61 安装引导专项 5/8，2026-09-14；范围 = Issue #54「范围修订 v2（缩编重报）」——自研下载器被 Burn 吸收，细节见 §6.10） | ① **多源回退 = BA 消费 manifest `urls`（#115 顺序即优先级）**：v3 `ResolveSource` 在 v7 的后继 = `CacheAcquireBegin`/`Complete` 内 `IEngine.SetDownloadSource` + 事件返回 `Retry`；决策核心入核心库 `CacheSourceFallback`（每链包失败计数逐源推进、源耗尽停止干预；运行时清单是源顺序权威，每轮 Apply 重建、重试归零）；获取失败与坏哈希同样换源；仅远程载荷（`PayloadContainerId` 空）参与；重试驱动有界（无源不空转）。② **下载侧 UI 细化**：单包下载百分比（`CacheAcquireProgress` Progress/Total）+ 源序号 i/N + 换源提示 + 缓存命中标注（「已缓存（跳过下载）」）。③ **失败分类口径**：HRESULT → 源不可达 / 网络中断 / 校验失败（0x80091007）/ 未分类，差异化中文提示（含镜像源部署指引）双通道呈现（失败报告 + Burn 日志）。④ **测试矩阵**：`scripts/test-bundle-download-matrix.ps1`（本地脚本化验证不进 CI）——per-user 测试 Bundle + 真实 BA 七页向导 UI 自动化 + 双 TcpListener 路由源（ok/404/hang/corrupt/truncate），七场景三通道断言（Burn 日志 / 退出码 / 访问日志）；**Burn 载体下「续传」语义 = 失败后重试 / 换源重新获取**（无 HTTP Range 断点）；**缓存命中 + 断网续装前提 = 进程中断**（缓存阶段失败会被引擎回滚清缓存） | 镜像位预留（#117）从 schema 形态兑现为**消费链路**：单源清单零变更退化为「失败即耗尽」，镜像源落地只填 urls 数组；国内可达性风险（专项最大现实风险）出现对策路径；下载失败可诊断性（分类 + 源耗尽 + 日志双通道）；#57（升级收尾）为专项剩余唯一迭代 |
 | 126 | 升级路径（BA 升级清单 + 客户端检查更新提示闭环）（迭代 64 安装引导专项 8/8，2026-09-14；范围 = Issue #57「范围修订 v2（缩编重报）」——原「自研升级编排」被 Burn RelatedBundle + 固定 UpgradeCode 既有语义吸收，本轮只做「看」的部分与客户端提示；契约细节见 §6.11） | ① **BA 升级模式（看）**：Detect 本机已装组件版本（核心库 `LocalInstallProbe`，只读——MSI 注册表 `MsiEnumRelatedProducts` + `MsiGetProductInfo` 按 MSI UpgradeCode 枚举（同族多产品取最高版本）；官方插件读落位目录 manifest.json；runtime 复用 `RuntimeProbe`）→ 与当轮 manifest 组件版本对比（`UpgradeAssessment` 纯函数）→ 欢迎页「可升级清单」摘要 + 确认页「本机版本」列；全部已装组件 = 清单版本 → 明示「已是最新」（继续执行按幂等口径跳过，AC-02）。② **版本比较语义（组件级 / 包级，§6.11）**：统一比较器 = 双方可解析 System.Version（容忍 v 前缀、缺失段视为 0）按其比较，否则字符串 Ordinal——与 #123 插件比较同源，实现收敛单一（`VersionSemantics`）；组件级按「已装 vs manifest 条目版本」、包级（Bundle 自身）按 RelatedBundle 检测版本 + `latest.json` 指针。③ **升级执行零新机制**：确认后复用现成 Apply 链——Burn 固定 UpgradeCode 的 RelatedBundle 覆盖升级（新 Bundle 版本 > 已装 → 计划移除旧 Bundle + 安装新）+ MSI MajorUpgrade（appsettings.json 不覆盖 = #48）+ 插件 #123 版本比较 + webui 覆盖重写；BA 不新增执行代码路径。④ **latest.json 消费**：清单来源为稳定通道（URL）或本地目录时顺带解析 `latest.json`（#51 生成），manifest 版本 < 通道最新 → 欢迎页提示「清单非最新」（清单新鲜度，不阻断）。⑤ **客户端检查更新提示闭环（#71/#72 分发之上）**：WinHost `/api/host/config` 响应新增只读 `version`（程序集 InformationalVersion，对齐 AndroidHost #104 ⑤ 先例，向后兼容增量）；客户端设置页「更新与安装包」从 client-packages 文件名解析客户端 MSI 版本（`LabelFrame-Client-<版本>.msi` 发版命名事实）取最高与本机比较——有新版 → 「到服务端下载新版安装包 / 由 IT 重跑安装引导程序」（**不做应用内自动下载安装**）；无新版 → 「已是最新」；解析不到版本号不比较不误导 | 「重跑引导完成升级」闭环补上「检查」半边：用户与 IT 在装机外可判断是否需要升级；升级执行语义维持 Burn / MSI 既有口径（#118 更新策略不变，无人值守静默更新仍明确不做）；客户端零自动更新（提示 + 入口，决策 #71/#72 维持）；版本比较全系统单一语义（#123 同源收敛），后续新组件按 §6.11 表扩展零契约变更 |
-| 127 | 外置插件加载 ALC 生命周期（迭代 63 返修，2026-09-15；来源 = #56 AC-02 真机回归不通过回流——外置 zebra 首用连接测试抛 `FileLoadException: Could not load 'SdkApi.Core' → InvalidOperationException(VerifyIsAlive)`，此后全部回退 log 模拟；契约细节见 §6.8「加载生命周期」） | **根因（宿主级复现器 100% 实证 + 引用相等取证）**：逐 DLL 独立 collectible ALC 扫描 + 依赖惰性 Resolving 字节加载的组合——插件主体 ALC 对象在扫描后被加载器丢弃（无任何托管强引用），GC 对 collectible ALC **发起卸载**（状态进入 unloading）；存活实例使卸载**无法完成**（程序集与代码持续可用），但状态机已破坏——首用惰性解析经 `Resolving → LoadFromStream → VerifyIsAlive` 命中卸载态上下文即抛。**定案 = 三方向组合（③ 骨架 + ② 消窗口 + ① 断根）**：① **注册表显式强持有插件 ALC**——加载器发现结果携带 `AssemblyLoadContext` 根，`TransportPluginRegistry` 随插件实例存根（宿主生命周期不卸载；静态强引用对照实验证实持根后惰性解析成功）；② **包目录装配期预载全部伴生依赖进插件 ALC**——首用零惰性解析窗口；③ **按包目录单 ALC 整体加载探测**——安装包子目录 = 原子单元（一个 collectible ALC + 全部 DLL 字节加载 + 跨程序集发现 `ITransportPlugin`），无插件产出的目录显式 `Unload()` 丢弃——消灭 29 个抛弃型扫描 ALC 与卸载竞态环境（伴生闭包内存只驻留一份）。平铺手动 DLL 维持逐 DLL ALC（同居互不污染），ALC 根同样经注册表持有；`PluginProbe`（安装预检）同构收敛为单目录单 ALC + 预检完显式 `Unload`。**生命周期契约**：字节加载不锁文件（#73），卸载 / 覆盖升级 = 删目录 + 重启生效（#68）不变；运行时热卸载维持不做（#68 未决不变）——collectible 保留用于注册表弃置后的 GC 回收（升级重装重启后旧 ALC 随旧进程消亡，无泄漏路径） | AC-02 缺陷根断：首用加载路径恢复与内置等价（复现用例转绿 + 生命周期回归测试锚定「扫描后多轮 GC + 延迟首用不抛」）；外置插件加载从「逐 DLL 试探」收敛为「包原子装配」，启动扫描内存占用与抛弃型 ALC 数量双降；平铺 / 安装包两条加载路径与预检共用一套生命周期口径，后续品牌插件（TSPL 等）零契约变更继承 |## 5. API 概览
+| 127 | 外置插件加载 ALC 生命周期（迭代 63 返修，2026-09-15；来源 = #56 AC-02 真机回归不通过回流——外置 zebra 首用连接测试抛 `FileLoadException: Could not load 'SdkApi.Core' → InvalidOperationException(VerifyIsAlive)`，此后全部回退 log 模拟；契约细节见 §6.8「加载生命周期」） | **根因（宿主级复现器 100% 实证 + 引用相等取证）**：逐 DLL 独立 collectible ALC 扫描 + 依赖惰性 Resolving 字节加载的组合——插件主体 ALC 对象在扫描后被加载器丢弃（无任何托管强引用），GC 对 collectible ALC **发起卸载**（状态进入 unloading）；存活实例使卸载**无法完成**（程序集与代码持续可用），但状态机已破坏——首用惰性解析经 `Resolving → LoadFromStream → VerifyIsAlive` 命中卸载态上下文即抛。**定案 = 三方向组合（③ 骨架 + ② 消窗口 + ① 断根）**：① **注册表显式强持有插件 ALC**——加载器发现结果携带 `AssemblyLoadContext` 根，`TransportPluginRegistry` 随插件实例存根（宿主生命周期不卸载；静态强引用对照实验证实持根后惰性解析成功）；② **包目录装配期预载全部伴生依赖进插件 ALC**——首用零惰性解析窗口；③ **按包目录单 ALC 整体加载探测**——安装包子目录 = 原子单元（一个 collectible ALC + 全部 DLL 字节加载 + 跨程序集发现 `ITransportPlugin`），无插件产出的目录显式 `Unload()` 丢弃——消灭 29 个抛弃型扫描 ALC 与卸载竞态环境（伴生闭包内存只驻留一份）。平铺手动 DLL 维持逐 DLL ALC（同居互不污染），ALC 根同样经注册表持有；`PluginProbe`（安装预检）同构收敛为单目录单 ALC + 预检完显式 `Unload`。**生命周期契约**：字节加载不锁文件（#73），卸载 / 覆盖升级 = 删目录 + 重启生效（#68）不变；运行时热卸载维持不做（#68 未决不变）——collectible 保留用于注册表弃置后的 GC 回收（升级重装重启后旧 ALC 随旧进程消亡，无泄漏路径） | AC-02 缺陷根断：首用加载路径恢复与内置等价（复现用例转绿 + 生命周期回归测试锚定「扫描后多轮 GC + 延迟首用不抛」）；外置插件加载从「逐 DLL 试探」收敛为「包原子装配」，启动扫描内存占用与抛弃型 ALC 数量双降；平铺 / 安装包两条加载路径与预检共用一套生命周期口径，后续品牌插件（TSPL 等）零契约变更继承 |
+| 128 | 前置链 AspNetCore 运行时补齐（迭代 62 返修，2026-09-15；来源 = #55 AC-01 干净 VM 验收不通过回流——Server 组件为 `Microsoft.NET.Sdk.Web`（隐式 FrameworkReference `Microsoft.AspNetCore.App`），前置链 `runtime-desktop` 只装 windowsdesktop-runtime（不含 AspNetCore）且 Server MSI 检测 `RuntimeType="desktop"` 放行，干净机 `LabelFrameServer` 服务启动 30 秒超时（MSI 1920 → 1603 → Burn 全链回滚）；验收已实证手动补装 aspnetcore-runtime 后重跑引导全链成功、终态五项全绿） | ① **前置链补齐定案 = 新增 `runtime-aspnetcore` 条目（厂商直链 + CI 锁哈希，机制同 #115 / runtime-desktop）**；「改用涵盖两者的安装器」否决——微软无「WindowsDesktop + AspNetCore 合一」安装器（Hosting Bundle 只含 AspNetCore 不含 WindowsDesktop 且面向 IIS；SDK 安装器含开发工具体积不可接受）。条目口径：钉定与 runtime-desktop 同一 .NET 补丁列车版本（`generate-install-manifest.ps1` 单参数统管两条目）、直链 `builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/<版本>/aspnetcore-runtime-<版本>-win-x64.exe`（**Runtime 路径段大写**，与 WindowsDesktop 直链风格同源不同段）、topologies = standalone / server-win / offline（仅含服务端的预设需要）；`server-msi` dependsOn 补齐 = runtime-desktop + runtime-aspnetcore。② **Bundle 链序扩为七包（§6.9）**：`DotNetDesktopRuntime` → `DotNetAspNetCoreRuntime` → `WebView2Runtime` → 双 MSI → 双落位；新包 DetectCondition = `AspNetCoreRuntimeInstalled`（文件版本探测 `dotnet\shared\Microsoft.AspNetCore.App` ≥ 10.0.0，机制同 desktop）+ InstallCondition = `InstallServer`，`Permanent="yes"`。③ **Server MSI 检测修正**：`main-server.wxs` NetCoreCheck `RuntimeType` desktop → **aspnet**（Server 实际框架需求；客户端 MSI 维持 desktop 正确——WiX netfx 扩展 RuntimeType 合法枚举 aspnet / desktop / core，构建实测 WIX0021，aspnet 对应 ASP.NET Core Runtime）——只装 Desktop 的机器在 MSI 检测阶段即被拦截（LaunchCondition + RuntimeMissingDlg），而非装完服务起不来 1920。④ **观察项裁定（AC-01 验收评论观察 ①，不修代码）**：「品牌页未选 Zebra 时 InstallPluginZebra 仍为 true」非解析器缺陷——standalone 默认集合不含 plugin-zebra（契约测试锚定）；实证机制 = **ZDesigner 驱动名预选**（`SelectedBrands` 仅两处写入路径：驱动名预选与复选框勾选；验收自动化脚本品牌页只点「下一步」未碰复选框，而 Burn 日志「品牌 [zebra]」→ 复选框进入页面时即已勾选），品牌页提示文案已声明「已检测到本机安装的打印机驱动时会预选对应品牌」；AC-01 重验若要不装品牌插件，在品牌页取消勾选即可 | 干净机「引导即装齐」闭环补全：Server / Client 框架需求与前置链一一对应（desktop / aspnetcore / webview2 三条目全覆盖），MSI 静默直装场景的检测拦截与实际框架需求一致；#115 runtime 条目机制零新概念扩展（第四条 runtime 条目按同构口径追加）；AC-01 + AC-03 交回验收轮值（恢复条件 = 干净 VM 快照还原后重跑） |
+
+## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`（常量定义于 `ApiErrorCodes.InternalError`，全仓仅此一处字面量）。分类修正（决策 #107）：请求体反序列化失败（非法 JSON / 非 UTF-8 / 类型不匹配）→ 400 + `LF_API_BAD_BODY`（中文消息，原始解析异常详情只进服务端日志）；`POST /api/printer/test` 发送失败 → 400 + `LF_TRANSPORT_TEST_FAILED`（消息含目标地址与原因）；403（非归属设备回报 / 进度）同样返回 ErrorView——错误响应不存在空 body 形态。
 
@@ -261,7 +264,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 ## 6. 安装引导（Bootstrapper）
 
-> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）/ #124（安装执行链与失败处置，§6.9）/ #125（下载体验与多源回退，§6.10）/ #126（升级模式与版本比较，§6.11）/ #127（外置插件加载 ALC 生命周期，§6.8——迭代 63 返修）。
+> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）/ #124（安装执行链与失败处置，§6.9）/ #125（下载体验与多源回退，§6.10）/ #126（升级模式与版本比较，§6.11）/ #127（外置插件加载 ALC 生命周期，§6.8——迭代 63 返修）/ #128（前置链 AspNetCore 运行时补齐，§6.2 / §6.9——迭代 62 返修）。
 
 定位：**安装引导程序（setup）**——首次接触 LabelFrame 的部署者运行一个小 EXE，回答少量问题（部署拓扑、打印机品牌、是否带管理界面），程序解析安装清单（install manifest）、按需下载组件并完成静默安装 / 落位；PDA 不进 PC 引导（经服务端下载中心扫码下载，专项 3/8 #52）。目标：把「装什么、怎么装」从「读懂 DEPLOY 文档 + 手工排组件」降为「回答三个问题」。语言边界：引导问卷与向导文案**中文单语**，i18n 不进 setup 问卷（REQUIREMENTS §7「多语言」边界不变）。
 
@@ -289,7 +292,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `id` | string | ✅ | 组件稳定 id：`server-msi` / `client-msi` / `webui` / `linux-server` / `pda-apk` / `runtime-desktop` / `runtime-webview2` / `plugin-<brand>` |
+| `id` | string | ✅ | 组件稳定 id：`server-msi` / `client-msi` / `webui` / `linux-server` / `pda-apk` / `runtime-desktop` / `runtime-aspnetcore` / `runtime-webview2` / `plugin-<brand>` |
 | `type` | string | ✅ | `msi` / `lfplugin` / `webui-zip` / `apk` / `runtime` / `archive` |
 | `version` | string | ✅ | 组件版本（对齐产物版本；runtime 为自身版本；官方插件版本随主版本演进——§6.8） |
 | `dependsOn` | string[] | — | 依赖组件 id 列表（只约束**同集合内**组件的安装顺序，如 `client-msi` → `runtime-desktop`；跨形态互斥组件如 `server-msi` / `linux-server` 不会同集合出现） |
@@ -304,7 +307,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 **官方插件条目（迭代 63 起，决策 #123）**：`plugin-zebra`（type=`lfplugin`，version=主版本，topologies=`standalone` / `client` / `offline`）随发版流水线从当版 `.lfplugin` 产物生成（`labelframe-transport-zebra-<版本>.lfplugin` Release 附件）；品牌 → 组件 id → 插件包 pluginId 的三段映射表见 §6.8。
 
-**runtime 条目特殊语义**：`runtime-desktop`（.NET 10 Desktop Runtime x64）/ `runtime-webview2`（WebView2 Evergreen 引导器）的 `urls` 指向**厂商官方直链**；sha256 / sizeBytes 由 CI 生成时对当次下载实测锁定（**已实现（迭代 62，#55）**：`generate-install-manifest.ps1` 随发版生成两条 runtime 条目——直链下载实测哈希与体积，`runtime-webview2` version = `evergreen`（固定直链轮转无可钉版本）；MSI 条目 `dependsOn` 同步补齐：`server-msi → runtime-desktop`、`client-msi → runtime-desktop + runtime-webview2`）。厂商可能轮转固定 URL 背后的文件——轮转表现为 **bundle 构建时按 manifest 校验失败**（`build-bundle.ps1` 下载后逐字节 sha256 比对 manifest 值，不符即构建失败；Burn 再从校验过的本地产物内嵌包摘要，安装期下载校验由引擎执行），修复 = 重新发版刷新 manifest（fail-closed，安全方向失效）。属接受的残余风险（强于「不校验厂商文件」）。runtime 无本仓产物，不进 Release 附件。
+**runtime 条目特殊语义**：`runtime-desktop`（.NET 10 Desktop Runtime x64）/ `runtime-aspnetcore`（ASP.NET Core Runtime x64，**迭代 62 返修新增，决策 #128**——Server 组件为 Sdk.Web 隐式 FrameworkReference AspNetCore.App，与客户端 WinForms 需要的 Desktop Runtime 互不包含）/ `runtime-webview2`（WebView2 Evergreen 引导器）的 `urls` 指向**厂商官方直链**；sha256 / sizeBytes 由 CI 生成时对当次下载实测锁定（**已实现（迭代 62，#55）**：`generate-install-manifest.ps1` 随发版生成 runtime 条目——直链下载实测哈希与体积，`runtime-webview2` version = `evergreen`（固定直链轮转无可钉版本）；MSI 条目 `dependsOn` 同步补齐：`server-msi → runtime-desktop + runtime-aspnetcore`、`client-msi → runtime-desktop + runtime-webview2`）。`runtime-desktop` / `runtime-aspnetcore` 钉定**同一 .NET 补丁列车版本**（脚本单参数统管，版本天然同进退）；`runtime-aspnetcore` 直链 = `builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/<版本>/aspnetcore-runtime-<版本>-win-x64.exe`（**Runtime 路径段大写**）。厂商可能轮转固定 URL 背后的文件——轮转表现为 **bundle 构建时按 manifest 校验失败**（`build-bundle.ps1` 下载后逐字节 sha256 比对 manifest 值，不符即构建失败；Burn 再从校验过的本地产物内嵌包摘要，安装期下载校验由引擎执行），修复 = 重新发版刷新 manifest（fail-closed，安全方向失效）。属接受的残余风险（强于「不校验厂商文件」）。runtime 无本仓产物，不进 Release 附件。
 
 **Docker 镜像不进首版条目**：镜像无独立可哈希文件产物（完整性由 registry digest 机制保证）；`server-docker` 预设的下载组件集合为空（§6.3），引导程序生成 compose 文件与镜像拉取指引。digest 收录按需再议（§7 开放点）。
 
@@ -335,6 +338,20 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
       "notes": ".NET 10 Desktop Runtime（x64），缺失时由引导程序补装"
     },
     {
+      "id": "runtime-aspnetcore",
+      "type": "runtime",
+      "version": "10.0.1",
+      "dependsOn": [],
+      "urls": [
+        "https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/10.0.1/aspnetcore-runtime-10.0.1-win-x64.exe"
+      ],
+      "sha256": "a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5c3a18f6d4b2907e5",
+      "sizeBytes": 11262864,
+      "silentArgs": "/install /quiet /norestart",
+      "topologies": ["standalone", "server-win", "offline"],
+      "notes": "ASP.NET Core Runtime（x64，服务端依赖；不含 Desktop Runtime，二者互不包含），缺失时由引导程序补装"
+    },
+    {
       "id": "runtime-webview2",
       "type": "runtime",
       "version": "1.0.2903.40",
@@ -352,7 +369,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
       "id": "server-msi",
       "type": "msi",
       "version": "0.26.0",
-      "dependsOn": ["runtime-desktop"],
+      "dependsOn": ["runtime-desktop", "runtime-aspnetcore"],
       "urls": [
         "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-Server-0.26.0.msi"
       ],
@@ -439,7 +456,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 **仅有的两项自由开关**：
 
-1. **打印机品牌多选**：品牌 → `plugin-<brand>` 组件映射（**已完整化（迭代 63，决策 #123）：Zebra → `plugin-zebra`，manifest 已有条目，选项生效；brand → 组件 id → 插件包 pluginId 完整映射表见 §6.8**）；适用于含客户端的预设（`standalone` / `client`）。
+1. **打印机品牌多选**：品牌 → `plugin-<brand>` 组件映射（**已完整化（迭代 63，决策 #123）：Zebra → `plugin-zebra`，manifest 已有条目，选项生效；brand → 组件 id → 插件包 pluginId 完整映射表见 §6.8**）；适用于含客户端的预设（`standalone` / `client`）。**品牌勾选只有两条置位路径**：驱动名预选（清单加载时按已装打印机名预勾选，如 ZDesigner → zebra——页面提示已声明该语义）与用户勾选 / 取消勾选；预设默认集合**不含**品牌插件（AC-01 验收观察 ① 裁定见决策 #128 ④）。
 2. **是否带管理界面**：`webui`（webui-zip）落位服务端 `plugins/web-ui`（放入即生效，决策 #62）；`standalone` 默认关（客户端本机 UI 已完整），分离部署建议开；Docker 形态 = 启用镜像内置界面（不下载 zip）。
 
 **「预设 + 开关 → 组件集合」解析契约**（专项 4/8 #53 实现；输出是 #54 下载引擎 / #55 安装编排的公共契约。**形状细化（迭代 60，#53 实现，决策 #121）**：返回值由「裸组件清单」升级为 `TopologyPlan`——server-docker 的 compose 产物描述、确认页 / 编排所需的安装位置不是 `ManifestComponent` 的字段，裸 `IReadOnlyList<ManifestComponent>` 无法承载；映射语义与上表不变）：
@@ -596,22 +613,23 @@ public interface ITopologyResolver
 
 > 范围基线 = Issue #55「范围修订 v2」（Apply 启用缩编重报）：MSI 静默链、失败回滚、UAC 提权、msiexec 日志、重跑恢复由 Burn 引擎内建（#122 立场），本节只定案**链序 / 检测口径 / 非 MSI 落位机制 / 失败与幂等口径 / UI 事件映射**五项自研边界。卸载编排、升级版本比较 UI、多源回退与缓存策略不在本轮（归 #54 修订 / #57）。
 
-**链序（Bundle Chain，单一回滚边界）**：
+**链序（Bundle Chain，单一回滚边界；迭代 62 返修扩为七包，决策 #128）**：
 
 | 序 | 包 id | 类型 | 条件 | 说明 |
 |---|---|---|---|---|
 | 1 | `DotNetDesktopRuntime` | ExePackage | InstallCondition = `InstallServer OR InstallClient`；DetectCondition = `DesktopRuntimeInstalled` | .NET 10 Desktop Runtime x64（厂商直链，`Permanent="yes"`） |
-| 2 | `WebView2Runtime` | ExePackage | InstallCondition = `InstallClient`；DetectCondition = `WebView2Installed` | WebView2 Evergreen 引导器（厂商直链，`Permanent="yes"`） |
-| 3 | `ServerMsi` | MsiPackage | InstallCondition = `InstallServer` | 已有（#53） |
-| 4 | `ClientMsi` | MsiPackage | InstallCondition = `InstallClient` | 已有（#53） |
-| 5 | `WebUiPlacement` | ExePackage（包装 PayloadTool） | InstallCondition = `InstallWebUi` | 管理界面 zip → `%ProgramData%\LabelFrame\server\plugins\web-ui` |
-| 6 | `ZebraPluginPlacement` | ExePackage（包装 PayloadTool） | InstallCondition = `InstallPluginZebra` | `.lfplugin` → `%ProgramData%\LabelFrame\Client\plugins\labelframe-transport-zebra` |
+| 2 | `DotNetAspNetCoreRuntime` | ExePackage | InstallCondition = `InstallServer`；DetectCondition = `AspNetCoreRuntimeInstalled` | ASP.NET Core Runtime x64（厂商直链，`Permanent="yes"`；Server 组件 Sdk.Web 隐式 FrameworkReference 所需，**迭代 62 返修新增**） |
+| 3 | `WebView2Runtime` | ExePackage | InstallCondition = `InstallClient`；DetectCondition = `WebView2Installed` | WebView2 Evergreen 引导器（厂商直链，`Permanent="yes"`） |
+| 4 | `ServerMsi` | MsiPackage | InstallCondition = `InstallServer` | 已有（#53） |
+| 5 | `ClientMsi` | MsiPackage | InstallCondition = `InstallClient` | 已有（#53） |
+| 6 | `WebUiPlacement` | ExePackage（包装 PayloadTool） | InstallCondition = `InstallWebUi` | 管理界面 zip → `%ProgramData%\LabelFrame\server\plugins\web-ui` |
+| 7 | `ZebraPluginPlacement` | ExePackage（包装 PayloadTool） | InstallCondition = `InstallPluginZebra` | `.lfplugin` → `%ProgramData%\LabelFrame\Client\plugins\labelframe-transport-zebra` |
 
 运行时置链首（MSI 的 NetCoreCheck / WebView2 LaunchCondition 前置满足，避免「MSI 检测拦截提示手工装」的断链体验）；落位包在 MSI 之后（目标目录由 MSI 创建，ACL 与 MSI 一致）。MSI / 落位包 `Compressed="no"` + `DownloadUrl`（web bundle 产物不进 EXE）；runtime 同（厂商直链）。
 
 **运行时检测口径（AC-02：缺失才装、已装跳过）**：
 
-- **.NET 10 Desktop Runtime = 文件版本探测**：枚举 `%ProgramFiles%\dotnet\shared\Microsoft.WindowsDesktop.App\` 下版本目录名，按 `System.Version` 解析后取最大值与最低版本（10.0.0）比较——对齐 MSI 侧 NetCoreCheck 口径（desktop / 10.0.0 / latestMajor 前滚）。**不采用注册表 `dotnet\Setup\InstalledVersions\...\sharedfx`**：实证（2026-09-14 开发机）运行时已装而该键不存在（本仓 MSI 注释亦记录「版本号是命名值而非默认值，注册表搜索读不到」）；文件枚举是微软官方《How to check that .NET is installed》口径。
+- **.NET 运行时（Desktop / AspNetCore）= 文件版本探测**：枚举 `%ProgramFiles%\dotnet\shared\Microsoft.WindowsDesktop.App\`（Desktop）或 `%ProgramFiles%\dotnet\shared\Microsoft.AspNetCore.App\`（AspNetCore）下版本目录名，按 `System.Version` 解析后取最大值与最低版本（10.0.0）比较——对齐 MSI 侧 NetCoreCheck 口径（desktop / aspnet 各自条目 / 10.0.0 / latestMajor 前滚）。**不采用注册表 `dotnet\Setup\InstalledVersions\...\sharedfx`**：实证（2026-09-14 开发机）运行时已装而该键不存在（本仓 MSI 注释亦记录「版本号是命名值而非默认值，注册表搜索读不到」）；文件枚举是微软官方《How to check that .NET is installed》口径。
 - **WebView2 = 注册表探测**：`HKLM\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}` 值 `pv`，或 HKCU 同键（per-user 安装）——对齐 MSI 侧 `WEBVIEW2_HKLM` / `WEBVIEW2_HKCU` 先例；Evergreen 自更新，只判存在不比版本。
 - 探测实现于核心库（`RuntimeProbe`，net48 / net10 双腿；目录枚举与注册表读取以委托注入可单测），BA 启动时（`engine.Detect()` 前）写入 Burn 探测变量；Burn 语义：`DetectCondition` 真 = 已装（Present）→ 计划跳过，假 = 缺失 → 计划安装。运行时包 `Permanent="yes"`（共享系统组件，不随 bundle 卸载 / 升级移除）。
 

@@ -136,14 +136,14 @@ public sealed class BundleVariableMapTests
     [Fact]
     public void Chain_package_map_should_be_bijective_and_cover_contract_component_ids()
     {
-        // 链包 ↔ 组件 id 映射（§6.9 链序表）：双向一致，六组件全覆盖（后续品牌按同构扩展）
-        Assert.Equal(6, ChainPackageMap.ComponentByPackageId.Count);
+        // 链包 ↔ 组件 id 映射（§6.9 链序表，七包）：双向一致，七组件全覆盖（后续品牌按同构扩展）
+        Assert.Equal(7, ChainPackageMap.ComponentByPackageId.Count);
         foreach (var (packageId, componentId) in ChainPackageMap.ComponentByPackageId)
         {
             Assert.Equal(packageId, ChainPackageMap.PackageIdByComponent[componentId]);
         }
 
-        foreach (var componentId in new[] { "runtime-desktop", "runtime-webview2", "server-msi", "client-msi", "webui", "plugin-zebra" })
+        foreach (var componentId in new[] { "runtime-desktop", "runtime-aspnetcore", "runtime-webview2", "server-msi", "client-msi", "webui", "plugin-zebra" })
         {
             Assert.True(ChainPackageMap.PackageIdByComponent.ContainsKey(componentId), $"缺组件映射：{componentId}");
         }

@@ -7,7 +7,7 @@
       "id": "server-msi",
       "type": "msi",
       "version": "0.26.0",
-      "dependsOn": ["runtime-desktop"],
+      "dependsOn": ["runtime-desktop", "runtime-aspnetcore"],
       "urls": [
         "https://github.com/marci-labs/LabelFrame/releases/download/v0.26.0/LabelFrame-Server-0.26.0.msi"
       ],
@@ -58,6 +58,20 @@
       "silentArgs": "/install /quiet /norestart",
       "topologies": ["standalone", "server-win", "client", "offline"],
       "notes": ".NET 10 Desktop Runtime（x64），缺失时由引导程序补装"
+    },
+    {
+      "id": "runtime-aspnetcore",
+      "type": "runtime",
+      "version": "10.0.1",
+      "dependsOn": [],
+      "urls": [
+        "https://builds.dotnet.microsoft.com/builds/aspnetcore-runtime-10.0.1-win-x64.exe"
+      ],
+      "sha256": "28f6d4b2907e5c3a28f6d4b2907e5c3a28f6d4b2907e5c3a28f6d4b2907e5c3a",
+      "sizeBytes": 11262864,
+      "silentArgs": "/install /quiet /norestart",
+      "topologies": ["standalone", "server-win", "offline"],
+      "notes": "ASP.NET Core Runtime（x64，服务端依赖；不含 Desktop Runtime，二者互不包含），缺失时由引导程序补装"
     },
     {
       "id": "runtime-webview2",
