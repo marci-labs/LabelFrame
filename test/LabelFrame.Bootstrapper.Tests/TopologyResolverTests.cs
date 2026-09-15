@@ -52,11 +52,11 @@ public sealed class TopologyResolverTests
     [Fact]
     public void Resolve_standalone_default_should_include_core_with_dependency_closure()
     {
-        // 单机一体核心：runtime-desktop、runtime-webview2、server-msi、client-msi；依赖闭包按依赖序排列
+        // 单机一体核心：runtime-desktop、runtime-aspnetcore（server-msi 依赖闭包，迭代 62 返修）、runtime-webview2、server-msi、client-msi
         var plan = _resolver.Resolve(Full, TopologyPreset.Standalone, Options());
 
-        AssertIds(plan, "runtime-desktop", "server-msi", "runtime-webview2", "client-msi");
-        Assert.Equal(58396456L + 11534336L + 22020096L + 12582912L, plan.TotalSizeBytes);
+        AssertIds(plan, "runtime-desktop", "runtime-aspnetcore", "server-msi", "runtime-webview2", "client-msi");
+        Assert.Equal(58396456L + 11262864L + 11534336L + 22020096L + 12582912L, plan.TotalSizeBytes);
     }
 
     [Fact]
@@ -64,20 +64,21 @@ public sealed class TopologyResolverTests
     {
         var plan = _resolver.Resolve(Full, TopologyPreset.Standalone, Options(["zebra"], webUi: true));
 
-        AssertIds(plan, "webui", "runtime-desktop", "server-msi", "runtime-webview2", "client-msi", "plugin-zebra");
-        // 依赖序不变式：runtime-desktop 在 server-msi / client-msi 之前，runtime-webview2 在 client-msi 之前
+        AssertIds(plan, "webui", "runtime-desktop", "runtime-aspnetcore", "server-msi", "runtime-webview2", "client-msi", "plugin-zebra");
+        // 依赖序不变式：runtime-desktop / runtime-aspnetcore 在 server-msi 之前，runtime-desktop / runtime-webview2 在 client-msi 之前
         var ids = plan.Components.Select(item => item.Component.Id).ToList();
         Assert.True(ids.IndexOf("runtime-desktop") < ids.IndexOf("server-msi"));
+        Assert.True(ids.IndexOf("runtime-aspnetcore") < ids.IndexOf("server-msi"));
         Assert.True(ids.IndexOf("runtime-desktop") < ids.IndexOf("client-msi"));
         Assert.True(ids.IndexOf("runtime-webview2") < ids.IndexOf("client-msi"));
     }
 
     [Fact]
-    public void Resolve_server_win_default_should_be_runtime_and_server_msi()
+    public void Resolve_server_win_default_should_be_runtimes_and_server_msi()
     {
         var plan = _resolver.Resolve(Full, TopologyPreset.ServerWin, Options());
 
-        AssertIds(plan, "runtime-desktop", "server-msi");
+        AssertIds(plan, "runtime-desktop", "runtime-aspnetcore", "server-msi");
     }
 
     [Fact]
@@ -85,7 +86,7 @@ public sealed class TopologyResolverTests
     {
         var plan = _resolver.Resolve(Full, TopologyPreset.ServerWin, Options(webUi: true));
 
-        AssertIds(plan, "webui", "runtime-desktop", "server-msi");
+        AssertIds(plan, "webui", "runtime-desktop", "runtime-aspnetcore", "server-msi");
         var webUi = Assert.Single(plan.Components, item => item.Component.Id == "webui");
         Assert.Contains("plugins", webUi.InstallTarget, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("LabelFrame", webUi.InstallTarget, StringComparison.OrdinalIgnoreCase);
@@ -174,6 +175,7 @@ public sealed class TopologyResolverTests
         Assert.Contains("LabelFrame", Assert.Single(plan.Components, item => item.Component.Id == "server-msi").InstallTarget, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("LabelFrame", Assert.Single(plan.Components, item => item.Component.Id == "client-msi").InstallTarget, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(".NET Desktop Runtime", Assert.Single(plan.Components, item => item.Component.Id == "runtime-desktop").InstallTarget, StringComparison.Ordinal);
+        Assert.Contains("ASP.NET Core Runtime", Assert.Single(plan.Components, item => item.Component.Id == "runtime-aspnetcore").InstallTarget, StringComparison.Ordinal);
         Assert.Contains("WebView2", Assert.Single(plan.Components, item => item.Component.Id == "runtime-webview2").InstallTarget, StringComparison.Ordinal);
     }
 

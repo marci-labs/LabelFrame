@@ -7,7 +7,7 @@ namespace LabelFrame.Bootstrapper.Tests;
 /// <summary>本机已装探测（§6.11，决策 #126）：委托注入下的 MSI 版本选取、插件 manifest 读取与异常兜底。</summary>
 public sealed class LocalInstallProbeTests
 {
-    private static RuntimeProbeResult Runtime => new(true, "10.0.12", true);
+    private static RuntimeProbeResult Runtime => new(true, "10.0.12", true, "10.0.12", true);
 
     [Fact]
     public void No_msi_products_yield_null_versions()
@@ -99,7 +99,7 @@ public sealed class LocalInstallProbeTests
     public void Runtime_result_is_passed_through()
     {
         var probe = new LocalInstallProbe(msiProductsByUpgradeCode: _ => []);
-        var runtime = new RuntimeProbeResult(false, null, true);
+        var runtime = new RuntimeProbeResult(false, null, false, null, true);
 
         var snapshot = probe.Probe(runtime);
 

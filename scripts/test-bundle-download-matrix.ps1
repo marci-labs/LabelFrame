@@ -226,6 +226,7 @@ if (-not $SkipBuild) {
         '    <Variable Name="InstallWebUi" Type="numeric" Value="0" />'
         '    <Variable Name="InstallPluginZebra" Type="numeric" Value="0" />'
         '    <Variable Name="DesktopRuntimeInstalled" Type="numeric" Value="1" />'
+        '    <Variable Name="AspNetCoreRuntimeInstalled" Type="numeric" Value="1" />'
         '    <Variable Name="WebView2Installed" Type="numeric" Value="1" />'
         '    <Variable Name="WebUiTargetDir" Type="string" Value="" />'
         '    <Variable Name="PluginZebraTargetDir" Type="string" Value="" />'

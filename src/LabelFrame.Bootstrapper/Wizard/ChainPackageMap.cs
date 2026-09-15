@@ -9,6 +9,7 @@ public static class ChainPackageMap
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["DotNetDesktopRuntime"] = "runtime-desktop",
+            ["DotNetAspNetCoreRuntime"] = "runtime-aspnetcore",
             ["WebView2Runtime"] = "runtime-webview2",
             ["ServerMsi"] = "server-msi",
             ["ClientMsi"] = "client-msi",

@@ -206,7 +206,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
     }
 
     /// <summary>启动时的运行时探测结果（确认页「已装则跳过」标注与完成页摘要共用）。</summary>
-    public RuntimeProbeResult RuntimeStatus { get; private set; } = new(false, null, false);
+    public RuntimeProbeResult RuntimeStatus { get; private set; } = new(false, null, false, null, false);
 
     protected override void Run()
     {
@@ -220,7 +220,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         try
         {
             RuntimeStatus = new RuntimeProbe().Probe();
-            Log($"运行时探测：.NET Desktop Runtime = {(RuntimeStatus.DesktopRuntimeInstalled ? $"已装 {RuntimeStatus.DesktopRuntimeVersion}" : "未装")}；WebView2 = {(RuntimeStatus.WebView2Installed ? "已装" : "未装")}");
+            Log($"运行时探测：.NET Desktop Runtime = {(RuntimeStatus.DesktopRuntimeInstalled ? $"已装 {RuntimeStatus.DesktopRuntimeVersion}" : "未装")}；ASP.NET Core Runtime = {(RuntimeStatus.AspNetCoreRuntimeInstalled ? $"已装 {RuntimeStatus.AspNetCoreRuntimeVersion}" : "未装")}；WebView2 = {(RuntimeStatus.WebView2Installed ? "已装" : "未装")}");
         }
         catch (Exception ex)
         {
@@ -228,6 +228,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         }
 
         engine.SetVariableNumeric(BundleVariableMap.DesktopRuntimeVariable, RuntimeStatus.DesktopRuntimeInstalled ? 1 : 0);
+        engine.SetVariableNumeric(BundleVariableMap.AspNetCoreRuntimeVariable, RuntimeStatus.AspNetCoreRuntimeInstalled ? 1 : 0);
         engine.SetVariableNumeric(BundleVariableMap.WebView2Variable, RuntimeStatus.WebView2Installed ? 1 : 0);
 
         // 非交互启动（决策 #126 升级链补全）：升级时 Burn 以 Uninstall 动作驱动旧 Bundle（RelatedBundle 升级链尾），

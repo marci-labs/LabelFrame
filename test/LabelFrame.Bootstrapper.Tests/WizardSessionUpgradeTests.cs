@@ -68,7 +68,7 @@ public sealed class WizardSessionUpgradeTests : IDisposable
     private static WizardSession SessionWith(string manifestPath, LocalInstallProbe probe) => new(
         installedPrinterNames: () => [],
         localInstallProbe: probe,
-        runtimeProbe: () => new RuntimeProbeResult(false, null, false))
+        runtimeProbe: () => new RuntimeProbeResult(false, null, false, null, false))
     {
         ManifestSource = manifestPath,
     };
@@ -137,7 +137,7 @@ public sealed class WizardSessionUpgradeTests : IDisposable
             installedPrinterNames: () => [],
             localInstallProbe: new LocalInstallProbe(
                 msiProductsByUpgradeCode: _ => throw new InvalidOperationException("注册表不可用")),
-            runtimeProbe: () => new RuntimeProbeResult(false, null, false))
+            runtimeProbe: () => new RuntimeProbeResult(false, null, false, null, false))
         {
             ManifestSource = manifestPath,
         };

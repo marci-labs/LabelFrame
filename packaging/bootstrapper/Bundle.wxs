@@ -3,11 +3,13 @@
   LabelFrame 安装引导 Bundle（WiX Burn，DESIGN §6.1 决策 #122；链序与口径 = §6.9 决策 #124）。
 
   - BA = src/LabelFrame.Bootstrapper.Ba（net48 托管 BA，out-of-proc：五步问卷（只读）→ 确认页「安装」→ Plan + Apply）；
-  - 链（§6.9 六包，单一回滚边界）：
+  - 链（§6.9 七包，单一回滚边界；迭代 62 返修补 AspNetCore，决策 #128）：
       1. DotNetDesktopRuntime（.NET 10 Desktop Runtime x64，厂商直链，Permanent，DetectCondition = BA 探测变量）
-      2. WebView2Runtime（WebView2 Evergreen 引导器，厂商直链，Permanent，DetectCondition = BA 探测变量）
-      3. ServerMsi / 4. ClientMsi（既有，Compressed=no + DownloadUrl）
-      5. WebUiPlacement / 6. ZebraPluginPlacement（非 MSI 落位：PayloadTool 内嵌（Compressed=yes）+ zip 子 Payload 远程下载，
+      2. DotNetAspNetCoreRuntime（ASP.NET Core Runtime x64，厂商直链，Permanent——Server 组件 Sdk.Web 隐式
+         FrameworkReference 所需，与 Desktop Runtime 互不包含；仅服务端预设安装）
+      3. WebView2Runtime（WebView2 Evergreen 引导器，厂商直链，Permanent，DetectCondition = BA 探测变量）
+      4. ServerMsi / 5. ClientMsi（既有，Compressed=no + DownloadUrl）
+      6. WebUiPlacement / 7. ZebraPluginPlacement（非 MSI 落位：PayloadTool 内嵌（Compressed=yes）+ zip 子 Payload 远程下载，
          InstallArguments 以 [变量] 引用 BA 写入的落位目标目录；插件落位走 #123 版本比较，Permanent——卸载编排不在本轮）
   - 运行时条目消费 install manifest（#115）：DownloadUrl / sha256 由 scripts/build-bundle.ps1 按 manifest 校验后传入本地产物；
   - 构建：scripts/build-bundle.ps1（wix build；需真实包文件提取元数据，故不进 LabelFrame.slnx）。
@@ -47,8 +49,9 @@
     <Variable Name="InstallClient" Type="numeric" Value="0" />
     <Variable Name="InstallWebUi" Type="numeric" Value="0" />
     <Variable Name="InstallPluginZebra" Type="numeric" Value="0" />
-    <!-- 运行时探测变量（决策 #124，§6.9 检测口径）：BA 于 Detect 前写入，runtime 包 DetectCondition 消费（真 = 已装跳过） -->
+    <!-- 运行时探测变量（决策 #124，§6.9 检测口径；#128 补 AspNetCore）：BA 于 Detect 前写入，runtime 包 DetectCondition 消费（真 = 已装跳过） -->
     <Variable Name="DesktopRuntimeInstalled" Type="numeric" Value="0" />
+    <Variable Name="AspNetCoreRuntimeInstalled" Type="numeric" Value="0" />
     <Variable Name="WebView2Installed" Type="numeric" Value="0" />
     <!-- 落位目标变量（决策 #124，§6.9 落位机制）：BA 写入绝对路径，落位包 InstallArguments 以 [变量] 引用 -->
     <Variable Name="WebUiTargetDir" Type="string" Value="" />
@@ -69,7 +72,22 @@
         <ExitCode Value="3010" Behavior="scheduleReboot" />
       </ExePackage>
 
-      <!-- 2) WebView2 Evergreen 引导器：仅客户端预设需要；安装器自身幂等（已装时快速成功） -->
+      <!-- 2) ASP.NET Core Runtime x64（迭代 62 返修，决策 #128）：Server 组件 Sdk.Web 隐式 FrameworkReference 所需，
+           与 Desktop Runtime 互不包含；仅含服务端的预设安装，缺失才装、已装跳过（AC-02）；共享系统组件不随 bundle 卸载 -->
+      <ExePackage Id="DotNetAspNetCoreRuntime"
+                  SourceFile="$(var.RuntimeAspNetCorePath)"
+                  Name="aspnetcore-runtime-$(var.RuntimeAspNetCoreVersion)-win-x64.exe"
+                  Compressed="no"
+                  DownloadUrl="$(var.RuntimeAspNetCoreUrl)"
+                  Permanent="yes"
+                  PerMachine="yes"
+                  DetectCondition="AspNetCoreRuntimeInstalled"
+                  InstallCondition="InstallServer"
+                  InstallArguments="/install /quiet /norestart">
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+      </ExePackage>
+
+      <!-- 3) WebView2 Evergreen 引导器：仅客户端预设需要；安装器自身幂等（已装时快速成功） -->
       <ExePackage Id="WebView2Runtime"
                   SourceFile="$(var.RuntimeWebView2Path)"
                   Name="MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe"
@@ -83,21 +101,21 @@
         <ExitCode Value="3010" Behavior="scheduleReboot" />
       </ExePackage>
 
-      <!-- 3) Server MSI（既有，#53） -->
+      <!-- 4) Server MSI（既有，#53） -->
       <MsiPackage Id="ServerMsi"
                   SourceFile="$(var.MsiDir)LabelFrame-Server-$(var.ProductVersion).msi"
                   Compressed="no"
                   InstallCondition="InstallServer"
                   DownloadUrl="$(var.DownloadBase)/LabelFrame-Server-$(var.ProductVersion).msi" />
 
-      <!-- 4) Client MSI（既有，#53） -->
+      <!-- 5) Client MSI（既有，#53） -->
       <MsiPackage Id="ClientMsi"
                   SourceFile="$(var.MsiDir)LabelFrame-Client-$(var.ProductVersion).msi"
                   Compressed="no"
                   InstallCondition="InstallClient"
                   DownloadUrl="$(var.DownloadBase)/LabelFrame-Client-$(var.ProductVersion).msi" />
 
-      <!-- 5) 管理界面 zip 落位：PayloadTool 内嵌（Compressed=yes）+ zip 子 Payload 远程下载；目标目录变量由 BA 写入 -->
+      <!-- 6) 管理界面 zip 落位：PayloadTool 内嵌（Compressed=yes）+ zip 子 Payload 远程下载；目标目录变量由 BA 写入 -->
       <ExePackage Id="WebUiPlacement"
                   CacheId="WebUiPlacement"
                   SourceFile="$(var.PayloadToolPath)"
@@ -114,7 +132,7 @@
                  DownloadUrl="$(var.DownloadBase)/labelframe-server-webui-$(var.ProductVersion).zip" />
       </ExePackage>
 
-      <!-- 6) Zebra 官方插件 .lfplugin 落位（#123 版本比较：新版本覆盖 / 同版本幂等 / 降级拒绝） -->
+      <!-- 7) Zebra 官方插件 .lfplugin 落位（#123 版本比较：新版本覆盖 / 同版本幂等 / 降级拒绝） -->
       <ExePackage Id="ZebraPluginPlacement"
                   CacheId="ZebraPluginPlacement"
                   SourceFile="$(var.PayloadToolPath)"

@@ -8,7 +8,7 @@ namespace LabelFrame.Bootstrapper.Tests;
 /// <summary>升级评估矩阵（DESIGN §6.11 组件级口径表，决策 #126）：已装快照 × manifest 目标版本 → 逐组件动作与整体判定。</summary>
 public sealed class UpgradeAssessmentTests
 {
-    private static readonly RuntimeProbeResult RuntimeNone = new(false, null, false);
+    private static readonly RuntimeProbeResult RuntimeNone = new(false, null, false, null, false);
 
     private static ManifestComponent Component(string id, string type, string version) => new(
         id, type, version, [], ["https://example.invalid/a"], new string('a', 64), 1, null, ["standalone"], null);
@@ -126,7 +126,7 @@ public sealed class UpgradeAssessmentTests
     {
         // 共享系统组件：本机更新即满足（执行侧 DetectCondition 只判 ≥ 10.0.0，§6.11 表）
         var manifest = ManifestOf(Component("runtime-desktop", "runtime", "10.0.12"));
-        var runtime = new RuntimeProbeResult(true, "10.0.13", false);
+        var runtime = new RuntimeProbeResult(true, "10.0.13", false, null, false);
 
         var assessment = UpgradeAssessor.Assess(manifest, SnapshotOf(runtime: runtime));
 
@@ -138,7 +138,7 @@ public sealed class UpgradeAssessmentTests
     public void Desktop_runtime_older_than_manifest_yields_upgrade()
     {
         var manifest = ManifestOf(Component("runtime-desktop", "runtime", "10.0.12"));
-        var runtime = new RuntimeProbeResult(true, "10.0.8", false);
+        var runtime = new RuntimeProbeResult(true, "10.0.8", false, null, false);
 
         var assessment = UpgradeAssessor.Assess(manifest, SnapshotOf(runtime: runtime));
 
@@ -146,11 +146,28 @@ public sealed class UpgradeAssessmentTests
     }
 
     [Fact]
+    public void AspNetCore_runtime_follows_same_shared_component_semantics_as_desktop()
+    {
+        // 迭代 62 返修（决策 #128）：runtime-aspnetcore 与 runtime-desktop 同为共享系统组件——本机更新即满足、落后即升级
+        var manifest = ManifestOf(Component("runtime-aspnetcore", "runtime", "10.0.12"));
+
+        var newer = UpgradeAssessor.Assess(manifest, SnapshotOf(runtime: new RuntimeProbeResult(false, null, true, "10.0.13", false)));
+        Assert.Equal(ComponentUpgradeAction.UpToDate, newer.Entries.Single().Action);
+        Assert.Equal("10.0.13", newer.Entries.Single().InstalledVersion);
+
+        var older = UpgradeAssessor.Assess(manifest, SnapshotOf(runtime: new RuntimeProbeResult(false, null, true, "10.0.8", false)));
+        Assert.Equal(ComponentUpgradeAction.Upgrade, older.Entries.Single().Action);
+
+        var missing = UpgradeAssessor.Assess(manifest, SnapshotOf());
+        Assert.Equal(ComponentUpgradeAction.Install, missing.Entries.Single().Action);
+    }
+
+    [Fact]
     public void Webview2_evergreen_never_version_compares()
     {
         var manifest = ManifestOf(Component("runtime-webview2", "runtime", "evergreen"));
 
-        var installed = UpgradeAssessor.Assess(manifest, SnapshotOf(runtime: new RuntimeProbeResult(false, null, true)));
+        var installed = UpgradeAssessor.Assess(manifest, SnapshotOf(runtime: new RuntimeProbeResult(false, null, false, null, true)));
         Assert.Equal(ComponentUpgradeAction.UpToDate, installed.Entries.Single().Action);
         Assert.True(installed.IsUpToDate);
         Assert.Null(installed.Entries.Single().InstalledVersion); // 只判存在，无版本串

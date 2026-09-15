@@ -81,7 +81,7 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
         var plannedEntries = assessment.Entries
             .Where(entry => plan.Components.Any(item => item.Component.Id == entry.ComponentId))
             .ToList();
-        _ba.Log($"确认安装计划：预设 {_session.Preset}，品牌 [{string.Join(",", _session.SelectedBrands)}]，管理界面 {_session.IncludeWebUi}，组件 [{string.Join(",", plan.Components.Select(item => item.Component.Id))}]，.NET Desktop Runtime {(_ba.RuntimeStatus.DesktopRuntimeInstalled ? $"已装 {_ba.RuntimeStatus.DesktopRuntimeVersion}（跳过）" : "未装（将安装）")}，WebView2 {(_ba.RuntimeStatus.WebView2Installed ? "已装（跳过）" : "未装（将安装）")}");
+        _ba.Log($"确认安装计划：预设 {_session.Preset}，品牌 [{string.Join(",", _session.SelectedBrands)}]，管理界面 {_session.IncludeWebUi}，组件 [{string.Join(",", plan.Components.Select(item => item.Component.Id))}]，.NET Desktop Runtime {(_ba.RuntimeStatus.DesktopRuntimeInstalled ? $"已装 {_ba.RuntimeStatus.DesktopRuntimeVersion}（跳过）" : "未装（将安装）")}，ASP.NET Core Runtime {(_ba.RuntimeStatus.AspNetCoreRuntimeInstalled ? $"已装 {_ba.RuntimeStatus.AspNetCoreRuntimeVersion}（跳过）" : "未装（将安装）")}，WebView2 {(_ba.RuntimeStatus.WebView2Installed ? "已装（跳过）" : "未装（将安装）")}");
         _ba.Log($"升级评估（§6.11）：{UpgradePresentation.Summarize(assessment.Entries)}");
 
         // 横幅：升级 / 已最新优先于既有「确认前只读」提示（决策 #126：用户最关心的状态放最上层）
@@ -104,10 +104,14 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
             if (component.Type == "runtime")
             {
                 // 运行时组件标注探测结论（AC-02：缺失才装、已装跳过——Burn DetectCondition 消费）
-                displayName += _ba.RuntimeStatus.DesktopRuntimeInstalled && component.Id == "runtime-desktop"
-                    || _ba.RuntimeStatus.WebView2Installed && component.Id == "runtime-webview2"
-                    ? "【已装则跳过】"
-                    : "【缺失将安装】";
+                var runtimeInstalled = component.Id switch
+                {
+                    "runtime-desktop" => _ba.RuntimeStatus.DesktopRuntimeInstalled,
+                    "runtime-aspnetcore" => _ba.RuntimeStatus.AspNetCoreRuntimeInstalled,
+                    "runtime-webview2" => _ba.RuntimeStatus.WebView2Installed,
+                    _ => false,
+                };
+                displayName += runtimeInstalled ? "【已装则跳过】" : "【缺失将安装】";
             }
 
             var row = new ListViewItem(displayName)

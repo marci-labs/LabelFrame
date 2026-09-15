@@ -32,6 +32,7 @@ public static class InstallTargets
             "runtime" => component.Id switch
             {
                 "runtime-desktop" => ".NET Desktop Runtime（系统级全局安装）",
+                "runtime-aspnetcore" => "ASP.NET Core Runtime（系统级全局安装）",
                 "runtime-webview2" => "WebView2 Evergreen 运行时（系统级全局安装）",
                 _ => "系统运行时（系统级全局安装）",
             },

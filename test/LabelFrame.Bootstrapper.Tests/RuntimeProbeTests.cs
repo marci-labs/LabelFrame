@@ -59,6 +59,43 @@ public sealed class RuntimeProbeTests
     }
 
     [Fact]
+    public void AspNetCore_runtime_dirs_are_probed_independently_of_desktop()
+    {
+        // 迭代 62 返修（决策 #128）：AspNetCore 与 Desktop 互不包含——只装 Desktop 的机器 AspNetCore 应报未装（AC-01 缺陷根因）
+        var probe = new RuntimeProbe(
+            enumerateDesktopRuntimeVersions: () => ["10.0.12"],
+            enumerateAspNetCoreRuntimeVersions: () => []);
+        var result = probe.Probe();
+
+        Assert.True(result.DesktopRuntimeInstalled);
+        Assert.False(result.AspNetCoreRuntimeInstalled);
+        Assert.Null(result.AspNetCoreRuntimeVersion);
+    }
+
+    [Fact]
+    public void AspNetCore_runtime_dir_should_satisfy_minimum_with_latest_major()
+    {
+        var probe = new RuntimeProbe(
+            enumerateDesktopRuntimeVersions: () => [],
+            enumerateAspNetCoreRuntimeVersions: () => ["6.0.36", "10.0.12"]);
+        var result = probe.Probe();
+
+        Assert.True(result.AspNetCoreRuntimeInstalled);
+        Assert.Equal("10.0.12", result.AspNetCoreRuntimeVersion);
+    }
+
+    [Theory]
+    [InlineData("10.0.0", true)]
+    [InlineData("11.0.0", true)]
+    [InlineData("9.9.9", false)]
+    public void AspNetCore_runtime_version_floor_matches_netcorecheck_latest_major(string version, bool expected)
+    {
+        var probe = new RuntimeProbe(enumerateAspNetCoreRuntimeVersions: () => [version]);
+
+        Assert.Equal(expected, probe.Probe().AspNetCoreRuntimeInstalled);
+    }
+
+    [Fact]
     public void WebView2_per_machine_registry_should_report_installed()
     {
         var probe = new RuntimeProbe(

@@ -101,7 +101,7 @@ public sealed class WizardSession
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return new RuntimeProbeResult(false, null, false);
+            return new RuntimeProbeResult(false, null, false, null, false);
         }
     }
 
