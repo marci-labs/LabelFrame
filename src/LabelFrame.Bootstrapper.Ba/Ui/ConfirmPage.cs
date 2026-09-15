@@ -1,3 +1,4 @@
+using LabelFrame.Bootstrapper.Topology;
 using LabelFrame.Bootstrapper.Upgrade;
 using LabelFrame.Bootstrapper.Wizard;
 
@@ -81,7 +82,7 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
         var plannedEntries = assessment.Entries
             .Where(entry => plan.Components.Any(item => item.Component.Id == entry.ComponentId))
             .ToList();
-        _ba.Log($"确认安装计划：预设 {_session.Preset}，品牌 [{string.Join(",", _session.SelectedBrands)}]，管理界面 {_session.IncludeWebUi}，组件 [{string.Join(",", plan.Components.Select(item => item.Component.Id))}]，.NET Desktop Runtime {(_ba.RuntimeStatus.DesktopRuntimeInstalled ? $"已装 {_ba.RuntimeStatus.DesktopRuntimeVersion}（跳过）" : "未装（将安装）")}，ASP.NET Core Runtime {(_ba.RuntimeStatus.AspNetCoreRuntimeInstalled ? $"已装 {_ba.RuntimeStatus.AspNetCoreRuntimeVersion}（跳过）" : "未装（将安装）")}，WebView2 {(_ba.RuntimeStatus.WebView2Installed ? "已装（跳过）" : "未装（将安装）")}");
+        _ba.Log($"确认安装计划：预设 {_session.Preset}，品牌 [{string.Join(",", _session.SelectedBrands)}]，管理界面 {_session.IncludeWebUi}，组件 [{string.Join(",", plan.Components.Select(item => item.Component.Id))}]，{DescribeRuntimeProbes(plan)}");
         _ba.Log($"升级评估（§6.11）：{UpgradePresentation.Summarize(assessment.Entries)}");
 
         // 横幅：升级 / 已最新优先于既有「确认前只读」提示（决策 #126：用户最关心的状态放最上层）
@@ -134,6 +135,29 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
 
         _guidanceLabel.Visible = plan.DockerComposeGuidance is not null;
         _guidanceLabel.Text = plan.DockerComposeGuidance ?? string.Empty;
+    }
+
+    /// <summary>运行时探测腿文案（观察项①修正，决策 #129 ③）：按当轮计划集合过滤——计划不含的运行时不输出「未装（将安装）」，
+    /// 避免与引擎 InstallCondition 过滤后的实际执行计划（execute: None）矛盾。</summary>
+    private string DescribeRuntimeProbes(TopologyPlan plan)
+    {
+        var notes = new List<string>();
+        if (plan.Components.Any(item => item.Component.Id == "runtime-desktop"))
+        {
+            notes.Add($".NET Desktop Runtime {(_ba.RuntimeStatus.DesktopRuntimeInstalled ? $"已装 {_ba.RuntimeStatus.DesktopRuntimeVersion}（跳过）" : "未装（将安装）")}");
+        }
+
+        if (plan.Components.Any(item => item.Component.Id == "runtime-aspnetcore"))
+        {
+            notes.Add($"ASP.NET Core Runtime {(_ba.RuntimeStatus.AspNetCoreRuntimeInstalled ? $"已装 {_ba.RuntimeStatus.AspNetCoreRuntimeVersion}（跳过）" : "未装（将安装）")}");
+        }
+
+        if (plan.Components.Any(item => item.Component.Id == "runtime-webview2"))
+        {
+            notes.Add($"WebView2 {(_ba.RuntimeStatus.WebView2Installed ? "已装（跳过）" : "未装（将安装）")}");
+        }
+
+        return string.Join("，", notes);
     }
 
     /// <summary>本机版本列（§6.11 可升级清单）：升级 = 现版本 → 新版本；新装 = —（新装）；已最新 = 版本号（已是最新）。</summary>

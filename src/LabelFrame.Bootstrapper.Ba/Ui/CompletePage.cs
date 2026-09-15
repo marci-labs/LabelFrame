@@ -141,6 +141,7 @@ internal sealed class CompletePage : UserControl, IWizardPage
     private static string DescribeComponent(string componentId) => componentId switch
     {
         "runtime-desktop" => ".NET 10 Desktop Runtime（x64）",
+        "runtime-aspnetcore" => "ASP.NET Core Runtime（x64）",
         "runtime-webview2" => "Microsoft Edge WebView2 运行时",
         "server-msi" => "LabelFrame 服务端（Windows 服务）",
         "client-msi" => "LabelFrame 打印客户端",
@@ -153,9 +154,14 @@ internal sealed class CompletePage : UserControl, IWizardPage
     {
         if (component.Type == "runtime")
         {
-            var alreadyInstalled = component.Id == "runtime-desktop"
-                ? _ba.RuntimeStatus.DesktopRuntimeInstalled
-                : _ba.RuntimeStatus.WebView2Installed;
+            // 探测腿映射（决策 #129 ③ 顺带补齐）：#87 新增 aspnetcore 条目时误落 WebView2 探测腿——三腿各自对齐
+            var alreadyInstalled = component.Id switch
+            {
+                "runtime-desktop" => _ba.RuntimeStatus.DesktopRuntimeInstalled,
+                "runtime-aspnetcore" => _ba.RuntimeStatus.AspNetCoreRuntimeInstalled,
+                "runtime-webview2" => _ba.RuntimeStatus.WebView2Installed,
+                _ => false,
+            };
             if (alreadyInstalled)
             {
                 return "已装，跳过";

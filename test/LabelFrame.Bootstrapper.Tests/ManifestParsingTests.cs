@@ -41,7 +41,7 @@ public sealed class ManifestParsingTests
     [Fact]
     public void Parse_full_manifest_should_load_runtime_and_plugin_entries()
     {
-        // 对齐 DESIGN §6.2 示例 + runtime-aspnetcore（迭代 62 返修）+ plugin-zebra 条目
+        // 对齐 DESIGN §6.2 示例 + runtime-aspnetcore（迭代 62 返修；二次返修补 client 链腿，决策 #129）+ plugin-zebra 条目
         var manifest = InstallManifest.Parse(LoadFixture("install-manifest.full.json"));
 
         Assert.Equal(9, manifest.Components.Count);
@@ -51,7 +51,7 @@ public sealed class ManifestParsingTests
         var serverMsi = Assert.Single(manifest.Components, component => component.Id == "server-msi");
         Assert.Equal(new[] { "runtime-desktop", "runtime-aspnetcore" }.ToList(), serverMsi.DependsOn.ToList());
         var clientMsi = Assert.Single(manifest.Components, component => component.Id == "client-msi");
-        Assert.Equal(new[] { "runtime-desktop", "runtime-webview2" }.ToList(), clientMsi.DependsOn.ToList());
+        Assert.Equal(new[] { "runtime-desktop", "runtime-aspnetcore", "runtime-webview2" }.ToList(), clientMsi.DependsOn.ToList());
     }
 
     [Fact]

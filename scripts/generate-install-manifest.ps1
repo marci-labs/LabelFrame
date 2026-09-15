@@ -23,7 +23,7 @@ param(
     [string]$OutputDir = '',
     [switch]$VerifyOnly,
     [switch]$SkipVerify,
-    # runtime 前置条目（迭代 62，#55，决策 #124 / §6.2；迭代 62 返修，决策 #128）：.NET 运行时钉版本——
+    # runtime 前置条目（迭代 62，#55，决策 #124 / §6.2；迭代 62 返修，决策 #128；二次返修补 client 预设，决策 #129）：.NET 运行时钉版本——
     # runtime-desktop（windowsdesktop-runtime）与 runtime-aspnetcore（aspnetcore-runtime）共用同一 .NET 补丁列车版本（单参数统管，天然同进退；
     # 原单条目参数 -DotNetDesktopRuntimeVersion 随返修并为 -DotNetRuntimePatchVersion），默认对齐当期补丁，release 可覆写；
     # WebView2 Evergreen 固定直链轮转无可钉版本，version 固定 'evergreen'。
@@ -37,13 +37,14 @@ $ErrorActionPreference = 'Stop'
 # 当版产物 -> manifest 条目映射（组件稳定 id 与字段语义见 DESIGN §6.2 组件条目表）。
 # 官方插件条目（迭代 63，决策 #123，DESIGN §6.8）：plugin-zebra 随发版流水线产物收录
 # （labelframe-transport-zebra-<版本>.lfplugin，version=主版本，品牌映射表见 §6.8）。
-# runtime 条目（迭代 62，#55，决策 #124；迭代 62 返修补 aspnetcore，决策 #128）：runtime-desktop / runtime-aspnetcore /
-# runtime-webview2 = 厂商直链 + CI 下载实测哈希（无本仓产物、不进 Release 附件；生成逻辑见下方 $runtimeSpecs）。
+# runtime 条目（迭代 62，#55，决策 #124；迭代 62 返修补 aspnetcore，决策 #128；二次返修补 client 链腿，决策 #129）：runtime-desktop /
+# runtime-aspnetcore / runtime-webview2 = 厂商直链 + CI 下载实测哈希（无本仓产物、不进 Release 附件；生成逻辑见下方 $runtimeSpecs）。
 # dependsOn 随 runtime 条目落地补齐：server-msi -> runtime-desktop + runtime-aspnetcore（Server 为 Sdk.Web 隐式
-# FrameworkReference AspNetCore.App，与客户端 WinForms 需要的 Desktop Runtime 互不包含）；client-msi -> runtime-desktop + runtime-webview2。
+# FrameworkReference AspNetCore.App）；client-msi -> runtime-desktop + runtime-aspnetcore + runtime-webview2
+# （WinHost 亦 Sdk.Web——与 Server 同型隐式依赖，Desktop Runtime 互不包含，决策 #129）。
 $componentSpecs = @(
     @{ id = 'server-msi';   type = 'msi';       pattern = "LabelFrame-Server-$Version.msi";               topologies = @('standalone', 'server-win', 'offline'); dependsOn = @('runtime-desktop', 'runtime-aspnetcore'); notes = '服务端（Windows 服务 LabelFrameServer）' }
-    @{ id = 'client-msi';   type = 'msi';       pattern = "LabelFrame-Client-$Version.msi";               topologies = @('standalone', 'client', 'offline');      dependsOn = @('runtime-desktop', 'runtime-webview2'); notes = '打印客户端（Web UI 托管 + 界面壳 + 托盘）' }
+    @{ id = 'client-msi';   type = 'msi';       pattern = "LabelFrame-Client-$Version.msi";               topologies = @('standalone', 'client', 'offline');      dependsOn = @('runtime-desktop', 'runtime-aspnetcore', 'runtime-webview2'); notes = '打印客户端（Web UI 托管 + 界面壳 + 托盘）' }
     @{ id = 'webui';        type = 'webui-zip'; pattern = "labelframe-server-webui-$Version.zip";        topologies = @('standalone', 'server-win', 'server-linux', 'offline'); dependsOn = @(); notes = '服务端管理界面插件（开关组件，落位 plugins/web-ui）' }
     @{ id = 'linux-server'; type = 'archive';   pattern = "labelframe-server-$Version-linux-x64.tar.gz"; topologies = @('server-linux', 'offline');             dependsOn = @(); notes = 'Linux 服务端归档（systemd 部署）' }
     @{ id = 'pda-apk';      type = 'apk';       pattern = "LabelFrame-AndroidHost-$Version.apk";          topologies = @('pda', 'offline');                      dependsOn = @(); notes = 'PDA 宿主 APK（拓扑标记 pda：经服务端下载中心扫码下载，不进 PC 引导预设）' }
@@ -52,10 +53,11 @@ $componentSpecs = @(
 
 # runtime 条目（§6.2 特殊语义）：urls = 厂商官方直链（单一源，多源回退属 #54 修订范围）；sha256 / sizeBytes =
 # 生成时下载（或 -RuntimeFilesDir 预置文件）实测锁定；version：desktop / aspnetcore = 同一 .NET 补丁列车钉定版本，webview2 = 'evergreen'。
-# runtime-aspnetcore（迭代 62 返修，决策 #128）：直链路径段为 aspnetcore/Runtime（Runtime 大写，与 WindowsDesktop 直链风格同源不同段）。
+# runtime-aspnetcore（迭代 62 返修，决策 #128；二次返修补 client 预设，决策 #129）：直链路径段为 aspnetcore/Runtime（Runtime 大写，与 WindowsDesktop 直链风格同源不同段）；
+# topologies 补 client——WinHost 亦 Sdk.Web 隐式依赖 AspNetCore.App（含客户端的预设都需要）。
 $runtimeSpecs = @(
     @{ id = 'runtime-desktop'; version = $DotNetRuntimePatchVersion; fileName = "windowsdesktop-runtime-$DotNetRuntimePatchVersion-win-x64.exe"; url = "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/$DotNetRuntimePatchVersion/windowsdesktop-runtime-$DotNetRuntimePatchVersion-win-x64.exe"; silentArgs = '/install /quiet /norestart'; topologies = @('standalone', 'server-win', 'client', 'offline'); notes = '.NET 10 Desktop Runtime（x64），缺失时由引导程序补装' }
-    @{ id = 'runtime-aspnetcore'; version = $DotNetRuntimePatchVersion; fileName = "aspnetcore-runtime-$DotNetRuntimePatchVersion-win-x64.exe"; url = "https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/$DotNetRuntimePatchVersion/aspnetcore-runtime-$DotNetRuntimePatchVersion-win-x64.exe"; silentArgs = '/install /quiet /norestart'; topologies = @('standalone', 'server-win', 'offline'); notes = 'ASP.NET Core Runtime（x64，服务端依赖；不含 Desktop Runtime，二者互不包含），缺失时由引导程序补装' }
+    @{ id = 'runtime-aspnetcore'; version = $DotNetRuntimePatchVersion; fileName = "aspnetcore-runtime-$DotNetRuntimePatchVersion-win-x64.exe"; url = "https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/$DotNetRuntimePatchVersion/aspnetcore-runtime-$DotNetRuntimePatchVersion-win-x64.exe"; silentArgs = '/install /quiet /norestart'; topologies = @('standalone', 'server-win', 'client', 'offline'); notes = 'ASP.NET Core Runtime（x64，服务端与打印客户端依赖——均 Sdk.Web 隐式引用；不含 Desktop Runtime，二者互不包含），缺失时由引导程序补装' }
     @{ id = 'runtime-webview2'; version = 'evergreen'; fileName = 'MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe'; url = 'https://go.microsoft.com/fwlink/p/?LinkId=2124703'; silentArgs = '/silent /install'; topologies = @('standalone', 'client', 'offline'); notes = 'WebView2 Evergreen 引导器（客户端界面壳依赖，缺失时补装；固定直链自更新，版本恒为 evergreen）' }
 )
 $runtimeAllowedUrlPrefixes = @('https://builds.dotnet.microsoft.com/', 'https://go.microsoft.com/')
@@ -276,7 +278,7 @@ foreach ($c in $components) {
     elseif (-not (($size -is [int]) -or ($size -is [long]) -or ($size -is [double]))) { $failures.Add("[$cid] sizeBytes 应为数字，实际：$size") }
     elseif ([double]$size -le 0 -or [Math]::Floor([double]$size) -ne [double]$size) { $failures.Add("[$cid] sizeBytes 应为正整数：$size") }
 
-    # runtime 条目专项（§6.2 特殊语义 / 决策 #124 / #128）：厂商直链白名单 + 版本规则 + 静默参数非空
+    # runtime 条目专项（§6.2 特殊语义 / 决策 #124 / #128 / #129）：厂商直链白名单 + 版本规则 + 静默参数非空
     if ($c.type -eq 'runtime') {
         foreach ($url in $urls) {
             $allowed = @($runtimeAllowedUrlPrefixes | Where-Object { $url.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) })
