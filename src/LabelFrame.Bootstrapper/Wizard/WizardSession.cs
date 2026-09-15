@@ -1,15 +1,18 @@
 using System.Net.Http;
 using LabelFrame.Bootstrapper.Manifest;
+using LabelFrame.Bootstrapper.Prerequisites;
 using LabelFrame.Bootstrapper.Printing;
 using LabelFrame.Bootstrapper.Topology;
+using LabelFrame.Bootstrapper.Upgrade;
 
 namespace LabelFrame.Bootstrapper.Wizard;
 
-/// <summary>问卷会话（UI 无关的核心状态机，BA 页面复用）：manifest 来源 → 已加载清单 → 预设 / 品牌多选 / 管理界面开关 → 组件集合。</summary>
+/// <summary>问卷会话（UI 无关的核心状态机，BA 页面复用）：manifest 来源 → 已加载清单 → 本机已装探测与升级评估 → 预设 / 品牌多选 / 管理界面开关 → 组件集合。</summary>
 /// <remarks>
 /// 问卷只读契约（Issue #53 AC-03、DESIGN §6.3，决策 #124 修订执行边界）：本类没有任何下载、写入或系统改动方法——
-/// 问卷阶段全程只读（清单获取 + 已装打印机名枚举）；执行边界 = 确认页「安装」，实际下载 / 链装由 Burn 引擎
-/// 在 BA 调用 <c>Engine.Apply</c> 后承担（BA 侧编排见 <c>LabelFrameBootstrapperBa.ExecuteInstallAsync</c>）。
+/// 问卷阶段全程只读（清单获取 + 已装打印机名枚举 + 本机已装版本探测（§6.11：MSI 注册表 / 落位目录 manifest / 运行时探测，均只读））；
+/// 执行边界 = 确认页「安装」，实际下载 / 链装由 Burn 引擎在 BA 调用 <c>Engine.Apply</c> 后承担（BA 侧编排见
+/// <c>LabelFrameBootstrapperBa.ExecuteInstallAsync</c>）。
 /// </remarks>
 public sealed class WizardSession
 {
@@ -18,11 +21,22 @@ public sealed class WizardSession
 
     private readonly ITopologyResolver _resolver;
     private readonly Func<IReadOnlyList<string>> _installedPrinterNames;
+    private readonly LocalInstallProbe _localInstallProbe;
+    private readonly Func<RuntimeProbeResult>? _runtimeProbe;
+    private readonly HttpClient? _http;
 
-    public WizardSession(ITopologyResolver? resolver = null, Func<IReadOnlyList<string>>? installedPrinterNames = null)
+    public WizardSession(
+        ITopologyResolver? resolver = null,
+        Func<IReadOnlyList<string>>? installedPrinterNames = null,
+        LocalInstallProbe? localInstallProbe = null,
+        Func<RuntimeProbeResult>? runtimeProbe = null,
+        HttpClient? http = null)
     {
         _resolver = resolver ?? new TopologyResolver();
         _installedPrinterNames = installedPrinterNames ?? InstalledPrinters.GetNames;
+        _localInstallProbe = localInstallProbe ?? new LocalInstallProbe();
+        _runtimeProbe = runtimeProbe;
+        _http = http;
     }
 
     /// <summary>清单来源：本地路径或 URL（默认稳定通道）。</summary>
@@ -30,6 +44,15 @@ public sealed class WizardSession
 
     /// <summary>已加载并校验的安装清单（问卷后续步骤的前提）。</summary>
     public InstallManifest? Manifest { get; private set; }
+
+    /// <summary>latest.json 指针（清单来源可推导且读取成功时非空；§6.11 清单新鲜度提示用，失败静默跳过）。</summary>
+    public LatestPointer? Latest { get; private set; }
+
+    /// <summary>本机已装组件快照（清单加载成功后探测，§6.11）。</summary>
+    public LocalInstallSnapshot? LocalInstall { get; private set; }
+
+    /// <summary>升级评估（清单加载成功后按 §6.11 组件级口径计算；呈现由页面过滤——欢迎页全清单摘要 / 确认页按拓扑计划）。</summary>
+    public UpgradeAssessment? Assessment { get; private set; }
 
     /// <summary>已选拓扑预设（问卷第 2 步）。</summary>
     public TopologyPreset? Preset { get; set; }
@@ -43,14 +66,62 @@ public sealed class WizardSession
     /// <summary>当前清单可选择的品牌（无 plugin-* 条目则为空，品牌页展示说明）。</summary>
     public IReadOnlyList<string> AvailableBrands => Manifest is null ? [] : TopologyResolver.AvailableBrands(Manifest);
 
-    /// <summary>加载并校验清单（本地路径 = 文件读取；URL = 单次只读 GET）。加载成功后按已装打印机名预选品牌（决议 2）。</summary>
+    /// <summary>加载并校验清单（本地路径 = 文件读取；URL = 单次只读 GET）→ 探测本机已装（§6.11）→ 计算升级评估 → 按已装打印机名预选品牌（决议 2）。</summary>
     public async Task LoadManifestAsync(HttpClient? http = null, CancellationToken cancellationToken = default)
     {
-        Manifest = await InstallManifestLoader.LoadAsync(ManifestSource, http, cancellationToken).ConfigureAwait(false);
+        var effectiveHttp = http ?? _http;
+        Manifest = await InstallManifestLoader.LoadAsync(ManifestSource, effectiveHttp, cancellationToken).ConfigureAwait(false);
+
+        // 清单新鲜度（§6.11 latest.json 消费）：推导得到来源才读，失败静默跳过（不阻断主流程）
+        Latest = await TryLoadLatestAsync(effectiveHttp, cancellationToken).ConfigureAwait(false);
+
+        // 本机已装探测 + 升级评估（只读；探测异常按「全未装」处理——升级清单缺失不阻断安装流程）
+        var runtime = ProbeRuntimeSafely();
+        try
+        {
+            LocalInstall = _localInstallProbe.Probe(runtime);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            LocalInstall = new LocalInstallSnapshot(null, null, null, runtime);
+        }
+
+        Assessment = UpgradeAssessor.Assess(Manifest, LocalInstall);
 
         // 品牌预选（决议 2）：仅 Zebra——驱动名含 ZDesigner 且清单有对应条目才预勾选；其余品牌从零勾选
         SelectedBrands = new HashSet<string>(
             PrinterBrandDetector.DetectPreselectedBrands(_installedPrinterNames(), AvailableBrands), StringComparer.Ordinal);
+    }
+
+    private RuntimeProbeResult ProbeRuntimeSafely()
+    {
+        try
+        {
+            return _runtimeProbe is not null ? _runtimeProbe() : new Prerequisites.RuntimeProbe().Probe();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return new RuntimeProbeResult(false, null, false);
+        }
+    }
+
+    private async Task<LatestPointer?> TryLoadLatestAsync(HttpClient? http, CancellationToken cancellationToken)
+    {
+        var source = LatestPointer.DeriveSource(ManifestSource);
+        if (source is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var json = await InstallManifestLoader.LoadTextAsync(source, http, cancellationToken).ConfigureAwait(false);
+            return LatestPointer.Parse(json);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
+        {
+            return null; // 推导源读取失败 = 无新鲜度提示（§6.11：静默跳过）
+        }
     }
 
     /// <summary>按当前问卷答案计算组件集合（确认页数据源；Burn 链 InstallCondition 消费其变量映射）。</summary>

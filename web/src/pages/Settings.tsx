@@ -8,6 +8,7 @@ import { clientPackageDownloadUrl, localApi, serverApi } from '../lib/api/client
 import { ApiError } from '../lib/api/types'
 import type { ClientPackageInfo, InstalledPluginInfo, PluginPackageInfo, PrinterStatus, PrintSettings } from '../lib/api/types'
 import { formatSize } from '../lib/download'
+import { checkForUpdate } from '../lib/update'
 import { formatTransport } from '../lib/transport'
 import { pluginPackageTooLarge } from '../lib/pluginLimits'
 import { useApp } from '../state/AppContext'
@@ -434,6 +435,41 @@ export function Settings() {
             </span>
           </div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* 迭代 64（决策 #126）：「检查更新」结论——本机版本 × 服务端 client-packages 最高包版本；unknown 不显示（无误导） */}
+            {(() => {
+              const update = checkForUpdate(app.hostVersion, (packages ?? []).map((p) => p.fileName))
+              if (update.kind === 'unknown') {
+                return null
+              }
+              if (update.kind === 'update-available') {
+                return (
+                  <div
+                    data-testid="update-available"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      background: 'rgba(255, 159, 67, 0.12)',
+                      border: '1px solid rgba(255, 159, 67, 0.4)',
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>
+                      <Icon name="alert" size={13} /> 发现新版本 {update.latestVersion}（本机 {update.localVersion}）
+                    </span>
+                    <span className="hint">
+                      到服务端下载新版安装包（见下方列表），或由 IT 重跑安装引导程序完成升级；客户端不会自动升级。
+                    </span>
+                  </div>
+                )
+              }
+              return (
+                <div data-testid="update-uptodate" className="badge ok" style={{ alignSelf: 'flex-start' }}>
+                  已是最新（本机 {update.localVersion}）
+                </div>
+              )
+            })()}
             {!app.connected ? (
               <div className="hint">
                 当前未连接服务端（单机模式）。安装包由服务端统一分发，请先在上方「服务端地址」中连接服务端后查看可用安装包。

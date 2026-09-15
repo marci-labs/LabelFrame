@@ -143,10 +143,11 @@ public sealed class WinHostEndpointsTests : WinHostIntegrationTestBase
     [Fact]
     public async Task Host_config_get_post_and_loopback_guard()
     {
-        // GET：默认 serverUrl 为空 + deviceId 透出
+        // GET：默认 serverUrl 为空 + deviceId 透出 + 只读 version（决策 #126：客户端「检查更新」比较口径）
         var config = await JsonAsync("/api/host/config");
         Assert.Equal(string.Empty, config.GetProperty("serverUrl").GetString());
         Assert.NotNull(config.GetProperty("deviceId").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(config.GetProperty("version").GetString()));
 
         // 非回环来源（测试中间件模拟）：403，不写配置
         Client.DefaultRequestHeaders.Add(RemoteIpHeader, "192.168.50.10");
@@ -154,10 +155,12 @@ public sealed class WinHostEndpointsTests : WinHostIntegrationTestBase
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
         Client.DefaultRequestHeaders.Remove(RemoteIpHeader);
 
-        // 回环来源：合法地址保存并生效（后续 GET 读回）
+        // 回环来源：合法地址保存并生效（后续 GET 读回；version 持续透出且不可经 POST 改写）
         var ok = await Client.PostAsync("/api/host/config", Json("""{ "serverUrl": "http://127.0.0.1:53961" }"""));
         Assert.True(ok.IsSuccessStatusCode);
-        Assert.Equal("http://127.0.0.1:53961", (await JsonAsync("/api/host/config")).GetProperty("serverUrl").GetString());
+        var roundtrip = await JsonAsync("/api/host/config");
+        Assert.Equal("http://127.0.0.1:53961", roundtrip.GetProperty("serverUrl").GetString());
+        Assert.Equal(HostOptions.ProductVersion, roundtrip.GetProperty("version").GetString());
 
         // 非法地址：400
         var bad = await Client.PostAsync("/api/host/config", Json("""{ "serverUrl": "not-a-url" }"""));

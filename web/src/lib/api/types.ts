@@ -276,6 +276,8 @@ export interface HostConfig {
   deviceName?: string
   /** 迭代 20：本机 IPv4 列表（枚举网卡、过滤回环；多 IP 状态栏逗号分隔显示全部）。 */
   ips?: string[]
+  /** 迭代 64（决策 #126）：客户端产品版本（只读；旧客户端无此字段——「检查更新」比较口径）。 */
+  version?: string
 }
 
 /** 客户端批次作业设置（迭代 24 §4.1：GET/POST /api/host/print-settings，用户级持久化 print-settings.json）。

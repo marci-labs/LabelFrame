@@ -1,8 +1,9 @@
+using LabelFrame.Bootstrapper.Upgrade;
 using LabelFrame.Bootstrapper.Wizard;
 
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
-/// <summary>欢迎页：简介 + dry-run 预期 + 离线全量包入口指引（决议 1 方案 A：下载链接与说明）+ 清单来源（本地路径或 URL）。</summary>
+/// <summary>欢迎页：简介 + dry-run 预期 + 离线全量包入口指引（决议 1 方案 A：下载链接与说明）+ 清单来源（本地路径或 URL）+ 本机升级摘要（§6.11：可升级清单 / 已是最新 / 清单新鲜度）。</summary>
 internal sealed class WelcomePage : UserControl, IWizardPage
 {
     private const string ReleasesPageUrl = "https://github.com/marci-labs/LabelFrame/releases";
@@ -13,6 +14,8 @@ internal sealed class WelcomePage : UserControl, IWizardPage
     private readonly Button _browseButton = new();
     private readonly Button _loadButton = new();
     private readonly Label _statusLabel = new();
+    private readonly Label _upgradeLabel = new();
+    private readonly Label _freshnessLabel = new();
 
     public WelcomePage(WizardSession session, Action proceed)
     {
@@ -43,12 +46,33 @@ internal sealed class WelcomePage : UserControl, IWizardPage
             Location = new Point(8, 64),
         };
 
+        // 本机升级摘要（§6.11，决策 #126）：清单加载后呈现——可升级清单（组件、现版本 → 新版本）/ 已是最新 / 全新安装
+        _upgradeLabel.AutoSize = false;
+        _upgradeLabel.Width = 680;
+        _upgradeLabel.Height = 34;
+        _upgradeLabel.Location = new Point(8, 88);
+        _upgradeLabel.TextAlign = ContentAlignment.MiddleLeft;
+        _upgradeLabel.Padding = new Padding(6, 0, 0, 0);
+        _upgradeLabel.BackColor = Color.FromArgb(232, 240, 254);
+        _upgradeLabel.ForeColor = Color.FromArgb(22, 84, 160);
+
+        // 清单新鲜度提示（latest.json 消费，§6.11）：清单版本落后于通道最新时提示（null 时隐藏）
+        _freshnessLabel.AutoSize = false;
+        _freshnessLabel.Width = 680;
+        _freshnessLabel.Height = 26;
+        _freshnessLabel.Location = new Point(8, 124);
+        _freshnessLabel.TextAlign = ContentAlignment.MiddleLeft;
+        _freshnessLabel.Padding = new Padding(6, 0, 0, 0);
+        _freshnessLabel.BackColor = Color.FromArgb(255, 244, 230);
+        _freshnessLabel.ForeColor = Color.FromArgb(154, 84, 0);
+        _freshnessLabel.Visible = false;
+
         // 离线全量包入口指引（决议 1 方案 A）：下载链接与说明文字；断网自动切换离线引导流程后置（#75）
         var offlineBox = new GroupBox
         {
             Text = "无法联网？（离线安装）",
             AutoSize = true,
-            Location = new Point(8, 96),
+            Location = new Point(8, 158),
             Width = 680,
         };
         var offlineText = new Label
@@ -73,7 +97,7 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         var sourceBox = new GroupBox
         {
             Text = "安装清单来源",
-            Location = new Point(8, 250),
+            Location = new Point(8, 262),
             Size = new Size(680, 150),
         };
         var sourceLabel = new Label
@@ -109,6 +133,8 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         Controls.Add(title);
         Controls.Add(intro);
         Controls.Add(dryRun);
+        Controls.Add(_upgradeLabel);
+        Controls.Add(_freshnessLabel);
         Controls.Add(offlineBox);
         Controls.Add(sourceBox);
     }
@@ -155,6 +181,13 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         {
             await _session.LoadManifestAsync();
             _statusLabel.Text = $"已加载：LabelFrame {_session.Manifest!.LabelframeVersion}（{_session.Manifest.Components.Count} 个组件）。";
+
+            // 升级摘要 + 清单新鲜度（§6.11）：只读探测结果呈现，双通道留痕（UI + Burn 日志）
+            var assessment = _session.Assessment!;
+            _upgradeLabel.Text = UpgradePresentation.Summarize(assessment.Entries);
+            var freshness = UpgradePresentation.DescribeFreshness(_session.Manifest, _session.Latest);
+            _freshnessLabel.Visible = freshness is not null;
+            _freshnessLabel.Text = freshness ?? string.Empty;
 
             // 加载成功即进入下一步（清单是后续所有问卷步骤的前提）
             _proceed();

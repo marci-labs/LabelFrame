@@ -194,6 +194,7 @@ flowchart LR
 | 123 | 品牌传输插件外置化与官方插件体系（迭代 63 安装引导专项 7/8，2026-09-14；两项待决议按 Issue #56 评论用户确认——内置兜底去留 = **彻底外置**（未装则该品牌不可用，达成瘦身目标）/ 官方插件 id 与版本流 = **官方前缀 + 随主版本演进 + 覆盖安装率先支持版本比较**；策略细节见 §6.8） | ① **zebra 传输外置化（WinHost windows 目标）**：`ZebraTransportPlugin` / `ZebraPrinterTransport` 从 WinHost 移入独立插件工程 `src/LabelFrame.TransportPlugin.Zebra`（net10.0-windows10.0.26100），构建为官方 `.lfplugin` 包随 Release 发布；WinHost 不再引用 Zebra.Printer.SDK（客户端瘦身，SDK 依赖随插件包分发；毒丸引用清单随插件工程迁移）。② **官方插件 id**：前缀 `labelframe-`；zebra = `labelframe-transport-zebra`（连接配置 pluginId 同此）；**版本随主版本演进**（发版流水线以当版主版本构建）；旧内置时代 id `zebra`（≤0.26）为读取别名——connection.json 读取时映射为官方 id，不落盘迁移。③ **存量升级兼容（决议 1，AC-04）**：客户端 MSI 附带 `plugin-packages\labelframe-transport-zebra-<版本>.lfplugin`（随升级包附带，零新下载机制——下载链归 #54/#55）；启动时检测「已用 zebra 配置」且插件未装 → 自动从附带包安装（复用 PluginInstaller 三层校验），本次启动即完成装配；无附带包（开发目录裸跑）则 host.log 中文提示、不阻断启动。④ **覆盖安装版本比较（决议 2，官方插件率先）**：新版本覆盖旧版本、同版本幂等跳过、降级拒绝（提示先卸载）；第三方插件维持「覆盖安装不做版本比较」（#72 4A）；比较语义 = 双方可解析 System.Version 按其比较，否则字符串 Ordinal。⑤ **服务端放行策略**：`plugin-packages` 上传校验新增内置传输保留 id（log / tcp9100 / winspool）拒绝，官方 id 放行——官方插件可经服务端集中分发。⑥ **manifest 收录与品牌映射**：install manifest 收录 `plugin-zebra`（type=lfplugin，version=主版本，topologies=standalone/client/offline）；brand → 组件 id → 插件包 pluginId 三段映射表入 §6.8；引导 `InstallPluginZebra` 变量接线生效（BundleVariableMap 既有映射），Bundle 链安装归 #54/#55 | 品牌传输从「客户端全量内置」转为「按品牌组装」（#67 / #95 路线落地首例）；客户端二进制与 SDK 依赖解耦（瘦身 + SDK 升级单点在插件工程）；升级路径无断裂（已用 zebra 配置自动迁移装配）；官方插件覆盖安装有明确版本语义（为引导升级铺路）；后续新品牌（TSPL / CPCL）按同构映射表扩展零契约变更 |
 | 124 | 安装执行链与失败处置：Apply 启用 + 运行时前置链 + 非 MSI 落位（迭代 62 安装引导专项 6/8，2026-09-14；范围 = Issue #55「范围修订 v2」——Burn 已吸收大半自研编排，细节见 §6.9） | ① **Apply 启用边界**：问卷阶段保持 #53 只读契约（清单获取外零网络 / 零系统改动），执行边界 = 确认页「安装」→ 写变量 + `Engine.Plan` + **`Engine.Apply`**；#53「绝不 Apply」修订为「确认前绝不 Apply」。② **链序**：runtime-desktop → runtime-webview2 → ServerMsi → ClientMsi → WebUiPlacement → ZebraPluginPlacement（单一回滚边界；运行时 / 落位包 `Permanent="yes"`）。③ **运行时检测口径**：.NET = 文件版本探测（`dotnet\shared\Microsoft.WindowsDesktop.App` 版本目录枚举 ≥ 10.0.0，latestMajor 前滚对齐 MSI NetCoreCheck；注册表 sharedfx 实证不可靠）；WebView2 = EdgeUpdate Clients `pv` 注册表（对齐 MSI 先例，HKLM+HKCU）；探测入核心库 `RuntimeProbe`（委托注入可测），BA 于 Detect 前写 Burn 探测变量，链内 `DetectCondition` 消费（真 = 已装跳过 = AC-02）。④ **非 MSI 落位机制定案 = ExePackage 包装解压工具**（`LabelFrame.Bootstrapper.PayloadTool.exe` 内嵌 + zip / `.lfplugin` 作子 Payload 远程下载）：Burn 自定义动作被否决（无包获取语义、引擎进程内加载约束）；插件落位版本语义 = #123（覆盖 / 同版幂等 / 降级拒绝）；落位包 Permanent（卸载编排归 #57）。⑤ **失败处置引用 Burn 引擎内建回滚语义（不自造）**：包失败 → 停链 + 逆序回滚本次已执行包，`ApplyComplete.Status` 非零 → BA 失败报告（步骤 / Burn 日志位置 / 建议动作）。⑥ **重跑幂等**：MSI 已装跳过 + 覆盖升级（appsettings.json 不覆盖 = #48）；runtime DetectCondition 跳过；webui 覆盖重写；插件 #123 版本比较；重跑改选 = Burn Modify 语义（条件假即卸载）——版本升级细节归 #57。⑦ **manifest runtime 条目消费（#115 落地）**：`generate-install-manifest.ps1` 随发版生成 runtime 条目（厂商直链 + CI 下载实测哈希；webview2 version=evergreen；MSI dependsOn 补齐）；`build-bundle.ps1` 按 manifest 下载 runtime 安装器并 sha256 校验后交 wix build 内嵌摘要——厂商轮转 = bundle 构建失败（fail-closed） | 引导程序从「预览」进入「可真装」：链序 / 检测 / 落位 / 失败 / 幂等五项口径齐备（VM 取证 = AC-01/AC-03 待验收欠账）；非 MSI 组件复用 Burn 下载 / 校验 / 缓存能力（零自研下载链）；runtime 厂商直链风险以 manifest 哈希 + 构建校验双锚收口；#54（下载体验）与 #57（升级 / 卸载）接手点清晰 |
 | 125 | 引导下载体验补全：多源回退与下载行为测试覆盖（迭代 61 安装引导专项 5/8，2026-09-14；范围 = Issue #54「范围修订 v2（缩编重报）」——自研下载器被 Burn 吸收，细节见 §6.10） | ① **多源回退 = BA 消费 manifest `urls`（#115 顺序即优先级）**：v3 `ResolveSource` 在 v7 的后继 = `CacheAcquireBegin`/`Complete` 内 `IEngine.SetDownloadSource` + 事件返回 `Retry`；决策核心入核心库 `CacheSourceFallback`（每链包失败计数逐源推进、源耗尽停止干预；运行时清单是源顺序权威，每轮 Apply 重建、重试归零）；获取失败与坏哈希同样换源；仅远程载荷（`PayloadContainerId` 空）参与；重试驱动有界（无源不空转）。② **下载侧 UI 细化**：单包下载百分比（`CacheAcquireProgress` Progress/Total）+ 源序号 i/N + 换源提示 + 缓存命中标注（「已缓存（跳过下载）」）。③ **失败分类口径**：HRESULT → 源不可达 / 网络中断 / 校验失败（0x80091007）/ 未分类，差异化中文提示（含镜像源部署指引）双通道呈现（失败报告 + Burn 日志）。④ **测试矩阵**：`scripts/test-bundle-download-matrix.ps1`（本地脚本化验证不进 CI）——per-user 测试 Bundle + 真实 BA 七页向导 UI 自动化 + 双 TcpListener 路由源（ok/404/hang/corrupt/truncate），七场景三通道断言（Burn 日志 / 退出码 / 访问日志）；**Burn 载体下「续传」语义 = 失败后重试 / 换源重新获取**（无 HTTP Range 断点）；**缓存命中 + 断网续装前提 = 进程中断**（缓存阶段失败会被引擎回滚清缓存） | 镜像位预留（#117）从 schema 形态兑现为**消费链路**：单源清单零变更退化为「失败即耗尽」，镜像源落地只填 urls 数组；国内可达性风险（专项最大现实风险）出现对策路径；下载失败可诊断性（分类 + 源耗尽 + 日志双通道）；#57（升级收尾）为专项剩余唯一迭代 |
+| 126 | 升级路径（BA 升级清单 + 客户端检查更新提示闭环）（迭代 64 安装引导专项 8/8，2026-09-14；范围 = Issue #57「范围修订 v2（缩编重报）」——原「自研升级编排」被 Burn RelatedBundle + 固定 UpgradeCode 既有语义吸收，本轮只做「看」的部分与客户端提示；契约细节见 §6.11） | ① **BA 升级模式（看）**：Detect 本机已装组件版本（核心库 `LocalInstallProbe`，只读——MSI 注册表 `MsiEnumRelatedProducts` + `MsiGetProductInfo` 按 MSI UpgradeCode 枚举（同族多产品取最高版本）；官方插件读落位目录 manifest.json；runtime 复用 `RuntimeProbe`）→ 与当轮 manifest 组件版本对比（`UpgradeAssessment` 纯函数）→ 欢迎页「可升级清单」摘要 + 确认页「本机版本」列；全部已装组件 = 清单版本 → 明示「已是最新」（继续执行按幂等口径跳过，AC-02）。② **版本比较语义（组件级 / 包级，§6.11）**：统一比较器 = 双方可解析 System.Version（容忍 v 前缀、缺失段视为 0）按其比较，否则字符串 Ordinal——与 #123 插件比较同源，实现收敛单一（`VersionSemantics`）；组件级按「已装 vs manifest 条目版本」、包级（Bundle 自身）按 RelatedBundle 检测版本 + `latest.json` 指针。③ **升级执行零新机制**：确认后复用现成 Apply 链——Burn 固定 UpgradeCode 的 RelatedBundle 覆盖升级（新 Bundle 版本 > 已装 → 计划移除旧 Bundle + 安装新）+ MSI MajorUpgrade（appsettings.json 不覆盖 = #48）+ 插件 #123 版本比较 + webui 覆盖重写；BA 不新增执行代码路径。④ **latest.json 消费**：清单来源为稳定通道（URL）或本地目录时顺带解析 `latest.json`（#51 生成），manifest 版本 < 通道最新 → 欢迎页提示「清单非最新」（清单新鲜度，不阻断）。⑤ **客户端检查更新提示闭环（#71/#72 分发之上）**：WinHost `/api/host/config` 响应新增只读 `version`（程序集 InformationalVersion，对齐 AndroidHost #104 ⑤ 先例，向后兼容增量）；客户端设置页「更新与安装包」从 client-packages 文件名解析客户端 MSI 版本（`LabelFrame-Client-<版本>.msi` 发版命名事实）取最高与本机比较——有新版 → 「到服务端下载新版安装包 / 由 IT 重跑安装引导程序」（**不做应用内自动下载安装**）；无新版 → 「已是最新」；解析不到版本号不比较不误导 | 「重跑引导完成升级」闭环补上「检查」半边：用户与 IT 在装机外可判断是否需要升级；升级执行语义维持 Burn / MSI 既有口径（#118 更新策略不变，无人值守静默更新仍明确不做）；客户端零自动更新（提示 + 入口，决策 #71/#72 维持）；版本比较全系统单一语义（#123 同源收敛），后续新组件按 §6.11 表扩展零契约变更 |
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`（常量定义于 `ApiErrorCodes.InternalError`，全仓仅此一处字面量）。分类修正（决策 #107）：请求体反序列化失败（非法 JSON / 非 UTF-8 / 类型不匹配）→ 400 + `LF_API_BAD_BODY`（中文消息，原始解析异常详情只进服务端日志）；`POST /api/printer/test` 发送失败 → 400 + `LF_TRANSPORT_TEST_FAILED`（消息含目标地址与原因）；403（非归属设备回报 / 进度）同样返回 ErrorView——错误响应不存在空 body 形态。
@@ -230,7 +231,7 @@ flowchart LR
 | 作业 | `POST /api/jobs`（自包含模板，本地打印）、`GET /api/jobs?limit=`、`GET /api/jobs/{id}`、`POST /api/jobs/{id}/suspend / resume / cancel`、`POST /api/jobs/{id}/items/{index}/retry`（失败项重打） |
 | 连接 | `GET /api/transport`（当前连接 + 可用插件）、`POST /api/transport`（切换 / 测试，先测试后生效）、`GET /api/transport/plugins` |
 | 插件 | `GET /api/plugins/installed`、`POST /api/plugins/install`、`POST /api/plugins/uninstall`（安装 / 卸载重启生效） |
-| 机器级 | `GET/POST /api/host/config`（ServerUrl；仅回环可写）、`GET/POST /api/host/print-settings`（批次节流；仅回环可写）、`POST /api/host/shutdown`（仅回环） |
+| 机器级 | `GET/POST /api/host/config`（ServerUrl；GET 响应含只读 `version` = 客户端版本，迭代 64 决策 #126；仅回环可写）、`GET/POST /api/host/print-settings`（批次节流；仅回环可写）、`POST /api/host/shutdown`（仅回环） |
 | 打印机 | `GET /api/printer/status`、`POST /api/printer/test` |
 | 其他 | `GET /healthz`（含当前连接插件信息） |
 
@@ -260,7 +261,7 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 
 ## 6. 安装引导（Bootstrapper）
 
-> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）/ #124（安装执行链与失败处置，§6.9）/ #125（下载体验与多源回退，§6.10）。
+> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）/ #124（安装执行链与失败处置，§6.9）/ #125（下载体验与多源回退，§6.10）/ #126（升级模式与版本比较，§6.11）。
 
 定位：**安装引导程序（setup）**——首次接触 LabelFrame 的部署者运行一个小 EXE，回答少量问题（部署拓扑、打印机品牌、是否带管理界面），程序解析安装清单（install manifest）、按需下载组件并完成静默安装 / 落位；PDA 不进 PC 引导（经服务端下载中心扫码下载，专项 3/8 #52）。目标：把「装什么、怎么装」从「读懂 DEPLOY 文档 + 手工排组件」降为「回答三个问题」。语言边界：引导问卷与向导文案**中文单语**，i18n 不进 setup 问卷（REQUIREMENTS §7「多语言」边界不变）。
 
@@ -497,7 +498,9 @@ public interface ITopologyResolver
 
 ### 6.5 更新策略（决策 #118 前半）
 
-第一期 = **「检查新版本 + 重跑引导程序升级」**：引导程序按 `latest.json` 指针比对已装版本（Windows 卸载信息 / 本地安装记录，#57 实现定案），有新版即提示重跑引导程序；升级 = 重走问卷（预设默认记住上次选择，属 #53 / #57 实现细节）→ 下载新版组件 → MSI 覆盖升级（既有语义不变：`appsettings.json` 不覆盖（决策 #48）、服务升级不弹完成窗（决策 #54）；重跑幂等口径归 #55）。
+第一期 = **「检查新版本 + 重跑引导程序升级」**：引导程序按 `latest.json` 指针比对已装版本（Windows 卸载信息 / 本地安装记录），有新版即提示重跑引导程序；升级 = 重走问卷（预设默认记住上次选择，属 #53 / #57 实现细节）→ 下载新版组件 → MSI 覆盖升级（既有语义不变：`appsettings.json` 不覆盖（决策 #48）、服务升级不弹完成窗（决策 #54）；重跑幂等口径归 #55）。
+
+**检查与呈现的实现契约已随迭代 64（#57）落地**：本机已装版本探测、「可升级清单」呈现、组件级 / 包级版本比较语义见 **§6.11（决策 #126）**；升级执行 = Burn RelatedBundle + 固定 UpgradeCode + MSI MajorUpgrade 既有语义（§6.9），无自研升级编排。客户端侧「检查更新」提示闭环（设置页查所连服务端 `client-packages`，#71/#72 分发通道）同见 §6.11 ⑤。
 
 **明确不做**：无人值守静默更新、服务端进程内自更新、Velopack 增量更新（专项 8/8 #57 收尾确认同口径）。依据：局域网部署、发版频率低、升级应由管理员在场选择打印低峰窗口。客户端「应用内自更新」（打开客户端直接提示 / 自下载升级）为未来独立立项——届时 Velopack 为首选候选（决策 #114）。
 
@@ -534,6 +537,21 @@ public interface ITopologyResolver
 | 6 | [#55](https://github.com/marci-labs/LabelFrame/issues/55) | 迭代 62 | 安装编排：运行时前置补装 + MSI 静默链 + 组件落位 | #54 |
 | 7 | [#56](https://github.com/marci-labs/LabelFrame/issues/56) | 迭代 63 | 品牌传输插件外置化与按需组装（官方插件 manifest 条目） | #50、#53；与 #54 / #55 可并行 |
 | 8 | [#57](https://github.com/marci-labs/LabelFrame/issues/57) | 迭代 64 | 升级路径（检查新版本 + 重跑引导）+ 专项收尾记账 | #53~#55、#51 |
+
+**专项回看（8/8 收尾，迭代 64 / #57 记账）——8 个迭代关键决策串讲与 Burn Pivot 脉络**：
+
+| 顺序 | Issue / 迭代 | 关键决策 | 一句话结论 |
+|---|---|---|---|
+| 1 | #50 / 迭代 57 | #114~#118 | 契约基线：manifest schema（sha256 强制 / 多源数组）、六拓扑预设 + 两开关、信任模型（哈希即背书、不推翻 #79）、「检查新版本 + 重跑引导」更新策略、首期不购证书 |
+| 2 | #51 / 迭代 58 | #115 / #120 | manifest 由 CI 生成禁止人工维护；latest.json 指针随发版同步生成；断言 = 字段完整性 + 产物存在性 + 哈希全量复核 |
+| 3 | #52 / 迭代 59 | #119 | PDA 签名稳定化（回退路径收口）+ 服务端下载中心扫码下载（pda-packages 目录与 API） |
+| 4 | #53 / 迭代 60 | #114 → **#122** | 骨架立项时定自研 WinForms 向导（#114，≤ 20MB 量级）→ **AC-04 体积实测 51.7MB 超标**，用户权衡「买引擎」后**形态 Pivot 为 WiX Burn Bundle + net48 托管 BA（#122）**；连锁修订：#54（下载引擎）/ #55（安装编排）/ #57（升级路径）大半自研内容被 Burn 既有语义吸收，各 Issue 拾取时按「范围修订 v2」缩编重报 |
+| 5 | #54 / 迭代 61 | #125 | 缩编后交付多源回退消费（`SetDownloadSource` + 事件 Retry）与下载侧失败分类 / 换源提示；本地矩阵七场景三通道断言全绿 |
+| 6 | #55 / 迭代 62 | #124 | 缩编后交付 Apply 启用边界（确认前绝不 Apply）、六包链序、运行时文件版本探测、非 MSI 落位（ExePackage 包装 PayloadTool）、引用引擎内建回滚 |
+| 7 | #56 / 迭代 63 | #123 | Zebra 传输外置化为官方 `.lfplugin`（客户端瘦身）；brand → 组件 id → pluginId 三段映射；官方插件率先版本比较（覆盖 / 幂等 / 降级拒绝） |
+| 8 | #57 / 迭代 64 | #126 | 收尾：BA 升级清单（「看」的部分，§6.11）+ 客户端检查更新提示闭环 + 专项记账；升级执行零新机制（RelatedBundle + MajorUpgrade 既有语义） |
+
+**Burn Pivot 脉络完整呈现**：#114（迭代 57 立项时）基于「拓扑编排 / manifest 解析 / 中文问卷无论如何自研，Burn 只省下载 + msiexec 封装一小段」判断自研向导，并援引迭代 10（#44）放弃 Burn 的历史顾虑（Bal 扩展复杂度）；迭代 60 首版实测 self-contained WinForms 单文件 **51.7MB**（框架体积下限 + WinForms 裁剪被 SDK 阻断 NETSDK1175）超 ≤ 20MB 量级——AC-04 的体积实证触发了形态重审：WiX v5.4+ 的 out-of-proc 托管 BA 模型消解了 #44 的复杂度顾虑，Burn 引擎换来「下载 / 校验 / 链装 / 回滚 / 升级」全套现成能力与 MB 级体积（Bundle EXE 实测 1.48MB），代价为问卷 UI 定制受引擎进程模型约束；**Pivot 的连锁影响**由 #122 显式登记——#54 / #55 / #57 三个后续迭代以「范围修订 v2（缩编重报）」承接（自研编排范围收缩为「Burn 未覆盖的消费与呈现面」），各自仍保住了 AC 场景语义（载体替换、口径如实记录）。
 
 ### 6.8 官方传输插件体系（决策 #123，迭代 63 / #56）
 
@@ -601,7 +619,7 @@ public interface ITopologyResolver
 **失败处置与重跑幂等（AC-05）**：
 
 - **失败即停 + 回滚 = 引用 Burn 引擎内建语义（不自造）**：Execute 阶段任一包失败 → 引擎停止后续包并逆序回滚本次 Apply 已执行的包（runtime 与落位包因 `Permanent="yes"` 不卸载，MSI 回滚卸载）；`ApplyComplete.Status` 非零 → BA 失败报告页。#122 立场维持：链装 / 回滚 / 提权 / 日志由引擎负责，BA 只呈现。
-- **重跑引导程序（幂等口径）**：MSI = Burn 检测已装（Present）→ 计划跳过（同版重跑零动作）；覆盖升级 = MSI 既有语义（**appsettings.json 不覆盖 = 决策 #48**，MSI 独立用户配置组件）；版本升级 = Bundle related-bundle 升级 + MSI MajorUpgrade（细节归 #57）。runtime = DetectCondition 已装跳过（AC-02）。落位 = webui 覆盖重写；插件按 #123 版本比较（同版幂等 / 降级拒绝）。**重跑改变问卷选择 = Burn Modify 语义**：`InstallCondition` 假的包被计划卸载（如从 standalone 改选 client-only → ServerMsi 卸载）——标准 Burn 行为，显式接受。
+- **重跑引导程序（幂等口径）**：MSI = Burn 检测已装（Present）→ 计划跳过（同版重跑零动作）；覆盖升级 = MSI 既有语义（**appsettings.json 不覆盖 = 决策 #48**，MSI 独立用户配置组件）；版本升级 = Bundle related-bundle 升级 + MSI MajorUpgrade（「看」的检查与清单口径已落地 §6.11 / 决策 #126）。runtime = DetectCondition 已装跳过（AC-02）。落位 = webui 覆盖重写；插件按 #123 版本比较（同版幂等 / 降级拒绝）。**重跑改变问卷选择 = Burn Modify 语义**：`InstallCondition` 假的包被计划卸载（如从 standalone 改选 client-only → ServerMsi 卸载）——标准 Burn 行为，显式接受。
 
 ### 6.10 下载体验与多源回退（决策 #125，迭代 61 / #54）
 
@@ -626,6 +644,37 @@ public interface ITopologyResolver
 - **本地 HTTP 测试源**（TcpListener 双实例，行为按 URL 路由内嵌）：`/ok/` 正常、`/404/` 不存在、`/hang/` 无响应挂起（超时；45s 上限 404 兜底）、`/corrupt/` 篡改一字节（哈希不符）、`/truncate/` 半量截断（连接中断）；访问日志落盘供断言。
 - **七场景断言（Burn 日志 + 退出码 + 访问日志三通道）**：S1 正常下载；S2 主源 404 → 换源镜像成功；S3 主源挂起超时 → 换源成功；S4a 坏哈希 → 换源重取干净副本成功；S4b 坏哈希单源 → 引擎重取额度内同源重试仍坏 → **失败（fail-closed，不装不明文件）**；S5 截断中断 → 镜像完整重传成功（**Burn 载体下「续传」语义 = 失败后重试 / 换源重新获取**——引擎不做 HTTP Range 断点续传，与原自研下载器 AC 口径的差异如实记录）；S6 缓存命中 + 断网续装（run1 挂起下载中**强制中断**（无正常回滚——缓存阶段失败会被引擎回滚清缓存，中断才保留 InProgress 注册与已缓存包）→ run2 双源停机：已缓存包零网络请求（缓存命中跳过获取）+ 未缓存包逐源尝试均拒绝 → 换源 2/2 → 源耗尽失败 + 分类提示）。
 - **工程注记**：wix build 会在输出目录留包载荷的硬链接中间产物——构建后必须清除，否则 Burn 以 Bundle 同目录为本地源直接 copy 跳过下载（S1 首跑实测踩坑）；WinForms 控件为注册类名（`WindowsForms10.*`），UI 自动化需 `EnumChildWindows` 递归 + 类名子串匹配。
+
+### 6.11 升级模式与版本比较（决策 #126，迭代 64 / #57）
+
+> 范围基线 = Issue #57「范围修订 v2（缩编重报）」：升级执行机制（覆盖升级链、回滚、插件版本比较）已由 Burn RelatedBundle + 固定 UpgradeCode + MSI MajorUpgrade 既有语义承担（#122 / #124），本轮只定案**「看」的部分**——本机已装版本探测、与 manifest / latest.json 的对比口径、「可升级清单」呈现与「已是最新」判定——以及客户端「检查更新」提示闭环。无人值守静默自动更新、服务端进程内自更新、Velopack 引入维持明确不做（§6.5，#118）。
+
+**统一版本比较器（`VersionSemantics`，核心库单点实现）**：双方可解析为 `System.Version`（容忍 `v` 前缀；**缺失段视为 0**——`1.0 == 1.0.0`）则按其比较，任一不可解析则字符串 Ordinal 比较。与 #123 插件版本比较语义同源（`PayloadPlacer.ComparePluginVersions` 委托本实现，全系统单一语义）。
+
+**组件级口径（BA 可升级清单）**：以**当轮加载的 manifest 组件条目 `version` 为目标版本**，与本机已装版本对比。已装版本来源（`LocalInstallProbe`，全程只读——问卷只读契约不变）：
+
+| 组件 | 已装版本来源 | 比较 / 判定 |
+|---|---|---|
+| `server-msi` / `client-msi` | MSI 注册表：`MsiEnumRelatedProducts`（按 MSI UpgradeCode 枚举 ProductCode）+ `MsiGetProductInfo(VersionString)`；同族多产品**取最高版本** | 未装 = 新装；已装 < 目标 = **升级**；= 目标 = 已是最新；> 目标 = 本机更新（提示清单旧于本机） |
+| `plugin-<brand>`（官方插件） | 落位目录 `plugins\<pluginId>\manifest.json` 的 `version`（§6.8 目录约定） | 同上（执行按 #123：覆盖 / 同版幂等 / 降级拒绝） |
+| `runtime-desktop` | `RuntimeProbe.DesktopRuntimeVersion`（§6.9 文件版本探测） | 已装 ≥ 目标 = 已是最新（共享系统组件，本机更新即满足；执行侧 DetectCondition 只判 ≥ 10.0.0）；未装 = 新装 |
+| `runtime-webview2` | `RuntimeProbe.WebView2Installed`（只判存在） | version 恒 `evergreen`（固定直链自更新），**不比较版本**：未装 = 新装，已装 = 已是最新 |
+| `webui`（webui-zip） | —— | **无独立版本概念**（§6.9 覆盖重写语义），不入可升级清单（呈现为「重跑覆盖更新」） |
+| 其他（`linux-server` / `pda-apk` 等下载 / 指引条目） | —— | 非本机安装组件，不探测不比较 |
+
+**「已是最新」判定（AC-02）**：本机检测到**至少一个**可版本比较组件已装，且**没有任何已装组件**判定为「升级」（未装组件属新装，不参与判定）→ 整体「已是最新」——欢迎页明示、确认页横幅「无需重复安装」；不阻止继续（重跑改选 = Burn Modify 语义仍可用，执行按 §6.9 幂等口径跳过或覆盖重写）。任一已装组件 < 目标版本 → 「有可用更新」，确认页呈现「组件、现版本 → 新版本」清单，确认后复用现成 Apply 链升级。
+
+**包级口径（Bundle 自身 / 引导程序）**：本机已装引导程序版本 = Burn `DetectRelatedBundle` 事件检测的同 UpgradeCode 相关 Bundle 版本（BA 记录并写入日志）；当前引导程序版本 = `WixBundleVersion`。包级不驱动安装决策（组件级清单已覆盖用户视角），仅用于日志与升级走查证据。
+
+**latest.json 消费（清单新鲜度）**：清单来源为**稳定通道 URL**（`releases/latest/download/install-manifest.json`）时推导同通道 `latest.json`，或**本地路径**时读同目录 `latest.json`（离线包内嵌场景）；两者解析 `{ labelframeVersion, manifestUrl }`（#51 生成）。manifest `labelframeVersion` < 通道最新 → 欢迎页提示「清单非最新（最新 X.Y.Z），建议改用官方稳定通道」；推导不到 / 读取失败 → 静默跳过（不阻断主流程）。latest.json **不参与组件级比较**（组件版本权威 = manifest）。
+
+**客户端「检查更新」提示闭环（#71 / #72 分发之上，不做应用内自动下载安装）**：WinHost `GET /api/host/config` 响应新增只读 `version` 字段（程序集 InformationalVersion，向后兼容增量，对齐 AndroidHost 决策 #104 ⑤ 先例；POST 忽略该字段）；客户端设置页「更新与安装包」卡片从 `client-packages` 列表按发版命名事实解析客户端 MSI 版本（文件名 `LabelFrame-Client-<版本>.msi`），取最高与本机版本比较（同一 `VersionSemantics` 语义的前端等价实现，数值段比较）：
+
+- 最高包版本 > 本机 → 「**有新版 X.Y.Z（本机 A.B.C）**：到服务端下载新版安装包（下方列表），或由 IT 重跑安装引导程序完成升级」；
+- 不高于本机（或服务端无包但本机已连）→ 「已是最新（本机 X.Y.Z）」；
+- 本机版本未知（旧客户端无 `version` 字段）或列表无可解析版本号的包 → 不比较不显示（无误导，维持纯列表）。
+
+**后续扩展**：新增品牌插件条目按 §6.8 映射表自动进入探测与比较（`plugin-<brand>` 规则已覆盖）；新增本机安装组件类型时先扩本表再改代码（强化路径）。
 
 
 ## 7. 风险与未决问题
@@ -667,7 +716,7 @@ public interface ITopologyResolver
 
 - 国内镜像 / 自托管分发源落地：manifest `urls` 多源位已预留（#117）且**消费链路已实现**（迭代 61 / §6.10：BA 按 urls 顺序逐源回退、源耗尽分类提示，本地多源矩阵已验证）——首期仅 GitHub Release 主源，国内可达性是专项最大现实风险，镜像源选型与运维另行排期（届时只填数组，零 schema 变更、零信任成本）。
 - 代码签名证书采购（OV / EV）：首期不购（#118）——引导 EXE / MSI 公开下载有 SmartScreen「未知发布者」提示（缓解 = manifest sha256 强制校验 + 发布页哈希与绕过说明）；触发条件 = 公开分发量增长或拦截反馈集中。
-- 客户端应用内自更新：不在本专项（更新 = 重跑引导程序，#118）；未来独立立项时 Velopack 为首选候选（#114 评估结论：delta 更新收益直接、GitHub Releases 源开箱即用）。
+- 客户端应用内自更新：不在本专项（更新 = 重跑引导程序，#118）；未来独立立项时 Velopack 为首选候选（#114 评估结论：delta 更新收益直接、GitHub Releases 源开箱即用）。**「检查更新」提示闭环已随迭代 64（#126）落地**——客户端设置页对比服务端 client-packages 版本并提示获取入口，不含应用内自动下载安装。
 - manifest / 插件包签名：升级触发条件 = 公网分发的陌生第三方插件生态出现（衔接 #79，#117）；购证书后 manifest 签名是自然增强位。
 - Docker 镜像 digest 收录 manifest：首版不含（registry digest 机制兜底，#115）；引导程序对 Docker 拓扑只做 compose 生成与拉取指引。
 - i18n 不进 setup 问卷：引导问卷与向导文案中文单语（REQUIREMENTS §7「多语言」边界不变，专项各迭代不新增语言项）。

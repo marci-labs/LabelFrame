@@ -25,6 +25,9 @@ public sealed class HostOptions
     /// <summary>默认监听地址（仅本机）。</summary>
     public const string DefaultListenUrl = "http://127.0.0.1:53960";
 
+    /// <summary>产品版本（与打包脚本 -Version 保持一致；随发版与 ServerOptions.ProductVersion 同步更新——客户端「检查更新」比较口径，决策 #126）。</summary>
+    public const string ProductVersion = "0.26.0";
+
     /// <summary>默认数据库目录（%LOCALAPPDATA%\LabelFrame）。</summary>
     public static string DefaultDatabasePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

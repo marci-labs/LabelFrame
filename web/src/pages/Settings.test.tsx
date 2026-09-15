@@ -246,6 +246,48 @@ describe('更新与安装包（迭代 22 §2.3）', () => {
   })
 })
 
+describe('检查更新（迭代 64，决策 #126）', () => {
+  const pkg = (fileName: string) => ({ fileName, sizeBytes: 1024, modifiedAt: '2026-09-14T10:00:00Z' })
+
+  it('服务端有新版客户端包：显示新版本号与本机版本 + 获取入口提示', async () => {
+    mocks.local.getHostConfig.mockResolvedValue({ ...HOST_CONFIG, version: '0.26.0' })
+    mocks.server.listClientPackages.mockResolvedValue([pkg('LabelFrame-Client-0.27.0.msi')])
+    renderSettings()
+    const notice = await screen.findByTestId('update-available')
+    expect(notice.textContent).toContain('0.27.0')
+    expect(notice.textContent).toContain('0.26.0')
+    expect(notice.textContent).toContain('重跑安装引导程序')
+    expect(screen.queryByTestId('update-uptodate')).toBeNull()
+  })
+
+  it('服务端包不高于本机（已是最新）：明确「已是最新」且无误导', async () => {
+    mocks.local.getHostConfig.mockResolvedValue({ ...HOST_CONFIG, version: '0.27.0' })
+    mocks.server.listClientPackages.mockResolvedValue([pkg('LabelFrame-Client-0.27.0.msi'), pkg('LabelFrame-Client-0.26.0.msi')])
+    renderSettings()
+    const notice = await screen.findByTestId('update-uptodate')
+    expect(notice.textContent).toContain('已是最新')
+    expect(notice.textContent).toContain('0.27.0')
+    expect(screen.queryByTestId('update-available')).toBeNull()
+  })
+
+  it('本机版本未知（旧客户端无 version 字段）：不比较不显示结论', async () => {
+    mocks.server.listClientPackages.mockResolvedValue([pkg('LabelFrame-Client-0.27.0.msi')])
+    renderSettings()
+    await screen.findByText('LabelFrame-Client-0.27.0.msi')
+    expect(screen.queryByTestId('update-available')).toBeNull()
+    expect(screen.queryByTestId('update-uptodate')).toBeNull()
+  })
+
+  it('列表无可解析版本号的包：不比较不显示结论（多版本取最高断言归 lib 单测）', async () => {
+    mocks.local.getHostConfig.mockResolvedValue({ ...HOST_CONFIG, version: '0.26.0' })
+    mocks.server.listClientPackages.mockResolvedValue([pkg('客户端安装包.zip')])
+    renderSettings()
+    await screen.findByText('客户端安装包.zip')
+    expect(screen.queryByTestId('update-available')).toBeNull()
+    expect(screen.queryByTestId('update-uptodate')).toBeNull()
+  })
+})
+
 describe('插件管理（迭代 23 §5.6）', () => {
   const PKG: PluginPackageInfo = {
     fileName: 'sample-1.0.0.lfplugin',
