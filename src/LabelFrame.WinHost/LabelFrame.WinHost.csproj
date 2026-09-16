@@ -30,6 +30,12 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'" />
     <!-- 文件日志：Serilog.AspNetCore 传递依赖 Serilog.Sinks.File，无需单独引用 -->
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
+    <!-- 发布工件版本下限固化（迭代 64 返修，决策 #130）：DependencyModel 在闭包内仅由
+         Serilog.Settings.Configuration 传递（>= 8.0.0，解析取下限 8.0.0），而 v0.26.0 发布
+         工件曾是 Zebra SDK 传递钉定的 10.0.7——低于该版本会在 Client MSI 覆盖升级链触发
+         Windows Installer 组件规则拒装降版 keyfile（#57 AC-01 实证）。显式钉 10.0.7 使
+         闭包下限不低于上一发版；升版时同步上调 scripts/assert-client-deps-baseline.ps1 基线。 -->
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="10.0.7" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">

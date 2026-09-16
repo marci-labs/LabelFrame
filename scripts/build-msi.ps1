@@ -45,6 +45,12 @@ $global:LASTEXITCODE = 0
 & $wix build (Join-Path $root 'packaging\main.wxs') $filesWxs -d PublishDir=$publishDir -d Version=$Version -d AssetsDir=$(Join-Path $root 'assets') -d LicenseRtf=$(Join-Path $root 'packaging\license.rtf') -d PackagingDir=$(Join-Path $root 'packaging') @zebraPackageArgs -o $msi -arch x64 -ext WixToolset.NetFx.wixext -ext WixToolset.UI.wixext -culture zh-cn 2>&1 | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
 
+# 4b) 发布工件依赖降版回归断言（迭代 64 返修，#57 AC-01，决策 #130）：
+#     File 表关键程序集不低于上一发版基线——Windows Installer 组件规则拒装降版 keyfile，
+#     覆盖升级会净丢失降版文件（v0.27.0 实证）。本入口为 CI「MSI 结构断言」与 release.yml 共用。
+& (Join-Path $PSScriptRoot 'assert-client-deps-baseline.ps1') -MsiPath $msi
+if (-not $?) { throw '依赖基线断言失败（发布工件降版）' }
+
 # 5) 代码签名（可选：-Sign）
 if ($Sign) {
     if (-not $PfxPassword) { throw '未提供签名密码：请用 -PfxPassword 或设置环境变量 MSI_SIGN_PASSWORD。' }
