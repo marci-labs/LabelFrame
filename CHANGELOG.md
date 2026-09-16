@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## v0.27.1 补丁发布（迭代 64 返修 + 迭代 67） · 2026-09-16
+
+- **打包范围**：v0.27.0 之后合入 master 的两项缺陷修复——迭代 64 返修（PR #96：覆盖升级链依赖降版——发布工件版本固化与降版回归断言，决策 #130）与迭代 67（PR #98：release.yml 步骤序修复——Client MSI 附带插件包，流程治理 #97，决策 #131）。无用户可见功能变更，dotnet / 前端代码零功能改动（仅依赖钉版）。详见各迭代条目。
+- **覆盖升级崩溃修复（迭代 64 返修）**：v0.27.0 Client 发布工件较 v0.26.0 依赖降版（SkiaSharp / Microsoft.Extensions.DependencyModel），叠加确定性组件 GUID 跨版本复用触发 Windows Installer 组件规则拒装降版 keyfile → 覆盖升级净结果两文件缺失 → WinHost 首启即崩（全新安装不受影响）。本版将依赖钉至 0.26 实测值（SkiaSharp 3.119.2、Microsoft.Extensions.DependencyModel 10.0.7，全仓统一），并新增 `scripts/assert-client-deps-baseline.ps1` 降版回归断言挂接 `build-msi.ps1`（CI 必需检查与发版链共用入口，降版即构建失败）——0.26 直升与坏 0.27 修复升级两条路径组件版本语义干净。
+- **Client MSI 插件包附带修复（迭代 67）**：v0.27.0 发版链步骤序缺陷（插件包构建晚于 Client MSI 打包且静默跳过）致公网 Client MSI 无 `plugin-packages\*.lfplugin`，存量升级的 zebra 自动安装不可能发生；本版插件包构建步骤上移至 Client MSI 打包之前，并加 fail-closed 断言（`scripts/assert-msi-plugin-package.ps1`，缺失即构建失败）——本版起发版 Client MSI 附带 `labelframe-transport-zebra-*.lfplugin`。
+- **版本同步**：ServerOptions / HostOptions `ProductVersion` 与稳定版 Compose 默认版本更新为 `0.27.1`（客户端「检查更新」比较口径随升，决策 #126）。
+- **发布产物**：与 v0.27.0 同清单（Server / Client MSI、服务端 webui 插件 zip、linux-x64 归档、AndroidHost APK、Zebra 官方插件 .lfplugin、install-manifest.json + latest.json）+ ghcr 镜像 `ghcr.io/marci-labs/labelframe-server:0.27.1` / `labelframe-client:0.27.1`（均含 `latest`）；Client MSI 本版起由发版链断言实证附带插件包。引导程序 Bundle EXE 仍不随发版构建（#122 后置决策），需要时本地 `scripts/build-bundle.ps1` 构建手动上传。
+
 ## 迭代 67：流程治理——release.yml 步骤序修复：Client MSI 附带插件包（升级自动安装链修复） · 2026-09-16
 
 - **缺陷与根因（#97；来源 = #57 AC-01 + #56 AC-04 合并升级走查取证，v0.27.0 公网实证）**：release.yml 中「构建 Zebra 官方插件包（.lfplugin）」步骤（PR #80 引入）物理位置在「打包 Client MSI」**之后**，而其步骤注释自称"先于 Client MSI 构建"——`build-msi.ps1` 打包时检测不到 `artifacts\labelframe-transport-zebra-*.lfplugin` 即按设计静默跳过附带 → 公网发版 Client MSI 无 `plugin-packages\*.lfplugin`（File 表 48 文件 0 命中）→ 存量升级的 zebra 自动安装（决策 #123 迁移机制）不可能发生；对照实验已证附带包在位时迁移功能完全正常（自动安装 loaded=true / isExternal=true），缺陷仅在流水线步骤序。
