@@ -10,8 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SkiaSharp" Version="3.119.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.1" />
+    <!-- SkiaSharp 与 LabelFrame.Rendering 统一 3.119.2（迭代 64 返修，决策 #130：
+         本工具不入 MSI 发布闭包，纯一致性对齐，防仓库内版本漂移） -->
+    <PackageReference Include="SkiaSharp" Version="3.119.2" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.2" />
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 

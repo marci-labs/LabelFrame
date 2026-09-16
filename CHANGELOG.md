@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 64 返修：覆盖升级链依赖降版——发布工件版本固化与降版回归断言（AC-01 验收不通过回流） · 2026-09-16
+
+- **缺陷与根因（决策 #130；#57 AC-01 真实公网覆盖升级走查实证，证据链 `artifacts/accept-upgrade-027/`）**：v0.27.0 Client 发布工件较 v0.26.0 依赖降版（SkiaSharp.dll 3.119.2.0→3.119.1.0、Microsoft.Extensions.DependencyModel.dll 10.0.726.21808→8.0.23.53103），叠加确定性组件 GUID 跨版本复用 → Windows Installer 组件规则拒装降版 keyfile（Client MSI 日志 6 处 Disallowing）→ 同次升级旧产品卸载删旧文件 → 净结果两文件缺失 → WinHost 首启即崩（FileNotFoundException: SkiaSharp）；全新安装不受影响，仅覆盖升级路径命中。根因（两版还原图对称 diff 实证）：0.26 的高版本是 WinHost 当时引用的 Zebra.Printer.SDK 5.0.3685 传递钉定顺带抬升，迭代 63（#123）外置化移出后闭包回落到本仓自钉低版（Rendering 直接引用 SkiaSharp 3.119.1；Serilog.Settings.Configuration 传递 DependencyModel 范围 `>= 8.0.0` 解析取最低版 8.0.0）——非浮动升，是「传递下限消失暴露自钉低版」；全闭包 diff 降版仅三件（含 SkiaSharp.NativeAssets.Win32；原生 libSkiaSharp.dll 无 File 表版本列未触发规则），无其他隐藏降版。
+- **依赖版本固化**：Rendering `SkiaSharp` / `SkiaSharp.NativeAssets.Linux` 3.119.1→3.119.2（WinHost / Server 闭包随升，与 AndroidHost / Zebra 插件工程 / WinHost.Tests 毒丸清单全仓统一 3.119.2）；WinHost 显式钉 `Microsoft.Extensions.DependencyModel` 10.0.7（闭包内唯一传递来源为 Serilog 范围引用，显式钉抬下限）；`tools/LabelFrame.PrintImageVerifier` 同步 3.119.2（不入 MSI 闭包，纯仓库一致性防漂移）。钉至 0.26 实测值而非更高最新版——与上一发版工件同版本号，0.26→新版与坏 0.27→新版两条升级路径的组件版本语义最干净；全仓直接引用均精确钉版，还原确定性可复现。
+- **降版回归防线**：新增 `scripts/assert-client-deps-baseline.ps1`——对 Client 发布目录（`-PublishDir`）或 MSI File 表（`-MsiPath`，Windows Installer COM 查询）断言关键程序集「不低于上一发版基线」（SkiaSharp.dll ≥ 3.119.2.0、Microsoft.Extensions.DependencyModel.dll ≥ 10.0.726.21808、libSkiaSharp.dll 按在表断言；文件缺失同样判失败），挂接 `build-msi.ps1`（wix build 后、签名前）——CI「MSI 结构断言」必需检查与 release.yml 发版链共用该入口，降版即构建失败，无法再静默出包；基线随发版只升不降维护（`-Snapshot` 抄录，上调即发版检查项）。
+- **WiX 组件 GUID 策略评估（决策 #130 ④，不改代码）**：按「相对路径 + 盐」的确定性 GUID 是 MSI 升级 / 引用计数 / Repair 的正确标准做法（改每版本新 GUID 会使旧组件成孤儿、卸载残留）；「同组件 keyfile 版本只升不降」为该模型硬约束，正解是版本单调性（固化 + 断言）而非改 GUID 策略；未来确需降版（依赖替换）须显式处理旧文件清理与重装语义，另行立项。
+- **本地验证**：`dotnet build LabelFrame.slnx` 0 警告 0 错误；`dotnet test`（排除 Perf/Soak，过滤器与 CI 一致）**709 项全绿**（0 失败）；Client MSI 本地重建（版本号 0.0.1）File 表实测 SkiaSharp.dll 3.119.2.0、Microsoft.Extensions.DependencyModel.dll 10.0.726.21808 ≥ 0.26 基线，挂接断言随构建通过；**防线反向用例**：固化前工件（SkiaSharp 3.119.1.0 / DependencyModel 8.0.23.53103）在 MSI 与发布目录两模式均被断言拦下（exit 1，两项降版全列）——即 0.27.0 缺陷形态可被自动捕获。前端未改动（web/ 无变更）。
+- **记账**：DESIGN 决策表 #130 + §6.11 补记「发布工件版本基线与降版断言」；CHANGELOG 本条目；修复后真实公网覆盖升级走查交回验收轮值（恢复条件 = 下次 `v*` 发版后真机重跑引导升级，含 0.26 直升与坏 0.27 修复升级两条路径）。
+
 ## v0.27.0 安装引导专项（迭代 60-64）汇总发布 · 2026-09-15
 
 - **打包范围**：v0.26.0 之后合入 master 的全部迭代与缺陷修复——安装引导专项 4/8~8/8：迭代 60（引导程序骨架——五步问卷与拓扑预设，WiX Burn 形态决策 #122，dry-run 契约）、迭代 61（引导下载体验补全——多源回退决策 #125 与失败分类）、迭代 62（Apply 执行链启用——运行时前置链 + 非 MSI 落位决策 #124；AspNetCore 前置 Server / Client 双链腿两轮返修 #128 / #129）、迭代 63（zebra 传输插件外置化与官方插件体系决策 #123；外置插件 ALC 加载生命周期返修 #127）、迭代 64（升级路径收尾决策 #126——BA 升级清单 + 客户端「检查更新」+ 专项回看记账）。**勘误**：v0.26.0 标题所列「迭代 64」实际晚于 tag v0.26.0 合入（PR #85，2026-09-15），其内容随本版发布。详见各迭代条目。
