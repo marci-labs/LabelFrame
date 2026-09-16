@@ -2,6 +2,13 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 67：流程治理——release.yml 步骤序修复：Client MSI 附带插件包（升级自动安装链修复） · 2026-09-16
+
+- **缺陷与根因（#97；来源 = #57 AC-01 + #56 AC-04 合并升级走查取证，v0.27.0 公网实证）**：release.yml 中「构建 Zebra 官方插件包（.lfplugin）」步骤（PR #80 引入）物理位置在「打包 Client MSI」**之后**，而其步骤注释自称"先于 Client MSI 构建"——`build-msi.ps1` 打包时检测不到 `artifacts\labelframe-transport-zebra-*.lfplugin` 即按设计静默跳过附带 → 公网发版 Client MSI 无 `plugin-packages\*.lfplugin`（File 表 48 文件 0 命中）→ 存量升级的 zebra 自动安装（决策 #123 迁移机制）不可能发生；对照实验已证附带包在位时迁移功能完全正常（自动安装 loaded=true / isExternal=true），缺陷仅在流水线步骤序。
+- **修复（流程治理迭代，`.github/workflows/release.yml` 变更已获用户立项批准）**：插件包构建步骤整步上移至「打包 Client MSI」之前（步骤注释与实际顺序对齐）；「打包 Client MSI」后新增 fail-closed 断言步骤——`scripts/assert-msi-plugin-package.ps1`（新增，Windows Installer COM 查 File / Component / Directory 三表，断言 `labelframe-transport-zebra-*.lfplugin` 落在 `plugin-packages` 目录，手法同 `assert-client-deps-baseline.ps1` / 决策 #130），缺失即构建失败。`build-msi.ps1` 的缺包静默跳过行为**保留不动**——本地裸构建与 CI「MSI 结构断言」必需检查依赖该行为（两者本就无插件包产物）。
+- **本地同构演练（#97 AC-01 / AC-02 允许口径；三项必需检查不执行 release.yml，复核靠本地演练 + diff 自查）**：release.yml YAML 解析自检通过；AC-01 正向——`build-zebra-plugin.ps1 -Version 0.0.1`（9.88 MB，29 DLL）→ `build-msi.ps1 -Version 0.0.1`（22.6 MB，构建日志「随 MSI 附带官方插件包：labelframe-transport-zebra-0.0.1.lfplugin」）→ 断言通过（exit 0，File 表命中行：`plugin-packages\labelframe-transport-zebra-0.0.1.lfplugin`，组件 `ZebraPluginPackageFile`，目录 `PluginPackagesDir`）；AC-02 反向——移走 `.lfplugin` 后重建（build-msi.ps1 静默跳过，MSI 13.1 MB），断言 exit 1 拦截（fail-closed 实证），恢复插件包重跑构建（22.6 MB）与断言（exit 0）通过。
+- **记账**：DESIGN 决策表 #131；v0.27.1 补丁发版由用户在修复合并后推 `v*` tag 触发（发版后走查 Client MSI 附件含插件包交回验收）。dotnet / 前端代码零改动（`dotnet build` / `dotnet test` 全绿仅为 DoD 例行确认）。
+
 ## 迭代 64 返修：覆盖升级链依赖降版——发布工件版本固化与降版回归断言（AC-01 验收不通过回流） · 2026-09-16
 
 - **缺陷与根因（决策 #130；#57 AC-01 真实公网覆盖升级走查实证，证据链 `artifacts/accept-upgrade-027/`）**：v0.27.0 Client 发布工件较 v0.26.0 依赖降版（SkiaSharp.dll 3.119.2.0→3.119.1.0、Microsoft.Extensions.DependencyModel.dll 10.0.726.21808→8.0.23.53103），叠加确定性组件 GUID 跨版本复用 → Windows Installer 组件规则拒装降版 keyfile（Client MSI 日志 6 处 Disallowing）→ 同次升级旧产品卸载删旧文件 → 净结果两文件缺失 → WinHost 首启即崩（FileNotFoundException: SkiaSharp）；全新安装不受影响，仅覆盖升级路径命中。根因（两版还原图对称 diff 实证）：0.26 的高版本是 WinHost 当时引用的 Zebra.Printer.SDK 5.0.3685 传递钉定顺带抬升，迭代 63（#123）外置化移出后闭包回落到本仓自钉低版（Rendering 直接引用 SkiaSharp 3.119.1；Serilog.Settings.Configuration 传递 DependencyModel 范围 `>= 8.0.0` 解析取最低版 8.0.0）——非浮动升，是「传递下限消失暴露自钉低版」；全闭包 diff 降版仅三件（含 SkiaSharp.NativeAssets.Win32；原生 libSkiaSharp.dll 无 File 表版本列未触发规则），无其他隐藏降版。
