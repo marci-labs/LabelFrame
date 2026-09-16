@@ -1,4 +1,4 @@
-# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123）
+# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123；迭代 67 修复步骤序——插件包构建先于 Client MSI 打包并加 fail-closed 断言，#97）
 # 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
 # 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Zebra 官方插件包 / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 生成安装清单 → 创建 GitHub Release。
 # MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
@@ -170,6 +170,15 @@ jobs:
             Write-Host '未配置 MSI_SIGN_CERT_BASE64，本次发布跳过 MSI 签名'
           }
 
+      # 官方插件包（迭代 63，决策 #123）：必须先于 Client MSI 打包——MSI 附带该包（plugin-packages\，存量升级自动安装源）。
+      # 步骤序为迭代 67（#97）修复：此前（PR #80 引入）误排在 Client MSI 之后，MSI 打包时检测不到 .lfplugin
+      # 即静默跳过附带，公网发版 Client MSI 因此不含插件包（存量升级 zebra 自动安装不可能发生）。
+      - name: 构建 Zebra 官方插件包（.lfplugin）
+        shell: pwsh
+        run: |
+          & .\scripts\build-zebra-plugin.ps1 -Version $env:VERSION
+          if ($LASTEXITCODE -ne 0) { throw 'Zebra 插件包构建失败' }
+
       - name: 打包 Client MSI
         shell: pwsh
         run: |
@@ -179,6 +188,15 @@ jobs:
           }
           & .\scripts\build-msi.ps1 -Version $env:VERSION -WixPath (Join-Path $HOME '.dotnet\tools\wix.exe') @sign
           if ($LASTEXITCODE -ne 0) { throw 'Client MSI 打包失败' }
+
+      # 防回归断言（迭代 67，#97）：Client MSI 必含 plugin-packages\labelframe-transport-zebra-*.lfplugin
+      # （决策 #123 存量升级自动安装源）。build-msi.ps1 缺包静默跳过是合法本地行为（本地裸构建与 CI
+      # 「MSI 结构断言」必需检查依赖它），发版链 fail-closed 由本显式步骤承担——缺失即构建失败。
+      - name: 断言 Client MSI 附带官方插件包（fail-closed）
+        shell: pwsh
+        run: |
+          & .\scripts\assert-msi-plugin-package.ps1 -MsiPath "artifacts/LabelFrame-Client-$env:VERSION.msi"
+          if (-not $?) { throw 'Client MSI 未附带官方插件包（plugin-packages\*.lfplugin 缺失）' }
 
       - name: 打包 Server MSI
         shell: pwsh
@@ -196,13 +214,6 @@ jobs:
           # 脚本内无原生命令，LASTEXITCODE 为空值，用 $? 判断
           & .\scripts\package-server-webui.ps1 -Version $env:VERSION
           if (-not $?) { throw '插件包打包失败' }
-
-      # 官方插件包（迭代 63，决策 #123）：先于 Client MSI 构建——MSI 附带该包（plugin-packages\，存量升级自动安装源）
-      - name: 构建 Zebra 官方插件包（.lfplugin）
-        shell: pwsh
-        run: |
-          & .\scripts\build-zebra-plugin.ps1 -Version $env:VERSION
-          if ($LASTEXITCODE -ne 0) { throw 'Zebra 插件包构建失败' }
 
       - name: 发布 Server（linux-x64）并归档
         shell: pwsh

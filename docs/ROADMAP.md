@@ -85,6 +85,7 @@
 | 62 | 安装引导专项 6/8——安装编排：Burn Apply 执行链启用（运行时前置补装 + MSI 链 + 组件落位，#124；AspNetCore 前置两腿补齐 #128/#129） | ✅ 已完成（2026-09-15 干净 Win10 VM 三形态全流程验收通过：单机一体 + 服务端 / 客户端分离双预设组件集合正确 + 检测拦截与链内 AspNetCore 双实证；两轮返修后达成（PR #87 / #90），用户委托自动结项，[#55](https://github.com/marci-labs/LabelFrame/issues/55)） |
 | 61 | 安装引导专项 5/8——下载引擎：多源回退、sha256 校验、重试续传、本地缓存（#125） | ✅ 已完成（2026-09-15 v0.27.0 公网真实走查通过：8 资产公网直下 sha256 与 manifest 及 GitHub digest 三方一致 + latest.json 指针语义正确 + 引导引擎公网全链拉取实证（升级走查 Burn 日志）；引导 EXE 随发版接线维持 #122 后置决策），用户委托自动结项，[#54](https://github.com/marci-labs/LabelFrame/issues/54)） |
 | 安装引导专项 | 迭代 57~64（#50~#57）8 迭代汇总：设计契约（#114~#118）→ CI 生成 manifest / latest.json（#120）→ PDA 签名稳定化 + 下载中心扫码（#119）→ 引导骨架（#114→#122 Burn Pivot）→ 下载多源回退（#125）→ Apply 执行链（#124）→ 官方插件外置化（#123）→ 升级路径收尾（#126：BA 升级清单 + 客户端检查更新）；真机 / VM / 发版依赖项转 `待验收` | ✅ 专项交付完成（2026-09-14；逐迭代状态见上表与各自 Issue；回看串讲见 DESIGN §6.7，[#57](https://github.com/marci-labs/LabelFrame/issues/57) 收尾） |
+| 67 | 流程治理——release.yml 步骤序修复：Client MSI 附带 Zebra 官方插件包 + 发版链 fail-closed 断言（决策 #131；v0.27.0 发版 MSI 缺 plugin-packages\*.lfplugin，存量升级 zebra 自动安装不可能发生） | ✅ 已完成（2026-09-16 本地同构演练验收：AC-01 正向断言 File 表命中 + AC-02 缺包反向 exit 1 拦截后恢复重跑通过；v0.27.1 补丁发版由用户推 tag 触发后走查复核，[#97](https://github.com/marci-labs/LabelFrame/issues/97)） |
 | 发布 | v0.27.0 安装引导专项（迭代 60-64）汇总发布（引导下载多源回退 / Apply 执行链与运行时前置 / zebra 传输外置化官方插件体系（.lfplugin 首发随 Release 分发）/ 升级路径与客户端检查更新；v0.26.0 标题「迭代 64」列名勘误——实随本版合入） | ✅ 已完成（2026-09-15，tag v0.27.0） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
