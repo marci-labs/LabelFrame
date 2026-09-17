@@ -328,3 +328,28 @@ describe('DataPrint server 构建：字段显示名渲染（迭代 83 · #131 �
     expect(screen.getByDisplayValue('A-01')).toBeTruthy()
   })
 })
+
+// 迭代 84（#132，评审 #114 A-3 / B-6）：副标题用户化 + 作业进度目标设备显示设备名（server 构建 / 服务端管理界面）。
+describe('DataPrint server 构建：打印页称谓与作业进度设备名（迭代 84 · #132）', () => {
+  it('AC-01：副标题「填写数据并打印 / Excel 批量打印」，无「测试」字样（双形态）', async () => {
+    await renderDataPrint()
+    const subtitle = screen.getByText('填写数据并打印 / Excel 批量打印')
+    expect(subtitle.closest('.page-title')?.textContent).toContain('数据与打印')
+    expect(subtitle.textContent).not.toContain('测试')
+    expect(screen.queryByText('测试数据 / Excel 批量打印 / 打印测试')).toBeNull()
+  })
+
+  it('AC-02：作业进度目标设备显示设备名（与在线设备页 / 目标设备下拉同源），未知设备回退 ID', async () => {
+    await renderDataPrint()
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    expect(await screen.findByText('已完成 1 / 2 张')).toBeTruthy()
+    // device-1 在设备列表（DEVICES）→ 显示设备名「仓库-1 打印电脑」，不直出设备 ID
+    expect(screen.getByText(/目标设备：仓库-1 打印电脑（在线）/)).toBeTruthy()
+
+    // 未知设备（不在列表，如设备已注销清理）→ 回退设备 ID（换 jobId 触发新一轮作业轮询）
+    mocks.server.submitJob.mockResolvedValueOnce({ ...DONE_JOB_SERVER, jobId: 'job-2', targetDeviceId: 'device-x' })
+    mocks.server.getJob.mockResolvedValue({ ...DONE_JOB_SERVER, jobId: 'job-2', targetDeviceId: 'device-x' })
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    expect(await screen.findByText(/目标设备：device-x（在线）/)).toBeTruthy()
+  })
+})

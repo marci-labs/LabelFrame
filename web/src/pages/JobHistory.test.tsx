@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 // 迭代 18 F6：作业历史页——服务端 / 单机降级列表、空态按模式文案、刷新、徽标区分。
 // mock 覆盖组件树用到的全部 client 方法（含 AppContext 启动链）。
+// 迭代 84（#132）：目标设备列设备名解析（AC-02）与编号收敛（AC-03）断言。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { JobView } from '../lib/api/types'
+import type { DeviceView, JobView } from '../lib/api/types'
 import { AppProvider } from '../state/AppContext'
 import { JobHistory } from './JobHistory'
 
@@ -12,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   server: {
     healthz: vi.fn(),
     getJobs: vi.fn(),
+    // 迭代 84：目标设备列设备名解析（deviceId → name）
+    listDevices: vi.fn(),
   },
   local: {
     healthz: vi.fn(),
@@ -19,11 +22,23 @@ const mocks = vi.hoisted(() => ({
     getHostConfig: vi.fn(),
     getTransport: vi.fn(),
   },
+  clipboard: {
+    // 迭代 84：编号一键复制（jsdom 无 Clipboard API / execCommand，mock 模块）
+    copyText: vi.fn(),
+  },
 }))
 
 vi.mock('../lib/api/client', () => ({ serverApi: mocks.server, localApi: mocks.local, setServerBaseUrl: vi.fn() }))
+vi.mock('../lib/clipboard', () => ({ copyText: mocks.clipboard.copyText }))
 // 迭代 20：本文件为 client 构建语义用例，显式注入 client 分支（VITE_UI_MODE=server 整仓测试时保持稳定）
 vi.mock('../lib/uiMode', () => ({ UI_MODE: 'client', isServerUi: false }))
+
+/** 迭代 84：设备名解析表数据源——device-1 / device-2 有名称，device-3 无名称（回退设备 ID）。 */
+const DEVICES: DeviceView[] = [
+  { deviceId: 'device-1', name: '仓库-1 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online' },
+  { deviceId: 'device-2', name: '仓库-2 打印电脑', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online' },
+  { deviceId: 'device-3', name: '', registeredAt: '2026-08-11T00:00:00Z', lastSeenAt: '2026-08-11T01:00:00Z', status: 'Online' },
+]
 
 const JOBS: JobView[] = [
   {
@@ -83,6 +98,9 @@ beforeEach(() => {
   mocks.local.getTransport.mockResolvedValue({ mode: 'Log', params: {} })
   mocks.server.getJobs.mockResolvedValue(JOBS)
   mocks.local.getJobs.mockResolvedValue(JOBS)
+  // 迭代 84：设备名解析与一键复制默认就绪（用例内可覆盖）
+  mocks.server.listDevices.mockResolvedValue(DEVICES)
+  mocks.clipboard.copyText.mockResolvedValue(true)
 })
 
 afterEach(() => {
@@ -90,14 +108,16 @@ afterEach(() => {
 })
 
 describe('作业历史页（迭代 18 F6）', () => {
-  it('服务端模式：列表渲染（时间 / requestId / jobId / 目标设备 / 状态 / 完成-失败 / 失败原因），走 serverApi', async () => {
+  it('服务端模式：列表渲染（时间 / 作业编号 / 目标设备 / 状态 / 完成-失败 / 失败原因），走 serverApi', async () => {
     renderJobHistory()
     expect(await screen.findByText('已完成')).toBeTruthy()
     // 三行作业都渲染
     expect(screen.getByText('失败')).toBeTruthy()
     expect(screen.getByText('打印中')).toBeTruthy()
-    // 目标设备列：有值显示设备 ID，无值显示「本机」
-    expect(screen.getByText('device-1')).toBeTruthy()
+    // 目标设备列（迭代 84 AC-02）：有名称显示设备名，无名称回退设备 ID，无目标显示「本机」
+    expect(screen.getByText('仓库-1 打印电脑')).toBeTruthy()
+    expect(screen.getByText('仓库-2 打印电脑')).toBeTruthy()
+    expect(screen.getByText('device-3')).toBeTruthy()
     expect(screen.getByText('本机')).toBeTruthy()
     // 完成-失败张数与失败原因
     expect(screen.getByText(/3\/3/)).toBeTruthy()
@@ -170,6 +190,70 @@ describe('作业历史页（迭代 18 F6）', () => {
     mocks.server.getJobs.mockRejectedValue(new Error('network down'))
     renderJobHistory()
     expect(await screen.findByText(/获取作业历史失败/)).toBeTruthy()
+  })
+})
+
+// 迭代 84（#132，评审 #114 B-6 / B-7）：目标设备列设备名解析（与在线设备页 / 目标设备下拉同源）与编号收敛（决议 2）。
+describe('作业信息可读性（迭代 84 · #132）', () => {
+  it('AC-02：目标设备列经 GET /api/devices 解析设备名；无名称设备回退设备 ID', async () => {
+    renderJobHistory()
+    expect(await screen.findByText('已完成')).toBeTruthy()
+    // 名称解析走 listDevices（与在线设备页 / 目标设备下拉同源）
+    await waitFor(() => expect(mocks.server.listDevices).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('仓库-1 打印电脑')).toBeTruthy()
+    // device-3 名称为空 → 回退设备 ID
+    expect(screen.getByText('device-3')).toBeTruthy()
+    // 设备名只拉一次：作业列表轮询不重复拉设备列表
+    fireEvent.click(screen.getByRole('button', { name: /刷新/ }))
+    await waitFor(() => expect(mocks.server.getJobs).toHaveBeenCalledTimes(2))
+    expect(mocks.server.listDevices).toHaveBeenCalledTimes(1)
+  })
+
+  it('AC-02：设备名拉取失败不阻断——目标设备列回退设备 ID，无错误横幅', async () => {
+    mocks.server.listDevices.mockRejectedValue(new Error('down'))
+    renderJobHistory()
+    expect(await screen.findByText('已完成')).toBeTruthy()
+    await waitFor(() => expect(mocks.server.listDevices).toHaveBeenCalled())
+    expect(screen.getByText('device-1')).toBeTruthy()
+    expect(screen.getByText('device-2')).toBeTruthy()
+    expect(screen.getByText('失败')).toBeTruthy() // 状态徽标「失败」仍在（作业列表正常渲染）
+    expect(screen.queryByText(/获取作业历史失败/)).toBeNull()
+  })
+
+  it('AC-02：未知设备（已不在设备列表，如离线过期清理）回退设备 ID', async () => {
+    mocks.server.getJobs.mockResolvedValue([{ ...JOBS[0], targetDeviceId: 'device-gone' }])
+    renderJobHistory()
+    expect(await screen.findByText('已完成')).toBeTruthy()
+    await waitFor(() => expect(mocks.server.listDevices).toHaveBeenCalled())
+    expect(screen.getByText('device-gone')).toBeTruthy()
+  })
+
+  it('AC-03：编号列仅「作业编号」可见且可一键复制；「请求编号」悬停可达（title 携带完整编号）', async () => {
+    renderJobHistory()
+    expect(await screen.findByText('已完成')).toBeTruthy()
+    // 表头收敛：仅「作业编号」一列，无「请求编号」列
+    expect(screen.getByText('作业编号')).toBeTruthy()
+    expect(screen.queryByText('请求编号')).toBeNull()
+    // 可见编号 = 作业编号前 8 位（job-aaa-）；请求编号不直出（不在任何文本节点）
+    expect(screen.getByText('job-aaa-')).toBeTruthy()
+    expect(screen.queryByText('req-aaa-1')).toBeNull()
+    // 悬停可达：title 同时携带完整作业编号与请求编号
+    const btn = screen.getByRole('button', { name: /job-aaa-/ })
+    expect(btn.title).toContain('job-aaa-1')
+    expect(btn.title).toContain('请求编号：req-aaa-1')
+    // 一键复制：点击复制完整作业编号（非前 8 位截断值）
+    fireEvent.click(btn)
+    await waitFor(() => expect(mocks.clipboard.copyText).toHaveBeenCalledWith('job-aaa-1'))
+  })
+
+  it('AC-03：复制失败（如非安全上下文降级失败）提示手动复制，不抛错', async () => {
+    mocks.clipboard.copyText.mockResolvedValue(false)
+    renderJobHistory()
+    expect(await screen.findByText('job-aaa-')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /job-aaa-/ }))
+    await waitFor(() => expect(mocks.clipboard.copyText).toHaveBeenCalledTimes(1))
+    // 不抛错（状态栏反馈由 App 布局呈现，本测试树只断言不崩溃 + 列表仍在）
+    expect(screen.getByText('job-aaa-')).toBeTruthy()
   })
 })
 

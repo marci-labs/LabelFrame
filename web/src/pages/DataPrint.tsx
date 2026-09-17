@@ -7,12 +7,15 @@
 // 且随探测周期（10s）自动刷新——后台注册状态变化后无需切页（评审 #114 B-9 / C-3）。
 // 迭代 81（#129 决议，评审 #114 C-1）：「图片预览」名副其实——点击后页内弹层呈现当前字段值的渲染图
 // （复用 render-image 端点实时取图，不建作业不自动下载）；下载由弹层内显式「下载」按钮触发，预览与下载分离。
+// 迭代 84（#132，评审 #114 A-3 / B-6）：副标题改「填写数据并打印 / Excel 批量打印」（本页是日常主打印入口，
+// 不再自称「测试数据」）；作业进度「目标设备」显示设备名（无可解析名称回退设备 ID），与在线设备页 / 目标设备下拉同源。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { DeviceView, JobView, SubmitJobRequest, TemplatePackage, TemplateSummary } from '../lib/api/types'
 import { formatTransport, isNativePrintMode } from '../lib/transport'
+import { deviceDisplayName } from '../lib/deviceDisplay'
 import { downloadBlob } from '../lib/download'
 import { fromBackendElements } from '../lib/design/convert'
 import { deriveFieldInfos } from '../lib/design/fields'
@@ -108,6 +111,7 @@ function JobPanel({
   retry,
   debugMode,
   canRetry,
+  resolveDeviceName,
 }: {
   job: JobView | null
   error: string | null
@@ -115,6 +119,8 @@ function JobPanel({
   debugMode: boolean
   /** 迭代 20（G4）：server 构建无逐张 retry 端点——隐藏逐张失败重试表格（Server 作业本就无 items，强制隐藏兜底）。 */
   canRetry: boolean
+  /** 迭代 84（#132 B-6）：目标设备显示名解析（设备名优先，无可解析名称回退设备 ID；单机模式无设备列表 = 恒回退 ID）。 */
+  resolveDeviceName: (deviceId: string) => string
 }) {
   const app = useApp()
   if (!job) {
@@ -164,7 +170,7 @@ function JobPanel({
         </div>
         {job.targetDeviceId && (
           <div className="hint">
-            目标设备：{job.targetDeviceId}
+            目标设备：{resolveDeviceName(job.targetDeviceId)}
             {job.deviceStatus ? `（${deviceStatusLabel(job.deviceStatus)}）` : ''}
           </div>
         )}
@@ -346,6 +352,13 @@ export function DataPrint() {
 
   const selectedName = printDraft.selectedName
   const debugMode = printDraft.debugMode
+
+  /** 迭代 84（#132 B-6）：目标设备显示名——从本页已拉取的设备列表解析（GET /api/devices，与在线设备页 /
+   *  目标设备下拉同源），无可解析名称（空 / 空白 / 不在列表，含单机模式无设备列表）回退设备 ID。 */
+  const resolveDeviceName = useCallback(
+    (deviceId: string) => deviceDisplayName(devices.find((d) => d.deviceId === deviceId)?.name, deviceId),
+    [devices],
+  )
 
   useEffect(() => {
     if (deviceMode === 'loading') return
@@ -615,7 +628,7 @@ export function DataPrint() {
       <div className="page-head">
         <div className="page-title">
           数据与打印
-          <small>测试数据 / Excel 批量打印 / 打印测试</small>
+          <small>填写数据并打印 / Excel 批量打印</small>
         </div>
         <div className="spacer" />
         <select className="input" value={selectedName} onChange={(ev) => app.setDraftSelected(ev.target.value)} style={{ minWidth: 180 }}>
@@ -823,7 +836,7 @@ export function DataPrint() {
           </div>
         </div>
 
-        <JobPanel job={job} error={jobError} retry={retry} debugMode={debugMode} canRetry={!isServerUi} />
+        <JobPanel job={job} error={jobError} retry={retry} debugMode={debugMode} canRetry={!isServerUi} resolveDeviceName={resolveDeviceName} />
       </div>
 
       {mappingOpen && excel && pkg && (

@@ -2,11 +2,15 @@
 // 单机降级：指向本机时显示本机作业列表（localBase GET /api/jobs，后端 B10 新增）；空态文案按模式区分。
 // 迭代 48（用户定稿建议组合）：自动轮询——存在进行中（非终态）作业时 1.5s 轮询，列表全终态即停；
 // 页面隐藏时暂停，恢复可见立即拉取一次；轮询失败保留既有列表、2s 退避重试；手动「刷新」保留。
+// 迭代 84（#132，评审 #114 B-6 / B-7）：「目标设备」列显示设备名（无可解析名称回退设备 ID，与在线设备页 /
+// 目标设备下拉同源）；编号收敛（决议 2）——仅「作业编号」可见且可一键复制，「请求编号」收进悬停提示。
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { JobView } from '../lib/api/types'
+import { copyText } from '../lib/clipboard'
+import { deviceDisplayName } from '../lib/deviceDisplay'
 import { useApp } from '../state/AppContext'
 import { isServerUi } from '../lib/uiMode'
 import { Icon } from '../components/Icon'
@@ -54,6 +58,25 @@ export function JobHistory() {
   // 迭代 22 §2.1：作业历史可见性——客户端构建在服务端模式下传本机 deviceId（只看自己的作业）；
   // 服务端构建不传（看全部）；单机降级看本机历史本就不传。
   const deviceFilter = isServerUi || serverMode !== 'server' ? undefined : (app.hostDeviceId ?? undefined)
+
+  /** 迭代 84（#132 B-6）：设备名解析表（deviceId → name，GET /api/devices 与在线设备页 / 目标设备下拉同源）。
+   *  服务端模式拉取一次（设备名稳定，作业列表轮询不重复拉）；失败静默——名称解析属辅助显示，
+   *  回退显示设备 ID，不阻断作业列表、不出错误横幅。单机降级（localApi 无 /api/devices）不拉取，
+   *  本机历史作业本就无 targetDeviceId（显示「本机」）。 */
+  const [deviceNames, setDeviceNames] = useState<Record<string, string>>({})
+  useEffect(() => {
+    if (serverMode !== 'server') return
+    let cancelled = false
+    serverApi
+      .listDevices()
+      .then((list) => {
+        if (!cancelled) setDeviceNames(Object.fromEntries(list.map((d) => [d.deviceId, d.name])))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [serverMode])
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -151,8 +174,7 @@ export function JobHistory() {
             <thead>
               <tr>
                 <th style={{ width: 150 }}>时间</th>
-                <th style={{ width: 120 }}>请求编号</th>
-                <th style={{ width: 100 }}>作业编号</th>
+                <th style={{ width: 150 }}>作业编号</th>
                 <th style={{ width: 140 }}>目标设备</th>
                 <th style={{ width: 90 }}>状态</th>
                 <th style={{ width: 110 }}>完成 / 失败</th>
@@ -163,14 +185,26 @@ export function JobHistory() {
               {jobs.map((j) => (
                 <tr key={j.jobId} style={{ cursor: 'default' }}>
                   <td className="mono">{formatTime(j.createdAt)}</td>
-                  <td className="mono" style={{ fontSize: 12 }} title={j.requestId}>
-                    {j.requestId.slice(0, 8)}
-                  </td>
-                  <td className="mono" style={{ fontSize: 12 }} title={j.jobId}>
-                    {j.jobId.slice(0, 8)}
+                  {/* 迭代 84（#132 决议 2，评审 #114 B-7）编号收敛：仅「作业编号」可见 + 一键复制（报障口径统一为作业编号）；
+                      「请求编号」不再单列，收进悬停提示（title 携带两个完整编号）需要时仍可达。 */}
+                  <td>
+                    <button
+                      type="button"
+                      className="btn sm ghost mono"
+                      style={{ fontSize: 12 }}
+                      title={`作业编号：${j.jobId}\n请求编号：${j.requestId}\n（点击复制完整作业编号）`}
+                      onClick={() => {
+                        void copyText(j.jobId).then((ok) =>
+                          app.setStatus(ok ? `已复制作业编号：${j.jobId}` : '复制作业编号失败，请手动复制。'),
+                        )
+                      }}
+                    >
+                      {j.jobId.slice(0, 8)}
+                      <Icon name="copy" size={12} />
+                    </button>
                   </td>
                   <td className="mono" style={{ fontSize: 12 }}>
-                    {j.targetDeviceId ?? '本机'}
+                    {j.targetDeviceId ? deviceDisplayName(deviceNames[j.targetDeviceId], j.targetDeviceId) : '本机'}
                   </td>
                   <td>
                     <span className={'badge ' + (j.status === 'Completed' ? 'ok' : j.status === 'Failed' ? 'err' : isTerminal(j.status) ? 'neutral' : 'info')}>
