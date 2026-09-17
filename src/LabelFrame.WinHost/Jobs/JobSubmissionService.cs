@@ -16,7 +16,7 @@ namespace LabelFrame.WinHost.Jobs;
 /// 作业提交服务：校验契约数据 → Skia 整版渲染 1bpp 位图 → ^GF 编码入队（幂等）。
 /// 任一标签校验 / 渲染失败则整体拒绝（缺数据不打半张）。
 /// 打印统一为图片：不再有矢量 ZPL / 文本栅格化路径。
-/// Log 连接 = 模拟打印：提交时同时把渲染 PNG 保存到 print\{jobId}\，并留痕作业数据（模板名 + 数据集合，迭代 74 决策 #137）。
+/// Log 连接 = 模拟打印：提交时同时把渲染 PNG 保存到 print\{jobId}\，并留痕作业数据（模板名 + 数据集合，迭代 74 决策 #138）。
 /// </summary>
 public sealed class JobSubmissionService
 {
@@ -78,7 +78,7 @@ public sealed class JobSubmissionService
         {
             SaveLogPrintImages(job.Id, rendered.Items!);
 
-            // 留痕作业数据（模板名 + 数据集合，迭代 74 决策 #137；与出图同判定点、互不干扰）
+            // 留痕作业数据（模板名 + 数据集合，迭代 74 决策 #138；与出图同判定点、互不干扰）
             LogJobData(job.Id, request);
 
             // 落盘后顺带执行出图目录保留清理（迭代 72，决策 #136；清理器永不抛出，不打断打印链路）
