@@ -535,6 +535,20 @@ describe('连接状态徽标（迭代 80「三名义」③：已加入 / 未加�
     expect(screen.queryByText('未连接（单机模式可用）')).toBeNull()
   })
 
+  it('插件模式 Log 连接（displayText = 插件 Describe「模拟打印」）：本机连接徽标用户语，无「LOG」直出（迭代 82，#130 AC-01）', async () => {
+    mocks.local.getTransport.mockResolvedValue({
+      pluginId: 'log',
+      displayText: '模拟打印',
+      params: {},
+      availablePlugins: [{ id: 'log', displayName: 'Log（模拟打印）', parameters: [] }],
+      mode: 'Log',
+    })
+    await renderDataPrint()
+    expect(screen.getByText('本机连接')).toBeTruthy()
+    expect(screen.getByText('模拟打印')).toBeTruthy()
+    expect(screen.queryByText(/LOG/)).toBeNull()
+  })
+
   it('本机已注册（deviceId 在服务端列表）：徽标显示「已加入」', async () => {
     await renderServerModeLocal(DEVICES)
     expect(screen.getByText('已加入')).toBeTruthy()

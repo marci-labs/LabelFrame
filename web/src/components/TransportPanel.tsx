@@ -269,7 +269,8 @@ export function TransportPluginParamsEditor({
   setParam: (key: string, value: PluginParamValue) => void
 }) {
   if (plugin.parameters.length === 0) {
-    return <div className="hint">{plugin.description ? `${plugin.description}（无参数）。` : '该插件无参数。'}</div>
+    // 迭代 82（#130 A-1）：无参数时说明文直出插件 Description（后端句读已完整），不再追加「（无参数）。」拼接残句
+    return <div className="hint">{plugin.description || '该插件无参数。'}</div>
   }
   return (
     <>

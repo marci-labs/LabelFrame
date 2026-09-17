@@ -26,7 +26,7 @@ public class TransportPluginRegistryTests
         Assert.Contains("log", ids);
         Assert.Contains("tcp9100", ids);
         var tcp = Assert.Single(registry.ListPlugins().Where(p => p.Id == "tcp9100"));
-        Assert.Equal("TCP 9100", tcp.DisplayName);
+        Assert.Equal("网口打印机（TCP 9100）", tcp.DisplayName);
         Assert.Contains(tcp.Parameters, p => p.Key == "host" && p.Required);
         Assert.Contains(tcp.Parameters, p => p.Key == "port" && p.Type == TransportParameterType.Int);
     }
@@ -69,11 +69,25 @@ public class TransportPluginRegistryTests
     public void Describe_should_use_plugin_describe()
     {
         var (registry, _) = Create();
-        Assert.Equal("LOG", registry.Describe("log", new TransportPluginParameters()));
+        Assert.Equal("模拟打印", registry.Describe("log", new TransportPluginParameters()));
         Assert.Equal(
             "TCP 192.168.1.50:9100",
             registry.Describe("tcp9100", new TransportPluginParameters(new Dictionary<string, string> { ["host"] = "192.168.1.50", ["port"] = "9100" })));
         Assert.Equal("nope", registry.Describe("nope", new TransportPluginParameters()));
+    }
+
+    [Fact]
+    public void Log_plugin_copy_should_be_user_friendly()
+    {
+        // 迭代 82（#130，评审 #114 B-1 / A-1 / B-5）：显示名用户化——徽标 / 摘要取值（Describe）为「模拟打印」不再直出「LOG」；
+        // 说明文（Description）句读完整且无开发者用语（「联调」）。
+        var (registry, _) = Create();
+        var log = registry.GetPlugin("log")!;
+        Assert.Equal("模拟打印", registry.Describe("log", new TransportPluginParameters()));
+        Assert.Equal("Log（模拟打印）", log.DisplayName);
+        Assert.DoesNotContain("联调", log.Description);
+        Assert.DoesNotContain("LOG", log.Description);
+        Assert.EndsWith("。", log.Description);
     }
 
     [Fact]

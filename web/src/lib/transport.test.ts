@@ -65,6 +65,16 @@ describe('formatTransport：displayText 优先（迭代 22）', () => {
     expect(formatTransport(cfg)).toBe('TCP 192.168.1.50:9100')
   })
 
+  it('新后端 Log 连接：displayText（= 插件 Describe「模拟打印」，迭代 82 #130）三处徽标用户语，无「LOG」直出', () => {
+    const cfg: TransportConfig = {
+      pluginId: 'log',
+      displayText: '模拟打印',
+      params: {},
+      mode: 'Log',
+    }
+    expect(formatTransport(cfg)).toBe('模拟打印')
+  })
+
   it('旧后端无 displayText：按 mode + params 本地格式化（迭代 73 用户语摘要）', () => {
     expect(formatTransport({ mode: 'Log', params: {} })).toBe('模拟打印')
     expect(formatTransport({ mode: 'Tcp', params: { tcpHost: '192.168.1.50', tcpPort: 9100 } })).toBe('网络打印机 192.168.1.50:9100')
