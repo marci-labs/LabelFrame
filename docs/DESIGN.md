@@ -20,7 +20,8 @@
 | 作业（Job） | 一次打印请求 = N 张标签，逐张状态，可挂起 / 恢复 / 取消，批内顺序 |
 | 设备（Device） | 一台运行宿主的 PC 或 PDA，向 Server 注册 |
 | 宿主（Host） | 设备上的打印执行服务（Windows Client / Linux Client / AndroidHost） |
-| 编码器（Encoder） | LabelDocument → 打印机指令：整版位图 ZPL `^GF`（当前唯一路径），其他指令集（TSPL / CPCL）待需求 |
+| 编码器（Encoder） | LabelDocument → 打印机指令：图片模式整版位图 ZPL `^GF`（默认路径）；品牌原生指令经插件「文档编译」能力接口产出（§5.4，Zebra 首个落地待实施）；其他指令集（TSPL / CPCL）待需求 |
+| 命令打印（原生指令） | 打印方式之一：插件把标签文档编译为品牌原生指令（文本 / 条码 / 二维码用打印机内置能力，非整版位图）出纸；默认图片打印不动，按连接显式切换（决策 #137） |
 | 传输（Transport） | 把指令送到打印机：TCP 9100 / Windows 驱动 / Zebra SDK / 日志模拟（蓝牙待需求，可经插件接入） |
 | 模板包（TemplatePackage） | 契约 + 版式 + 静态图片资源的可导入导出单元（zip） |
 
@@ -205,6 +206,7 @@ flowchart LR
 | 134 | Linux 服务端一键安装：install.sh（manifest 消费 + systemd + 离线布局）与 compose 随发版分发（迭代 71，2026-09-17；来源 = #91 立项，用户 2026-09-15 会话定案「脚本 + compose 分发都做」；三项待决议用户拍板：self-contained 归档为默认（免 runtime 前置，对齐 Windows 侧 #128/#129 教训）/ 离线模式本轮支持 `--manifest` 本地路径与布局目录（衔接 #89）/ runtime 缺失明确报错并给官方直链、不自动安装；契约细节见 §6.12） | ① **`scripts/install-server-linux.sh` = Linux 服务端的「安装程序」**（`server-linux` 预设在 Linux 侧的承接——Windows 侧为 Burn 引导，Linux 侧为脚本；契约假设 Linux 操作者具备 IT 能力，图形 / CLI 向导不做，#50 边界维持）：消费 install-manifest.json（`schemaVersion`=1 超范围 fail-closed；sha256 逐源强制 + urls 多源回退，#115/#117 口径）→ 拉取并校验 Linux 归档 → 解包部署 `/opt/labelframe/server`（staging 解包校验后整体替换，陈旧文件不残留）→ systemd 单元安装 / 启用 / 重启（`labelframe-server` 服务，用户 / 数据目录约定不变）→ 管理界面 zip 解压落位 `/var/lib/labelframe/server/plugins/web-ui`（默认装——分离部署建议开，`--no-webui` 关闭）→ 输出服务状态、`/healthz` + `/api/server/info` 版本核对与管理界面地址。② **归档形态默认 self-contained**：`publish-server-linux.ps1` 默认翻转（`-FrameworkDependent` 成为可选项），Release 附件 `linux-server` 归档不再要求目标机预装 .NET 10；framework-dependent 归档（本地构建 / ≤ v0.27.1 旧附件）仍可安装——脚本按归档内容探测形态（self-contained 含运行时文件 `System.Private.CoreLib.dll`），FDD 时检测 `dotnet` 与 `Microsoft.AspNetCore.App ≥ 10`，**缺失即明确报错 + 官方下载页直链，不自动安装**（发行版包管理器差异，不做）。③ **离线模式**：`--manifest` 接受本地文件 / 布局目录 / URL——本地清单所在目录即布局目录（#89 同款源解析：**本地文件优先、urls 回退**，sha256 本地源同样强制、不符同样换源）；布局内文件名 = `urls[0]` 末段（Release 附件名）。④ **compose 随发版分发**：release job 新增步骤生成 `compose.yml`（与 `packaging/ubuntu/docker-compose.yml` 同源复制）+ `.env`（`LABELFRAME_VERSION` 钉定当版）随 Release 附件发布；compose / .env **不进 manifest**（非安装组件——#116 `server-docker` 预设「无下载组件」口径维持）。⑤ **幂等（升级 = 重跑覆盖）**：app 目录整体替换但 **appsettings.json 保留**（对齐 Windows #48 NeverOverwrite 语义）、`/var/lib/labelframe` 数据与日志目录不动、systemd 单元重写 + 服务重启、webui 目录覆盖解压 | Linux 侧「一条命令部署」补齐（脚本即 Linux 的安装程序）；公网 Linux 归档免 .NET 前置（干净 Ubuntu 直装）；内网 / 离线 Linux 复用 #89 布局目录形态；compose 使用者不再手抄仓库文件（Release 直接下载、版本钉定）；随迭代修复 `deploy-server-ubuntu.sh` 两处字面 `\n` 编码缺陷（`DATA_DIR`/`LOGS_DIR` 拼行、systemd 单元 LOG_FILE 行粘连——`set -u` 下重跑必挂） |
 | 135 | 离线布局目录与本地源无网首装（迭代 70，2026-09-17；两项待决议按 Issue #89 用户拍板——布局生成形态 = c) 脚本与引导 `--layout` 双形态都做 / 本地源语义 = a) 布局目录作为隐式优先源目录（manifest schema 零修改）；目录契约见 §6.2、源解析顺序见 §6.10） | ① **布局目录形态 = 目录（VS layout 式），非单 zip / 单 EXE 全内嵌**：目录 = 全部 manifest 组件文件 + `install-manifest.json`（官方原样字节）+ `latest.json` + 引导 EXE；组件文件名约定 = urls[0] 路径末段（须含扩展名）+ 查询型直链固定名兜底表（`runtime-webview2` → `MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe`，核心库 `OfflineLayoutNaming` 单点，生成与消费共用；Linux install.sh 同款约定，#134）；单 EXE 全内嵌（attached container）不做——布局目录满足首装需求，登记 §7 开放点。② **生成双形态**：`scripts/make-offline-layout.ps1`（IT；EXE 来源 = `-BootstrapperPath` 本地产物，本地缺省时按 `-BootstrapperUrl` 从 Release 下载——引导 EXE 已随 Release 发布，#132）与引导 `--layout <目录>`（产品化；EXE 自复制 `WixBundleOriginalSource`；`--manifest <路径|URL>` 可覆写生成清单源，默认稳定通道）；生成语义 = 逐组件按 urls 顺序下载、sha256 与 manifest 逐字节一致才落位（全源失败即非零退出，fail-closed），重复生成幂等（哈希一致跳过 / 不符重下）；引擎原生单横线 `-layout`（`LaunchAction.Layout`）由 BA 路由进同一生成流程（`IBootstrapperCommand.LayoutDirectory`），双横线 `--layout` 为透传 BA 的产品化参数（引擎单横线开关不冲突）。③ **源解析顺序契约（#115 联动）**：清单来源为本地路径 → 所在目录 = 隐式优先源目录；每链包有效源序 = [布局文件（在位时）] ++ urls，失败推进 / 源耗尽语义不变；BA 以 `IEngine.SetLocalSource` 注入本地文件，引擎对本地源副本按包内嵌摘要强制校验（= manifest sha256，#117 口径，篡改 fail-closed：有 urls 换源重取、断网源耗尽失败，篡改内容绝不落装）；布局不在位 / URL 清单 → 纯 urls，行为与现状一致（AC-03 回归锚点）。④ **离线首装入口（隐式检测）**：引导 EXE 同目录存在 `install-manifest.json` → 欢迎页默认该本地清单（`WixBundleOriginalSourceFolder` 探测），拷目录双击即零网络起步；无邻接清单 → 默认稳定通道（现状不变）。⑤ **走查载体**：`scripts/test-bundle-offline-layout.ps1`（矩阵脚本同构：本地测试源 + per-user 测试 Bundle + 真实 BA）——生成（G）/ 零外网首装（I1：访问日志零命中 + 本地源命中日志）/ 篡改拦截（I2：fail-closed 失败与在线换源重取双口径） | 内网 / 无外网机器首装从「手工拼目录高级用法」升为产品化路径：IT 一键生成 + 目标机双击离线首装；manifest schema 零修改兑现 #116 离线一等形态；镜像位 / 多源回退（#125）与本地源优先组成完整源解析契约（Linux 侧 #134 install.sh 同款语义对齐）；断网实机取证（AC-02 实机口径）转待验收（恢复条件 = 断网 VM / 实机从布局目录首装 + 抓包 / 日志断言零外网） |
 | 136 | 模拟打印出图目录保留清理（迭代 72，2026-09-17；两项待决议按 Issue #107 用户拍板，均取建议项——按天保留默认 31 天（判龄 = 作业子目录 LastWriteTime）/ 环境变量 `LABELFRAME_PRINT_IMAGE_RETENTION_DAYS`（与 `LABELFRAME_APP_LOG_RETENTION_DAYS` 同构）；非公共契约变更，客户端本地行为） | ① **范围**：Log 传输（模拟打印）出图目录 `print\<jobId>\label-N.png`（`HostOptions.PrintOutputPath`，默认 `%LOCALAPPDATA%\LabelFrame\print`；Windows 窗口与 Linux 无头客户端共用路径）此前无任何清理机制、无限累积——新增超期作业子目录（递归含内部 PNG）自动删除。② **口径对齐 #108 保留先例**：按天保留、默认 **31 天**，`LABELFRAME_PRINT_IMAGE_RETENTION_DAYS` 可调，**≤0 = 不清理**（关闭语义）；判龄 = 作业子目录 **LastWriteTime**（与 jobs.db 解耦——删除只影响 Log 模式「查看出图」`EnrichPrintInfo` 的目录 / 张数展示，作业历史记录本体不受影响；作业目录内每次落盘都刷新 LastWriteTime，当日新打天然在保留期内）。③ **触发时机 = 客户端启动时 + 每次模拟打印落盘后顺带执行**（`PrintImageRetentionCleaner`：启动一次于 `Program`，落盘后一次经 `WinHostApp` 注入 `JobSubmissionService` Log 分支）——**不新增常驻后台任务**（对齐 #108「启动与轮转时顺带执行」轻量口径）；非 Log 模式落盘后清理不触发（调用点位于 Log 分支内），启动清理为目录维护、与传输模式无关。④ **失败防护**：清理整体永不抛出——遇目录被占用 / 权限失败降级留痕（宿主日志一行）后继续其余目录，不影响启动、打印与出图主链路（下次触发再试）；清理摘要（删除个数）记宿主日志一行 | 出图目录磁盘占用有界（默认 31 天，长期联调 / 演示机器不再无限累积）；超期出图按立项假设视为无保留价值（需长期留存走既有出图导出端点 render-image / render-images）；服务端 `DataCleanupService`、三条文本日志通道保留策略（#108）、PDA AndroidHost、客户端 jobs.db 作业历史清理、出图手动清理 UI 均不在范围（现状不动，另行立项）；长期行为（跨月目录滚动删除）随部署观察 |
+| 137 | 插件命令打印契约：文档编译能力接口 + 连接级打印方式参数（迭代 76 纯文档，2026-09-17；三项待决议按 Issue #113 会话用户确认——编译失败 = 显式失败不自动回退图片 / 切换粒度 = 仅连接级参数（不做作业级覆盖）/ 接口形态 = 提交时编译并持久化（否决发送时文档直发）；契约细节见 §5.4） | ① **能力接口（capability）**：插件可选实现 `ILabelCommandCompiler`（先例 `ITestableTransport` / `IPrinterStatusProvider`）——输入 `LabelDocument` + `LabelCommandCompileOptions`（DPI + 插件上下文），输出整页自包含品牌原生指令文本或失败结果（`LF_ENC` 新码 + 中文原因 + 可选字段键；预期内失败走结果不走异常）；能力实现于插件对象（品牌级，与连接实例无关），编译为纯函数性质（不访问打印机）；版式解析（区域锚定 #110）由编译器以品牌内置字体度量驱动。② **打印方式 = 连接级参数**（决议 2）：有能力的插件经 `TransportParameterSpec` 声明 Select `printMode`（`image` 默认 / `native`），随 connection.json 走、先测试后生效；不设全局开关、不做作业级请求覆盖（#45 printMode 教训）；descriptor 增能力位透出前端，未实现插件的界面不出现打印方式项；`native` + 无能力插件 = 保存校验拒绝 + 提交显式失败兜底，**不静默按图片打**。③ **提交时编译并持久化**（决议 3）：宿主提交链路（本地直连与 Server 路由领取共用 `JobSubmissionService`）逐张编译，产物写 `LabelJobItem.Zpl`（字段与 DB 列不改名，语义泛化为「持久化的打印机指令」）；Worker 发送 / 重启续打 / 失败项重打 / requestId 幂等（重放不重新编译）/ 挂起恢复 / 批次节流全部继承；Server 作业载荷零感知（打印方式是客户端连接属性，同一作业投给不同客户端按各自连接方式出纸）。④ **编译失败 = 显式失败**（决议 1）：任一标签失败整体拒绝（直连不建作业 / 路由回报 Server Failed），不自动回退图片（避免「以为在用指令实际是图片」的效果混淆与缺陷掩盖）；首版不做元素级混合模式（无法原生表示的元素——如内置字体无中文——按编译失败拒绝，混合模式待真机效果验收后评估）。⑤ **效果验收口径**：真机双模式并排对比（文本 / 条码 / 二维码 / 区域锚定三态 #110 不回归 + 出纸速度记录），参照迭代 55 三场景取证先例；单测先行（编译输出为确定性文本，指令文本断言不依赖真机） | 品牌插件获得原生指令路径（出纸速度 / 文本质量 / 耗材收益）而宿主作业模型与发送链路零改动；效果风险（#45 / #50 当年矢量翻车根因）三重隔离——默认图片 + 连接显式切换 + 真机对比验收；Zebra 首个落地兑现 #110 度量接口预留（SDK 内置字体度量接 `ITextWidthMeasurer`）；PDA 侧待 Windows 验证后评估（§5.4.7 边界）；实现迭代按 §5.4.8 拆分（宿主链路 → Zebra 文本 → 条码二维码 → 验收收口） |
 
 ## 5. API 概览
 
@@ -269,6 +271,106 @@ Linux 首版只注册 `log`，因此连接查询只返回 Log；插件安装端�
 版本透出（迭代 49，决策 #104）：应用版本（`android:versionName`）由构建注入——CI 发版按 `v*` tag（`ApplicationDisplayVersion`），本地 / 日常 CI 构建用 csproj 默认值 `1.0` 兜底；「本机信息」子页与 `GET /healthz`、`GET /api/host/config`（`version` 字段，只读）对外可见，供升级确认与第三方排障。
 
 可观测性（迭代 53，决策 #105）：轻量静态日志门面 `HostLog`（logcat，tag 前缀 `LabelFrame.` + 区域名 Host / Http / Print / Server / Ui / Crash）+ 同一封装同步落**本地滚动文件**（应用私有目录 `{FilesDir}/logs/host-yyyyMMdd-NNN.log`，单文件 512KB 上限滚动、目录保留最近 6 个；现场无法 adb 时取证）。关键路径埋点：本地 HTTP 请求失败（method / path / 异常消息——请求行未解析出的读失败记 Warn、处理期失败记 Error，「单请求失败不影响服务」语义不变）、打印循环发送失败（作业 / 项 / 打印机目标 / 原因）、Server 轮询与回报失败（目标地址 / 原因）、前台服务生命周期（启动参数一行、停止、开机自启广播）。全局崩溃捕获 `CrashGuard`：Java 层 `SetDefaultUncaughtExceptionHandler` + .NET `AppDomain.UnhandledException` → logcat 完整堆栈（Error）+ 崩溃摘要落 `{FilesDir}/crash/crash-<时间戳>.txt`（保留最近 3 份，下次启动服务时检测并记录提示）；注册时机 = 应用进程创建首行（`HostApplication`，早于一切组件）+ 服务 OnCreate 首行幂等兜底；崩溃摘要**不回传服务端**（回传管道见「风险与未决问题」）。
+
+### 5.4 插件命令打印契约（迭代 76，决策 #137）
+
+> 状态：**契约定稿、未实施**（纯文档迭代 [#113](https://github.com/marci-labs/LabelFrame/issues/113)；跨端公共契约走强化路径——先改文档再动代码）。产品代码由后续实现迭代按本节口径承接（拆分建议见 §5.4.8）。**默认图片打印不动**（决策 #50 口径维持）——命令打印是按连接显式切换的第二条可选路径，不是替代。
+
+**动机与定位**：需要原生指令打印效果（出纸速度 / 文本质量 / 耗材）的 Zebra 用户，以及未来其他品牌指令集（TSPL / CPCL，待需求）的接入方。插件以品牌为单位提供「标签文档 → 品牌原生指令」的编译能力；宿主**提交时编译并持久化**，作业模型与发送链路零改动。历史包袱显式记账：矢量 ZPL 编译曾随 #45 引入、因效果问题随 #50 删除——本契约**不复活宿主内置矢量编码器**，编译能力归属品牌插件（对打印机内置字体 / 指令集的了解是品牌知识）；效果风险以「默认图片 + 连接显式切换 + 真机对比验收」三重隔离（§5.4.5）。
+
+#### 5.4.1 能力接口（capability）
+
+插件**可选实现**文档编译能力接口（先例：`ITestableTransport` / `IPrinterStatusProvider` 的可选能力模式——未实现的插件，宿主与界面不出现命令打印相关项）：
+
+```csharp
+namespace LabelFrame.Core.Transport.Plugins;
+
+/// <summary>文档编译能力：把标签文档编译为品牌原生指令（可选实现于 ITransportPlugin 同一插件对象）。</summary>
+public interface ILabelCommandCompiler
+{
+    /// <summary>编译一张标签：成功返回整页自包含指令文本；预期内失败以结果返回（不抛异常）。</summary>
+    Task<LabelCommandCompileResult> CompileAsync(
+        LabelDocument document,
+        LabelCommandCompileOptions options,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>编译输入选项（首版 = DPI + 插件上下文；后续扩展只加字段，接口签名不动）。</summary>
+public sealed record LabelCommandCompileOptions(int Dpi, ITransportPluginContext Context);
+
+/// <summary>编译结果：成功（Command 非空）或失败（ErrorCode + ErrorMessage，FieldKey 可选）。</summary>
+public sealed record LabelCommandCompileResult(
+    string? Command,
+    string? ErrorCode,
+    string? ErrorMessage,
+    string? FieldKey);
+```
+
+口径约定：
+
+- **实现归属**：能力实现于 `ITransportPlugin` **插件对象**（品牌级能力，与连接实例 / 传输形态无关——同一品牌 TCP / USB / 驱动连接共用一份编译器），不是 `Create()` 返回的传输实例。探测 = 注册表装配期判定 `plugin is ILabelCommandCompiler`。
+- **输入**：`LabelDocument`（版式 + 数据 + 图片资源，`LabelFrame.Core.Documents`——插件本就引用 Core，无新增依赖方向）；DPI = 宿主打印配置（`HostOptions.Dpi` / `LABELFRAME_DPI`，默认 203，与图片渲染同源）；上下文（宿主日志 / 数据目录）经 `LabelCommandCompileOptions.Context` 提供（与 `Create` 收到的 `ITransportPluginContext` 同构）。
+- **输出**：指令为**文本字符串**，与 `LabelJobItem.Zpl`（string）和 `IPrintTransport.SendAsync(string)` 同型；**整页自包含**——格式开始 / 结束、页面尺寸（ZPL `^PW` / `^LL` 同类）、打印份数等格式级指令由编译器负责，宿主不再包装追加。二进制指令流（未来品牌协议若非文本）不在首版契约，出现需求先扩本节再实施。
+- **预期内失败走结果、不走异常**：元素不被品牌指令集支持、字段值含指令集无法表示的字符等**预期内**编译失败以结果（ErrorCode / ErrorMessage / FieldKey）返回；宿主对意外异常按既有口径捕获并映射为同一失败语义（不透出堆栈）。错误码用 `LF_ENC_xxx` 前缀（编码类问题码既定段，现仅有 `LF_ENC_001`），具体编号随实现迭代入注册表。
+- **编译为纯函数性质**：同输入同输出、无副作用、不访问打印机——「文档 → 指令」的确定性变换；连接测试 / 状态查询仍走既有 `ITestableTransport` / `IPrinterStatusProvider`，与编译无关。
+- **解析几何（#110 衔接）**：编译器接收**原始** `LabelDocument`，**内部**完成版式解析——区域水平锚定偏移以**该品牌打印机内置字体的度量实现**（`ITextWidthMeasurer`）驱动 `LabelLayoutResolver`（宿主不做预解析：宿主无从得知品牌字体度量）。锚定宽度按实际打印字体的实测宽度计算，#110「解析几何与渲染方式解耦」的预留缝由编译器兑现；Zebra 首个落地 = SDK 内置字体度量接 `ITextWidthMeasurer`。
+
+#### 5.4.2 能力探测与界面联动
+
+- **注册表能力位**：`TransportPluginDescriptor` 增量字段 `SupportsDocumentCompile`（bool，默认 false；装配期 `plugin is ILabelCommandCompiler` 判定）——`GET /api/transport`（可用插件列表）透出该位（`TransportPluginDescriptorDto` 同步增量，向后兼容）。
+- **打印方式参数（决议 2：仅连接级）**：实现编译能力的插件在 `Parameters` 声明 Select 参数——Key `printMode`、Label「打印方式」、必填、默认值 `image`、Options `image`（图片（默认））/ `native`（原生指令）。参数随 connection.json 走（`{ pluginId, params }` 既有格式零变更）、先测试后生效；**不设全局开关、不做作业级请求覆盖**（#45 的 printMode 请求覆盖因「配置与请求双口径」混乱被删，不恢复）。
+- **未实现插件的表现**：不声明 `printMode`（参数归插件所有——内置 log / tcp9100 / winspool 永不出现该参数）；能力位 false；连接表单不出现「打印方式」项。前端零品牌硬编码，全部按 descriptor 动态渲染（既有 `TransportParameterSpec` 动态表单机制零改动，Select 类型已支持）。
+- **配置合法性两层校验**：① 保存连接时——`printMode=native` 仅对能力位为真的插件合法，否则保存校验失败（中文提示，`TransportManager` 既有校验位）；② 存量异常配置兜底（手改 connection.json / 插件降级后能力消失）——提交时**显式失败**（错误码 + 中文提示「当前打印方式为原生指令，但连接的插件不支持，请切回图片或更换插件」），**不静默按图片打印**（对齐决议 1 的不混淆立场）。
+- **读取容错**：`printMode` 缺失 / 非法值 = 按 `image`（默认值语义，#69 connection.json 兼容演进风格）；「缺省回默认」与「显式选了 native 但能力不在」是两个分支，后者显式失败。
+- **不受打印方式影响的链路**：连接测试（`ITestableTransport.TestAsync`，通讯验证）；`POST /api/printer/test`（固定 ZPL 测试页）；调试出图（render-image / render-images，永远图片渲染）；Web 预览（Skia 渲染，永远图片口径——原生指令**无指令级预览**，界面以文案说明「原生指令模式无预览，效果以真机为准」，指令级预览超出首版范围）。
+
+#### 5.4.3 编译时序与持久化语义（决议 3：提交时编译并持久化）
+
+- **时序**：宿主提交链路（WinHost `JobSubmissionService`——本地直连 `POST /api/jobs` 与 Server 路由领取 `HandleClaimedJobAsync` 共用同一入口）在契约校验之后、入队之前按**当前连接**分派：`printMode=image`（或缺省）→ 既有 Skia 整版渲染 → `^GF`；`printMode=native` → 插件编译器逐张编译。每张标签编译一次，产物即该 Item 的最终指令。
+- **持久化**：编译产物写入 `LabelJobItem.Zpl`——**字段与 SQLite 列不改名**（`zpl`，零迁移），语义泛化为「持久化的打印机指令」（图片模式 = `^GF` 位图 ZPL；原生指令模式 = 品牌原生指令）；代码注释与文档同步泛化。
+- **继承的作业语义（零改动）**：指令不可变持久化 → 服务重启续打（in-flight 重置 Pending）、失败项重打（retry）、requestId 幂等（重放返回既有作业，**不重新编译**——模板后续修改不影响已入队作业，与图片模式行为一致）、挂起 / 恢复 / 取消、批内顺序、批次节流（#74 / #100）全部继承；Worker 只回放字符串（`SendAsync(string)`），**发送路径零改动**。
+- **逐张编译的失败粒度**：任一标签编译失败 → **整体拒绝**（对齐校验 / 渲染失败「缺数据不打半张」的既有语义）：直连提交 = 请求失败（不建本地作业，错误响应 `{ code, message, fieldKey? }`）；Server 路由 = 宿主回报 Server 作业 Failed（既有 `HandleClaimedJobAsync` 失败回报路径，错误消息含问题码与中文原因）。
+- **Server 侧零感知**：打印方式是**客户端连接属性**——Server 作业载荷（template + labels）与状态机不变、不新增字段；同一 Server 作业投递到不同客户端时，各客户端按本机当前连接的打印方式出纸（设备级生效，符合连接级切换的语义）。
+
+#### 5.4.4 失败与回退语义（决议 1：显式失败）
+
+- **显式失败，不自动回退图片**：编译失败（元素不支持 / 字符不可表示 / 配置异常兜底）一律显式暴露——错误码（`LF_ENC_xxx` 新码）+ 中文原因（含插件 id）+ 可行动建议（「将打印方式切回图片后重试」/「更换连接的插件」）。理由：自动回退会造成「以为在用指令、实际是图片」的效果混淆，并掩盖插件缺陷。
+- **不做部分成功（首版口径）**：不做「个别元素回退位图、其余原生指令」的元素级混合模式——编译器无法原生表示的元素按编译失败显式拒绝（如 Zebra 内置字体无法覆盖的中文文本，除非该机装有中文字库且编译器支持）；混合模式待真机效果验收后按需评估（届时先改本节再实施）。
+
+#### 5.4.5 效果验收口径
+
+参照迭代 55 三场景真机取证先例，实现迭代的真机验收方向（单测先行；真机项转 `待验收` 机制沿用）：
+
+- **对比载体**：同一模板 + 同一数据，图片模式与原生指令模式各打一份，真机（Zebra）并排取证。
+- **必查项**：① 文本（字号阶梯可读性、加粗近似、中英文混排）；② 条码（Code128 扫码枪可扫、`displayValue` 人眼可读）；③ 二维码（QR 可扫，ECC / 边距观感与图片模式一致）；④ **区域水平锚定 #110 不回归**——无显式宽度文本 × Start / Center / End 三态在指令输出上可区分（锚定偏移按品牌内置字体度量计算）；⑤ 出纸速度对比（原生指令的预期收益项，记录量级、不设硬阈值）。
+- **单测口径**：编译输出为确定性文本 → 指令文本断言（结构 / 关键指令 / DPI 换算 / 非默认样式字段映射）随实现迭代合入，不依赖真机。
+
+#### 5.4.6 与既有决策的关系
+
+| 决策 | 关系 |
+|---|---|
+| #45（PrintMode Vector 引入）/ #50（矢量 ZPL 删除、图片收敛） | 教训承接：#45 全局 Vector 默认翻车 → 本契约默认图片不动、切换仅连接级显式；#50 删除的是**宿主内置**矢量 ZPL 编码器，本契约把编译能力移交**品牌插件**（品牌知识归属品牌），图片路径维持默认与兜底地位 |
+| #110（ITextWidthMeasurer 度量接口化） | 直接兑现预留的缝：编译路径以品牌内置字体度量驱动同一解析几何，区域锚定语义跨渲染方式一致 |
+| #67（传输插件统一接口与参数模型） | 能力接口沿用可选能力模式（`ITestableTransport` / `IPrinterStatusProvider` 先例）；打印方式参数即 `TransportParameterSpec`，前端动态表单零改动 |
+| #123（官方插件外置化） | Zebra 编译能力随官方插件 `labelframe-transport-zebra` 分发；编译器与传输同包（同一品牌插件对象的两个能力面） |
+| #93（PDA 接入边界） | AndroidHost 不在本契约（见 §5.4.7）；PDA 第三方集成仍走既有 HTTP 公共契约 |
+
+#### 5.4.7 边界（不在本契约内）
+
+- **PDA / AndroidHost 命令打印**：AndroidHost 无外置插件机制（#95 远期项）、打印链路独立——待 Windows 侧真机效果验证后另行评估（届时按强化路径更新本节）。
+- **其他品牌指令集**（TSPL / CPCL）：待需求；按同构能力接口扩展（先例 #67 品牌扩展路线），不改宿主。
+- **二进制指令流 / 元素级混合模式 / 指令级预览**：分别见 §5.4.1 / §5.4.4 / §5.4.2 的「不在首版」口径，出现需求先扩本节再实施。
+
+#### 5.4.8 后续实现迭代拆分建议（Issue 级粒度，可作为立项依据）
+
+| 序 | 建议迭代 | 范围 | 关键验收方向 |
+|---|---|---|---|
+| 1 | 宿主链路：能力接口与提交分支落码 | Core `ILabelCommandCompiler` / `LabelCommandCompileResult` / `LabelCommandCompileOptions` + descriptor 能力位（含 DTO）+ `printMode` 校验（保存层 + 提交兜底）+ `JobSubmissionService` 编译分派 + `LabelJobItem.Zpl` 语义泛化 + `LF_ENC` 新码 + fake 编译器单测（成功入队 / 失败整体拒绝 / 路由回报 Failed / 幂等不重编译 / 异常配置显式失败） | 纯单测锚定，无真机依赖 |
+| 2 | Zebra 编译器·文本 | 插件实现 `ILabelCommandCompiler`：SDK 内置字体度量 `ITextWidthMeasurer` + 版式解析（区域锚定）+ 文本元素编译（`^A` / `^CI` / 加粗近似）+ `printMode` 参数声明 | 指令文本单测 + 真机文本对比（§5.4.5 ①④，转待验收） |
+| 3 | Zebra 编译器·条码与二维码 | Code128 `^BC`（含 `displayValue`）/ QR `^BQ`（ECC / 边距字段映射）编译 | 指令文本单测 + 真机扫码对比（§5.4.5 ②③，转待验收） |
+| 4 | 效果验收收口（可选） | §5.4.5 全项并排取证 + 出纸速度记录 | 若步 2 / 3 的真机 AC 已各自取证则并入结项，不强制独立立项 |
+
+拆分原则：每步可独立合入（步 1 不依赖任何品牌插件，fake 编译器即可全链路验证；步 2 / 3 依赖步 1）；公共契约变更集中在步 1——本节已定稿，实现只落码不再改契约，若落码中发现契约缺口，先回本节修订再继续。
 
 ## 6. 安装引导（Bootstrapper）
 
@@ -800,6 +902,7 @@ public interface ITopologyResolver
 - 契约字段 Pattern 校验（仅存储元数据，不执行）。
 - 打印计数 / 库存联动（如需只提供事件接口）。
 - 传输插件运行时热卸载 / 热替换（卸载 = 删文件 + 重启生效）。
+- PDA 侧命令打印（迭代 76 契约边界，§5.4.7）：AndroidHost 无外置插件机制（#95 远期项）且打印链路独立，待 Windows 侧真机效果验证后另行评估（届时按强化路径更新 §5.4）。
 - 客户端装后自启体验（2026-09-15 #55 AC-01 干净 VM 重验观察项，用户裁定记录待议）：引导链静默安装 Client MSI 后客户端不自动启动——自启依赖登录触发的 Run 键，装完当前会话需手动打开（完成页「下一步指引」已覆盖）；升级链同样存在「停旧不拉新」窗口。若要做「装完即启 / 升级后拉起」，属 BA 完成页增强（如「立即启动客户端」动作），涉 UX 形态决策，有需求再排。
 - Server UI「仅在线设备可选」的提交竞态：现为前端提交时校验在线（尽力而为）；彻底消除需后端原子校验，会改变离线暂存语义（决策 #22），需要时再评估。
 - 工程治理遗留：WinHost 专属端点 HTTP 集成测试（需先抽 host builder）；ServerService 提交幂等下沉 DB（多实例需求出现再做）；覆盖率阈值门禁（数据已在 CI 收集）。
