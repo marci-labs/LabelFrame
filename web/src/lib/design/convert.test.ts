@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fromBackendElements, toBackendElement, toContract, toLayout } from './convert'
+import { applyContractDisplayNames, fromBackendElements, toBackendElement, toContract, toLayout } from './convert'
 import type { BackendLayout } from './convert'
 import { defaultElement } from './types'
 import type { BarcodeElement, DesignElement, LineElement, QrCodeElement, RectElement, RegionElement, TextElement } from './types'
@@ -217,13 +217,18 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
   })
 
   describe('toContract / toLayout 模板顶层', () => {
-    it('契约字段 = 推导结果（displayName 取 Key，非必填，类型 Text）', () => {
-      const c = toContract('库位标签', '1', ['location', 'sku'])
+    it('契约字段 = 推导结果（displayName 空则回退键，非必填，类型 Text；迭代 83 · #131 决议 1）', () => {
+      const c = toContract('库位标签', '1', [
+        { key: 'location', displayName: '库位' },
+        { key: 'sku' },
+        { key: 'batch', displayName: '   ' },
+      ])
       expect(c.name).toBe('库位标签')
       expect(c.version).toBe('1')
       expect(c.fields).toEqual([
-        { key: 'location', displayName: 'location', isRequired: false, type: 'Text' },
+        { key: 'location', displayName: '库位', isRequired: false, type: 'Text' },
         { key: 'sku', displayName: 'sku', isRequired: false, type: 'Text' },
+        { key: 'batch', displayName: 'batch', isRequired: false, type: 'Text' },
       ])
     })
 
@@ -234,6 +239,57 @@ describe('convert 设计器模型 ↔ 后端模板契约', () => {
       expect(l.heightMm).toBe(60)
       expect(l.elements).toHaveLength(1)
       expect(l.elements[0].type).toBe('text')
+    })
+  })
+
+  describe('显示名契约往返（迭代 83 · #131 决议 1：模板包导出 / 导入不丢显示名）', () => {
+    it('保存 → 读取：契约 fields 携带显示名，applyContractDisplayNames 按字段名回填到字段填充元素', () => {
+      const t = defaultElement('Text')
+      t.mode = 'field'
+      t.key = 'location'
+      t.displayName = '库位'
+      t.text = 'A-01'
+      const b = defaultElement('Barcode')
+      b.mode = 'field'
+      b.key = 'sku'
+      // 保存：契约 fields 写显示名；版式元素 JSON 无显示名字段（契约格式不变）
+      const contract = toContract('库位标签', '1', [{ key: 'location', displayName: '库位' }, { key: 'sku' }])
+      const layout = toLayout('库位标签', '库位标签', '1', 100, 60, [t, b])
+      expect(contract.fields[0]).toMatchObject({ key: 'location', displayName: '库位' })
+      expect(layout.elements[0]).not.toHaveProperty('displayName')
+      // 读取：fromBackendElements 重建元素 → 契约显示名回填
+      const restored = applyContractDisplayNames(fromBackendElements(layout.elements), contract.fields)
+      const rt = restored[0] as TextElement
+      const rb = restored[1] as BarcodeElement
+      expect(rt.mode).toBe('field')
+      expect(rt.key).toBe('location')
+      expect(rt.displayName).toBe('库位')
+      expect(rb.key).toBe('sku')
+      expect(rb.displayName).toBeUndefined() // 契约未提供 → 元素无显示名（显示处回退键名）
+    })
+
+    it('存量模板（旧口径 displayName = 键）：不回填显示名，显示处回退键名不报错', () => {
+      const t = defaultElement('Text')
+      t.mode = 'field'
+      t.key = 'location'
+      const legacyFields = [{ key: 'location', displayName: 'location', isRequired: false, type: 'Text' as const }]
+      const layout = toLayout('库位标签', '库位标签', '1', 100, 60, [t])
+      const restored = applyContractDisplayNames(fromBackendElements(layout.elements), legacyFields)
+      const rt = restored[0] as TextElement
+      expect(rt.key).toBe('location')
+      expect(rt.displayName).toBeUndefined()
+    })
+
+    it('applyContractDisplayNames：固定值元素与未匹配键不受影响；契约无有效显示名时原样返回', () => {
+      const lit = defaultElement('Text')
+      lit.mode = 'literal'
+      lit.text = '固定内容'
+      const fld = defaultElement('QrCode')
+      fld.mode = 'field'
+      fld.key = 'url'
+      const elements = applyContractDisplayNames([lit, fld], [{ key: 'other', displayName: '其他', isRequired: false, type: 'Text' }])
+      expect((elements[0] as TextElement).displayName).toBeUndefined()
+      expect((elements[1] as QrCodeElement).displayName).toBeUndefined()
     })
   })
 

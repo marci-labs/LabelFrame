@@ -1,8 +1,9 @@
-// 设计器左侧栏：控件栏（点击放置 / 拖入画布）+ 契约字段（只读推导）+ 图层
+// 设计器左侧栏：控件栏（点击放置 / 拖入画布）+ 打印字段（只读推导）+ 图层
 
 import type { DesignElement } from '../../lib/design/types'
 import { layerLabel } from '../../lib/design/types'
 import { elementsByIds } from '../../lib/design/model'
+import type { FieldInfo } from '../../lib/design/fields'
 import { Icon } from '../../components/Icon'
 
 const PALETTE: { type: string; label: string; icon: 'text' | 'barcode' | 'qrcode' | 'rect' }[] = [
@@ -17,7 +18,7 @@ export interface SidePanelProps {
   selected: string[]
   viewMode: 'fit' | 'preview'
   pendingType: string | null
-  fields: string[]
+  fields: FieldInfo[]
   onPickType: (type: string) => void
   onSelect: (id: string, toggle?: boolean) => void
   onMoveLayer: (delta: number) => void
@@ -68,7 +69,7 @@ export function SidePanel(p: SidePanelProps) {
 
       <section>
         <h3>
-          契约字段
+          打印字段
           <small>自动推导</small>
         </h3>
         {locked ? (
@@ -77,9 +78,9 @@ export function SidePanel(p: SidePanelProps) {
           <div className="side-empty">暂无字段</div>
         ) : (
           <ul className="field-list">
-            {p.fields.map((k) => (
-              <li key={k} className="mono">
-                {k}
+            {p.fields.map((f) => (
+              <li key={f.key} className="mono" title={f.displayName && f.displayName !== f.key ? `字段名：${f.key}` : undefined}>
+                {f.displayName || f.key}
               </li>
             ))}
           </ul>

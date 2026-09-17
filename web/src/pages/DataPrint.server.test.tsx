@@ -318,3 +318,13 @@ describe('DataPrint server 构建：图片预览页内弹层与下载分离（�
     expect(screen.queryByRole('dialog', { name: '标签图片预览' })).toBeNull()
   })
 })
+
+describe('DataPrint server 构建：字段显示名渲染（迭代 83 · #131 决议 1，与 client 构建同源）', () => {
+  it('契约字段带显示名：表单标签与占位符显示显示名，值仍按字段名（键）绑定（AC-01 双形态）', async () => {
+    await renderDataPrint()
+    expect(screen.getByText('库位')).toBeTruthy()
+    expect(screen.queryByText('location')).toBeNull()
+    expect(screen.getByPlaceholderText('字段 库位 的值（打印时使用）')).toBeTruthy()
+    expect(screen.getByDisplayValue('A-01')).toBeTruthy()
+  })
+})

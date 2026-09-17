@@ -37,8 +37,10 @@ export interface TextElement extends ElementBase {
   /** 垂直对齐：顶端 / 居中 / 底部 */
   valign: 'top' | 'middle' | 'bottom'
   mode: ContentMode
-  /** 字段填充的键名称 */
+  /** 字段填充的字段名（打印数据按此匹配） */
   key: string
+  /** 打印字段显示名（可选，迭代 83 · #131 决议 1：打印页字段标签回退 key） */
+  displayName?: string
   /** 固定值内容 / 字段填充的预览值（仅画布显示） */
   text: string
   /** 水平对齐 */
@@ -53,6 +55,8 @@ export interface BarcodeElement extends ElementBase {
   type: 'Barcode'
   mode: ContentMode
   key: string
+  /** 打印字段显示名（可选，迭代 83 · #131 决议 1：打印页字段标签回退 key） */
+  displayName?: string
   text: string
   paddingH: number
   paddingV: number
@@ -66,6 +70,8 @@ export interface QrCodeElement extends ElementBase {
   type: 'QrCode'
   mode: ContentMode
   key: string
+  /** 打印字段显示名（可选，迭代 83 · #131 决议 1：打印页字段标签回退 key） */
+  displayName?: string
   text: string
   paddingH: number
   paddingV: number

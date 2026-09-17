@@ -16,12 +16,12 @@ import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import type { DesignElement } from '../lib/design/types'
 import { cloneElement, defaultElement } from '../lib/design/types'
-import { deriveFields } from '../lib/design/fields'
+import { deriveFieldInfos } from '../lib/design/fields'
 import { createHistory } from '../lib/design/history'
 import { r2 } from '../lib/design/geometry'
 import { exportDesign, parseDesign } from '../lib/design/format'
 import { capturePasteOnce, copyText, readClipboardText } from '../lib/clipboard'
-import { fromBackendElements, toContract, toLayout } from '../lib/design/convert'
+import { applyContractDisplayNames, fromBackendElements, toContract, toLayout } from '../lib/design/convert'
 import { SHORTCUT_GROUPS } from './designer/shortcuts'
 
 const snap = (s: DesignState) => JSON.stringify({ paperW: s.paperW, paperH: s.paperH, elements: s.elements })
@@ -120,7 +120,8 @@ export function Designer({ request, onClose }: DesignerProps) {
           {
             paperW: pkg.layout?.widthMm || 100,
             paperH: pkg.layout?.heightMm || 60,
-            elements: fromBackendElements(pkg.layout?.elements ?? []),
+            // 迭代 83 · #131 决议 1：显示名存于契约 fields（版式元素 JSON 无此字段），加载时按字段名回填到元素
+            elements: applyContractDisplayNames(fromBackendElements(pkg.layout?.elements ?? []), pkg.contract?.fields ?? []),
           },
           pkg,
         )
@@ -447,7 +448,7 @@ export function Designer({ request, onClose }: DesignerProps) {
       if (!s) return
       setSaving(true)
       try {
-        const fields = deriveFields(s.elements)
+        const fields = deriveFieldInfos(s.elements)
         const version = request.kind === 'new' ? '1' : contractVersionRef.current
         const contractName = request.kind === 'new' ? finalName : contractNameRef.current
         const pkg: TemplatePackage = {
@@ -490,7 +491,7 @@ export function Designer({ request, onClose }: DesignerProps) {
     }
   }, [app, biz, doSave, name, request.kind])
 
-  const fields = useMemo(() => (state ? deriveFields(state.elements) : []), [state])
+  const fields = useMemo(() => (state ? deriveFieldInfos(state.elements) : []), [state])
 
   // 测试默认值只读预览：与后端 SaveAsync 派生语义一致（遍历元素，后出现覆盖先出现）
   const previewDefaults = useMemo(() => {
@@ -498,6 +499,16 @@ export function Designer({ request, onClose }: DesignerProps) {
     const m = new Map<string, string>()
     for (const e of state.elements) {
       if ('mode' in e && e.mode === 'field' && e.key && e.text) m.set(e.key, e.text)
+    }
+    return m
+  }, [state])
+
+  // 字段显示名（迭代 83 · #131 决议 1）：与推导一致取首个非空，显示处 `displayName || key` 回退
+  const displayNameByKey = useMemo(() => {
+    const m = new Map<string, string>()
+    if (!state) return m
+    for (const f of deriveFieldInfos(state.elements)) {
+      if (f.displayName) m.set(f.key, f.displayName)
     }
     return m
   }, [state])
@@ -649,7 +660,7 @@ export function Designer({ request, onClose }: DesignerProps) {
                   ) : (
                     [...previewDefaults.entries()].map(([k, v]) => (
                       <div className="field" key={k} style={{ marginTop: 6 }}>
-                        <span className="mono" style={{ minWidth: 90 }}>{k}</span>
+                        <span className="mono" style={{ minWidth: 90 }} title={displayNameByKey.get(k) ? `字段名：${k}` : undefined}>{displayNameByKey.get(k) || k}</span>
                         <span className="mono" style={{ color: 'var(--text-2)', wordBreak: 'break-all' }}>{v}</span>
                       </div>
                     ))

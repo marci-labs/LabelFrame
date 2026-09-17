@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { BarcodeElement, DesignElement, QrCodeElement, TextElement } from '../../lib/design/types'
 import { defaultElement } from '../../lib/design/types'
-import { deriveFields } from '../../lib/design/fields'
+import { deriveFieldInfos } from '../../lib/design/fields'
 import { PropsPanel } from './PropsPanel'
 import { SidePanel } from './SidePanel'
 
@@ -150,11 +150,11 @@ describe('二维码元素属性', () => {
   })
 })
 
-describe('字段填充（契约键）', () => {
-  it('字段模式：标题显示键名徽标，键名称 / 预览值改值触发 onChange', () => {
+describe('字段填充（打印字段）', () => {
+  it('字段模式：标题显示字段名徽标，字段名 / 预览值改值触发 onChange', () => {
     const { onChange } = renderProps([fieldTextEl], ['t2'])
     expect(screen.getByText('location')).toBeTruthy()
-    const key = screen.getByLabelText('键名称（契约字段，自动建立）') as HTMLInputElement
+    const key = screen.getByLabelText('字段名（打印时用数据填充）') as HTMLInputElement
     expect(key.value).toBe('location')
     fireEvent.change(key, { target: { value: 'sku' } })
     expect(onChange).toHaveBeenCalledWith('t2', { key: 'sku' })
@@ -162,10 +162,42 @@ describe('字段填充（契约键）', () => {
     expect(onChange).toHaveBeenCalledWith('t2', { text: 'B-02' })
   })
 
-  it('切回固定值：清空键名（key: ""）', () => {
+  it('显示名输入（迭代 83 · #131 决议 1）：字段模式渲染可选显示名，改值触发 onChange；未填时输入框为空', () => {
+    const named: TextElement = { ...defaultElement('Text', 't3'), mode: 'field', key: 'location', displayName: '库位', text: 'A-01' }
+    const { onChange } = renderProps([named], ['t3'])
+    const input = screen.getByLabelText('显示名（打印页显示，可选）') as HTMLInputElement
+    expect(input.value).toBe('库位')
+    fireEvent.change(input, { target: { value: '货架位置' } })
+    expect(onChange).toHaveBeenCalledWith('t3', { displayName: '货架位置' })
+
+    cleanup()
+    renderProps([fieldTextEl], ['t2'])
+    expect((screen.getByLabelText('显示名（打印页显示，可选）') as HTMLInputElement).value).toBe('')
+  })
+
+  it('固定值模式：不渲染字段名 / 显示名 / 预览值输入，也不显示字段填充提示（AC-03）', () => {
+    renderProps([textEl], ['t1'])
+    expect(screen.queryByLabelText('字段名（打印时用数据填充）')).toBeNull()
+    expect(screen.queryByLabelText('显示名（打印页显示，可选）')).toBeNull()
+    expect(screen.queryByLabelText('预览值（仅画布显示）')).toBeNull()
+    expect(screen.queryByText(/打印时从外界数据取/)).toBeNull()
+  })
+
+  it('字段填充模式：显示字段填充提示（AC-03）', () => {
+    renderProps([fieldTextEl], ['t2'])
+    expect(screen.getByText(/打印时从外界数据取「字段名」对应字段填充/)).toBeTruthy()
+  })
+
+  it('措辞用户化（AC-02）：属性面板无「契约」字样直出，字段绑定控件为「字段名」措辞', () => {
+    renderProps([fieldTextEl], ['t2'])
+    expect(document.body.textContent).not.toContain('契约')
+    expect(screen.getByLabelText('字段名（打印时用数据填充）')).toBeTruthy()
+  })
+
+  it('切回固定值：清空字段名与显示名（key: ""、displayName: undefined）', () => {
     const { onChange } = renderProps([fieldTextEl], ['t2'])
     fireEvent.change(screen.getByLabelText('来源'), { target: { value: 'literal' } })
-    expect(onChange).toHaveBeenCalledWith('t2', { mode: 'literal', key: '' })
+    expect(onChange).toHaveBeenCalledWith('t2', { mode: 'literal', key: '', displayName: undefined })
   })
 })
 
@@ -205,7 +237,7 @@ describe('设计器主链：图层选择 → 属性面板字段（SidePanel + Pr
           selected={selected}
           viewMode="fit"
           pendingType={null}
-          fields={deriveFields(elements)}
+          fields={deriveFieldInfos(elements)}
           onPickType={() => {}}
           onSelect={(id, toggle) => setSelected((prev) => (toggle ? prev.filter((x) => x !== id).concat(prev.includes(id) ? [] : [id]) : [id]))}
           onMoveLayer={() => {}}

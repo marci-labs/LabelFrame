@@ -224,7 +224,7 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
   )
 }
 
-/** 填充：固定值 / 字段填充（键名称 + 预览值）。 */
+/** 填充：固定值 / 字段填充（字段名 + 显示名 + 预览值）。 */
 function ContentGroup({ e, onChange }: { e: DesignElement; onChange: (id: string, patch: Partial<DesignElement>) => void }) {
   if (e.type !== 'Text' && e.type !== 'Barcode' && e.type !== 'QrCode') return null
   const set = (patch: Partial<typeof e>) => onChange(e.id, patch)
@@ -238,7 +238,7 @@ function ContentGroup({ e, onChange }: { e: DesignElement; onChange: (id: string
           ['固定值', 'literal'],
           ['字段填充', 'field'],
         ]}
-        onSet={(v) => set(v === 'literal' ? { mode: 'literal', key: '' } : { mode: 'field' })}
+        onSet={(v) => set(v === 'literal' ? { mode: 'literal', key: '', displayName: undefined } : { mode: 'field' })}
       />
       {e.mode === 'literal' ? (
         <label className="field">
@@ -248,16 +248,20 @@ function ContentGroup({ e, onChange }: { e: DesignElement; onChange: (id: string
       ) : (
         <>
           <label className="field">
-            键名称（契约字段，自动建立）
+            字段名（打印时用数据填充）
             <input className="input mono" value={e.key} onChange={(ev) => set({ key: ev.target.value })} placeholder="例如：location" />
+          </label>
+          <label className="field">
+            显示名（打印页显示，可选）
+            <input className="input" value={e.displayName ?? ''} onChange={(ev) => set({ displayName: ev.target.value })} placeholder="例如：库位；不填则显示字段名" />
           </label>
           <label className="field">
             预览值（仅画布显示）
             <input className="input" value={e.text} onChange={(ev) => set({ text: ev.target.value })} placeholder="打印以外界数据为准" />
           </label>
+          <div className="hint">打印时从外界数据取「字段名」对应字段填充，预览值会被忽略。</div>
         </>
       )}
-      <div className="hint">打印时从外界数据取「键名称」对应字段填充，预览值会被忽略。</div>
     </div>
   )
 }
