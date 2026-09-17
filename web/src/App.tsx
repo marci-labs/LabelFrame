@@ -1,6 +1,7 @@
 // 应用框架：左侧主导航（state 切换，无路由库）+ 底部状态栏 + 日志抽屉
 // 迭代 20：双构建（VITE_UI_MODE）——server 构建菜单移除设置与打印机相关内容，新增「在线设备」，
-// 日志页更名「设备日志」；状态栏 server 显示服务端地址（同源）与 UI 模式、client 显示本机 IP。
+// 状态栏 server 显示服务端地址（同源）与 UI 模式、client 显示本机 IP。
+// 迭代 75（#112）：「PDA 日志 / 设备日志」页下线（回传链路不存在前界面收敛，决策 #140）——双形态导航入口移除。
 
 import { useEffect, useState } from 'react'
 import { AppProvider, useApp } from './state/AppContext'
@@ -12,7 +13,6 @@ import { Workbench } from './pages/Workbench'
 import { Designer } from './pages/Designer'
 import { DataPrint } from './pages/DataPrint'
 import { Devices } from './pages/Devices'
-import { PdaLogs } from './pages/PdaLogs'
 import { JobHistory } from './pages/JobHistory'
 import { Settings } from './pages/Settings'
 import { DownloadCenter } from './pages/DownloadCenter'
@@ -29,15 +29,13 @@ const TABS: { id: TabId; label: string; icon: IconName }[] = isServerUi
       { id: 'packages', label: '下载中心', icon: 'download' },
       // 迭代 23 §5.4：Server UI「插件管理」页（插件包列表 / 上传 / 下载 / 删除，与「客户端下载」并列）
       { id: 'plugin-packages', label: '插件管理', icon: 'puzzle' },
-      // 迭代 20（Y5）：Server 版命名「设备日志」（集中查看全部设备日志）；client 版保持「PDA 日志」
-      { id: 'logs', label: '设备日志', icon: 'logs' },
+      // 迭代 75（#112）：「设备日志」页下线——/api/logs 端点与 logs.db 保留（未来回传地基）
     ]
   : [
       { id: 'workbench', label: '工作台', icon: 'workbench' },
       { id: 'designer', label: '设计器', icon: 'designer' },
       { id: 'data', label: '数据与打印', icon: 'data' },
       { id: 'jobs', label: '作业历史', icon: 'history' },
-      { id: 'logs', label: 'PDA 日志', icon: 'logs' },
       { id: 'settings', label: '设置', icon: 'settings' },
     ]
 
@@ -103,7 +101,6 @@ function Shell() {
           {tab === 'jobs' && <JobHistory />}
           {tab === 'packages' && <DownloadCenter />}
           {tab === 'plugin-packages' && <PluginPackages />}
-          {tab === 'logs' && <PdaLogs />}
           {tab === 'settings' && <Settings />}
         </main>
       </div>

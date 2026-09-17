@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-// 迭代 20：client 构建菜单与状态栏——含 设置 / PDA 日志（不含 在线设备 / 设备日志）；
+// 迭代 20：client 构建菜单与状态栏——含 设置（不含 在线设备 / 设备日志）；
+// 迭代 75（#112）：「PDA 日志」页下线——导航入口移除（回传链路不存在前的界面收敛）；
 // 状态栏在服务端已连接时显示本机 IP（/api/host/config.ips，多 IP 逗号分隔，title 给全量）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -83,12 +84,13 @@ afterEach(() => {
 })
 
 describe('client 构建：菜单（迭代 20 裁剪守门）', () => {
-  it('含 设置 / PDA 日志；不含 在线设备 / 设备日志', async () => {
+  it('含 设置；不含 在线设备 / 设备日志 / PDA 日志（迭代 75 日志页下线）', async () => {
     render(<App />)
     expect(await screen.findByRole('button', { name: '设置' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'PDA 日志' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: '在线设备' })).toBeNull()
     expect(screen.queryByRole('button', { name: '设备日志' })).toBeNull()
+    // 迭代 75（#112）：「PDA 日志」导航入口移除（/api/logs 端点与 logs.db 后端保留）
+    expect(screen.queryByRole('button', { name: 'PDA 日志' })).toBeNull()
   })
 })
 
