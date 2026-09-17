@@ -3,6 +3,7 @@
 // 上次心跳）；默认目标优先级 = 用户点选（localStorage labelframe.defaultTargetDeviceId，须在线）> 第一台在线；
 // 提交时现拉 GET /api/devices 校验在线（K3，掉线提示并禁止提交、作业不排队，不复用缓存列表）；
 // 隐藏打印机连接徽标与逐张失败重试表格（G4）；业务 API 恒 serverApi（无 standalone 分支）。
+// 迭代 81（#129）：图片预览页内弹层与下载分离双形态走查（与 client 构建行为一致）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -110,10 +111,14 @@ function Harness() {
   )
 }
 
+let clickSpy: ReturnType<typeof vi.spyOn>
+
 beforeEach(() => {
   vi.clearAllMocks()
   window.localStorage.clear()
   window.sessionStorage.clear()
+  clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() })
   mocks.server.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
   mocks.server.listDevices.mockResolvedValue(DEVICES)
   mocks.server.listTemplates.mockResolvedValue([{ name: '库位标签', group: '默认', updatedAt: '2026-08-10' }])
@@ -129,6 +134,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.unstubAllGlobals()
+  clickSpy.mockRestore()
   cleanup()
 })
 
@@ -260,12 +267,54 @@ describe('DataPrint server 构建：无字段模板（静态标签）打印测�
     expect(mocks.local.submitJob).not.toHaveBeenCalled()
   })
 
-  it('图片预览：空数据 render-image 渲染（不建作业）（AC-03）', async () => {
+  it('图片预览：空数据 render-image 弹层渲染（不建作业、不下载）（AC-03）', async () => {
     await renderStaticPrint()
     fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
     await waitFor(() => {
       expect(mocks.server.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: {} }] }))
     })
     expect(mocks.server.submitJob).not.toHaveBeenCalled()
+    expect(await screen.findByAltText('按当前填写数据渲染的标签图片')).toBeTruthy()
+    expect(clickSpy).not.toHaveBeenCalled()
+  })
+})
+
+// 迭代 81（#129 决议，评审 #114 C-1）：图片预览页内弹层与下载分离——server 构建（服务端管理界面）
+// 与 client 构建行为一致：点击「图片预览」弹层呈现当前字段值渲染图，弹层内显式「下载」按钮；
+// 模拟出图（生成图片 / 批量 zip）文案与直接下载行为零回归。
+describe('DataPrint server 构建：图片预览页内弹层与下载分离（迭代 81 · #129）', () => {
+  it('AC-01 / AC-02：点击「图片预览」页内弹层呈现当前字段值渲染图；弹层内「下载」按钮显式下载（不混用）', async () => {
+    await renderDataPrint()
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
+    await waitFor(() => {
+      expect(mocks.server.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: { location: 'A-01' } }] }))
+    })
+    const img = await screen.findByAltText('按当前填写数据渲染的标签图片')
+    expect(img.getAttribute('src')).toBe('blob:mock')
+    expect(screen.getByRole('dialog', { name: '标签图片预览' })).toBeTruthy()
+    expect(mocks.server.submitJob).not.toHaveBeenCalled()
+    expect(clickSpy).not.toHaveBeenCalled() // 预览不自动下载
+
+    // 弹层内显式「下载」按钮
+    fireEvent.click(screen.getByRole('button', { name: /下载图片/ }))
+    await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
+    expect(mocks.server.renderImage).toHaveBeenCalledTimes(1) // 下载复用弹层 blob，不重复请求
+
+    // Esc 关闭
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByAltText('按当前填写数据渲染的标签图片')).toBeNull()
+  })
+
+  it('AC-03：模拟出图不回归——勾选后按钮改「生成图片（单张）」、隐藏「图片预览」，点击仍直接下载（不弹层）', async () => {
+    await renderDataPrint()
+    fireEvent.click(screen.getByRole('checkbox', { name: /模拟出图/ }))
+    expect(screen.getByRole('button', { name: '生成图片（单张）' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '图片预览' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: '生成图片（单张）' }))
+    await waitFor(() => expect(mocks.server.renderImage).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
+    expect(mocks.server.submitJob).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog', { name: '标签图片预览' })).toBeNull()
   })
 })

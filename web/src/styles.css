@@ -433,6 +433,15 @@ label.field > .input, label.field > select.input { width: 100%; }
   text-align: center;
   padding-top: 8px;
 }
+/* 图片预览弹层操作行（迭代 81 · #129）：显式「下载」按钮与预览分离，居中并附渲染口径说明 */
+.preview-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+}
 .preview-modal-state {
   display: flex;
   flex-direction: column;

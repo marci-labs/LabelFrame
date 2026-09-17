@@ -5,8 +5,10 @@
 // Excel 模板 / 导入维持无字段禁用（无列可生成 / 映射）。
 // 迭代 80（#128 决议 2 ③ / C-3）：本页对服务端的状态一律用「已加入 / 未加入服务端」（设备注册，hostInList），
 // 且随探测周期（10s）自动刷新——后台注册状态变化后无需切页（评审 #114 B-9 / C-3）。
+// 迭代 81（#129 决议，评审 #114 C-1）：「图片预览」名副其实——点击后页内弹层呈现当前字段值的渲染图
+// （复用 render-image 端点实时取图，不建作业不自动下载）；下载由弹层内显式「下载」按钮触发，预览与下载分离。
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { DeviceView, JobView, SubmitJobRequest, TemplatePackage, TemplateSummary } from '../lib/api/types'
@@ -48,6 +50,9 @@ const JOB_STATUS_LABEL: Record<string, string> = {
 
 const jobLabel = (s: string) => JOB_STATUS_LABEL[s] ?? s
 const isTerminal = (s: string) => s === 'Completed' || s === 'Failed' || s === 'Cancelled' || s === 'Expired'
+
+/** 图片预览弹层状态（迭代 81 · #129）：ready 持有 blob 供弹层内「下载」按钮复用（下载不再重新请求）。 */
+type ImagePreview = { status: 'loading' } | { status: 'ready'; url: string; blob: Blob; filename: string } | { status: 'error'; message: string }
 
 /** 作业轮询（1.5s，终端状态停止）；API 跟随模式（服务端 / 单机降级）。
  *  参数用 Pick 而非 typeof serverApi：client 构建降级直连时传 localApi（无 client-packages 方法），仅需 getJob / retryJobItem。 */
@@ -232,6 +237,20 @@ export function DataPrint() {
   const [importing, setImporting] = useState(false)
 
   const [submitting, setSubmitting] = useState(false)
+
+  // 图片预览弹层（迭代 81 · #129）：loading / ready（blob URL）/ error 三态；
+  // 代数计数用于关闭弹层后作废在途请求（防结果回来自动重开「幽灵弹层」）
+  const [imagePreview, setImagePreview] = useState<ImagePreview | null>(null)
+  const previewGenRef = useRef(0)
+  const previewRef = useRef<ImagePreview | null>(null)
+  previewRef.current = imagePreview
+  useEffect(() => {
+    // 卸载兜底：释放弹层持有的 blob URL（防泄漏），并作废在途预览请求
+    return () => {
+      previewGenRef.current += 1
+      if (previewRef.current?.status === 'ready') URL.revokeObjectURL(previewRef.current.url)
+    }
+  }, [])
 
   // 目标设备（迭代 17/18 F5）：GET /api/devices 成功 = 服务端模式（显示选择、提交带 targetDeviceId）；
   // 404 / 失败 = 单机 WinHost 降级（隐藏选择、提交不带 targetDeviceId）。
@@ -491,10 +510,40 @@ export function DataPrint() {
     void downloadDebug([{ data: singleTestData() }], false)
   }
 
-  /** 调试关：出图预览（即时预览，不建作业）。 */
+  /** 调试关：图片预览（迭代 81 · #129 决议）——实时调用 render-image 取当前字段值的渲染图，
+   *  页内弹层呈现（不建作业、不自动下载）；下载由弹层内「下载」按钮显式触发，预览与下载分离。 */
   const previewImage = () => {
     if (!pkg) return
-    void downloadDebug([{ data: singleTestData() }], false)
+    const req = buildRequest([{ data: singleTestData() }], 'debug')
+    if (!req) return
+    const gen = ++previewGenRef.current
+    setImagePreview({ status: 'loading' })
+    biz
+      .renderImage(req)
+      .then(({ blob, filename }) => {
+        if (gen !== previewGenRef.current) return // 弹层已关闭 / 已再次预览：丢弃本次结果
+        setImagePreview({ status: 'ready', url: URL.createObjectURL(blob), blob, filename })
+      })
+      .catch((err: unknown) => {
+        if (gen !== previewGenRef.current) return
+        setImagePreview({ status: 'error', message: err instanceof ApiError ? err.message : '出图失败。' })
+      })
+  }
+
+  /** 关闭预览弹层：释放 blob URL 并作废在途请求。 */
+  const closeImagePreview = () => {
+    previewGenRef.current += 1
+    setImagePreview((prev) => {
+      if (prev?.status === 'ready') URL.revokeObjectURL(prev.url)
+      return null
+    })
+  }
+
+  /** 弹层内显式「下载」：下载当前预览的图片（blob 已在弹层态持有，不重新请求）。 */
+  const downloadImagePreview = () => {
+    if (imagePreview?.status !== 'ready') return
+    downloadBlob(imagePreview.blob, imagePreview.filename)
+    app.setStatus(`标签图片已下载：${imagePreview.filename}`)
   }
 
   const [excelTplBusy, setExcelTplBusy] = useState(false)
@@ -736,7 +785,7 @@ export function DataPrint() {
                       {submitting ? '处理中…' : debugMode ? '生成图片（单张）' : '打印测试（单张）'}
                     </button>
                     {!debugMode && (
-                      <button className="btn" onClick={previewImage} disabled={submitting || !pkg} title="生成当前内容的图片并下载，用于预览打印效果（不会实际打印）">
+                      <button className="btn" onClick={previewImage} disabled={submitting || !pkg} title="按当前填写内容生成标签图片并在页内弹层预览（不会实际打印，也不会自动下载文件；弹层内可下载）">
                         <Icon name="preview" size={13} />
                         图片预览
                       </button>
@@ -783,6 +832,8 @@ export function DataPrint() {
           debugMode={debugMode}
         />
       )}
+
+      {imagePreview && <ImagePreviewModal preview={imagePreview} onDownload={downloadImagePreview} onClose={closeImagePreview} />}
     </div>
   )
 }
@@ -881,5 +932,72 @@ function MappingModal({
         </tbody>
       </table>
     </Modal>
+  )
+}
+
+/**
+ * 图片预览弹层（迭代 81 · #129 决议）：与工作台缩略图灯箱同交互（居中大图，Esc / 点背景 / 点 × 关闭，
+ * 点卡片本体不关闭）；底部操作行提供显式「下载」按钮——预览与下载是两个独立动作，不再混用同一次点击。
+ * 复用工作台灯箱样式（preview-modal*），仅操作行与图片高度为本弹层专有（不影响工作台）。
+ */
+function ImagePreviewModal({
+  preview,
+  onDownload,
+  onClose,
+}: {
+  preview: ImagePreview
+  onDownload: () => void
+  onClose: () => void
+}) {
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="preview-modal" onClick={onClose}>
+      <div className="preview-modal-card" role="dialog" aria-label="标签图片预览" onClick={(ev) => ev.stopPropagation()}>
+        <div className="preview-modal-title">
+          标签图片预览
+          <span className="spacer" style={{ flex: 1 }} />
+          <button className="preview-modal-close" onClick={onClose} title="关闭预览（Esc）" aria-label="关闭预览">
+            <Icon name="x" size={13} />
+          </button>
+        </div>
+        {preview.status === 'loading' ? (
+          <div className="preview-modal-state">
+            <Icon name="refresh" size={13} />
+            正在生成预览…
+          </div>
+        ) : preview.status === 'error' ? (
+          <div className="preview-modal-state err">
+            <Icon name="alert" size={13} />
+            预览不可用
+            <small>{preview.message}</small>
+          </div>
+        ) : (
+          <>
+            <img
+              className="preview-modal-img"
+              style={{ maxHeight: 'calc(84vh - 96px)' }}
+              src={preview.url}
+              alt="按当前填写数据渲染的标签图片"
+            />
+            <div className="preview-modal-actions">
+              <button className="btn sm" onClick={onDownload} title="下载当前预览的图片文件到本机">
+                <Icon name="download" size={12} />
+                下载图片
+              </button>
+              <span className="hint" style={{ fontSize: 10 }}>
+                按当前填写数据渲染，与实际打印效果一致
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   )
 }
