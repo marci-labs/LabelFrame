@@ -2,6 +2,17 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 71：Linux 服务端一键安装——install.sh 与 compose 随发版分发 · 2026-09-17
+
+- **动机与范围（#91；用户 2026-09-15 会话定案「脚本 + compose 分发都做」）**：Linux 服务端部署从「Docker compose 手抄仓库文件 / systemd 裸机 DEPLOY §5 手工步骤（framework-dependent 需自备 runtime——与 Windows 侧 AspNetCore 前置教训 #128/#129 同源）」升级为「一条命令」——脚本即 Linux 的「安装程序」（契约假设 Linux 操作者具备 IT 能力，图形 / CLI 向导不做，#50 边界维持）。三项待决议用户拍板：self-contained 归档为默认（免 runtime 前置）/ 离线模式本轮支持 `--manifest` 本地路径与布局目录（衔接迭代 70 #89）/ runtime 缺失明确报错给官方直链、不自动安装。**Linux 部署契约先行入 DESIGN（决策 #133 + §6.12，强化路径）**。
+- **`scripts/install-server-linux.sh`（新）**：消费 install-manifest.json（schemaVersion=1 超范围 fail-closed；sha256 逐源强制 + urls 多源回退，#115/#117/#125 同义）→ 拉取校验 Linux 归档 → staging 解包校验（入口在场 + 形态探测，失败不动存量安装）→ 整体替换 `/opt/labelframe/server`（`appsettings.json` 保留用户版本，对齐 #48；`/var/lib/labelframe` 数据与日志目录不动）→ systemd 单元安装 / 启用 / 重启 → 管理界面 zip 落位 `plugins/web-ui`（默认装，`--no-webui` 关）→ 自检 `/healthz` 并核对 `/api/server/info` 版本。参数：默认官方稳定通道；`--manifest <本地文件 | 布局目录 | URL>`（本地清单所在目录即布局目录，本地文件优先、urls 回退，全量本地命中零外网请求）。归档形态按内容探测（self-contained 含 `System.Private.CoreLib.dll`），FDD 检测 `Microsoft.AspNetCore.App >= 10`，缺失 fail-closed 报官方下载页直链不自动安装。行级 manifest 解析（无 jq 依赖）；libicu 预检（最小化镜像缺失时服务启动即崩，给 apt 提示）。
+- **归档默认 self-contained**：`publish-server-linux.ps1` 默认翻转（`-FrameworkDependent` 为可选），Release 附件 `linux-server` 归档不再要求目标机预装 .NET 10；release.yml 调用零变化（默认值在脚本内翻转）。
+- **compose 随发版分发**：release job 新增步骤——`compose.yml` 与 `packaging/ubuntu/docker-compose.yml` 同源复制（防漂移，含管理界面 / client-packages / pda-packages / plugin-packages 四组挂载注释）+ `.env`（`LABELFRAME_VERSION` 钉定当版 + 镜像覆盖注释模板）随 Release 附件发布；两者不进 install manifest（部署描述文件而非可安装产物，#116 server-docker「无下载组件」口径维持）。
+- **随迭代修复**：`deploy-server-ubuntu.sh` 两处字面 `
+` 编码缺陷（`DATA_DIR`/`LOGS_DIR` 拼行 + systemd 单元 LOG_FILE 行粘连——`set -u` 下重跑必挂）。
+- **本地验证（Docker 容器自证：ubuntu:24.04 + systemd 特权容器）**：**AC-01 / AC-05**——离线容器（`--network none`）布局目录安装全流程：systemd active + `/healthz` ok + 管理界面 `/` 200（text/html）+ 版本 0.27.1 与清单一致 + 文件日志落盘，零外网请求；**AC-02**——篡改归档一字节 → 本地哈希不符 → urls 回退全败 → 拒绝安装（exit 1），存量服务 / 用户配置无损；**AC-03**——重跑幂等（appsettings 用户值、数据目录标记、三个 SQLite 库保留，staging 替换无陈旧残留，服务重启后版本一致）；在线模式——URL 清单 + 首源 404 回退第二源成功（本机 HTTP 源同构模拟公网通道，代码路径同一 curl 下载链）；FDD 双向——无 runtime 明确报错含官方直链（存量无损）/ 装官方 aspnetcore-runtime 10.0.12 后重跑成功；真实发布清单解析冒烟（gh 下载 v0.27.1 `install-manifest.json` 字节精确——版本 / 归档名 / urls 提取正确）；**AC-04 本地同构演练**——复刻 release job compose 步骤生成 `compose.yml` + `.env`（断言全过），`docker compose config` 解析镜像钉定 `ghcr.io/marci-labs/labelframe-server:0.27.1`。演练抓修两处脚本缺陷（schemaVersion 取值带逗号、最小镜像缺 libicu 预检缺失）。`dotnet build` 0 警告 0 错误；`dotnet test`（排除 Perf/Soak）**709 项全绿**（与迭代 68 基线一致）；前端无改动。
+- **记账**：DESIGN 决策 #133 + §6.12 + §6.3 联动；DEPLOY §4 compose 快速启动 / §5 Ubuntu 一键安装推荐（手工路径降高级）/ §8 发布链 / §10 脚本索引；CHANGELOG 本条目；ROADMAP 状态行。真机 Ubuntu 走查与下次 `v*` 发版 Release 附件实证（compose / self-contained 归档公网通道）转 `待验收`。
+
 ## 迭代 68：流程治理——引导 EXE 随 Release 发布（release.yml 接线）+ 安装引导文档补章 · 2026-09-17
 
 - **动机与范围（#101；收口决策 #121 ④ / #122 ⑤ 两项后置——引导 Bundle 此前只能本机 `build-bundle.ps1` 构建，Release 附件不含，用户测试 / IT 分发都需先具备构建环境）**：推 `v*` tag 后发版链自动构建 `LabelFrame-Bootstrapper-<版本>.exe` 并随 GitHub Release 发布；`docs/DEPLOY.md` 补「安装引导程序」章节、README 安装入口同步（两项待决议用户拍板：签名复用 MSI 自签通道 a / 引导 EXE 列为推荐入口、MSI 降高级路径 a）。引导程序功能与行为零改动（专项 #53~#57 已交付的七页向导 / 升级模式 / 下载链不动）。
