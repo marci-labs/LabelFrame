@@ -203,7 +203,7 @@ describe('DataPrint 会话保留（迭代 15 §6.1）', () => {
 })
 
 describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
-  it('模拟出图关：打印测试提交作业，「图片预览」即时出图（不建作业）', async () => {
+  it('模拟出图关：打印测试提交作业，「图片预览」页内弹层呈现渲染图（不下载、不建作业）（迭代 81 AC-01）', async () => {
     await renderDataPrint()
     expect(screen.getByRole('button', { name: /打印测试（单张）/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: '图片预览' })).toBeTruthy()
@@ -217,10 +217,16 @@ describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
     expect(await screen.findByText('已完成 1 / 1 张')).toBeTruthy()
     expect(mocks.local.renderImage).not.toHaveBeenCalled()
 
-    // 出图预览 → render-image 下载，不建作业
+    // 图片预览 → render-image 弹层呈现当前数据渲染图，不建作业、不触发下载
     fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
-    await waitFor(() => expect(mocks.local.renderImage).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
+    await waitFor(() => {
+      expect(mocks.local.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: { location: 'A-01' } }] }))
+    })
+    const img = await screen.findByAltText('按当前填写数据渲染的标签图片')
+    expect(img.getAttribute('src')).toBe('blob:mock')
+    expect(screen.getByRole('dialog', { name: '标签图片预览' })).toBeTruthy()
+    expect(mocks.local.submitJob).toHaveBeenCalledTimes(1) // 仍只有打印测试那一次
+    expect(clickSpy).not.toHaveBeenCalled() // 预览不自动下载（预览与下载分离）
   })
 
   it('模拟出图开：按钮文案联动、隐藏「图片预览」、打印测试改为 render-image 下载、不提交作业', async () => {
@@ -270,6 +276,108 @@ describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
       )
     })
     expect(mocks.local.renderImages).not.toHaveBeenCalled()
+  })
+})
+
+// 迭代 81（#129 决议，评审 #114 C-1）：「图片预览」名副其实——页内弹层呈现当前字段值的渲染图，
+// 弹层内显式「下载」按钮，预览与下载分离；模拟出图（生成图片 / 批量 zip）链路零回归。
+describe('图片预览页内弹层与下载分离（迭代 81 · #129）', () => {
+  /** URL 全局桩上的 revokeObjectURL（beforeEach 内 stubGlobal 重建，用例内现取引用）。 */
+  const revokeStub = () => (URL as unknown as { revokeObjectURL: ReturnType<typeof vi.fn> }).revokeObjectURL
+
+  it('AC-02：弹层内显式「下载」按钮——点击才下载（携带服务端文件名），预览阶段零下载', async () => {
+    await renderDataPrint()
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
+    await screen.findByAltText('按当前填写数据渲染的标签图片')
+    expect(clickSpy).not.toHaveBeenCalled() // 预览本身不触发下载
+
+    fireEvent.click(screen.getByRole('button', { name: /下载图片/ }))
+    await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
+    // 弹层保持打开（下载不等于关闭预览），不重复请求
+    expect(screen.getByAltText('按当前填写数据渲染的标签图片')).toBeTruthy()
+    expect(mocks.local.renderImage).toHaveBeenCalledTimes(1)
+  })
+
+  it('AC-01：弹层呈现当前字段值——修改字段后再次预览按新值渲染', async () => {
+    await renderDataPrint()
+    fireEvent.change(screen.getByDisplayValue('A-01'), { target: { value: 'B-09' } })
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
+    await waitFor(() => {
+      expect(mocks.local.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: { location: 'B-09' } }] }))
+    })
+    expect(await screen.findByAltText('按当前填写数据渲染的标签图片')).toBeTruthy()
+  })
+
+  it('关闭交互与工作台灯箱一致：× / 点背景 / Esc 均关闭，点卡片本体不关闭；关闭释放 blob URL', async () => {
+    await renderDataPrint()
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
+    await screen.findByAltText('按当前填写数据渲染的标签图片')
+
+    // 点卡片本体（图片）不关闭
+    fireEvent.click(screen.getByAltText('按当前填写数据渲染的标签图片'))
+    expect(screen.getByAltText('按当前填写数据渲染的标签图片')).toBeTruthy()
+
+    // × 关闭
+    fireEvent.click(screen.getByTitle('关闭预览（Esc）'))
+    expect(screen.queryByAltText('按当前填写数据渲染的标签图片')).toBeNull()
+    expect(revokeStub()).toHaveBeenCalledWith('blob:mock')
+
+    // 点背景关闭
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
+    await screen.findByAltText('按当前填写数据渲染的标签图片')
+    fireEvent.click(document.querySelector('.preview-modal') as HTMLElement)
+    expect(screen.queryByAltText('按当前填写数据渲染的标签图片')).toBeNull()
+
+    // Esc 关闭
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
+    await screen.findByAltText('按当前填写数据渲染的标签图片')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByAltText('按当前填写数据渲染的标签图片')).toBeNull()
+  })
+
+  it('加载与失败态：在途显示「正在生成预览…」；出图失败弹层内提示原因且可关闭重试', async () => {
+    let resolveImg!: (v: { blob: Blob; filename: string }) => void
+    mocks.local.renderImage.mockImplementation(() => new Promise((res) => (resolveImg = res)))
+    await renderDataPrint()
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
+    expect(await screen.findByText('正在生成预览…')).toBeTruthy()
+
+    // 在途关闭：结果回来不重开「幽灵弹层」
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByText('正在生成预览…')).toBeNull()
+    resolveImg({ blob: new Blob(['png']), filename: 'label-1.png' })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(screen.queryByAltText('按当前填写数据渲染的标签图片')).toBeNull()
+
+    // 失败态：弹层内显示原因（不落下载、不崩溃），再次预览可恢复
+    mocks.local.renderImage.mockRejectedValueOnce(new ApiError('RENDER_FAILED', '出图失败（字段缺失）。'))
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
+    expect(await screen.findByText('预览不可用')).toBeTruthy()
+    expect(screen.getByText('出图失败（字段缺失）。')).toBeTruthy()
+    expect(clickSpy).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByTitle('关闭预览（Esc）'))
+    expect(screen.queryByText('预览不可用')).toBeNull()
+
+    // 恢复：Once 拒绝耗尽后恢复正常 resolve（覆盖首个可控 pending 实现）
+    mocks.local.renderImage.mockResolvedValue({ blob: new Blob(['png']), filename: 'label-1.png' })
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
+    expect(await screen.findByAltText('按当前填写数据渲染的标签图片')).toBeTruthy()
+  })
+
+  it('AC-03：模拟出图链路不回归——勾选后「生成图片（单张）」仍直接下载、隐藏「图片预览」', async () => {
+    await renderDataPrint()
+    fireEvent.click(screen.getByRole('checkbox', { name: /模拟出图/ }))
+    expect(screen.getByRole('button', { name: '生成图片（单张）' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '图片预览' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: '标签图片预览' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: '生成图片（单张）' }))
+    await waitFor(() => expect(mocks.local.renderImage).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
+    // 模拟出图走直接下载，不弹预览层
+    expect(screen.queryByRole('dialog', { name: '标签图片预览' })).toBeNull()
   })
 })
 
@@ -529,23 +637,26 @@ describe('无字段模板（静态标签）打印测试（迭代 65 · #62）', 
     expect(mocks.local.renderImage).not.toHaveBeenCalled()
   })
 
-  it('模拟出图关：图片预览空数据渲染（不建作业）；模拟出图开：打印测试改为生成图片（空数据）（AC-03）', async () => {
+  it('模拟出图关：图片预览空数据弹层渲染（不建作业、不下载）；模拟出图开：打印测试改为生成图片（空数据）（AC-03）', async () => {
     await renderStaticPrint()
-    // 调试关：出图预览 → render-image 空数据，不建作业
+    // 调试关：图片预览 → render-image 空数据弹层呈现，不建作业、不自动下载
     fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
     await waitFor(() => {
       expect(mocks.local.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: {} }] }))
     })
     expect(mocks.local.submitJob).not.toHaveBeenCalled()
-    await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
+    expect(await screen.findByAltText('按当前填写数据渲染的标签图片')).toBeTruthy()
+    expect(clickSpy).not.toHaveBeenCalled()
 
-    // 调试开：按钮文案联动为调试出图（单张），仍空数据、不建作业
+    // 关闭弹层后勾选模拟出图：按钮文案联动为调试出图（单张），仍空数据、不建作业
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByAltText('按当前填写数据渲染的标签图片')).toBeNull()
     fireEvent.click(screen.getByRole('checkbox', { name: /模拟出图/ }))
     expect(screen.getByRole('button', { name: '生成图片（单张）' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: '图片预览' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: '生成图片（单张）' }))
     await waitFor(() => expect(mocks.local.renderImage).toHaveBeenCalledTimes(2))
-    await waitFor(() => expect(clickSpy.mock.instances[1]?.download).toBe('label-1.png'))
+    await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
     expect(mocks.local.submitJob).not.toHaveBeenCalled()
   })
 })
