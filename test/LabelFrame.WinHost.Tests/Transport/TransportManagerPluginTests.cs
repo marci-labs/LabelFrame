@@ -78,6 +78,74 @@ public class TransportManagerPluginTests
         Assert.False(File.Exists(path));
     }
 
+    // ── 打印方式合法性（迭代 77，#119 AC-03；DESIGN §5.4.2 保存层校验）──
+
+    [Fact]
+    public async Task ApplyAsync_native_print_mode_without_capability_should_reject()
+    {
+        var (manager, path) = Create();
+        var result = await manager.ApplyAsync(new TransportConfig
+        {
+            PluginId = "log",
+            Params = new Dictionary<string, string> { ["printMode"] = "native" },
+        }, testOnly: false);
+
+        // native 仅对能力位为真的插件合法：保存校验失败（中文提示），连接不切换不持久化
+        Assert.False(result.Ok);
+        Assert.Contains("原生指令", result.Message);
+        Assert.Contains("log", result.Message);
+        Assert.Contains("切回图片或更换插件", result.Message);
+        Assert.Equal("log", manager.CurrentConfig.PluginId);
+        Assert.False(File.Exists(path));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_native_print_mode_with_capability_should_succeed_and_persist()
+    {
+        // fake 编译器插件（能力位真）：native 保存合法（连接测试按传输实例能力走，fake 非 ITestableTransport 即通过）
+        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfconn-{Guid.NewGuid():N}.json");
+        try
+        {
+            var registry = TestTransportRegistry.Create();
+            registry.Register(new FakeCompilerTransportPlugin());
+            var manager = new TransportManager(
+                registry,
+                TestTransportRegistry.CreateContext(),
+                new HostOptions { Transport = TransportMode.Log, TcpHost = "127.0.0.1", TcpPort = 9100, PrinterName = "Test Printer" },
+                TextWriter.Null,
+                path);
+
+            var result = await manager.ApplyAsync(new TransportConfig
+            {
+                PluginId = "fakecompile",
+                Params = new Dictionary<string, string> { ["printMode"] = "native" },
+            }, testOnly: false);
+
+            Assert.True(result.Ok, result.Message);
+            Assert.Equal("fakecompile", manager.CurrentConfig.PluginId);
+            Assert.Equal("native", manager.CurrentConfig.Params["printMode"]);
+            Assert.Contains("\"printMode\": \"native\"", File.ReadAllText(path));
+        }
+        finally
+        {
+            System.IO.File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ApplyAsync_image_print_mode_without_capability_should_stay_valid()
+    {
+        // 非法 / 缺省取值回退 image 语义：image 值对任何插件合法（含无能力插件）
+        var (manager, _) = Create();
+        var result = await manager.ApplyAsync(new TransportConfig
+        {
+            PluginId = "log",
+            Params = new Dictionary<string, string> { ["printMode"] = "image" },
+        }, testOnly: false);
+
+        Assert.True(result.Ok);
+    }
+
 
     [Fact]
     public void Startup_should_fall_back_to_log_when_persisted_plugin_missing()

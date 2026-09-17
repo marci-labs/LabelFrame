@@ -28,8 +28,18 @@ public class JobSubmissionServiceTests
         var templates = new TemplateStore(templatesDb);
         templates.InitializeAsync().GetAwaiter().GetResult();
 
-        var transportManager = TestTransportRegistry.CreateManager(new HostOptions { Transport = transportMode });
-        var service = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, transportManager, hostLogWriter ?? TextWriter.Null);
+        var (transportManager, registry) = TestTransportRegistry.CreateManagerWithRegistry(
+            options: new HostOptions { Transport = transportMode });
+        var service = new JobSubmissionService(
+            queue,
+            new ZplImageEncoder(),
+            dpi: 203,
+            new SkiaLabelRenderer(),
+            templates,
+            transportManager,
+            registry,
+            TestTransportRegistry.CreateContext(),
+            hostLogWriter ?? TextWriter.Null);
         return (service, store, templates);
     }
 

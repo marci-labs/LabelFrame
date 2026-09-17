@@ -63,6 +63,36 @@ public sealed class WinHostEndpointsTests : WinHostIntegrationTestBase
     }
 
     [Fact]
+    public async Task Transport_plugins_should_expose_supports_document_compile_flag()
+    {
+        // 能力位 DTO 透出（#119 AC-01，向后兼容增量字段）：GET /api/transport.availablePlugins
+        // 与 /api/transport/plugins 均含 supportsDocumentCompile；内置插件全部为 false（无品牌编译器装配）
+        var config = await JsonAsync("/api/transport");
+        Assert.All(config.GetProperty("availablePlugins").EnumerateArray(),
+            p => Assert.False(p.GetProperty("supportsDocumentCompile").GetBoolean()));
+
+        var plugins = await JsonAsync("/api/transport/plugins");
+        Assert.All(plugins.EnumerateArray(),
+            p => Assert.False(p.GetProperty("supportsDocumentCompile").GetBoolean()));
+    }
+
+    [Fact]
+    public async Task Transport_post_native_print_mode_without_capability_should_fail()
+    {
+        // 保存层校验（§5.4.2）：native 仅对能力位为真的插件合法；HTTP 端点走既有校验错误响应（ok=false + 中文提示）
+        var response = await Client.PostAsync("/api/transport",
+            Json("""{ "pluginId": "log", "params": { "printMode": "native" } }"""));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await JsonAsync(response);
+        Assert.False(body.GetProperty("ok").GetBoolean());
+        Assert.Contains("原生指令", body.GetProperty("message").GetString());
+        Assert.Contains("切回图片或更换插件", body.GetProperty("message").GetString());
+
+        // 连接未切换
+        Assert.Equal("log", (await JsonAsync("/api/transport")).GetProperty("pluginId").GetString());
+    }
+
+    [Fact]
     public async Task Jobs_full_lifecycle_should_be_deterministic_without_worker()
     {
         // 1) 提交自包含作业（3 张）

@@ -143,6 +143,8 @@ public class PrintImageRetentionCleanerTests
                 new SkiaLabelRenderer(),
                 templates,
                 transportManager,
+                TestTransportRegistry.Create(),
+                TestTransportRegistry.CreateContext(),
                 log,
                 root,
                 new PrintImageRetentionCleaner(root, retentionDays: 31, log));

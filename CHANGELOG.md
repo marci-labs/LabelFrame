@@ -2,6 +2,17 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 77：插件命令打印实现 1/4——宿主链路落码（能力接口与提交分支） · 2026-09-17
+
+- **动机与范围（#119；DESIGN §5.4.8 拆分步 1，契约迭代 76 / #113 已定稿，本轮只落码不改契约）**：把插件命令打印契约的宿主侧链路落成代码——Core 契约类型 + 插件能力位 + `printMode` 连接参数消费 + 提交编译分派 + `LF_ENC` 新码入注册表。本迭代无品牌插件（Zebra 编译器实现归步 2 / 3，#120 / #121），全链路用 fake 编译器单测验证；界面无可见变化（前端零改动，首个真实 `printMode` 参数随步 2 出现）。
+- **Core 契约（AC-01，签名与 DESIGN §5.4.1 逐字对齐）**：新增 `ILabelCommandCompiler`（`CompileAsync(LabelDocument, LabelCommandCompileOptions, CancellationToken)`）+ `LabelCommandCompileOptions(Dpi, Context)` + `LabelCommandCompileResult(Command, ErrorCode, ErrorMessage, FieldKey)`（`LabelFrame.Core.Transport.Plugins`，可选能力模式，先例 `ITestableTransport` / `IPrinterStatusProvider`）；`TransportPluginDescriptor` 增能力位 `SupportsDocumentCompile`（默认 false，装配期 `plugin is ILabelCommandCompiler` 判定），注册表新增 `GetCommandCompiler(id)` 取用；`GET /api/transport`（availablePlugins）与 `/api/transport/plugins` 经 `TransportPluginDescriptorDto` 透出该位（向后兼容增量字段 `supportsDocumentCompile`）。
+- **printMode 消费（AC-03）**：新增 `TransportPrintMode`（Key `printMode`，`image` 默认 / `native`；读取口径 = 缺失 / 空白 / 非法值回退 image，忽略大小写，#69 兼容演进风格）；保存层校验——`TransportManager.Validate` 拒绝「native + 无能力位插件」（中文提示「请切回图片或更换插件」，走既有校验错误响应）；提交兜底——存量异常配置（手改 connection.json / 插件降级后能力消失）在提交时显式失败 `LF_ENC_003`，**不静默按图片打印**。
+- **提交分派（AC-02，本地直连 `POST /api/jobs` 与 Server 路由领取 `HandleClaimedJobAsync` 共用 `JobSubmissionService` 入口）**：契约校验后按当前连接的打印方式分派——`image`（缺省 / 非法回退）→ 既有 Skia 整版渲染 → `^GF` 编码路径**零回归**；`native` → 插件编译器逐张编译（编译输入 = 原始 `LabelDocument`；意外异常由宿主捕获映射为同一失败语义，不透出堆栈），产物写 `LabelJobItem.Zpl`——**字段与 DB 列 `zpl` 不改名**，注释语义泛化为「持久化的打印机指令」；任一标签编译失败**整体拒绝**（直连不建作业 + 码 / 中文原因（含插件 id）/ fieldKey；Server 路由按既有失败回报路径回报 Failed，消息含问题码与中文原因）。
+- **幂等不重编译（AC-04）**：native 路径提交前按 requestId 短路（`LabelJobQueue` 新增 `GetByRequestIdAsync`）——同 requestId 重放返回既有作业、fake 编译器调用计数零增加；图片路径维持既有「先渲染后入队幂等」顺序，行为零变化（模板后续修改不影响已入队作业的语义两模式一致）。
+- **错误码注册表（Issue #119 待决议 1 用户定案：两新码）**：`LF_ENC_002`（指令编译失败——编译器无法原生表示元素 / 字符等，§5.4.4 口径）+ `LF_ENC_003`（打印方式配置异常——`printMode=native` 但插件无编译能力的提交兜底）入 `JobErrorCodes`，语义可区分、前端可编程分支（对齐 #107 注册表口径）。
+- **测试（fake 编译器单测矩阵，全绿；fake 插件仅测试工程使用不进产品装配）**：Core 11 项（装配期能力位判定 + 编译器取用 / 内置插件能力位为假 / Options 携带 DPI 与上下文 / printMode 读取口径 8 例）+ WinHost 15 项（native 逐张编译入 Zpl 且非 `^GF` / 编译失败整体拒绝含码、插件 id、中文原因、fieldKey / 意外异常映射无堆栈 / 无能力兜底 `LF_ENC_003` 不静默 / 缺失与非法回退 image 且编译器零调用 / 幂等重放不重编译 / 契约校验先于编译 / native + Log 兼容传输数据留痕照常不出图 / 路由回报 Failed 含问题码 / 保存校验拒绝（native + 无能力）与放行（native + 有能力，含持久化）/ DTO 能力位透出 + HTTP 层校验拒绝）；既有套件全绿（dotnet 798 项，排除 Perf/Soak；本迭代无前端改动）。
+- **记账**：ROADMAP 状态行；DESIGN 无契约缺口（§5.4 未改动）。实现边界备注：编译输入 `LabelDocument.Images` 首版保持缺省——品牌编译器按裁剪原则（§5.4.1）不消费图片元素，首个需要图片资源的实现迭代在提交分派处按需填充，不改契约。
+
 ## 迭代 76 补遗：原生指令模式功能裁剪原则——排版与对齐降级（契约补充） · 2026-09-17
 
 - **契约补充（用户 2026-09-17 两轮补充口径；DESIGN §5.4.1 / §5.4.5 + 决策 #137 ⑥）**：确立**功能裁剪总原则**——图片模式是**全功能基准模式**（模板全部能力以图片渲染为实现基准）；原生指令（命令打印）模式是按品牌官方命令支持范围**裁剪的子集**，功能差异属预期行为而非缺陷，实现不了的不强求实现。具体口径：① 自动换行（`wrap`）/ 缩小适应（`fitMode`）/ 行距（`lineHeight`）等排版增强**一律不实现**（指令语法通常不支持等效语义，编译器不模拟）——文本超长溢出为预期常态，不因此编译失败、不做溢出校验；② 对齐类能力（块内 `TextAlign` / 区域锚定 / 垂直对齐）无指令原生等价（ZPL 基本模型 = 定起始坐标后绘制元素）——编译器可按内置字体度量编译期换算起始坐标作**尽力近似**（#110 机制），不强求等价，无法近似即按起始坐标直接输出；③ 效果验收口径同步——溢出与对齐差异不列为验收缺陷（锚定近似效果以观察记录为准，不作阻断项）。
