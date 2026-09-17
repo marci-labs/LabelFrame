@@ -148,6 +148,8 @@ public static class WinHostApp
             skiaRenderer,
             templateStore,
             transportManager,
+            transportRegistry,
+            pluginContext,
             hostLogWriter,
             options.PrintOutputPath,
             printRetentionCleaner));

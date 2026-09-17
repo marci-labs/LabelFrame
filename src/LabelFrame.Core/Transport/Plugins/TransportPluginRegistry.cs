@@ -27,7 +27,15 @@ public sealed class TransportPluginRegistry : ITransportPluginRegistry
         }
 
         _plugins[plugin.Id] = (
-            new TransportPluginDescriptor(plugin.Id, plugin.DisplayName, plugin.Description, plugin.Parameters, isExternal, assemblyPath),
+            new TransportPluginDescriptor(
+                plugin.Id,
+                plugin.DisplayName,
+                plugin.Description,
+                plugin.Parameters,
+                isExternal,
+                assemblyPath,
+                // 装配期能力位判定（§5.4.2）：插件对象实现 ILabelCommandCompiler 即具备文档编译能力
+                plugin is ILabelCommandCompiler),
             plugin);
         if (loadContext is not null)
         {
@@ -69,6 +77,10 @@ public sealed class TransportPluginRegistry : ITransportPluginRegistry
     /// <inheritdoc />
     public TransportPluginDescriptor? GetPlugin(string id)
         => id is not null && _plugins.TryGetValue(id, out var p) ? p.Descriptor : null;
+
+    /// <inheritdoc />
+    public ILabelCommandCompiler? GetCommandCompiler(string id)
+        => id is not null && _plugins.TryGetValue(id, out var p) ? p.Plugin as ILabelCommandCompiler : null;
 
     /// <inheritdoc />
     public IPrintTransport CreateTransport(string id, TransportPluginParameters parameters, ITransportPluginContext context)

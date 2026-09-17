@@ -5,6 +5,8 @@ using LabelFrame.Core.Documents;
 using LabelFrame.Core.Encoding;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Templates;
+using LabelFrame.Core.Transport;
+using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.Core.Validation;
 using LabelFrame.Rendering;
 using LabelFrame.WinHost.Api;
@@ -13,10 +15,12 @@ using LabelFrame.WinHost.Transport;
 namespace LabelFrame.WinHost.Jobs;
 
 /// <summary>
-/// 作业提交服务：校验契约数据 → Skia 整版渲染 1bpp 位图 → ^GF 编码入队（幂等）。
-/// 任一标签校验 / 渲染失败则整体拒绝（缺数据不打半张）。
-/// 打印统一为图片：不再有矢量 ZPL / 文本栅格化路径。
-/// Log 连接 = 模拟打印：提交时同时把渲染 PNG 保存到 print\{jobId}\，并留痕作业数据（模板名 + 数据集合，迭代 74 决策 #139）。
+/// 作业提交服务：校验契约数据 → 按当前连接的打印方式分派（§5.4.3）——
+/// image（默认 / 缺失 / 非法回退）：Skia 整版渲染 1bpp 位图 → ^GF 编码入队（既有路径）；
+/// native：插件文档编译器逐张编译为品牌原生指令后入队（产物写 LabelJobItem.Zpl，语义 = 持久化的打印机指令）。
+/// 任一标签校验 / 渲染 / 编译失败则整体拒绝（缺数据不打半张）；编译失败显式失败不回退图片（§5.4.4）。
+/// Log 连接 = 模拟打印：提交时同时把渲染 PNG 保存到 print\{jobId}\（原生指令路径无渲染位图，仅留痕作业数据），
+/// 并留痕作业数据（模板名 + 数据集合，迭代 74 决策 #139）。
 /// </summary>
 public sealed class JobSubmissionService
 {
@@ -25,6 +29,8 @@ public sealed class JobSubmissionService
     private readonly ILabelBitmapRenderer _renderer;
     private readonly TemplateStore _templateStore;
     private readonly ITransportManager _transportManager;
+    private readonly ITransportPluginRegistry _pluginRegistry;
+    private readonly ITransportPluginContext _pluginContext;
     private readonly TextWriter _hostLogWriter;
     private readonly string _printOutputPath;
     private readonly PrintImageRetentionCleaner? _printRetentionCleaner;
@@ -38,6 +44,8 @@ public sealed class JobSubmissionService
         ILabelBitmapRenderer renderer,
         TemplateStore templateStore,
         ITransportManager transportManager,
+        ITransportPluginRegistry pluginRegistry,
+        ITransportPluginContext pluginContext,
         TextWriter hostLogWriter,
         string? printOutputPath = null,
         PrintImageRetentionCleaner? printRetentionCleaner = null)
@@ -47,6 +55,8 @@ public sealed class JobSubmissionService
         _renderer = renderer;
         _templateStore = templateStore;
         _transportManager = transportManager;
+        _pluginRegistry = pluginRegistry;
+        _pluginContext = pluginContext;
         _hostLogWriter = hostLogWriter;
         _printOutputPath = printOutputPath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -64,19 +74,62 @@ public sealed class JobSubmissionService
             return SubmitJobResult.Failure(JobErrorCodes.InvalidRequest, "缺少 requestId（幂等键）。");
         }
 
-        var rendered = await RenderAllAsync(request, cancellationToken);
-        if (rendered.ErrorCode is not null)
+        // 按当前连接分派（§5.4.3）：打印方式是连接级属性，同一 Server 作业投给不同客户端按各自连接方式出纸
+        var config = _transportManager.CurrentConfig;
+        var rawPrintMode = config.Params.TryGetValue(TransportPrintMode.ParameterKey, out var raw) ? raw : null;
+        var printMode = TransportPrintMode.Resolve(rawPrintMode);
+
+        IReadOnlyList<string> commandLabels;
+        IReadOnlyList<RenderItem>? renderedItems = null;
+        if (printMode == TransportPrintMode.Native)
         {
-            return SubmitJobResult.Failure(rendered.ErrorCode, rendered.ErrorMessage!, rendered.FieldKey);
+            // 幂等短路（§5.4.3：重放不重新编译）：同 requestId 已有作业直接返回，编译调用零增加；
+            // 图片路径维持既有「先渲染后入队幂等」顺序，行为零回归
+            var existing = await _queue.GetByRequestIdAsync(request.RequestId!, cancellationToken);
+            if (existing is not null)
+            {
+                return SubmitJobResult.Success(existing, created: false);
+            }
+
+            // 存量异常配置兜底（§5.4.2：手改 connection.json / 插件降级后能力消失）：
+            // native 但插件无编译能力 → 显式失败（LF_ENC_003），不静默按图片打印
+            var compiler = _pluginRegistry.GetCommandCompiler(config.PluginId);
+            if (compiler is null)
+            {
+                return SubmitJobResult.Failure(
+                    JobErrorCodes.PrintModeNotSupported,
+                    $"{JobErrorCodes.PrintModeNotSupported} 当前打印方式为原生指令，但连接的插件 {config.PluginId} 不支持指令编译，请切回图片或更换插件。");
+            }
+
+            var compiled = await CompileAllAsync(request, config.PluginId, compiler, cancellationToken);
+            if (compiled.ErrorCode is not null)
+            {
+                return SubmitJobResult.Failure(compiled.ErrorCode, compiled.ErrorMessage!, compiled.FieldKey);
+            }
+
+            commandLabels = compiled.Commands!;
+        }
+        else
+        {
+            var rendered = await RenderAllAsync(request, cancellationToken);
+            if (rendered.ErrorCode is not null)
+            {
+                return SubmitJobResult.Failure(rendered.ErrorCode, rendered.ErrorMessage!, rendered.FieldKey);
+            }
+
+            renderedItems = rendered.Items!;
+            commandLabels = renderedItems.Select(i => _encoder.EncodeImage(i.Bitmap, i.WidthMm, i.HeightMm, _dpi)).ToList();
         }
 
-        var commandLabels = rendered.Items!.Select(i => _encoder.EncodeImage(i.Bitmap, i.WidthMm, i.HeightMm, _dpi)).ToList();
         var (job, created) = await _queue.SubmitAsync(request.RequestId!, commandLabels, cancellationToken);
 
-        // Log 连接 = 模拟打印：保存渲染 PNG 到 print\{jobId}\（不发真机）
+        // Log 连接 = 模拟打印：保存渲染 PNG 到 print\{jobId}\（不发真机）；原生指令路径无渲染位图，只留痕作业数据
         if (created && _transportManager.CurrentConfig.Mode == TransportMode.Log)
         {
-            SaveLogPrintImages(job.Id, rendered.Items!);
+            if (renderedItems is not null)
+            {
+                SaveLogPrintImages(job.Id, renderedItems);
+            }
 
             // 留痕作业数据（模板名 + 数据集合，迭代 74 决策 #139；与出图同判定点、互不干扰）
             LogJobData(job.Id, request);
@@ -94,6 +147,8 @@ public sealed class JobSubmissionService
     private sealed record RenderItem(int Index, LabelBitmap Bitmap, double WidthMm, double HeightMm);
 
     private sealed record RenderResult(IReadOnlyList<RenderItem>? Items, string? ErrorCode, string? ErrorMessage, string? FieldKey);
+
+    private sealed record CompileResult(IReadOnlyList<string>? Commands, string? ErrorCode, string? ErrorMessage, string? FieldKey);
 
     private async Task<RenderResult> RenderAllAsync(SubmitJobRequest request, CancellationToken cancellationToken)
     {
@@ -141,6 +196,85 @@ public sealed class JobSubmissionService
         }
 
         return new RenderResult(items, null, null, null);
+    }
+
+    /// <summary>
+    /// 原生指令路径（§5.4.3 / §5.4.4）：契约校验后逐张调用插件编译器，产物即该 Item 的最终指令
+    /// （整页自包含，宿主不包装追加）；任一标签编译失败整体拒绝（缺数据不打半张），显式失败不回退图片。
+    /// 编译输入 = 原始 LabelDocument（版式 + 数据；编译器内部完成版式解析，§5.4.1）；图片资源通道
+    /// LabelDocument.Images 首版保持缺省——品牌编译器按裁剪原则不消费图片元素，首个需要图片资源的
+    /// 实现迭代在此按需填充（不改契约）。
+    /// </summary>
+    private async Task<CompileResult> CompileAllAsync(
+        SubmitJobRequest request,
+        string pluginId,
+        ILabelCommandCompiler compiler,
+        CancellationToken cancellationToken)
+    {
+        if (request.Template?.Contract is null || request.Template.Layout is null)
+        {
+            return new CompileResult(null, JobErrorCodes.InvalidRequest, "缺少 template（contract + layout）。", null);
+        }
+
+        if (request.Labels is null || request.Labels.Count == 0)
+        {
+            return new CompileResult(null, JobErrorCodes.InvalidRequest, "缺少 labels（至少一张）。", null);
+        }
+
+        var commands = new List<string>(request.Labels.Count);
+        var options = new LabelCommandCompileOptions(_dpi, _pluginContext);
+        for (var i = 0; i < request.Labels.Count; i++)
+        {
+            var label = request.Labels[i];
+            var data = label.Data ?? new Dictionary<string, string>();
+            var validation = LabelValidator.Validate(request.Template.Contract, data);
+            if (!validation.IsValid)
+            {
+                var problem = validation.Problems[0];
+                return new CompileResult(null, problem.Code, problem.Message, problem.FieldKey);
+            }
+
+            var document = new LabelDocument
+            {
+                Layout = request.Template.Layout,
+                Data = data,
+            };
+
+            LabelCommandCompileResult result;
+            try
+            {
+                result = await compiler.CompileAsync(document, options, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // 意外异常映射为同一失败语义（§5.4.1：不透出堆栈）
+                return new CompileResult(
+                    null,
+                    JobErrorCodes.CommandCompileFailed,
+                    $"{JobErrorCodes.CommandCompileFailed} 插件 {pluginId} 编译器异常：{ex.Message}。可将打印方式切回图片后重试。",
+                    null);
+            }
+
+            if (string.IsNullOrWhiteSpace(result.Command))
+            {
+                // 预期内失败走结果（§5.4.1）；消息含问题码与中文原因（Server 路由回报 Failed 只带文本）
+                var code = string.IsNullOrWhiteSpace(result.ErrorCode) ? JobErrorCodes.CommandCompileFailed : result.ErrorCode;
+                var reason = string.IsNullOrWhiteSpace(result.ErrorMessage) ? "编译器未产出指令" : result.ErrorMessage;
+                return new CompileResult(
+                    null,
+                    code,
+                    $"{code} 插件 {pluginId} 指令编译失败：{reason}。可将打印方式切回图片后重试。",
+                    result.FieldKey);
+            }
+
+            commands.Add(result.Command);
+        }
+
+        return new CompileResult(commands, null, null, null);
     }
 
     /// <summary>Log 模拟打印：保存 PNG 并记录摘要。</summary>

@@ -7,4 +7,5 @@ public sealed record TransportPluginDescriptor(
     string Description,
     IReadOnlyList<TransportParameterSpec> Parameters,
     bool IsExternal = false,
-    string? AssemblyPath = null);
+    string? AssemblyPath = null,
+    bool SupportsDocumentCompile = false);

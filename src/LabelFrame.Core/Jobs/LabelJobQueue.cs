@@ -21,7 +21,7 @@ public sealed class LabelJobQueue : IDisposable
 
     /// <summary>提交作业：requestId 已存在时返回已有作业（幂等）。</summary>
     /// <param name="requestId">幂等键。</param>
-    /// <param name="zplLabels">每张标签的 ZPL（批内顺序）。</param>
+    /// <param name="zplLabels">每张标签的打印机指令（字段名沿用 zpl：图片模式 = ^GF 位图 ZPL，原生指令模式 = 品牌原生指令；批内顺序）。</param>
     /// <returns>作业与是否新建（false 表示 requestId 重放返回已有作业）。</returns>
     public async Task<(LabelJob Job, bool Created)> SubmitAsync(string requestId, IReadOnlyList<string> zplLabels, CancellationToken cancellationToken = default)
     {
@@ -83,6 +83,13 @@ public sealed class LabelJobQueue : IDisposable
     /// <summary>按作业标识查询。</summary>
     public Task<LabelJob?> GetAsync(string jobId, CancellationToken cancellationToken = default)
         => _store.GetJobAsync(jobId, cancellationToken);
+
+    /// <summary>按幂等键查询既有作业（原生指令路径提交前短路用——重放不重新编译，§5.4.3；不存在返回 null）。</summary>
+    public Task<LabelJob?> GetByRequestIdAsync(string requestId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(requestId);
+        return _store.GetJobByRequestIdAsync(requestId, cancellationToken);
+    }
 
     /// <summary>是否存在待打 Item（轻量探测，不加载作业；Worker 空转时先探测再走完整领取）。</summary>
     public Task<bool> HasPendingItemsAsync(CancellationToken cancellationToken = default)
