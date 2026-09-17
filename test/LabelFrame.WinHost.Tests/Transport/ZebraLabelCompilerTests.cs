@@ -7,10 +7,12 @@ using LabelFrame.TransportPlugin.Zebra;
 namespace LabelFrame.WinHost.Tests.Transport;
 
 /// <summary>
-/// Zebra 原生指令编译器单测（迭代 78，#120 AC-01 / AC-02；DESIGN §5.4）：
+/// Zebra 原生指令编译器单测（迭代 78 文本 #120 + 迭代 79 条码与二维码 #121；DESIGN §5.4）：
 /// 能力与参数声明（能力位真 / printMode Select）+ 文本编译正确性（整页自包含结构 / ^A 字体与字高 DPI 换算 /
-/// 超长文本不换行不缩放直接输出 / 锚定与对齐起始坐标换算路径 / 中文 LF_ENC_002 显式拒绝）。
-/// 编译输出为确定性文本，不依赖真机（§5.4.5 单测口径）；真机效果验收归 AC-06（转待验收）。
+/// 超长文本不换行不缩放直接输出 / 锚定与对齐起始坐标换算路径 / 中文 LF_ENC_002 显式拒绝）+
+/// Code 128 条码编译（^BC 结构 / 模块宽与高度 DPI 换算 / displayValue 映射 / 中文 LF_ENC_001 既有语义零回归）+
+/// QR 二维码编译（^BQ 结构 / ECC 与边距映射 / 放大倍数尺寸换算 / UTF-8 中文 / 混合模板整页自包含）。
+/// 编译输出为确定性文本，不依赖真机（§5.4.5 单测口径）；真机扫码效果验收归 AC-04（转待验收）。
 /// </summary>
 public class ZebraLabelCompilerTests
 {
@@ -50,6 +52,42 @@ public class ZebraLabelCompilerTests
             RegionHAlign = regionHAlign,
         };
 
+    /// <summary>默认条码元素：绑定字段 code，(2,10)mm，高 8mm，模块宽 2，displayValue 开。</summary>
+    private static LabelBarcodeElement Barcode(
+        double xMm = 2,
+        double yMm = 10,
+        double heightMm = 8,
+        int moduleWidth = 2,
+        bool displayValue = true,
+        string sourceKey = "code")
+        => new()
+        {
+            SourceKey = sourceKey,
+            XMm = xMm,
+            YMm = yMm,
+            HeightMm = heightMm,
+            ModuleWidth = moduleWidth,
+            DisplayValue = displayValue,
+        };
+
+    /// <summary>默认二维码元素：绑定字段 code，(2,2)mm，边长 15mm，ECC M，边距 2 模块。</summary>
+    private static LabelQrCodeElement Qr(
+        double xMm = 2,
+        double yMm = 2,
+        double sizeMm = 15,
+        LabelQrEcc ecc = LabelQrEcc.M,
+        int margin = 2,
+        string sourceKey = "code")
+        => new()
+        {
+            SourceKey = sourceKey,
+            XMm = xMm,
+            YMm = yMm,
+            SizeMm = sizeMm,
+            QrEcc = ecc,
+            QrMargin = margin,
+        };
+
     private static LabelDocument Document(string text = "A-01", LabelTextElement? textElement = null, params LabelElement[] extraElements)
         => new()
         {
@@ -65,6 +103,22 @@ public class ZebraLabelCompilerTests
                     : [textElement, .. extraElements],
             },
             Data = new Dictionary<string, string> { ["code"] = text },
+        };
+
+    /// <summary>自定义数据与元素的文档（文本与条码 / 二维码用各自字段键区分数据源）。</summary>
+    private static LabelDocument DocumentWithData(IReadOnlyDictionary<string, string> data, params LabelElement[] elements)
+        => new()
+        {
+            Layout = new LabelLayout
+            {
+                Name = "t",
+                ContractName = "c",
+                ContractVersion = "1.0",
+                WidthMm = 40,
+                HeightMm = 20,
+                Elements = elements,
+            },
+            Data = data,
         };
 
     private static LabelCommandCompileResult Compile(LabelDocument document, int dpi = 203)
@@ -267,25 +321,204 @@ public class ZebraLabelCompilerTests
         Assert.Equal(JobErrorCodes.CommandCompileFailed, result.ErrorCode);
     }
 
-    // ── 范围外元素：显式失败（§5.4.4；条码 / 二维码归迭代 79，图片 / 线元素按裁剪拒绝）──
+    // ── AC-01（#121）：Code 128 条码编译（^BC / ^BY 结构 / 模块宽与高度 DPI 换算 / displayValue 映射）──
 
     [Fact]
-    public void Barcode_element_should_fail_explicitly()
+    public void Barcode_should_compile_code128_structure_with_by_and_bc()
     {
-        var result = Compile(Document(extraElements: new LabelBarcodeElement { SourceKey = "code", YMm = 10, HeightMm = 8 }));
+        // (2,10)mm @203dpi → ^FO16,80；高 8mm → 64 点；模块宽 2 透传 ^BY2,3；displayValue=true → interpretation Y
+        var result = Compile(Document(textElement: Text(yMm: 1), extraElements: Barcode()));
 
-        Assert.Equal(JobErrorCodes.CommandCompileFailed, result.ErrorCode);
-        Assert.Contains("条码", result.ErrorMessage);
+        Assert.Null(result.ErrorCode);
+        Assert.Contains("^FO16,80^BY2,3^BCN,64,Y,N,N^FH^FDA-01^FS", result.Command);
     }
 
     [Fact]
-    public void Qrcode_element_should_fail_explicitly()
+    public void Barcode_should_scale_position_and_height_by_dpi()
     {
-        var result = Compile(Document(extraElements: new LabelQrCodeElement { SourceKey = "code", YMm = 10, SizeMm = 8 }));
+        // 同一文档 300 dpi：(2,10)mm → 24 / 118 点，高 8mm → 94 点（毫米 → 点按 DPI 换算）
+        var result = Compile(Document(textElement: Text(yMm: 1), extraElements: Barcode()), dpi: 300);
 
-        Assert.Equal(JobErrorCodes.CommandCompileFailed, result.ErrorCode);
-        Assert.Contains("二维码", result.ErrorMessage);
+        Assert.Null(result.ErrorCode);
+        Assert.Contains("^FO24,118^BY2,3^BCN,94,Y,N,N", result.Command);
     }
+
+    [Fact]
+    public void Barcode_display_value_false_should_turn_off_interpretation_line()
+    {
+        // displayValue=false → f 参数 N（仅条码，不绘制人眼可读行）；true 为默认 Y
+        Assert.Contains("^BCN,64,N,N,N", Compile(Document(textElement: Text(yMm: 1), extraElements: Barcode(displayValue: false))).Command);
+        Assert.Contains("^BCN,64,Y,N,N", Compile(Document(textElement: Text(yMm: 1), extraElements: Barcode())).Command);
+    }
+
+    [Fact]
+    public void Barcode_module_width_should_pass_through_clamped_to_valid_range()
+    {
+        // 模板字段即 ZPL 模块宽度（点，非毫米量纲）直接透传；越界值夹取到官方 1..10 范围
+        Assert.Contains("^BY5,3^BCN", Compile(Document(textElement: Text(yMm: 1), extraElements: Barcode(moduleWidth: 5))).Command);
+        Assert.Contains("^BY10,3^BCN", Compile(Document(textElement: Text(yMm: 1), extraElements: Barcode(moduleWidth: 99))).Command);
+        Assert.Contains("^BY1,3^BCN", Compile(Document(textElement: Text(yMm: 1), extraElements: Barcode(moduleWidth: 0))).Command);
+    }
+
+    [Fact]
+    public void Barcode_special_characters_should_escape_via_field_hex_and_invocation_code()
+    {
+        // ^ / ~ / _ 走 ^FH 十六进制转义（指令控制字符不进指令层）；> 按官方调用码映射 >0（子集 B 调用前缀）
+        var result = Compile(Document(text: "a^b~c_d>e", textElement: Text(yMm: 1), extraElements: Barcode()));
+
+        Assert.Null(result.ErrorCode);
+        Assert.Contains("^FH^FDa_5Eb_7Ec_5Fd>0e^FS", result.Command);
+    }
+
+    [Fact]
+    public void Barcode_empty_or_whitespace_value_should_skip_element()
+    {
+        // 空白值跳过（与图片模式渲染口径一致：不绘制空条码）
+        Assert.DoesNotContain("^BC", Compile(Document(text: string.Empty, textElement: Text(yMm: 1), extraElements: Barcode())).Command);
+        Assert.DoesNotContain("^BC", Compile(Document(text: "   ", textElement: Text(yMm: 1), extraElements: Barcode())).Command);
+    }
+
+    // ── AC-01（#121）：Code 128 中文值 → LF_ENC_001 编码拒绝（既有语义零回归，DESIGN §7）──
+
+    [Fact]
+    public void Barcode_chinese_value_should_be_rejected_with_lf_enc_001_and_field_key()
+    {
+        // Code 128 字符集仅可打印 ASCII：中文值与图片模式渲染层同一拒绝语义（LF_ENC_001，非文本元素的 LF_ENC_002）
+        var result = Compile(DocumentWithData(
+            new Dictionary<string, string> { ["code"] = "A-01", ["bc"] = "库位A-01" },
+            Text(yMm: 1),
+            Barcode(sourceKey: "bc")));
+
+        Assert.Null(result.Command);
+        Assert.Equal(JobErrorCodes.EncodeFailed, result.ErrorCode);
+        Assert.Contains("Code 128", result.ErrorMessage);
+        Assert.Contains("5E93", result.ErrorMessage); // 首个问题字符码点「库」U+5E93（可定位）
+        Assert.Equal("bc", result.FieldKey);
+    }
+
+    [Theory]
+    [InlineData("café")] // Latin-1 亦超出 Code 128 ASCII 字符集
+    [InlineData("A\rB")] // 控制字符
+    [InlineData("カナ")]
+    [InlineData("🙂")]
+    public void Barcode_values_outside_printable_ascii_should_be_rejected(string value)
+    {
+        var result = Compile(DocumentWithData(
+            new Dictionary<string, string> { ["code"] = "A-01", ["bc"] = value },
+            Text(yMm: 1),
+            Barcode(sourceKey: "bc")));
+
+        Assert.Null(result.Command);
+        Assert.Equal(JobErrorCodes.EncodeFailed, result.ErrorCode);
+    }
+
+    // ── AC-02（#121）：QR 二维码编译（^BQ 结构 / ECC 与边距映射 / 放大倍数按尺寸与 DPI 换算）──
+
+    [Fact]
+    public void Qrcode_should_compile_bq_structure_with_magnification_from_size()
+    {
+        // 15mm @203dpi = 120 点；"ABC123"（6 字节，ECC M ≤ V1 容量 14）→ 矩阵 21 模块 + 边距 2×2 → 总 25；
+        // 放大倍数 = round(120/25) = 5；矩阵 105 点在框内居中 → 内缩 round((120-105)/2) = 8 → ^FO24,24（(2,2)mm=16 点）
+        var result = Compile(Document(text: "ABC123", textElement: Text(yMm: 1), extraElements: Qr()));
+
+        Assert.Null(result.ErrorCode);
+        Assert.Contains("^FO24,24^BQN,2,5,M^FH^FDMA,ABC123^FS", result.Command);
+    }
+
+    [Fact]
+    public void Qrcode_should_scale_magnification_by_dpi()
+    {
+        // 同一文档 300 dpi：15mm = 177 点 → 放大倍数 round(177/25) = 7；内缩 round((177-147)/2) = 15 → (2,2)mm=24 点 +15
+        var result = Compile(Document(text: "ABC123", textElement: Text(yMm: 1), extraElements: Qr()), dpi: 300);
+
+        Assert.Null(result.ErrorCode);
+        Assert.Contains("^FO39,39^BQN,2,7,M", result.Command);
+    }
+
+    [Theory]
+    [InlineData(LabelQrEcc.L)]
+    [InlineData(LabelQrEcc.M)]
+    [InlineData(LabelQrEcc.Q)]
+    [InlineData(LabelQrEcc.H)]
+    public void Qrcode_ecc_should_map_to_bq_parameter_and_fd_switch(LabelQrEcc ecc)
+    {
+        // qrEcc → ECC 档双处一致输出：^BQ d 参数 + ^FD 必填 ECC 开关（官方 QR 开关形态 ^FD<ECC>A,<数据>）
+        var result = Compile(Document(text: "ABC123", textElement: Text(yMm: 1), extraElements: Qr(ecc: ecc)));
+
+        Assert.Null(result.ErrorCode);
+        Assert.Contains($"^BQN,2,5,{ecc}^FH^FD{ecc}A,ABC123^FS", result.Command);
+    }
+
+    [Fact]
+    public void Qrcode_margin_should_map_to_quiet_zone_via_magnification_and_inset()
+    {
+        // qrMargin = 静区模块数（与图片模式 ZXing Margin 语义一致）：
+        // 边距 0 → 总 21 模块 → 放大倍数 6、矩阵 126 点超出 120 框不内缩（尽力近似）；边距 4 → 总 29 → 放大倍数 4、内缩 18
+        var none = Compile(Document(text: "ABC123", textElement: Text(yMm: 1), extraElements: Qr(margin: 0))).Command;
+        var wide = Compile(Document(text: "ABC123", textElement: Text(yMm: 1), extraElements: Qr(margin: 4))).Command;
+
+        Assert.Contains("^FO16,16^BQN,2,6,M", none);
+        Assert.Contains("^FO34,34^BQN,2,4,M", wide);
+    }
+
+    [Fact]
+    public void Qrcode_longer_content_should_estimate_larger_version_and_shrink_magnification()
+    {
+        // 40 字节（ECC M）超 V2 容量 26 → 估算 V3（容量 42）→ 矩阵 29 模块 + 边距 2×2 → 总 33；
+        // 15mm=120 点 → 放大倍数 round(120/33) = 4、内缩 round((120-116)/2) = 2（短内容放大倍数为 5——
+        // 内容变长符号变大，放大倍数自适应缩小以近似模板边长）
+        var result = Compile(Document(
+            text: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCD",
+            textElement: Text(yMm: 1),
+            extraElements: Qr()));
+
+        Assert.Null(result.ErrorCode);
+        Assert.Contains("^FO18,18^BQN,2,4,M", result.Command);
+    }
+
+    [Fact]
+    public void Qrcode_utf8_chinese_value_should_compile_with_charset_instruction()
+    {
+        // UTF-8 中文可编译（^CI28 字符集指令在场，整页头部输出）；"库位A-01" 10 字节 ≤ V1-M 容量 14 → 矩阵 21 模块
+        var result = Compile(DocumentWithData(
+            new Dictionary<string, string> { ["code"] = "A-01", ["qr"] = "库位A-01" },
+            Text(yMm: 1),
+            Qr(sourceKey: "qr")));
+
+        Assert.Null(result.ErrorCode);
+        Assert.Contains("^CI28", result.Command);
+        Assert.Contains("^FDMA,库位A-01^FS", result.Command);
+    }
+
+    [Fact]
+    public void Qrcode_empty_or_whitespace_value_should_skip_element()
+    {
+        // 空白值跳过（与图片模式渲染口径一致：不绘制空二维码）
+        Assert.DoesNotContain("^BQ", Compile(Document(text: string.Empty, textElement: Text(yMm: 1), extraElements: Qr())).Command);
+        Assert.DoesNotContain("^BQ", Compile(Document(text: "  ", textElement: Text(yMm: 1), extraElements: Qr())).Command);
+    }
+
+    // ── AC-02（#121）：混合模板（文本 + 条码 + 二维码）整页指令完整自包含 ──
+
+    [Fact]
+    public void Mixed_template_should_compile_self_contained_page_with_all_element_types()
+    {
+        var result = Compile(Document("A-01", Text(), Barcode(yMm: 6), Qr(xMm: 27, yMm: 4, sizeMm: 12)));
+
+        Assert.Null(result.ErrorCode);
+        var lines = result.Command!.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("^XA", lines[0]);
+        Assert.Equal("^XZ", lines[^1]);
+        Assert.Contains("^PW320", result.Command); // 40mm @203dpi
+        Assert.Contains("^LL160", result.Command); // 20mm @203dpi
+        Assert.Contains("^CI28", result.Command); // 字符集指令在场
+        Assert.Contains("^A0N,", result.Command); // 文本
+        Assert.Contains("^BY2,3^BCN,", result.Command); // 条码
+        Assert.Contains("^BQN,2,", result.Command); // 二维码
+        Assert.Equal(3, CountOccurrences(result.Command, "^FD")); // 每元素恰好一个数据字段
+    }
+
+    // ── 范围外元素：显式失败（§5.4.4；图片 / 线元素按裁剪拒绝，条码 / 二维码自迭代 79 起编译支持）──
 
     [Fact]
     public void Image_element_should_fail_explicitly()
