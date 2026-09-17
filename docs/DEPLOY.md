@@ -45,6 +45,8 @@
 
 ## 4. Docker（推荐的服务端部署方式）
 
+**快速启动（Release compose 分发，迭代 71）**：从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 `compose.yml` 与 `.env` 放同一目录，`docker compose up -d` 即可——`.env` 已把 `LABELFRAME_VERSION` 钉定为本 Release 版本（想跟随最新版可改回 `latest`，镜像源覆盖见文件内注释）。两者与仓库 `packaging/ubuntu/docker-compose.yml` 同源（发版流水线直接复制生成）。
+
 镜像 `ghcr.io/marci-labs/labelframe-server`（`latest` 指向最新版）：
 
 ```bash
@@ -87,15 +89,34 @@ docker compose -f .\packaging\e2e\compose.yaml down
 
 ## 5. Ubuntu（systemd 裸机部署）
 
-1. Windows 上发布 linux-x64 包：
-   ```powershell
-   .\scripts\publish-server-linux.ps1            # framework-dependent
-   .\scripts\publish-server-linux.ps1 -SelfContained   # 免运行时包
-   ```
-2. Ubuntu 22.04 / 24.04 安装 ASP.NET Core Runtime（framework-dependent 时需要）。
-3. 上传归档后部署：`sudo bash scripts/deploy-server-ubuntu.sh labelframe-server-x.x.x-linux-x64.tar.gz`
-   脚本会：建 `labelframe` 用户 → 解压 `/opt/labelframe/server` → 数据目录 `/var/lib/labelframe/server` → 安装并启动 systemd 服务（自启 + 崩溃重启）。
-4. 防火墙放行：`sudo ufw allow 53961/tcp`；Windows Client 设置页填 `http://<Ubuntu-IP>:53961`。
+**一键安装（推荐，迭代 71）**：`install-server-linux.sh` 是 Linux 服务端的「安装程序」——一条命令完成下载校验、解包、systemd 服务与管理界面落位（契约见 [DESIGN §6.12](DESIGN.md)）：
+
+```bash
+# 在线安装（官方稳定通道，默认含管理界面；目标 Ubuntu 22.04 / 24.04 需 curl + unzip）
+curl -fsSL -o install-server-linux.sh \
+  https://raw.githubusercontent.com/marci-labs/LabelFrame/master/scripts/install-server-linux.sh
+sudo bash install-server-linux.sh
+
+# 离线 / 内网：先在有网机器生成布局目录（make-offline-layout.ps1，迭代 70 / #89），拷到服务器后
+sudo bash install-server-linux.sh --manifest /path/to/布局目录        # 本地文件优先，零外网请求
+
+# 常用变体
+sudo bash install-server-linux.sh --no-webui                          # 不装管理界面
+sudo bash install-server-linux.sh --manifest <清单 URL>               # 安装指定版本
+```
+
+- 脚本消费发版流水线生成的 `install-manifest.json`：sha256 逐源强制校验、多源回退（fail-closed，不装不明文件）；安装完成自检 `/healthz` 并核对版本。
+- Release 归档自迭代 71 起默认 **self-contained**（免装 .NET）；framework-dependent 归档（本地构建或旧版附件）需目标机先装 [.NET 10 ASP.NET Core Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)，缺失时脚本明确报错并给出该官方链接，不自动安装。
+- 幂等：升级 = 重跑同一命令（覆盖升级；`appsettings.json` 用户配置与 `/var/lib/labelframe` 数据、日志目录不动）。
+- 高级路径（归档已在手 / 自定义构建）：
+  1. Windows 上发布 linux-x64 包：
+     ```powershell
+     .\scripts\publish-server-linux.ps1                 # self-contained（默认，免运行时）
+     .\scripts\publish-server-linux.ps1 -FrameworkDependent   # 需目标机自备 runtime
+     ```
+  2. 上传归档后部署：`sudo bash scripts/deploy-server-ubuntu.sh labelframe-server-x.x.x-linux-x64.tar.gz`
+     脚本会：建 `labelframe` 用户 → 解压 `/opt/labelframe/server` → 数据目录 `/var/lib/labelframe/server` → 安装并启动 systemd 服务（自启 + 崩溃重启）。
+  3. 防火墙放行：`sudo ufw allow 53961/tcp`；Windows Client 设置页填 `http://<Ubuntu-IP>:53961`。
 
 ## 6. 服务端管理界面（可选插件）
 
@@ -136,6 +157,7 @@ docker compose -f .\packaging\e2e\compose.yaml down
 - 发版两步：① 更新 `docs/ROADMAP.md` 与 `CHANGELOG.md` 提交推送；② 例如 `git tag v0.22.2 && git push origin v0.22.2`。
 - CI 自动：构建测试 → 双 MSI（可签名）→ 管理界面插件 zip → Linux 归档 → **Android APK（PDA 宿主，迭代 49 起）** → 同一次构建的 Server / Linux Client 候选镜像通过 Compose E2E → 原镜像推 ghcr.io（版本号 + `latest`）→ GitHub Release。
 - **安装引导 EXE（迭代 68，决策 #132）**：发版链含独立 `bundle` job——按当版 install manifest（分阶段生成，runtime 哈希跨 job 一致性断言 fail-closed）构建 `LabelFrame-Bootstrapper-<版本>.exe` 并随 Release 附件发布（§2 推荐安装入口即此产物）；下载多源与哈希校验语义见 DESIGN §6.2 / §6.10。
+- **Linux 归档与 compose 分发（迭代 71，决策 #134）**：Linux 归档自本迭代起默认 self-contained（`install-server-linux.sh` 一键安装免 .NET 前置，§5）；Release 附件新增 `compose.yml` + `.env`（与 `packaging/ubuntu/docker-compose.yml` 同源复制、`.env` 钉定当版版本，§4 快速启动即此产物；两者不进 install manifest——部署描述文件而非可安装产物）。
 - MSI 签名：配置 Secret `MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD` 时自动签名，否则跳过。当前为自签证书过渡方案（公开下载仍可能 SmartScreen 提示），正式对外分发建议购买 OV 代码签名证书。本地签名：`scripts\create-signing-cert.ps1` 生成证书，`scripts\build-msi.ps1 -Sign` 使用。
 - **引导 EXE 签名（迭代 68）**：与 MSI 复用同一对 Secrets（`MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD`，`build-bundle.ps1 -Sign`）；未配置时跳过签名，完整性由 manifest sha256 校验保障。
 - Android APK 签名（迭代 49；**迭代 59 签名稳定化，决策 #119**）：必须配置全部四个 Secrets——`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`——用专用自签 keystore 签名；**任一缺失即构建失败（`::error::` 后 exit 1），绝不回退 debug 签名**（此前「缺失回退 debug 签名并告警」的过渡路径已移除：回退路径存在 = 两次构建可能签名不一致，用户无法覆盖升级且换签名会重置 ANDROID_ID 致设备号漂移）。日常 CI 的 Android 构建检查（ci.yml 第三必需检查）仍用 debug 签名验证可构建，不对外分发。
@@ -174,6 +196,7 @@ docker compose -f .\packaging\e2e\compose.yaml down
 
 ## 10. 辅助脚本
 
+- `scripts\install-server-linux.sh`：Linux 服务端一键安装（manifest 校验 + systemd + 管理界面落位；在线 / 离线布局目录 / 指定版本，§5）。
 - `scripts\demo-winhost.ps1`：无打印机验证打印闭环（构建 → 启动 WinHost → 提交含中文作业 → 展示 ZPL）。
 - `scripts\generate-icon.ps1`：生成应用图标。
 - `scripts\cleanup-residue.ps1`：清理历史安装残留（管理员运行）。
