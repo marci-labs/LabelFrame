@@ -14,7 +14,7 @@ public static class BuiltinTransportPlugins
         => [new LogTransportPlugin(), new Tcp9100TransportPlugin()];
 }
 
-/// <summary>Log 模拟传输插件（默认 / 联调）。</summary>
+/// <summary>Log 模拟打印插件（默认连接方式：不连接真实打印机，作业按成功处理）。</summary>
 public sealed class LogTransportPlugin : ITransportPlugin
 {
     /// <inheritdoc />
@@ -24,13 +24,13 @@ public sealed class LogTransportPlugin : ITransportPlugin
     public string DisplayName => "Log（模拟打印）";
 
     /// <inheritdoc />
-    public string Description => "日志模拟传输：不连接打印机，作业按成功处理（无真实打印机时联调用）。";
+    public string Description => "模拟打印：不连接真实打印机，作业按打印成功处理；图片模式的标签图片会保存到本机，便于先确认打印效果。";
 
     /// <inheritdoc />
     public IReadOnlyList<TransportParameterSpec> Parameters => [];
 
     /// <inheritdoc />
-    public string Describe(TransportPluginParameters parameters) => "LOG";
+    public string Describe(TransportPluginParameters parameters) => "模拟打印";
 
     /// <inheritdoc />
     public IPrintTransport Create(TransportPluginParameters parameters, ITransportPluginContext context)
@@ -44,7 +44,7 @@ public sealed class Tcp9100TransportPlugin : ITransportPlugin
     public string Id => "tcp9100";
 
     /// <inheritdoc />
-    public string DisplayName => "TCP 9100";
+    public string DisplayName => "网口打印机（TCP 9100）";
 
     /// <inheritdoc />
     public string Description => "TCP 9100 网络打印机（Zebra 等）：连接打印机 IP 的 9100 端口发送指令，状态查询用 ~HS。";

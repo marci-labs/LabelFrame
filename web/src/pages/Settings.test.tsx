@@ -212,6 +212,72 @@ describe('连接方式（F3，恢复迭代 15；迭代 73 起默认折叠，交�
   })
 })
 
+describe('连接文案用户化（迭代 82，#130：评审 #114 B-1 / A-1 / B-5 / B-2）', () => {
+  /** 插件模式目录：镜像后端 BuiltinTransportPlugins（Log + TCP 9100）的 DisplayName / Description。 */
+  const BUILTIN_PLUGINS = [
+    {
+      id: 'log',
+      displayName: 'Log（模拟打印）',
+      description: '模拟打印：不连接真实打印机，作业按打印成功处理；图片模式的标签图片会保存到本机，便于先确认打印效果。',
+      parameters: [],
+    },
+    {
+      id: 'tcp9100',
+      displayName: '网口打印机（TCP 9100）',
+      description: 'TCP 9100 网络打印机（Zebra 等）：连接打印机 IP 的 9100 端口发送指令，状态查询用 ~HS。',
+      parameters: [
+        { key: 'host', label: '打印机地址 / IP', type: 'String' as const, required: true, hint: '如 192.168.1.50' },
+        { key: 'port', label: '端口', type: 'Int' as const, defaultValue: '9100', hint: '默认 9100' },
+        { key: 'timeoutSeconds', label: '超时（秒）', type: 'Int' as const, defaultValue: '10' },
+      ],
+    },
+  ]
+
+  /** 新后端 Log 连接：displayText = 插件 Describe「模拟打印」+ availablePlugins 插件目录。 */
+  function mockLogPluginTransport() {
+    mocks.local.getTransport.mockResolvedValue({
+      pluginId: 'log',
+      displayText: '模拟打印',
+      params: {},
+      availablePlugins: BUILTIN_PLUGINS,
+      mode: 'Log',
+    })
+  }
+
+  it('AC-01：连接方式摘要与测试打印说明均显示「模拟打印」，无「LOG」直出', async () => {
+    mockLogPluginTransport()
+    renderSettings()
+    // ① 连接方式折叠头摘要（displayText 优先 = 插件 Describe 用户语）
+    expect(await screen.findByText('模拟打印')).toBeTruthy()
+    // ③ 测试打印说明（打印机分组）：当前连接方式：模拟打印
+    const printerSection = withinSection('打印机')
+    await waitFor(() => expect(printerSection.textContent).toContain('当前连接方式：模拟打印'))
+    // 全页无「LOG」直出（选项名「Log（模拟打印）」为小写 Log + 中文说明，不属直出）
+    expect(screen.queryByText(/LOG/)).toBeNull()
+  })
+
+  it('AC-02：展开 Log 编辑区说明完整通顺——Description 直出，无「（无参数）。」残句、无「联调」用语', async () => {
+    mockLogPluginTransport()
+    renderSettings()
+    openTransportPanel()
+    // 说明文两处直出同一 Description（面板说明行 + 无参数编辑区占位），均不含拼接残句
+    const hints = await screen.findAllByText(/模拟打印：不连接真实打印机/)
+    expect(hints.length).toBeGreaterThan(0)
+    expect(screen.queryByText(/（无参数）/)).toBeNull()
+    expect(screen.queryByText(/联调/)).toBeNull()
+  })
+
+  it('AC-02：TCP 选项列表显示「网口打印机（TCP 9100）」，选中后参数表单保持', async () => {
+    mockLogPluginTransport()
+    renderSettings()
+    openTransportPanel()
+    fireEvent.click(await screen.findByRole('radio', { name: /网口打印机（TCP 9100）/ }))
+    // 必填参数标签带「 *」必填标记，用正则匹配
+    expect(await screen.findByLabelText(/打印机地址 \/ IP/)).toBeTruthy()
+    expect(screen.getByLabelText('端口')).toBeTruthy()
+  })
+})
+
 describe('原生指令模式提示（迭代 78，DESIGN §5.4.2 / #120 AC-04）', () => {
   /** 插件模式连接配置：带编译能力的 Zebra 插件 + printMode Select 参数。 */
   const ZEBRA_PLUGIN = {
