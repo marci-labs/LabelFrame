@@ -18,6 +18,8 @@ import { TransportPanel } from '../components/TransportPanel'
 export function Settings() {
   const app = useApp()
   const [url, setUrl] = useState(app.baseUrl)
+  // 迭代 73（#108 决议 1）：连接配置低频收纳——「连接方式」默认折叠为当前连接摘要一行，点击展开完整编辑区
+  const [transportOpen, setTransportOpen] = useState(false)
   const [testing, setTesting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
@@ -236,7 +238,7 @@ export function Settings() {
     setSaveResult(
       ok
         ? { ok: true, msg: '已保存到本机配置并立即生效。' }
-        : { ok: false, msg: '本机配置接口不可用，已使用浏览器本地保存。' },
+        : { ok: false, msg: '当前客户端版本较旧：地址已保存在本浏览器中（建议升级客户端）。' },
     )
     setSaving(false)
   }
@@ -260,8 +262,8 @@ export function Settings() {
     setTestPrinting(true)
     setPrintResult(null)
     try {
-      const r = await localApi.testPrinter()
-      setPrintResult(`测试页已发送（${r.bytes} 字节）。请查看客户端日志确认打印。`)
+      await localApi.testPrinter()
+      setPrintResult('测试页已发送，请确认打印机是否出纸。')
       void refreshPrinter()
     } catch (err) {
       setPrintResult(err instanceof ApiError ? err.message : '发送测试页失败。')
@@ -314,18 +316,41 @@ export function Settings() {
               </div>
             )}
             <div className="hint">
-              服务端为 LabelFrame Server（模板库 / 作业中心 / 设备投递，默认 127.0.0.1:53961）。
-              地址保存在本机（%ProgramData%\\LabelFrame\\Client\\settings.json），保存后立即生效、重启保持；
-              未安装 / 未启动服务端时自动降级为单机模式（本机 Client 直接打印）。
+              服务端保存全部模板与打印记录，地址通常由安装程序自动配置；如需更换，请与管理人员确认后再修改。
+              保存后立即生效、重启保持；未连接服务端时仍可在本机直接打印（单机模式）。
             </div>
           </div>
         </section>
 
         <section className="panel">
-          <div className="panel-head">连接方式</div>
-          <div className="panel-body">
-            <TransportPanel />
+          {/* 迭代 73（#108 决议 1）：默认折叠——面板头即当前连接摘要（Describe / displayText 数据源），点击整行展开编辑区 */}
+          <div
+            className="panel-head"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setTransportOpen((v) => !v)}
+            title={transportOpen ? '收起连接编辑区' : '展开以测试或切换打印机连接'}
+          >
+            连接方式
+            <span className="hint" style={{ marginLeft: 6 }}>当前</span>
+            <span
+              className={'badge ' + (app.connected ? 'ok' : '')}
+              style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {formatTransport(app.transportConfig) || app.transport || '未知'}
+            </span>
+            <span className="spacer" style={{ flex: 1 }} />
+            <span className="hint">{transportOpen ? '收起' : '展开'}</span>
+            <Icon
+              name="back"
+              size={13}
+              style={{ transform: transportOpen ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.15s' }}
+            />
           </div>
+          {transportOpen && (
+            <div className="panel-body">
+              <TransportPanel />
+            </div>
+          )}
         </section>
 
         <section className="panel">
@@ -409,7 +434,7 @@ export function Settings() {
                 <div className="hint">{printer.message || '（无附加信息）'}</div>
               </div>
             ) : (
-              <div className="hint">{printerLoading ? '读取中…' : '未获取到状态（本机客户端可能不支持状态查询，或尚未连接）。'}</div>
+              <div className="hint">{printerLoading ? '读取中…' : '未获取到打印机状态：请确认打印机已开机并连接本机。'}</div>
             )}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <button className="btn" onClick={() => void doTestPrint()} disabled={testPrinting}>
@@ -419,8 +444,8 @@ export function Settings() {
               {printResult && <span className={printResult.startsWith('测试页已发送') ? 'badge ok' : 'badge err'}>{printResult}</span>}
             </div>
             <div className="hint">
-              测试打印发送一张测试页（条码 LABELFRAME-TEST）到本机当前连接。当前连接方式：
-              {formatTransport(app.transportConfig) || app.transport || '未知'}（Log 模式无需打印机）。
+              测试打印会发送一张测试页（内容为测试条码）到当前连接的打印机。当前连接方式：
+              {formatTransport(app.transportConfig) || app.transport || '未知'}（模拟打印无需打印机）。
             </div>
           </div>
         </section>
@@ -459,7 +484,7 @@ export function Settings() {
                       <Icon name="alert" size={13} /> 发现新版本 {update.latestVersion}（本机 {update.localVersion}）
                     </span>
                     <span className="hint">
-                      到服务端下载新版安装包（见下方列表），或由 IT 重跑安装引导程序完成升级；客户端不会自动升级。
+                      请在下方列表下载新版安装包并运行安装（客户端不会自动升级），或请管理人员协助升级。
                     </span>
                   </div>
                 )
@@ -513,7 +538,7 @@ export function Settings() {
                     ))}
                   </tbody>
                 </table>
-                <div className="hint">下载安装包后请自行运行安装（LabelFrame 客户端不自动升级）。安装包由服务端分发：{app.baseUrl}。</div>
+                <div className="hint">下载后运行安装包完成升级（客户端不会自动升级）。安装包来自服务端：{app.baseUrl}。</div>
               </>
             )}
           </div>
@@ -548,10 +573,10 @@ export function Settings() {
             ) : pluginPackages.length === 0 ? (
               <div className="hint">
                 {pluginPackagesOldServer
-                  ? '服务端不支持插件管理（旧版本）。请升级服务端后使用插件分发。'
+                  ? '服务端版本较旧，暂不支持插件管理；请先将服务端升级到新版本。'
                   : pluginPackagesError
                     ? `获取可用插件列表失败：${pluginPackagesError}`
-                    : '服务端暂无可用插件。可在服务端管理界面「插件管理」页上传 .lfplugin 插件包后，从此处安装。'}
+                    : '服务端暂无可用插件。请先在服务端管理界面「插件管理」页上传插件包，再从此处安装。'}
               </div>
             ) : (
               <table className="table">
@@ -621,7 +646,7 @@ export function Settings() {
             ) : installedPlugins === null ? (
               <div className="hint">加载已安装插件…</div>
             ) : installedPlugins.length === 0 ? (
-              <div className="hint">尚未安装插件。可从上方服务端可用插件列表安装，或将插件 DLL 直接放入插件目录（手动放置）。</div>
+              <div className="hint">尚未安装插件。可从上方列表选择插件安装。</div>
             ) : (
               <table className="table">
                 <thead>
@@ -664,7 +689,7 @@ export function Settings() {
                             className="btn sm danger"
                             onClick={() => void uninstallPlugin(pl)}
                             disabled={uninstalling === pl.pluginId}
-                            title="卸载该插件（删除安装目录，重启后生效）"
+                            title="卸载该插件（重启客户端后生效）"
                           >
                             <Icon name="trash" size={12} />
                             {uninstalling === pl.pluginId ? '卸载中…' : '卸载'}

@@ -115,7 +115,7 @@ function JobPanel({
         <div className="panel-head">作业进度</div>
         <div className="panel-body">
           {debugMode ? (
-            <div className="hint">调试模式：不提交作业，出图已下载。</div>
+            <div className="hint">已生成标签图片并下载（未实际打印）。</div>
           ) : (
             <div className="hint">提交打印后显示进度与逐张结果。</div>
           )}
@@ -137,7 +137,7 @@ function JobPanel({
         <span className="mono" style={{ color: 'var(--ink-3)', fontSize: 11 }}>ID {job.jobId.slice(0, 8)}</span>
       </div>
       <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {debugMode && <div className="hint">调试模式：不提交作业，出图已下载。（以下为历史作业进度）</div>}
+        {debugMode && <div className="hint">已生成标签图片并下载（未实际打印）；下方为上一次作业的进度。</div>}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12, color: 'var(--ink-2)' }}>
             <span>
@@ -150,7 +150,7 @@ function JobPanel({
           </div>
           {failed > 0 && (
             <div className="hint" style={{ marginTop: 6, color: 'var(--danger)' }}>
-              有 {failed} 张打印失败。{job.items && canRetry ? '可在下方表格中单独重试。' : '详见作业状态与客户端回报的失败原因。'}
+              有 {failed} 张打印失败，{job.items && canRetry ? '可在下方列表中逐张重试。' : '可在「作业历史」中查看失败原因。'}
             </div>
           )}
         </div>
@@ -162,7 +162,7 @@ function JobPanel({
         )}
         {job.printImageDir && (
           <div className="hint" style={{ wordBreak: 'break-all' }}>
-            模拟打印图片（Log）：{job.printImageDir}（{job.printImageCount ?? 0} 张）
+            模拟打印生成的图片保存在：{job.printImageDir}（共 {job.printImageCount ?? 0} 张）
           </div>
         )}
         {job.errorMessage && (
@@ -207,7 +207,7 @@ function JobPanel({
           </table>
         )}
         {!job.items && (
-          <div className="hint">（服务端作业无逐张明细，进度见上方进度条；失败原因见作业状态。）</div>
+          <div className="hint">（该作业无逐张明细：进度见上方进度条，失败原因可在「作业历史」查看。）</div>
         )}
       </div>
     </div>
@@ -403,7 +403,7 @@ export function DataPrint() {
 
   const submit = async (labels: { data: Record<string, string> }[]) => {
     if (isServerUi && !targetDeviceId) {
-      app.setStatus('请先选择目标设备（作业投递到客户端打印）。')
+      app.setStatus('请先选择目标设备（标签将发送到该设备打印）。')
       return
     }
     setSubmitting(true)
@@ -450,7 +450,7 @@ export function DataPrint() {
     try {
       const { blob, filename } = batch ? await biz.renderImages(req) : await biz.renderImage(req)
       downloadBlob(blob, filename)
-      app.setStatus(`调试图片已下载：${filename}`)
+      app.setStatus(`标签图片已下载：${filename}`)
     } catch (err) {
       app.setStatus(err instanceof ApiError ? err.message : '出图失败。')
     } finally {
@@ -528,13 +528,13 @@ export function DataPrint() {
     if (!excel || !pkg) return
     const dup = findDuplicateKeys(mapping)
     if (dup.length > 0) {
-      app.setStatus(`以下字段被多列映射：${dup.join('、')}，请调整。`)
+      app.setStatus(`以下字段被多列重复映射：${dup.join('、')}，请调整为每个字段只对应一列。`)
       return
     }
     const labels = excel.rows.map((row) => ({ data: rowToData(excel.headers, row, mapping) }))
     setMappingOpen(false)
     if (debugMode) {
-      app.setStatus(`正在渲染 ${labels.length} 张调试图片并打包下载…`)
+      app.setStatus(`正在生成 ${labels.length} 张标签图片，完成后自动下载…`)
       void downloadDebug(labels, true)
     } else {
       app.setStatus(`已按映射生成 ${labels.length} 张标签，提交批量打印…`)
@@ -559,10 +559,15 @@ export function DataPrint() {
             </option>
           ))}
         </select>
-        <button className="btn" onClick={() => void downloadExcelTemplate()} disabled={!pkg || fieldKeys.length === 0 || excelTplBusy} title={!pkg || fieldKeys.length === 0 ? '当前模板没有字段，无法生成 Excel 模板' : '按当前模板契约字段 + 示例值生成 xlsx，可直接套用 Excel 导入做打印测试'}>
-          <Icon name="download" size={13} />
-          {excelTplBusy ? '生成中…' : '下载 Excel 模板'}
-        </button>
+          <button
+            className="btn"
+            onClick={() => void downloadExcelTemplate()}
+            disabled={!pkg || fieldKeys.length === 0 || excelTplBusy}
+            title={!pkg || fieldKeys.length === 0 ? '当前模板没有字段，无法生成 Excel 模板' : '按当前模板的字段生成 Excel 文件（含示例行），填好后可导入批量打印'}
+          >
+            <Icon name="download" size={13} />
+            {excelTplBusy ? '生成中…' : '下载 Excel 模板'}
+          </button>
         <button className="btn" onClick={() => document.getElementById('excelFile')?.click()} disabled={!pkg || importing || submitting}>
           <Icon name="upload" size={13} />
           Excel 导入
@@ -585,7 +590,7 @@ export function DataPrint() {
       {!isServerUi && (
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}
-          title="本机连接：LabelFrame Client 的打印机连接方式（数据来自本机）；服务端连通：模板库 / 作业队列所在 Server"
+          title="本机连接：本机当前使用的打印机连接方式；服务端：保存模板与打印记录的服务端"
         >
           <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             本机连接
@@ -617,9 +622,9 @@ export function DataPrint() {
                 {devices.length === 0 && <option value="">（暂无设备）</option>}
                 {devices.length > 0 && !targetDeviceId && <option value="">（请选择设备）</option>}
                 {devices.map((d) => (
-                  <option key={d.deviceId} value={d.deviceId} disabled={d.status !== 'Online'} title={d.status !== 'Online' ? `离线（上次心跳 ${formatLastSeen(d.lastSeenAt)}）` : undefined}>
+                  <option key={d.deviceId} value={d.deviceId} disabled={d.status !== 'Online'} title={d.status !== 'Online' ? `离线（上次连接 ${formatLastSeen(d.lastSeenAt)}）` : undefined}>
                     {d.name}（{deviceStatusLabel(d.status)}）
-                    {d.status !== 'Online' ? ` · 上次心跳 ${formatLastSeen(d.lastSeenAt)}` : ''}
+                    {d.status !== 'Online' ? ` · 上次连接 ${formatLastSeen(d.lastSeenAt)}` : ''}
                   </option>
                 ))}
               </select>
@@ -640,12 +645,12 @@ export function DataPrint() {
                 本机（{app.hostDeviceName || app.hostDeviceId || '未知'}）
               </span>
               {routeMode === 'server' ? (
-                <span className="hint">本机已注册且在线：作业经服务端投递（服务端可见本机作业）。</span>
+                <span className="hint">本机已连接服务端，打印记录也会同步到服务端。</span>
               ) : (
                 <span className="badge warn">
                   {!hostInList
-                    ? '本机未注册到服务端：已降级为本机直连打印（作业仅本机历史）。'
-                    : '本机设备当前离线：已降级为本机直连打印（作业仅本机历史）。'}
+                    ? '本机尚未加入服务端：暂用本机直接打印（记录仅保存在本机）。'
+                    : '本机当前离线：暂用本机直接打印（记录仅保存在本机）。'}
                 </span>
               )}
             </>
@@ -662,7 +667,7 @@ export function DataPrint() {
           <div className="panel">
             <div className="panel-head">
               测试数据
-              <span className="hint" style={{ marginLeft: 6 }}>字段由版式自动推导（模板 {pkg ? `「${pkg.name}」` : ''}）</span>
+              <span className="hint" style={{ marginLeft: 6 }}>模板{pkg ? `「${pkg.name}」` : ''}的打印字段</span>
             </div>
             <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {loading ? (
@@ -690,7 +695,7 @@ export function DataPrint() {
                   )}
                   <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     <input type="checkbox" checked={debugMode} onChange={(ev) => app.setDraftDebug(ev.target.checked)} />
-                    调试模式：只生成图片，不发送打印驱动（后端渲染）
+                    模拟出图：只生成标签图片，不实际打印
                   </label>
                   <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                     <button
@@ -699,23 +704,23 @@ export function DataPrint() {
                       disabled={submitting || !pkg || (isServerUi && !targetDeviceId)}
                       title={
                         debugMode
-                          ? '后端渲染当前表单为 PNG 下载，不发送打印驱动'
+                          ? '生成当前内容的标签图片并下载（不会实际打印）'
                           : isServerUi
-                            ? '提交 1 张标签作业到所选在线设备（由该设备客户端执行打印）'
+                            ? '向所选在线设备发送 1 张标签（由该设备执行打印）'
                             : deviceMode === 'server'
                               ? routeMode === 'server'
-                                ? '提交 1 张标签作业到本机（经服务端投递）'
-                                : '本机未注册或离线：提交 1 张标签到本机直连打印'
-                              : '提交 1 张标签作业到本机打印'
+                                ? '打印 1 张标签到本机（经服务端转发）'
+                                : '本机未连接服务端：直接在本机打印 1 张标签'
+                              : '在本机打印 1 张标签'
                       }
                     >
                       <Icon name="printer" size={13} />
-                      {submitting ? '处理中…' : debugMode ? '调试出图（单张）' : '打印测试（单张）'}
+                      {submitting ? '处理中…' : debugMode ? '生成图片（单张）' : '打印测试（单张）'}
                     </button>
                     {!debugMode && (
-                      <button className="btn" onClick={previewImage} disabled={submitting || !pkg} title="后端渲染当前表单为 PNG 下载（不建作业）">
+                      <button className="btn" onClick={previewImage} disabled={submitting || !pkg} title="生成当前内容的图片并下载，用于预览打印效果（不会实际打印）">
                         <Icon name="preview" size={13} />
-                        出图预览
+                        图片预览
                       </button>
                     )}
                     {excel && (
@@ -726,16 +731,16 @@ export function DataPrint() {
                   </div>
                   <div className="hint">
                     {debugMode
-                      ? '调试模式：出图为后端渲染的实际打印位图（同一 Skia / DPI），不提交作业、不发送打印驱动。'
+                      ? '模拟出图：生成的图片与实际打印效果一致（相同打印精度），不会实际打印、也不产生打印记录。'
                       : fieldKeys.length === 0
                         ? '静态标签无需填写数据；打印测试提交 1 张空数据标签（内容按版式原样输出）。'
                         : isServerUi
-                        ? '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到所选在线设备（仅在线设备可选，由设备客户端执行打印）。'
+                        ? '已用示例值预填，可修改后打印；「打印测试」将向所选在线设备发送 1 张标签。'
                         : deviceMode === 'server'
                           ? routeMode === 'server'
-                            ? '已用模板预览值预填，可修改后打印；打印测试提交 1 张标签到本机（经服务端投递，服务端可见本机作业）。'
-                            : '已用模板预览值预填，可修改后打印；本机未注册或离线，已降级为本机直连打印（作业仅本机历史）。'
-                          : '已用模板预览值预填，可修改后打印；单机模式：作业提交到本机 WinHost 打印（兼容旧版单机部署）。'}
+                            ? '已用示例值预填，可修改后打印；「打印测试」将打印 1 张标签（本机已连接服务端）。'
+                            : '已用示例值预填，可修改后打印；本机未连接服务端，将改为本机直接打印（记录仅保存在本机）。'
+                          : '已用示例值预填，可修改后打印；未连接服务端，标签直接在本机打印。'}
                   </div>
                 </>
               )}
@@ -806,18 +811,18 @@ function MappingModal({
           >
             自动匹配
           </button>
-          <button className="btn primary" onClick={onConfirm} disabled={!complete || dup.length > 0} title={debugMode ? '后端渲染全部行打包 zip 下载（不建作业）' : '提交批量打印作业'}>
+          <button className="btn primary" onClick={onConfirm} disabled={!complete || dup.length > 0} title={debugMode ? '生成全部行的标签图片并打包下载（不会实际打印）' : '提交批量打印作业'}>
             <Icon name={debugMode ? 'download' : 'printer'} size={13} />
-            {debugMode ? `下载调试图片 zip（${rows.length} 张）` : `批量打印 ${rows.length} 张`}
+            {debugMode ? `下载图片（${rows.length} 张）` : `批量打印 ${rows.length} 张`}
           </button>
         </>
       }
     >
       <div className="hint">
-        每列映射到一个字段键（自动按列名匹配，可手工调整）。未映射的列不参与打印。
-        {debugMode && <span className="hint"> 调试模式：将渲染全部行打包 zip 下载，不提交作业。</span>}
+        请确认每列对应的模板字段（已按列名自动匹配，可手工调整）；未映射的列不会打印。
+        {debugMode && <span className="hint"> 模拟出图：将生成全部行的标签图片并打包下载，不会实际打印。</span>}
         {dup.length > 0 && (
-          <span className="error-text"> 重复映射：{dup.join('、')}。</span>
+          <span className="error-text"> 同一字段被多列映射：{dup.join('、')}，请调整。</span>
         )}
       </div>
       <table className="table">
