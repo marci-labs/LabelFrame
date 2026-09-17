@@ -100,6 +100,7 @@
 | 76 | 插件命令打印契约设计——文档编译能力接口与打印方式参数（纯文档，决策 #137：提交时编译并持久化 / 连接级打印方式 / 编译显式失败不回退；实现拆分建议见 DESIGN §5.4.8） | ✅ 已完成（2026-09-17 契约与拆分建议成文，AC 自证；实现迭代按 §5.4.8 立项，[#113](https://github.com/marci-labs/LabelFrame/issues/113)） |
 | 77 | 插件命令打印实现 1/4——宿主链路落码（Core `ILabelCommandCompiler` 契约 + descriptor 能力位 / DTO 透出 + `printMode` 保存校验与提交分派 + `LabelJobItem.Zpl` 语义泛化 + `LF_ENC_002` / `LF_ENC_003` + fake 编译器单测矩阵） | ✅ 已完成（2026-09-17 fake 编译器单测矩阵 26 项全绿 + 既有套件 798 项零回归（排除 Perf/Soak）；Zebra 编译器实现与真机效果验收归步 2 / 3（#120 / #121），[#119](https://github.com/marci-labs/LabelFrame/issues/119)） |
 | 78 | 插件命令打印实现 2/4——Zebra 编译器·文本（`ZebraLabelCompiler` 整页自包含 + `^A` 字体 / 字高 DPI 换算 + 内置字体度量 `ZebraTextWidthMeasurer` 接 `ITextWidthMeasurer` 锚定尽力近似 + 中文 `LF_ENC_002` 显式拒绝 + `printMode` 参数声明 + 前端「无预览，效果以真机为准」提示） | ✅ 已完成（2026-09-17 本地 build / test 全绿，新增 WinHost 30 项（编译器与度量器 27 + 真实插件宿主集成 3）+ 前端 7 项；AC-04 浏览器自动化走查截图附 Issue 回评；真机文本对比（AC-06）转待验收（恢复条件 = Zebra 真机可得），[#120](https://github.com/marci-labs/LabelFrame/issues/120)） |
+| 79 | 插件命令打印实现 3/4——Zebra 编译器·条码与二维码（Code 128 `^BC` / `^BY` 编译：模块宽与高度 DPI 换算 + `displayValue` interpretation 映射 + 中文 `LF_ENC_001` 既有语义零回归；QR `^BQ` 编译：ECC 双处映射 + `qrMargin` 静区映射 + 放大倍数按尺寸与 DPI 换算（版本容量估算）+ UTF-8 中文经 `^CI28`；混合模板整页自包含） | ✅ 已完成（2026-09-17 本地 build / test 全绿（850 项，排除 Perf/Soak），编译器新增 16 用例（理论展开 22 例）+ 宿主集成 2 例；真机扫码对比（AC-04）转待验收（恢复条件 = Zebra 真机 + 扫码枪可得），[#121](https://github.com/marci-labs/LabelFrame/issues/121)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）

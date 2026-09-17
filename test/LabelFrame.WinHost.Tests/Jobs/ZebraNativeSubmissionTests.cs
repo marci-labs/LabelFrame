@@ -11,8 +11,8 @@ using LabelFrame.WinHost.Tests.Transport;
 namespace LabelFrame.WinHost.Tests.Jobs;
 
 /// <summary>
-/// 宿主集成（迭代 78，#120 AC-03；DESIGN §5.4.3）：native 分派走真实 Zebra 编译器——
-/// 本地作业指令字段（LabelJobItem.Zpl）为品牌原生指令（^A0 / ^FD，非 ^GF 位图）；
+/// 宿主集成（迭代 78，#120 AC-03 + 迭代 79，#121；DESIGN §5.4.3）：native 分派走真实 Zebra 编译器——
+/// 本地作业指令字段（LabelJobItem.Zpl）为品牌原生指令（文本 / 条码 / 二维码元素，^A0 / ^BC / ^BQ / ^FD，非 ^GF 位图）；
 /// image / 缺省路径经真实 Zebra 插件连接零回归（仍整版渲染 ^GF）。
 /// 与迭代 77 的 JobSubmissionCompileTests（fake 编译器）互补：此处为真实品牌编译器锚定。
 /// </summary>
@@ -46,7 +46,7 @@ public class ZebraNativeSubmissionTests
         return (service, store);
     }
 
-    /// <summary>纯文本模板（native 编译本轮只支持文本元素；条码 / 二维码归迭代 79）。</summary>
+    /// <summary>纯文本模板（迭代 78 锚定）。</summary>
     private static TemplateDto CreateTemplate() => new(
         new Core.Contracts.LabelContract
         {
@@ -67,8 +67,39 @@ public class ZebraNativeSubmissionTests
             ],
         });
 
+    /// <summary>混合模板（迭代 79：文本 + Code 128 条码 + 二维码）。</summary>
+    private static TemplateDto CreateMixedTemplate() => new(
+        new Core.Contracts.LabelContract
+        {
+            Name = "mixed-label",
+            Version = "1.0",
+            Fields =
+            [
+                new Core.Contracts.LabelField { Key = "code", DisplayName = "编码", IsRequired = true },
+                new Core.Contracts.LabelField { Key = "barcode", DisplayName = "条码", IsRequired = true },
+                new Core.Contracts.LabelField { Key = "qr", DisplayName = "二维码", IsRequired = true },
+            ],
+        },
+        new Core.Layout.LabelLayout
+        {
+            Name = "mixed-label-40x20",
+            ContractName = "mixed-label",
+            ContractVersion = "1.0",
+            WidthMm = 40,
+            HeightMm = 20,
+            Elements =
+            [
+                new Core.Layout.LabelTextElement { SourceKey = "code", XMm = 2, YMm = 1, FontHeightMm = 3 },
+                new Core.Layout.LabelBarcodeElement { SourceKey = "barcode", XMm = 2, YMm = 6, HeightMm = 8, ModuleWidth = 2 },
+                new Core.Layout.LabelQrCodeElement { SourceKey = "qr", XMm = 27, YMm = 4, SizeMm = 12, QrEcc = Core.Layout.LabelQrEcc.M, QrMargin = 2 },
+            ],
+        });
+
     private static SubmitJobRequest CreateRequest(string requestId, params IReadOnlyDictionary<string, string>[] labels)
         => new(requestId, CreateTemplate(), labels.Select(d => new LabelDto(d)).ToList());
+
+    private static SubmitJobRequest CreateMixedRequest(string requestId, IReadOnlyDictionary<string, string> label)
+        => new(requestId, CreateMixedTemplate(), [new LabelDto(label)]);
 
     private const string NativeConnection =
         """{ "pluginId": "labelframe-transport-zebra", "params": { "kind": "Tcp", "host": "127.0.0.1", "printMode": "native" } }""";
@@ -135,5 +166,61 @@ public class ZebraNativeSubmissionTests
         Assert.Contains("切回图片", result.ErrorMessage);
         Assert.Equal("code", result.FieldKey);
         Assert.Null(await store.GetJobByRequestIdAsync("req-zebra-chinese"));
+    }
+
+    // ── 端到端（迭代 79，#121）：混合模板 native 逐张编译（文本 + 条码 + 二维码整页自包含）──
+
+    [Fact]
+    public async Task Native_mode_mixed_template_should_compile_all_element_types()
+    {
+        var (service, store) = CreateService(NativeConnection);
+
+        var result = await service.SubmitAsync(CreateMixedRequest(
+            "req-zebra-mixed",
+            new Dictionary<string, string>
+            {
+                ["code"] = "A-1",
+                ["barcode"] = "WH-A-01",
+                ["qr"] = "库位A-01", // 二维码经 ^CI28 支持 UTF-8 中文
+            }));
+
+        Assert.NotNull(result.Job);
+        var stored = await store.GetJobAsync(result.Job!.Id);
+        var zpl = stored!.Items[0].Zpl;
+
+        // 整页自包含：格式级指令齐全 + 三类元素各产出原生指令，非 ^GF 位图
+        Assert.StartsWith("^XA", zpl);
+        Assert.EndsWith("^XZ", zpl);
+        Assert.Contains("^PW320", zpl);
+        Assert.Contains("^CI28", zpl);
+        Assert.Contains("^A0N,", zpl); // 文本
+        Assert.Contains("^BY2,3^BCN,64,Y,N,N^FH^FDWH-A-01^FS", zpl); // 条码（8mm 高 @203dpi = 64 点）
+        Assert.Contains("^BQN,2,", zpl); // 二维码
+        Assert.Contains("^FDMA,库位A-01^FS", zpl); // 二维码 UTF-8 中文数据
+        Assert.DoesNotContain("^GF", zpl);
+    }
+
+    // ── 端到端（迭代 79，#121）：Code 128 中文值经提交链路按 LF_ENC_001 拒绝（既有语义零回归）──
+
+    [Fact]
+    public async Task Native_mode_chinese_barcode_should_fail_with_lf_enc_001()
+    {
+        var (service, store) = CreateService(NativeConnection);
+
+        var result = await service.SubmitAsync(CreateMixedRequest(
+            "req-zebra-barcode-cn",
+            new Dictionary<string, string>
+            {
+                ["code"] = "A-1",
+                ["barcode"] = "库位A-01", // Code 128 仅可打印 ASCII
+                ["qr"] = "库位A-01",
+            }));
+
+        Assert.Null(result.Job);
+        Assert.Equal(JobErrorCodes.EncodeFailed, result.ErrorCode); // LF_ENC_001（与图片模式渲染层拒绝同码，非 LF_ENC_002）
+        Assert.Contains("labelframe-transport-zebra", result.ErrorMessage);
+        Assert.Contains("Code 128", result.ErrorMessage);
+        Assert.Equal("barcode", result.FieldKey);
+        Assert.Null(await store.GetJobByRequestIdAsync("req-zebra-barcode-cn"));
     }
 }
