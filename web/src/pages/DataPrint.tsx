@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { DeviceView, JobView, SubmitJobRequest, TemplatePackage, TemplateSummary } from '../lib/api/types'
-import { formatTransport } from '../lib/transport'
+import { formatTransport, isNativePrintMode } from '../lib/transport'
 import { downloadBlob } from '../lib/download'
 import { fromBackendElements } from '../lib/design/convert'
 import { deriveFields } from '../lib/design/fields'
@@ -19,6 +19,7 @@ import { mergeDraftValues } from '../state/draft'
 import { isServerUi } from '../lib/uiMode'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
+import { NativePrintModeHint } from '../components/TransportPanel'
 
 /** 设备在线状态中文标签。 */
 const deviceStatusLabel = (s: string) => (s === 'Online' ? '在线' : '离线')
@@ -729,6 +730,8 @@ export function DataPrint() {
                       </button>
                     )}
                   </div>
+                  {/* 原生指令模式连接提示（迭代 78，DESIGN §5.4.2）：本机连接为 native 时出纸由打印机指令渲染，界面预览（图片口径）不代表实际效果 */}
+                  {!isServerUi && isNativePrintMode(app.transportConfig) && <NativePrintModeHint />}
                   <div className="hint">
                     {debugMode
                       ? '模拟出图：生成的图片与实际打印效果一致（相同打印精度），不会实际打印、也不产生打印记录。'

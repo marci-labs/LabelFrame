@@ -23,6 +23,22 @@ import {
 import { useApp } from '../state/AppContext'
 import { Icon } from './Icon'
 
+/** 原生指令模式提示（迭代 78，DESIGN §5.4.2）：原生指令无指令级预览，界面以文案说明效果口径。 */
+export function NativePrintModeHint() {
+  return (
+    <span className="badge warn" data-testid="native-print-mode-hint" title="原生指令模式由打印机按自身字体与指令渲染，界面预览（图片口径）不再代表实际出纸效果">
+      原生指令模式无预览，效果以真机为准
+    </span>
+  )
+}
+
+/** 表单当前选中插件是否处于原生指令模式（选择即时反馈用；连接态判断用 isNativePrintMode）。 */
+function formNativeMode(plugin: TransportPluginInfo | undefined, params: PluginParams): boolean {
+  if (plugin?.supportsDocumentCompile !== true) return false
+  const v = params.printMode
+  return typeof v === 'string' && v.trim().toLowerCase() === 'native'
+}
+
 /** 表单状态：插件模式（新后端）维护 pluginId + 参数字典；旧模式维护 mode + 平铺参数。
  *  只维护当前生效方式的参数，切换插件 / 模式丢弃其它输入。 */
 function useTransportForm() {
@@ -377,6 +393,7 @@ export function TransportPanel() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             {currentPlugin && <TransportPluginParamsEditor plugin={currentPlugin} params={form.pluginParams} setParam={form.setPluginParam} />}
           </div>
+          {formNativeMode(currentPlugin, form.pluginParams) && <NativePrintModeHint />}
         </>
       ) : (
         <>
@@ -478,6 +495,7 @@ export function TransportQuickSwitch() {
       ) : (
         <TransportParamsEditor mode={form.mode} params={form.params} setParam={form.setParam} />
       )}
+      {formNativeMode(currentPlugin, form.pluginParams) && <NativePrintModeHint />}
       <button className="btn sm" onClick={() => void apply()} disabled={busy}>
         <Icon name="link" size={12} />
         {busy ? '应用中…' : '应用'}

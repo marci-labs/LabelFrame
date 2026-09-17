@@ -150,6 +150,8 @@ export interface TransportPluginInfo {
   displayName: string
   description?: string
   parameters: TransportParameterSpec[]
+  /** 文档编译能力位（迭代 78，§5.4.2）：true 时插件声明 printMode 参数，native 模式可编译品牌原生指令；旧后端缺省 undefined。 */
+  supportsDocumentCompile?: boolean
 }
 
 /** 插件参数值（后端 TransportPluginParameters 弱类型字典：String→string、Int→number、Bool→boolean）。 */

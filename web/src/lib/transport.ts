@@ -42,6 +42,13 @@ export function isPluginMode(cfg: TransportConfig | null | undefined): boolean {
   return Array.isArray(cfg?.availablePlugins) && cfg.availablePlugins.length > 0
 }
 
+/** 连接级打印方式（迭代 78，DESIGN §5.4.2）：当前生效连接是否为原生指令模式（printMode=native）。
+ *  与后端读取口径一致：缺失 / 非法值不视为 native（回退 image）。 */
+export function isNativePrintMode(cfg: TransportConfig | null | undefined): boolean {
+  const raw = (cfg?.params as PluginParams | undefined)?.printMode
+  return typeof raw === 'string' && raw.trim().toLowerCase() === 'native'
+}
+
 /** 徽标 / 状态栏文本：新后端 displayText 优先；旧后端按 mode 格式化为用户语摘要（`模拟打印` / `网络打印机 192.168.1.50:9100` / `Windows 打印机 打印机名` / `Zebra USB`）。 */
 export function formatTransport(cfg: TransportConfig | null | undefined): string {
   if (!cfg) return ''

@@ -421,6 +421,34 @@ describe('连接状态徽标（迭代 18 F5）', () => {
     await renderDataPrint()
     expect(await screen.findByText('未连接（单机模式可用）')).toBeTruthy()
   })
+
+  it('原生指令模式连接：打印操作区出现「无预览，效果以真机为准」提示（迭代 78，#120 AC-04）', async () => {
+    mocks.local.getTransport.mockResolvedValue({
+      pluginId: 'labelframe-transport-zebra',
+      displayName: 'Zebra',
+      displayText: 'Zebra TCP 127.0.0.1:9100',
+      params: { kind: 'Tcp', host: '127.0.0.1', printMode: 'native' },
+      availablePlugins: [],
+      mode: 'Log',
+    })
+    await renderDataPrint()
+    const hint = await screen.findByTestId('native-print-mode-hint', undefined, MOUNT_WAIT)
+    expect(hint.textContent).toContain('原生指令模式无预览，效果以真机为准')
+  })
+
+  it('图片（默认）连接：不出现原生指令提示', async () => {
+    mocks.local.getTransport.mockResolvedValue({
+      pluginId: 'labelframe-transport-zebra',
+      displayName: 'Zebra',
+      displayText: 'Zebra TCP 127.0.0.1:9100',
+      params: { kind: 'Tcp', host: '127.0.0.1', printMode: 'image' },
+      availablePlugins: [],
+      mode: 'Log',
+    })
+    await renderDataPrint()
+    await screen.findByText('Zebra TCP 127.0.0.1:9100')
+    expect(screen.queryByTestId('native-print-mode-hint')).toBeNull()
+  })
 })
 
 // 迭代 65（#62）：无字段模板 = 静态标签——合法模板，可在数据与打印页打印测试（空数据提交）
