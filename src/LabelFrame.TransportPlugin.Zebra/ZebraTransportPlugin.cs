@@ -1,3 +1,4 @@
+using LabelFrame.Core.Documents;
 using LabelFrame.Core.Transport;
 using LabelFrame.Core.Transport.Plugins;
 
@@ -7,9 +8,13 @@ namespace LabelFrame.TransportPlugin.Zebra;
 /// <remarks>
 /// 插件 Id = <see cref="TransportPluginIdPolicy.ZebraPluginId"/>（labelframe-transport-zebra）；
 /// 旧内置时代 id "zebra" 由 WinHost 读取配置时按别名映射（DESIGN §6.8），插件侧不再使用。
+/// 迭代 78（#120）：同一插件对象实现 <see cref="ILabelCommandCompiler"/>（品牌级能力，§5.4.1——
+/// 与连接实例 / 传输形态无关），并声明连接级打印方式参数 printMode（§5.4.2 决议 2）。
 /// </remarks>
-public sealed class ZebraTransportPlugin : ITransportPlugin
+public sealed class ZebraTransportPlugin : ITransportPlugin, ILabelCommandCompiler
 {
+    private readonly ZebraLabelCompiler _compiler = new();
+
     /// <inheritdoc />
     public string Id => TransportPluginIdPolicy.ZebraPluginId;
 
@@ -32,17 +37,33 @@ public sealed class ZebraTransportPlugin : ITransportPlugin
         new TransportParameterSpec("port", "端口", TransportParameterType.Int, DefaultValue: "9100"),
         new TransportParameterSpec("printerName", "Windows 打印机名", TransportParameterType.String, Required: false, Hint: "kind=Driver 时必填"),
         new TransportParameterSpec("usbName", "Zebra USB 打印机名", TransportParameterType.String, Required: false, Hint: "kind=Usb 时为空自动发现第一台"),
+        // 打印方式（§5.4.2 决议 2：仅连接级 Select 参数；默认 image，native = 插件编译器产出品牌原生指令）
+        new TransportParameterSpec(
+            TransportPrintMode.ParameterKey,
+            "打印方式",
+            TransportParameterType.Select,
+            Required: true,
+            DefaultValue: TransportPrintMode.Image,
+            Options: new[]
+            {
+                new TransportParameterOption(TransportPrintMode.Image, "图片（默认）"),
+                new TransportParameterOption(TransportPrintMode.Native, "原生指令"),
+            },
+            Hint: "原生指令模式无预览，效果以真机为准"),
     };
 
     /// <inheritdoc />
     public string Describe(TransportPluginParameters parameters)
     {
         var kind = parameters.GetString("kind") ?? "Tcp";
+        var mode = TransportPrintMode.Resolve(parameters.GetString(TransportPrintMode.ParameterKey)) == TransportPrintMode.Native
+            ? "（原生指令）"
+            : string.Empty;
         return kind switch
         {
-            "Usb" => string.IsNullOrWhiteSpace(parameters.GetString("usbName")) ? "Zebra USB（自动发现）" : $"Zebra USB {parameters.GetString("usbName")}",
-            "Driver" => $"Zebra 驱动 {parameters.GetString("printerName") ?? "?"}",
-            _ => $"Zebra TCP {parameters.GetString("host", "?")}:{parameters.GetInt("port", 9100)}",
+            "Usb" => string.IsNullOrWhiteSpace(parameters.GetString("usbName")) ? $"Zebra USB（自动发现）{mode}" : $"Zebra USB {parameters.GetString("usbName")}{mode}",
+            "Driver" => $"Zebra 驱动 {parameters.GetString("printerName") ?? "?"}{mode}",
+            _ => $"Zebra TCP {parameters.GetString("host", "?")}:{parameters.GetInt("port", 9100)}{mode}",
         };
     }
 
@@ -57,4 +78,12 @@ public sealed class ZebraTransportPlugin : ITransportPlugin
             parameters.GetString("printerName") ?? string.Empty,
             parameters.GetString("usbName") ?? string.Empty);
     }
+
+    /// <inheritdoc />
+    /// <remarks>文档编译能力（§5.4.1）：品牌级纯函数变换，不访问打印机；委托无状态 <see cref="ZebraLabelCompiler"/>。</remarks>
+    public Task<LabelCommandCompileResult> CompileAsync(
+        LabelDocument document,
+        LabelCommandCompileOptions options,
+        CancellationToken cancellationToken = default)
+        => _compiler.CompileAsync(document, options, cancellationToken);
 }

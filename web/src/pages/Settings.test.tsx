@@ -212,6 +212,66 @@ describe('连接方式（F3，恢复迭代 15；迭代 73 起默认折叠，交�
   })
 })
 
+describe('原生指令模式提示（迭代 78，DESIGN §5.4.2 / #120 AC-04）', () => {
+  /** 插件模式连接配置：带编译能力的 Zebra 插件 + printMode Select 参数。 */
+  const ZEBRA_PLUGIN = {
+    id: 'labelframe-transport-zebra',
+    displayName: 'Zebra',
+    description: 'Zebra 官方 Link-OS SDK',
+    supportsDocumentCompile: true,
+    parameters: [
+      { key: 'kind', label: '连接类型', type: 'Select' as const, required: true, defaultValue: 'Tcp', options: [{ value: 'Tcp', label: 'TCP' }] },
+      {
+        key: 'printMode',
+        label: '打印方式',
+        type: 'Select' as const,
+        required: true,
+        defaultValue: 'image',
+        options: [
+          { value: 'image', label: '图片（默认）' },
+          { value: 'native', label: '原生指令' },
+        ],
+      },
+    ],
+  }
+
+  function mockNativeTransport(printMode: string) {
+    mocks.local.getTransport.mockResolvedValue({
+      pluginId: 'labelframe-transport-zebra',
+      displayName: 'Zebra',
+      displayText: 'Zebra TCP 127.0.0.1:9100',
+      params: { kind: 'Tcp', host: '127.0.0.1', printMode },
+      availablePlugins: [ZEBRA_PLUGIN],
+      mode: 'Log',
+    })
+  }
+
+  it('当前连接为原生指令：展开连接面板即出现「无预览，效果以真机为准」提示', async () => {
+    mockNativeTransport('native')
+    renderSettings()
+    openTransportPanel()
+    const hint = await screen.findByTestId('native-print-mode-hint')
+    expect(hint.textContent).toContain('原生指令模式无预览，效果以真机为准')
+  })
+
+  it('切回图片模式：提示消失（选择即时反馈）', async () => {
+    mockNativeTransport('native')
+    renderSettings()
+    openTransportPanel()
+    await screen.findByTestId('native-print-mode-hint')
+    fireEvent.change(screen.getByDisplayValue('原生指令'), { target: { value: 'image' } })
+    expect(screen.queryByTestId('native-print-mode-hint')).toBeNull()
+  })
+
+  it('图片（默认）连接：不出现提示', async () => {
+    mockNativeTransport('image')
+    renderSettings()
+    openTransportPanel()
+    await screen.findByDisplayValue('图片（默认）')
+    expect(screen.queryByTestId('native-print-mode-hint')).toBeNull()
+  })
+})
+
 describe('打印机（F4）', () => {
   it('状态展示：在线 + 附加信息', async () => {
     renderSettings()

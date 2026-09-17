@@ -8,6 +8,7 @@ import {
   defaultPluginParams,
   effectivePluginId,
   formatTransport,
+  isNativePrintMode,
   isPluginMode,
   pluginParamsFromConfig,
   specDefaultValue,
@@ -89,6 +90,15 @@ describe('mode ↔ 插件 id 映射', () => {
     expect(isPluginMode({ mode: 'Log', params: {} })).toBe(false)
     expect(isPluginMode({ mode: 'Log', params: {}, availablePlugins: [] })).toBe(false)
     expect(isPluginMode(null)).toBe(false)
+  })
+
+  it('isNativePrintMode（迭代 78，§5.4.2）：仅显式 native 为真，缺失 / 非法回退 image 语义', () => {
+    expect(isNativePrintMode({ pluginId: 'labelframe-transport-zebra', params: { printMode: 'native' }, mode: 'Log' })).toBe(true)
+    expect(isNativePrintMode({ pluginId: 'labelframe-transport-zebra', params: { printMode: 'Native ' }, mode: 'Log' })).toBe(true) // 忽略大小写与空白
+    expect(isNativePrintMode({ pluginId: 'labelframe-transport-zebra', params: { printMode: 'image' }, mode: 'Log' })).toBe(false)
+    expect(isNativePrintMode({ pluginId: 'labelframe-transport-zebra', params: {}, mode: 'Log' })).toBe(false) // 缺省 = image
+    expect(isNativePrintMode({ pluginId: 'labelframe-transport-zebra', params: { printMode: 'garbage' }, mode: 'Log' })).toBe(false) // 非法值回退
+    expect(isNativePrintMode(null)).toBe(false)
   })
 })
 
