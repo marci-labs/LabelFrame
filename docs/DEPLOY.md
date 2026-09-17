@@ -14,7 +14,19 @@
 
 默认端口：Server `53961`、Client 本机界面 `53960`、PDA 宿主 `53970`。
 
-## 2. 安装包（MSI）
+## 2. 安装引导程序（推荐安装入口）
+
+面向全新机器或测试环境的首装用户：从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 **`LabelFrame-Bootstrapper-x.x.x.exe`**（安装引导程序），双击运行即可走完「七页向导」完成安装——引导程序按 install manifest 自动获取当版组件与前置运行时，无需先懂组件清单。
+
+- **七页向导流程**：欢迎（新装 / 升级检测，含离线安装指引）→ 拓扑预设（单机一体 / 服务端 / 打印客户端等，选错可重跑改选）→ 品牌多选（检测到本机 ZDesigner 驱动时预选 Zebra，对应官方外置插件）→ 管理界面开关（服务端网页管理界面，可选）→ 确认安装计划（组件清单 + 本机已装版本对照）→ 安装进度（逐组件下载 + 校验 + 安装，失败自动回滚并给出中文失败分类）→ 完成。
+- **前置说明**：引导程序自带 .NET 10 Desktop Runtime / ASP.NET Core Runtime / WebView2 运行时**前置链**——本机缺失时自动按官方直链下载补装（已装则跳过），无需手工预装运行时；这正是它优于 MSI 直装的主要场景（MSI 直装缺失运行时会拦截并给下载链接，需手动补装）。
+- **升级**：本机已装 LabelFrame 时重跑引导程序即进入升级模式（列出可升级组件「现版本 → 新版本」，复用同一安装链完成覆盖升级，用户配置保留）；客户端设置页「检查更新」发现新版本时也会指向此入口。
+- **离线 / 内网**：欢迎页提供离线安装指引；完全离线的预下载布局目录形态见相邻迭代排期（当前内网可先在有网机器装好后整机克隆或用 MSI + 手动运行时部署）。
+- **SmartScreen「未知发布者」提示**：引导 EXE 当前使用自签证书签名（与 MSI 同通道，见 §8 签名）——公网下载首次运行 Windows 可能提示「未知发布者」，点「更多信息 → 仍要运行」即可；下载完整性由 install manifest 的 sha256 强制校验保障。内网可把自签根证书加入受信任根消除提示。
+- **安装日志（排障）**：Burn 引擎日志在 `%TEMP%\LabelFrame*.log`（失败报告页可直接打开本次日志；按通配查找）。
+- 本地手工构建（发版链之外）：`scripts\build-bundle.ps1 -Version x.y.z`（需 WiX v7；Secrets 在场时 `-Sign` 复用 MSI 证书签名）。
+
+## 3. 安装包（MSI，高级路径）
 
 下载：[GitHub Releases](https://github.com/marci-labs/LabelFrame/releases)。
 
@@ -26,12 +38,12 @@
 - 前置：.NET 10 Desktop Runtime（x64）+ Microsoft Edge WebView2 运行时（Evergreen，Win10/11 多数已随 Edge 预装）。MSI 内置检测：.NET 缺失时 NetCoreCheck 自检弹出可点击的官方下载链接（不自动安装）；WebView2 缺失时全 UI 安装显示带官方下载链接的中文对话框（装完点「重新检测」即可继续，无需重启安装程序），静默 / 基础 UI 由 LaunchCondition 拦截提示。客户端启动时若 WebView2 初始化失败，自动回退默认浏览器打开界面并在 host.log 记录原因。
 - 单机使用 = 同机安装两个包；多台打印电脑 = 每台装 Client，设置页把服务端地址指向服务端 IP。
 - 两个包的 appsettings.json 均为独立用户配置组件：覆盖安装 / 修复不覆盖、卸载保留。卸载时可选是否清除用户数据（默认不清除）。
-- 公开下载的 MSI 若未用受信任商业证书签名，Windows 可能提示「未知发布者」，点「仍要运行」即可；内网可把自签根证书加入受信任根消除提示（见 §7 签名）。
+- 公开下载的 MSI 若未用受信任商业证书签名，Windows 可能提示「未知发布者」，点「仍要运行」即可；内网可把自签根证书加入受信任根消除提示（见 §8 签名）。
 - 打印统一为整版位图（Skia 渲染 → `^GF` 直传打印机），与画布预览同源；连接方式在客户端「设置」页配置（先测试后生效）。
 - **修改服务端地址后需重启 Client**（打印 Worker 使用启动时的地址）。
 - 清理历史安装残留：管理员运行 `scripts\cleanup-residue.ps1`。
 
-## 3. Docker（推荐的服务端部署方式）
+## 4. Docker（推荐的服务端部署方式）
 
 镜像 `ghcr.io/marci-labs/labelframe-server`（`latest` 指向最新版）：
 
@@ -46,11 +58,11 @@ curl http://127.0.0.1:53961/healthz   # {"service":"LabelFrame.Server","status":
 
 - 数据（server.db / templates.db / logs.db）在数据卷 `/var/lib/labelframe/server`；文本日志按日轮转写入挂载目录 `./logs/server-<yyyyMMdd>.log`（`LABELFRAME_SERVER_LOG_FILE` 为基准路径，`tail -f ./logs/server-$(date +%Y%m%d).log` 即可；默认保留 31 天，超期自动清理，`LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS` 可调）。日志路径无效时服务不再启动失败——跳过文件通道、控制台输出中文告警，服务继续运行。
 - Server 镜像已内置 `fonts-wqy-microhei`，服务端管理界面的模板预览 / 出图预览默认使用 `WenQuanYi Micro Hei` 渲染中文文本。
-- compose 已默认挂载 `./plugins/web-ui`（管理界面插件）与 `./client-packages`（客户端安装包分发），见下文 §5 / §6。
+- compose 已默认挂载 `./plugins/web-ui`（管理界面插件）与 `./client-packages`（客户端安装包分发），见下文 §6 / §7。
 - 自行构建：`docker build -f packaging/ubuntu/Dockerfile -t labelframe-server artifacts/server-linux/linux-x64`。
 - 本地构建镜像调试：`LABELFRAME_IMAGE=labelframe-server LABELFRAME_VERSION=0.22.2 docker compose up -d`。
 
-### 3.1 Server + Linux Log Client 本地 E2E
+### 4.1 Server + Linux Log Client 本地 E2E
 
 正式镜像 `ghcr.io/marci-labs/labelframe-client` 是仅用于无打印机自动化测试的 Linux 无头 Client。它固定使用 `log` 模拟打印，不包含 TCP 9100、USB、Windows 驱动、Zebra SDK、第三方插件或客户端 Web UI，不能替代物理打印验收。
 
@@ -73,7 +85,7 @@ docker compose -f .\packaging\e2e\compose.yaml down
 
 脚本验证 Linux 能力边界、模板 / 预览 / 包导入导出、Excel / 日志公共端点、设备注册、幂等、单张 / 多张、离线暂存、Skia 渲染、PNG 数量与条码内容、Server 终态回报、Client 重启持久化及重启后继续领取；数据保存在 Compose 命名卷。端口冲突时传 `-ServerPort <端口>`。完整测试大纲与排障方式见 [LINUX-CLIENT-E2E.md](LINUX-CLIENT-E2E.md)。
 
-## 4. Ubuntu（systemd 裸机部署）
+## 5. Ubuntu（systemd 裸机部署）
 
 1. Windows 上发布 linux-x64 包：
    ```powershell
@@ -85,7 +97,7 @@ docker compose -f .\packaging\e2e\compose.yaml down
    脚本会：建 `labelframe` 用户 → 解压 `/opt/labelframe/server` → 数据目录 `/var/lib/labelframe/server` → 安装并启动 systemd 服务（自启 + 崩溃重启）。
 4. 防火墙放行：`sudo ufw allow 53961/tcp`；Windows Client 设置页填 `http://<Ubuntu-IP>:53961`。
 
-## 5. 服务端管理界面（可选插件）
+## 6. 服务端管理界面（可选插件）
 
 服务端默认无头（仅 `/healthz` + API）。需要管理界面时，把前端 server 构建产物（`web/dist-server`，或 Release 里的 `labelframe-server-webui-x.x.x.zip`）放进插件目录即可——**放入即生效、移除即无头，无需重启**：
 
@@ -94,7 +106,7 @@ docker compose -f .\packaging\e2e\compose.yaml down
 
 打包脚本：`scripts/package-server-webui.ps1`。管理界面与客户端界面是同一前端的两种构建（工作台 / 设计器 / 在线设备 / 作业历史 / 下载中心 / 插件管理），无打印机相关内容。
 
-## 6. 分发通道
+## 7. 分发通道
 
 ### 客户端安装包分发（服务端集中下载）
 
@@ -108,7 +120,7 @@ docker compose -f .\packaging\e2e\compose.yaml down
 - 目录直放 APK 或经管理界面「下载中心」页「PDA 下载」区上传（上传仅接受 `.apk`；目录直放不限制扩展名）。
 - API：`GET/POST /api/pda-packages`、`GET/DELETE /api/pda-packages/{file}`（路径穿越防护；不存在 404 + `LF_SRV_010`）。**APK 下载响应 MIME 固定 `application/vnd.android.package-archive`**——Android 浏览器据此识别为安装包直接拉起安装。
 - **PDA 扫码装机（推荐路径）**：PDA 与服务器连同一局域网 → 打开服务端管理界面「下载中心」页 → PDA 相机 / 扫码工具扫条目旁二维码 → 浏览器下载 APK → 按页面提示完成「未知来源 / 安装未知应用」一次性授权后安装。二维码内容 = 管理员浏览器正在访问的局域网地址 + 该条目下载路径。
-- 升级安装请使用同一签名来源的 APK（GitHub Release 与本目录分发的都是同一 keystore 签名的 Release 构建，可直接覆盖安装）；换签名的影响见 §7。
+- 升级安装请使用同一签名来源的 APK（GitHub Release 与本目录分发的都是同一 keystore 签名的 Release 构建，可直接覆盖安装）；换签名的影响见 §8。
 
 ### 传输插件分发（`.lfplugin`）
 
@@ -119,11 +131,13 @@ docker compose -f .\packaging\e2e\compose.yaml down
 - 内置传输插件：`log`（模拟打印）、`tcp9100`、`winspool`（Windows 驱动）。插件接口见 DESIGN「传输插件」相关决策记录。
 - **Zebra 品牌传输已外置为官方插件**（迭代 63，决策 #123）：插件 id `labelframe-transport-zebra`，`.lfplugin` 包随 GitHub Release 发布（`labelframe-transport-zebra-<版本>.lfplugin`）并经客户端 MSI 附带（安装目录 `plugin-packages\`）；连接配置引用 Zebra 时插件未装则客户端启动自动从附带包安装（升级无断裂），也可在「插件管理」手动安装 / 升级（官方插件覆盖安装带版本比较：新版本覆盖、同版本幂等、降级需先卸载）。未安装该插件时 Zebra 品牌不可用（连接引用则回退默认连接并在 host.log 留痕）。
 
-## 7. 自动化发布与签名
+## 8. 自动化发布与签名
 
 - 发版两步：① 更新 `docs/ROADMAP.md` 与 `CHANGELOG.md` 提交推送；② 例如 `git tag v0.22.2 && git push origin v0.22.2`。
 - CI 自动：构建测试 → 双 MSI（可签名）→ 管理界面插件 zip → Linux 归档 → **Android APK（PDA 宿主，迭代 49 起）** → 同一次构建的 Server / Linux Client 候选镜像通过 Compose E2E → 原镜像推 ghcr.io（版本号 + `latest`）→ GitHub Release。
+- **安装引导 EXE（迭代 68，决策 #132）**：发版链含独立 `bundle` job——按当版 install manifest（分阶段生成，runtime 哈希跨 job 一致性断言 fail-closed）构建 `LabelFrame-Bootstrapper-<版本>.exe` 并随 Release 附件发布（§2 推荐安装入口即此产物）；下载多源与哈希校验语义见 DESIGN §6.2 / §6.10。
 - MSI 签名：配置 Secret `MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD` 时自动签名，否则跳过。当前为自签证书过渡方案（公开下载仍可能 SmartScreen 提示），正式对外分发建议购买 OV 代码签名证书。本地签名：`scripts\create-signing-cert.ps1` 生成证书，`scripts\build-msi.ps1 -Sign` 使用。
+- **引导 EXE 签名（迭代 68）**：与 MSI 复用同一对 Secrets（`MSI_SIGN_CERT_BASE64` / `MSI_SIGN_PASSWORD`，`build-bundle.ps1 -Sign`）；未配置时跳过签名，完整性由 manifest sha256 校验保障。
 - Android APK 签名（迭代 49；**迭代 59 签名稳定化，决策 #119**）：必须配置全部四个 Secrets——`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`——用专用自签 keystore 签名；**任一缺失即构建失败（`::error::` 后 exit 1），绝不回退 debug 签名**（此前「缺失回退 debug 签名并告警」的过渡路径已移除：回退路径存在 = 两次构建可能签名不一致，用户无法覆盖升级且换签名会重置 ANDROID_ID 致设备号漂移）。日常 CI 的 Android 构建检查（ci.yml 第三必需检查）仍用 debug 签名验证可构建，不对外分发。
 - **keystore 证书管理（重要）**：
   - 一次性生成并写入 Secrets：`scripts\create-android-keystore.ps1 -Password '<强密码>' -SetGithubSecrets`（生成 `labelframe-release.keystore` 并把四个 Secret 写入仓库）。
@@ -131,7 +145,7 @@ docker compose -f .\packaging\e2e\compose.yaml down
   - **备份要求**：keystore 或密码丢失 = 无法再发同签名升级包（只能换签名，见下），务必在生成后立即离线备份并记录别名与两个密码；GitHub Secrets 可随时重写（keystore 文件还在即可恢复）。
   - **换签名影响**（对齐 DESIGN 决策 #104）：换签名后已装设备**需先卸载旧版再安装**——卸载会清空配置（服务器地址 / 打印机 IP / 设备名称需重填）；且 Android 8+ 的设备号（ANDROID_ID）绑定签名密钥，**换签名后设备号会变**，Server 设备目录出现新条目（旧条目停留显示离线，可忽略）。PDA 安装 / 覆盖升级详见 [AndroidHost README](../src/LabelFrame.AndroidHost/README.md)。
 
-## 8. 配置与环境变量
+## 9. 配置与环境变量
 
 - 服务端监听 / 数据库路径 / 历史清理保留期（作业默认 30 天、日志默认 90 天）均可用 `LABELFRAME_SERVER_*` 环境变量覆盖（systemd 单元已设默认值）。
 - 服务端暂存作业过期：设备离线期间暂存的 Pending 作业默认 **12 小时**未投递即放弃（终态 Expired，作业历史可见、不重新投递，业务系统重打需用新 requestId 重发）；TTL 只对 Pending 计龄，作业被设备领取后不再计龄。配置 `Server.PendingJobTtlHours`（`LABELFRAME_SERVER_PENDING_TTL_HOURS`），设为 0 或负值 = 关闭过期（行为与现状一致）；过期扫描周期 `Server.ExpirationScanIntervalMinutes`（默认 5 分钟，`LABELFRAME_SERVER_EXPIRATION_SCAN_MINUTES`）。例：
@@ -158,7 +172,7 @@ docker compose -f .\packaging\e2e\compose.yaml down
   Logging__LogLevel__LabelFrame.Server.ServerService=Warning   # 隐藏业务事件 INFO 行
   ```
 
-## 9. 辅助脚本
+## 10. 辅助脚本
 
 - `scripts\demo-winhost.ps1`：无打印机验证打印闭环（构建 → 启动 WinHost → 提交含中文作业 → 展示 ZPL）。
 - `scripts\generate-icon.ps1`：生成应用图标。
