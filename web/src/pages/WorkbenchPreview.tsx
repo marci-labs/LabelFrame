@@ -36,7 +36,7 @@ export function TemplatePreviewModal({ name, entry, onClose }: { name: string; e
         ) : (
           <>
             <img className="preview-modal-img" src={entry.url} alt={`模板「${name}」预览`} />
-            <div className="preview-modal-foot">按模板测试数据渲染</div>
+            <div className="preview-modal-foot">按示例数据预览</div>
           </>
         )}
       </div>

@@ -149,7 +149,7 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
       app.setStatus(`已导入模板「${name}」。`)
       void load()
     } catch (err) {
-      app.setStatus(err instanceof ApiError ? err.message : '导入失败（文件可能不是有效的 .lfpkg 模板包）。')
+      app.setStatus(err instanceof ApiError ? err.message : '导入失败：所选文件不是有效的模板文件。')
     } finally {
       setBusy(null)
     }
@@ -170,7 +170,7 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
             value={search}
             onChange={(ev) => setSearch(ev.target.value)}
             placeholder="搜索模板名称"
-            title="按模板名称搜索（子串匹配，不分大小写）"
+            title="按模板名称搜索（不分大小写）"
             spellCheck={false}
             style={{ width: 170, paddingLeft: 26 }}
           />
@@ -185,7 +185,7 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
         </select>
         <button className="btn" onClick={() => document.getElementById('importFile')?.click()} disabled={busy !== null}>
           <Icon name="upload" size={13} />
-          导入 .lfpkg
+          导入模板
         </button>
         <input
           id="importFile"
@@ -212,13 +212,13 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
         {loading || serverMode === 'unknown' ? (
           <div className="empty">
             <Icon name="refresh" />
-            <div className="empty-title">{serverMode === 'unknown' ? '正在探测连接…' : '加载中…'}</div>
+            <div className="empty-title">{serverMode === 'unknown' ? '正在连接服务端…' : '加载中…'}</div>
           </div>
         ) : templates.length === 0 ? (
           <div className="empty">
             <Icon name="workbench" />
             <div className="empty-title">还没有模板</div>
-            <div className="hint">点击「新建模板」开始设计第一张标签，或导入已有的 .lfpkg 模板包。</div>
+            <div className="hint">点击「新建模板」开始设计第一张标签，或导入之前导出的模板文件。</div>
           </div>
         ) : filtered.length === 0 ? (
           <div className="empty">

@@ -116,10 +116,10 @@ export function JobHistory() {
       <div className="page-head">
         <div className="page-title">
           作业历史
-          <small>最近 100 条作业（服务端队列 / 单机降级本机队列）；存在进行中作业时自动刷新</small>
+          <small>最近 100 条打印记录；有作业进行中时自动刷新</small>
         </div>
         <div className="spacer" />
-        <button className="btn" onClick={() => void load()} disabled={loading || serverMode === 'unknown'} title="重新拉取作业列表">
+        <button className="btn" onClick={() => void load()} disabled={loading || serverMode === 'unknown'} title="重新加载打印记录">
           <Icon name="refresh" size={13} />
           {loading ? '刷新中…' : '刷新'}
         </button>
@@ -133,8 +133,8 @@ export function JobHistory() {
         {serverMode === 'unknown' ? (
           <div className="empty">
             <Icon name="data" />
-            <div className="empty-title">正在探测连接…</div>
-            <div className="hint">正在确认服务端连通性（单机模式将显示本机作业列表）。</div>
+            <div className="empty-title">正在连接服务端…</div>
+            <div className="hint">未连接服务端时，将显示本机的打印记录。</div>
           </div>
         ) : !jobs || jobs.length === 0 ? (
           <div className="empty">
@@ -142,8 +142,8 @@ export function JobHistory() {
             <div className="empty-title">暂无历史作业</div>
             <div className="hint">
               {serverMode === 'server'
-                ? '终态作业默认保留 30 天，由服务端自动清理。'
-                : '本机作业不自动清理。'}
+                ? '打印记录默认保留 30 天，到期自动清理。'
+                : '保存在本机的打印记录不会自动清理。'}
             </div>
           </div>
         ) : (
@@ -151,11 +151,11 @@ export function JobHistory() {
             <thead>
               <tr>
                 <th style={{ width: 150 }}>时间</th>
-                <th style={{ width: 120 }}>requestId</th>
-                <th style={{ width: 100 }}>jobId</th>
+                <th style={{ width: 120 }}>请求编号</th>
+                <th style={{ width: 100 }}>作业编号</th>
                 <th style={{ width: 140 }}>目标设备</th>
                 <th style={{ width: 90 }}>状态</th>
-                <th style={{ width: 110 }}>完成-失败</th>
+                <th style={{ width: 110 }}>完成 / 失败</th>
                 <th>失败原因</th>
               </tr>
             </thead>

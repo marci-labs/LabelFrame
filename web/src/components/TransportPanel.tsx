@@ -132,7 +132,7 @@ export function TransportParamsEditor({
   setParam: (key: keyof TransportParams, value: string | number | undefined) => void
 }) {
   if (mode === 'Log') {
-    return <div className="hint">Log（模拟）：不连接打印机，作业渲染后保存 PNG 到本地目录，用于无打印机联调。</div>
+    return <div className="hint">不连接打印机：标签会生成为图片保存到本机，便于先确认打印效果。</div>
   }
   if (mode === 'Tcp') {
     return (
@@ -233,7 +233,7 @@ export function TransportParamsEditor({
             className="input mono"
             value={params.zebraUsbName ?? ''}
             onChange={(ev) => setParam('zebraUsbName', ev.target.value)}
-            placeholder="留空 = 自动发现第一台"
+            placeholder="留空 = 自动识别第一台"
             spellCheck={false}
           />
         </label>
@@ -357,11 +357,10 @@ export function TransportPanel() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="hint">当前生效连接</span>
+        <span className="hint">当前连接</span>
         <span className={'badge ' + (app.connected ? 'ok' : '')}>
           {formatTransport(app.transportConfig) || app.transport || '未知'}
         </span>
-        {!app.transportConfig && <span className="hint">（旧版客户端无连接管理端点，仅显示健康检查模式）</span>}
       </div>
 
       {form.pluginMode ? (
@@ -407,7 +406,7 @@ export function TransportPanel() {
         {result && <span className={result.ok ? 'badge ok' : 'badge err'}>{result.msg}</span>}
       </div>
 
-      <div className="hint">切换为先测试后生效：测试失败不切换并提示原因；保存后重启客户端仍保留该连接。</div>
+      <div className="hint">「测试连接」通过后才会切换，失败会提示原因且当前连接保持不变；保存后重启仍使用该连接。</div>
     </div>
   )
 }
@@ -452,7 +451,7 @@ export function TransportQuickSwitch() {
             const p = form.plugins.find((x) => x.id === ev.target.value)
             if (p) form.switchPlugin(p)
           }}
-          title="快速切换传输插件（应用 = 测试后生效）"
+          title="快速切换连接方式（点击「应用」会先测试，通过后生效）"
         >
           {form.plugins.map((p) => (
             <option key={p.id} value={p.id}>
@@ -465,7 +464,7 @@ export function TransportQuickSwitch() {
           className="input"
           value={form.mode}
           onChange={(ev) => form.switchMode(ev.target.value as TransportMode)}
-          title="快速切换连接方式（应用 = 测试后生效）"
+          title="快速切换连接方式（点击「应用」会先测试，通过后生效）"
         >
           {(app.transportConfig?.availableModes ?? ALL_TRANSPORT_MODES).map((m) => (
             <option key={m} value={m}>

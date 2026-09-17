@@ -148,14 +148,14 @@ describe('DataPrint 会话保留（迭代 15 §6.1）', () => {
     const { rerender } = render(<Harness show />)
     await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
     fireEvent.change(screen.getByDisplayValue('A-01'), { target: { value: 'B-02' } })
-    fireEvent.click(screen.getByRole('checkbox', { name: /调试模式/ }))
-    await waitFor(() => expect((screen.getByRole('checkbox', { name: /调试模式/ }) as HTMLInputElement).checked).toBe(true))
+    fireEvent.click(screen.getByRole('checkbox', { name: /模拟出图/ }))
+    await waitFor(() => expect((screen.getByRole('checkbox', { name: /模拟出图/ }) as HTMLInputElement).checked).toBe(true))
 
     // 切走再切回
     rerender(<Harness show={false} />)
     rerender(<Harness show />)
     await waitFor(() => expect(screen.getByDisplayValue('B-02')).toBeTruthy(), MOUNT_WAIT)
-    expect((screen.getByRole('checkbox', { name: /调试模式/ }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('checkbox', { name: /模拟出图/ }) as HTMLInputElement).checked).toBe(true)
     // 模板仍是选中项（第一个下拉 = 模板选择）
     expect((screen.getAllByRole('combobox')[0] as HTMLSelectElement).value).toBe('库位标签')
   })
@@ -164,14 +164,14 @@ describe('DataPrint 会话保留（迭代 15 §6.1）', () => {
     const { unmount } = render(<Harness show />)
     await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
     fireEvent.change(screen.getByDisplayValue('A-01'), { target: { value: 'C-03' } })
-    fireEvent.click(screen.getByRole('checkbox', { name: /调试模式/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /模拟出图/ }))
     await waitFor(() => expect(window.sessionStorage.getItem('labelframe.printDraft')).toContain('C-03'))
 
     unmount()
     // 全新会话（模拟刷新页面）：草稿从 sessionStorage 恢复
     render(<Harness show />)
     await waitFor(() => expect(screen.getByDisplayValue('C-03')).toBeTruthy(), MOUNT_WAIT)
-    expect((screen.getByRole('checkbox', { name: /调试模式/ }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('checkbox', { name: /模拟出图/ }) as HTMLInputElement).checked).toBe(true)
   })
 
   it('草稿只用 sessionStorage，不用 localStorage（D5：避免跨标签页共享）', async () => {
@@ -203,10 +203,10 @@ describe('DataPrint 会话保留（迭代 15 §6.1）', () => {
 })
 
 describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
-  it('调试关：打印测试提交作业，「出图预览」即时出图（不建作业）', async () => {
+  it('模拟出图关：打印测试提交作业，「图片预览」即时出图（不建作业）', async () => {
     await renderDataPrint()
     expect(screen.getByRole('button', { name: /打印测试（单张）/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '出图预览' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '图片预览' })).toBeTruthy()
 
     // 打印测试 → 正常作业
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
@@ -218,23 +218,23 @@ describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
     expect(mocks.local.renderImage).not.toHaveBeenCalled()
 
     // 出图预览 → render-image 下载，不建作业
-    fireEvent.click(screen.getByRole('button', { name: '出图预览' }))
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
     await waitFor(() => expect(mocks.local.renderImage).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
   })
 
-  it('调试开：按钮文案联动、隐藏「出图预览」、打印测试改为 render-image 下载、不提交作业', async () => {
+  it('模拟出图开：按钮文案联动、隐藏「图片预览」、打印测试改为 render-image 下载、不提交作业', async () => {
     await renderDataPrint()
-    fireEvent.click(screen.getByRole('checkbox', { name: /调试模式/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /模拟出图/ }))
 
     // 文案联动
-    expect(screen.getByRole('button', { name: '调试出图（单张）' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: '出图预览' })).toBeNull()
-    // 作业进度区提示调试模式
-    expect(screen.getByText('调试模式：不提交作业，出图已下载。')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '生成图片（单张）' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '图片预览' })).toBeNull()
+    // 作业进度区提示模拟出图（未实际打印）
+    expect(screen.getByText('已生成标签图片并下载（未实际打印）。')).toBeTruthy()
 
     // 单张出图 → render-image 下载 PNG，不提交作业
-    fireEvent.click(screen.getByRole('button', { name: '调试出图（单张）' }))
+    fireEvent.click(screen.getByRole('button', { name: '生成图片（单张）' }))
     await waitFor(() => {
       expect(mocks.local.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: { location: 'A-01' } }] }))
     })
@@ -244,11 +244,11 @@ describe('调试开关与按钮语义（迭代 15 §6.3）', () => {
 
   it('调试开 + 批量：下载 zip（全部行），不提交作业', async () => {
     await renderDataPrint()
-    fireEvent.click(screen.getByRole('checkbox', { name: /调试模式/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /模拟出图/ }))
     fireEvent.change(document.getElementById('excelFile')!, { target: { files: [new File(['x'], 'data.xlsx')] } })
     await screen.findByText('列映射（2 行数据）')
 
-    fireEvent.click(screen.getByRole('button', { name: '下载调试图片 zip（2 张）' }))
+    fireEvent.click(screen.getByRole('button', { name: '下载图片（2 张）' }))
     await waitFor(() => {
       expect(mocks.local.renderImages).toHaveBeenCalledWith(
         expect.objectContaining({ labels: [{ data: { location: 'X-01' } }, { data: { location: 'Y-02' } }] }),
@@ -287,7 +287,7 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
   it('本机已注册且在线：只显示「本机（{deviceName}）」标签，无设备选择器', async () => {
     await renderServerMode(DEVICES)
     expect(screen.getByText('本机（仓库-1 打印电脑）')).toBeTruthy()
-    expect(screen.getByText(/本机已注册且在线：作业经服务端投递/)).toBeTruthy()
+    expect(screen.getByText(/本机已连接服务端，打印记录也会同步到服务端/)).toBeTruthy()
     // 客户端构建不再有设备选择器
     expect(screen.queryByLabelText('目标设备')).toBeNull()
   })
@@ -307,7 +307,7 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
   it('本机设备离线：降级本机直连并提示原因；提交自包含 template 走 localApi', async () => {
     await renderServerMode(DEVICES, { deviceId: 'device-2', deviceName: '仓库-2 打印电脑' })
     expect(screen.getByText('本机（仓库-2 打印电脑）')).toBeTruthy()
-    expect(screen.getByText(/本机设备当前离线：已降级为本机直连打印/)).toBeTruthy()
+    expect(screen.getByText(/本机当前离线：暂用本机直接打印/)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     await waitFor(() => {
@@ -322,7 +322,7 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
 
   it('本机未注册（deviceId 不在服务端列表）：降级本机直连并提示未注册', async () => {
     await renderServerMode(DEVICES, { deviceId: 'pc-x', deviceName: '未注册电脑' })
-    expect(screen.getByText(/本机未注册到服务端：已降级为本机直连打印/)).toBeTruthy()
+    expect(screen.getByText(/本机尚未加入服务端：暂用本机直接打印/)).toBeTruthy()
     // 提交走本机直连（localApi）
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     await waitFor(() => expect(mocks.local.submitJob).toHaveBeenCalledTimes(1))
@@ -332,12 +332,12 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
   it('旧客户端无 deviceId：降级本机直连并提示未注册', async () => {
     await renderServerMode(DEVICES, { deviceId: undefined, deviceName: undefined })
     expect(screen.getByText('本机（未知）')).toBeTruthy()
-    expect(screen.getByText(/本机未注册到服务端：已降级为本机直连打印/)).toBeTruthy()
+    expect(screen.getByText(/本机尚未加入服务端：暂用本机直接打印/)).toBeTruthy()
   })
 
   it('服务端模式无设备（空列表）：本机未注册降级直连，打印测试仍可用', async () => {
     await renderServerMode([])
-    expect(screen.getByText(/本机未注册到服务端/)).toBeTruthy()
+    expect(screen.getByText(/本机尚未加入服务端/)).toBeTruthy()
     expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(false)
   })
 
@@ -352,7 +352,7 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
     expect(await screen.findByText('已完成 1 / 1 张')).toBeTruthy()
     expect(screen.getByText(/目标设备：device-1（在线）/)).toBeTruthy()
     // 无逐张表格，显示说明行
-    expect(screen.getByText(/服务端作业无逐张明细/)).toBeTruthy()
+    expect(screen.getByText(/该作业无逐张明细/)).toBeTruthy()
   })
 
   it('单机降级（/api/devices 404）：无目标设备 UI，模板列表走 localApi，提交自包含 template 走 localApi（双 base 守门）', async () => {
@@ -410,8 +410,8 @@ describe('连接状态徽标（迭代 18 F5）', () => {
     await renderDataPrint()
     expect(screen.getByText('本机连接')).toBeTruthy()
     expect(screen.getByText('服务端')).toBeTruthy()
-    // 本机连接徽标：来自 localApi.getTransport（Log 模式）
-    expect(screen.getByText('LOG')).toBeTruthy()
+    // 本机连接徽标：来自 localApi.getTransport（Log 模式 → 用户语摘要「模拟打印」）
+    expect(screen.getByText('模拟打印')).toBeTruthy()
     // 服务端连通（healthz 成功）→ 已连接
     expect(screen.getByText('已连接')).toBeTruthy()
   })
@@ -441,13 +441,13 @@ describe('无字段模板（静态标签）打印测试（迭代 65 · #62）', 
     await screen.findByRole('button', { name: /打印测试（单张）/ }, MOUNT_WAIT)
   }
 
-  it('操作区照常渲染且可用：静态标签说明提示 + 调试模式复选框 + 出图预览；Excel 模板仍禁用（AC-01）', async () => {
+  it('操作区照常渲染且可用：静态标签说明提示 + 模拟出图复选框 + 图片预览；Excel 模板仍禁用（AC-01）', async () => {
     await renderStaticPrint()
     expect(screen.getByText(/该模板为静态标签（无字段填充）/)).toBeTruthy()
     expect(screen.getByText('静态标签无需填写数据；打印测试提交 1 张空数据标签（内容按版式原样输出）。')).toBeTruthy()
-    expect(screen.getByRole('checkbox', { name: /调试模式/ })).toBeTruthy()
+    expect(screen.getByRole('checkbox', { name: /模拟出图/ })).toBeTruthy()
     expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(false)
-    expect((screen.getByRole('button', { name: '出图预览' }) as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: '图片预览' }) as HTMLButtonElement).disabled).toBe(false)
     // 无字段无列可生成：Excel 模板维持禁用，tooltip 不变
     const excelBtn = screen.getByRole('button', { name: /下载 Excel 模板/ }) as HTMLButtonElement
     expect(excelBtn.disabled).toBe(true)
@@ -464,10 +464,10 @@ describe('无字段模板（静态标签）打印测试（迭代 65 · #62）', 
     expect(mocks.local.renderImage).not.toHaveBeenCalled()
   })
 
-  it('调试关：出图预览空数据渲染（不建作业）；调试开：打印测试改为调试出图（空数据）（AC-03）', async () => {
+  it('模拟出图关：图片预览空数据渲染（不建作业）；模拟出图开：打印测试改为生成图片（空数据）（AC-03）', async () => {
     await renderStaticPrint()
     // 调试关：出图预览 → render-image 空数据，不建作业
-    fireEvent.click(screen.getByRole('button', { name: '出图预览' }))
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
     await waitFor(() => {
       expect(mocks.local.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: {} }] }))
     })
@@ -475,10 +475,10 @@ describe('无字段模板（静态标签）打印测试（迭代 65 · #62）', 
     await waitFor(() => expect(clickSpy.mock.instances[0]?.download).toBe('label-1.png'))
 
     // 调试开：按钮文案联动为调试出图（单张），仍空数据、不建作业
-    fireEvent.click(screen.getByRole('checkbox', { name: /调试模式/ }))
-    expect(screen.getByRole('button', { name: '调试出图（单张）' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: '出图预览' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: '调试出图（单张）' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /模拟出图/ }))
+    expect(screen.getByRole('button', { name: '生成图片（单张）' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '图片预览' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '生成图片（单张）' }))
     await waitFor(() => expect(mocks.local.renderImage).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(clickSpy.mock.instances[1]?.download).toBe('label-1.png'))
     expect(mocks.local.submitJob).not.toHaveBeenCalled()

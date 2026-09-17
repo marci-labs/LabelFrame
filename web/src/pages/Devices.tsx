@@ -76,7 +76,7 @@ export function Devices() {
       <div className="page-head">
         <div className="page-title">
           在线设备
-          <small>设备目录（含 lastIp 与在线状态），点击设备设为数据与打印默认目标</small>
+          <small>点击设备可将其设为「数据与打印」的默认目标</small>
         </div>
         <div className="spacer" />
         <button
@@ -108,18 +108,18 @@ export function Devices() {
             <div className="hint">
               客户端（LabelFrame Client）安装并连接服务端后，设备会出现在这里。
               <br />
-              在线状态由心跳判定（30s 窗口），页面每 5s 自动刷新。
+              设备超过 30 秒未连接即显示为离线；列表每 5 秒自动刷新。
             </div>
           </div>
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th style={{ width: 210 }}>deviceId</th>
+                <th style={{ width: 210 }}>设备 ID</th>
                 <th>名称</th>
-                <th style={{ width: 150 }}>lastIp</th>
+                <th style={{ width: 150 }}>最近 IP</th>
                 <th style={{ width: 90 }}>在线状态</th>
-                <th style={{ width: 160 }}>最近心跳</th>
+                <th style={{ width: 160 }}>最近连接</th>
                 <th style={{ width: 110 }}></th>
               </tr>
             </thead>

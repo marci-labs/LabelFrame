@@ -124,9 +124,9 @@ describe('server 构建：K2 跳过 localApi 探测', () => {
 })
 
 describe('server 构建：状态栏（服务端地址 + UI 模式，无打印机内容）', () => {
-  it('显示 同源（页面 origin）· Server 管理界面', async () => {
+  it('显示 页面 origin · 服务端管理界面（迭代 73 去除「同源」开发者术语）', async () => {
     render(<App />)
-    expect(await screen.findByText(`同源（${window.location.origin}）· Server 管理界面`)).toBeTruthy()
+    expect(await screen.findByText(`${window.location.origin} · 服务端管理界面`)).toBeTruthy()
     // 无本机 IP 显示（server 构建不读 /api/host/config）
     expect(screen.queryByText(/本机 IP：/)).toBeNull()
   })

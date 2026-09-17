@@ -198,7 +198,7 @@ describe('工作台模板预览列（迭代 46 修订：内嵌缩略图）', () 
     // 灯箱大图与缩略图同源（缓存命中，无新请求）
     expect(enlargedOf('Carton-Label-A').getAttribute('src')).toBe('blob:preview-1')
     expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
-    expect(screen.getByText('按模板测试数据渲染')).toBeTruthy()
+    expect(screen.getByText('按示例数据预览')).toBeTruthy()
 
     // 点卡片本体（图片）不关闭
     fireEvent.click(enlargedOf('Carton-Label-A'))

@@ -140,7 +140,7 @@ describe('作业历史页（迭代 18 F6）', () => {
     mocks.server.getJobs.mockResolvedValue([])
     renderJobHistory()
     expect(await screen.findByText('暂无历史作业')).toBeTruthy()
-    expect(screen.getByText('终态作业默认保留 30 天，由服务端自动清理。')).toBeTruthy()
+    expect(screen.getByText('打印记录默认保留 30 天，到期自动清理。')).toBeTruthy()
   })
 
   it('单机降级（healthz 失败 → standalone）：列表走 localApi，空态文案为本机不自动清理', async () => {
@@ -158,12 +158,12 @@ describe('作业历史页（迭代 18 F6）', () => {
     await waitFor(() => expect(mocks.server.getJobs).toHaveBeenCalledWith(100, undefined))
   })
 
-  it('单机降级空态：本机作业不自动清理文案', async () => {
+  it('单机降级空态：本机打印记录不自动清理文案', async () => {
     mocks.server.healthz.mockRejectedValue(new Error('down'))
     mocks.local.getJobs.mockResolvedValue([])
     renderJobHistory()
     expect(await screen.findByText('暂无历史作业')).toBeTruthy()
-    expect(screen.getByText('本机作业不自动清理。')).toBeTruthy()
+    expect(screen.getByText('保存在本机的打印记录不会自动清理。')).toBeTruthy()
   })
 
   it('加载失败：显示错误信息', async () => {

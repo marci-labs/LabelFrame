@@ -289,7 +289,7 @@ export function DownloadCenter() {
         {/* ── 客户端下载（PC；client-packages 既有数据并入展示，行为不动）── */}
         <SectionHead
           title="客户端下载（PC）"
-          hint="打印电脑的安装包（MSI / zip）——客户端也可在「设置 → 更新与安装包」中下载"
+          hint="打印电脑（PC）的安装程序——客户端也可在「设置 → 更新与安装包」中下载"
           uploading={uploadingClient}
           uploadLabel="上传客户端安装包"
           inputId="clientPkgFile"
@@ -305,11 +305,7 @@ export function DownloadCenter() {
             <Icon name="download" />
             <div className="empty-title">暂无客户端安装包</div>
             <div className="hint">
-              点击「上传客户端安装包」上传安装文件（MSI / zip 等），或直接将文件放入服务端数据目录
-              <span className="mono" style={{ margin: '0 4px' }}>
-                client-packages
-              </span>
-              （重启后自动列出）。
+              点击「上传客户端安装包」上传安装文件。
             </div>
           </div>
         ) : (
@@ -320,7 +316,7 @@ export function DownloadCenter() {
         <div style={{ height: 16 }} />
         <SectionHead
           title="PDA 下载（Android）"
-          hint="PDA 宿主安装包（APK）——扫条目旁二维码即可在 PDA 浏览器下载"
+          hint="PDA 安装包（APK）——扫条目旁二维码即可下载"
           uploading={uploadingPda}
           uploadLabel="上传 APK"
           inputId="pdaPkgFile"
@@ -350,11 +346,7 @@ export function DownloadCenter() {
             <Icon name="download" />
             <div className="empty-title">暂无 PDA 安装包</div>
             <div className="hint">
-              点击「上传 APK」上传 PDA 宿主安装包（仅 .apk），或直接将文件放入服务端数据目录
-              <span className="mono" style={{ margin: '0 4px' }}>
-                pda-packages
-              </span>
-              （重启后自动列出）；也可从 GitHub Release 下载 APK 后放入。
+              点击「上传 APK」上传 PDA 安装包（Android 安装文件）。
             </div>
           </div>
         ) : (

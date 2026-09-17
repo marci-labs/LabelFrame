@@ -80,7 +80,7 @@ export function PluginPackages() {
       <div className="page-head">
         <div className="page-title">
           插件管理
-          <small>服务端集中分发传输插件包（上传 / 下载 / 删除）</small>
+          <small>插件包统一在此分发（上传 / 下载 / 删除）</small>
         </div>
         <div className="spacer" />
         <button className="btn" onClick={() => document.getElementById('pluginPkgFile')?.click()} disabled={uploading}>
@@ -121,13 +121,7 @@ export function PluginPackages() {
             <Icon name="puzzle" />
             <div className="empty-title">暂无插件包</div>
             <div className="hint">
-              点击右上角「上传插件包」上传 .lfplugin 插件包（zip：根 manifest.json + 插件 DLL），或直接将文件放入服务端数据目录
-              <span className="mono" style={{ margin: '0 4px' }}>
-                plugin-packages
-              </span>
-              （重启后自动列出）。
-              <br />
-              上传后客户端可在「设置 → 插件管理」中安装。
+              点击右上角「上传插件包」上传插件包；上传后客户端可在「设置 → 插件管理」中安装。
             </div>
           </div>
         ) : (
@@ -136,7 +130,7 @@ export function PluginPackages() {
               <tr>
                 <th>名称</th>
                 <th style={{ width: 90 }}>版本</th>
-                <th style={{ width: 140 }}>pluginId</th>
+                <th style={{ width: 140 }}>插件 ID</th>
                 <th style={{ width: 90 }}>大小</th>
                 <th style={{ width: 150 }}>修改时间</th>
                 <th style={{ width: 210 }}>状态</th>

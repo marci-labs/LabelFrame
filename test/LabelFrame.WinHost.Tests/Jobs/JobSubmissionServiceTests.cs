@@ -177,7 +177,7 @@ public class JobSubmissionServiceTests
         Assert.Contains("^GF", stored!.Items[0].Zpl);
     }
 
-    // ── 迭代 74：Log 模式作业数据留痕（模板名 + 数据集合，决策 #138）──
+    // ── 迭代 74：Log 模式作业数据留痕（模板名 + 数据集合，决策 #139）──
 
     private static SubmitJobRequest CreateNamedRequest(string requestId, params IReadOnlyDictionary<string, string>[] labels) => new(
         requestId,

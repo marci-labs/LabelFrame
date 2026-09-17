@@ -103,11 +103,7 @@ export function PdaLogs() {
           <div className="empty">
             <Icon name="logs" />
             <div className="empty-title">暂无日志</div>
-            <div className="hint">
-              PDA 端打印测试后日志会回传显示于此。
-              <br />
-              可手动验证：POST /api/logs {'{ deviceId, lines }'}
-            </div>
+            <div className="hint">在 PDA 上进行打印测试后，日志会显示在这里。</div>
           </div>
         ) : (
           <table className="table">
