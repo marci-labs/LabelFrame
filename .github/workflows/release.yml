@@ -1,4 +1,4 @@
-# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123；迭代 67 修复步骤序——插件包构建先于 Client MSI 打包并加 fail-closed 断言，#97；迭代 68 增加引导 Bundle EXE——bundle job 分阶段生成 manifest 构建、随 Release 附件发布，决策 #132）
+# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123；迭代 67 修复步骤序——插件包构建先于 Client MSI 打包并加 fail-closed 断言，#97；迭代 68 增加引导 Bundle EXE——bundle job 分阶段生成 manifest 构建、随 Release 附件发布，决策 #132；迭代 71 起 Linux 归档默认 self-contained + compose 分发附件 compose.yml / .env 随 Release 发布，决策 #133）
 # 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
 # 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Zebra 官方插件包 / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 引导 Bundle EXE（bundle job）→ 生成安装清单 → 创建 GitHub Release。
 # MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
@@ -217,7 +217,10 @@ jobs:
           & .\scripts\package-server-webui.ps1 -Version $env:VERSION
           if (-not $?) { throw '插件包打包失败' }
 
-      - name: 发布 Server（linux-x64）并归档
+      # 迭代 71（#91，决策 #133）起归档默认 self-contained：目标机免装 .NET 10 ASP.NET Core Runtime
+      # （对齐 Windows 侧引导链教训 #128/#129）；framework-dependent 归档可经 install.sh 安装（缺运行时
+      # 明确报错给官方直链，不自动安装）。release.yml 调用零变化——默认值在脚本内翻转。
+      - name: 发布 Server（linux-x64，self-contained）并归档
         shell: pwsh
         run: |
           & .\scripts\publish-server-linux.ps1 -Version $env:VERSION
@@ -581,6 +584,27 @@ jobs:
           }
           if ($fail) { exit 1 }
 
+      # compose 分发附件（迭代 71，#91，决策 #133）：compose.yml 与 packaging/ubuntu/docker-compose.yml
+      # 同源复制（防漂移，含管理界面 / client-packages / pda-packages / plugin-packages 四组挂载注释）；
+      # .env 由当版版本号生成（LABELFRAME_VERSION 钉定，LABELFRAME_IMAGE 覆盖注释模板）。
+      # 两者不进 install manifest——部署描述文件而非可安装产物（#116 server-docker「无下载组件」口径维持）。
+      - name: 生成 compose 分发附件（compose.yml + .env）
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          cp packaging/ubuntu/docker-compose.yml release/compose.yml
+          cat > release/.env <<EOF
+          # LabelFrame 服务端 compose 环境变量（发版自动生成，LABELFRAME_VERSION 已钉定为本 Release 版本）
+          # 用法：与 compose.yml 放同一目录后 docker compose up -d；想跟随最新版可把版本改回 latest
+          LABELFRAME_VERSION=$VERSION
+          #LABELFRAME_IMAGE=ghcr.io/marci-labs/labelframe-server
+          EOF
+          test -s release/compose.yml
+          test -s release/.env
+          grep -q 'labelframe-server' release/compose.yml
+          grep -q "LABELFRAME_VERSION=$VERSION" release/.env
+          echo "compose 分发附件就绪：compose.yml + .env（版本钉定 $VERSION）"
+
       - name: 创建 Release（v${{ needs.version.outputs.version }}）
         uses: softprops/action-gh-release@v2
         with:
@@ -596,5 +620,7 @@ jobs:
             release/labelframe-server-webui-*.zip
             release/labelframe-server-*-linux-x64.tar.gz
             release/labelframe-transport-zebra-*.lfplugin
+            release/compose.yml
+            release/.env
             release/install-manifest.json
             release/latest.json

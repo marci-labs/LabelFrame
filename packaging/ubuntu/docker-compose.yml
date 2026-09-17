@@ -1,7 +1,8 @@
 services:
   labelframe-server:
-        # 默认从 ghcr.io 拉取；本地调试可覆盖：
-    #   LABELFRAME_IMAGE=labelframe-server LABELFRAME_VERSION=0.16.0 docker compose up -d
+    # 默认从 ghcr.io 拉取；本地调试可覆盖：
+    #   LABELFRAME_IMAGE=labelframe-server LABELFRAME_VERSION=0.27.1 docker compose up -d
+    # Release 附件 compose.yml + .env（迭代 71）即本文件的当版分发副本，.env 已钉定版本
     image: ${LABELFRAME_IMAGE:-ghcr.io/marci-labs/labelframe-server}:${LABELFRAME_VERSION:-latest}
     container_name: labelframe-server
     restart: unless-stopped
