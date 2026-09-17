@@ -2,6 +2,17 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 70：离线布局安装——布局目录生成与本地源无网首装 · 2026-09-17
+
+- **离线布局目录（offline layout，决策 #135；DESIGN §6.2 / §6.10，对标 VS 安装器 layout 模式）**：内网 / 无外网机器首装产品化——IT 在有网机器把当版全部组件（Server / Client MSI、webui zip、官方插件 `.lfplugin`、runtime 引导器，按 manifest 条目）+ `install-manifest.json`（官方原样字节）+ `latest.json` + 引导 EXE 预下载汇集到一个目录，拷贝分发后目标机**用同一个引导程序**无外网完成首装。组件文件名约定 = urls[0] 路径末段（须含扩展名）+ 查询型直链固定名兜底表（`runtime-webview2` → `MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe`，核心库 `OfflineLayoutNaming` 单点，生成与消费共用）；单 EXE 全内嵌（attached container）不做（布局目录满足需求，§7 开放点登记）。
+- **生成双形态（用户拍板：两者都做）**：① 独立脚本 `scripts/make-offline-layout.ps1`（IT 手段；引导 EXE 来源 = `-BootstrapperPath` 本地产物，本地缺省时按 `-BootstrapperUrl` 从 Release 下载——引导 EXE 已随 Release 发布（迭代 68 / 决策 #132））；② 引导程序 `--layout <目录>` 参数（产品化；EXE 自复制 `WixBundleOriginalSource`，`--manifest <路径|URL>` 可覆写生成清单源，默认稳定通道；进度窗 + 取消 + 结果对话框，`-passive` 静默）。两者同一语义：逐组件按 urls 顺序下载、sha256 与 manifest 逐字节一致才落位（不符换下一源、全源失败非零退出 fail-closed）、重复生成幂等（已存在且哈希一致复用、篡改 / 旧版残留重下）。引擎原生单横线 `-layout`（`LaunchAction.Layout`）由 BA 路由进同一生成流程（`IBootstrapperCommand.LayoutDirectory`），与双横线 `--layout` 同语义。
+- **源解析顺序契约（用户拍板：a) 隐式优先源目录，manifest schema 零修改；#115 联动）**：清单来源为**本地路径**时其所在目录 = 隐式优先源目录，每链包有效源序 = **[布局目录本地文件（在位时）] ++ urls**——失败计数与换源语义不变（本地获取 / 校验失败按既有推进语义落到 urls，全源耗尽 fail-closed）；BA 在 `CacheAcquireBegin` 以 `IEngine.SetLocalSource` 注入本地文件，引擎对本地源副本同样按包内嵌摘要（= manifest sha256）强制校验（#117 口径）——**篡改布局内组件被校验拦截**（在线换 urls 重取干净副本 / 断网源耗尽失败，篡改内容绝不落装）。布局不在位 / URL 清单 → 纯 urls，行为与现状完全一致（AC-03 回归锚点）。
+- **离线首装入口（隐式检测）**：引导 EXE 同目录存在 `install-manifest.json` → 欢迎页清单来源默认该本地文件（`WixBundleOriginalSourceFolder` 探测 + 提示条），拷目录双击 EXE 即零网络起步；无邻接清单 → 默认稳定通道（现状不变）。欢迎页离线指引文案随布局目录落地更新（#53 决议 1 方案 A 指引的收口）。
+- **实现**：核心库新增 `OfflineLayout/`（`OfflineLayoutNaming` / `OfflineLayoutBuilder` / `LayoutModeArguments`，net48 / net10 双腿）；`CacheSourceFallback` 扩本地源（`SourceFallbackOutcome` 增 `LocalPath` / `IsLocal`，`FromManifest(manifest, layoutDirectory)`）；`WizardSession` 增 `LocalSourceDirectory`；BA 接线（布局生成模式 + `SetLocalSource` + 邻接清单检测 + `LayoutProgressForm` 进度窗）；`InstallManifestLoader.IsHttpUrl` 公开。
+- **测试与取证**：Bootstrapper 测试全数保留并新增至 **218 项全绿**（命名约定 / 布局生成 / 参数解析 / 本地源优先与回退 / WizardSession 本地源；既有多源回退用例全数保留通过——AC-03）；走查脚本 `scripts/test-bundle-offline-layout.ps1`（矩阵脚本同构：per-user 测试 Bundle + 真实 BA + 本地测试源）本地同构取证 **31 项断言全过**——G 生成（目录完整 + 哈希一致 + manifest 原样 + EXE 自复制）、I1 零外网首装（测试源在线但访问日志零命中 + 邻接清单默认 + 本地源命中日志）、I2 篡改 + 断网 fail-closed（校验拦截 + 源耗尽 + 篡改内容未落装）、I2b 篡改 + 在线换源重取（有效源序 [本地] ++ urls 实证）、R1 无布局在线回归（纯 urls 下载，行为与现状一致）；`make-offline-layout.ps1` 对本地源同构取证（成功生成 / 源不可达 fail-closed / 幂等复跑零组件下载）；既有下载矩阵脚本复跑通过（S1~S6 全绿）。**AC-02 断网实机口径（断网 VM / 实机 + 抓包）本机无法自证，转待验收**。
+- **记账**：DESIGN §6.2（布局目录契约）/ §6.3（offline 预设落地形态）/ §6.4（分发源策略）/ §6.10（本地源优先源解析顺序）+ 决策表 #132 + §7 开放点；ROADMAP 状态行随结项更新。
+
+>>>>>>> d183be0 (feat: 迭代 70——离线布局目录与本地源无网首装（#89）)
 ## 迭代 71：Linux 服务端一键安装——install.sh 与 compose 随发版分发 · 2026-09-17
 
 - **动机与范围（#91；用户 2026-09-15 会话定案「脚本 + compose 分发都做」）**：Linux 服务端部署从「Docker compose 手抄仓库文件 / systemd 裸机 DEPLOY §5 手工步骤（framework-dependent 需自备 runtime——与 Windows 侧 AspNetCore 前置教训 #128/#129 同源）」升级为「一条命令」——脚本即 Linux 的「安装程序」（契约假设 Linux 操作者具备 IT 能力，图形 / CLI 向导不做，#50 边界维持）。三项待决议用户拍板：self-contained 归档为默认（免 runtime 前置）/ 离线模式本轮支持 `--manifest` 本地路径与布局目录（衔接迭代 70 #89）/ runtime 缺失明确报错给官方直链、不自动安装。**Linux 部署契约先行入 DESIGN（决策 #134 + §6.12，强化路径）**。

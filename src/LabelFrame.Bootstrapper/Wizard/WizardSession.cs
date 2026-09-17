@@ -39,8 +39,14 @@ public sealed class WizardSession
         _http = http;
     }
 
-    /// <summary>清单来源：本地路径或 URL（默认稳定通道）。</summary>
+    /// <summary>清单来源：本地路径或 URL（默认稳定通道；布局目录场景 BA 启动时改写为邻接本地清单，决策 #135）。</summary>
     public string ManifestSource { get; set; } = StableChannelManifestUrl;
+
+    /// <summary>
+    /// 隐式优先源目录（离线布局目录，决策 #135）：清单来源为<b>本地路径</b>时 = 其所在目录（Apply 期本地源解析优先）；
+    /// URL 来源时为 null（纯 urls，行为与现状一致，AC-03 回归边界）。清单加载成功时更新。
+    /// </summary>
+    public string? LocalSourceDirectory { get; private set; }
 
     /// <summary>已加载并校验的安装清单（问卷后续步骤的前提）。</summary>
     public InstallManifest? Manifest { get; private set; }
@@ -71,6 +77,7 @@ public sealed class WizardSession
     {
         var effectiveHttp = http ?? _http;
         Manifest = await InstallManifestLoader.LoadAsync(ManifestSource, effectiveHttp, cancellationToken).ConfigureAwait(false);
+        LocalSourceDirectory = ResolveLocalSourceDirectory(ManifestSource);
 
         // 清单新鲜度（§6.11 latest.json 消费）：推导得到来源才读，失败静默跳过（不阻断主流程）
         Latest = await TryLoadLatestAsync(effectiveHttp, cancellationToken).ConfigureAwait(false);
@@ -102,6 +109,24 @@ public sealed class WizardSession
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return new RuntimeProbeResult(false, null, false, null, false);
+        }
+    }
+
+    /// <summary>隐式优先源目录解析：本地清单来源 → 所在目录（URL / 不可解析形态 → null，退化纯 urls，决策 #135）。</summary>
+    private static string? ResolveLocalSourceDirectory(string manifestSource)
+    {
+        if (InstallManifestLoader.IsHttpUrl(manifestSource))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Path.GetDirectoryName(Path.GetFullPath(manifestSource));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null; // 异常形态（file:// URI 等）：无本地源，不阻断加载
         }
     }
 

@@ -1,13 +1,16 @@
 using System.Text;
 using LabelFrame.Bootstrapper.Downloads;
 using LabelFrame.Bootstrapper.Manifest;
+using LabelFrame.Bootstrapper.OfflineLayout;
 using Xunit;
 
 namespace LabelFrame.Bootstrapper.Tests;
 
 /// <summary>
 /// 多源回退状态机测试（迭代 61 / #54「范围修订 v2」；DESIGN §6.10 决策 #125）：
-/// urls 顺序即优先级（#115）、失败计数逐源推进、源耗尽停止干预、单源清单退化行为、校验失败同样换源。
+/// urls 顺序即优先级（#115）、失败计数逐源推进、源耗尽停止干预、单源清单退化行为、校验失败同样换源；
+/// 迭代 70 / #89（决策 #135）补：布局目录本地源优先——有效源序 = [布局文件（在位时）] ++ urls、
+/// 本地失败按序落到 urls、布局不在位 / 无布局目录时行为与现状完全一致（AC-03 回归锚点）。
 /// </summary>
 public sealed class CacheSourceFallbackTests
 {
@@ -234,5 +237,163 @@ public sealed class CacheSourceFallbackTests
     public void FromManifest_rejects_null()
     {
         Assert.Throws<ArgumentNullException>(() => CacheSourceFallback.FromManifest(null!));
+    }
+
+    // ---- 布局目录本地源优先（迭代 70 / #89，决策 #135；有效源序 = [布局文件] ++ urls） ----
+
+    /// <summary>临时布局目录：放入指定组件的布局文件（内容任意——状态机只判在位，哈希校验由引擎承担）。</summary>
+    private static string CreateLayoutDirectory(params string[] fileNames)
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "lf-source-fallback-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        foreach (var fileName in fileNames)
+        {
+            File.WriteAllText(Path.Combine(dir, fileName), "layout-file-content");
+        }
+
+        return dir;
+    }
+
+    [Fact]
+    public void Layout_file_present_is_offered_first_before_urls()
+    {
+        using var layout = new TempDirectoryScope(CreateLayoutDirectory("LabelFrame-Server-0.27.0.msi"));
+        var fallback = CacheSourceFallback.FromManifest(MultiSourceManifest(), layout.Directory);
+
+        var outcome = fallback.ResolveAcquire("ServerMsi");
+
+        // 第 0 次获取解析 = 布局目录本地文件（隐式优先源；有效源总数 = 1 本地 + 2 urls = 3）
+        Assert.Equal(SourceFallbackDecision.UseSource, outcome.Decision);
+        Assert.True(outcome.IsLocal);
+        Assert.Null(outcome.Url);
+        Assert.Equal(Path.Combine(layout.Directory, "LabelFrame-Server-0.27.0.msi"), outcome.LocalPath);
+        Assert.Equal(0, outcome.SourceIndex);
+        Assert.Equal(3, outcome.SourceCount);
+        Assert.False(outcome.Rotated);
+        Assert.True(fallback.HasUntriedSources("ServerMsi"));
+    }
+
+    [Fact]
+    public void Layout_acquire_failure_advances_to_first_url_with_rotation()
+    {
+        // 本地源拷贝失败（文件被占用 / 移除等）→ 按既有推进语义落到 urls[0]（换源标记 = 真）
+        using var layout = new TempDirectoryScope(CreateLayoutDirectory("LabelFrame-Server-0.27.0.msi"));
+        var fallback = CacheSourceFallback.FromManifest(MultiSourceManifest(), layout.Directory);
+
+        fallback.RecordAcquireFailure("ServerMsi");
+        var outcome = fallback.ResolveAcquire("ServerMsi");
+
+        Assert.False(outcome.IsLocal);
+        Assert.Equal("https://main.example/LabelFrame-Server-0.27.0.msi", outcome.Url);
+        Assert.Equal(1, outcome.SourceIndex);
+        Assert.Equal(3, outcome.SourceCount);
+        Assert.True(outcome.Rotated);
+    }
+
+    [Fact]
+    public void Layout_verify_failure_tampered_file_also_rotates_to_urls()
+    {
+        // 篡改布局文件（引擎校验失败）→ 换源重取干净副本；断网（urls 均不可达）则源耗尽 fail-closed（AC-04）
+        using var layout = new TempDirectoryScope(CreateLayoutDirectory("LabelFrame-Server-0.27.0.msi"));
+        var fallback = CacheSourceFallback.FromManifest(MultiSourceManifest(), layout.Directory);
+
+        fallback.RecordVerifyFailure("ServerMsi");
+
+        Assert.Equal("https://main.example/LabelFrame-Server-0.27.0.msi", fallback.ResolveAcquire("ServerMsi").Url);
+    }
+
+    [Fact]
+    public void Layout_plus_urls_exhaustion_takes_one_more_failure_than_urls_only()
+    {
+        // 有效源 3（1 本地 + 2 urls）：前 3 次失败各换源，第 4 次即耗尽
+        using var layout = new TempDirectoryScope(CreateLayoutDirectory("LabelFrame-Server-0.27.0.msi"));
+        var fallback = CacheSourceFallback.FromManifest(MultiSourceManifest(), layout.Directory);
+
+        var sequence = new List<string?>();
+        for (var attempt = 0; attempt < 4; attempt++)
+        {
+            var outcome = fallback.ResolveAcquire("ServerMsi");
+            sequence.Add(outcome.IsLocal ? outcome.LocalPath : outcome.Url);
+            fallback.RecordAcquireFailure("ServerMsi");
+        }
+
+        Assert.Equal(
+            new[]
+            {
+                Path.Combine(layout.Directory, "LabelFrame-Server-0.27.0.msi"),
+                "https://main.example/LabelFrame-Server-0.27.0.msi",
+                "https://mirror.example/LabelFrame-Server-0.27.0.msi",
+                null, // 耗尽（KeepEngineUrl）
+            },
+            sequence);
+        Assert.False(fallback.HasUntriedSources("ServerMsi"));
+
+        var exhausted = fallback.ResolveAcquire("ServerMsi");
+        Assert.Equal(SourceFallbackDecision.KeepEngineUrl, exhausted.Decision);
+        Assert.Equal(3, exhausted.SourceCount); // 报告口径「已尝试全部 3 个源」
+    }
+
+    [Fact]
+    public void Layout_directory_without_file_for_component_keeps_urls_only_for_that_package()
+    {
+        // 布局目录只含 server 组件文件：ClientMsi 有效源序退化为纯 urls（不受其他组件影响）
+        using var layout = new TempDirectoryScope(CreateLayoutDirectory("LabelFrame-Server-0.27.0.msi"));
+        var fallback = CacheSourceFallback.FromManifest(MultiSourceManifest(), layout.Directory);
+
+        var client = fallback.ResolveAcquire("ClientMsi");
+        Assert.False(client.IsLocal);
+        Assert.Equal("https://main.example/LabelFrame-Client-0.27.0.msi", client.Url);
+        Assert.Equal(1, client.SourceCount); // 单源 urls：与无布局目录完全一致
+
+        fallback.RecordAcquireFailure("ClientMsi");
+        Assert.False(fallback.HasUntriedSources("ClientMsi")); // 失败即耗尽（现状语义不回归）
+
+        var server = fallback.ResolveAcquire("ServerMsi");
+        Assert.True(server.IsLocal);
+        Assert.Equal(3, server.SourceCount);
+    }
+
+    [Fact]
+    public void Layout_directory_present_but_empty_files_makes_all_urls_only()
+    {
+        // 布局目录在位但组件文件缺失（部分拷贝 / 损坏分发）→ 全部包退化为纯 urls（AC-03 同构回归锚点）
+        using var layout = new TempDirectoryScope(CreateLayoutDirectory("unrelated-file.txt"));
+        var fallback = CacheSourceFallback.FromManifest(MultiSourceManifest(), layout.Directory);
+
+        var server = fallback.ResolveAcquire("ServerMsi");
+        Assert.False(server.IsLocal);
+        Assert.Equal("https://main.example/LabelFrame-Server-0.27.0.msi", server.Url);
+        Assert.Equal(2, server.SourceCount);
+        Assert.Equal(0, server.SourceIndex);
+    }
+
+    [Fact]
+    public void Fwlink_component_uses_fixed_layout_name()
+    {
+        // 查询型直链组件（runtime-webview2）：布局文件名走固定名兜底表（OfflineLayoutNaming 契约）
+        using var layout = new TempDirectoryScope(CreateLayoutDirectory("MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe"));
+        var manifestJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Manifests", "install-manifest.full.json"));
+        var fallback = CacheSourceFallback.FromManifest(InstallManifest.Parse(manifestJson), layout.Directory);
+
+        var outcome = fallback.ResolveAcquire("WebView2Runtime");
+
+        Assert.True(outcome.IsLocal);
+        Assert.Equal(Path.Combine(layout.Directory, "MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe"), outcome.LocalPath);
+    }
+
+    /// <summary>临时目录作用域（测试结束删除）。</summary>
+    private sealed class TempDirectoryScope : IDisposable
+    {
+        public TempDirectoryScope(string directory) => Directory = directory;
+
+        public string Directory { get; }
+
+        public void Dispose()
+        {
+            if (System.IO.Directory.Exists(Directory))
+            {
+                System.IO.Directory.Delete(Directory, true);
+            }
+        }
     }
 }

@@ -49,7 +49,8 @@ public static class InstallManifestLoader
 #endif
     }
 
-    private static bool IsHttpUrl(string source) =>
+    /// <summary>来源是否为 http(s) URL（否则按本地文件路径处理；本地清单 → 布局目录隐式优先源判定共用，决策 #132）。</summary>
+    public static bool IsHttpUrl(string source) =>
         source.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
         || source.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 }

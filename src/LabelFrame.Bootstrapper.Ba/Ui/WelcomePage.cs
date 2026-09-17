@@ -3,7 +3,7 @@ using LabelFrame.Bootstrapper.Wizard;
 
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
-/// <summary>欢迎页：简介 + dry-run 预期 + 离线全量包入口指引（决议 1 方案 A：下载链接与说明）+ 清单来源（本地路径或 URL）+ 本机升级摘要（§6.11：可升级清单 / 已是最新 / 清单新鲜度）。</summary>
+/// <summary>欢迎页：简介 + dry-run 预期 + 离线布局目录入口指引（迭代 70 / 决策 #135：--layout 生成 + 拷目录离线首装）+ 清单来源（本地路径或 URL；布局目录隐式检测时默认本地）+ 本机升级摘要（§6.11：可升级清单 / 已是最新 / 清单新鲜度）。</summary>
 internal sealed class WelcomePage : UserControl, IWizardPage
 {
     private const string ReleasesPageUrl = "https://github.com/marci-labs/LabelFrame/releases";
@@ -16,6 +16,7 @@ internal sealed class WelcomePage : UserControl, IWizardPage
     private readonly Label _statusLabel = new();
     private readonly Label _upgradeLabel = new();
     private readonly Label _freshnessLabel = new();
+    private readonly Label _layoutHintLabel = new();
 
     public WelcomePage(WizardSession session, Action proceed)
     {
@@ -67,7 +68,17 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         _freshnessLabel.ForeColor = Color.FromArgb(154, 84, 0);
         _freshnessLabel.Visible = false;
 
-        // 离线全量包入口指引（决议 1 方案 A）：下载链接与说明文字；断网自动切换离线引导流程后置（#75）
+        // 布局目录提示（迭代 70 / 决策 #135）：默认清单来源为本地布局清单时展示（EXE 同目录隐式检测命中）
+        _layoutHintLabel.AutoSize = false;
+        _layoutHintLabel.Width = 656;
+        _layoutHintLabel.Height = 32;
+        _layoutHintLabel.TextAlign = ContentAlignment.MiddleLeft;
+        _layoutHintLabel.Padding = new Padding(6, 0, 0, 0);
+        _layoutHintLabel.BackColor = Color.FromArgb(232, 248, 236);
+        _layoutHintLabel.ForeColor = Color.FromArgb(38, 106, 66);
+        _layoutHintLabel.Visible = false;
+
+        // 离线布局目录入口指引（迭代 70 / #89，决策 #135——#53 决议 1 方案 A 指引的落地形态：布局目录已产品化）
         var offlineBox = new GroupBox
         {
             Text = "无法联网？（离线安装）",
@@ -77,8 +88,9 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         };
         var offlineText = new Label
         {
-            Text = "目标机器不能访问互联网时，先在有网络的电脑上打开发布页，下载「离线全量包」并拷贝到目标机器；"
-                + "然后在下方选择本地清单文件（离线包内嵌安装清单，全程无需联网）。",
+            Text = "目标机器不能访问互联网时，先在有网络的电脑上生成「离线布局目录」（运行安装引导并加参数"
+                + " --layout <目录>，或使用仓库脚本 scripts/make-offline-layout.ps1），把整个目录拷贝到目标机器，"
+                + "直接运行目录中的安装引导即可离线安装——清单与全部组件取自本地目录，全程无需联网。",
             AutoSize = true,
             MaximumSize = new Size(650, 0),
             Location = new Point(12, 22),
@@ -108,7 +120,13 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         };
         _sourceTextBox.Location = new Point(12, 50);
         _sourceTextBox.Width = 540;
-        _sourceTextBox.Text = WizardSession.StableChannelManifestUrl;
+        // 会话来源（迭代 70 / 决策 #135）：BA 启动检测到引导 EXE 同目录布局清单时已改写为本地路径——离线首装零网络起步
+        _sourceTextBox.Text = _session.ManifestSource;
+        if (!string.Equals(_sourceTextBox.Text, WizardSession.StableChannelManifestUrl, StringComparison.Ordinal))
+        {
+            _layoutHintLabel.Text = "已检测到本目录为离线布局目录：清单默认取自本地，组件将优先从本目录获取（无需联网）。";
+            _layoutHintLabel.Visible = true;
+        }
 
         _browseButton.Text = "浏览…";
         _browseButton.AutoSize = true;
@@ -124,11 +142,13 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         _statusLabel.Location = new Point(110, 88);
         _statusLabel.MaximumSize = new Size(540, 0);
 
+        _layoutHintLabel.Location = new Point(12, 112);
         sourceBox.Controls.Add(sourceLabel);
         sourceBox.Controls.Add(_sourceTextBox);
         sourceBox.Controls.Add(_browseButton);
         sourceBox.Controls.Add(_loadButton);
         sourceBox.Controls.Add(_statusLabel);
+        sourceBox.Controls.Add(_layoutHintLabel);
 
         Controls.Add(title);
         Controls.Add(intro);
