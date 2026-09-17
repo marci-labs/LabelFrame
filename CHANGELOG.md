@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 72：模拟打印出图目录保留清理——Log 出图 print 目录超期自动删除 · 2026-09-17
+
+- **动机与范围（#107；两项待决议用户 2026-09-17 拍板，均取建议项）**：Log 传输（模拟打印）每个作业把渲染位图落盘到出图目录（`HostOptions.PrintOutputPath`，默认 `%LOCALAPPDATA%\LabelFrame\print`，结构 `print\<jobId>\label-N.png`，写入点 `JobSubmissionService.SaveLogPrintImages`），该目录此前不在任何清理范围内、无删除 / 封顶 / 过期机制，长期联调 / 演示机器无限累积占盘——本轮补保留清理机制（WinHost 客户端，Windows 窗口与 Linux 无头共用路径），出图目录磁盘占用有界。
+- **清理口径（决策 #136，对齐 #108 保留先例）**：**按天保留、默认 31 天**，`LABELFRAME_PRINT_IMAGE_RETENTION_DAYS` 可调（与 `LABELFRAME_APP_LOG_RETENTION_DAYS` 同构），**≤0 = 不清理**（关闭语义）；判龄 = 作业子目录 `print\<jobId>` 的 **LastWriteTime**（与 jobs.db 解耦——删除只影响 Log 模式「查看出图」的目录 / 张数展示，作业历史记录本体不受影响）；触发时机 = **客户端启动时 + 每次模拟打印落盘后顺带执行**（新增 `PrintImageRetentionCleaner`，**不新增常驻后台任务**，对齐 #108「启动与轮转时顺带执行」轻量口径）；清理摘要记宿主日志一行；遇目录被占用 / 权限失败**降级留痕（日志）不抛出**（下次触发再试），不影响启动、打印与出图主链路。非 Log 模式（tcp9100 / winspool / zebra）落盘后清理不触发（调用点位于 Log 分支内），启动清理为目录维护与传输模式无关。
+- **实现**：`HostOptions` 新增 `PrintImageRetentionDays`（默认 31）+ `LABELFRAME_PRINT_IMAGE_RETENTION_DAYS` 环境变量覆盖；`Program` 启动时执行一次；`WinHostApp` 装配清理器注入 `JobSubmissionService`（Log 落盘后顺带执行；测试构造缺省 null = 不清理）。
+- **测试（LabelFrame.WinHost.Tests 新增 `PrintImageRetentionCleanerTests`，6 项全绿）**：超期删除（含内部 PNG + 摘要留痕一行）/ 保留期内不删（5 天前 + 当日新打）/ 关闭语义（0 与 -1 双参实证）/ 清理失败降级留痕（独占句柄占用超期目录，不抛出、目录留存）+ **主链路不受影响**（占用失败在场的模拟打印提交成功且当日出图正常落盘）。
+- **记账**：DEPLOY §9 配置说明补行；DESIGN 决策 #136；ROADMAP 状态行。
+
 ## 迭代 70：离线布局安装——布局目录生成与本地源无网首装 · 2026-09-17
 
 - **离线布局目录（offline layout，决策 #135；DESIGN §6.2 / §6.10，对标 VS 安装器 layout 模式）**：内网 / 无外网机器首装产品化——IT 在有网机器把当版全部组件（Server / Client MSI、webui zip、官方插件 `.lfplugin`、runtime 引导器，按 manifest 条目）+ `install-manifest.json`（官方原样字节）+ `latest.json` + 引导 EXE 预下载汇集到一个目录，拷贝分发后目标机**用同一个引导程序**无外网完成首装。组件文件名约定 = urls[0] 路径末段（须含扩展名）+ 查询型直链固定名兜底表（`runtime-webview2` → `MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe`，核心库 `OfflineLayoutNaming` 单点，生成与消费共用）；单 EXE 全内嵌（attached container）不做（布局目录满足需求，§7 开放点登记）。

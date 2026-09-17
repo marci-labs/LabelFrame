@@ -92,6 +92,7 @@
 | 发布 | v0.27.1 补丁发布（迭代 64 返修 #96：覆盖升级依赖降版——发布工件版本固化 + 降版回归断言 #130；迭代 67 #98：release.yml 步骤序——Client MSI 附带插件包 fail-closed 断言 #131；发版后走查复核交回验收 #56 / #57） | ✅ 已完成（2026-09-16，tag v0.27.1） |
 | 68 | 流程治理——引导 EXE 随 Release 发布（release.yml bundle job 接线 + manifest 分阶段生成与跨 job 一致性断言 #132）+ 安装引导文档补章（DEPLOY §2 推荐入口 / README 入口定位） | ✅ 已完成（2026-09-17 本地同构演练通过：v0.27.1 产物在场 manifest 分阶段生成 + bundle 全链缓存命中 + 三方哈希一致 + `-Sign` 签名路径 + fail-closed 反向用例；演练顺带抓修 PowerShell 变量名大小写覆盖参数缺陷；真实发版走查（AC-02）与干净 Windows 环境七页向导（AC-03）转 `待验收`，[#101](https://github.com/marci-labs/LabelFrame/issues/101)） |
 | 71 | Linux 服务端一键安装——install.sh（manifest 校验 + systemd + 离线布局 + 归档默认 self-contained）与 compose 随发版分发（Linux 部署契约 #134） | ✅ 已完成（2026-09-17 本地 Docker 容器自证：离线零外网全流程 + 篡改 fail-closed + 重跑幂等 + 在线 404 回退 + FDD runtime 双向 + 真实 v0.27.1 manifest 解析 + AC-04 compose 步骤同构演练；随迭代修复 deploy-server-ubuntu.sh 字面换行符缺陷；真机 Ubuntu 走查与下次 `v*` 发版附件实证转 `待验收`，[#91](https://github.com/marci-labs/LabelFrame/issues/91)） |
+| 72 | 模拟打印出图目录保留清理（Log 出图 print 目录超期自动删除；按天保留默认 31 天 / 可配置 / 可关闭 #136，口径对齐 #108） | ✅ 已完成（2026-09-17 本地 build / test 全绿，新增四类用例 6 项实证：超期删除含 PNG 与摘要留痕 / 保留期内不删 / ≤0 关闭 / 占用失败降级留痕且打印出图主链路不受影响；跨月滚动删除行为随部署观察，[#107](https://github.com/marci-labs/LabelFrame/issues/107)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）

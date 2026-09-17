@@ -66,6 +66,10 @@ public static class Program
 
         HostInfo($"LabelFrame 启动：监听 {options.ListenUrl}，DPI {options.Dpi}，OpenBrowser={options.OpenBrowser}，ServerUrl={options.ServerUrl ?? "(未配置路由)"}");
 
+        // 出图目录保留清理（迭代 72，决策 #136）：启动时顺带执行一次（无后台任务，对齐 #108 轻量口径；
+        // Windows 窗口客户端与 Linux 无头客户端共用本路径）；清理器永不抛出，失败不影响启动
+        new PrintImageRetentionCleaner(options.PrintOutputPath, options.PrintImageRetentionDays, hostLogWriter).CleanupExpired();
+
         // 应用装配（DI + 全部端点 + Web UI 托管）；宿主层职责（界面壳 / 托盘 / 退出）留在 Main。
         // Windows：Serilog 文件日志经 configureBuilder 挂到 BuildAsync 内部的真实 builder（缺陷 #14 修复）。
 #if WINDOWS
