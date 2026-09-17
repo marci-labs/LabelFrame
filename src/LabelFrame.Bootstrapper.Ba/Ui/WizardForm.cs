@@ -14,7 +14,7 @@ internal sealed class WizardForm : Form
 {
     private const int ProgressPageIndex = 5;
 
-    private readonly WizardSession _session = new();
+    private readonly WizardSession _session;
     private readonly LabelFrameBootstrapperBa _ba;
 
     private readonly Label _stepLabel = new();
@@ -25,9 +25,11 @@ internal sealed class WizardForm : Form
 
     private readonly WizardNavigator<IWizardPage> _navigator;
 
-    public WizardForm(LabelFrameBootstrapperBa ba)
+    /// <summary>会话由 BA 创建注入（迭代 70 起）：布局目录隐式检测后 BA 已改写默认清单来源（决策 #132），本类不再自建会话。</summary>
+    public WizardForm(LabelFrameBootstrapperBa ba, WizardSession session)
     {
         _ba = ba;
+        _session = session;
 
         Text = "LabelFrame 安装引导";
         StartPosition = FormStartPosition.CenterScreen;

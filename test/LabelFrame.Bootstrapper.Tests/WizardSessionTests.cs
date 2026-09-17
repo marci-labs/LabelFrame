@@ -110,4 +110,35 @@ public sealed class WizardSessionTests
         var ex = Assert.Throws<InvalidOperationException>(() => session.BuildPlan());
         Assert.Contains("部署形态", ex.Message);
     }
+
+    // ---- 隐式优先源目录（迭代 70 / #89，决策 #132）：本地清单所在目录 = 布局目录 ----
+
+    [Fact]
+    public async Task Local_manifest_source_resolves_local_source_directory()
+    {
+        var session = new WizardSession { ManifestSource = FixturePath("install-manifest.full.json") };
+
+        await session.LoadManifestAsync();
+
+        Assert.Equal(
+            Path.GetDirectoryName(Path.GetFullPath(FixturePath("install-manifest.full.json"))),
+            session.LocalSourceDirectory);
+    }
+
+    [Fact]
+    public async Task Url_manifest_source_has_no_local_source_directory()
+    {
+        // AC-03 回归锚点：URL 清单（默认稳定通道形态）→ 无本地源，纯 urls，行为与现状一致
+        using var handler = new RecordingHttpMessageHandler(File.ReadAllText(FixturePath("install-manifest.current.json")));
+        using var http = new HttpClient(handler);
+        var session = new WizardSession
+        {
+            ManifestSource = "https://github.com/marci-labs/LabelFrame/releases/latest/download/install-manifest.json",
+        };
+
+        await session.LoadManifestAsync(http);
+
+        Assert.NotNull(session.Manifest);
+        Assert.Null(session.LocalSourceDirectory);
+    }
 }

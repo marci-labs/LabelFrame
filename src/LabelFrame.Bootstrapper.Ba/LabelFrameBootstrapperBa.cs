@@ -1,7 +1,10 @@
 namespace LabelFrame.Bootstrapper.Ba;
 
+using System.Net.Http;
 using System.Windows.Forms;
 using LabelFrame.Bootstrapper.Downloads;
+using LabelFrame.Bootstrapper.Manifest;
+using LabelFrame.Bootstrapper.OfflineLayout;
 using LabelFrame.Bootstrapper.Prerequisites;
 using LabelFrame.Bootstrapper.Wizard;
 using WixToolset.BootstrapperApplicationApi;
@@ -11,6 +14,8 @@ using WixToolset.BootstrapperApplicationApi;
 /// <see cref="IEngine.Plan"/> + <see cref="IEngine.Apply"/> 真装。执行边界契约见 DESIGN §6.3 / §6.9（确认前绝不 Apply）。
 /// 下载体验（迭代 61 / #54，DESIGN §6.10）：多源回退（CacheAcquireResolving 消费清单 urls，决策核心在
 /// <see cref="CacheSourceFallback"/>）+ 下载侧进度 / 失败分类 / 换源提示的事件映射。
+/// 离线布局（迭代 70 / #89，决策 #132）：<c>--layout &lt;目录&gt;</c> 生成模式（<see cref="OfflineLayoutBuilder"/>）
+/// 与安装期本地源优先（<see cref="IEngine.SetLocalSource"/>，清单所在目录 = 隐式优先源目录，§6.10）。
 /// </summary>
 internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 {
@@ -215,6 +220,19 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         // UI 线程未处理异常显式诊断（迭代 60 返修：异常不得被吞）：写 Burn 日志 + 对话框后退出，不静默继续
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
 
+        var command = _command;
+
+        // 布局目录生成模式（迭代 70 / #89，决策 #132）：--layout <目录>（双横线，引擎透传 BA）或引擎原生 -layout
+        // （LaunchAction.Layout + LayoutDirectory，单横线）→ 同一生成流程——优先于一切安装路径（生成机无需问卷 / 探测）；
+        // 参数无效（--layout 缺值等）同样进入本路径显式失败，不静默落到安装向导
+        var layoutArguments = LayoutModeArguments.Parse(command?.CommandLine);
+        var layoutDirectory = layoutArguments.LayoutDirectory ?? command?.LayoutDirectory;
+        if (layoutArguments.Errors.Count > 0 || !string.IsNullOrWhiteSpace(layoutDirectory))
+        {
+            RunLayoutGeneration(layoutDirectory, layoutArguments);
+            return;
+        }
+
         // 运行时探测变量（链内 DetectCondition 消费，DESIGN §6.9）：必须在 engine.Detect() 之前写入；
         // 探测异常按「未装」处理（fail-open 到计划安装，运行时安装器自身幂等兜底）
         try
@@ -248,7 +266,6 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 
         // 非交互启动（决策 #126 升级链补全）：升级时 Burn 以 Uninstall 动作驱动旧 Bundle（RelatedBundle 升级链尾），
         // ARP 卸载 / 静默参数同理——此时不进问卷向导（无人应答会卡死升级链），自动 Detect → Plan → Apply → Quit
-        var command = _command;
         if (command is null)
         {
             Log("启动命令不可得（握手未完成），按交互安装路径继续。");
@@ -261,7 +278,17 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
             return;
         }
 
-        using var wizard = CreateWizardOrExit();
+        // 布局目录隐式检测（决策 #132）：引导 EXE 同目录存在 install-manifest.json → 欢迎页清单来源默认该本地文件
+        // （拷贝布局目录后双击 EXE 即离线首装，零网络起步）；无邻接清单 → 稳定通道（现状不变）
+        var session = new WizardSession();
+        var adjacentManifest = TryDetectAdjacentLayoutManifest();
+        if (adjacentManifest is not null)
+        {
+            session.ManifestSource = adjacentManifest;
+            Log($"检测到引导程序同目录安装清单，默认离线布局安装（清单所在目录 = 本地优先源）：{adjacentManifest}");
+        }
+
+        using var wizard = CreateWizardOrExit(session);
         if (wizard is null)
         {
             return; // 装配失败已显式处理（诊断 + 非零退出）
@@ -354,6 +381,136 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         engine.Quit(status);
     }
 
+    /// <summary>
+    /// 布局目录生成模式（迭代 70 / #89，决策 #132，DESIGN §6.2）：<c>--layout &lt;目录&gt;</c> / 引擎 <c>-layout</c>——
+    /// 在线机器把当版全部组件 + 官方 manifest / latest 原样字节 + 引导 EXE 汇集到目标目录（目标机拷目录双击 EXE 即离线首装）。
+    /// 纯 BA 侧下载（<see cref="OfflineLayoutBuilder"/>：urls 顺序回退 + sha256 逐字节校验 fail-closed），不进问卷、
+    /// 不 Plan / Apply；EXE 源 = 自身（<c>WixBundleOriginalSource</c>）；进度经 <see cref="Ui.LayoutProgressForm"/> 呈现。
+    /// </summary>
+    private void RunLayoutGeneration(string? layoutDirectory, LayoutModeArguments arguments)
+    {
+        var display = _command?.Display ?? Display.Full;
+        int exitCode;
+        string message;
+        if (string.IsNullOrWhiteSpace(layoutDirectory))
+        {
+            exitCode = ExitCodeFailure;
+            message = arguments.Errors.Count > 0
+                ? "布局生成参数无效：" + string.Join("；", arguments.Errors)
+                : "布局生成缺少目标目录（用法：--layout <目录> 或 --layout=<目录>）。";
+            Log(message);
+        }
+        else
+        {
+            var source = string.IsNullOrWhiteSpace(arguments.ManifestSource)
+                ? WizardSession.StableChannelManifestUrl
+                : arguments.ManifestSource!;
+            Log($"布局目录生成开始：目标 {layoutDirectory}，清单来源 {source}。");
+
+            var form = new Ui.LayoutProgressForm();
+            // Progress 在 UI 线程构造：回调经同步上下文封送（LayoutProgressForm.Report 自带 InvokeRequired 防御）
+            var progress = new Progress<OfflineLayoutProgress>(form.Report);
+            var completion = new TaskCompletionSource<(int ExitCode, string Message)>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var http = new HttpClient();
+                    var manifestJson = await InstallManifestLoader.LoadTextAsync(source, http, form.CancellationToken).ConfigureAwait(false);
+                    var manifest = InstallManifest.Parse(manifestJson);
+                    var latestJson = await TryLoadLatestTextAsync(source, http, form.CancellationToken).ConfigureAwait(false);
+                    var bootstrapper = GetBundleOriginalSourceOrFail();
+                    var result = await OfflineLayoutBuilder.BuildAsync(
+                        manifest, manifestJson, latestJson, layoutDirectory!, bootstrapper, http, progress, form.CancellationToken).ConfigureAwait(false);
+                    completion.TrySetResult((0,
+                        $"布局目录生成完成：{layoutDirectory}\n"
+                        + $"组件 {result.ComponentCount} 个（下载 {result.DownloadedCount} / 复用 {result.ReusedCount}），"
+                        + "install-manifest.json" + (latestJson is null ? string.Empty : " + latest.json") + " 已写入，"
+                        + $"引导 EXE 已复制（{result.BootstrapperFileName}）。\n\n把整个目录拷贝到目标机器，直接运行其中的引导程序即可离线安装。"));
+                }
+                catch (Exception ex)
+                {
+                    completion.TrySetResult((ExitCodeFailure, $"布局目录生成失败：{ex.Message}"));
+                }
+            });
+            form.AttachCompletion(completion.Task);
+            Application.Run(form);
+            (exitCode, message) = completion.Task.GetAwaiter().GetResult();
+            Log($"布局目录生成结束：exit=0x{exitCode:X8}。{message}");
+        }
+
+        if (display == Display.Full)
+        {
+            MessageBox.Show(
+                message,
+                "LabelFrame 离线布局目录",
+                MessageBoxButtons.OK,
+                exitCode == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Error);
+        }
+
+        engine.Quit(exitCode);
+    }
+
+    /// <summary>latest.json 原样文本尽力读取（来源可推导才读；失败静默跳过——指针文件可选，§6.11 口径）。</summary>
+    private static async Task<string?> TryLoadLatestTextAsync(string manifestSource, HttpClient http, CancellationToken cancellationToken)
+    {
+        var source = LatestPointer.DeriveSource(manifestSource);
+        if (source is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await InstallManifestLoader.LoadTextAsync(source, http, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>引导 EXE 自身路径（<c>WixBundleOriginalSource</c>——out-of-proc BA 的 Assembly.Location 是引擎解压临时目录，不可用）。</summary>
+    private string GetBundleOriginalSourceOrFail()
+    {
+        string path;
+        try
+        {
+            path = engine.GetVariableString("WixBundleOriginalSource");
+        }
+        catch (Exception ex)
+        {
+            throw new OfflineLayoutException($"无法定位引导 EXE（WixBundleOriginalSource 读取失败：{ex.Message}）——布局目录必须内含引导 EXE。");
+        }
+
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            throw new OfflineLayoutException($"无法定位引导 EXE（WixBundleOriginalSource = \"{path}\"）——布局目录必须内含引导 EXE。");
+        }
+
+        return path;
+    }
+
+    /// <summary>引导 EXE 同目录的布局清单检测（决策 #132 隐式检测）：在位返回路径，否则 / 不可得返回 null（按无布局安装处理）。</summary>
+    private string? TryDetectAdjacentLayoutManifest()
+    {
+        try
+        {
+            var folder = engine.GetVariableString("WixBundleOriginalSourceFolder");
+            if (string.IsNullOrWhiteSpace(folder))
+            {
+                return null;
+            }
+
+            var candidate = Path.Combine(folder, OfflineLayoutNaming.ManifestFileName);
+            return File.Exists(candidate) ? candidate : null;
+        }
+        catch (Exception)
+        {
+            return null; // 变量尚未建立等——兜底按无布局处理（不阻断安装流程）
+        }
+    }
+
     /// <summary>安装主入口（确认页「安装」触发）：问卷答案 → Burn 变量（含落位目标）→ Plan → Apply → 终态。</summary>
     /// <remarks>失败后可再次调用（重试 = 全新 Plan + Apply；链内已装包由引擎检测跳过，幂等口径见 §6.9）。</remarks>
     public async Task<InstallState> ExecuteInstallAsync(WizardSession session, IntPtr windowHandle)
@@ -369,9 +526,11 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
             _plannedPackages.Clear();
         }
 
-        // 每轮 Apply 从当轮清单重建多源回退状态机（重试 = 失败计数归零、从头按 urls 顺序；§6.10）
-        _sourceFallback = CacheSourceFallback.FromManifest(session.Manifest
-            ?? throw new InvalidOperationException("尚未加载安装清单，无法开始安装。"));
+        // 每轮 Apply 从当轮清单重建多源回退状态机（重试 = 失败计数归零、从头按有效源序；§6.10；
+        // 迭代 70 / 决策 #132：本地清单所在目录作为隐式优先源目录——布局文件在位的包有效源序 = [本地文件] ++ urls）
+        _sourceFallback = CacheSourceFallback.FromManifest(
+            session.Manifest ?? throw new InvalidOperationException("尚未加载安装清单，无法开始安装。"),
+            session.LocalSourceDirectory);
 
         SetState(new InstallState { Phase = InstallPhase.Planning });
 
@@ -504,9 +663,31 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         }
 
         var outcome = SourceFallback.ResolveAcquire(args.PackageOrContainerId);
-        if (outcome.Decision != SourceFallbackDecision.UseSource || string.IsNullOrEmpty(outcome.Url))
+        if (outcome.Decision != SourceFallbackDecision.UseSource)
         {
             return; // 源耗尽 / 未知包：保留引擎当前源（构建期 DownloadUrl）
+        }
+
+        if (outcome.IsLocal)
+        {
+            // 本地源优先（迭代 70 / 决策 #132，§6.10 源解析顺序契约）：布局目录文件经 SetLocalSource 交给引擎本地
+            // 获取——引擎对本地源副本同样按包内嵌摘要（= manifest sha256，构建期实测锁定）强制校验（#117 fail-closed：
+            // 篡改布局文件 → 校验失败 → 按既有推进语义换源重取，断网则源耗尽失败，篡改内容绝不落装）
+            engine.SetLocalSource(args.PackageOrContainerId, args.PayloadId, outcome.LocalPath!);
+            var localName = Path.GetFileName(outcome.LocalPath!);
+            Log($"本地源命中：组件 {args.PackageOrContainerId} 使用布局目录文件 {localName}（源 {outcome.SourceIndex + 1}/{outcome.SourceCount}，离线优先不联网）。");
+            UpdateState(state => state with
+            {
+                CurrentSourceIndex = outcome.SourceIndex,
+                CurrentSourceCount = outcome.SourceCount,
+                DownloadHint = $"本地布局源：{localName}（离线优先，不联网获取）",
+            });
+            return;
+        }
+
+        if (string.IsNullOrEmpty(outcome.Url))
+        {
+            return; // 防御（UseSource 携带空 URL）：保留引擎当前源
         }
 
         if (!string.Equals(args.DownloadUrl, outcome.Url, StringComparison.Ordinal))
@@ -699,14 +880,15 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
     }
 
     /// <summary>
-    /// 装配向导窗体（含首页装配，迭代 60 返修）；失败时显式失败——诊断对话框 + Burn 日志 + 非零退出，
-    /// 绝不带着未装配状态（-1 索引、空白内容区）进入消息循环（Issue #53 验收回流教训）。
+    /// 装配向导窗体（含首页装配，迭代 60 返修；会话由本类创建——布局目录隐式检测后改写默认清单来源，决策 #132）；
+    /// 失败时显式失败——诊断对话框 + Burn 日志 + 非零退出，绝不带着未装配状态（-1 索引、空白内容区）进入消息循环
+    /// （Issue #53 验收回流教训）。
     /// </summary>
-    private Ui.WizardForm? CreateWizardOrExit()
+    private Ui.WizardForm? CreateWizardOrExit(WizardSession session)
     {
         try
         {
-            return new Ui.WizardForm(this);
+            return new Ui.WizardForm(this, session);
         }
         catch (Exception ex)
         {
