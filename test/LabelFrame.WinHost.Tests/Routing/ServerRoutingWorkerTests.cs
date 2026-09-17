@@ -4,6 +4,7 @@ using LabelFrame.Core.Encoding;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Layout;
 using LabelFrame.Core.Templates;
+using LabelFrame.Core.Transport.Plugins;
 using LabelFrame.Rendering;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
@@ -89,7 +90,7 @@ public class ServerRoutingWorkerTests
             var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
             var templates = new TemplateStore(templatesDb);
             await templates.InitializeAsync();
-            var submission = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, TestTransportRegistry.CreateManager(new HostOptions { Transport = TransportMode.Log }), TextWriter.Null);
+            var submission = CreateSubmission(queue, templates);
 
             var poller = new FakePoller();
             var payload = new ServerJobPayload(
@@ -154,7 +155,7 @@ public class ServerRoutingWorkerTests
             var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
             var templates = new TemplateStore(templatesDb);
             await templates.InitializeAsync();
-            var submission = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, TestTransportRegistry.CreateManager(new HostOptions { Transport = TransportMode.Log }), TextWriter.Null);
+            var submission = CreateSubmission(queue, templates);
 
             var poller = new FakePoller
             {
@@ -223,7 +224,7 @@ public class ServerRoutingWorkerTests
             var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
             var templates = new TemplateStore(templatesDb);
             await templates.InitializeAsync();
-            var submission = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, TestTransportRegistry.CreateManager(new HostOptions { Transport = TransportMode.Log }), TextWriter.Null);
+            var submission = CreateSubmission(queue, templates);
 
             var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(DateTimeOffset.UtcNow);
             var poller = new FakePoller();
@@ -301,7 +302,7 @@ public class ServerRoutingWorkerTests
             var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
             var templates = new TemplateStore(templatesDb);
             await templates.InitializeAsync();
-            var submission = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, TestTransportRegistry.CreateManager(new HostOptions { Transport = TransportMode.Log }), TextWriter.Null);
+            var submission = CreateSubmission(queue, templates);
 
             var poller = new FakePoller { FailProgress = true };
             poller.Enqueue(new ServerJobPayload(
@@ -361,8 +362,99 @@ public class ServerRoutingWorkerTests
     {
         var claimed = await queue.ClaimNextItemAsync(cancellationToken);
         Assert.NotNull(claimed);
-        await queue.CompleteItemAsync(claimed!.Value.JobId, claimed.Value.Item.Id, cancellationToken);
+        await queue.CompleteItemAsync(claimed!.Value.JobId, claimed!.Value.Item.Id, cancellationToken);
     }
+
+    /// <summary>构造提交服务（可注入 fake 编译器插件与预写 connection.json——原生指令模式路由场景用）。</summary>
+    private static JobSubmissionService CreateSubmission(
+        LabelJobQueue queue,
+        TemplateStore templates,
+        FakeCompilerTransportPlugin? plugin = null,
+        string? connectionJson = null)
+    {
+        var (manager, registry) = TestTransportRegistry.CreateManagerWithRegistry(
+            configure: plugin is null ? null : r => r.Register(plugin),
+            connectionJson: connectionJson);
+        return new JobSubmissionService(
+            queue,
+            new ZplImageEncoder(),
+            dpi: 203,
+            new SkiaLabelRenderer(),
+            templates,
+            manager,
+            registry,
+            TestTransportRegistry.CreateContext(),
+            TextWriter.Null);
+    }
+
+    /// <summary>
+    /// 原生指令模式下编译失败 → 路由回报 Failed（#119 AC-03）：任一标签编译失败本地不建作业，
+    /// 宿主按既有失败回报路径回报 Server Failed，错误消息含问题码与中文原因（§5.4.3）。
+    /// </summary>
+    [Fact]
+    public async Task Compile_failure_in_native_mode_should_report_server_job_failed()
+    {
+        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroute-{Guid.NewGuid():N}.db");
+        try
+        {
+            var store = new SqliteLabelJobStore(dbPath);
+            await store.InitializeAsync();
+            var queue = new LabelJobQueue(store);
+            var templatesDb = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfroutetpl-{Guid.NewGuid():N}.db");
+            var templates = new TemplateStore(templatesDb);
+            await templates.InitializeAsync();
+
+            // fake 编译器：locationCode=BAD 的标签编译失败（LF_ENC_002 + fieldKey），其余成功
+            var plugin = new FakeCompilerTransportPlugin((document, options) =>
+                document.Data.GetValueOrDefault("locationCode") == "BAD"
+                    ? new LabelCommandCompileResult(null, JobErrorCodes.CommandCompileFailed, "内置字体无法表示该字符", "locationCode")
+                    : new LabelCommandCompileResult("^XAFKE:OK^FS^XZ", null, null, null));
+            var submission = CreateSubmission(
+                queue,
+                templates,
+                plugin,
+                """{ "pluginId": "fakecompile", "params": { "printMode": "native" } }""");
+
+            var poller = new FakePoller();
+            poller.Enqueue(new ServerJobPayload(
+                "server-job-native-fail",
+                "req-route-native-fail",
+                1,
+                new TemplateDto(SampleContract, SampleLayout),
+                [new LabelDto(new Dictionary<string, string> { ["zone"] = "A", ["locationCode"] = "BAD" })]));
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var worker = new ServerRoutingWorker(poller, submission, queue, TimeSpan.FromMilliseconds(100), NullLogger<ServerRoutingWorker>.Instance);
+            await worker.StartAsync(cts.Token);
+
+            // 等待失败回报（独立回报循环，1s 周期）
+            for (var i = 0; i < 100 && poller.Reported.Count == 0; i++)
+            {
+                await Task.Delay(50, cts.Token);
+            }
+
+            var report = Assert.Single(poller.Reported);
+            Assert.Equal("server-job-native-fail", report.JobId);
+            Assert.Equal("Failed", report.Result.Status);
+            Assert.Contains(JobErrorCodes.CommandCompileFailed, report.Result.ErrorMessage);
+            Assert.Contains("插件 fakecompile", report.Result.ErrorMessage);
+            Assert.Contains("编译失败", report.Result.ErrorMessage);
+
+            // 直连不建作业语义在路由侧 = 本地队列无该 requestId 作业
+            Assert.Null(await store.GetJobByRequestIdAsync("req-route-native-fail", cts.Token));
+
+            await worker.StopAsync(cts.Token);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath))
+            {
+                File.Delete(dbPath);
+            }
+        }
+    }
+
 
     /// <summary>
     /// 真实时钟等待条件满足，期间小步推进虚拟时钟——回报循环停泊在 Task.Delay(fakeTime) 时，

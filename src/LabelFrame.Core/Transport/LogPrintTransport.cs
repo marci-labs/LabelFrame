@@ -1,8 +1,8 @@
 ﻿namespace LabelFrame.Core.Transport;
 
 /// <summary>
-/// 日志传输（模拟打印机）：打印统一为整版位图（^GF），
-/// 不再把指令内容写入日志（数据量过大）；只记录摘要，实际图片由作业层保存 PNG（见 WinHost JobSubmissionService）。
+/// 日志传输（模拟打印机）：只记录指令摘要（图片模式 = ^GF 整版位图，原生指令模式 = 品牌原生指令），
+/// 不把指令内容写入日志（数据量过大）；图片模式实际图片由作业层保存 PNG（见 WinHost JobSubmissionService）。
 /// 用于没有真实打印机时的联调验证。
 /// </summary>
 public sealed class LogPrintTransport : IPrintTransport, IPrinterStatusProvider, LabelFrame.Core.Transport.Plugins.ITestableTransport
@@ -22,7 +22,7 @@ public sealed class LogPrintTransport : IPrintTransport, IPrinterStatusProvider,
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
 
-        _writer.WriteLine($"=== LabelFrame 模拟打印机（Log）：收到 {command.Length} 字节（^GF 整版位图指令，内容省略，PNG 见 print\\{{jobId}} 目录） ===");
+        _writer.WriteLine($"=== LabelFrame 模拟打印机（Log）：收到 {command.Length} 字节（打印机指令，内容省略；图片模式 PNG 见 print\\{{jobId}} 目录） ===");
         return Task.CompletedTask;
     }
 

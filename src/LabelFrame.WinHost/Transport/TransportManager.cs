@@ -144,7 +144,7 @@ public sealed class TransportManager : ITransportManager, IDisposable
         return new TransportChangeResult(true, $"已切换为 {Describe(applied)}。", applied);
     }
 
-    /// <summary>按插件参数规格校验：插件存在、必填、Int / Select 取值。</summary>
+    /// <summary>按插件参数规格校验：插件存在、必填、Int / Select 取值；含打印方式合法性（§5.4.2）。</summary>
     private string? Validate(TransportConfig config)
     {
         var plugin = _registry.GetPlugin(config.PluginId);
@@ -183,6 +183,16 @@ public sealed class TransportManager : ITransportManager, IDisposable
 
                     break;
             }
+        }
+
+        // 打印方式合法性（§5.4.2 保存层校验）：printMode=native 仅对有文档编译能力的插件合法；
+        // 缺失 / 非法取值不在此拦截（读取口径回退 image），存量异常配置（手改 connection.json /
+        // 插件降级后能力消失）由提交链路兜底显式失败（LF_ENC_003），不静默按图片打印。
+        if (TransportPrintMode.Resolve(config.Params.TryGetValue(TransportPrintMode.ParameterKey, out var printMode) ? printMode : null)
+            == TransportPrintMode.Native
+            && !plugin.SupportsDocumentCompile)
+        {
+            return $"当前打印方式为原生指令，但连接的插件 {config.PluginId} 不支持指令编译，请切回图片或更换插件。";
         }
 
         return null;

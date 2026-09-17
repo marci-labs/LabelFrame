@@ -5,7 +5,8 @@ namespace LabelFrame.Core.Jobs;
 
 /// <summary>
 /// SQLite 作业存储：表 jobs / job_items，request_id 唯一索引实现幂等，
-/// Item 持久化编码后的 ZPL，服务重启不丢作业。
+/// Item 持久化打印机指令（列名沿用 zpl：图片模式 = ^GF 位图 ZPL，原生指令模式 = 品牌原生指令），
+/// 服务重启不丢作业。
 /// </summary>
 public sealed class SqliteLabelJobStore : ILabelJobStore
 {

@@ -31,4 +31,31 @@ public static class TestTransportRegistry
             hostLogWriter ?? TextWriter.Null,
             path);
     }
+
+    /// <summary>测试用插件上下文（日志可注入捕获）。</summary>
+    public static TransportPluginContext CreateContext(TextWriter? hostLog = null)
+        => new(hostLog ?? TextWriter.Null, System.IO.Path.GetTempPath());
+
+    /// <summary>
+    /// 创建连接管理器与所用注册表（JobSubmissionService 需同时持有两者的测试用）：
+    /// 可注入自定义插件（fake 编译器）、可预写 connection.json（原生指令模式 / 存量异常配置场景）。
+    /// </summary>
+    public static (TransportManager Manager, TransportPluginRegistry Registry) CreateManagerWithRegistry(
+        Action<TransportPluginRegistry>? configure = null,
+        HostOptions? options = null,
+        string? connectionJson = null,
+        TextWriter? hostLogWriter = null)
+    {
+        options ??= new HostOptions { Transport = TransportMode.Log, TcpHost = "127.0.0.1", TcpPort = 9100, PrinterName = "Test Printer" };
+        var registry = Create();
+        configure?.Invoke(registry);
+        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfconn-{Guid.NewGuid():N}.json");
+        if (connectionJson is not null)
+        {
+            System.IO.File.WriteAllText(path, connectionJson);
+        }
+
+        var manager = new TransportManager(registry, CreateContext(), options, hostLogWriter ?? TextWriter.Null, path);
+        return (manager, registry);
+    }
 }

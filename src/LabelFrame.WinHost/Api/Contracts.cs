@@ -66,14 +66,15 @@ public sealed record TransportPluginParameterDto(
 /// <summary>Select 参数枚举项。</summary>
 public sealed record TransportParameterOptionDto(string Value, string? Label);
 
-/// <summary>已装配传输插件描述（GET /api/transport.availablePlugins 与 /api/transport/plugins）。</summary>
+/// <summary>已装配传输插件描述（GET /api/transport.availablePlugins 与 /api/transport/plugins；supportsDocumentCompile 为文档编译能力位，向后兼容增量）。</summary>
 public sealed record TransportPluginDescriptorDto(
     string Id,
     string DisplayName,
     string? Description,
     IReadOnlyList<TransportPluginParameterDto> Parameters,
     bool IsExternal = false,
-    string? AssemblyPath = null);
+    string? AssemblyPath = null,
+    bool SupportsDocumentCompile = false);
 
 /// <summary>连接状态（GET /api/transport 与 POST 响应共用；pluginId + params 字典 + displayText + availablePlugins，旧字段 mode / availableModes 保留兼容）。</summary>
 public sealed record TransportConfigDto(
