@@ -36,6 +36,12 @@ public static class BundleVariableMap
     /// <summary>Zebra 插件落位目标目录（链内落位包 InstallArguments 以 [变量] 引用）。</summary>
     public const string PluginZebraTargetDirVariable = "PluginZebraTargetDir";
 
+    /// <summary>webui 落位凭据在位（清理包 WebUiPlacementCleanup DetectCondition 消费，迭代 69 / 决策 #133：BA 启动期读凭据比对 WixBundleVersion 写入）。</summary>
+    public const string WebUiPlacementPresentVariable = "WebUiPlacementPresent";
+
+    /// <summary>zebra 插件落位凭据在位（清理包 ZebraPluginPlacementCleanup DetectCondition 消费，迭代 69 / 决策 #133）。</summary>
+    public const string ZebraPluginPlacementPresentVariable = "ZebraPluginPlacementPresent";
+
     /// <summary>拓扑计划 → 变量集合（string 值；数值变量由 BA 写引擎时转 long）。</summary>
     public static IReadOnlyDictionary<string, string> ToVariables(TopologyPlan plan)
     {

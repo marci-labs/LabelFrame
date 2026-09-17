@@ -134,18 +134,19 @@ public sealed class BundleVariableMapTests
     }
 
     [Fact]
-    public void Chain_package_map_should_be_bijective_and_cover_contract_component_ids()
+    public void Chain_package_map_should_cover_contract_component_ids()
     {
-        // 链包 ↔ 组件 id 映射（§6.9 链序表，七包）：双向一致，七组件全覆盖（后续品牌按同构扩展）
-        Assert.Equal(7, ChainPackageMap.ComponentByPackageId.Count);
-        foreach (var (packageId, componentId) in ChainPackageMap.ComponentByPackageId)
-        {
-            Assert.Equal(packageId, ChainPackageMap.PackageIdByComponent[componentId]);
-        }
-
+        // 链包 → 组件 id 映射（§6.9 链序表，迭代 69 扩为九包——补双清理包，决策 #133）：七组件全覆盖（后续品牌按同构扩展）
+        Assert.Equal(9, ChainPackageMap.ComponentByPackageId.Count);
         foreach (var componentId in new[] { "runtime-desktop", "runtime-aspnetcore", "runtime-webview2", "server-msi", "client-msi", "webui", "plugin-zebra" })
         {
             Assert.True(ChainPackageMap.PackageIdByComponent.ContainsKey(componentId), $"缺组件映射：{componentId}");
         }
+
+        // 成对清理包映射到同组件（进度页卸载 / 清理阶段同组件名展示）；反向表取落位包优先（登记状态与组件安装语义一致）
+        Assert.Equal("webui", ChainPackageMap.ComponentByPackageId["WebUiPlacementCleanup"]);
+        Assert.Equal("plugin-zebra", ChainPackageMap.ComponentByPackageId["ZebraPluginPlacementCleanup"]);
+        Assert.Equal("WebUiPlacement", ChainPackageMap.PackageIdByComponent["webui"]);
+        Assert.Equal("ZebraPluginPlacement", ChainPackageMap.PackageIdByComponent["plugin-zebra"]);
     }
 }

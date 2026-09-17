@@ -231,6 +231,21 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         engine.SetVariableNumeric(BundleVariableMap.AspNetCoreRuntimeVariable, RuntimeStatus.AspNetCoreRuntimeInstalled ? 1 : 0);
         engine.SetVariableNumeric(BundleVariableMap.WebView2Variable, RuntimeStatus.WebView2Installed ? 1 : 0);
 
+        // 落位目标目录于启动期写入（迭代 69，决策 #133）：纯函数重算（ProgramData 派生），交互 / 非交互路径全覆盖——
+        // ARP 卸载与升级链移除旧 Bundle 的会话不进问卷向导，UninstallArguments 的 [变量] 引用须在此会话内可解析
+        engine.SetVariableString(BundleVariableMap.WebUiTargetDirVariable, BundleVariableMap.WebUiTargetDir(), false);
+        engine.SetVariableString(BundleVariableMap.PluginZebraTargetDirVariable, BundleVariableMap.PluginZebraTargetDir(), false);
+
+        // 落位凭据探测（迭代 69，决策 #133，§6.8）：读落位目录凭据文件（.labelframe-bundle-placement）比对当版 Bundle 版本——
+        // 「本版本 Bundle 落位在位」才写 1（清理包 DetectCondition 消费：Present → 卸载 / Modify 改选时执行 -clean）；
+        // ARP 卸载非交互会话同样在此判定（卸载的清理包 Present 依据）。用户经客户端通道 / 手动放置的插件无凭据 → 永不 1
+        var bundleVersion = ReadBundleVersion();
+        var webUiPlaced = Placement.PlacementMarker.IsPlacedByBundle(BundleVariableMap.WebUiTargetDir(), bundleVersion);
+        var zebraPlaced = Placement.PlacementMarker.IsPlacedByBundle(BundleVariableMap.PluginZebraTargetDir(), bundleVersion);
+        engine.SetVariableNumeric(BundleVariableMap.WebUiPlacementPresentVariable, webUiPlaced ? 1 : 0);
+        engine.SetVariableNumeric(BundleVariableMap.ZebraPluginPlacementPresentVariable, zebraPlaced ? 1 : 0);
+        Log($"落位凭据探测：Bundle 版本 {bundleVersion ?? "<未知>"}；webui 在位 = {(webUiPlaced ? "是" : "否")}；zebra 插件在位 = {(zebraPlaced ? "是" : "否")}");
+
         // 非交互启动（决策 #126 升级链补全）：升级时 Burn 以 Uninstall 动作驱动旧 Bundle（RelatedBundle 升级链尾），
         // ARP 卸载 / 静默参数同理——此时不进问卷向导（无人应答会卡死升级链），自动 Detect → Plan → Apply → Quit
         var command = _command;
@@ -404,6 +419,20 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         }
     }
 
+    /// <summary>当版 Bundle 版本（引擎内建变量；落位凭据探测比对口径，迭代 69 / 决策 #133）。读取失败返回 null。</summary>
+    private string? ReadBundleVersion()
+    {
+        try
+        {
+            var value = engine.GetVariableString("WixBundleVersion");
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+        catch (Exception)
+        {
+            return null; // 变量尚未建立等极端场景——凭据比对按不匹配处理（fail-closed 到不清理）
+        }
+    }
+
     /// <summary>构造失败终态快照（Plan / Apply 前置阶段异常等未走到引擎事件的失败）。</summary>
     public InstallState FailAs(int status, string message)
     {
@@ -418,10 +447,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         engine.SetVariableNumeric(BundleVariableMap.ClientVariable, ParseFlag(variables[BundleVariableMap.ClientVariable]));
         engine.SetVariableNumeric(BundleVariableMap.WebUiVariable, ParseFlag(variables[BundleVariableMap.WebUiVariable]));
         engine.SetVariableNumeric(BundleVariableMap.ZebraPluginVariable, ParseFlag(variables[BundleVariableMap.ZebraPluginVariable]));
-
-        // 落位目标目录（InstallArguments 以 [变量] 引用，DESIGN §6.9 落位机制）
-        engine.SetVariableString(BundleVariableMap.WebUiTargetDirVariable, BundleVariableMap.WebUiTargetDir(), false);
-        engine.SetVariableString(BundleVariableMap.PluginZebraTargetDirVariable, BundleVariableMap.PluginZebraTargetDir(), false);
+        // 落位目标目录已在启动期写入（Run 入口，决策 #133：卸载会话同样需要 [变量] 可解析），此处不重复写
     }
 
     private TaskCompletionSource<int> CurrentPlanSource()
