@@ -39,11 +39,11 @@ public sealed class WizardSession
         _http = http;
     }
 
-    /// <summary>清单来源：本地路径或 URL（默认稳定通道；布局目录场景 BA 启动时改写为邻接本地清单，决策 #132）。</summary>
+    /// <summary>清单来源：本地路径或 URL（默认稳定通道；布局目录场景 BA 启动时改写为邻接本地清单，决策 #135）。</summary>
     public string ManifestSource { get; set; } = StableChannelManifestUrl;
 
     /// <summary>
-    /// 隐式优先源目录（离线布局目录，决策 #132）：清单来源为<b>本地路径</b>时 = 其所在目录（Apply 期本地源解析优先）；
+    /// 隐式优先源目录（离线布局目录，决策 #135）：清单来源为<b>本地路径</b>时 = 其所在目录（Apply 期本地源解析优先）；
     /// URL 来源时为 null（纯 urls，行为与现状一致，AC-03 回归边界）。清单加载成功时更新。
     /// </summary>
     public string? LocalSourceDirectory { get; private set; }
@@ -112,7 +112,7 @@ public sealed class WizardSession
         }
     }
 
-    /// <summary>隐式优先源目录解析：本地清单来源 → 所在目录（URL / 不可解析形态 → null，退化纯 urls，决策 #132）。</summary>
+    /// <summary>隐式优先源目录解析：本地清单来源 → 所在目录（URL / 不可解析形态 → null，退化纯 urls，决策 #135）。</summary>
     private static string? ResolveLocalSourceDirectory(string manifestSource)
     {
         if (InstallManifestLoader.IsHttpUrl(manifestSource))

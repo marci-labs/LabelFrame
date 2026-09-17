@@ -1,22 +1,27 @@
-﻿# 生成 LabelFrame 离线布局目录（迭代 70，Issue #89；契约 = docs/DESIGN.md §6.2 / §6.10，决策 #132）
+﻿# 生成 LabelFrame 离线布局目录（迭代 70，Issue #89；契约 = docs/DESIGN.md §6.2 / §6.10，决策 #135）
 # 用途：IT 在有网机器预下载当版全部组件 + install-manifest.json + latest.json + 引导 EXE 到一个目录，
 #       拷贝（U 盘 / 内网共享）分发后，目标机运行目录中的引导 EXE 即无外网完成首装（VS layout 式）。
 # 语义与引导程序 --layout 模式（核心库 OfflineLayoutBuilder）一致：
 #   - 组件文件名 = urls[0] 路径末段（须含扩展名）；查询型直链按固定名兜底（runtime-webview2）；
 #   - 逐组件按 urls 顺序下载，sha256 与 manifest 逐字节一致才落位（不符换下一源，全源失败 exit 1，fail-closed）；
 #   - 重复生成幂等（已存在且哈希一致跳过下载，不符重新下载）；manifest / latest 原样字节落盘。
-# 注意：引导 EXE 不随 Release 发布（决策 #121 ④），本脚本从本机取（-BootstrapperPath 或默认 artifacts\ 下当版产物）；
-#       在线生成用引导程序自身（setup.exe --layout <目录>）时 EXE 自动自复制，无需本参数。
+# 引导 EXE 来源（迭代 68 起随 Release 发布，决策 #132）：-BootstrapperPath 指定本地产物 >
+#   本地 artifacts\LabelFrame-Bootstrapper-<版本>.exe > -BootstrapperUrl（默认当版 Release 地址）下载；
+#   三者均不可得即失败（布局目录必须内含引导 EXE，fail-closed）。EXE 无 manifest 哈希条目（它本身即
+#   布局生成的载体），下载通道 = Release 同信道（TLS + 发版 tag 不可变，#117 残余风险口径）。
+#   在线生成用引导程序自身（setup.exe --layout <目录>）时 EXE 自动自复制，无需本参数。
 #
 # 用法（仓库根目录，Windows PowerShell 5.1+ / PowerShell 7）：
-#   稳定通道（最新版）：  powershell -ExecutionPolicy Bypass -File scripts\make-offline-layout.ps1 -OutputDir D:\labelframe-layout -BootstrapperPath C:\dist\LabelFrame-Bootstrapper-0.27.1.exe
-#   指定版本：            ... -Version 0.27.1 -OutputDir D:\layout ...
+#   稳定通道（最新版）：  powershell -ExecutionPolicy Bypass -File scripts\make-offline-layout.ps1 -OutputDir D:\labelframe-layout
+#   指定版本：            ... -Version 0.28.0 -OutputDir D:\layout ...
+#   本地产物 EXE：        ... -BootstrapperPath C:\dist\LabelFrame-Bootstrapper-0.28.0.exe ...
 #   本地清单来源（测试）： ... -ManifestSource C:\test\install-manifest.json -OutputDir D:\layout ...
 param(
     [string]$Version = '',
     [Parameter(Mandatory = $true)][string]$OutputDir,
     [string]$ManifestSource = '',
-    [string]$BootstrapperPath = ''
+    [string]$BootstrapperPath = '',
+    [string]$BootstrapperUrl = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -99,13 +104,31 @@ if ($latestSource) {
     try { $latestJson = Read-SourceText $latestSource } catch { Write-Host "latest.json 获取失败（跳过，不阻断）：$($_.Exception.Message)" }
 }
 
-# ---- 3) 引导 EXE 来源（决策 #121 ④：EXE 不随 Release 发布——本机取）----
+# ---- 3) 引导 EXE 来源（迭代 68 起随 Release 发布，决策 #132：-BootstrapperPath 本地产物 > 本地 artifacts 缺省 > Release 下载）----
 $manifestVersion = $manifest.labelframeVersion
+$bootstrapperFileName = "LabelFrame-Bootstrapper-$manifestVersion.exe"
 if (-not $BootstrapperPath) {
-    $BootstrapperPath = Join-Path $root "artifacts\LabelFrame-Bootstrapper-$manifestVersion.exe"
+    $localDefault = Join-Path $root "artifacts\$bootstrapperFileName"
+    if (Test-Path -LiteralPath $localDefault) {
+        $BootstrapperPath = $localDefault
+        Write-Host "引导 EXE 使用本地产物：$BootstrapperPath"
+    }
 }
-if (-not (Test-Path -LiteralPath $BootstrapperPath)) {
-    Write-Failure "引导 EXE 不存在：$BootstrapperPath（布局目录必须内含引导 EXE——用 -BootstrapperPath 指定本机构建产物，scripts\build-bundle.ps1 -Version $manifestVersion 可生成）"
+if (-not $BootstrapperPath) {
+    # 本地无产物：从 Release 下载当版引导 EXE（EXE 无 manifest 哈希条目——它本身即布局生成载体，
+    # 信任口径 = Release 同信道：TLS + 发版 tag 不可变，#117 残余风险；与用户手动下载引导 EXE 等价）
+    if (-not $BootstrapperUrl) {
+        $BootstrapperUrl = "https://github.com/marci-labs/LabelFrame/releases/download/v$manifestVersion/$bootstrapperFileName"
+    }
+    $tempExe = Join-Path ([IO.Path]::GetTempPath()) "$bootstrapperFileName.download"
+    try {
+        Write-Host "下载引导 EXE：$BootstrapperUrl"
+        Save-HttpResponse $BootstrapperUrl $tempExe
+        $BootstrapperPath = $tempExe
+    }
+    catch {
+        Write-Failure "引导 EXE 获取失败（本地 artifacts\$bootstrapperFileName 不在，Release 下载失败：$($_.Exception.Message)）——布局目录必须内含引导 EXE；或以 -BootstrapperPath 指定本机构建产物（scripts\build-bundle.ps1 -Version $manifestVersion 可生成）。"
+    }
 }
 
 # ---- 4) 逐组件获取（urls 顺序回退 + sha256 fail-closed + 幂等复用）----
@@ -167,7 +190,7 @@ if ($latestJson) {
     Write-Host '已写入：latest.json（官方原样字节）'
 }
 
-$bootstrapperTarget = Join-Path $OutputDir (Split-Path -Leaf $BootstrapperPath)
+$bootstrapperTarget = Join-Path $OutputDir $bootstrapperFileName
 Copy-Item -LiteralPath $BootstrapperPath -Destination $bootstrapperTarget -Force
 Write-Host "已复制：引导 EXE → $bootstrapperTarget"
 

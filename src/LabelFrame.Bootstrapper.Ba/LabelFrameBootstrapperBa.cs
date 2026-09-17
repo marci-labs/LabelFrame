@@ -14,7 +14,7 @@ using WixToolset.BootstrapperApplicationApi;
 /// <see cref="IEngine.Plan"/> + <see cref="IEngine.Apply"/> 真装。执行边界契约见 DESIGN §6.3 / §6.9（确认前绝不 Apply）。
 /// 下载体验（迭代 61 / #54，DESIGN §6.10）：多源回退（CacheAcquireResolving 消费清单 urls，决策核心在
 /// <see cref="CacheSourceFallback"/>）+ 下载侧进度 / 失败分类 / 换源提示的事件映射。
-/// 离线布局（迭代 70 / #89，决策 #132）：<c>--layout &lt;目录&gt;</c> 生成模式（<see cref="OfflineLayoutBuilder"/>）
+/// 离线布局（迭代 70 / #89，决策 #135）：<c>--layout &lt;目录&gt;</c> 生成模式（<see cref="OfflineLayoutBuilder"/>）
 /// 与安装期本地源优先（<see cref="IEngine.SetLocalSource"/>，清单所在目录 = 隐式优先源目录，§6.10）。
 /// </summary>
 internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
@@ -222,7 +222,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 
         var command = _command;
 
-        // 布局目录生成模式（迭代 70 / #89，决策 #132）：--layout <目录>（双横线，引擎透传 BA）或引擎原生 -layout
+        // 布局目录生成模式（迭代 70 / #89，决策 #135）：--layout <目录>（双横线，引擎透传 BA）或引擎原生 -layout
         // （LaunchAction.Layout + LayoutDirectory，单横线）→ 同一生成流程——优先于一切安装路径（生成机无需问卷 / 探测）；
         // 参数无效（--layout 缺值等）同样进入本路径显式失败，不静默落到安装向导
         var layoutArguments = LayoutModeArguments.Parse(command?.CommandLine);
@@ -278,7 +278,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
             return;
         }
 
-        // 布局目录隐式检测（决策 #132）：引导 EXE 同目录存在 install-manifest.json → 欢迎页清单来源默认该本地文件
+        // 布局目录隐式检测（决策 #135）：引导 EXE 同目录存在 install-manifest.json → 欢迎页清单来源默认该本地文件
         // （拷贝布局目录后双击 EXE 即离线首装，零网络起步）；无邻接清单 → 稳定通道（现状不变）
         var session = new WizardSession();
         var adjacentManifest = TryDetectAdjacentLayoutManifest();
@@ -382,7 +382,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
     }
 
     /// <summary>
-    /// 布局目录生成模式（迭代 70 / #89，决策 #132，DESIGN §6.2）：<c>--layout &lt;目录&gt;</c> / 引擎 <c>-layout</c>——
+    /// 布局目录生成模式（迭代 70 / #89，决策 #135，DESIGN §6.2）：<c>--layout &lt;目录&gt;</c> / 引擎 <c>-layout</c>——
     /// 在线机器把当版全部组件 + 官方 manifest / latest 原样字节 + 引导 EXE 汇集到目标目录（目标机拷目录双击 EXE 即离线首装）。
     /// 纯 BA 侧下载（<see cref="OfflineLayoutBuilder"/>：urls 顺序回退 + sha256 逐字节校验 fail-closed），不进问卷、
     /// 不 Plan / Apply；EXE 源 = 自身（<c>WixBundleOriginalSource</c>）；进度经 <see cref="Ui.LayoutProgressForm"/> 呈现。
@@ -491,7 +491,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         return path;
     }
 
-    /// <summary>引导 EXE 同目录的布局清单检测（决策 #132 隐式检测）：在位返回路径，否则 / 不可得返回 null（按无布局安装处理）。</summary>
+    /// <summary>引导 EXE 同目录的布局清单检测（决策 #135 隐式检测）：在位返回路径，否则 / 不可得返回 null（按无布局安装处理）。</summary>
     private string? TryDetectAdjacentLayoutManifest()
     {
         try
@@ -527,7 +527,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         }
 
         // 每轮 Apply 从当轮清单重建多源回退状态机（重试 = 失败计数归零、从头按有效源序；§6.10；
-        // 迭代 70 / 决策 #132：本地清单所在目录作为隐式优先源目录——布局文件在位的包有效源序 = [本地文件] ++ urls）
+        // 迭代 70 / 决策 #135：本地清单所在目录作为隐式优先源目录——布局文件在位的包有效源序 = [本地文件] ++ urls）
         _sourceFallback = CacheSourceFallback.FromManifest(
             session.Manifest ?? throw new InvalidOperationException("尚未加载安装清单，无法开始安装。"),
             session.LocalSourceDirectory);
@@ -670,7 +670,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 
         if (outcome.IsLocal)
         {
-            // 本地源优先（迭代 70 / 决策 #132，§6.10 源解析顺序契约）：布局目录文件经 SetLocalSource 交给引擎本地
+            // 本地源优先（迭代 70 / 决策 #135，§6.10 源解析顺序契约）：布局目录文件经 SetLocalSource 交给引擎本地
             // 获取——引擎对本地源副本同样按包内嵌摘要（= manifest sha256，构建期实测锁定）强制校验（#117 fail-closed：
             // 篡改布局文件 → 校验失败 → 按既有推进语义换源重取，断网则源耗尽失败，篡改内容绝不落装）
             engine.SetLocalSource(args.PackageOrContainerId, args.PayloadId, outcome.LocalPath!);
@@ -880,7 +880,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
     }
 
     /// <summary>
-    /// 装配向导窗体（含首页装配，迭代 60 返修；会话由本类创建——布局目录隐式检测后改写默认清单来源，决策 #132）；
+    /// 装配向导窗体（含首页装配，迭代 60 返修；会话由本类创建——布局目录隐式检测后改写默认清单来源，决策 #135）；
     /// 失败时显式失败——诊断对话框 + Burn 日志 + 非零退出，绝不带着未装配状态（-1 索引、空白内容区）进入消息循环
     /// （Issue #53 验收回流教训）。
     /// </summary>

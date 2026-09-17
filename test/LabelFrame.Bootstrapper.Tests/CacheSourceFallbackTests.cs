@@ -9,7 +9,7 @@ namespace LabelFrame.Bootstrapper.Tests;
 /// <summary>
 /// 多源回退状态机测试（迭代 61 / #54「范围修订 v2」；DESIGN §6.10 决策 #125）：
 /// urls 顺序即优先级（#115）、失败计数逐源推进、源耗尽停止干预、单源清单退化行为、校验失败同样换源；
-/// 迭代 70 / #89（决策 #132）补：布局目录本地源优先——有效源序 = [布局文件（在位时）] ++ urls、
+/// 迭代 70 / #89（决策 #135）补：布局目录本地源优先——有效源序 = [布局文件（在位时）] ++ urls、
 /// 本地失败按序落到 urls、布局不在位 / 无布局目录时行为与现状完全一致（AC-03 回归锚点）。
 /// </summary>
 public sealed class CacheSourceFallbackTests
@@ -239,7 +239,7 @@ public sealed class CacheSourceFallbackTests
         Assert.Throws<ArgumentNullException>(() => CacheSourceFallback.FromManifest(null!));
     }
 
-    // ---- 布局目录本地源优先（迭代 70 / #89，决策 #132；有效源序 = [布局文件] ++ urls） ----
+    // ---- 布局目录本地源优先（迭代 70 / #89，决策 #135；有效源序 = [布局文件] ++ urls） ----
 
     /// <summary>临时布局目录：放入指定组件的布局文件（内容任意——状态机只判在位，哈希校验由引擎承担）。</summary>
     private static string CreateLayoutDirectory(params string[] fileNames)

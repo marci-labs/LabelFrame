@@ -3,7 +3,7 @@ using LabelFrame.Bootstrapper.Wizard;
 
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
-/// <summary>欢迎页：简介 + dry-run 预期 + 离线布局目录入口指引（迭代 70 / 决策 #132：--layout 生成 + 拷目录离线首装）+ 清单来源（本地路径或 URL；布局目录隐式检测时默认本地）+ 本机升级摘要（§6.11：可升级清单 / 已是最新 / 清单新鲜度）。</summary>
+/// <summary>欢迎页：简介 + dry-run 预期 + 离线布局目录入口指引（迭代 70 / 决策 #135：--layout 生成 + 拷目录离线首装）+ 清单来源（本地路径或 URL；布局目录隐式检测时默认本地）+ 本机升级摘要（§6.11：可升级清单 / 已是最新 / 清单新鲜度）。</summary>
 internal sealed class WelcomePage : UserControl, IWizardPage
 {
     private const string ReleasesPageUrl = "https://github.com/marci-labs/LabelFrame/releases";
@@ -68,7 +68,7 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         _freshnessLabel.ForeColor = Color.FromArgb(154, 84, 0);
         _freshnessLabel.Visible = false;
 
-        // 布局目录提示（迭代 70 / 决策 #132）：默认清单来源为本地布局清单时展示（EXE 同目录隐式检测命中）
+        // 布局目录提示（迭代 70 / 决策 #135）：默认清单来源为本地布局清单时展示（EXE 同目录隐式检测命中）
         _layoutHintLabel.AutoSize = false;
         _layoutHintLabel.Width = 656;
         _layoutHintLabel.Height = 32;
@@ -78,7 +78,7 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         _layoutHintLabel.ForeColor = Color.FromArgb(38, 106, 66);
         _layoutHintLabel.Visible = false;
 
-        // 离线布局目录入口指引（迭代 70 / #89，决策 #132——#53 决议 1 方案 A 指引的落地形态：布局目录已产品化）
+        // 离线布局目录入口指引（迭代 70 / #89，决策 #135——#53 决议 1 方案 A 指引的落地形态：布局目录已产品化）
         var offlineBox = new GroupBox
         {
             Text = "无法联网？（离线安装）",
@@ -120,7 +120,7 @@ internal sealed class WelcomePage : UserControl, IWizardPage
         };
         _sourceTextBox.Location = new Point(12, 50);
         _sourceTextBox.Width = 540;
-        // 会话来源（迭代 70 / 决策 #132）：BA 启动检测到引导 EXE 同目录布局清单时已改写为本地路径——离线首装零网络起步
+        // 会话来源（迭代 70 / 决策 #135）：BA 启动检测到引导 EXE 同目录布局清单时已改写为本地路径——离线首装零网络起步
         _sourceTextBox.Text = _session.ManifestSource;
         if (!string.Equals(_sourceTextBox.Text, WizardSession.StableChannelManifestUrl, StringComparison.Ordinal))
         {

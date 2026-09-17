@@ -4,7 +4,7 @@ using System.Windows.Forms;
 using LabelFrame.Bootstrapper.OfflineLayout;
 
 /// <summary>
-/// 离线布局目录生成进度窗（迭代 70 / #89，决策 #132）：<c>--layout</c> 模式的轻量单窗呈现——
+/// 离线布局目录生成进度窗（迭代 70 / #89，决策 #135）：<c>--layout</c> 模式的轻量单窗呈现——
 /// 总进度（组件 i/N）+ 当前组件行（下载字节数 / 复用 / 校验中）+ 取消（取消即中止下载、非零退出）。
 /// </summary>
 /// <remarks>

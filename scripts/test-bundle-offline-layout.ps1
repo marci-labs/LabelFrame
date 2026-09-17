@@ -1,4 +1,4 @@
-﻿# LabelFrame 离线布局走查（迭代 70 / Issue #89 ·DESIGN §6.2 / §6.10，决策 #132）
+﻿# LabelFrame 离线布局走查（迭代 70 / Issue #89 ·DESIGN §6.2 / §6.10，决策 #135）
 #
 # 目的：本地同构取证（断网实机的机器级口径无法本机自证，实机部分转待验收）——
 #   G    在线机器生成布局目录：bundle --layout <目录> --manifest <测试源>（BA 生成模式，passive 无向导）

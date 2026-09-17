@@ -111,7 +111,7 @@ public sealed class WizardSessionTests
         Assert.Contains("部署形态", ex.Message);
     }
 
-    // ---- 隐式优先源目录（迭代 70 / #89，决策 #132）：本地清单所在目录 = 布局目录 ----
+    // ---- 隐式优先源目录（迭代 70 / #89，决策 #135）：本地清单所在目录 = 布局目录 ----
 
     [Fact]
     public async Task Local_manifest_source_resolves_local_source_directory()
