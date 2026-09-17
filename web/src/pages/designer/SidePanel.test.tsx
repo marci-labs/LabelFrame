@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// 迭代 32 P1-4：设计器侧栏组件测试——控件栏（放置类型 / 武装态）、契约字段（推导列表）、
+// 迭代 32 P1-4：设计器侧栏组件测试——控件栏（放置类型 / 武装态）、打印字段（推导列表）、
 // 图层列表（类型前缀标签、点击选中同步、选中高亮、层级操作）与预览锁定。
 // SidePanel 为纯 props 驱动组件（不依赖 Konva 画布 / api client），直接以最小 props 真实渲染。
 
@@ -18,6 +18,10 @@ const barcodeEl: BarcodeElement = { ...defaultElement('Barcode', 'b1') }
 const qrEl: QrCodeElement = { ...defaultElement('QrCode', 'q1'), mode: 'field', key: 'sku', text: 'SKU-9' }
 
 const ELEMENTS: DesignElement[] = [textEl, barcodeEl, qrEl, fieldTextEl]
+const FIELDS: SidePanelProps['fields'] = [
+  { key: 'location', displayName: '库位' },
+  { key: 'sku' },
+]
 
 function renderSide(overrides: Partial<SidePanelProps> = {}) {
   const props: SidePanelProps = {
@@ -25,7 +29,7 @@ function renderSide(overrides: Partial<SidePanelProps> = {}) {
     selected: [],
     viewMode: 'fit',
     pendingType: null,
-    fields: ['location', 'sku'],
+    fields: FIELDS,
     onPickType: vi.fn<(type: string) => void>(),
     onSelect: vi.fn<(id: string, toggle?: boolean) => void>(),
     onMoveLayer: vi.fn<(delta: number) => void>(),
@@ -106,11 +110,20 @@ describe('图层列表', () => {
   })
 })
 
-describe('契约字段（自动推导）', () => {
-  it('渲染字段键列表', () => {
+describe('打印字段（自动推导）', () => {
+  it('渲染字段列表：显示名优先（displayName || key），未填显示名回退字段名（迭代 83 · #131 决议 1）', () => {
     renderSide()
-    expect(screen.getByText('location')).toBeTruthy()
+    expect(screen.getByText('库位')).toBeTruthy()
     expect(screen.getByText('sku')).toBeTruthy()
+    // 有显示名的项悬停提示字段名（键）
+    expect(screen.getByText('库位').closest('li')?.getAttribute('title')).toBe('字段名：location')
+  })
+
+  it('措辞用户化（AC-02）：区块标题为「打印字段」，界面无「契约」字样直出', () => {
+    renderSide()
+    expect(screen.getByText('打印字段')).toBeTruthy()
+    expect(screen.getByText('自动推导')).toBeTruthy()
+    expect(document.body.textContent).not.toContain('契约')
   })
 
   it('无字段时显示空态', () => {

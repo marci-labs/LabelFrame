@@ -513,6 +513,42 @@ describe('下载 Excel 模板（迭代 22 §2.1）', () => {
   })
 })
 
+describe('字段显示名渲染（迭代 83 · #131 决议 1：displayName || key 回退）', () => {
+  it('契约字段带显示名：表单标签与占位符显示显示名，值仍按字段名（键）提交（AC-01）', async () => {
+    await renderDataPrint()
+    // 标签 = displayName（库位），不再直出键名 location
+    expect(screen.getByText('库位')).toBeTruthy()
+    expect(screen.queryByText('location')).toBeNull()
+    // 占位符同步显示名
+    expect(screen.getByPlaceholderText('字段 库位 的值（打印时使用）')).toBeTruthy()
+    // 值按字段名（键）绑定：testData 预填 location=A-01 正常出现在输入框
+    expect(screen.getByDisplayValue('A-01')).toBeTruthy()
+    fireEvent.change(screen.getByDisplayValue('A-01'), { target: { value: 'B-02' } })
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    await waitFor(() =>
+      expect(mocks.local.submitJob).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: { location: 'B-02' } }] })),
+    )
+  })
+
+  it('存量模板（旧口径 displayName = 键 / 显示名为空）：回退显示键名，不报错（AC-01）', async () => {
+    mocks.local.getTemplate.mockResolvedValue({
+      ...PKG,
+      contract: {
+        ...PKG.contract,
+        fields: [
+          { key: 'location', displayName: 'location', isRequired: true, type: 'Text' }, // 旧口径：displayName 取键
+          { key: 'sku', displayName: '', isRequired: false, type: 'Text' }, // 显示名为空
+        ],
+      },
+      testData: { location: 'A-01' },
+    })
+    await renderDataPrint()
+    expect(screen.getByText('location')).toBeTruthy()
+    expect(screen.getByText('sku')).toBeTruthy()
+    expect(screen.getByPlaceholderText('字段 location 的值（打印时使用）')).toBeTruthy()
+  })
+})
+
 describe('连接状态徽标（迭代 80「三名义」③：已加入 / 未加入服务端）', () => {
   /** 服务端模式挂载（与「目标设备固定本机」describe 同构，deviceId / deviceName 可覆盖）。 */
   async function renderServerModeLocal(devices: DeviceView[], host: { deviceId?: string; deviceName?: string } = { deviceId: 'device-1', deviceName: '仓库-1 打印电脑' }) {

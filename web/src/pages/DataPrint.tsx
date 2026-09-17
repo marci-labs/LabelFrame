@@ -15,7 +15,7 @@ import type { DeviceView, JobView, SubmitJobRequest, TemplatePackage, TemplateSu
 import { formatTransport, isNativePrintMode } from '../lib/transport'
 import { downloadBlob } from '../lib/download'
 import { fromBackendElements } from '../lib/design/convert'
-import { deriveFields } from '../lib/design/fields'
+import { deriveFieldInfos } from '../lib/design/fields'
 import { findDuplicateKeys, isMappingComplete, rowToData, suggestMapping } from '../lib/excel/mapping'
 import type { MappingField } from '../lib/excel/mapping'
 import { useApp } from '../state/AppContext'
@@ -370,12 +370,15 @@ export function DataPrint() {
       .finally(() => setLoading(false))
   }, [selectedName, deviceMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 契约字段键：contract.fields 优先，空则从版式推导
-  const fieldKeys = useMemo(() => {
+  // 打印字段（键 + 显示名）：contract.fields 优先，空则从版式推导；
+  // 标签与占位符一律 `displayName || key`（迭代 83 · #131 决议 1：存量模板未填显示名回退键名，不报错）
+  const formFields = useMemo(() => {
     if (!pkg) return []
-    const fromContract = (pkg.contract.fields ?? []).map((f) => f.key).filter(Boolean)
+    const fromContract = (pkg.contract.fields ?? [])
+      .map((f) => ({ key: f.key, displayName: f.displayName?.trim() || undefined }))
+      .filter((f) => f.key)
     if (fromContract.length > 0) return fromContract
-    return deriveFields(fromBackendElements(pkg.layout.elements))
+    return deriveFieldInfos(fromBackendElements(pkg.layout.elements))
   }, [pkg])
 
   // 列映射建议用字段（键 + 显示名）：表头为显示名（下载的 Excel 模板）时也能自动匹配（迭代 22 联调修复）
@@ -385,7 +388,7 @@ export function DataPrint() {
       .map((f) => ({ key: f.key, displayName: f.displayName }))
       .filter((f) => f.key)
     if (fromContract.length > 0) return fromContract
-    return deriveFields(fromBackendElements(pkg.layout.elements)).map((key) => ({ key }))
+    return deriveFieldInfos(fromBackendElements(pkg.layout.elements))
   }, [pkg])
 
   // 显示值 = { ...testData, ...用户 dirty 的 key }（按 key 存在性合并，用户清空不被顶回）
@@ -496,7 +499,7 @@ export function DataPrint() {
   /** 测试打印 / 出图的单张数据：有字段模板提交当前表单值（含预填）；
    *  无字段模板（静态标签，迭代 65 · #62）提交空字典——即使模板包携带遗留 testData 也不外带，
    *  后端受理 / 校验 / 渲染三层均支持空 data，静态内容按版式原样输出。 */
-  const singleTestData = () => (fieldKeys.length === 0 ? {} : { ...values })
+  const singleTestData = () => (formFields.length === 0 ? {} : { ...values })
 
   /** 调试关：打印测试（单张）提交正常作业（无字段拦截守卫已随 #62 移除）。 */
   const testPrint = () => {
@@ -627,8 +630,8 @@ export function DataPrint() {
           <button
             className="btn"
             onClick={() => void downloadExcelTemplate()}
-            disabled={!pkg || fieldKeys.length === 0 || excelTplBusy}
-            title={!pkg || fieldKeys.length === 0 ? '当前模板没有字段，无法生成 Excel 模板' : '按当前模板的字段生成 Excel 文件（含示例行），填好后可导入批量打印'}
+            disabled={!pkg || formFields.length === 0 || excelTplBusy}
+            title={!pkg || formFields.length === 0 ? '当前模板没有字段，无法生成 Excel 模板' : '按当前模板的字段生成 Excel 文件（含示例行），填好后可导入批量打印'}
           >
             <Icon name="download" size={13} />
             {excelTplBusy ? '生成中…' : '下载 Excel 模板'}
@@ -743,22 +746,25 @@ export function DataPrint() {
                 <div className="hint">请先在左侧选择模板。</div>
               ) : (
                 <>
-                  {fieldKeys.length === 0 ? (
+                  {formFields.length === 0 ? (
                     // 迭代 65（#62）：无字段模板 = 静态标签（合法模板），说明性提示替代旧「不允许」语义；
                     // 操作区（调试开关 / 打印测试 / 出图预览）照常渲染，行为与有字段模板一致
                     <div className="hint">该模板为静态标签（无字段填充）：内容将按版式原样打印，无需填写数据。</div>
                   ) : (
-                    fieldKeys.map((k) => (
-                      <label className="field" key={k}>
-                        {k}
-                        <input
-                          className="input mono"
-                          value={values[k] ?? ''}
-                          placeholder={`字段 ${k} 的值（打印时使用）`}
-                          onChange={(ev) => setFieldValue(k, ev.target.value)}
-                        />
-                      </label>
-                    ))
+                    formFields.map((f) => {
+                      const label = f.displayName || f.key
+                      return (
+                        <label className="field" key={f.key} title={f.displayName && f.displayName !== f.key ? `字段名：${f.key}` : undefined}>
+                          {label}
+                          <input
+                            className="input mono"
+                            value={values[f.key] ?? ''}
+                            placeholder={`字段 ${label} 的值（打印时使用）`}
+                            onChange={(ev) => setFieldValue(f.key, ev.target.value)}
+                          />
+                        </label>
+                      )
+                    })
                   )}
                   <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     <input type="checkbox" checked={debugMode} onChange={(ev) => app.setDraftDebug(ev.target.checked)} />
@@ -801,7 +807,7 @@ export function DataPrint() {
                   <div className="hint">
                     {debugMode
                       ? '模拟出图：生成的图片与实际打印效果一致（相同打印精度），不会实际打印、也不产生打印记录。'
-                      : fieldKeys.length === 0
+                      : formFields.length === 0
                         ? '静态标签无需填写数据；打印测试提交 1 张空数据标签（内容按版式原样输出）。'
                         : isServerUi
                         ? '已用示例值预填，可修改后打印；「打印测试」将向所选在线设备发送 1 张标签。'

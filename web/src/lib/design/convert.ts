@@ -4,6 +4,7 @@
 
 import type { DesignElement, ElementType } from './types'
 import { uid } from './types'
+import type { FieldInfo } from './fields'
 import { r2 } from './geometry'
 
 /** 后端版式元素 JSON（layout.elements 项）。 */
@@ -253,14 +254,38 @@ export function fromBackendElements(list: readonly BackendElement[]): DesignElem
   })
 }
 
-/** 字段推导结果 → 契约 fields（决策 #37：displayName 取 Key，非必填，类型 Text）。 */
-export function toContractFields(keys: readonly string[]): BackendField[] {
-  return keys.map((k) => ({ key: k, displayName: k, isRequired: false, type: 'Text' as const }))
+/**
+ * 字段推导结果 → 契约 fields（决策 #37：非必填，类型 Text）。
+ * 显示名（迭代 83 · #131 决议 1）：可选，空则回退键（displayName 字段契约本就存在，非格式变更）。
+ */
+export function toContractFields(fields: readonly FieldInfo[]): BackendField[] {
+  return fields.map((f) => ({ key: f.key, displayName: f.displayName?.trim() || f.key, isRequired: false, type: 'Text' as const }))
 }
 
 /** 内部状态 → 契约（POST /api/templates 用）。 */
-export function toContract(name: string, version: string, keys: readonly string[]): BackendContract {
-  return { name, version, fields: toContractFields(keys) }
+export function toContract(name: string, version: string, fields: readonly FieldInfo[]): BackendContract {
+  return { name, version, fields: toContractFields(fields) }
+}
+
+/**
+ * 契约 fields 显示名 → 内部元素回填（按字段名匹配；迭代 83 · #131 决议 1）。
+ * 版式元素 JSON 无显示名字段（契约格式不变），保存路径显示名只进契约 fields——
+ * 加载模板时按 sourceKey 匹配回填到元素，保证设计器往返（导出 / 导入）不丢显示名。
+ * 存量模板 displayName = key（决策 #37 旧口径）时不回填（元素保持无显示名，显示处回退键，行为不变）。
+ */
+export function applyContractDisplayNames(elements: readonly DesignElement[], fields: readonly BackendField[]): DesignElement[] {
+  const names = new Map<string, string>()
+  for (const f of fields) {
+    const dn = f.displayName?.trim()
+    // 与键相同 = 存量旧口径（displayName 取 Key），视为未填
+    if (f.key && dn && dn !== f.key) names.set(f.key, dn)
+  }
+  if (names.size === 0) return [...elements]
+  return elements.map((e) => {
+    if (!('mode' in e) || e.mode !== 'field' || !e.key) return e
+    const dn = names.get(e.key)
+    return dn && dn !== e.displayName ? ({ ...e, displayName: dn } as DesignElement) : e
+  })
 }
 
 /** 内部状态 → 版式（POST /api/templates 用）。 */
