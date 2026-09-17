@@ -374,7 +374,8 @@ export function TransportPanel() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span className="hint">当前连接</span>
-        <span className={'badge ' + (app.connected ? 'ok' : '')}>
+        {/* 迭代 80（#128「三名义」）：本机连接徽标随「本机打印服务」运行状态着色（本机事实），不随服务端地址连通性 */}
+        <span className={'badge ' + (app.localServiceUp ? 'ok' : '')}>
           {formatTransport(app.transportConfig) || app.transport || '未知'}
         </span>
       </div>
@@ -456,8 +457,9 @@ export function TransportQuickSwitch() {
   const currentPlugin = form.plugins.find((p) => p.id === form.pluginId) ?? form.plugins[0]
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <span className={'conn' + (app.connected ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <span className={'status-dot' + (app.connected ? ' on' : '')} />
+      {/* 迭代 80（#128「三名义」）：本机连接状态点随「本机打印服务」运行状态（本机事实），不随服务端地址连通性 */}
+      <span className={'conn' + (app.localServiceUp ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span className={'status-dot' + (app.localServiceUp ? ' on' : '')} />
         {formatTransport(app.transportConfig) || app.transport || '未连接'}
       </span>
       {form.pluginMode ? (

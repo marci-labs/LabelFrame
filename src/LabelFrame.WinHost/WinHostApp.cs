@@ -12,6 +12,7 @@ using LabelFrame.Rendering;
 using LabelFrame.WinHost.Api;
 using LabelFrame.WinHost.Jobs;
 using LabelFrame.WinHost.Transport;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LabelFrame.WinHost;
 
@@ -165,22 +166,12 @@ public static class WinHostApp
         await logStore.InitializeAsync();
         builder.Services.AddSingleton(logStore);
 
-        if (!string.IsNullOrWhiteSpace(options.ServerUrl))
-        {
-            builder.Services.AddSingleton(sp => new Routing.ServerJobPoller(
-                new HttpClient(),
-                options.ServerUrl!,
-                options.DeviceId,
-                options.DeviceName));
-            builder.Services.AddHostedService(sp => new Routing.ServerRoutingWorker(
-                sp.GetRequiredService<Routing.ServerJobPoller>(),
-                sp.GetRequiredService<JobSubmissionService>(),
-                queue,
-                TimeSpan.FromSeconds(Math.Max(1, options.PollIntervalSeconds)),
-                sp.GetRequiredService<ILogger<Routing.ServerRoutingWorker>>(),
-                TimeProvider.System,
-                TimeSpan.FromMilliseconds(Math.Max(100, options.ProgressIntervalMs))));
-        }
+        // 服务端路由协调器（迭代 80，决策 #141）：无条件注册（未配置地址时空转），
+        // 「保存服务端地址」经 HostApi 热切换（重建 poller / worker + 旧连接清理），不再仅启动期固化
+        builder.Services.AddSingleton(sp => new Routing.ServerRoutingCoordinator(
+            sp,
+            options,
+            hostInfo));
 
         // 服务层扩展点：在全部注册完成后执行（测试 RemoveAll<IHostedService> 等需要看到完整注册列表）
         configureServices?.Invoke(builder.Services);
@@ -191,6 +182,11 @@ public static class WinHostApp
 
         var app = builder.Build();
         exitCoordinator.Bind(app.Lifetime);
+
+        // 服务端路由启动接线：绑定停机清理 + 按当前配置拉起（未配置地址空转，保存后热切换开启）
+        var routingCoordinator = app.Services.GetRequiredService<Routing.ServerRoutingCoordinator>();
+        routingCoordinator.Bind(app.Lifetime);
+        await routingCoordinator.StartWithConfiguredUrlAsync();
 
         app.UseExceptionHandler();
         app.UseCors();

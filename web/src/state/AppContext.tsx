@@ -1,7 +1,9 @@
-// 全局 UI 状态：连接状态（服务端 healthz + serverMode）、本机连接（transportConfig）、机器级配置、
-// DataPrint 会话草稿、状态栏消息、日志
+// 全局 UI 状态：连接状态（服务端 healthz + serverMode）、本机打印服务可达性（localServiceUp）、
+// 本机连接（transportConfig）、机器级配置、DataPrint 会话草稿、状态栏消息、日志
 // 迭代 18（F2）：serverBase 优先级 = 机器级配置（GET /api/host/config）> localStorage 兜底 > 默认 127.0.0.1:53961；
 // 启动加载机器级配置后立即生效；保存服务端地址 = setHostConfig + 内存更新 + 重新探测（无需重启）。
+// 迭代 80（#128 决议 2「三名义」）：「本机打印服务」（localServiceUp，状态栏）与「服务端地址」连通性（connected，
+// 设置页）各自独立探测——此前状态栏用 connected 兼指本机后台服务可达，一词三义（评审 #114 B-9）。
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -24,6 +26,8 @@ export type ServerMode = 'unknown' | 'server' | 'standalone'
 
 interface AppContextValue {
   connected: boolean
+  /** 本机打印服务（WinHost）是否可达（迭代 80「三名义」之一：页面来源 /healthz 探测；状态栏「本机打印服务」数据源）。 */
+  localServiceUp: boolean
   /** 生效中的服务端地址（机器级配置 / localStorage 兜底 / 默认）。 */
   baseUrl: string
   /** 业务 API 模式（healthz 探测服务端地址得出）。 */
@@ -54,6 +58,8 @@ interface AppContextValue {
   setDefaultTargetDeviceId: (id: string | null) => void
   /** 探测服务端连接（healthz，5s 超时）。 */
   checkConnection: () => Promise<boolean>
+  /** 探测本机打印服务（页面来源 /healthz；client 构建状态栏「本机打印服务：运行中 / 未运行」数据源，server 构建不使用）。 */
+  checkLocalService: () => Promise<boolean>
   /** 探测任意地址的 /healthz（设置页「测试连接」用输入值，不保存）。 */
   checkUrl: (url: string) => Promise<boolean>
   /** 保存服务端地址（机器级配置持久化 + 立即生效 + 重新探测）；旧客户端回退 localStorage。 */
@@ -107,6 +113,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [baseUrl, setBaseUrlState] = useState(() => (isServerUi ? '' : getBaseUrl()))
   const [serverMode, setServerMode] = useState<ServerMode>('unknown')
   const [connected, setConnected] = useState(false)
+  // 迭代 80（#128 决议 2「三名义」）：本机打印服务可达性独立于「服务端地址」连通性——
+  // 状态栏呈现本机后台服务（页面来源），不再与服务端地址（remote Server）共用一个「connected」
+  const [localServiceUp, setLocalServiceUp] = useState(false)
   const [hostDeviceId, setHostDeviceId] = useState<string | null>(null)
   const [hostDeviceName, setHostDeviceName] = useState<string | null>(null)
   const [hostIps, setHostIps] = useState<string[]>([])
@@ -159,6 +168,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const checkUrl = useCallback((url: string): Promise<boolean> => probeHealthz(url), [])
+
+  // 本机打印服务探测（迭代 80「三名义」意义①）：页面来源 /healthz——client 构建页面由本机 WinHost 托管，
+  // 探测结果即「本机打印服务：运行中 / 未运行」；server 构建不调用（状态栏不呈现该项）
+  const checkLocalService = useCallback(async (): Promise<boolean> => {
+    try {
+      await localApi.healthz()
+      setLocalServiceUp(true)
+      return true
+    } catch {
+      setLocalServiceUp(false)
+      return false
+    }
+  }, [])
 
   // 启动：读机器级配置（serverUrl 优先）→ 本机连接配置 → 探测服务端
   // 迭代 20（K2）：server 构建由服务端托管、无本机 Client——跳过 localApi 探测（getHostConfig / getTransport），
@@ -263,6 +285,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AppContextValue>(
     () => ({
       connected,
+      localServiceUp,
       baseUrl,
       serverMode,
       hostDeviceId,
@@ -281,6 +304,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setStatus,
       setDefaultTargetDeviceId,
       checkConnection,
+      checkLocalService,
       checkUrl,
       changeBaseUrl,
       applyTransportConfig,
@@ -292,6 +316,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       connected,
+      localServiceUp,
       baseUrl,
       serverMode,
       hostDeviceId,
@@ -309,6 +334,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setStatus,
       setDefaultTargetDeviceId,
       checkConnection,
+      checkLocalService,
       checkUrl,
       changeBaseUrl,
       applyTransportConfig,

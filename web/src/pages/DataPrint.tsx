@@ -3,6 +3,8 @@
 // 调试模式独立开关——开：打印按钮改为后端渲染出图下载（单张 PNG / 批量 zip），不建作业不发驱动。
 // 迭代 65（#62）：无字段模板 = 静态标签（合法模板），操作区照常渲染可打印测试（提交空数据单张），
 // Excel 模板 / 导入维持无字段禁用（无列可生成 / 映射）。
+// 迭代 80（#128 决议 2 ③ / C-3）：本页对服务端的状态一律用「已加入 / 未加入服务端」（设备注册，hostInList），
+// 且随探测周期（10s）自动刷新——后台注册状态变化后无需切页（评审 #114 B-9 / C-3）。
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
@@ -253,62 +255,75 @@ export function DataPrint() {
 
   useEffect(() => {
     let cancelled = false
-    if (isServerUi) {
-      // 迭代 20（K1/K2/Y2）：server 构建不探测本机（无 getHostConfig / getTransport）；
-      // 进入页面拉取一次设备列表（无需轮询，提交前另有现拉校验）；
-      // 默认目标优先级 = 用户点选（localStorage labelframe.defaultTargetDeviceId，须在线）> 第一台在线。
-      serverApi
-        .listDevices()
-        .then((list) => {
-          if (cancelled) return
-          setDevices(list)
-          setDeviceMode('server')
-          setRouteMode('server')
-          setHostInList(true)
-          const online = list.filter((d) => d.status === 'Online')
-          const saved =
-            app.defaultTargetDeviceId && online.some((d) => d.deviceId === app.defaultTargetDeviceId)
-              ? app.defaultTargetDeviceId
-              : ''
-          setTargetDeviceId(saved || online[0]?.deviceId || '')
-        })
-        .catch((err) => {
-          if (cancelled) return
-          setDeviceMode('server')
-          setRouteMode('server')
-          setHostInList(true)
-          setError(err instanceof ApiError ? err.message : '加载设备列表失败。')
-        })
-      return () => {
-        cancelled = true
+    let probedOnce = false
+    const probeRoute = () => {
+      if (isServerUi) {
+        // 迭代 20（K1/K2/Y2）：server 构建不探测本机（无 getHostConfig / getTransport）；
+        // 进入页面拉取一次设备列表（无需轮询，提交前另有现拉校验）；
+        // 默认目标优先级 = 用户点选（localStorage labelframe.defaultTargetDeviceId，须在线）> 第一台在线。
+        serverApi
+          .listDevices()
+          .then((list) => {
+            if (cancelled) return
+            probedOnce = true
+            setDevices(list)
+            setDeviceMode('server')
+            setRouteMode('server')
+            setHostInList(true)
+            const online = list.filter((d) => d.status === 'Online')
+            const saved =
+              app.defaultTargetDeviceId && online.some((d) => d.deviceId === app.defaultTargetDeviceId)
+                ? app.defaultTargetDeviceId
+                : ''
+            setTargetDeviceId((prev) =>
+              prev && online.some((d) => d.deviceId === prev) ? prev : saved || online[0]?.deviceId || '',
+            )
+          })
+          .catch((err) => {
+            if (cancelled) return
+            setDeviceMode('server')
+            setRouteMode('server')
+            setHostInList(true)
+            if (!probedOnce) setError(err instanceof ApiError ? err.message : '加载设备列表失败。')
+            probedOnce = true
+          })
+        return
       }
+      void Promise.all([serverApi.listDevices().catch(() => null), localApi.getHostConfig().catch(() => null)]).then(
+        ([list, cfg]) => {
+          if (cancelled) return
+          if (list) {
+            setDevices(list)
+            setDeviceMode('server')
+            const online = list.filter((d) => d.status === 'Online')
+            // 本机设备优先（hostConfig.deviceId 匹配），未命中回退第一台在线（少点一次；全部离线时留空由用户选择）；
+            // 已选目标保留（仍在线时），不被周期刷新顶回
+            const mine = cfg ? online.find((d) => d.deviceId === cfg.deviceId) : undefined
+            setTargetDeviceId((prev) => prev || mine?.deviceId || online[0]?.deviceId || '')
+            // 迭代 22（决策 1A）：客户端构建目标固定本机——本机已注册且在线 → 服务端路由；
+            // 未注册（无 deviceId 或不在列表）/ 离线 → 降级本机直连（提交走本机 WinHost，作业仅本机历史）
+            const mineAny = cfg?.deviceId ? list.find((d) => d.deviceId === cfg.deviceId) : undefined
+            setHostInList(Boolean(mineAny))
+            setRouteMode(mineAny && mineAny.status === 'Online' ? 'server' : 'direct')
+          } else {
+            // 单机模式：旧 WinHost 无 /api/devices（404），或服务端不可达——隐藏设备选择，正常提交
+            setDeviceMode('standalone')
+            setRouteMode('direct')
+            setHostInList(false)
+          }
+        },
+      )
     }
-    void Promise.all([serverApi.listDevices().catch(() => null), localApi.getHostConfig().catch(() => null)]).then(
-      ([list, cfg]) => {
-        if (cancelled) return
-        if (list) {
-          setDevices(list)
-          setDeviceMode('server')
-          const online = list.filter((d) => d.status === 'Online')
-          // 本机设备优先（hostConfig.deviceId 匹配），未命中回退第一台在线（少点一次；全部离线时留空由用户选择）
-          const mine = cfg ? online.find((d) => d.deviceId === cfg.deviceId) : undefined
-          setTargetDeviceId(mine?.deviceId ?? online[0]?.deviceId ?? '')
-          // 迭代 22（决策 1A）：客户端构建目标固定本机——本机已注册且在线 → 服务端路由；
-          // 未注册（无 deviceId 或不在列表）/ 离线 → 降级本机直连（提交走本机 WinHost，作业仅本机历史）
-          const mineAny = cfg?.deviceId ? list.find((d) => d.deviceId === cfg.deviceId) : undefined
-          setHostInList(Boolean(mineAny))
-          setRouteMode(mineAny && mineAny.status === 'Online' ? 'server' : 'direct')
-        } else {
-          // 单机模式：旧 WinHost 无 /api/devices（404），或服务端不可达——隐藏设备选择，正常提交
-          setDeviceMode('standalone')
-          setRouteMode('direct')
-        }
-      },
-    )
+    probeRoute()
+    // 迭代 80（#128 C-3）：client 构建设备列表 / routeMode / hostInList 随健康探测周期刷新（10s）——
+    // 后台注册状态变化（含保存服务端地址后的热切换）后页面在探测周期内自动更新，无需切页；
+    // baseUrl 变化（保存新地址）时立即重探。server 构建维持「进入拉取一次」契约（提交前另有现拉校验）
+    const timer = isServerUi ? null : setInterval(probeRoute, 10000)
     return () => {
       cancelled = true
+      if (timer) clearInterval(timer)
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [app.baseUrl, app.defaultTargetDeviceId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedName = printDraft.selectedName
   const debugMode = printDraft.debugMode
@@ -586,12 +601,14 @@ export function DataPrint() {
         />
       </div>
 
-      {/* 连接状态徽标（迭代 18 F5）：本机连接（Client 传输方式）与服务端连通（模板 / 作业中心）各自含义。
-          迭代 20：server 构建隐藏（本机连接 = 打印机相关内容；服务端连通状态在底部状态栏已显示） */}
+      {/* 连接状态徽标（迭代 18 F5）：本机连接（Client 传输方式）与「已加入服务端」（设备注册状态）各自含义。
+          迭代 80（#128 决议 2「三名义」③）：本页对服务端的状态 = 设备是否已加入服务端设备列表
+          （hostInList，随探测周期刷新），不再用「已连接 / 未连接」（评审 #114 B-9 / C-3 一词三义与同屏矛盾）。
+          迭代 20：server 构建隐藏（本机连接 = 打印机相关内容；加入状态在目标设备行显示） */}
       {!isServerUi && (
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}
-          title="本机连接：本机当前使用的打印机连接方式；服务端：保存模板与打印记录的服务端"
+          title="本机连接：本机当前使用的打印机连接方式；服务端：本机设备是否已加入服务端设备列表（服务端地址在设置页配置）"
         >
           <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             本机连接
@@ -599,9 +616,9 @@ export function DataPrint() {
           </span>
           <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             服务端
-            <span className={'conn' + (app.connected ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <span className={'status-dot' + (app.connected ? ' on' : '')} />
-              {app.connected ? '已连接' : '未连接（单机模式可用）'}
+            <span className={'conn' + (deviceMode === 'server' && hostInList ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span className={'status-dot' + (deviceMode === 'server' && hostInList ? ' on' : '')} />
+              {routeMode === 'loading' ? '检测中…' : deviceMode === 'server' && hostInList ? '已加入' : '未加入'}
             </span>
           </span>
         </div>
@@ -646,11 +663,11 @@ export function DataPrint() {
                 本机（{app.hostDeviceName || app.hostDeviceId || '未知'}）
               </span>
               {routeMode === 'server' ? (
-                <span className="hint">本机已连接服务端，打印记录也会同步到服务端。</span>
+                <span className="hint">本机已加入服务端，打印记录也会同步到服务端。</span>
               ) : (
                 <span className="badge warn">
                   {!hostInList
-                    ? '本机尚未加入服务端：暂用本机直接打印（记录仅保存在本机）。'
+                    ? '本机未加入服务端：暂用本机直接打印（记录仅保存在本机）。'
                     : '本机当前离线：暂用本机直接打印（记录仅保存在本机）。'}
                 </span>
               )}
@@ -711,7 +728,7 @@ export function DataPrint() {
                             : deviceMode === 'server'
                               ? routeMode === 'server'
                                 ? '打印 1 张标签到本机（经服务端转发）'
-                                : '本机未连接服务端：直接在本机打印 1 张标签'
+                                : '本机未加入服务端：直接在本机打印 1 张标签'
                               : '在本机打印 1 张标签'
                       }
                     >
@@ -741,9 +758,9 @@ export function DataPrint() {
                         ? '已用示例值预填，可修改后打印；「打印测试」将向所选在线设备发送 1 张标签。'
                         : deviceMode === 'server'
                           ? routeMode === 'server'
-                            ? '已用示例值预填，可修改后打印；「打印测试」将打印 1 张标签（本机已连接服务端）。'
-                            : '已用示例值预填，可修改后打印；本机未连接服务端，将改为本机直接打印（记录仅保存在本机）。'
-                          : '已用示例值预填，可修改后打印；未连接服务端，标签直接在本机打印。'}
+                            ? '已用示例值预填，可修改后打印；「打印测试」将打印 1 张标签（本机已加入服务端）。'
+                            : '已用示例值预填，可修改后打印；本机未加入服务端，将改为本机直接打印（记录仅保存在本机）。'
+                          : '已用示例值预填，可修改后打印；未加入服务端，标签直接在本机打印。'}
                   </div>
                 </>
               )}

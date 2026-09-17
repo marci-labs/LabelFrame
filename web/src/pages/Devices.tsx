@@ -106,7 +106,8 @@ export function Devices() {
             <Icon name="grid" />
             <div className="empty-title">暂无设备</div>
             <div className="hint">
-              客户端（LabelFrame Client）安装并连接服务端后，设备会出现在这里。
+              {/* 迭代 80（#128 决议 2「三名义」③）：设备出现在列表 = 已加入服务端（设备注册），不再用「连接服务端」 */}
+              客户端（LabelFrame Client）安装并加入服务端后，设备会出现在这里。
               <br />
               设备超过 30 秒未连接即显示为离线；列表每 5 秒自动刷新。
             </div>
