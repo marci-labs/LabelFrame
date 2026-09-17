@@ -3,7 +3,7 @@
 // 迭代 18 F5：双 base（serverApi / localApi 跟随 deviceMode）+ 本机设备默认选中（hostConfig.deviceId 匹配）+ 单机降级守门
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { DeviceView, JobView, TemplatePackage } from '../lib/api/types'
 import { ApiError } from '../lib/api/types'
 import { AppProvider } from '../state/AppContext'
@@ -287,7 +287,7 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
   it('本机已注册且在线：只显示「本机（{deviceName}）」标签，无设备选择器', async () => {
     await renderServerMode(DEVICES)
     expect(screen.getByText('本机（仓库-1 打印电脑）')).toBeTruthy()
-    expect(screen.getByText(/本机已连接服务端，打印记录也会同步到服务端/)).toBeTruthy()
+    expect(screen.getByText(/本机已加入服务端，打印记录也会同步到服务端/)).toBeTruthy()
     // 客户端构建不再有设备选择器
     expect(screen.queryByLabelText('目标设备')).toBeNull()
   })
@@ -322,7 +322,7 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
 
   it('本机未注册（deviceId 不在服务端列表）：降级本机直连并提示未注册', async () => {
     await renderServerMode(DEVICES, { deviceId: 'pc-x', deviceName: '未注册电脑' })
-    expect(screen.getByText(/本机尚未加入服务端：暂用本机直接打印/)).toBeTruthy()
+    expect(screen.getByText(/本机未加入服务端：暂用本机直接打印/)).toBeTruthy()
     // 提交走本机直连（localApi）
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     await waitFor(() => expect(mocks.local.submitJob).toHaveBeenCalledTimes(1))
@@ -332,12 +332,12 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
   it('旧客户端无 deviceId：降级本机直连并提示未注册', async () => {
     await renderServerMode(DEVICES, { deviceId: undefined, deviceName: undefined })
     expect(screen.getByText('本机（未知）')).toBeTruthy()
-    expect(screen.getByText(/本机尚未加入服务端：暂用本机直接打印/)).toBeTruthy()
+    expect(screen.getByText(/本机未加入服务端：暂用本机直接打印/)).toBeTruthy()
   })
 
   it('服务端模式无设备（空列表）：本机未注册降级直连，打印测试仍可用', async () => {
     await renderServerMode([])
-    expect(screen.getByText(/本机尚未加入服务端/)).toBeTruthy()
+    expect(screen.getByText(/本机未加入服务端：暂用本机直接打印/)).toBeTruthy()
     expect((screen.getByRole('button', { name: /打印测试（单张）/ }) as HTMLButtonElement).disabled).toBe(false)
   })
 
@@ -405,21 +405,58 @@ describe('下载 Excel 模板（迭代 22 §2.1）', () => {
   })
 })
 
-describe('连接状态徽标（迭代 18 F5）', () => {
-  it('显示本机连接方式与服务端连通状态（图例区分）', async () => {
+describe('连接状态徽标（迭代 80「三名义」③：已加入 / 未加入服务端）', () => {
+  /** 服务端模式挂载（与「目标设备固定本机」describe 同构，deviceId / deviceName 可覆盖）。 */
+  async function renderServerModeLocal(devices: DeviceView[], host: { deviceId?: string; deviceName?: string } = { deviceId: 'device-1', deviceName: '仓库-1 打印电脑' }) {
+    mocks.server.listDevices.mockResolvedValue(devices)
+    mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', ...host })
+    render(<Harness show />)
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
+    await waitFor(() => expect(screen.getByText(/^本机（/)).toBeTruthy(), MOUNT_WAIT)
+  }
+
+  it('单机模式（/api/devices 404）：徽标显示「未加入」', async () => {
     await renderDataPrint()
     expect(screen.getByText('本机连接')).toBeTruthy()
     expect(screen.getByText('服务端')).toBeTruthy()
     // 本机连接徽标：来自 localApi.getTransport（Log 模式 → 用户语摘要「模拟打印」）
     expect(screen.getByText('模拟打印')).toBeTruthy()
-    // 服务端连通（healthz 成功）→ 已连接
-    expect(screen.getByText('已连接')).toBeTruthy()
+    // 服务端 = 设备是否已加入服务端设备列表（hostInList），不再是 healthz 连通性
+    expect(screen.getByText('未加入')).toBeTruthy()
+    expect(screen.queryByText('已连接')).toBeNull()
+    expect(screen.queryByText('未连接（单机模式可用）')).toBeNull()
   })
 
-  it('服务端不可达（healthz 失败）：徽标显示「未连接（单机模式可用）」', async () => {
-    mocks.server.healthz.mockRejectedValue(new Error('down'))
-    await renderDataPrint()
-    expect(await screen.findByText('未连接（单机模式可用）')).toBeTruthy()
+  it('本机已注册（deviceId 在服务端列表）：徽标显示「已加入」', async () => {
+    await renderServerModeLocal(DEVICES)
+    expect(screen.getByText('已加入')).toBeTruthy()
+  })
+
+  it('本机未注册（deviceId 不在列表）：徽标显示「未加入」', async () => {
+    await renderServerModeLocal(DEVICES, { deviceId: 'pc-x', deviceName: '未注册电脑' })
+    expect(screen.getByText('未加入')).toBeTruthy()
+  })
+
+  it('设备加入状态随探测周期刷新（#128 C-3）：后台注册后徽标自动变「已加入」，无需切页', async () => {
+    // 初始：服务端设备列表不含本机 → 未加入；10s 探测周期后本机注册上线 → 已加入（无卸载重挂）
+    vi.useFakeTimers()
+    try {
+      mocks.server.listDevices.mockResolvedValue([DEVICES[1]])
+      render(<Harness show />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200)
+      })
+      expect(screen.getByDisplayValue('A-01')).toBeTruthy()
+      expect(screen.getByText('未加入')).toBeTruthy()
+
+      mocks.server.listDevices.mockResolvedValue(DEVICES)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      expect(screen.getByText('已加入')).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('原生指令模式连接：打印操作区出现「无预览，效果以真机为准」提示（迭代 78，#120 AC-04）', async () => {

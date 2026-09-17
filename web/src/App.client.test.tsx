@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 // 迭代 20：client 构建菜单与状态栏——含 设置（不含 在线设备 / 设备日志）；
 // 迭代 75（#112）：「PDA 日志」页下线——导航入口移除（回传链路不存在前的界面收敛）；
-// 状态栏在服务端已连接时显示本机 IP（/api/host/config.ips，多 IP 逗号分隔，title 给全量）。
+// 状态栏在本机打印服务运行中时显示本机 IP（/api/host/config.ips，多 IP 逗号分隔，title 给全量）。
+// 迭代 80（#128 决议 2「三名义」①）：状态栏改呈现「本机打印服务：运行中 / 未运行」——
+// 不再用「服务端已连接」兼指本机后台服务可达（评审 #114 B-9）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
@@ -68,6 +70,8 @@ beforeEach(() => {
   window.localStorage.clear()
   window.sessionStorage.clear()
   mocks.server.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
+  // 迭代 80：本机打印服务探测（localApi.healthz = 页面来源 WinHost）默认运行中
+  mocks.local.healthz.mockResolvedValue({ service: 'LabelFrame.WinHost', status: 'ok' })
   mocks.local.getHostConfig.mockResolvedValue({
     serverUrl: 'http://127.0.0.1:53961',
     deviceId: 'PC-1',
@@ -95,9 +99,9 @@ describe('client 构建：菜单（迭代 20 裁剪守门）', () => {
 })
 
 describe('client 构建：状态栏本机 IP（迭代 20 G3）', () => {
-  it('服务端已连接时显示本机 IP（多 IP 逗号分隔全部）', async () => {
+  it('本机打印服务运行中时显示本机 IP（多 IP 逗号分隔全部）', async () => {
     render(<App />)
-    // healthz 成功后 connected=true → IP 显示
+    // localApi.healthz 成功后 localServiceUp=true → IP 显示
     expect(await screen.findByText(/本机 IP：192\.168\.1\.5, 10\.0\.0\.8/)).toBeTruthy()
     // title 给全量
     const el = screen.getByText(/本机 IP：/)
@@ -112,7 +116,7 @@ describe('client 构建：状态栏本机 IP（迭代 20 G3）', () => {
 })
 
 describe('client 构建：状态栏本机设备名称（迭代 22 §2.1）', () => {
-  it('服务端已连接时显示「本机：{deviceName}」（与本机 IP 并列）', async () => {
+  it('本机打印服务运行中时显示「本机：{deviceName}」（与本机 IP 并列）', async () => {
     render(<App />)
     expect(await screen.findByText(/本机：PC-1/)).toBeTruthy()
     expect(screen.getByText(/本机 IP：192\.168\.1\.5, 10\.0\.0\.8/)).toBeTruthy()
@@ -123,5 +127,28 @@ describe('client 构建：状态栏本机设备名称（迭代 22 §2.1）', () 
     render(<App />)
     expect(await screen.findByText(/本机 IP：192\.168\.1\.5/)).toBeTruthy()
     expect(screen.queryByText(/本机：/)).toBeNull()
+  })
+})
+
+describe('client 构建：状态栏「本机打印服务」（迭代 80 决议 2「三名义」①）', () => {
+  it('本机打印服务可达：显示「本机打印服务：运行中」，不再出现「服务端已连接」', async () => {
+    render(<App />)
+    expect(await screen.findByText('本机打印服务：运行中')).toBeTruthy()
+    // 三名义：状态栏不再用「服务端」一词描述本机后台服务
+    expect(screen.queryByText('服务端已连接')).toBeNull()
+    expect(screen.queryByText('服务端未连接（单机模式可用）')).toBeNull()
+  })
+
+  it('本机打印服务不可达：显示「本机打印服务：未运行」', async () => {
+    mocks.local.healthz.mockRejectedValue(new Error('down'))
+    render(<App />)
+    expect(await screen.findByText('本机打印服务：未运行')).toBeTruthy()
+  })
+
+  it('服务端地址连通性变化不影响状态栏本机打印服务状态（各义独立探测）', async () => {
+    // 远程服务端不可达（healthz 失败）但本机打印服务运行中——状态栏仍「运行中」
+    mocks.server.healthz.mockRejectedValue(new Error('down'))
+    render(<App />)
+    expect(await screen.findByText('本机打印服务：运行中')).toBeTruthy()
   })
 })

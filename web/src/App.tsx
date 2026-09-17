@@ -1,6 +1,8 @@
 // 应用框架：左侧主导航（state 切换，无路由库）+ 底部状态栏 + 日志抽屉
 // 迭代 20：双构建（VITE_UI_MODE）——server 构建菜单移除设置与打印机相关内容，新增「在线设备」，
 // 状态栏 server 显示服务端地址（同源）与 UI 模式、client 显示本机 IP。
+// 迭代 80（#128 决议 2「三名义」）：client 状态栏改呈现「本机打印服务：运行中 / 未运行」——
+// 「服务端」一词不再兼指本机后台服务（评审 #114 B-9）；服务端连通在设置页、加入状态在数据与打印页。
 // 迭代 75（#112）：「PDA 日志 / 设备日志」页下线（回传链路不存在前界面收敛，决策 #140）——双形态导航入口移除。
 
 import { useEffect, useState } from 'react'
@@ -52,10 +54,16 @@ function Shell() {
 
   useEffect(() => {
     void app.checkConnection()
+    // 迭代 80（#128 决议 2「三名义」）：client 构建周期探测本机打印服务（页面来源 /healthz）——
+    // 状态栏「本机打印服务：运行中 / 未运行」数据源，与服务端地址连通性（checkConnection）各自独立
+    if (!isServerUi) void app.checkLocalService()
     // 周期探测连接（10s），后端重启后状态自动恢复
-    const timer = setInterval(() => void app.checkConnection(), 10000)
+    const timer = setInterval(() => {
+      void app.checkConnection()
+      if (!isServerUi) void app.checkLocalService()
+    }, 10000)
     return () => clearInterval(timer)
-  }, [app.checkConnection, app.baseUrl])
+  }, [app.checkConnection, app.checkLocalService, app.baseUrl])
 
   const openDesigner = (req: DesignerRequest) => {
     setDesignerReq(req)
@@ -87,8 +95,21 @@ function Shell() {
               </button>
             ))}
           </div>
-          <div className="nav-foot" title={app.connected ? '服务端已连接' : '服务端未连接（单机模式可用）'}>
-            <span className={'status-dot' + (app.connected ? ' on' : '')} />
+          {/* 迭代 80（#128 决议 2「三名义」）：client 构建指向「本机打印服务」（页面来源的本机后台服务），
+              不再沿用「服务端」一词（评审 #114 B-9 一词三义）；server 构建维持服务端自身连通（含义②语境） */}
+          <div
+            className="nav-foot"
+            title={
+              isServerUi
+                ? app.connected
+                  ? '服务端已连接'
+                  : '服务端未连接'
+                : app.localServiceUp
+                  ? '本机打印服务：运行中'
+                  : '本机打印服务：未运行'
+            }
+          >
+            <span className={'status-dot' + ((isServerUi ? app.connected : app.localServiceUp) ? ' on' : '')} />
           </div>
         </nav>
 
@@ -106,10 +127,14 @@ function Shell() {
       </div>
 
       <footer className="statusbar">
-        <span className={'conn' + (app.connected ? ' on' : ' off')}>
-          <span className={'status-dot' + (app.connected ? ' on' : '')} />
-          {app.connected ? '服务端已连接' : '服务端未连接（单机模式可用）'}
-        </span>
+        {/* 迭代 80（#128 决议 2「三名义」①）：状态栏呈现本机打印服务运行状态——
+            client 构建 = 页面来源的本机 WinHost；server 构建此段不渲染（下方 meta 显示服务端地址） */}
+        {!isServerUi && (
+          <span className={'conn' + (app.localServiceUp ? ' on' : ' off')}>
+            <span className={'status-dot' + (app.localServiceUp ? ' on' : '')} />
+            {app.localServiceUp ? '本机打印服务：运行中' : '本机打印服务：未运行'}
+          </span>
+        )}
         <span className="msg">{app.statusMsg}</span>
         <span className="meta">
           {isServerUi ? (
@@ -121,14 +146,15 @@ function Shell() {
           ) : (
             <>
               <span className="mono">{app.baseUrl}</span>
-              {/* 迭代 20：客户端状态栏在服务端已连接时显示本机 IP（/api/host/config.ips，多 IP 逗号分隔全部） */}
-              {app.connected && app.hostIps.length > 0 && (
+              {/* 迭代 20：客户端状态栏显示本机 IP（/api/host/config.ips，多 IP 逗号分隔全部）；
+                  迭代 80：随「本机打印服务」运行状态显示（本机事实不依赖服务端地址连通性） */}
+              {app.localServiceUp && app.hostIps.length > 0 && (
                 <span className="mono" title={app.hostIps.join(', ')}>
                   本机 IP：{truncateIps(app.hostIps)}
                 </span>
               )}
               {/* 迭代 22 §2.1：客户端状态栏显示本机设备名称（/api/host/config.deviceName，与本机 IP 并列） */}
-              {app.connected && app.hostDeviceName && <span className="mono">本机：{app.hostDeviceName}</span>}
+              {app.localServiceUp && app.hostDeviceName && <span className="mono">本机：{app.hostDeviceName}</span>}
             </>
           )}
           <button className="btn sm ghost" onClick={() => app.setDrawerOpen(!app.drawerOpen)}>
