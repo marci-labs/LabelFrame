@@ -64,9 +64,9 @@ describe('formatTransport：displayText 优先（迭代 22）', () => {
     expect(formatTransport(cfg)).toBe('TCP 192.168.1.50:9100')
   })
 
-  it('旧后端无 displayText：按 mode + params 本地格式化', () => {
-    expect(formatTransport({ mode: 'Log', params: {} })).toBe('LOG')
-    expect(formatTransport({ mode: 'Tcp', params: { tcpHost: '192.168.1.50', tcpPort: 9100 } })).toBe('TCP 192.168.1.50:9100')
+  it('旧后端无 displayText：按 mode + params 本地格式化（迭代 73 用户语摘要）', () => {
+    expect(formatTransport({ mode: 'Log', params: {} })).toBe('模拟打印')
+    expect(formatTransport({ mode: 'Tcp', params: { tcpHost: '192.168.1.50', tcpPort: 9100 } })).toBe('网络打印机 192.168.1.50:9100')
     expect(formatTransport({ mode: 'Zebra', params: { zebraKind: 'Usb', zebraUsbName: 'ZDesigner' } })).toBe('Zebra USB（ZDesigner）')
     expect(formatTransport(null)).toBe('')
   })

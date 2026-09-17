@@ -58,6 +58,11 @@ function withinSection(title: string): HTMLElement {
   return el.closest('section') as HTMLElement
 }
 
+/** 迭代 73（#108 决议 1）：连接方式面板默认折叠为当前连接摘要一行——点击面板头展开编辑区。 */
+function openTransportPanel() {
+  fireEvent.click(screen.getByText('连接方式'))
+}
+
 const HOST_CONFIG = { serverUrl: 'http://127.0.0.1:53961', deviceId: 'PC-1', deviceName: 'PC-1' }
 
 beforeEach(() => {
@@ -97,13 +102,25 @@ describe('设置页三分组（迭代 18）', () => {
     expect(screen.getByLabelText('服务端地址')).toBeTruthy()
     expect(screen.getByText('连接方式')).toBeTruthy()
     expect(screen.getByText('打印机')).toBeTruthy()
-    // 连接方式模式单选（Log / TCP / Windows 驱动 / Zebra）
-    expect(screen.getByRole('radio', { name: /Log/ })).toBeTruthy()
-    expect(screen.getByRole('radio', { name: /TCP/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /测试打印/ })).toBeTruthy()
+  })
+
+  it('连接方式默认折叠为当前连接摘要一行，点击面板头展开编辑区（迭代 73 决议 1，AC-02）', async () => {
+    renderSettings()
+    // 默认折叠：面板头显示当前摘要（getTransport 异步加载后 Log → 模拟打印），编辑区不渲染
+    expect(await screen.findByText('模拟打印')).toBeTruthy()
+    expect(screen.queryByRole('radio', { name: /模拟打印/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /保存并应用/ })).toBeNull()
+    // 点击面板头（1 步）展开：模式单选与操作按钮出现
+    openTransportPanel()
+    expect(await screen.findByRole('radio', { name: /模拟打印/ })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /网络打印机/ })).toBeTruthy()
     expect(screen.getByRole('radio', { name: /Windows 驱动/ })).toBeTruthy()
     expect(screen.getByRole('radio', { name: /Zebra/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /保存并应用/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /测试打印/ })).toBeTruthy()
+    // 再点击收起
+    openTransportPanel()
+    expect(screen.queryByRole('radio', { name: /模拟打印/ })).toBeNull()
   })
 
   it('启动加载机器级配置：服务端地址显示 hostConfig.serverUrl', async () => {
@@ -144,22 +161,24 @@ describe('服务端地址（F2）', () => {
     renderSettings()
     fireEvent.change(screen.getByLabelText('服务端地址'), { target: { value: 'http://192.168.1.10:53961' } })
     fireEvent.click(screen.getByRole('button', { name: /保存并生效/ }))
-    expect(await screen.findByText(/本机配置接口不可用，已使用浏览器本地保存/)).toBeTruthy()
+    expect(await screen.findByText(/当前客户端版本较旧：地址已保存在本浏览器中/)).toBeTruthy()
     expect(window.localStorage.getItem('labelframe.baseUrl')).toBe('http://192.168.1.10:53961')
   })
 })
 
-describe('连接方式（F3，恢复迭代 15）', () => {
-  it('模式单选只显示当前模式参数（切到 TCP 显示 IP / 端口）', async () => {
+describe('连接方式（F3，恢复迭代 15；迭代 73 起默认折叠，交互前先展开）', () => {
+  it('模式单选只显示当前模式参数（切到网络打印机显示 IP / 端口）', async () => {
     renderSettings()
-    fireEvent.click(screen.getByRole('radio', { name: /^TCP/ }))
+    openTransportPanel()
+    fireEvent.click(screen.getByRole('radio', { name: /^网络打印机/ }))
     expect(await screen.findByLabelText('打印机 IP / 主机名')).toBeTruthy()
     expect(screen.getByLabelText('端口')).toBeTruthy()
   })
 
   it('测试连接：发送候选参数（testOnly 注入在 client 层，组件只传表单参数），成功后显示后端 message 且不调 setTransport', async () => {
     renderSettings()
-    fireEvent.click(screen.getByRole('radio', { name: /^TCP/ }))
+    openTransportPanel()
+    fireEvent.click(screen.getByRole('radio', { name: /^网络打印机/ }))
     await screen.findByLabelText('打印机 IP / 主机名')
     fireEvent.change(screen.getByLabelText('打印机 IP / 主机名'), { target: { value: '192.168.1.50' } })
     fireEvent.click(within(withinSection('连接方式')).getByRole('button', { name: /^测试连接/ }))
@@ -168,26 +187,28 @@ describe('连接方式（F3，恢复迭代 15）', () => {
     expect(mocks.local.setTransport).not.toHaveBeenCalled()
   })
 
-  it('保存并应用：setTransport 不带 testOnly，成功后当前生效连接徽标更新', async () => {
+  it('保存并应用：setTransport 不带 testOnly，成功后当前连接徽标更新', async () => {
     renderSettings()
-    fireEvent.click(screen.getByRole('radio', { name: /^TCP/ }))
+    openTransportPanel()
+    fireEvent.click(screen.getByRole('radio', { name: /^网络打印机/ }))
     await screen.findByLabelText('打印机 IP / 主机名')
     fireEvent.change(screen.getByLabelText('打印机 IP / 主机名'), { target: { value: '192.168.1.50' } })
     fireEvent.click(screen.getByRole('button', { name: /保存并应用/ }))
     expect(await screen.findByText('已切换到 TCP。')).toBeTruthy()
     expect(mocks.local.setTransport).toHaveBeenCalledWith(expect.objectContaining({ mode: 'Tcp', tcpHost: '192.168.1.50', tcpPort: 9100 }))
     expect(mocks.local.setTransport.mock.calls[0][0].testOnly).toBeUndefined()
-    // 全局状态立即更新（连接方式分组内徽标显示 TCP 地址，不依赖轮询）
-    expect(await within(withinSection('连接方式')).findByText(/TCP 192\.168\.1\.50:9100/)).toBeTruthy()
+    // 全局状态立即更新（折叠头摘要与面板内徽标均显示新连接，不依赖轮询）
+    expect((await within(withinSection('连接方式')).findAllByText(/网络打印机 192\.168\.1\.50:9100/)).length).toBeGreaterThan(0)
   })
 
   it('保存失败（后端返回 ok:false）：展示 message，当前生效连接保持', async () => {
     mocks.local.setTransport.mockResolvedValue({ ok: false, message: '连接测试失败：无法连接打印机。', config: { mode: 'Log', params: {} } })
     renderSettings()
+    openTransportPanel()
     fireEvent.click(screen.getByRole('button', { name: /保存并应用/ }))
     expect(await screen.findByText('连接测试失败：无法连接打印机。')).toBeTruthy()
-    // 生效连接仍是 Log（未切换）
-    expect(screen.getByText('LOG')).toBeTruthy()
+    // 生效连接仍是模拟打印（未切换）——折叠头摘要 + 面板徽标
+    expect(screen.getAllByText('模拟打印').length).toBeGreaterThan(0)
   })
 })
 
@@ -205,10 +226,10 @@ describe('打印机（F4）', () => {
     expect(screen.getByText('已暂停')).toBeTruthy()
   })
 
-  it('测试打印：调用 testPrinter 并显示字节数', async () => {
+  it('测试打印：调用 testPrinter 并提示确认出纸（迭代 73 文案用户化，不再展示字节数）', async () => {
     renderSettings()
     fireEvent.click(screen.getByRole('button', { name: /测试打印/ }))
-    expect(await screen.findByText(/测试页已发送（128 字节）/)).toBeTruthy()
+    expect(await screen.findByText('测试页已发送，请确认打印机是否出纸。')).toBeTruthy()
     expect(mocks.local.testPrinter).toHaveBeenCalled()
   })
 })
@@ -256,7 +277,7 @@ describe('检查更新（迭代 64，决策 #126）', () => {
     const notice = await screen.findByTestId('update-available')
     expect(notice.textContent).toContain('0.27.0')
     expect(notice.textContent).toContain('0.26.0')
-    expect(notice.textContent).toContain('重跑安装引导程序')
+    expect(notice.textContent).toContain('下载新版安装包并运行安装')
     expect(screen.queryByTestId('update-uptodate')).toBeNull()
   })
 
@@ -373,10 +394,10 @@ describe('插件管理（迭代 23 §5.6）', () => {
     expect(mocks.local.listInstalledPlugins).toHaveBeenCalled()
   })
 
-  it('旧 Server（可用插件区 404）：区分展示「服务端不支持插件管理（旧版本）」', async () => {
+  it('旧 Server（可用插件区 404）：区分展示「服务端版本较旧，暂不支持插件管理」', async () => {
     mocks.server.listPluginPackages.mockRejectedValue(new ApiError('HTTP_404', '请求失败（HTTP 404）。'))
     renderSettings()
-    expect(await screen.findByText(/服务端不支持插件管理（旧版本）/)).toBeTruthy()
+    expect(await screen.findByText(/服务端版本较旧，暂不支持插件管理/)).toBeTruthy()
   })
 
   it('已安装徽标四态：已加载 / 待重启生效 / 加载失败 + 原因 / 手动放置只读无卸载', async () => {

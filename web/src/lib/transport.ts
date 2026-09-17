@@ -6,16 +6,18 @@ import type { PluginParams, PluginParamValue, TransportConfig, TransportMode, Tr
 
 export const ALL_TRANSPORT_MODES: TransportMode[] = ['Log', 'Tcp', 'WindowsDriver', 'Zebra']
 
+// 迭代 73（#108 界面文案用户化）：模式标签用户化——「Log」等开发者向名称改为中文用户语（保留专业语义：
+// Log = 模拟打印、Tcp = 网络打印机、Zebra 为品牌名保留）。
 export const MODE_LABELS: Record<TransportMode, string> = {
-  Log: 'Log（模拟）',
-  Tcp: 'TCP',
+  Log: '模拟打印',
+  Tcp: '网络打印机（TCP）',
   WindowsDriver: 'Windows 驱动',
-  Zebra: 'Zebra',
+  Zebra: 'Zebra 打印机',
 }
 
 export const ZEBRA_KIND_LABELS: Record<ZebraKind, string> = {
-  Tcp: 'TCP',
-  Usb: 'USB（自动发现）',
+  Tcp: '网络（TCP）',
+  Usb: 'USB（自动识别）',
   Driver: 'Windows 驱动',
 }
 
@@ -40,22 +42,22 @@ export function isPluginMode(cfg: TransportConfig | null | undefined): boolean {
   return Array.isArray(cfg?.availablePlugins) && cfg.availablePlugins.length > 0
 }
 
-/** 徽标 / 状态栏文本：新后端 displayText 优先；旧后端按 mode 格式化（`LOG` / `TCP 192.168.1.50:9100` / `WindowsDriver 打印机名` / `Zebra USB`）。 */
+/** 徽标 / 状态栏文本：新后端 displayText 优先；旧后端按 mode 格式化为用户语摘要（`模拟打印` / `网络打印机 192.168.1.50:9100` / `Windows 打印机 打印机名` / `Zebra USB`）。 */
 export function formatTransport(cfg: TransportConfig | null | undefined): string {
   if (!cfg) return ''
   if (cfg.displayText) return cfg.displayText
   const p = cfg.params
   switch (cfg.mode) {
     case 'Log':
-      return 'LOG'
+      return '模拟打印'
     case 'Tcp':
-      return `TCP ${p.tcpHost || '?'}${p.tcpPort ? `:${p.tcpPort}` : ''}`
+      return `网络打印机 ${p.tcpHost || '?'}${p.tcpPort ? `:${p.tcpPort}` : ''}`
     case 'WindowsDriver':
-      return `WindowsDriver ${p.printerName || '?'}`
+      return `Windows 打印机 ${p.printerName || '?'}`
     case 'Zebra':
       if (p.zebraKind === 'Usb') return `Zebra USB${p.zebraUsbName ? `（${p.zebraUsbName}）` : ''}`
       if (p.zebraKind === 'Driver') return `Zebra ${p.printerName || '驱动'}`
-      return `Zebra TCP ${p.tcpHost || '?'}${p.tcpPort ? `:${p.tcpPort}` : ''}`
+      return `Zebra 网络打印机 ${p.tcpHost || '?'}${p.tcpPort ? `:${p.tcpPort}` : ''}`
   }
 }
 

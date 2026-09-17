@@ -75,11 +75,11 @@ describe('插件管理页（迭代 23 §5.4）', () => {
     expect(links[1].getAttribute('href')).toBe('/api/plugin-packages/broken.lfplugin')
   })
 
-  it('空列表：空态提示上传与目录直放两种方式', async () => {
+  it('空列表：空态提示上传入口与客户端安装去处（迭代 73 删除目录 / 扩展名技术细节）', async () => {
     mocks.server.listPluginPackages.mockResolvedValue([])
     render(<PluginPackages />)
     expect(await screen.findByText('暂无插件包')).toBeTruthy()
-    expect(screen.getByText(/plugin-packages/)).toBeTruthy()
+    expect(screen.getByText(/上传后客户端可在「设置 → 插件管理」中安装/)).toBeTruthy()
     expect(screen.getByRole('button', { name: '上传插件包' })).toBeTruthy()
   })
 

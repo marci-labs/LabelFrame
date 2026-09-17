@@ -116,9 +116,10 @@ function Shell() {
         <span className="msg">{app.statusMsg}</span>
         <span className="meta">
           {isServerUi ? (
-            // 迭代 20：Server UI 状态栏显示服务端地址（页面 origin /「同源」）与 UI 模式；无打印机相关内容
+            // 迭代 20：Server UI 状态栏显示服务端地址（页面 origin）与 UI 模式；无打印机相关内容
+            // 迭代 73（#108）：「同源」开发者术语改为直接展示地址与服务端管理界面标识
             <span className="mono" title={window.location.origin}>
-              同源（{window.location.origin}）· Server 管理界面
+              {window.location.origin} · 服务端管理界面
             </span>
           ) : (
             <>

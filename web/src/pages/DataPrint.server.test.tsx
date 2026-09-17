@@ -143,13 +143,13 @@ async function renderDataPrint() {
 }
 
 describe('DataPrint server 构建：在线设备选择器', () => {
-  it('仅在线设备可选：离线设备 option 置灰并显示上次心跳原因', async () => {
+  it('仅在线设备可选：离线设备 option 置灰并显示上次连接时间', async () => {
     await renderDataPrint()
     const select = screen.getByLabelText('目标设备') as HTMLSelectElement
     expect(select.value).toBe('device-1') // 第一台在线默认选中
     const offlineOpt = screen.getByRole('option', { name: /仓库-2 打印电脑/ }) as HTMLOptionElement
     expect(offlineOpt.disabled).toBe(true)
-    expect(offlineOpt.textContent).toContain('上次心跳')
+    expect(offlineOpt.textContent).toContain('上次连接')
     const onlineOpt = screen.getByRole('option', { name: /仓库-1 打印电脑/ }) as HTMLOptionElement
     expect(onlineOpt.disabled).toBe(false)
     // 提示文案：仅在线可选 + 提交前再校验
@@ -176,7 +176,7 @@ describe('DataPrint server 构建：在线设备选择器', () => {
   it('不显示「本机连接」打印机徽标（server 构建无打印机相关内容）', async () => {
     await renderDataPrint()
     expect(screen.queryByText('本机连接')).toBeNull()
-    expect(screen.queryByText('LOG')).toBeNull()
+    expect(screen.queryByText('模拟打印')).toBeNull()
   })
 })
 
@@ -228,9 +228,9 @@ describe('DataPrint server 构建：隐藏逐张失败重试表格（G4）', () 
     expect(screen.getByText(/有 1 张打印失败/)).toBeTruthy()
     // G4：server 构建强制隐藏逐张表格 / 重试按钮
     expect(screen.queryByRole('button', { name: /重试/ })).toBeNull()
-    expect(screen.queryByText(/可在下方表格中单独重试/)).toBeNull()
+    expect(screen.queryByText(/可在下方列表中逐张重试/)).toBeNull()
     // 失败原因提示走汇总文案
-    expect(screen.getByText(/详见作业状态与客户端回报的失败原因/)).toBeTruthy()
+    expect(screen.getByText(/可在「作业历史」中查看失败原因/)).toBeTruthy()
   })
 })
 
@@ -260,9 +260,9 @@ describe('DataPrint server 构建：无字段模板（静态标签）打印测�
     expect(mocks.local.submitJob).not.toHaveBeenCalled()
   })
 
-  it('出图预览：空数据 render-image 渲染（不建作业）（AC-03）', async () => {
+  it('图片预览：空数据 render-image 渲染（不建作业）（AC-03）', async () => {
     await renderStaticPrint()
-    fireEvent.click(screen.getByRole('button', { name: '出图预览' }))
+    fireEvent.click(screen.getByRole('button', { name: '图片预览' }))
     await waitFor(() => {
       expect(mocks.server.renderImage).toHaveBeenCalledWith(expect.objectContaining({ labels: [{ data: {} }] }))
     })
