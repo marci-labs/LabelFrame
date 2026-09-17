@@ -139,6 +139,8 @@ public static class WinHostApp
         // Skia 渲染器实例单例：DI 与共享端点（模板预览 / 调试出图）共用同一实例（预览与打印同源）
         var skiaRenderer = new SkiaLabelRenderer();
         builder.Services.AddSingleton<ILabelBitmapRenderer>(skiaRenderer);
+        // 出图目录保留清理器（迭代 72，决策 #136）：模拟打印落盘后顺带执行；测试构造缺省 null = 不清理
+        var printRetentionCleaner = new PrintImageRetentionCleaner(options.PrintOutputPath, options.PrintImageRetentionDays, hostLogWriter);
         builder.Services.AddSingleton(sp => new JobSubmissionService(
             queue,
             sp.GetRequiredService<ZplImageEncoder>(),
@@ -147,7 +149,8 @@ public static class WinHostApp
             templateStore,
             transportManager,
             hostLogWriter,
-            options.PrintOutputPath));
+            options.PrintOutputPath,
+            printRetentionCleaner));
 
         // 本地工具服务：地址由用户配置（可跨机器 / 跨端口），启用宽松 CORS
         builder.Services.AddCors(corsOptions => corsOptions.AddDefaultPolicy(policy =>

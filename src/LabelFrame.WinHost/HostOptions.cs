@@ -142,6 +142,9 @@ public sealed class HostOptions
         "LabelFrame",
         "print");
 
+    /// <summary>出图目录（print\&lt;jobId&gt;）按天保留上限（迭代 72，决策 #136；默认 31；0 或负值 = 不清理；LABELFRAME_PRINT_IMAGE_RETENTION_DAYS 优先）。</summary>
+    public int PrintImageRetentionDays { get; set; } = 31;
+
     /// <summary>Log 传输 / 宿主日志文件路径（默认 %LOCALAPPDATA%\LabelFrame\host.log）。按日轮转：实际写入 host-yyyyMMdd.log（决策 #108）。</summary>
     public string HostLogPath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -298,6 +301,11 @@ public sealed class HostOptions
         if (GetEnv("LABELFRAME_PRINT_OUTPUT") is { } printOutputPath)
         {
             PrintOutputPath = printOutputPath;
+        }
+
+        if (GetEnv("LABELFRAME_PRINT_IMAGE_RETENTION_DAYS") is { } printRetention && int.TryParse(printRetention, out var printRetentionDays))
+        {
+            PrintImageRetentionDays = printRetentionDays;
         }
 
         if (GetEnv("LABELFRAME_CONFIG") is { } configPath)

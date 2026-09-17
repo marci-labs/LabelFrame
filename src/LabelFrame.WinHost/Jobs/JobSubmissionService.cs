@@ -27,6 +27,7 @@ public sealed class JobSubmissionService
     private readonly ITransportManager _transportManager;
     private readonly TextWriter _hostLogWriter;
     private readonly string _printOutputPath;
+    private readonly PrintImageRetentionCleaner? _printRetentionCleaner;
     private readonly int _dpi;
 
     /// <summary>创建提交服务。</summary>
@@ -38,7 +39,8 @@ public sealed class JobSubmissionService
         TemplateStore templateStore,
         ITransportManager transportManager,
         TextWriter hostLogWriter,
-        string? printOutputPath = null)
+        string? printOutputPath = null,
+        PrintImageRetentionCleaner? printRetentionCleaner = null)
     {
         _queue = queue;
         _encoder = encoder;
@@ -50,6 +52,7 @@ public sealed class JobSubmissionService
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "LabelFrame",
             "print");
+        _printRetentionCleaner = printRetentionCleaner;
         _dpi = dpi;
     }
 
@@ -74,6 +77,9 @@ public sealed class JobSubmissionService
         if (created && _transportManager.CurrentConfig.Mode == TransportMode.Log)
         {
             SaveLogPrintImages(job.Id, rendered.Items!);
+
+            // 落盘后顺带执行出图目录保留清理（迭代 72，决策 #136；清理器永不抛出，不打断打印链路）
+            _printRetentionCleaner?.CleanupExpired();
         }
 
         return SubmitJobResult.Success(job, created);

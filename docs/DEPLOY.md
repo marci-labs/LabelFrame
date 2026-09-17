@@ -189,6 +189,11 @@ sudo bash install-server-linux.sh --manifest <清单 URL>               # 安装
   dotnet run --project src\LabelFrame.WinHost
   ```
 - 日志轮转与保留（迭代 52）：三处文件日志统一**按日轮转、默认保留 31 个（天）**——服务端 `server-<yyyyMMdd>.log`（`LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS`）、客户端宿主 `host-<yyyyMMdd>.log`（`LABELFRAME_HOST_LOG_RETENTION_DAYS`）、客户端 Serilog `app-*.log`（`LABELFRAME_APP_LOG_RETENTION_DAYS`）；均设 0 或负值 = 不清理（不设上限）。`LABELFRAME_SERVER_LOG_FILE` / `LABELFRAME_HOST_LOG` 给的是基准路径，实际文件名带日期后缀；历史单名 `server.log` / `host.log` 不迁移不删除。
+- 出图目录保留清理（迭代 72，决策 #136）：Log 模拟打印出图目录（`print\<jobId>`，默认 `%LOCALAPPDATA%\LabelFrame\print`，Windows 窗口与 Linux 无头客户端同路径）**按天保留、默认 31 天**——超期作业子目录（含内部 PNG）在客户端启动与每次模拟打印落盘后自动删除；判龄 = 作业目录 LastWriteTime（与 jobs.db 作业历史无关，删除只影响 Log 模式「查看出图」）；遇占用 / 权限失败降级留痕、不影响打印与出图。`LABELFRAME_PRINT_IMAGE_RETENTION_DAYS` 可调，0 或负值 = 不清理。例：
+  ```bash
+  LABELFRAME_PRINT_IMAGE_RETENTION_DAYS=31   # 默认：保留 31 天
+  LABELFRAME_PRINT_IMAGE_RETENTION_DAYS=0    # 关闭清理（出图目录无限累积，恢复旧现状）
+  ```
 - 服务端业务事件日志（作业创建 / 设备认领 / 回报终态，作业粒度）默认 **INFO**；高流量需要降噪时按标准 Logging 配置降级，例如环境变量：
   ```bash
   Logging__LogLevel__LabelFrame.Server.ServerService=Warning   # 隐藏业务事件 INFO 行
