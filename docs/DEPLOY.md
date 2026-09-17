@@ -194,6 +194,7 @@ sudo bash install-server-linux.sh --manifest <清单 URL>               # 安装
   LABELFRAME_PRINT_IMAGE_RETENTION_DAYS=31   # 默认：保留 31 天
   LABELFRAME_PRINT_IMAGE_RETENTION_DAYS=0    # 关闭清理（出图目录无限累积，恢复旧现状）
   ```
+- 模拟打印作业数据留痕（迭代 74，决策 #137，排障说明）：Log 模拟打印提交时，客户端宿主日志（`host-<yyyyMMdd>.log`）同时记录**作业原始数据**——作业 ID / 模板名 / 标签张数 / 数据集合（字段键值紧凑形式，如 `locationCode=A-01-02-03; zone=A-01`）；多张标签按数据集合**去重**（相同记一条 + 重复张数），单条约 2KB 上限、超限截断并标注完整长度。排障时在当日 host 日志按「作业数据」检索即可对照「这个作业带了什么数据进来」（PNG 出图只含渲染结果，看不到作业输入）；真实传输（tcp9100 / winspool / zebra）不产生该记录。
 - 服务端业务事件日志（作业创建 / 设备认领 / 回报终态，作业粒度）默认 **INFO**；高流量需要降噪时按标准 Logging 配置降级，例如环境变量：
   ```bash
   Logging__LogLevel__LabelFrame.Server.ServerService=Warning   # 隐藏业务事件 INFO 行

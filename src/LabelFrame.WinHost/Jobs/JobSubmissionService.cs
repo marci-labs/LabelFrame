@@ -16,7 +16,7 @@ namespace LabelFrame.WinHost.Jobs;
 /// 作业提交服务：校验契约数据 → Skia 整版渲染 1bpp 位图 → ^GF 编码入队（幂等）。
 /// 任一标签校验 / 渲染失败则整体拒绝（缺数据不打半张）。
 /// 打印统一为图片：不再有矢量 ZPL / 文本栅格化路径。
-/// Log 连接 = 模拟打印：提交时同时把渲染 PNG 保存到 print\{jobId}\。
+/// Log 连接 = 模拟打印：提交时同时把渲染 PNG 保存到 print\{jobId}\，并留痕作业数据（模板名 + 数据集合，迭代 74 决策 #137）。
 /// </summary>
 public sealed class JobSubmissionService
 {
@@ -77,6 +77,9 @@ public sealed class JobSubmissionService
         if (created && _transportManager.CurrentConfig.Mode == TransportMode.Log)
         {
             SaveLogPrintImages(job.Id, rendered.Items!);
+
+            // 留痕作业数据（模板名 + 数据集合，迭代 74 决策 #137；与出图同判定点、互不干扰）
+            LogJobData(job.Id, request);
 
             // 落盘后顺带执行出图目录保留清理（迭代 72，决策 #136；清理器永不抛出，不打断打印链路）
             _printRetentionCleaner?.CleanupExpired();
@@ -159,6 +162,31 @@ public sealed class JobSubmissionService
         catch (Exception ex)
         {
             _hostLogWriter.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 模拟打印（Log）：作业 {jobId} 保存 PNG 失败：{ex.Message}");
+            _hostLogWriter.Flush();
+        }
+    }
+
+    /// <summary>
+    /// Log 模拟打印：留痕作业数据（作业 ID / 模板名 / 张数 / 数据集合；去重与截断见 JobDataLogFormatter）。
+    /// 模板名优先请求级 templateName（Server 引用路径），回退自包含 template.name，均缺省记「未命名」。
+    /// 留痕失败只记一行原因，不影响打印链路（与 PNG 出图同一防护口径）。
+    /// </summary>
+    private void LogJobData(string jobId, SubmitJobRequest request)
+    {
+        try
+        {
+            var labels = request.Labels?.Select(label => label.Data).ToList();
+            var lines = JobDataLogFormatter.Format(jobId, request.TemplateName ?? request.Template?.Name, labels);
+            foreach (var line in lines)
+            {
+                _hostLogWriter.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {line}");
+            }
+
+            _hostLogWriter.Flush();
+        }
+        catch (Exception ex)
+        {
+            _hostLogWriter.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 模拟打印（Log）：作业 {jobId} 数据留痕失败：{ex.Message}");
             _hostLogWriter.Flush();
         }
     }

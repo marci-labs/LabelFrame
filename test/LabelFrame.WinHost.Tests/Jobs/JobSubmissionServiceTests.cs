@@ -15,7 +15,9 @@ namespace LabelFrame.WinHost.Tests.Jobs;
 
 public class JobSubmissionServiceTests
 {
-    private static (JobSubmissionService Service, SqliteLabelJobStore Store, TemplateStore Templates) CreateService()
+    private static (JobSubmissionService Service, SqliteLabelJobStore Store, TemplateStore Templates) CreateService(
+        TextWriter? hostLogWriter = null,
+        TransportMode transportMode = TransportMode.Log)
     {
         var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lfhost-{Guid.NewGuid():N}.db");
         var store = new SqliteLabelJobStore(dbPath);
@@ -26,8 +28,8 @@ public class JobSubmissionServiceTests
         var templates = new TemplateStore(templatesDb);
         templates.InitializeAsync().GetAwaiter().GetResult();
 
-        var transportManager = TestTransportRegistry.CreateManager(new HostOptions { Transport = TransportMode.Log });
-        var service = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, transportManager, TextWriter.Null);
+        var transportManager = TestTransportRegistry.CreateManager(new HostOptions { Transport = transportMode });
+        var service = new JobSubmissionService(queue, new ZplImageEncoder(), dpi: 203, new SkiaLabelRenderer(), templates, transportManager, hostLogWriter ?? TextWriter.Null);
         return (service, store, templates);
     }
 
@@ -171,7 +173,97 @@ public class JobSubmissionServiceTests
         // 图片渲染容错（TryGet），缺失的非必填字段渲染为空文本，作业正常创建（与预览一致）
         Assert.NotNull(result.Job);
         Assert.True(result.Created);
-        var stored = await store.GetJobAsync(result.Job!.Id);
+        var stored = await store.GetJobAsync(result.Job.Id);
         Assert.Contains("^GF", stored!.Items[0].Zpl);
+    }
+
+    // ── 迭代 74：Log 模式作业数据留痕（模板名 + 数据集合，决策 #137）──
+
+    private static SubmitJobRequest CreateNamedRequest(string requestId, params IReadOnlyDictionary<string, string>[] labels) => new(
+        requestId,
+        new TemplateDto(LocationLabelSamples.Contract, LocationLabelSamples.Layout, Name: "库位标签"),
+        labels.Select(d => new LabelDto(d)).ToList());
+
+    [Fact]
+    public async Task Log_mode_submit_should_write_job_data_record()
+    {
+        var hostLog = new StringWriter();
+        var (service, _, _) = CreateService(hostLog);
+        var request = CreateNamedRequest("req-log-data", new Dictionary<string, string>
+        {
+            ["zone"] = "A-01",
+            ["locationCode"] = "A-01-02-03",
+        });
+
+        var result = await service.SubmitAsync(request);
+
+        Assert.NotNull(result.Job);
+        var lines = hostLog.ToString().Split('\n').Where(l => l.Contains("作业数据")).ToList();
+        var line = Assert.Single(lines);
+        Assert.Contains($"作业 {result.Job!.Id}", line);
+        Assert.Contains("模板 库位标签", line);
+        Assert.Contains("共 1 张", line);
+        Assert.Contains("locationCode=A-01-02-03", line);
+        Assert.Contains("zone=A-01", line);
+    }
+
+    [Fact]
+    public async Task Log_mode_batch_should_deduplicate_job_data_records()
+    {
+        var hostLog = new StringWriter();
+        var (service, _, _) = CreateService(hostLog);
+        var same = new Dictionary<string, string> { ["zone"] = "A-01", ["locationCode"] = "A-01-02-03" };
+        var distinct = new Dictionary<string, string> { ["zone"] = "A-02", ["locationCode"] = "A-02-01-01" };
+        var request = CreateNamedRequest("req-log-batch", same, same, same, distinct);
+
+        var result = await service.SubmitAsync(request);
+
+        Assert.NotNull(result.Job);
+        var lines = hostLog.ToString().Split('\n').Where(l => l.Contains("作业数据")).ToList();
+        Assert.Equal(2, lines.Count);
+        Assert.Contains("共 4 张", lines[0]);
+        Assert.Contains("数据组 1/2（重复 3 张）", lines[0]);
+        Assert.Contains("zone=A-01", lines[0]);
+        Assert.Contains("数据组 2/2", lines[1]);
+        Assert.DoesNotContain("重复", lines[1]);
+        Assert.Contains("zone=A-02", lines[1]);
+    }
+
+    [Fact]
+    public async Task Log_mode_duplicate_request_should_not_write_data_record_again()
+    {
+        var hostLog = new StringWriter();
+        var (service, _, _) = CreateService(hostLog);
+        var request = CreateNamedRequest("req-log-idempotent", new Dictionary<string, string>
+        {
+            ["zone"] = "A-01",
+            ["locationCode"] = "A-01-02-03",
+        });
+
+        await service.SubmitAsync(request);
+        await service.SubmitAsync(request);
+
+        var lines = hostLog.ToString().Split('\n').Where(l => l.Contains("作业数据")).ToList();
+        Assert.Single(lines);
+    }
+
+    [Fact]
+    public async Task Non_log_transport_should_not_write_job_data_record()
+    {
+        var hostLog = new StringWriter();
+        var (service, store, _) = CreateService(hostLog, TransportMode.Tcp);
+        var request = CreateNamedRequest("req-tcp-data", new Dictionary<string, string>
+        {
+            ["zone"] = "A-01",
+            ["locationCode"] = "A-01-02-03",
+        });
+
+        var result = await service.SubmitAsync(request);
+
+        // 真实传输路径零变化：作业照常创建，但不出现数据留痕（AC-04）
+        Assert.NotNull(result.Job);
+        Assert.True(result.Created);
+        Assert.NotNull(await store.GetJobAsync(result.Job!.Id));
+        Assert.DoesNotContain("作业数据", hostLog.ToString());
     }
 }

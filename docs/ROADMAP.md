@@ -94,6 +94,7 @@
 | 71 | Linux 服务端一键安装——install.sh（manifest 校验 + systemd + 离线布局 + 归档默认 self-contained）与 compose 随发版分发（Linux 部署契约 #134） | ✅ 已完成（2026-09-17 本地 Docker 容器自证：离线零外网全流程 + 篡改 fail-closed + 重跑幂等 + 在线 404 回退 + FDD runtime 双向 + 真实 v0.27.1 manifest 解析 + AC-04 compose 步骤同构演练；随迭代修复 deploy-server-ubuntu.sh 字面换行符缺陷；真机 Ubuntu 走查与下次 `v*` 发版附件实证转 `待验收`，[#91](https://github.com/marci-labs/LabelFrame/issues/91)） |
 | 70 | 离线布局安装——预下载组件目录（VS layout 式：`make-offline-layout.ps1` + 引导 `--layout` 双形态）与本地源无网首装（隐式优先源目录 + sha256 本地源同样强制，源解析顺序决策 #135） | ✅ 已完成（2026-09-17 断网 VM 实机取证通过：防火墙阻断外网形态下等效干净机七页向导全流程 + 邻接清单默认 + 四组件「本地源命中」+ 全程零 download-from + 防火墙日志零外网请求（DROP=0 / 公网目标=0）+ 篡改拦截 fail-closed 实机复核 + 装后核验全绿（53961/53960=200、zebra 插件落位 loaded/isExternal）；官方 Release 生成走查随下次 `v*` 发版复验，[#89](https://github.com/marci-labs/LabelFrame/issues/89)） |
 | 72 | 模拟打印出图目录保留清理（Log 出图 print 目录超期自动删除；按天保留默认 31 天 / 可配置 / 可关闭 #136，口径对齐 #108） | ✅ 已完成（2026-09-17 本地 build / test 全绿，新增四类用例 6 项实证：超期删除含 PNG 与摘要留痕 / 保留期内不删 / ≤0 关闭 / 占用失败降级留痕且打印出图主链路不受影响；跨月滚动删除行为随部署观察，[#107](https://github.com/marci-labs/LabelFrame/issues/107)） |
+| 74 | 模拟打印作业数据留痕——Log 模式提交记录模板名与传入数据集合（数据集合去重 + 重复张数；单条 ≈2KB 截断并标注完整长度 #137） | ✅ 已完成（2026-09-17 本地 build / test 全绿，新增 14 项用例实证：单张字段键值 / 批量相同去重 / 相同 + 不同混合 / 键序无关去重 / 超限截断 + 完整长度标注 / 边界不截断 / 空数据占位 / 换行转义 / 未命名回退 / 幂等重放不重复留痕 / 非 Log 模式零留痕（AC-04）；真实客户端当日 host 日志核验（AC-01 实机口径）转待验收，[#109](https://github.com/marci-labs/LabelFrame/issues/109)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
