@@ -2,6 +2,12 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 76：插件命令打印契约设计——文档编译能力接口与打印方式参数（纯文档） · 2026-09-17
+
+- **契约先行（强化路径，#113；三项待决议用户拍板，均取建议项——编译失败 = 显式失败不自动回退图片 / 切换粒度 = 仅连接级参数（不做作业级覆盖）/ 接口形态 = 提交时编译并持久化（否决发送时文档直发））**：DESIGN 新增 §5.4「插件命令打印契约」+ 决策 #137——① 插件可选实现 `ILabelCommandCompiler` 文档编译能力（输入 `LabelDocument` + DPI + 插件上下文，输出整页自包含品牌原生指令文本或失败结果；先例 `ITestableTransport` / `IPrinterStatusProvider` 能力模式；编译为纯函数性质；版式解析以品牌内置字体度量驱动，兑现 #110 `ITextWidthMeasurer` 预留）；② 打印方式 = 连接级 `TransportParameterSpec` Select（`printMode`：`image` 默认 / `native`，随 connection.json 先测试后生效；不设全局开关、不做作业级覆盖，#45 教训；`native` + 无能力插件 = 保存校验拒绝 + 提交显式失败兜底）；③ 宿主提交时逐张编译并把指令写入 `LabelJobItem.Zpl`（字段与 DB 列不改名、语义泛化），Worker 发送 / 重启续打 / 失败项重打 / requestId 幂等（不重新编译）/ 挂起恢复 / 批次节流零改动，Server 作业载荷零感知；④ 编译失败 = 显式失败（`LF_ENC` 新码 + 中文原因；直连不建作业 / 路由回报 Server Failed），不自动回退图片，首版不做元素级混合模式；⑤ 效果验收口径：真机双模式并排对比（文本 / 条码 / 二维码 / 区域锚定 #110 不回归 + 出纸速度），参照迭代 55 取证先例。
+- **后续实现迭代拆分建议**（Issue 级粒度，§5.4.8 表，可作立项依据）：宿主链路落码（fake 编译器全链路单测）→ Zebra 编译器·文本（SDK 内置字体度量接 `ITextWidthMeasurer`）→ 条码与二维码 → 效果验收收口（可选）。
+- **记账**：DESIGN 术语表（编码器 / 新增「命令打印」术语）+ §5.4 + 决策 #137 + §7 边界（PDA 侧待 Windows 验证后评估）；ROADMAP 状态行。本迭代纯文档，无代码改动。
+
 ## 迭代 72：模拟打印出图目录保留清理——Log 出图 print 目录超期自动删除 · 2026-09-17
 
 - **动机与范围（#107；两项待决议用户 2026-09-17 拍板，均取建议项）**：Log 传输（模拟打印）每个作业把渲染位图落盘到出图目录（`HostOptions.PrintOutputPath`，默认 `%LOCALAPPDATA%\LabelFrame\print`，结构 `print\<jobId>\label-N.png`，写入点 `JobSubmissionService.SaveLogPrintImages`），该目录此前不在任何清理范围内、无删除 / 封顶 / 过期机制，长期联调 / 演示机器无限累积占盘——本轮补保留清理机制（WinHost 客户端，Windows 窗口与 Linux 无头共用路径），出图目录磁盘占用有界。
