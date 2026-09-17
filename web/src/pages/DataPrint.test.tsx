@@ -458,7 +458,8 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
     expect(await screen.findByText('已完成 1 / 1 张')).toBeTruthy()
-    expect(screen.getByText(/目标设备：device-1（在线）/)).toBeTruthy()
+    // 迭代 84（AC-02）：目标设备显示设备名（与目标设备下拉同源），不再直出设备 ID
+    expect(screen.getByText(/目标设备：仓库-1 打印电脑（在线）/)).toBeTruthy()
     // 无逐张表格，显示说明行
     expect(screen.getByText(/该作业无逐张明细/)).toBeTruthy()
   })
@@ -480,6 +481,30 @@ describe('目标设备固定本机（迭代 22 决策 1A）', () => {
     expect(req.targetDeviceId).toBeUndefined()
     expect(req.template).toMatchObject({ name: '库位标签', contract: PKG.contract, layout: PKG.layout })
     expect(mocks.server.submitJob).not.toHaveBeenCalled()
+  })
+})
+
+// 迭代 84（#132，评审 #114 A-3 / B-6）：副标题用户化 + 作业进度目标设备显示设备名（client 构建）。
+describe('打印页称谓与作业进度设备名（迭代 84 · #132）', () => {
+  it('AC-01：副标题「填写数据并打印 / Excel 批量打印」，无「测试」字样', async () => {
+    await renderDataPrint()
+    const subtitle = screen.getByText('填写数据并打印 / Excel 批量打印')
+    expect(subtitle.closest('.page-title')?.textContent).toContain('数据与打印')
+    // 决议 1：副标题不含「测试」自称
+    expect(subtitle.textContent).not.toContain('测试')
+    expect(screen.queryByText('测试数据 / Excel 批量打印 / 打印测试')).toBeNull()
+  })
+
+  it('AC-02 回退：作业目标设备无可解析名称（不在设备列表）→ 显示设备 ID', async () => {
+    mocks.server.listDevices.mockResolvedValue(DEVICES)
+    mocks.server.getJob.mockResolvedValue({ ...DONE_JOB_SERVER, targetDeviceId: 'device-x' })
+    render(<Harness show />)
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
+    await waitFor(() => expect(screen.getByText(/^本机（/)).toBeTruthy(), MOUNT_WAIT)
+
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    expect(await screen.findByText('已完成 1 / 1 张')).toBeTruthy()
+    expect(screen.getByText(/目标设备：device-x（在线）/)).toBeTruthy()
   })
 })
 
