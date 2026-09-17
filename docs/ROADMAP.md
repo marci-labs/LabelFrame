@@ -92,6 +92,7 @@
 | 发布 | v0.27.1 补丁发布（迭代 64 返修 #96：覆盖升级依赖降版——发布工件版本固化 + 降版回归断言 #130；迭代 67 #98：release.yml 步骤序——Client MSI 附带插件包 fail-closed 断言 #131；发版后走查复核交回验收 #56 / #57） | ✅ 已完成（2026-09-16，tag v0.27.1） |
 | 68 | 流程治理——引导 EXE 随 Release 发布（release.yml bundle job 接线 + manifest 分阶段生成与跨 job 一致性断言 #132）+ 安装引导文档补章（DEPLOY §2 推荐入口 / README 入口定位） | ✅ 已完成（2026-09-17 本地同构演练通过：v0.27.1 产物在场 manifest 分阶段生成 + bundle 全链缓存命中 + 三方哈希一致 + `-Sign` 签名路径 + fail-closed 反向用例；演练顺带抓修 PowerShell 变量名大小写覆盖参数缺陷；真实发版走查（AC-02）与干净 Windows 环境七页向导（AC-03）转 `待验收`，[#101](https://github.com/marci-labs/LabelFrame/issues/101)） |
 | 71 | Linux 服务端一键安装——install.sh（manifest 校验 + systemd + 离线布局 + 归档默认 self-contained）与 compose 随发版分发（Linux 部署契约 #134） | ✅ 已完成（2026-09-17 本地 Docker 容器自证：离线零外网全流程 + 篡改 fail-closed + 重跑幂等 + 在线 404 回退 + FDD runtime 双向 + 真实 v0.27.1 manifest 解析 + AC-04 compose 步骤同构演练；随迭代修复 deploy-server-ubuntu.sh 字面换行符缺陷；真机 Ubuntu 走查与下次 `v*` 发版附件实证转 `待验收`，[#91](https://github.com/marci-labs/LabelFrame/issues/91)） |
+| 70 | 离线布局安装——预下载组件目录（VS layout 式：`make-offline-layout.ps1` + 引导 `--layout` 双形态）与本地源无网首装（隐式优先源目录 + sha256 本地源同样强制，源解析顺序决策 #135） | ✅ 已完成（2026-09-17 断网 VM 实机取证通过：防火墙阻断外网形态下等效干净机七页向导全流程 + 邻接清单默认 + 四组件「本地源命中」+ 全程零 download-from + 防火墙日志零外网请求（DROP=0 / 公网目标=0）+ 篡改拦截 fail-closed 实机复核 + 装后核验全绿（53961/53960=200、zebra 插件落位 loaded/isExternal）；官方 Release 生成走查随下次 `v*` 发版复验，[#89](https://github.com/marci-labs/LabelFrame/issues/89)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
