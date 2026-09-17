@@ -2,6 +2,16 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 68：流程治理——引导 EXE 随 Release 发布（release.yml 接线）+ 安装引导文档补章 · 2026-09-17
+
+- **动机与范围（#101；收口决策 #121 ④ / #122 ⑤ 两项后置——引导 Bundle 此前只能本机 `build-bundle.ps1` 构建，Release 附件不含，用户测试 / IT 分发都需先具备构建环境）**：推 `v*` tag 后发版链自动构建 `LabelFrame-Bootstrapper-<版本>.exe` 并随 GitHub Release 发布；`docs/DEPLOY.md` 补「安装引导程序」章节、README 安装入口同步（两项待决议用户拍板：签名复用 MSI 自签通道 a / 引导 EXE 列为推荐入口、MSI 降高级路径 a）。引导程序功能与行为零改动（专项 #53~#57 已交付的七页向导 / 升级模式 / 下载链不动）。
+- **release.yml 接线（决策 #132）**：新增独立 Windows `bundle` job（needs = package + android——bundle 消费的 manifest 需六类产物在场）：下载 release-assets + android-apk → `generate-install-manifest.ps1` 按与 release job 完全相同参数生成当版 manifest → `build-bundle.ps1 -ManifestSource release/install-manifest.json` 构建引导 EXE（Secrets 在场时 `-Sign`）→ fail-closed 断言 EXE 在场 → 提取 runtime 三条目 sha256 作 job outputs → 上传 artifact；`release` job needs 增 bundle、下载 EXE 后纳入 Release `files`。**manifest 同源机制 = 分阶段生成 + 跨 job 一致性断言**（Issue 点名首要风险）：release job 既有「生成安装清单」「断言安装清单」两步骤 YAML 零变化，追加一致性断言步骤——发布清单与 bundle 消费侧的 runtime 哈希逐条比对，不一致即整次发版失败（防厂商在两次生成之间轮转直链文件导致发布 manifest 哈希 ≠ 引导 EXE 内嵌摘要的错位），重跑自愈。
+- **脚本增强**：`generate-install-manifest.ps1` 新增可选 `-RuntimeDownloadDir`（bundle job 与 build-bundle.ps1 缓存目录打通，同 job 内 runtime 只下载一次；默认空 = 既有临时目录行为不变）；`build-bundle.ps1` 新增 `-Sign / -PfxPath / -PfxPassword`（signtool 定位与签名参数与 `build-msi.ps1` 完全对齐，SHA256 + RFC3161 时间戳）。发版时长评估结论：runtime 共约 120MB × 两 job 各一次直连下载，发版低频，Actions 缓存 key 与 .NET 补丁版本 / webview2 轮转联动复杂度不抵收益，维持不加（记入决策 #132 ③）。
+- **文档补章**：DEPLOY.md 新增「§2 安装引导程序（推荐安装入口）」——下载入口 / 七页向导与拓扑预设流程 / 运行时前置链说明 / SmartScreen「未知发布者」处置 / Burn 日志位置（`%TEMP%\LabelFrame*.log`）；原 MSI 章节降为「§3 高级路径」，后续章节顺延至 §10（README / release.yml 注释 / AndroidHost README / `InstallTargets.cs` 注释交叉引用同步）；README 快速开始三个安装入口与部署形态对照改为引导 EXE 推荐；§8 自动化发布补引导 EXE 构建链与签名说明。
+- **本地同构演练（#97 / #131 先例手法；三项必需检查不执行 release.yml，复核靠本地演练 + YAML 自检）**：以 v0.27.1 真实 Release 六类产物在场模拟 CI——① 分阶段生成：`generate-install-manifest.ps1 -RuntimeDownloadDir artifacts/runtimes` 生成 + 断言 9 组件全过；② bundle 全链：`build-bundle.ps1 -ManifestSource release/install-manifest.json` 三个 runtime **缓存命中零重复下载**（哈希逐条校验通过），Bundle 产出 1.92 MB（与迭代 62 基线一致，4 条警告为既有可接受项）；③ 一致性：release 侧重生成后 runtime 哈希与 bundle 消费侧、官方 v0.27.1 发布 manifest **三方逐条一致**（同源决定性实证）；④ 签名：`create-signing-cert.ps1` 演练证书 + `-Sign` 构建通过，`Get-AuthenticodeSignature` 签署者 CN=LabelFrame（未信任链 UnknownError 属自签预期，与 MSI 同口径）；⑤ fail-closed 反向用例（意外实证）：缺任一产物（演练时漏 linux 归档）manifest 生成即拒绝（缺产物 = 空条目不可能落盘）。**演练抓到并修复一个真实缺陷**：脚本局部变量 `$runtimeDownloadDir` 与新参数 `$RuntimeDownloadDir` 同名——PowerShell 变量名大小写不敏感，参数被首行赋空清掉、恒走临时目录分支（缓存共享失效）；局部变量改名 `$runtimeAcquireDir` 修复。
+- **验证**：release.yml YAML 解析自检通过、bundle / release 两 job 步骤序静态复核（五类产物齐备后才生成 manifest、EXE 在场后才创建 Release）；`dotnet build`（0 警告 0 错误）+ `dotnet test`（排除 Perf/Soak）**709 项全绿**（与迭代 62/64 基线一致）；前端无改动。真实发版走查（Release 附件含引导 EXE，AC-02）与干净 Windows 环境下载运行七页向导（AC-03）转 `待验收`。
+- **记账**：DESIGN 决策表 #132 + §6.2 生成点补分阶段口径；CHANGELOG 本条目。
+
 ## v0.27.1 补丁发布（迭代 64 返修 + 迭代 67） · 2026-09-16
 
 - **打包范围**：v0.27.0 之后合入 master 的两项缺陷修复——迭代 64 返修（PR #96：覆盖升级链依赖降版——发布工件版本固化与降版回归断言，决策 #130）与迭代 67（PR #98：release.yml 步骤序修复——Client MSI 附带插件包，流程治理 #97，决策 #131）。无用户可见功能变更，dotnet / 前端代码零功能改动（仅依赖钉版）。详见各迭代条目。

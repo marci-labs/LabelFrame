@@ -1,9 +1,11 @@
-# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123；迭代 67 修复步骤序——插件包构建先于 Client MSI 打包并加 fail-closed 断言，#97）
+# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123；迭代 67 修复步骤序——插件包构建先于 Client MSI 打包并加 fail-closed 断言，#97；迭代 68 增加引导 Bundle EXE——bundle job 分阶段生成 manifest 构建、随 Release 附件发布，决策 #132）
 # 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
-# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Zebra 官方插件包 / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 生成安装清单 → 创建 GitHub Release。
+# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Zebra 官方插件包 / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 引导 Bundle EXE（bundle job）→ 生成安装清单 → 创建 GitHub Release。
 # MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
 # APK 签名：四个 ANDROID_KEYSTORE_* / ANDROID_KEY_* Secret 必须齐备，缺失即构建失败——不回退 debug 签名（签名稳定化，迭代 59 决策 #119）。
 # 安装清单：install-manifest.json（+ latest.json 指针）由 release job 从当版真实产物生成并断言（schema 见 docs/DESIGN.md §6.2，迭代 58 决策 #115 / #120）；禁止人工维护。
+# 引导 Bundle（迭代 68，决策 #132）：bundle job 先于 release job 分阶段生成同一口径的 manifest（消费其 runtime 条目构建引导 EXE），
+#   release job 生成发布清单后做跨 job 一致性断言（runtime 哈希逐条比对，防厂商轮转窗口内两阶段错位）——不符即整次发版失败，重跑自愈。
 name: release
 
 on:
@@ -268,7 +270,7 @@ jobs:
 
       # 签名稳定化（迭代 59 决策 #119）：Release 构建绝不回退 debug 签名——Secrets 缺失即失败。
       # 回退路径意味着两次构建可能签名不一致：用户无法覆盖升级，且换签名会重置 ANDROID_ID（设备号绑定签名），
-      # 服务端设备目录错乱。证书管理与换签名影响见 docs/DEPLOY.md §7。
+      # 服务端设备目录错乱。证书管理与换签名影响见 docs/DEPLOY.md §8。
       - name: 校验并准备签名 keystore（Secrets 缺失即失败）
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -279,7 +281,7 @@ jobs:
           MISSING=0
           for VAR in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
             if [ -z "${!VAR}" ]; then
-              echo "::error::缺少 Android 签名 Secret：$VAR（Release 构建不回退 debug 签名；请按 docs/DEPLOY.md §7 配置，keystore 生成后务必备份）"
+              echo "::error::缺少 Android 签名 Secret：$VAR（Release 构建不回退 debug 签名；请按 docs/DEPLOY.md §8 配置，keystore 生成后务必备份）"
               MISSING=1
             fi
           done
@@ -388,9 +390,122 @@ jobs:
           docker push "$LABELFRAME_CLIENT_IMAGE:$VERSION"
           docker push "$LABELFRAME_CLIENT_IMAGE:latest"
 
+  # 引导 Bundle（迭代 68，#101，决策 #132）：Windows job 构建引导 EXE 并随 Release 附件发布。
+  # 步骤序（#97 教训——先声明依赖再排步骤）：bundle 构建需五类产物在场（双 MSI / webui zip / .lfplugin 来自
+  # release-assets，APK 来自 android-apk——manifest 收录 pda-apk 条目，缺产物即生成失败），故 needs [package, android]；
+  # manifest 分阶段生成——本 job 先按与 release job 完全相同的参数生成一份当版 manifest（bundle 消费用的
+  # runtime 直链 + 哈希来源于此），release job 再生成发布清单并做跨 job 一致性断言（runtime 哈希逐条比对）。
+  # runtime 下载目录共享（artifacts/runtimes）：generate 下载实测哈希落 manifest，build-bundle 缓存命中直接消费，同 job 内只下载一次。
+  bundle:
+    name: 构建安装引导 EXE（Burn Bundle）
+    needs: [version, package, android]
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    outputs:
+      runtimeDesktopSha256: ${{ steps.bundle-meta.outputs.runtimeDesktopSha256 }}
+      runtimeAspNetCoreSha256: ${{ steps.bundle-meta.outputs.runtimeAspNetCoreSha256 }}
+      runtimeWebView2Sha256: ${{ steps.bundle-meta.outputs.runtimeWebView2Sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 安装 WiX Toolset
+        run: dotnet tool install --global wix --version ${{ env.WIX_VERSION }}
+
+      - name: 接受 WiX OSMF EULA
+        shell: pwsh
+        run: |
+          $wix = Join-Path $HOME '.dotnet\tools\wix.exe'
+          & $wix eula accept wix7 2>$null | Out-Null
+
+      - name: 下载发布产物
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: release
+
+      - name: 下载 Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: release
+
+      # 分阶段生成（bundle 消费侧）：参数与 release job 的生成步骤完全一致（同产物、同脚本、同默认 runtime 版本），
+      # 一致性由 release job 的跨 job 断言 fail-closed 兜底。
+      - name: 生成安装清单（bundle 消费侧）
+        shell: pwsh
+        run: |
+          ./scripts/generate-install-manifest.ps1 `
+            -Version $env:VERSION `
+            -AssetsDir release `
+            -OwnerRepo '${{ github.repository }}' `
+            -RuntimeDownloadDir artifacts/runtimes
+
+      - name: 准备签名证书（可选）
+        shell: pwsh
+        run: |
+          if ($env:MSI_SIGN_CERT_BASE64) {
+            New-Item -ItemType Directory -Force -Path artifacts/cert | Out-Null
+            [IO.File]::WriteAllBytes('artifacts/cert/labelframe.pfx', [Convert]::FromBase64String($env:MSI_SIGN_CERT_BASE64))
+            Write-Host '引导 EXE 将使用配置的证书签名（与 MSI 同通道）'
+          } else {
+            Write-Host '未配置 MSI_SIGN_CERT_BASE64，本次跳过引导 EXE 签名'
+          }
+        env:
+          MSI_SIGN_CERT_BASE64: ${{ secrets.MSI_SIGN_CERT_BASE64 }}
+
+      - name: 构建引导 Bundle（LabelFrame-Bootstrapper-<版本>.exe）
+        shell: pwsh
+        env:
+          MSI_SIGN_PASSWORD: ${{ secrets.MSI_SIGN_PASSWORD }}
+        run: |
+          $sign = @()
+          if (Test-Path 'artifacts/cert/labelframe.pfx') {
+            $sign = @('-Sign', '-PfxPath', 'artifacts/cert/labelframe.pfx', '-PfxPassword', $env:MSI_SIGN_PASSWORD)
+          }
+          & .\scripts\build-bundle.ps1 `
+            -Version $env:VERSION `
+            -WixPath (Join-Path $HOME '.dotnet\tools\wix.exe') `
+            -MsiDir release `
+            -DownloadBase "https://github.com/${{ github.repository }}/releases/download/v$env:VERSION" `
+            -ManifestSource release/install-manifest.json `
+            -RuntimeCacheDir artifacts/runtimes @sign
+          if ($LASTEXITCODE -ne 0) { throw '引导 Bundle 构建失败' }
+
+      # fail-closed：产物缺失 / 未生成即失败，不允许无 EXE 的「成功」发版（同 #97 断言口径）
+      - name: 断言引导 EXE 在场（fail-closed）
+        shell: pwsh
+        run: |
+          $exe = "artifacts/LabelFrame-Bootstrapper-$env:VERSION.exe"
+          if (-not (Test-Path $exe)) { throw "引导 EXE 不存在：$exe" }
+          Write-Host "引导 EXE 在场：$exe（$([Math]::Round((Get-Item $exe).Length / 1MB, 2)) MB）"
+
+      - name: 提取 bundle 消费侧 runtime 哈希（供 release job 一致性断言）
+        id: bundle-meta
+        shell: pwsh
+        run: |
+          $m = Get-Content release/install-manifest.json -Raw -Encoding UTF8 | ConvertFrom-Json
+          $desktop = @($m.components | Where-Object id -eq 'runtime-desktop')[0]
+          $aspnet = @($m.components | Where-Object id -eq 'runtime-aspnetcore')[0]
+          $webview2 = @($m.components | Where-Object id -eq 'runtime-webview2')[0]
+          if (-not $desktop -or -not $aspnet -or -not $webview2) { throw 'bundle 消费侧 manifest 缺 runtime 条目' }
+          "runtimeDesktopSha256=$($desktop.sha256)" >> $env:GITHUB_OUTPUT
+          "runtimeAspNetCoreSha256=$($aspnet.sha256)" >> $env:GITHUB_OUTPUT
+          "runtimeWebView2Sha256=$($webview2.sha256)" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-exe
+          path: artifacts/LabelFrame-Bootstrapper-*.exe
+          if-no-files-found: error
+
   release:
     name: 创建 GitHub Release
-    needs: [version, package, docker, android]
+    needs: [version, package, docker, android, bundle]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -405,6 +520,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: android-apk
+          path: release
+
+      - name: 下载引导 EXE
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-exe
           path: release
 
       # 安装清单（迭代 58，#51）：从当版全部产物生成 install-manifest.json + latest.json（决策 #115 / #120）。
@@ -432,6 +553,34 @@ jobs:
             -OwnerRepo '${{ github.repository }}' `
             -VerifyOnly
 
+      # 跨 job 一致性断言（迭代 68，决策 #132）：bundle job 分阶段生成的 manifest（引导 EXE 构建消费）
+      # 与本 job 生成的发布清单必须 runtime 哈希一致——两次生成各自从厂商直链实测，若厂商在窗口内轮转文件
+      # 则两份不一致，此处 fail-closed 拦截（发布清单与引导 EXE 内嵌摘要错位 = 用户侧校验失败），重跑流水线自愈。
+      - name: 断言发布清单与引导 Bundle 消费侧一致（runtime 哈希，fail-closed）
+        shell: pwsh
+        env:
+          BUNDLE_DESKTOP_SHA256: ${{ needs.bundle.outputs.runtimeDesktopSha256 }}
+          BUNDLE_ASPNETCORE_SHA256: ${{ needs.bundle.outputs.runtimeAspNetCoreSha256 }}
+          BUNDLE_WEBVIEW2_SHA256: ${{ needs.bundle.outputs.runtimeWebView2Sha256 }}
+        run: |
+          $m = Get-Content release/install-manifest.json -Raw -Encoding UTF8 | ConvertFrom-Json
+          $pairs = @(
+            @{ id = 'runtime-desktop';     expected = $env:BUNDLE_DESKTOP_SHA256 },
+            @{ id = 'runtime-aspnetcore';  expected = $env:BUNDLE_ASPNETCORE_SHA256 },
+            @{ id = 'runtime-webview2';    expected = $env:BUNDLE_WEBVIEW2_SHA256 }
+          )
+          $fail = $false
+          foreach ($p in $pairs) {
+            $actual = @($m.components | Where-Object id -eq $p.id)[0].sha256
+            if ($actual -ne $p.expected) {
+              Write-Host "::error::runtime 哈希两阶段不一致：[$($p.id)] 发布清单=$actual bundle 消费侧=$($p.expected) —— 厂商可能在两次生成之间轮转了直链文件，请重跑本次发版"
+              $fail = $true
+            } else {
+              Write-Host "runtime 哈希两阶段一致：[$($p.id)] $actual"
+            }
+          }
+          if ($fail) { exit 1 }
+
       - name: 创建 Release（v${{ needs.version.outputs.version }}）
         uses: softprops/action-gh-release@v2
         with:
@@ -440,6 +589,7 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
+            release/LabelFrame-Bootstrapper-*.exe
             release/LabelFrame-Server-*.msi
             release/LabelFrame-Client-*.msi
             release/LabelFrame-AndroidHost-*.apk

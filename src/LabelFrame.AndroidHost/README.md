@@ -93,7 +93,7 @@ Android / PDA 打印宿主（迭代 5 立项，迭代 25 真机落地，迭代 4
 
 - **证书管理**：keystore 与密码只存两处——GitHub 仓库 Secrets + 生成方离线备份（密码管理器 / 加密盘），**不得提交进仓库**；生成后立即备份别名与两个密码（store / key）。**keystore 或密码丢失 = 无法再发同签名升级包**（只能换签名，见下）；GitHub Secrets 可随时重写，keystore 文件还在即可恢复。
 - **装机与升级路径**：
-  - **装机**：推荐「服务端下载中心扫码下载」——把 Release 的 APK 放入服务端 `pda-packages` 目录（或经管理界面「下载中心」上传），PDA 与服务器同网扫条目旁二维码即可下载安装（详见 [docs/DEPLOY.md](../../docs/DEPLOY.md) §6）；也可 `adb install` GitHub Release 下载的 APK。
+  - **装机**：推荐「服务端下载中心扫码下载」——把 Release 的 APK 放入服务端 `pda-packages` 目录（或经管理界面「下载中心」上传），PDA 与服务器同网扫条目旁二维码即可下载安装（详见 [docs/DEPLOY.md](../../docs/DEPLOY.md) §7）；也可 `adb install` GitHub Release 下载的 APK。
   - **同签名版本之间**（正式 → 正式）：直接 `adb install -r` 或 PDA 端覆盖安装，配置与设备号保留。
   - **换签名**：**需先卸载旧版再安装**——卸载会清空配置（服务器地址 / 打印机 IP / 设备名称需重填）；且 Android 8+ 的设备号（ANDROID_ID）绑定签名密钥，**换签名后设备号会变**，Server 设备目录会出现新条目（旧条目停留显示离线，可忽略）。
 - 品牌化（迭代 49）：启动器图标 = 主蓝 + 白 L（与 MSI / 桌面图标同体系；`scripts\generate-android-icons.ps1` 生成各密度位图，API 26+ 自适应图标为矢量）；常驻通知小图标为白色单色矢量。

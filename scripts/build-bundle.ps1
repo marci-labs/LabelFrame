@@ -6,13 +6,19 @@
 #       .\scripts\build-zebra-plugin.ps1 -Version x.y.z（官方插件 .lfplugin）
 # runtime 安装器按 install manifest 获取（#115：厂商直链 + CI 锁哈希）：本地缓存缺失即按 urls[0] 下载，
 # sha256 与 manifest 逐字节校验不符即构建失败（fail-closed：厂商轮转直链文件 = 重新发版刷新 manifest）。
+# 迭代 68（#101，决策 #132）起随发版构建：release.yml bundle job 以 -ManifestSource 指向当版本地 manifest
+# 调用本脚本，产物 LabelFrame-Bootstrapper-<版本>.exe 纳入 Release 附件；Secrets 在场时以 -Sign 复用 MSI 自签证书签名。
 param(
     [Parameter(Mandatory = $true)][string]$Version,
     [string]$WixPath = '',
     [string]$MsiDir = '',
     [string]$DownloadBase = '',
     [string]$ManifestSource = 'https://github.com/marci-labs/LabelFrame/releases/latest/download/install-manifest.json',
-    [string]$RuntimeCacheDir = ''
+    [string]$RuntimeCacheDir = '',
+    # 代码签名（迭代 68，#101 决议：复用 MSI 自签证书通道；signtool 定位与签名参数与 build-msi.ps1 对齐）
+    [string]$PfxPath = '',
+    [string]$PfxPassword = $env:MSI_SIGN_PASSWORD,
+    [switch]$Sign
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -114,6 +120,40 @@ $global:LASTEXITCODE = 0
     -d "RuntimeWebView2Path=$($webview2Runtime.Path)" -d "RuntimeWebView2Url=$($webview2Runtime.Url)" `
     -o $bundleExe -arch x64 2>&1 | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
+
+# 6) 代码签名（可选：-Sign；wix build 成功后对引导 EXE 签名，手法与 build-msi.ps1 一致）
+if ($Sign) {
+    if (-not $PfxPassword) { throw '未提供签名密码：请用 -PfxPassword 或设置环境变量 MSI_SIGN_PASSWORD。' }
+    if (-not $PfxPath) { $PfxPath = Join-Path $root 'artifacts\cert\labelframe.pfx' }
+    if (-not (Test-Path $PfxPath)) { throw "未找到证书 $PfxPath，请先运行 scripts\create-signing-cert.ps1" }
+    $signtoolPath = $env:SIGNFILE
+    if (-not $signtoolPath) {
+        $found = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending | Select-Object -First 1
+        if ($found) { $signtoolPath = $found.FullName }
+    }
+    if (-not $signtoolPath) {
+        $toolsDir = Join-Path $root 'artifacts\tools'
+        $cachedSig = Get-ChildItem $toolsDir -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+        if ($cachedSig) { $signtoolPath = $cachedSig.FullName } else {
+            Write-Host '未找到 signtool，正在从 NuGet 下载 Windows SDK BuildTools 提取…'
+            New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
+            $ver = (Invoke-RestMethod 'https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/index.json' -TimeoutSec 60).versions | Select-Object -Last 1
+            $zip = Join-Path $toolsDir 'sdkbt.zip'
+            Invoke-WebRequest "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/$ver/microsoft.windows.sdk.buildtools.$ver.nupkg" -OutFile $zip -TimeoutSec 300
+            Expand-Archive -Path $zip -DestinationPath $toolsDir -Force
+            $extracted = Get-ChildItem $toolsDir -Recurse -Filter signtool.exe | Sort-Object FullName -Descending | Select-Object -First 1
+            if (-not $extracted) { throw 'signtool 提取失败。' }
+            $signtoolPath = $extracted.FullName
+        }
+    }
+    if (-not $signtoolPath) { throw '未找到 signtool.exe：请安装 Windows SDK，或设置环境变量 SIGNFILE 指向 signtool.exe' }
+    Write-Host "使用 signtool：$signtoolPath"
+    $global:LASTEXITCODE = 0
+    & $signtoolPath sign /f $PfxPath /p $PfxPassword /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $bundleExe 2>&1 | Write-Host
+    if ($LASTEXITCODE -ne 0) { throw '引导 EXE 签名失败' }
+    Write-Host "引导 EXE 已签名：$bundleExe"
+}
 
 Write-Host "Bundle 生成完成：$bundleExe"
 Write-Host "大小：$([Math]::Round((Get-Item $bundleExe).Length / 1MB, 2)) MB"

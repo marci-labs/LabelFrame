@@ -1,6 +1,8 @@
 ﻿# 生成安装清单 install-manifest.json 与最新版本指针 latest.json（迭代 58，Issue #51）
 # 契约：docs/DESIGN.md §6.2（决策 #115 schema、#120 实现决议）；manifest 由 CI 生成、禁止人工维护。
-# 生成点：.github/workflows/release.yml 的 release job（下载当版全部产物后、创建 Release 前）。
+# 生成点：.github/workflows/release.yml 的 release job（下载当版全部产物后、创建 Release 前）；
+# 迭代 68（#101，决策 #132）起 bundle job 亦调用一次（分阶段生成：先于此产出引导 Bundle 消费用的当版 manifest，
+# runtime 哈希与 release job 生成结果的一致性由 workflow 内跨 job 断言 fail-closed 兜底）。
 # 兼容 Windows PowerShell 5.1（本地自验）与 PowerShell 7（GitHub Actions runner）。
 #
 # 用法：
@@ -29,7 +31,11 @@ param(
     # WebView2 Evergreen 固定直链轮转无可钉版本，version 固定 'evergreen'。
     [string]$DotNetRuntimePatchVersion = '10.0.12',
     # 本地预置 runtime 安装器目录（离线自验：跳过厂商下载，哈希 / 体积仍实测；CI 不传 = 按直链下载实测）。
-    [string]$RuntimeFilesDir = ''
+    [string]$RuntimeFilesDir = '',
+    # runtime 下载目录（迭代 68，#101：release.yml bundle job 分阶段生成时与 build-bundle.ps1 -RuntimeCacheDir 打通，
+    # 同 job 内 runtime 安装器只下载一次——本脚本先下载实测哈希落 manifest，build-bundle.ps1 缓存命中直接消费）。
+    # 默认空 = 既有行为（临时目录，文件只用于实测）。
+    [string]$RuntimeDownloadDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -116,12 +122,19 @@ if (-not $VerifyOnly) {
         New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
     }
 
-    # runtime 文件实测（哈希与体积是厂商产物事实）：-RuntimeFilesDir 预置（离线自验）或按直链下载到临时目录。
+    # runtime 文件实测（哈希与体积是厂商产物事实）：-RuntimeFilesDir 预置（离线自验）或按直链下载。
+    # 下载目录：-RuntimeDownloadDir 指定（bundle job 与 build-bundle.ps1 缓存共享），默认临时目录。
     # 下载文件只用于实测，不落入 AssetsDir（runtime 无本仓产物、不进 Release 附件，§6.2）。
-    $runtimeDownloadDir = ''
+    # 注意：局部变量不可命名为 $runtimeDownloadDir——PowerShell 变量名大小写不敏感，会与同名参数互相覆盖
+    # （迭代 68 演练实证：参数被首行赋空清掉、恒走临时目录分支，缓存共享失效）。
+    $runtimeAcquireDir = ''
     if (-not $RuntimeFilesDir) {
-        $runtimeDownloadDir = Join-Path ([IO.Path]::GetTempPath()) ("labelframe-manifest-runtime-{0}" -f ([IO.Path]::GetRandomFileName() -replace '\.', ''))
-        New-Item -ItemType Directory -Force -Path $runtimeDownloadDir | Out-Null
+        if ($RuntimeDownloadDir) {
+            $runtimeAcquireDir = $RuntimeDownloadDir
+        } else {
+            $runtimeAcquireDir = Join-Path ([IO.Path]::GetTempPath()) ("labelframe-manifest-runtime-{0}" -f ([IO.Path]::GetRandomFileName() -replace '\.', ''))
+        }
+        New-Item -ItemType Directory -Force -Path $runtimeAcquireDir | Out-Null
     }
 
     $runtimeFiles = @{}
@@ -134,7 +147,7 @@ if (-not $VerifyOnly) {
             $runtimeFiles[$spec.id] = Get-Item -LiteralPath $candidate
         } else {
             Write-Host "下载 runtime 安装器（实测哈希 / 体积）：$($spec.url)"
-            $target = Join-Path $runtimeDownloadDir $spec.fileName
+            $target = Join-Path $runtimeAcquireDir $spec.fileName
             Invoke-WebRequest -Uri $spec.url -OutFile $target -UseBasicParsing
             $runtimeFiles[$spec.id] = Get-Item -LiteralPath $target
         }
