@@ -1,4 +1,4 @@
-﻿# 一键发布 LabelFrame Server（Ubuntu / linux-x64，迭代 19；迭代 71 起默认 self-contained，决策 #133）
+﻿# 一键发布 LabelFrame Server（Ubuntu / linux-x64，迭代 19；迭代 71 起默认 self-contained，决策 #134）
 # 默认 self-contained（目标机免装 .NET 10 ASP.NET Core Runtime，对齐 Windows 侧引导链教训 #128/#129）；
 # -FrameworkDependent 发布需运行时包（目标机自备 runtime，install.sh 检测缺失即报错给官方直链）。
 param(
