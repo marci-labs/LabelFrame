@@ -73,6 +73,8 @@ else
 fi
 command -v tar >/dev/null 2>&1 || die "未找到 tar——请先安装（Ubuntu / Debian：apt-get install -y tar）。"
 command -v sha256sum >/dev/null 2>&1 || die "未找到 sha256sum——请先安装 coreutils（Ubuntu / Debian：apt-get install -y coreutils）。"
+# .NET 运行库依赖 ICU（Ubuntu Server 标准安装自带；最小化容器 / 精简镜像可能缺失，缺失时服务启动即崩）
+ldconfig -p 2>/dev/null | grep -q 'libicuuc\.' || die "未找到 libicu（.NET 运行库依赖，服务启动即崩）——请先安装（Ubuntu 24.04：apt-get install -y libicu74；22.04：apt-get install -y libicu70）。"
 if [ "$INSTALL_WEBUI" -eq 1 ]; then
   command -v unzip >/dev/null 2>&1 || die "未找到 unzip（安装管理界面需要）——请先安装（Ubuntu / Debian：apt-get install -y unzip），或用 --no-webui 跳过管理界面。"
 fi
@@ -121,7 +123,7 @@ fi
 [ -s "$MANIFEST" ] || die "清单文件为空或不可读：$MANIFEST"
 
 # ---- 解析清单（行级解析 CI 生成的 schemaVersion=1 形态；字段缺失 / 非法一律拒绝，无 jq 依赖）----
-SCHEMA_VERSION="$(awk 'match($0, /"schemaVersion": *[0-9]+/) { v = $0; sub(/.*"schemaVersion": */, "", v); print v; exit }' "$MANIFEST")"
+SCHEMA_VERSION="$(awk 'match($0, /"schemaVersion": *[0-9]+/) { v = $0; sub(/.*"schemaVersion": */, "", v); sub(/[^0-9].*/, "", v); print v; exit }' "$MANIFEST")"
 [ "$SCHEMA_VERSION" = "1" ] || die "清单 schemaVersion=${SCHEMA_VERSION:-<缺失>} 不受本脚本支持（当前支持 1）——请从仓库更新本脚本。"
 
 # parse_component <组件 id>：逐行输出 key<TAB>value（version / url / sha256 / sizeBytes）
