@@ -31,7 +31,7 @@
 下载：[GitHub Releases](https://github.com/marci-labs/LabelFrame/releases)。
 
 - **LabelFrame-Server-x.x.x.msi** → `C:\Program Files\LabelFrame\Server`：无头服务端（模板库 / 作业中心 / 设备投递 / 调试出图 / 日志 / Excel），不接打印机、不提供 Web UI；安装为 Windows 服务 `LabelFrameServer`，数据在 `%ProgramData%\LabelFrame\server`。
-- **LabelFrame-Client-x.x.x.msi** → `C:\Program Files\LabelFrame\Client`：打印客户端，以应用窗口（WebView2 嵌入界面壳）托管完整界面（模板设计 / 数据与打印 / 连接配置 / 日志 / 作业历史），本机地址 `http://127.0.0.1:53960`；窗口关闭后服务驻留系统托盘（真正退出走托盘「退出」）。
+- **LabelFrame-Client-x.x.x.msi** → `C:\Program Files\LabelFrame\Client`：打印客户端，以应用窗口（WebView2 嵌入界面壳）托管完整界面（模板设计 / 数据与打印 / 连接配置 / 作业历史；迭代 75 起「PDA 日志」页已下线——回传能力立项前不提供，见 DESIGN 决策 #140），本机地址 `http://127.0.0.1:53960`；窗口关闭后服务驻留系统托盘（真正退出走托盘「退出」）。
 
 要点：
 

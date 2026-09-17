@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-// 迭代 20：server 构建（VITE_UI_MODE=server）菜单裁剪——含 在线设备 / 设备日志，移除 设置 与一切
-// 打印机相关入口（PDA 日志 为 client 版命名）；状态栏显示服务端地址（页面 origin /「同源」）与 UI 模式；
+// 迭代 20：server 构建（VITE_UI_MODE=server）菜单裁剪——含 在线设备，移除 设置 与一切
+// 打印机相关入口；迭代 75（#112）：「设备日志 / PDA 日志」页下线（导航入口移除，回传链路不存在前
+// 的界面收敛）；状态栏显示服务端地址（页面 origin /「同源」）与 UI 模式；
 // K2 守门：跳过 localApi 探测（getHostConfig / getTransport 不被调用）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -96,10 +97,9 @@ afterEach(() => {
 })
 
 describe('server 构建：菜单裁剪（迭代 20 §2.2 / Y5）', () => {
-  it('含 在线设备 / 设备日志 / 下载中心 / 插件管理 / 工作台 / 设计器 / 数据与打印 / 作业历史；不含 设置 / PDA 日志', async () => {
+  it('含 在线设备 / 下载中心 / 插件管理 / 工作台 / 设计器 / 数据与打印 / 作业历史；不含 设置 / 设备日志 / PDA 日志（迭代 75 日志页下线）', async () => {
     render(<App />)
     expect(await screen.findByRole('button', { name: '在线设备' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '设备日志' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '工作台' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '设计器' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '数据与打印' })).toBeTruthy()
@@ -108,8 +108,9 @@ describe('server 构建：菜单裁剪（迭代 20 §2.2 / Y5）', () => {
     expect(screen.getByRole('button', { name: '下载中心' })).toBeTruthy()
     // 迭代 23 §5.4：Server UI「插件管理」页入口（与「下载中心」并列）
     expect(screen.getByRole('button', { name: '插件管理' })).toBeTruthy()
-    // 设置页与 PDA 日志（client 版命名）不存在
+    // 设置页不存在；「设备日志 / PDA 日志」页已下线（迭代 75，#112——/api/logs 端点与 logs.db 后端保留）
     expect(screen.queryByRole('button', { name: '设置' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '设备日志' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'PDA 日志' })).toBeNull()
   })
 })
