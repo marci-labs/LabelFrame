@@ -4,6 +4,8 @@
 // 启动加载机器级配置后立即生效；保存服务端地址 = setHostConfig + 内存更新 + 重新探测（无需重启）。
 // 迭代 80（#128 决议 2「三名义」）：「本机打印服务」（localServiceUp，状态栏）与「服务端地址」连通性（connected，
 // 设置页）各自独立探测——此前状态栏用 connected 兼指本机后台服务可达，一词三义（评审 #114 B-9）。
+// 迭代 86（#142，a 案）：serverUrl 为空 = 未配置服务端——不做网络探测，直接判「服务端未连接（单机模式可用）」；
+// 探测按配置就绪串行化——client 构建机器级配置加载完成前不探测（消除初始化探测与配置加载后探测的竞态双态）。
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -128,6 +130,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [printDraft, setPrintDraft] = useState<PrintDraft>(() => loadPrintDraft(getSessionStorage()))
   const pendingRef = useRef<Promise<boolean> | null>(null)
+  // 迭代 86（#142）：探测串行化与终态一致性三件套——
+  // - configReadyRef：client 构建下机器级配置（GET /api/host/config）加载完成前不探测服务端（首次探测在配置
+  //   就绪后串行发起），消除「模块初始化探测（默认地址 127.0.0.1:53961）与配置加载后探测（实际地址）交错」
+  //   的竞态（同一状态先后显示已连接 / 未连接）；server 构建无本机配置可读，恒为就绪。
+  // - baseUrlRef：生效服务端地址的同步镜像（state 更新异步，探测路径需读到保存 / 加载后的最新值）。
+  // - probeSeqRef：探测序号（后发优先）——地址切换或判空后，在途旧探测的结果按序号作废，不覆盖新终态。
+  const configReadyRef = useRef(isServerUi)
+  const baseUrlRef = useRef(isServerUi ? '' : getBaseUrl())
+  const probeSeqRef = useRef(0)
 
   // 草稿变更即持久化（sessionStorage，刷新保留、标签页天然隔离；不用 localStorage）
   useEffect(() => {
@@ -148,23 +159,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   const checkConnection = useCallback(async (): Promise<boolean> => {
+    // 迭代 86（#142）：机器级配置就绪前不探测（探测按配置就绪串行化）——此间不写终态（connected / serverMode 维持初值）
+    if (!configReadyRef.current) return false
+    // 迭代 86（#142，a 案）：client 构建下服务端地址为空 = 未配置服务端——不做网络探测（空地址无目标可探；
+    // 且空串 base 落同源会打到本机 WinHost /healthz 200，谎报「服务端已连接」），直接判「服务端未连接（单机模式可用）」。
+    // server 构建不适用：base 恒为 '' 且同源即服务端自身，探测语义正确。
+    if (!isServerUi && baseUrlRef.current === '') {
+      probeSeqRef.current += 1 // 作废在途旧探测（其结果按序号丢弃、不再清理去重占用）
+      pendingRef.current = null
+      setConnected(false)
+      setServerMode('standalone')
+      return false
+    }
     if (pendingRef.current) return pendingRef.current
-    pendingRef.current = (async () => {
+    const seq = ++probeSeqRef.current
+    const probe = (async () => {
       try {
         await serverApi.healthz()
-        setConnected(true)
-        setServerMode('server')
+        if (seq === probeSeqRef.current) {
+          setConnected(true)
+          setServerMode('server')
+        }
         return true
       } catch {
-        setConnected(false)
-        // 迭代 20（K2）：server 构建无单机降级——探测失败仍保持 server 模式（页面用 serverApi 拉数据），仅置未连接。
-        setServerMode(isServerUi ? 'server' : 'standalone')
+        if (seq === probeSeqRef.current) {
+          setConnected(false)
+          // 迭代 20（K2）：server 构建无单机降级——探测失败仍保持 server 模式（页面用 serverApi 拉数据），仅置未连接。
+          setServerMode(isServerUi ? 'server' : 'standalone')
+        }
         return false
       } finally {
-        pendingRef.current = null
+        // 序号仍为最新时清理去重占用；已被新探测 / 判空接替（序号前移）时占用由接替方处理
+        if (seq === probeSeqRef.current) pendingRef.current = null
       }
     })()
-    return pendingRef.current
+    pendingRef.current = probe
+    return probe
   }, [])
 
   const checkUrl = useCallback((url: string): Promise<boolean> => probeHealthz(url), [])
@@ -198,6 +228,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .then((cfg) => {
         if (!on) return
         setServerBaseUrl(cfg.serverUrl)
+        baseUrlRef.current = cfg.serverUrl
         setBaseUrlState(cfg.serverUrl)
         setHostDeviceId(cfg.deviceId ?? null)
         setHostDeviceName(cfg.deviceName ?? null)
@@ -211,7 +242,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setStatus('本机配置接口不可用，使用浏览器本地保存的服务端地址。')
       })
       .finally(() => {
-        if (on) void checkConnection()
+        // 迭代 86（#142）：配置加载完成（成功读取，或旧客户端回退 localStorage 兜底）后才放行探测——
+        // 首次探测在此串行发起，此前任何 checkConnection 调用（App 挂载即探测等）均为无探测空转
+        if (on) {
+          configReadyRef.current = true
+          void checkConnection()
+        }
       })
     void localApi
       .getTransport()
@@ -235,17 +271,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await localApi.setHostConfig({ serverUrl: cleaned })
         // 立即生效：内存更新（机器级配置为唯一事实来源；localStorage 仅兜底）→ 重新探测 → 页面随 baseUrl 重拉
         setServerBaseUrl(cleaned)
+        baseUrlRef.current = cleaned
         setBaseUrlState(cleaned)
         persistBaseUrl(cleaned)
         setStatus(`服务端地址已保存并生效：${cleaned}`)
+        // 迭代 86（#142）：释放旧地址在途探测的去重占用，按新地址立即发起新探测（旧结果按序号作废）
+        pendingRef.current = null
         void checkConnection()
         return true
       } catch {
         // 旧客户端 / 无本机配置接口：回退浏览器本地保存
         setServerBaseUrl(cleaned)
+        baseUrlRef.current = cleaned
         setBaseUrlState(cleaned)
         persistBaseUrl(cleaned)
         setStatus('本机配置接口不可用，已使用浏览器本地保存。')
+        pendingRef.current = null
         void checkConnection()
         return false
       }
