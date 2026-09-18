@@ -1,6 +1,8 @@
 // 设计器（核心）：顶栏（模板名/分组/纸张/DPI/预览/保存）+ 左栏（控件/字段/图层）
 // + 画布（移植原型交互）+ 右栏（属性 / 测试数据 Tab）。
 // 状态：stateRef 为同步真相（事件回调内先更新再 setState），历史为快照式。
+// 迭代 92（#150 F-02）：未保存离开保护——dirty（历史栈有已提交更改）时返回按钮与 Shell 导航切 tab
+// 均弹三选 Modal（保存并离开 / 放弃更改 / 继续编辑）；无编辑直接离开不弹窗。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
@@ -30,9 +32,11 @@ const parse = (s: string): DesignState => JSON.parse(s) as DesignState
 interface DesignerProps {
   request: DesignerRequest
   onClose: () => void
+  /** 迭代 92（#150 F-02）：向 Shell 注册离开守卫（导航 tab 切换拦截：dirty 时弹三选 Modal 挂起本次切换）；卸载自动注销。 */
+  registerLeaveGuard?: (fn: ((leave: () => void) => void) | null) => void
 }
 
-export function Designer({ request, onClose }: DesignerProps) {
+export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps) {
   const app = useApp()
   const { serverMode } = app
   /** 业务 API 跟随模式（迭代 91 F-13 与 Workbench 对齐：unknown 时下方加载 effect 不发请求，待探测完成）。 */
@@ -51,6 +55,8 @@ export function Designer({ request, onClose }: DesignerProps) {
   const [confirmOverwrite, setConfirmOverwrite] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  // 迭代 92（#150 F-02）：未保存离开保护——三选 Modal（保存并离开 / 放弃更改 / 继续编辑）
+  const [leaveGuardOpen, setLeaveGuardOpen] = useState(false)
 
   const stateRef = useRef<DesignState | null>(null)
   const historyRef = useRef<ReturnType<typeof createHistory<DesignState>> | null>(null)
@@ -58,6 +64,9 @@ export function Designer({ request, onClose }: DesignerProps) {
   const contractNameRef = useRef('')
   const contractVersionRef = useRef('1')
   const selectedRef = useRef<string[]>([])
+  // 迭代 92（#150 F-02，决议 a）：离开保护挂起的离开动作——「放弃更改」与「保存并离开」成功后执行；
+  // 各终止路径（继续编辑 / 保存失败 / 覆盖取消 / 名称缺失）就地作废，防陈旧离开动作误触发后续普通保存。
+  const pendingLeaveRef = useRef<(() => void) | null>(null)
   // 迭代 91（F-13）：加载单次闩锁 + 挂载标记（见下方加载 effect 注释）
   const initedRef = useRef(false)
   const mountedRef = useRef(true)
@@ -452,7 +461,10 @@ export function Designer({ request, onClose }: DesignerProps) {
   const doSave = useCallback(
     async (finalName: string) => {
       const s = stateRef.current
-      if (!s) return
+      if (!s) {
+        pendingLeaveRef.current = null
+        return
+      }
       setSaving(true)
       try {
         const fields = deriveFieldInfos(s.elements)
@@ -467,9 +479,16 @@ export function Designer({ request, onClose }: DesignerProps) {
         }
         await biz.saveTemplate(pkg)
         app.setStatus(`模板「${finalName}」已保存。`)
-        onClose()
+        // 迭代 92（#150）：「保存并离开」成功后执行挂起的离开动作（保存成功自然复位 dirty——组件随离开卸载）；
+        // 普通保存无挂起动作，维持既有 onClose 回工作台
+        const leave = pendingLeaveRef.current
+        pendingLeaveRef.current = null
+        if (leave) leave()
+        else onClose()
       } catch (err) {
         app.setStatus(err instanceof ApiError ? err.message : '保存失败。')
+        // 迭代 92（#150，AC-03）：保存失败停留设计器、不丢编辑——挂起的离开动作就地作废
+        pendingLeaveRef.current = null
       } finally {
         setSaving(false)
       }
@@ -480,6 +499,8 @@ export function Designer({ request, onClose }: DesignerProps) {
   const save = useCallback(() => {
     const trimmed = name.trim()
     if (!trimmed) {
+      // 迭代 92（#150）：「保存并离开」无模板名时止步于此（停留设计器补名称），挂起动作作废
+      pendingLeaveRef.current = null
       app.setStatus('请先填写模板名称。')
       return
     }
@@ -497,6 +518,54 @@ export function Designer({ request, onClose }: DesignerProps) {
       void doSave(trimmed)
     }
   }, [app, biz, doSave, name, request.kind])
+
+  // ---------- 离开保护（迭代 92 · #150 F-02，决议 a：dirty = 历史栈有任一已提交更改） ----------
+  /** 请求离开：无已提交更改（undoCount = 0）直接离开不弹窗（AC-02）；有则弹三选 Modal 挂起本次离开动作（AC-01）。 */
+  const requestLeave = useCallback((leave: () => void) => {
+    if ((historyRef.current?.undoCount ?? 0) > 0) {
+      pendingLeaveRef.current = leave
+      setLeaveGuardOpen(true)
+    } else {
+      leave()
+    }
+  }, [])
+
+  /** 三选之「继续编辑」（含 Esc / 点遮罩 / 右上角关闭）：作废挂起的离开动作，留在设计器。 */
+  const stayInEditor = useCallback(() => {
+    pendingLeaveRef.current = null
+    setLeaveGuardOpen(false)
+  }, [])
+
+  /** 三选之「放弃更改」：不保存，直接执行挂起的离开动作（回工作台 / 完成挂起的导航切换）。 */
+  const discardAndLeave = useCallback(() => {
+    const leave = pendingLeaveRef.current
+    pendingLeaveRef.current = null
+    setLeaveGuardOpen(false)
+    leave?.()
+  }, [])
+
+  /** 三选之「保存并离开」：走既有保存链路（空名校验 / 同名覆盖确认），成功后由 doSave 执行挂起离开；
+   *  失败停留设计器显示错误、不丢编辑（AC-03）。 */
+  const saveAndLeave = useCallback(() => {
+    setLeaveGuardOpen(false)
+    save()
+  }, [save])
+
+  /** 设计器返回按钮 / 加载失败返回工作台：dirty 时经三选确认，否则直接返回（AC-02）。 */
+  const requestClose = useCallback(() => requestLeave(onClose), [requestLeave, onClose])
+
+  /** 覆盖确认取消（含 Esc / 点遮罩 / 右上角关闭）：停留在设计器，挂起的离开动作作废。 */
+  const cancelOverwrite = useCallback(() => {
+    setConfirmOverwrite(false)
+    pendingLeaveRef.current = null
+  }, [])
+
+  // Shell 导航 tab 切换拦截：挂载注册 / 卸载注销（设计器随切 tab 卸载后 Shell 侧不再拦截）
+  useEffect(() => {
+    if (!registerLeaveGuard) return
+    registerLeaveGuard(requestLeave)
+    return () => registerLeaveGuard(null)
+  }, [registerLeaveGuard, requestLeave])
 
   const fields = useMemo(() => (state ? deriveFieldInfos(state.elements) : []), [state])
 
@@ -524,7 +593,7 @@ export function Designer({ request, onClose }: DesignerProps) {
   return (
     <div className="page designer-page">
       <div className="designer-toolbar">
-        <button className="btn ghost" onClick={onClose} title="返回工作台">
+        <button className="btn ghost" onClick={requestClose} title="返回工作台">
           <Icon name="back" size={14} />
         </button>
         <input className="input" style={{ width: 150 }} value={name} onChange={(ev) => setName(ev.target.value)} placeholder="模板名称" title="模板名称" />
@@ -603,7 +672,7 @@ export function Designer({ request, onClose }: DesignerProps) {
       {loadError && (
         <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
           {loadError}
-          <button className="btn sm" onClick={onClose}>
+          <button className="btn sm" onClick={requestClose}>
             返回工作台
           </button>
         </div>
@@ -720,10 +789,10 @@ export function Designer({ request, onClose }: DesignerProps) {
       {confirmOverwrite && (
         <Modal
           title="模板已存在"
-          onClose={() => setConfirmOverwrite(false)}
+          onClose={cancelOverwrite}
           footer={
             <>
-              <button className="btn" onClick={() => setConfirmOverwrite(false)}>
+              <button className="btn" onClick={cancelOverwrite}>
                 取消
               </button>
               <button className="btn primary" onClick={() => { setConfirmOverwrite(false); void doSave(name.trim()) }}>
@@ -734,6 +803,30 @@ export function Designer({ request, onClose }: DesignerProps) {
         >
           <p>
             已存在同名模板「<b>{name.trim()}</b>」，保存将覆盖原模板。确定继续吗？
+          </p>
+        </Modal>
+      )}
+
+      {leaveGuardOpen && (
+        <Modal
+          title="未保存的更改"
+          onClose={stayInEditor}
+          footer={
+            <>
+              <button className="btn" onClick={stayInEditor}>
+                继续编辑
+              </button>
+              <button className="btn danger" onClick={discardAndLeave}>
+                放弃更改
+              </button>
+              <button className="btn primary" onClick={saveAndLeave} disabled={saving}>
+                保存并离开
+              </button>
+            </>
+          }
+        >
+          <p>
+            当前模板有未保存的更改，离开后将丢失本次编辑。要保存后再离开吗？
           </p>
         </Modal>
       )}
