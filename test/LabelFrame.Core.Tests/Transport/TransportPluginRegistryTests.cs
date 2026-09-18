@@ -79,12 +79,15 @@ public class TransportPluginRegistryTests
     [Fact]
     public void Log_plugin_copy_should_be_user_friendly()
     {
-        // 迭代 82（#130，评审 #114 B-1 / A-1 / B-5）：显示名用户化——徽标 / 摘要取值（Describe）为「模拟打印」不再直出「LOG」；
+        // 迭代 82（#130，评审 #114 B-1 / A-1 / B-5）：徽标 / 摘要取值（Describe）用户化「模拟打印」，不再直出「LOG」；
         // 说明文（Description）句读完整且无开发者用语（「联调」）。
+        // 迭代 87（#143）：选项列表显示名（DisplayName）同步去技术前缀「Log」；插件 Id 保持 log（存量连接兼容）。
         var (registry, _) = Create();
         var log = registry.GetPlugin("log")!;
+        Assert.Equal("log", log.Id);
         Assert.Equal("模拟打印", registry.Describe("log", new TransportPluginParameters()));
-        Assert.Equal("Log（模拟打印）", log.DisplayName);
+        Assert.Equal("模拟打印", log.DisplayName);
+        Assert.DoesNotContain("Log", log.DisplayName);
         Assert.DoesNotContain("联调", log.Description);
         Assert.DoesNotContain("LOG", log.Description);
         Assert.EndsWith("。", log.Description);

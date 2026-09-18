@@ -20,8 +20,8 @@ public sealed class LogTransportPlugin : ITransportPlugin
     /// <inheritdoc />
     public string Id => "log";
 
-    /// <inheritdoc />
-    public string DisplayName => "Log（模拟打印）";
+    /// <summary>显示名「模拟打印」（迭代 87 #143：选项列表去技术前缀「Log」）；插件 Id 保持 <c>log</c> 不变（存量连接配置兼容）。</summary>
+    public string DisplayName => "模拟打印";
 
     /// <inheritdoc />
     public string Description => "模拟打印：不连接真实打印机，作业按打印成功处理；图片模式的标签图片会保存到本机，便于先确认打印效果。";
