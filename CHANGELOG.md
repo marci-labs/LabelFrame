@@ -8,6 +8,13 @@
 - **发布编排（本版可感知变化）**：推 `v*` tag 后自动构建并公开——既有产物（Server / Client 双 MSI、服务端 webui 插件 zip、linux-x64 归档、AndroidHost APK、Zebra 官方插件 .lfplugin、install-manifest.json + latest.json、ghcr 双镜像 `0.28.0` + `latest`）之外：**引导程序 Bundle EXE 首次随发版流水线构建并随 Release 发布**（迭代 68 接线，`LabelFrame-Bootstrapper-0.28.0.exe`，Release 推荐安装入口）；**compose.yml + .env 随 Release 分发**（迭代 71，`.env` 钉定 `LABELFRAME_VERSION=0.28.0`）；**linux-x64 归档默认 self-contained**（迭代 71，目标机免装 .NET 10 ASP.NET Core Runtime）。
 - **版本同步**：ServerOptions / HostOptions `ProductVersion` 与稳定版 Compose 默认版本更新为 `0.28.0`（客户端「检查更新」比较口径随升，决策 #126）。
 
+## 迭代 94：流程治理——release.yml 前端产物自检特征过时修复与 v0.28.0 恢复出库 · 2026-09-18
+
+- **缺陷与根因（#166；v0.28.0 发版实证，run 35326712703，决策 #150）**：「测试与前端构建」job 的「前端产物自检（双模式区分，迭代 22 修复）」client 特征断言 `-notmatch 'PDA 日志'`——该字符串随迭代 75（#118）「PDA 日志 / 设备日志」页面下线从 client 产物消失，断言恒失败（fail-closed 拦截，未创建 Release，其余 dotnet / 前端测试步骤均通过）；顺带发现反标记 `'本机未注册到服务端'` 自迭代 80「三名义」改名后已无出处，对应断言空转（恒真无保护）。PR 必需检查不执行 release 专属自检步骤，记账 PR #165 三项全绿未拦截——发布链专属断言只能在发版时暴露。
+- **修复**：client 特征与反标记统一改用 `'本机打印服务'`（App.tsx 状态栏 client 分支文案，`isServerUi` 构建期折叠后 server 产物不含；本地双构建取证：client 在场 / server 不在场，两形态均单 chunk）；server 特征 `'客户端下载'` 维持；步骤注释与文件头历史注释同步。
+- **v0.28.0 恢复出库**：tag v0.28.0 不删不重推——修复合入 master 后以 `workflow_dispatch`（version=0.28.0）触发，产物源 master 与 tag 仅差本 workflow 修复、产物内容一致；出库后核验（Release 附件 / ghcr 双镜像 / 依赖基线 Snapshot）与待验收联动（#91 / #93 / #101）随发版会话执行，证据回写 #166。
+- **验证**：本地双构建 grep 在场性取证（表见 #166）；release.yml YAML 解析自检；dotnet / 前端代码零改动（build / test 由 CI 必需检查覆盖）。
+
 ## 迭代 93：前端交互一致性收尾——确认弹窗统一 / 横幅通用类 / 空态刷新与文案 / lint 清零与死代码清理 · 2026-09-18
 
 - **动机与范围（#151；前端评审 2026-09-18 F-04 / F-06 / F-07 / F-11 / F-16 / F-17 / F-20 / F-21，用户拍板 a 案——Devices 加载态 =「加载中…」文案行，不引入骨架组件）**：危险确认两套机制并存（模板删除走自研 `Modal`，安装包 / 插件包删除与插件覆盖安装 / 卸载走原生 confirm，WebView2 窗口壳中样式突兀、按钮文案不可定制）；同一段内联横幅样式在 7 处错误 + 3 处通知逐字复制（已现 Designer 版多带 `display:flex` 的不一致苗头）；Devices 首次拉取前闪现「暂无设备」；工作台加载失败无重试入口；列映射表头「字段键」为开发者语；lint 6 条 warning、死代码与 vitest 配置残留。八项小改动同一 PR 交付。

@@ -1,4 +1,4 @@
-# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123；迭代 67 修复步骤序——插件包构建先于 Client MSI 打包并加 fail-closed 断言，#97；迭代 68 增加引导 Bundle EXE——bundle job 分阶段生成 manifest 构建、随 Release 附件发布，决策 #132；迭代 71 起 Linux 归档默认 self-contained + compose 分发附件 compose.yml / .env 随 Release 发布，决策 #134）
+# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123；迭代 67 修复步骤序——插件包构建先于 Client MSI 打包并加 fail-closed 断言，#97；迭代 68 增加引导 Bundle EXE——bundle job 分阶段生成 manifest 构建、随 Release 附件发布，决策 #132；迭代 71 起 Linux 归档默认 self-contained + compose 分发附件 compose.yml / .env 随 Release 发布，决策 #134；迭代 94 修复前端产物自检特征——迭代 75 下线「PDA 日志」页致旧特征消失、反标记空转，决策 #150）
 # 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
 # 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Zebra 官方插件包 / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 引导 Bundle EXE（bundle job）→ 生成安装清单 → 创建 GitHub Release。
 # MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
@@ -101,13 +101,15 @@ jobs:
         shell: pwsh
         run: |
           # 防止 VITE_UI_MODE 未生效导致 dist-server 打成 client 模式
-          # （Server 管理界面会错误显示「本机未注册 / 降级直连」与设置 / PDA 日志页）
+          # （迭代 94 修复：client 特征「PDA 日志」随迭代 75 页面下线消失致断言恒失败；反标记「本机未注册到服务端」
+          #  自迭代 80 三名义改名后无出处、断言空转——两处同改用「本机打印服务」（App.tsx 状态栏 client 分支，
+          #  构建期折叠后 server 产物不含；本地双构建取证见 #166），server 特征「客户端下载」维持）
           $clientJs = (Get-ChildItem 'dist/assets/*.js' | Select-Object -First 1).FullName
           $client = Get-Content $clientJs -Raw
-          if ($client -notmatch 'PDA 日志') { throw 'dist 缺少 client 页面特征（PDA 日志），client 构建异常' }
+          if ($client -notmatch '本机打印服务') { throw 'dist 缺少 client 页面特征（本机打印服务），client 构建异常' }
           $serverJs = (Get-ChildItem 'dist-server/assets/*.js' | Select-Object -First 1).FullName
           $server = Get-Content $serverJs -Raw
-          if ($server -match '本机未注册到服务端') { throw 'dist-server 为 client 模式产物：VITE_UI_MODE 未生效，请检查 build:server' }
+          if ($server -match '本机打印服务') { throw 'dist-server 为 client 模式产物：VITE_UI_MODE 未生效，请检查 build:server' }
           if ($server -notmatch '客户端下载') { throw 'dist-server 缺少 server 页面特征（客户端下载），server 构建异常' }
           Write-Host "双模式产物自检通过：dist=client（$([IO.Path]::GetFileName($clientJs))）、dist-server=server（$([IO.Path]::GetFileName($serverJs))）"
 
