@@ -1,5 +1,7 @@
 // fetch 封装（迭代 18 F1：双 base）：
 // - serverApi：服务端地址（机器级配置 > localStorage 兜底 > 默认 127.0.0.1:53961）——模板 / 作业 / 设备 / 日志 / Excel / 调试出图 / healthz；
+//   迭代 86（#142，a 案）：client 构建下机器级配置 serverUrl 为空 = 未配置服务端——AppContext 不探测（connected 恒 false、
+//   单机降级 localApi），serverApi 不以空串 base 冒充同源服务端探测 / 拉数据；server 构建同源相对路径语义不变；
 // - localApi：页面来源（托管本页的 LabelFrame Client，127.0.0.1:53960）——transport / printer / host/config 本机接口；
 //   业务 API 同时保留（单机降级：Server 不可达时模板 / 作业 / 日志走本机 WinHost 全套 API）。
 // 错误消息区分「服务端」与「本机客户端」。
@@ -351,10 +353,13 @@ export const localApi = {
     }),
 }
 
-/** 探测任意地址的 /healthz（设置页「测试连接」用输入值探测，不保存；5s 超时防挂起）。 */
+/** 探测任意地址的 /healthz（设置页「测试连接」用输入值探测，不保存；5s 超时防挂起）。
+ *  迭代 86（#142，a 案）：空地址不发起网络探测直接判失败——空串 base 落同源会打到本机 WinHost /healthz 200，
+ *  谎报「该地址可访问服务端」；未配置服务端地址的终态判定在 AppContext（空地址 = 未连接单机模式，不探测）。 */
 export async function probeHealthz(url: string): Promise<boolean> {
+  const cleaned = url.trim().replace(/\/+$/, '')
+  if (!cleaned) return false
   try {
-    const cleaned = url.trim().replace(/\/+$/, '')
     const res = await fetch(cleaned + '/healthz', { mode: 'cors', signal: AbortSignal.timeout(5000) })
     return res.ok
   } catch {

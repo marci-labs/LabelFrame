@@ -166,6 +166,75 @@ describe('服务端地址（F2）', () => {
   })
 })
 
+describe('服务端连接徽标三态与切换（迭代 86，#142 a 案）', () => {
+  it('AC-01 空地址：徽标「服务端未连接（单机模式可用）」且全程不做网络探测；安装包 / 插件区提示单机模式（同屏无矛盾）', async () => {
+    mocks.local.getHostConfig.mockResolvedValue({ ...HOST_CONFIG, serverUrl: '' })
+    renderSettings()
+    expect(await screen.findByText('服务端未连接（单机模式可用）')).toBeTruthy()
+    // 同屏一致：「更新与安装包」徽标与提示、「插件管理」服务端可用插件区均为单机模式口径
+    expect(screen.getByText('单机模式')).toBeTruthy()
+    expect(screen.getByText(/当前未连接服务端（单机模式）/)).toBeTruthy()
+    expect(screen.getByText(/当前未连接服务端，处于单机模式/)).toBeTruthy()
+    // a 案：空地址无目标可探，不发起 healthz；业务列表不拉取（serverApi 不以空串 base 落同源打到本机 WinHost）
+    await waitFor(() => expect(mocks.local.getHostConfig).toHaveBeenCalled())
+    expect(mocks.server.healthz).not.toHaveBeenCalled()
+    expect(mocks.server.listClientPackages).not.toHaveBeenCalled()
+    expect(mocks.server.listPluginPackages).not.toHaveBeenCalled()
+  })
+
+  it('AC-02 可达地址：探测成功徽标「服务端已连接」，安装包区按服务端拉取列表', async () => {
+    renderSettings()
+    expect((await screen.findAllByText('服务端已连接')).length).toBeGreaterThan(0)
+    await waitFor(() => expect(mocks.server.listClientPackages).toHaveBeenCalled())
+  })
+
+  it('AC-02 不可达地址：探测失败徽标「服务端未连接（单机模式可用）」', async () => {
+    mocks.server.healthz.mockRejectedValue(new Error('down'))
+    renderSettings()
+    expect(await screen.findByText('服务端未连接（单机模式可用）')).toBeTruthy()
+    await waitFor(() => expect(mocks.server.healthz).toHaveBeenCalled())
+  })
+
+  it('AC-02 切换刷新：保存不可达地址转「未连接」，再保存可达地址转回「已连接」（保存即重探测，无竞态双态）', async () => {
+    renderSettings()
+    expect((await screen.findAllByText('服务端已连接')).length).toBeGreaterThan(0)
+    // 切到不可达地址并保存 → 徽标转未连接
+    fireEvent.change(screen.getByLabelText('服务端地址'), { target: { value: 'http://192.168.0.99:53961' } })
+    mocks.server.healthz.mockRejectedValue(new Error('down'))
+    fireEvent.click(screen.getByRole('button', { name: /保存并生效/ }))
+    expect(await screen.findByText('服务端未连接（单机模式可用）')).toBeTruthy()
+    expect(mocks.local.setHostConfig).toHaveBeenCalledWith({ serverUrl: 'http://192.168.0.99:53961' })
+    // 再切回可达地址并保存 → 徽标转回已连接
+    fireEvent.change(screen.getByLabelText('服务端地址'), { target: { value: 'http://192.168.1.10:53961' } })
+    mocks.server.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
+    fireEvent.click(screen.getByRole('button', { name: /保存并生效/ }))
+    expect((await screen.findAllByText('服务端已连接')).length).toBeGreaterThan(0)
+  })
+
+  it('保存空地址：徽标即转「服务端未连接（单机模式可用）」且不再探测（a 案；空终态不被旧探测结果覆盖）', async () => {
+    renderSettings()
+    expect((await screen.findAllByText('服务端已连接')).length).toBeGreaterThan(0)
+    mocks.server.healthz.mockClear()
+    fireEvent.change(screen.getByLabelText('服务端地址'), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: /保存并生效/ }))
+    expect(await screen.findByText('服务端未连接（单机模式可用）')).toBeTruthy()
+    expect(mocks.local.setHostConfig).toHaveBeenCalledWith({ serverUrl: '' })
+    expect(mocks.server.healthz).not.toHaveBeenCalled()
+  })
+
+  it('探测按配置就绪串行化：机器级配置加载完成前不发起服务端探测（消除初始化与配置加载的探测竞态）', async () => {
+    let resolveConfig!: (cfg: typeof HOST_CONFIG) => void
+    mocks.local.getHostConfig.mockImplementation(() => new Promise<typeof HOST_CONFIG>((resolve) => { resolveConfig = resolve }))
+    renderSettings()
+    await waitFor(() => expect(mocks.local.getHostConfig).toHaveBeenCalled())
+    // 配置未决：初始化探测被闸住（不再先按默认地址 127.0.0.1:53961 探测，与配置加载后的探测交错）
+    expect(mocks.server.healthz).not.toHaveBeenCalled()
+    // 配置就绪（serverUrl 生效）后首次探测才串行发起，且仅一次
+    resolveConfig({ ...HOST_CONFIG, serverUrl: 'http://192.168.1.9:53961' })
+    await waitFor(() => expect(mocks.server.healthz).toHaveBeenCalledTimes(1))
+  })
+})
+
 describe('连接方式（F3，恢复迭代 15；迭代 73 起默认折叠，交互前先展开）', () => {
   it('模式单选只显示当前模式参数（切到网络打印机显示 IP / 端口）', async () => {
     renderSettings()

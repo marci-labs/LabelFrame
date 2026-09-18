@@ -4,12 +4,13 @@
 // 两分支均用 vi.doMock('../lib/uiMode') 显式注入（不依赖进程 env），任何 VITE_UI_MODE 环境下结果稳定。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { getServerBaseUrl as GetServerBaseUrlFn, setServerBaseUrl as SetServerBaseUrlFn } from './client'
+import type { getServerBaseUrl as GetServerBaseUrlFn, probeHealthz as ProbeHealthzFn, setServerBaseUrl as SetServerBaseUrlFn } from './client'
 import { setBaseUrl } from '../settings'
 
 type ClientModule = {
   getServerBaseUrl: typeof GetServerBaseUrlFn
   setServerBaseUrl: typeof SetServerBaseUrlFn
+  probeHealthz: typeof ProbeHealthzFn
   pluginPackageDownloadUrl: typeof import('./client')['pluginPackageDownloadUrl']
   localApi: typeof import('./client')['localApi']
 }
@@ -82,6 +83,34 @@ describe('pluginPackageDownloadUrl（迭代 23 §2.1：与 clientPackageDownload
   it('server 构建：同源相对路径', async () => {
     const mod = await loadClient('server')
     expect(mod.pluginPackageDownloadUrl('sample-1.0.0.lfplugin')).toBe('/api/plugin-packages/sample-1.0.0.lfplugin')
+  })
+})
+
+describe('probeHealthz 空地址语义（迭代 86，#142 a 案）', () => {
+  it('空地址（空串 / 空白 / 纯斜杠）不发起网络探测直接判失败——空串 base 落同源会打到本机 WinHost /healthz 200 谎报可连接', async () => {
+    const mod = await loadClient('client')
+    const fetchStub = vi.fn()
+    vi.stubGlobal('fetch', fetchStub)
+    try {
+      await expect(mod.probeHealthz('')).resolves.toBe(false)
+      await expect(mod.probeHealthz('   ')).resolves.toBe(false)
+      await expect(mod.probeHealthz('/')).resolves.toBe(false)
+      expect(fetchStub).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('非空地址照常探测 /healthz 且去尾斜杠（既有行为不变）', async () => {
+    const mod = await loadClient('client')
+    const fetchStub = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 'ok' }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchStub)
+    try {
+      await expect(mod.probeHealthz('http://192.168.1.9:53961/')).resolves.toBe(true)
+      expect(fetchStub).toHaveBeenCalledWith('http://192.168.1.9:53961/healthz', expect.objectContaining({ mode: 'cors' }))
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
 
