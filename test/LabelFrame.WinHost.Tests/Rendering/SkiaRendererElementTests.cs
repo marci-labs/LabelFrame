@@ -6,7 +6,8 @@ using LabelFrame.Rendering;
 namespace LabelFrame.WinHost.Tests.Rendering;
 
 /// <summary>
-/// 渲染器元素覆盖补全：图片 / 线 / 区域三种元素此前零测试（文本 / 条码 / 二维码已有）。
+/// 渲染器元素覆盖补全：图片 / 线 / 区域三种元素此前零测试（文本 / 条码 / 二维码已有）；
+/// 迭代 89（#147）补锚定自动高度文本垂直坐标语义回归（绘制框 = 解析锚定框，不穿锚定盒底边）。
 /// 断言策略与 SkiaLabelRendererTests 一致：按毫米区域数墨点（不依赖具体字体渲染）。
 /// </summary>
 public class SkiaRendererElementTests
@@ -179,6 +180,59 @@ public class SkiaRendererElementTests
         Assert.True(CountBlack(start, 2.2, 2, 8, 26) > 20, "Start 锚定文本应在区域左缘内侧");
         Assert.Equal(0, CountBlack(end, 58.2, 2, 1.8, 26));
         Assert.True(CountBlack(end, 49, 2, 8, 26) > 20, "End 锚定文本应在区域右缘内侧");
+    }
+
+    [Fact]
+    public void Region_anchored_auto_height_text_should_center_inside_region_without_piercing_bottom()
+    {
+        // 迭代 89 #147（AC-01）：区域居中锚定自动宽度 + 自动高度文本——绘制框 = 解析锚定框（字高框），
+        // 墨迹完整位于锚定盒内且垂直居中。修复前误用决策 A 兜底框（max(字高 + 2×内边距, 10mm) = 10mm）
+        // 再按缺省 Middle 块内居中，字形中心比区域中心下沉 (10 − 2)/2 = 4mm = 2 字高，穿出盒底边（真机陪验 #120）。
+        // 区域无边框（区域自身不绘制），全版墨迹即文本墨迹，InkCenter 可直接度量垂直重心。
+        LabelBitmap RenderWith(LabelRegionAlign v) => Render(new LabelLayout
+        {
+            Name = "anchor-y-" + v, ContractName = "c", ContractVersion = "1.0", WidthMm = 100, HeightMm = 40,
+            Elements =
+            [
+                new LabelRegionElement { Id = "r1", XMm = 10, YMm = 20, WidthMm = 60, HeightMm = 8 },
+                new LabelTextElement { Literal = "ANCHOR", XMm = 0, YMm = 0, FontHeightMm = 2, RegionId = "r1", RegionHAlign = LabelRegionAlign.Center, RegionVAlign = v },
+            ],
+        });
+
+        // Center：区域 y∈[20, 28]、中心 24——盒内上部有墨迹、盒外上 / 下均无墨迹（不穿顶也不穿底），
+        // 墨迹重心垂直居中（±1mm 容差）
+        var center = RenderWith(LabelRegionAlign.Center);
+        Assert.True(CountBlack(center, 12, 20.5, 55, 7) > 20, "锚定文本应在区域内有墨迹");
+        Assert.True(CountBlack(center, 12, 0, 55, 19.7) == 0, "锚定文本不得越出盒顶");
+        Assert.True(CountBlack(center, 12, 28.3, 55, 11.7) == 0, "锚定文本不得穿出盒底边");
+        var (_, centerY) = InkCenter(center);
+        Assert.True(centerY is >= 23 and <= 25, $"垂直居中失效：墨迹重心 {centerY:F2}mm（区域中心 24mm）");
+
+        // Start / End：同一字高框随锚定方向贴边（Start 贴盒顶、End 贴盒底），且同样不越出盒
+        var start = RenderWith(LabelRegionAlign.Start);
+        var (_, startY) = InkCenter(start);
+        Assert.True(startY is >= 20 and <= 22.2, $"Start 贴盒顶失效：墨迹重心 {startY:F2}mm（盒顶 20mm）");
+        Assert.True(CountBlack(start, 12, 22.5, 55, 17.5) == 0, "Start 锚定文本不得越过盒中部");
+
+        var end = RenderWith(LabelRegionAlign.End);
+        var (_, endY) = InkCenter(end);
+        Assert.True(endY is >= 25.8 and <= 28, $"End 贴盒底失效：墨迹重心 {endY:F2}mm（盒底 28mm）");
+        Assert.True(CountBlack(end, 12, 0, 55, 25.5) == 0, "End 锚定文本不得穿出盒底边");
+    }
+
+    [Fact]
+    public void Non_anchored_auto_height_text_keeps_fallback_box_vertical_center()
+    {
+        // 迭代 89 #147（AC-01）非锚定路径零变化 pin：无 heightMm 的非锚定文本仍按决策 A 兜底框
+        // max(字高 + 2×内边距, 10mm) 块内 Middle 居中——元素 y=5 → 墨迹重心 ≈ 5 + 10/2 = 10mm。
+        var bitmap = Render(new LabelLayout
+        {
+            Name = "fallback-box", ContractName = "c", ContractVersion = "1.0", WidthMm = 40, HeightMm = 20,
+            Elements = [new LabelTextElement { Literal = "TEXT", XMm = 5, YMm = 5, FontHeightMm = 2 }],
+        });
+
+        var (_, centerY) = InkCenter(bitmap);
+        Assert.True(centerY is >= 9 and <= 11.2, $"非锚定兜底框语义变化：墨迹重心 {centerY:F2}mm（兜底框中心 10mm）");
     }
 
     [Fact]
