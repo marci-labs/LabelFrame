@@ -2,6 +2,17 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 91：前端请求层健壮性——超时分档 / 导出错误通道 / 详情竞态 / serverMode 守卫 · 2026-09-18
+
+- **动机与范围（#149；前端评审 2026-09-18 F-01 / F-09 / F-12 / F-13，用户拍板 a 案——普通请求 30s + 出图 / 上传类放宽至 120s，决策 #148）**：请求原语 `makeRequest` / `makeFetchBlob` 均未挂超时 signal——后端挂起（接了不回）时提交 / 出图 / 上传类操作永久「处理中…」，无错误码无恢复路径；`exportTemplate` 绕开统一 `fetchBlob` 自写 fetch，失败固定 `EXPORT_FAILED` 吞掉后端 ErrorView 真实原因；DataPrint 模板详情加载无竞态守卫（快速切换模板时慢响应可覆盖新选择）；Designer 加载 effect 缺 `serverMode === 'unknown'` 守卫（Workbench 有），启动早期以 `localApi` 误发请求。
+- **业务请求超时分档（F-01，AC-01）**：两请求原语统一挂默认超时中止信号，超时归一化为 `ApiError('TIMEOUT', 中文文案)` 走既有错误通道（`NETWORK_ERROR` 语义不变）；分档——普通请求（列表 / 保存 / 提交等）30s，出图 / 上传类大负载端点（renderImage / renderImages / previewTemplate / exportTemplate / importTemplate / importExcel / excelTemplate / 客户端 / PDA / 插件包上传下载 / installPlugin）120s；fetchBlob 超时覆盖整个下载过程（含响应体读取）；既有 healthz / probeHealthz 5s 独立超时与迭代 86 空地址短路语义零变化（超时配置导出为可注入对象，单测秒级验证不真实等待）。
+- **导出错误通道同构（F-09，AC-02）**：`exportTemplate` 改用 `makeFetchBlob`——失败解析后端 `ErrorView` code / message 呈现真实原因（无 JSON 体回退既有「导出失败（HTTP xxx）。」文案），Content-Disposition 文件名解析收敛到 fetchBlob 一处（消除两段重复）。
+- **模板详情竞态守卫（F-12，AC-03）**：DataPrint 模板详情 effect 加 `cancelled` 守卫（与同文件预览弹层 `previewGenRef` 同一标准）——快速切换模板时前一个慢响应不覆盖新选择，字段表单 / 打印数据与选中模板始终一致。
+- **serverMode 守卫对齐（F-13，AC-04）**：Designer 加载 effect 把 `serverMode`（原始值入依赖，无 context 无限循环问题）纳入守卫——`unknown` 阶段不以 `localApi` 误发请求，模式解析后按正确 base 正常加载（与 Workbench 行为一致）；单次闩锁保证模式中途翻转（10s 周期探测）不重拉模板、不重置编辑中状态；新建模板不依赖模式解析。
+- **测试（全绿）**：前端新增 13 项至 367 项——超时分支（普通档挂起 TIMEOUT / heavy 档分档落点反向断言 / NETWORK_ERROR 不误判 / 成功路径零回归）、导出错误通道（ErrorView 真实原因 / 无 JSON 体回退文案 / Content-Disposition 解析）、DataPrint 慢响应竞态（守卫移除时确定性失败已验证）、Designer unknown 不请求 / server 解析后加载 / standalone 降级 / 新建不依赖模式 / 失败通道；pnpm lint 0 错误（6 条 warning 均存量）+ 双模式测试（client / server 各 367 项）+ 双构建全绿；后端零改动，dotnet build 0 警告 0 错误、dotnet test（排除 Perf/Soak）635 项零回归。
+- **不在范围**：请求自动重试（评审明确不做）、API 层拦截器化重构、工作台卡片直达打印（#133 承载）。
+- **记账**：DESIGN 决策 #148；ROADMAP 状态行随验收结项收口。
+
 ## 迭代 90：Zebra 插件说明「原生指令模式下 QR 不支持中文」 · 2026-09-18
 
 - **动机与范围（#148；迭代 79（#121）Zebra 真机 + PDA 扫码枪陪验实证观察项，用户 2026-09-18 拍板 a 案——仅做说明文案，不升级 fail-closed 显式拒绝）**：原生指令模式（`^CI28`）下 QR 数据含中文时打印机侧**静默过滤中文字符**——标签印得出、扫出内容缺中文（「印得出扫不回」的静默数据丢失）；用户配置 Zebra 插件、选择「原生指令」打印方式时界面无任何提示。图片模式 QR 由本产品栈（ZXing UTF-8）渲染编码正确，能否解出取决扫码枪解码能力，不属插件承诺范围（不在本轮）。

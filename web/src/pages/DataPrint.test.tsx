@@ -735,3 +735,48 @@ describe('无字段模板（静态标签）打印测试（迭代 65 · #62）', 
     expect(mocks.local.submitJob).not.toHaveBeenCalled()
   })
 })
+
+// 迭代 91（F-12 · #149）：模板详情加载竞态——cancelled 守卫与同文件预览弹层 previewGenRef 同一标准。
+// 场景：首个模板详情慢响应在途，快速切到第二个模板（立即返回）；慢响应随后到达不得覆盖新选择。
+describe('模板详情加载竞态守卫（迭代 91 F-12）', () => {
+  it('AC-03：快速切换模板（首个慢响应）：字段表单与选中模板始终一致，无错位', async () => {
+    const PKG_B: TemplatePackage = {
+      name: '模板B',
+      group: '默认',
+      contract: {
+        name: 'contract-b',
+        version: '1',
+        fields: [{ key: 'zone', displayName: '库区B', isRequired: true, type: 'Text' }],
+      },
+      layout: { name: 'layout-b', contractName: 'contract-b', contractVersion: '1', widthMm: 70, heightMm: 50, elements: [] },
+      testData: { zone: 'B-99' },
+    }
+    let resolveSlow!: (p: TemplatePackage) => void
+    mocks.local.listTemplates.mockResolvedValue([
+      { name: '模板A', group: '默认', updatedAt: '2026-09-10T00:00:00Z' },
+      { name: '模板B', group: '默认', updatedAt: '2026-09-11T00:00:00Z' },
+    ])
+    mocks.local.getTemplate.mockImplementation((name: string) =>
+      name === '模板A' ? new Promise((res) => (resolveSlow = res)) : Promise.resolve(PKG_B),
+    )
+    render(<Harness show />)
+    // 列表加载后默认选中第一项「模板A」，其详情挂起在途（全量并行负载下放宽等待，见 MOUNT_WAIT 注释）
+    await waitFor(() => expect((screen.getAllByRole('combobox')[0] as HTMLSelectElement).value).toBe('模板A'), { timeout: 8000 })
+    expect(mocks.local.getTemplate).toHaveBeenCalledWith('模板A')
+
+    // 快速切到「模板B」：B 立即返回并渲染（字段值 B-99）
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '模板B' } })
+    await screen.findByDisplayValue('B-99', undefined, { timeout: 8000 })
+
+    // 「模板A」的慢响应此刻才返回：被 cancelled 守卫丢弃，不覆盖 B 的字段表单 / 打印数据
+    //（宏任务冲刷：确保慢响应的 .then 链执行完毕后再断言）
+    resolveSlow({ ...PKG, name: '模板A' })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0))
+    })
+    expect(screen.getByDisplayValue('B-99')).toBeTruthy()
+    expect(screen.queryByDisplayValue('A-01')).toBeNull()
+    // 字段标签仍是 B 的（无 A 的字段标签回流）
+    expect(screen.getByText('库区B')).toBeTruthy()
+  })
+})

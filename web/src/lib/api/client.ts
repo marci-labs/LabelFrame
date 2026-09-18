@@ -59,58 +59,120 @@ export function getLocalBaseUrl(): string {
   return DEFAULT_LOCAL_BASE_URL
 }
 
+// ── 请求超时（迭代 91 F-01 · #149 a 案决议）──
+
+/** 超时分档：normal = 普通请求（列表 / 保存 / 提交等）；heavy = 出图 / 导入导出 / 安装包等大负载端点放宽档。
+ *  导出为可变对象：单测注入秒级短超时验证超时分支（不真实等待 30s / 120s）。 */
+export const requestTimeouts: { normal: number; heavy: number } = { normal: 30_000, heavy: 120_000 }
+
+/** 业务请求超时信号：到时中止在途 fetch；didTimeout 供错误归一化区分「超时」与「网络不可达」。
+ *  不用 AbortSignal.timeout：手动计时器可被测试以注入短超时秒级触发，且结束时 dispose 清理（挂起的
+ *  setTimeout 不清理会驻留进程）。init.signal 由本原语统一接管（当前无调用方自带 signal）。 */
+function createRequestTimeout(timeoutMs: number) {
+  const controller = new AbortController()
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
+  return {
+    signal: controller.signal,
+    dispose: () => clearTimeout(timer),
+    didTimeout: () => timedOut,
+  }
+}
+
+/** fetch 传输层失败归一化：超时 → ApiError('TIMEOUT', 中文文案)；其余（不可达 / 连接被拒）→ 既有 NETWORK_ERROR（语义不变）。 */
+function transportError(t: ReturnType<typeof createRequestTimeout>, timeoutMs: number, base: () => string, label: '服务端' | '本机客户端'): ApiError {
+  if (t.didTimeout()) {
+    // 秒数下限 1：注入短超时的测试与极小值场景不出现「超过 0 秒」的病态文案
+    return new ApiError('TIMEOUT', `请求超时（${label}超过 ${Math.max(1, Math.round(timeoutMs / 1000))} 秒未响应），已取消本次请求，请检查服务状态后重试。`)
+  }
+  return new ApiError('NETWORK_ERROR', `无法连接${label}（${base()}），请检查服务端地址与本机客户端是否已启动。`)
+}
+
 // ── 请求原语 ──
 
 function makeRequest(base: () => string, label: '服务端' | '本机客户端') {
-  return async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    let res: Response
+  return async function request<T>(path: string, init?: RequestInit, timeoutMs = requestTimeouts.normal): Promise<T> {
+    // 迭代 91（F-01）：默认 30s 超时——后端挂起（接了不回）不再无限「处理中…」；
+    // 出图 / 上传类大负载端点在调用处传 requestTimeouts.heavy（120s 放宽档）。
+    const timeout = createRequestTimeout(timeoutMs)
     try {
-      res = await fetch(base() + path, { ...init, mode: 'cors' })
-    } catch {
-      throw new ApiError('NETWORK_ERROR', `无法连接${label}（${base()}），请检查服务端地址与本机客户端是否已启动。`)
-    }
-    if (!res.ok) {
-      let body: ApiErrorBody | null = null
+      let res: Response
       try {
-        body = (await res.json()) as ApiErrorBody
+        res = await fetch(base() + path, { ...init, mode: 'cors', signal: timeout.signal })
       } catch {
-        body = null
+        throw transportError(timeout, timeoutMs, base, label)
       }
-      throw new ApiError(body?.code ?? 'HTTP_' + res.status, body?.message ?? `请求失败（HTTP ${res.status}）。`, body?.fieldKey)
-    }
-    if (res.status === 204) return undefined as T
-    try {
-      return (await res.json()) as T
-    } catch {
-      // 部分端点返回纯文本（如模板导入返回模板名）
-      return (await res.text()) as T
+      if (!res.ok) {
+        let body: ApiErrorBody | null = null
+        try {
+          body = (await res.json()) as ApiErrorBody
+        } catch {
+          body = null
+        }
+        throw new ApiError(body?.code ?? 'HTTP_' + res.status, body?.message ?? `请求失败（HTTP ${res.status}）。`, body?.fieldKey)
+      }
+      if (res.status === 204) return undefined as T
+      try {
+        return (await res.json()) as T
+      } catch {
+        // 部分端点返回纯文本（如模板导入返回模板名）
+        try {
+          return (await res.text()) as T
+        } catch {
+          // 响应体读取中断 / 超时中止：与传输层同一归一化
+          throw transportError(timeout, timeoutMs, base, label)
+        }
+      }
+    } finally {
+      timeout.dispose()
     }
   }
 }
 
-/** 下载型端点（render-image / render-images / 模板导出）：返回 blob + Content-Disposition 文件名，错误解析 ErrorView。 */
+/** 下载型端点（render-image / render-images / 模板导出）：返回 blob + Content-Disposition 文件名，错误解析 ErrorView。
+ *  迭代 91（F-01）：超时覆盖整个下载过程（含 res.blob() 响应体读取）——大负载端点调用处传 heavy 档。 */
 function makeFetchBlob(base: () => string, label: '服务端' | '本机客户端') {
-  return async function fetchBlob(path: string, init: RequestInit, fallbackName: string, failMessage: string): Promise<{ blob: Blob; filename: string }> {
-    let res: Response
+  return async function fetchBlob(
+    path: string,
+    init: RequestInit,
+    fallbackName: string,
+    failMessage: string,
+    timeoutMs = requestTimeouts.normal,
+  ): Promise<{ blob: Blob; filename: string }> {
+    const timeout = createRequestTimeout(timeoutMs)
     try {
-      res = await fetch(base() + path, { ...init, mode: 'cors' })
-    } catch {
-      throw new ApiError('NETWORK_ERROR', `无法连接${label}（${base()}），请检查服务端地址与本机客户端是否已启动。`)
-    }
-    if (!res.ok) {
-      let body: ApiErrorBody | null = null
+      let res: Response
       try {
-        body = (await res.json()) as ApiErrorBody
+        res = await fetch(base() + path, { ...init, mode: 'cors', signal: timeout.signal })
       } catch {
-        body = null
+        throw transportError(timeout, timeoutMs, base, label)
       }
-      throw new ApiError(body?.code ?? 'HTTP_' + res.status, body?.message ?? `${failMessage}（HTTP ${res.status}）。`, body?.fieldKey)
+      if (!res.ok) {
+        let body: ApiErrorBody | null = null
+        try {
+          body = (await res.json()) as ApiErrorBody
+        } catch {
+          body = null
+        }
+        throw new ApiError(body?.code ?? 'HTTP_' + res.status, body?.message ?? `${failMessage}（HTTP ${res.status}）。`, body?.fieldKey)
+      }
+      let blob: Blob
+      try {
+        blob = await res.blob()
+      } catch {
+        // 响应体下载中断 / 超时中止：与传输层同一归一化（慢速大文件下载超时同样呈现 TIMEOUT）
+        throw transportError(timeout, timeoutMs, base, label)
+      }
+      const disposition = res.headers.get('Content-Disposition') ?? ''
+      const match = /filename="?([^";]+)"?/.exec(disposition)
+      const filename = match?.[1] ?? fallbackName
+      return { blob, filename }
+    } finally {
+      timeout.dispose()
     }
-    const blob = await res.blob()
-    const disposition = res.headers.get('Content-Disposition') ?? ''
-    const match = /filename="?([^";]+)"?/.exec(disposition)
-    const filename = match?.[1] ?? fallbackName
-    return { blob, filename }
   }
 }
 
@@ -140,30 +202,26 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
         body: JSON.stringify(pkg),
       }),
     deleteTemplate: (name: string) => request<void>(`/api/templates/${encodeURIComponent(name)}`, { method: 'DELETE' }),
-    exportTemplate: async (name: string): Promise<{ blob: Blob; filename: string }> => {
-      let res: Response
-      try {
-        res = await fetch(base() + `/api/templates/${encodeURIComponent(name)}/export`, { mode: 'cors' })
-      } catch {
-        throw new ApiError('NETWORK_ERROR', `无法连接${label}，请检查服务端地址。`)
-      }
-      if (!res.ok) throw new ApiError('EXPORT_FAILED', `导出失败（HTTP ${res.status}）。`)
-      const blob = await res.blob()
-      const disposition = res.headers.get('Content-Disposition') ?? ''
-      const match = /filename="?([^";]+)"?/.exec(disposition)
-      const filename = match?.[1] ?? `${name}.lfpkg`
-      return { blob, filename }
-    },
+    /** 迭代 91（F-09）：改走 makeFetchBlob 同构——失败解析后端 ErrorView 呈现真实原因（不再固定 EXPORT_FAILED
+     *  吞掉后端信息），Content-Disposition 解析收敛到 fetchBlob 一处；模板导出为大负载端点，挂 heavy 档超时。 */
+    exportTemplate: (name: string): Promise<{ blob: Blob; filename: string }> =>
+      fetchBlob(
+        `/api/templates/${encodeURIComponent(name)}/export`,
+        { method: 'GET' },
+        `${name}.lfpkg`,
+        '导出失败',
+        requestTimeouts.heavy,
+      ),
     importTemplate: async (file: File): Promise<string> => {
       const form = new FormData()
       form.append('file', file)
-      return request<string>('/api/templates/import', { method: 'POST', body: form })
+      return request<string>('/api/templates/import', { method: 'POST', body: form }, requestTimeouts.heavy)
     },
 
     importExcel: (file: File) => {
       const form = new FormData()
       form.append('file', file)
-      return request<ExcelImportResult>('/api/import/excel', { method: 'POST', body: form })
+      return request<ExcelImportResult>('/api/import/excel', { method: 'POST', body: form }, requestTimeouts.heavy)
     },
 
     /** 下载 Excel 模板（迭代 22：Server 与 WinHost 都实现）——按契约字段 + testData 生成 xlsx 供直接套用导入。 */
@@ -177,6 +235,7 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
         },
         'excel-template.xlsx',
         '生成 Excel 模板失败',
+        requestTimeouts.heavy,
       ),
 
     submitJob: (req: SubmitJobRequest) =>
@@ -204,7 +263,7 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
-      }, 'label-print.png', '出图失败'),
+      }, 'label-print.png', '出图失败', requestTimeouts.heavy),
 
     /** 模板预览 PNG（迭代 46：按模板 TestData 渲染，工作台预览列用；Server 与 WinHost 双宿主已实现，
      *  模板不存在等业务失败由调用方按失败态处理）。与 renderImage 同构的 blob 封装。
@@ -216,6 +275,7 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
         `${name}.png`,
         '生成预览失败',
+        requestTimeouts.heavy,
       ),
 
     /** 调试批量出图：后端渲染全部标签为 PNG 打包 zip 下载（迭代 15，不建作业）。 */
@@ -224,7 +284,7 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
-      }, 'labels-debug.zip', '下载调试图片失败'),
+      }, 'labels-debug.zip', '下载调试图片失败', requestTimeouts.heavy),
 
     getLogs: (deviceId?: string, since?: string) => {
       const params = new URLSearchParams()
@@ -248,7 +308,7 @@ export const serverApi = {
   uploadClientPackage: (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    return serverRequest<ClientPackageInfo[]>('/api/client-packages', { method: 'POST', body: form })
+    return serverRequest<ClientPackageInfo[]>('/api/client-packages', { method: 'POST', body: form }, requestTimeouts.heavy)
   },
   deleteClientPackage: (fileName: string) => serverRequest<void>(`/api/client-packages/${encodeURIComponent(fileName)}`, { method: 'DELETE' }),
 
@@ -257,7 +317,7 @@ export const serverApi = {
   uploadPdaPackage: (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    return serverRequest<PdaPackageInfo[]>('/api/pda-packages', { method: 'POST', body: form })
+    return serverRequest<PdaPackageInfo[]>('/api/pda-packages', { method: 'POST', body: form }, requestTimeouts.heavy)
   },
   deletePdaPackage: (fileName: string) => serverRequest<void>(`/api/pda-packages/${encodeURIComponent(fileName)}`, { method: 'DELETE' }),
 
@@ -266,7 +326,7 @@ export const serverApi = {
   uploadPluginPackage: (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    return serverRequest<PluginPackageInfo[]>('/api/plugin-packages', { method: 'POST', body: form })
+    return serverRequest<PluginPackageInfo[]>('/api/plugin-packages', { method: 'POST', body: form }, requestTimeouts.heavy)
   },
   deletePluginPackage: (fileName: string) => serverRequest<void>(`/api/plugin-packages/${encodeURIComponent(fileName)}`, { method: 'DELETE' }),
   /** 下载插件包（blob；客户端安装中转用——下载后 `new File([blob], fileName)` 交给 localApi.installPlugin）。 */
@@ -276,6 +336,7 @@ export const serverApi = {
       { method: 'GET' },
       fileName,
       '下载插件包失败',
+      requestTimeouts.heavy,
     ),
 }
 
@@ -343,7 +404,7 @@ export const localApi = {
   installPlugin: (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    return localRequest<PluginInstallResult>('/api/plugins/install', { method: 'POST', body: form })
+    return localRequest<PluginInstallResult>('/api/plugins/install', { method: 'POST', body: form }, requestTimeouts.heavy)
   },
   uninstallPlugin: (pluginId: string) =>
     localRequest<PluginUninstallResult>('/api/plugins/uninstall', {
