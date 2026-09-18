@@ -217,7 +217,7 @@ describe('连接文案用户化（迭代 82，#130：评审 #114 B-1 / A-1 / B-5
   const BUILTIN_PLUGINS = [
     {
       id: 'log',
-      displayName: 'Log（模拟打印）',
+      displayName: '模拟打印',
       description: '模拟打印：不连接真实打印机，作业按打印成功处理；图片模式的标签图片会保存到本机，便于先确认打印效果。',
       parameters: [],
     },
@@ -252,8 +252,20 @@ describe('连接文案用户化（迭代 82，#130：评审 #114 B-1 / A-1 / B-5
     // ③ 测试打印说明（打印机分组）：当前连接方式：模拟打印
     const printerSection = withinSection('打印机')
     await waitFor(() => expect(printerSection.textContent).toContain('当前连接方式：模拟打印'))
-    // 全页无「LOG」直出（选项名「Log（模拟打印）」为小写 Log + 中文说明，不属直出）
+    // 全页无「LOG」直出（迭代 87 #143 起选项名亦为「模拟打印」，页面无任何「Log」字样）
     expect(screen.queryByText(/LOG/)).toBeNull()
+    expect(screen.queryByText(/Log/)).toBeNull()
+  })
+
+  it('选项列表 Log 项显示「模拟打印」，无「Log」字样（迭代 87，#143）', async () => {
+    mockLogPluginTransport()
+    renderSettings()
+    openTransportPanel()
+    // 选项列表（radio 可访问名 = 后端插件 DisplayName）：显示「模拟打印」，无技术前缀「Log」
+    expect(await screen.findByRole('radio', { name: '模拟打印' })).toBeTruthy()
+    // 选中态（默认连接 = log）：说明文直出 Description，与摘要同源用户语
+    expect((await screen.findAllByText(/模拟打印：不连接真实打印机/)).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Log/)).toBeNull()
   })
 
   it('AC-02：展开 Log 编辑区说明完整通顺——Description 直出，无「（无参数）。」残句、无「联调」用语', async () => {

@@ -601,7 +601,7 @@ describe('连接状态徽标（迭代 80「三名义」③：已加入 / 未加�
       pluginId: 'log',
       displayText: '模拟打印',
       params: {},
-      availablePlugins: [{ id: 'log', displayName: 'Log（模拟打印）', parameters: [] }],
+      availablePlugins: [{ id: 'log', displayName: '模拟打印', parameters: [] }],
       mode: 'Log',
     })
     await renderDataPrint()
