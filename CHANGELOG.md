@@ -2,6 +2,12 @@
 
 本文件记录每个迭代的变更。
 
+## v0.28.0 迭代 68-84、86-87、89-93 汇总发布 · 2026-09-18
+
+- **打包范围**：v0.27.1 之后合入 master 的全部迭代与缺陷修复——安装与分发链补全：迭代 68（流程治理：引导 EXE 随 Release 发布——release.yml bundle job 接线与 manifest 分阶段跨 job 一致性断言，决策 #132 / #134）、迭代 69（安装卸载收尾对称化——Bundle 卸载清理插件落位目录，决策 #133）、迭代 70（离线布局安装——`make-offline-layout.ps1` 与本地源无网首装，决策 #135）、迭代 71（Linux 服务端一键安装——install.sh + compose 随发版分发、linux 归档默认 self-contained，决策 #134）、迭代 72（模拟打印出图目录保留清理，决策 #136）；插件命令打印落地：迭代 76（契约设计，决策 #137）→ 77（宿主链路 1/4，`ILabelCommandCompiler` 与 `printMode` 分派）→ 78（Zebra 编译器·文本 2/4）→ 79（条码与二维码 3/4，`^BC` / `^BQ`）；使用体验：迭代 73 / 80-84 / 87（界面文案用户化与可读性系列）、74（模拟打印作业数据留痕）、75（「PDA 日志 / 设备日志」页面下线）；缺陷修复与健壮性：迭代 86（设置页空地址徽标谎报）、89（图片模式锚定文本垂直坐标语义，决策 #146）、90（Zebra 插件说明——原生指令模式 QR 不支持中文）、91（前端请求层健壮性——超时分档 / 竞态守卫，决策 #148）、92（设计器未保存离开保护，决策 #149）、93（前端交互一致性收尾——确认弹窗统一 / 横幅通用类 / lint 清零）；另有流程卫生一条（轮值协议补齐 worktree 与本地分支回收闭环，#126）与界面可用性评审（#114）。详见各迭代条目。
+- **发布编排（本版可感知变化）**：推 `v*` tag 后自动构建并公开——既有产物（Server / Client 双 MSI、服务端 webui 插件 zip、linux-x64 归档、AndroidHost APK、Zebra 官方插件 .lfplugin、install-manifest.json + latest.json、ghcr 双镜像 `0.28.0` + `latest`）之外：**引导程序 Bundle EXE 首次随发版流水线构建并随 Release 发布**（迭代 68 接线，`LabelFrame-Bootstrapper-0.28.0.exe`，Release 推荐安装入口）；**compose.yml + .env 随 Release 分发**（迭代 71，`.env` 钉定 `LABELFRAME_VERSION=0.28.0`）；**linux-x64 归档默认 self-contained**（迭代 71，目标机免装 .NET 10 ASP.NET Core Runtime）。
+- **版本同步**：ServerOptions / HostOptions `ProductVersion` 与稳定版 Compose 默认版本更新为 `0.28.0`（客户端「检查更新」比较口径随升，决策 #126）。
+
 ## 迭代 93：前端交互一致性收尾——确认弹窗统一 / 横幅通用类 / 空态刷新与文案 / lint 清零与死代码清理 · 2026-09-18
 
 - **动机与范围（#151；前端评审 2026-09-18 F-04 / F-06 / F-07 / F-11 / F-16 / F-17 / F-20 / F-21，用户拍板 a 案——Devices 加载态 =「加载中…」文案行，不引入骨架组件）**：危险确认两套机制并存（模板删除走自研 `Modal`，安装包 / 插件包删除与插件覆盖安装 / 卸载走原生 confirm，WebView2 窗口壳中样式突兀、按钮文案不可定制）；同一段内联横幅样式在 7 处错误 + 3 处通知逐字复制（已现 Designer 版多带 `display:flex` 的不一致苗头）；Devices 首次拉取前闪现「暂无设备」；工作台加载失败无重试入口；列映射表头「字段键」为开发者语；lint 6 条 warning、死代码与 vitest 配置残留。八项小改动同一 PR 交付。
