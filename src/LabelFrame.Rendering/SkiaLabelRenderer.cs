@@ -172,9 +172,15 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         var boxWidth = ToDots(bounds.WidthMm, dpi);
         var padH = ToDots(text.EffectivePaddingHMm, dpi);
         var padV = ToDots(text.EffectivePaddingVMm, dpi);
-        // 决策 A：无 heightMm 时框高兜底 = max(字高 + 2×最大双边内边距, 10mm)（与前端读回兜底一致）
+        // 框高：显式块高用块高；无 heightMm 时——锚定文本的绘制框 = 解析锚定框（bounds.HeightMm，
+        // 自动高度即字高，格顶语义与锚定偏移一致，迭代 89 #147），非锚定文本维持决策 A 兜底
+        // max(字高 + 2×最大双边内边距, 10mm)（与前端读回兜底一致）。
+        // 锚定路径此前误用兜底框再按 VerticalAlign 居中，字形比锚定盒中心下沉 (兜底框高 − 字高)/2，
+        // 小字号时约 1.5–2 字高，穿出锚定盒底边（真机陪验 #120 取证）。
+        var anchored = text.RegionId is not null && regions.ContainsKey(text.RegionId);
         var boxHeightMm = text.HeightMm > 0
             ? text.HeightMm
+            : anchored ? Math.Max(bounds.HeightMm, 0)
             : Math.Max(text.FontHeightMm + 2 * Math.Max(text.EffectivePaddingHMm, text.EffectivePaddingVMm), 10);
         var boxHeight = ToDots(boxHeightMm, dpi);
         using var typeface = SkiaTypefaceLookup.CreateTypeface(text.FontFamily, value);

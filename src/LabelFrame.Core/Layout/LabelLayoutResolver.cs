@@ -23,6 +23,8 @@ public static class LabelLayoutResolver
     /// 水平锚定偏移按「实测文本宽度 + 2×有效水平内边距（夹取到区域宽）」计算
     /// ——内边距计入锚定宽度与显式宽度块「内边距在框内」的语义一致（Start/End 时文本距区域边缘一个内边距）。
     /// 未提供度量器或文本值时回退既有几何（锚定宽度 = 块宽 → 偏移 ≈ 0）。
+    /// 垂直锚定语义（迭代 89 #147 定案）：Y 为锚定框（自动高度时 = 字高框）的顶部，Height 即锚定框高；
+    /// 渲染方必须在该框内绘制（不得换用更高的兜底框后再块内居中），原生指令方按字高格顶落笔——两模式同框。
     /// </summary>
     public static ElementBounds ResolveBounds(
         LabelElement element,

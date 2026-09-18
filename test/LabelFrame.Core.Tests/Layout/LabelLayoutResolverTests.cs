@@ -3,7 +3,7 @@ using LabelFrame.Core.Layout;
 namespace LabelFrame.Core.Tests.Layout;
 
 /// <summary>
-/// 版式解析区域锚定测试（迭代 54，决策 #110 方案 A）：
+/// 版式解析区域锚定测试（迭代 54，决策 #110 方案 A；迭代 89 #147 补垂直锚定框语义断言）：
 /// 自动宽度文本水平锚定按实测文本宽度计算（块宽仍为区域全宽、块内 TextAlign 语义不变）；
 /// 显式宽度路径 / 垂直锚定 / 无度量器回退行为防回归。
 /// </summary>
@@ -28,14 +28,17 @@ public class LabelLayoutResolverTests
         LabelRegionAlign? v = null,
         double widthMm = 0,
         double paddingHMm = 0,
-        double paddingMm = 0)
+        double paddingMm = 0,
+        double fontHeightMm = 4,
+        double heightMm = 0)
         => new()
         {
             Literal = Value,
             XMm = 0,
             YMm = 0,
-            FontHeightMm = 4,
+            FontHeightMm = fontHeightMm,
             WidthMm = widthMm,
+            HeightMm = heightMm,
             PaddingHMm = paddingHMm,
             PaddingMm = paddingMm,
             RegionId = "r1",
@@ -181,5 +184,46 @@ public class LabelLayoutResolverTests
         var qrBounds = LabelLayoutResolver.ResolveBounds(qr, regions, measurer, "abc");
         Assert.Equal(24, qrBounds.XMm, 5); // 10 + (40 − 12) × 0.5
         Assert.Equal(12, qrBounds.WidthMm, 5);
+    }
+
+    [Fact]
+    public void Anchored_auto_width_auto_height_text_bounds_center_inside_region_vertically()
+    {
+        // 迭代 89 #147（AC-01）：区域居中锚定的自动宽度 + 自动高度文本——
+        // 解析 bounds（锚定框 = 字高框，格顶语义）完整位于锚定盒内、垂直居中。
+        // 渲染方必须在该框内绘制（此前误用 ≥10mm 兜底框再块内居中导致穿底，见渲染层回归测试）。
+        var regions = SingleRegion(10, 5, 40, 20);
+        var measurer = new FixedWidthMeasurer(8);
+
+        var bounds = LabelLayoutResolver.ResolveBounds(
+            Text(LabelRegionAlign.Center, LabelRegionAlign.Center, fontHeightMm: 2), regions, measurer, Value);
+
+        // 锚定框 = 字高 2mm：y = 5 + (20 − 2) × 0.5 = 14，bounds = [14, 16]
+        Assert.Equal(14, bounds.YMm, 5);
+        Assert.Equal(2, bounds.HeightMm, 5);
+        // 完整位于盒内（垂直，字高 ≤ 区域高时）
+        Assert.True(bounds.YMm >= 5 - 0.01, $"bounds 顶 {bounds.YMm} 不得越出盒顶");
+        Assert.True(bounds.YMm + bounds.HeightMm <= 25 + 0.01, $"bounds 底 {bounds.YMm + bounds.HeightMm} 不得越出盒底");
+        // 垂直居中（区域中心 15，容差 ±0.01）
+        Assert.InRange(bounds.YMm + bounds.HeightMm / 2, 15 - 0.01, 15 + 0.01);
+    }
+
+    [Fact]
+    public void Anchored_auto_height_text_bounds_follow_region_valign_direction()
+    {
+        // 迭代 89 #147：自动高度锚定框（字高框）随 RegionVAlign 方向贴边——Start 贴盒顶 / End 贴盒底。
+        // 渲染方若在该框内绘制，Start/End 语义即「文本贴边」，与 Center 居中同一套框语义。
+        var regions = SingleRegion(10, 5, 40, 20);
+        var measurer = new FixedWidthMeasurer(8);
+
+        var start = LabelLayoutResolver.ResolveBounds(
+            Text(LabelRegionAlign.Center, LabelRegionAlign.Start, fontHeightMm: 2), regions, measurer, Value);
+        var end = LabelLayoutResolver.ResolveBounds(
+            Text(LabelRegionAlign.Center, LabelRegionAlign.End, fontHeightMm: 2), regions, measurer, Value);
+
+        Assert.Equal(5, start.YMm, 5);                       // Start：框顶 = 盒顶
+        Assert.Equal(23, end.YMm, 5);                        // End：框顶 = 5 + (20 − 2) × 1
+        Assert.Equal(2, start.HeightMm, 5);
+        Assert.True(end.YMm + end.HeightMm <= 25 + 0.01, "End 框底不得越出盒底");
     }
 }
