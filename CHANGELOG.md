@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 92：设计器未保存离开保护与页级测试补齐 · 2026-09-18
+
+- **动机与范围（#150；前端评审 2026-09-18 F-02（P1）/ F-03（P1），立项前逐条核验属实，用户拍板 a 案——dirty 判定 = 历史栈有任一已提交更改（`undoCount > 0`，现成计数实现最小，决策 #149））**：设计器三处离开路径（Shell 导航切 tab、顶栏返回按钮、加载失败返回）均直接卸载组件——`stateRef` / `historyRef` 随之全部丢弃，工作台双击卡片误触、返回键误触、肌肉记忆点导航任一动作丢失整段排版工作（设计器属低频高成本操作）；且设计器是 `web/src/pages/` 下唯一没有页级 `.test.tsx` 的页面——加载分支、同名覆盖确认、`toContract` / `toLayout` 组装等装配逻辑回归无拦截。
+- **未保存离开保护（F-02，AC-01~03）**：拦截两处离开路径——Shell 层导航 tab 切换统一经 `switchTab` 入口（设计器通过 `registerLeaveGuard` 向 Shell 注册守卫，挂载注册 / 卸载自动注销）与设计器返回按钮（含加载失败返回）；dirty（历史栈有已提交更改）时弹自研 `Modal` 三选「保存并离开 / 放弃更改 / 继续编辑」（复用既有 `components/Modal.tsx`，Esc / 点遮罩 / 右上角关闭 = 继续编辑）；「保存并离开」走既有保存链路（空名校验 / 同名覆盖确认），成功后执行挂起的离开动作（保存成功自然复位 dirty），失败停留设计器显示错误不丢编辑；挂起离开动作在各终止路径（继续编辑 / 保存失败 / 覆盖取消 / 名称缺失）就地作废，防陈旧动作误触发后续普通保存；无已提交更改（undoCount = 0）直接离开不弹窗；普通保存成功后回工作台的既有行为零变化。
+- **页级测试补齐（F-03，AC-04）**：`Designer.test.tsx` 在迭代 91 既有 4 条 serverMode 用例（编辑加载成功 server / standalone 降级、加载失败错误条、新建不依赖模式）之上扩展（零重建零回归）——新增 10 项：页级保存链路 4 项（新建保存成功含 `toContract` / `toLayout` 组装断言、同名覆盖确认 → 取消 / → 确认、保存失败中文提示停留不回工作台）+ 未保存离开保护 6 项（三选「继续编辑」/「放弃更改」/「保存并离开」、导航切 tab 经注册守卫挂起路径、AC-02 无编辑直接离开不弹窗（编辑 / 新建两路径）、AC-03 保存失败停留且挂起动作作废后普通保存仍正常离开）；mock `biz`（单机模式 localApi）沿用 `DataPrint.test.tsx` 范式，画布仍为桩（维持决策 #82③ 断言边界）。
+- **测试（全绿）**：前端新增 10 项至 377 项；pnpm lint 0 错误（6 条 warning 均存量）+ 双模式测试（client / server 各 377 项）+ 双构建（`pnpm build` / `pnpm build:server`）全绿；后端零改动，dotnet build 0 警告 0 错误、dotnet test（排除 Perf/Soak）861 项零回归（Bootstrapper 226 / Core 174 / Api 15 / ClientHost 1 / Server 106 / WinHost 339）。
+- **不在范围**：画布级 Konva 交互测试（决策 #82③：以 onChange 为断言边界，Konva 本体留 E2E 层）、浏览器 `beforeunload` / 窗口关闭拦截（WebView2 壳关闭场景）、设计器功能增强。
+- **记账**：DESIGN 决策 #149；ROADMAP 状态行随验收结项收口。
+
 ## 迭代 91：前端请求层健壮性——超时分档 / 导出错误通道 / 详情竞态 / serverMode 守卫 · 2026-09-18
 
 - **动机与范围（#149；前端评审 2026-09-18 F-01 / F-09 / F-12 / F-13，用户拍板 a 案——普通请求 30s + 出图 / 上传类放宽至 120s，决策 #148）**：请求原语 `makeRequest` / `makeFetchBlob` 均未挂超时 signal——后端挂起（接了不回）时提交 / 出图 / 上传类操作永久「处理中…」，无错误码无恢复路径；`exportTemplate` 绕开统一 `fetchBlob` 自写 fetch，失败固定 `EXPORT_FAILED` 吞掉后端 ErrorView 真实原因；DataPrint 模板详情加载无竞态守卫（快速切换模板时慢响应可覆盖新选择）；Designer 加载 effect 缺 `serverMode === 'unknown'` 守卫（Workbench 有），启动早期以 `localApi` 误发请求。

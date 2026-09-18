@@ -4,8 +4,10 @@
 // 迭代 80（#128 决议 2「三名义」）：client 状态栏改呈现「本机打印服务：运行中 / 未运行」——
 // 「服务端」一词不再兼指本机后台服务（评审 #114 B-9）；服务端连通在设置页、加入状态在数据与打印页。
 // 迭代 75（#112）：「PDA 日志 / 设备日志」页下线（回传链路不存在前界面收敛，决策 #140）——双形态导航入口移除。
+// 迭代 92（#150 F-02）：导航切 tab 统一走 switchTab——设计器在编辑且有未保存更改时经其注册的离开守卫
+// 弹三选确认（保存并离开 / 放弃更改 / 继续编辑），确认后才切换，防误触丢失排版工作。
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppProvider, useApp } from './state/AppContext'
 import { Icon, LabelLogo } from './components/Icon'
 import type { IconName } from './components/Icon'
@@ -50,6 +52,12 @@ function truncateIps(ips: string[], max = 28): string {
 function Shell() {
   const [tab, setTab] = useState<TabId>('workbench')
   const [designerReq, setDesignerReq] = useState<DesignerRequest | null>(null)
+  // 迭代 92（#150 F-02）：设计器注册的离开守卫——设计器 tab 在编辑且有未保存更改时，
+  // 导航切 tab 交由守卫挂起（弹三选 Modal：保存并离开 / 放弃更改 / 继续编辑），确认后再切换。
+  const designerLeaveRef = useRef<((leave: () => void) => void) | null>(null)
+  const registerDesignerLeave = useCallback((fn: ((leave: () => void) => void) | null) => {
+    designerLeaveRef.current = fn
+  }, [])
   const app = useApp()
 
   useEffect(() => {
@@ -75,6 +83,17 @@ function Shell() {
     setTab('workbench')
   }
 
+  // 迭代 92（#150 F-02）：导航切 tab 统一经此入口——设计器在编辑（dirty）时由其注册的守卫拦截：
+  // 无未保存更改守卫直接放行（AC-02），有则弹三选 Modal，用户选择后再执行本次切换（AC-01）。
+  const switchTab = (id: TabId) => {
+    if (id === tab) return
+    if (tab === 'designer' && designerReq && designerLeaveRef.current) {
+      designerLeaveRef.current(() => setTab(id))
+      return
+    }
+    setTab(id)
+  }
+
   return (
     <div className="app">
       <div className="app-body">
@@ -87,7 +106,7 @@ function Shell() {
               <button
                 key={t.id}
                 className={'nav-tab' + (tab === t.id ? ' active' : '')}
-                onClick={() => setTab(t.id)}
+                onClick={() => switchTab(t.id)}
                 title={t.label}
               >
                 <Icon name={t.icon} />
@@ -115,7 +134,9 @@ function Shell() {
 
         <main className="main">
           {tab === 'workbench' && <Workbench onOpenDesigner={openDesigner} />}
-          {tab === 'designer' && designerReq && <Designer key={designerReq.name ?? 'new'} request={designerReq} onClose={closeDesigner} />}
+          {tab === 'designer' && designerReq && (
+            <Designer key={designerReq.name ?? 'new'} request={designerReq} onClose={closeDesigner} registerLeaveGuard={registerDesignerLeave} />
+          )}
           {tab === 'designer' && !designerReq && <DesignerEmpty onNew={() => openDesigner({ kind: 'new' })} />}
           {tab === 'data' && <DataPrint />}
           {tab === 'devices' && <Devices />}
