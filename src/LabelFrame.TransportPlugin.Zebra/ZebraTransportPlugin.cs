@@ -10,6 +10,8 @@ namespace LabelFrame.TransportPlugin.Zebra;
 /// 旧内置时代 id "zebra" 由 WinHost 读取配置时按别名映射（DESIGN §6.8），插件侧不再使用。
 /// 迭代 78（#120）：同一插件对象实现 <see cref="ILabelCommandCompiler"/>（品牌级能力，§5.4.1——
 /// 与连接实例 / 传输形态无关），并声明连接级打印方式参数 printMode（§5.4.2 决议 2）。
+/// 迭代 90（#148）：Description / printMode Hint 补「原生指令模式下二维码（QR）数据不支持中文（仅 ASCII）」
+/// 说明（真机实证见 #121：原生 ^CI28 下中文被打印机静默过滤）；编译行为不动（保持现状，未升级 fail-closed）。
 /// </remarks>
 public sealed class ZebraTransportPlugin : ITransportPlugin, ILabelCommandCompiler
 {
@@ -22,7 +24,8 @@ public sealed class ZebraTransportPlugin : ITransportPlugin, ILabelCommandCompil
     public string DisplayName => "Zebra";
 
     /// <inheritdoc />
-    public string Description => "Zebra 官方 Link-OS SDK：TCP / USB（自动发现）/ Windows 驱动统一连接与打印机状态（Win10+，官方插件）。";
+    /// <remarks>迭代 90（#148）：说明文限定「原生指令模式」——中文走文本框（图片模式 / 原生 LF_ENC_002 既有拒绝口径）。</remarks>
+    public string Description => "Zebra 官方 Link-OS SDK：TCP / USB（自动发现）/ Windows 驱动统一连接与打印机状态（Win10+，官方插件）。原生指令模式下二维码（QR）数据不支持中文（仅 ASCII），中文请用文本框（图片模式）。";
 
     /// <inheritdoc />
     public IReadOnlyList<TransportParameterSpec> Parameters => new[]
@@ -49,7 +52,7 @@ public sealed class ZebraTransportPlugin : ITransportPlugin, ILabelCommandCompil
                 new TransportParameterOption(TransportPrintMode.Image, "图片（默认）"),
                 new TransportParameterOption(TransportPrintMode.Native, "原生指令"),
             },
-            Hint: "原生指令模式无预览，效果以真机为准"),
+            Hint: "原生指令模式无预览，效果以真机为准；该模式下二维码（QR）数据不支持中文（仅 ASCII），中文请用文本框（图片模式）"),
     };
 
     /// <inheritdoc />
