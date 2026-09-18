@@ -140,31 +140,37 @@ describe('下载中心页（迭代 59 决策 #119）', () => {
     expect(await screen.findByText(/APK「LabelFrame-AndroidHost-0\.26\.0\.apk」已上传/)).toBeTruthy()
   })
 
-  it('删除：PDA 条目确认后调 deletePdaPackage + 刷新；取消不调用', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => true)
+  it('删除：PDA 条目确认 Modal 后调 deletePdaPackage + 刷新；取消不调用', async () => {
     render(<DownloadCenter />)
     await screen.findByText('LabelFrame-AndroidHost-0.26.0.apk')
 
     const delButtons = screen.getAllByRole('button', { name: /删除/ })
     const pdaDelete = delButtons.find((b) => b.closest('tr')?.textContent?.includes('AndroidHost-0.26.0'))
     fireEvent.click(pdaDelete!)
+    // 迭代 93（#151 F-04）：自研 Modal 确认（替代原生 confirm 弹窗）——标题区分分区，确认后删除 + 刷新
+    expect(await screen.findByText('删除 APK')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '确认删除' }))
     await waitFor(() => expect(mocks.server.deletePdaPackage).toHaveBeenCalledWith('LabelFrame-AndroidHost-0.26.0.apk'))
     await waitFor(() => expect(mocks.server.listPdaPackages).toHaveBeenCalledTimes(2))
 
-    confirmSpy.mockImplementation(() => false)
-    fireEvent.click(pdaDelete!)
+    // 取消：关闭确认框，不再调用删除
+    const pdaDeleteAgain = screen.getAllByRole('button', { name: /删除/ }).find((b) =>
+      b.closest('tr')?.textContent?.includes('AndroidHost-0.26.0'),
+    )
+    fireEvent.click(pdaDeleteAgain!)
+    fireEvent.click(await screen.findByRole('button', { name: '取消' }))
     expect(mocks.server.deletePdaPackage).toHaveBeenCalledTimes(1)
-    confirmSpy.mockRestore()
   })
 
-  it('删除：客户端条目确认后调 deleteClientPackage', async () => {
-    vi.spyOn(window, 'confirm').mockImplementation(() => true)
+  it('删除：客户端条目确认 Modal 后调 deleteClientPackage', async () => {
     render(<DownloadCenter />)
     await screen.findByText('LabelFrame.Client-0.18.0.msi')
 
     const delButtons = screen.getAllByRole('button', { name: /删除/ })
     const clientDelete = delButtons.find((b) => b.closest('tr')?.textContent?.includes('Client-linux'))
     fireEvent.click(clientDelete!)
+    expect(await screen.findByText('删除安装包')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '确认删除' }))
     await waitFor(() => expect(mocks.server.deleteClientPackage).toHaveBeenCalledWith('LabelFrame.Client-linux.zip'))
   })
 })

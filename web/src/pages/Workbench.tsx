@@ -163,6 +163,10 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
           <small>模板管理</small>
         </div>
         <div className="spacer" />
+        <button className="btn" onClick={() => void load()} disabled={loading || serverMode === 'unknown'} title="重新加载模板列表">
+          <Icon name="refresh" size={13} />
+          {loading ? '刷新中…' : '刷新'}
+        </button>
         <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
           <Icon name="search" size={13} style={{ position: 'absolute', left: 7, color: 'var(--ink-3)', pointerEvents: 'none' }} />
           <input
@@ -204,8 +208,14 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
         </button>
       </div>
 
+      {/* 迭代 93（#151 F-17）：页头刷新按钮（与作业历史同款）+ 失败横幅旁重试入口——此前列表加载失败只能切页重试 */}
       {error && (
-        <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12 }}>{error}</div>
+        <div className="banner error">
+          {error}
+          <button className="btn sm" onClick={() => void load()} disabled={loading}>
+            重试
+          </button>
+        </div>
       )}
 
       <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>

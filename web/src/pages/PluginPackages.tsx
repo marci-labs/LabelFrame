@@ -7,6 +7,7 @@ import { pluginPackageDownloadUrl, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { PluginPackageInfo } from '../lib/api/types'
 import { Icon } from '../components/Icon'
+import { Modal } from '../components/Modal'
 import { formatSize } from '../lib/download'
 import { pluginPackageTooLarge } from '../lib/pluginLimits'
 
@@ -25,6 +26,8 @@ export function PluginPackages() {
   const [notice, setNotice] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  // 迭代 93（#151 F-04）：删除确认改自研 Modal（复用工作台删除确认模式），替代原生 confirm 弹窗
+  const [pendingRemove, setPendingRemove] = useState<PluginPackageInfo | null>(null)
 
   const load = useCallback(async () => {
     setError(null)
@@ -60,7 +63,6 @@ export function PluginPackages() {
   }
 
   const remove = async (p: PluginPackageInfo) => {
-    if (!window.confirm(`确认删除插件包「${p.fileName}」？删除后客户端将无法再从服务端下载该插件。`)) return
     setDeleting(p.fileName)
     setError(null)
     setNotice(null)
@@ -73,6 +75,14 @@ export function PluginPackages() {
     } finally {
       setDeleting(null)
     }
+  }
+
+  /** 删除确认 Modal 的「确认删除」：执行删除并立即关闭确认框（进行中状态由行内按钮呈现）。 */
+  const confirmRemove = () => {
+    if (!pendingRemove) return
+    const p = pendingRemove
+    setPendingRemove(null)
+    void remove(p)
   }
 
   return (
@@ -103,12 +113,8 @@ export function PluginPackages() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12 }}>{error}</div>
-      )}
-      {notice && (
-        <div style={{ padding: '6px 16px', background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: 12 }}>{notice}</div>
-      )}
+      {error && <div className="banner error">{error}</div>}
+      {notice && <div className="banner notice">{notice}</div>}
 
       <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
         {packages === null ? (
@@ -176,7 +182,7 @@ export function PluginPackages() {
                       </a>
                       <button
                         className="btn sm danger"
-                        onClick={() => void remove(p)}
+                        onClick={() => setPendingRemove(p)}
                         disabled={deleting === p.fileName}
                         title="删除该插件包（客户端将无法再安装）"
                       >
@@ -191,6 +197,28 @@ export function PluginPackages() {
           </table>
         )}
       </div>
+
+      {pendingRemove && (
+        <Modal
+          title="删除插件包"
+          onClose={() => setPendingRemove(null)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setPendingRemove(null)}>
+                取消
+              </button>
+              <button className="btn danger" onClick={confirmRemove} disabled={deleting !== null}>
+                <Icon name="trash" size={13} />
+                确认删除
+              </button>
+            </>
+          }
+        >
+          <p>
+            确定删除插件包「<b>{pendingRemove.fileName}</b>」吗？删除后客户端将无法再从服务端下载该插件。
+          </p>
+        </Modal>
+      )}
     </div>
   )
 }

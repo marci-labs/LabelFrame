@@ -148,9 +148,7 @@ export function JobHistory() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12 }}>{error}</div>
-      )}
+      {error && <div className="banner error">{error}</div>}
 
       <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
         {serverMode === 'unknown' ? (

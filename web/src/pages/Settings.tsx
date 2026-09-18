@@ -13,6 +13,7 @@ import { formatTransport } from '../lib/transport'
 import { pluginPackageTooLarge } from '../lib/pluginLimits'
 import { useApp } from '../state/AppContext'
 import { Icon } from '../components/Icon'
+import { Modal } from '../components/Modal'
 import { TransportPanel } from '../components/TransportPanel'
 
 export function Settings() {
@@ -47,6 +48,9 @@ export function Settings() {
   const [uninstalling, setUninstalling] = useState<string | null>(null)
   const [pluginNotice, setPluginNotice] = useState<string | null>(null)
   const [pluginError, setPluginError] = useState<string | null>(null)
+  // 迭代 93（#151 F-04）：插件覆盖安装 / 卸载确认改自研 Modal（复用工作台删除确认模式），替代原生 confirm 弹窗
+  const [confirmOverwrite, setConfirmOverwrite] = useState<PluginPackageInfo | null>(null)
+  const [confirmUninstall, setConfirmUninstall] = useState<InstalledPluginInfo | null>(null)
 
   // 迭代 24 §4.4：打印批次——WinHost /api/host/print-settings（用户级持久化，保存即生效）；旧 WinHost 404 → 版本提示
   const [printSettings, setPrintSettings] = useState<PrintSettings | null>(null)
@@ -155,18 +159,17 @@ export function Settings() {
     }
   }, [])
 
-  /** 安装：下载 blob → 保留原始文件名 multipart 提交本机 WinHost → 提示重启生效 + 刷新已安装列表。 */
-  const installPlugin = async (p: PluginPackageInfo) => {
+  /** 安装：下载 blob → 保留原始文件名 multipart 提交本机 WinHost → 提示重启生效 + 刷新已安装列表。
+   *  覆盖安装（已安装同 pluginId）先经自研 Modal 确认——确认后带 overwrite 直装。 */
+  const installPlugin = async (p: PluginPackageInfo, opts?: { overwrite?: boolean }) => {
     setPluginError(null)
     setPluginNotice(null)
     // 覆盖安装确认（已安装同 pluginId；已安装列表加载失败则不判重，后端覆盖语义兜底）
-    if (p.pluginId) {
+    if (!opts?.overwrite && p.pluginId) {
       const existing = installedPlugins?.find((i) => i.pluginId === p.pluginId)
       if (existing) {
-        const ok = window.confirm(
-          `已安装「${existing.name} ${existing.version}」。将覆盖为「${p.name ?? p.fileName} ${p.version ?? '?'}」，重启客户端后生效。确认覆盖安装？`,
-        )
-        if (!ok) return
+        setConfirmOverwrite(p)
+        return
       }
     }
     setInstalling(p.fileName)
@@ -183,9 +186,8 @@ export function Settings() {
     }
   }
 
-  /** 卸载：confirm → 本机 WinHost 删目录 → 提示重启生效 + 刷新。 */
+  /** 卸载：本机 WinHost 删目录 → 提示重启生效 + 刷新（确认由自研 Modal 承担）。 */
   const uninstallPlugin = async (plugin: InstalledPluginInfo) => {
-    if (!window.confirm(`确认卸载插件「${plugin.name} ${plugin.version}」？卸载后重启客户端生效。`)) return
     setUninstalling(plugin.pluginId)
     setPluginError(null)
     setPluginNotice(null)
@@ -687,7 +689,7 @@ export function Settings() {
                         {pl.source === 'package' && (
                           <button
                             className="btn sm danger"
-                            onClick={() => void uninstallPlugin(pl)}
+                            onClick={() => setConfirmUninstall(pl)}
                             disabled={uninstalling === pl.pluginId}
                             title="卸载该插件（重启客户端后生效）"
                           >
@@ -705,6 +707,67 @@ export function Settings() {
           </div>
         </section>
       </div>
+
+      {confirmOverwrite && (() => {
+        const existing = installedPlugins?.find((i) => i.pluginId === confirmOverwrite.pluginId)
+        return (
+          <Modal
+            title="覆盖安装插件"
+            onClose={() => setConfirmOverwrite(null)}
+            footer={
+              <>
+                <button className="btn" onClick={() => setConfirmOverwrite(null)}>
+                  取消
+                </button>
+                <button
+                  className="btn primary"
+                  onClick={() => {
+                    const p = confirmOverwrite
+                    setConfirmOverwrite(null)
+                    void installPlugin(p, { overwrite: true })
+                  }}
+                >
+                  <Icon name="download" size={13} />
+                  确认覆盖安装
+                </button>
+              </>
+            }
+          >
+            <p>
+              已安装「{existing ? `${existing.name} ${existing.version}` : '同 ID 插件'}」。将覆盖为「{confirmOverwrite.name ?? confirmOverwrite.fileName} {confirmOverwrite.version ?? '?'}」，重启客户端后生效。确认覆盖安装？
+            </p>
+          </Modal>
+        )
+      })()}
+
+      {confirmUninstall && (
+        <Modal
+          title="卸载插件"
+          onClose={() => setConfirmUninstall(null)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setConfirmUninstall(null)}>
+                取消
+              </button>
+              <button
+                className="btn danger"
+                onClick={() => {
+                  const pl = confirmUninstall
+                  setConfirmUninstall(null)
+                  void uninstallPlugin(pl)
+                }}
+              >
+                <Icon name="trash" size={13} />
+                确认卸载
+              </button>
+            </>
+          }
+        >
+          <p>
+            确认卸载插件「<b>{confirmUninstall.name} {confirmUninstall.version}</b>」？卸载后重启客户端生效。
+          </p>
+        </Modal>
+      )}
     </div>
   )
 }

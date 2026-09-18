@@ -2,6 +2,20 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 93：前端交互一致性收尾——确认弹窗统一 / 横幅通用类 / 空态刷新与文案 / lint 清零与死代码清理 · 2026-09-18
+
+- **动机与范围（#151；前端评审 2026-09-18 F-04 / F-06 / F-07 / F-11 / F-16 / F-17 / F-20 / F-21，用户拍板 a 案——Devices 加载态 =「加载中…」文案行，不引入骨架组件）**：危险确认两套机制并存（模板删除走自研 `Modal`，安装包 / 插件包删除与插件覆盖安装 / 卸载走原生 confirm，WebView2 窗口壳中样式突兀、按钮文案不可定制）；同一段内联横幅样式在 7 处错误 + 3 处通知逐字复制（已现 Designer 版多带 `display:flex` 的不一致苗头）；Devices 首次拉取前闪现「暂无设备」；工作台加载失败无重试入口；列映射表头「字段键」为开发者语；lint 6 条 warning、死代码与 vitest 配置残留。八项小改动同一 PR 交付。
+- **确认弹窗统一（F-04，AC-01）**：`DownloadCenter`（客户端安装包 / PDA APK 删除）、`PluginPackages`（插件包删除）、`Settings`（插件覆盖安装 / 卸载）的全部原生 confirm 改自研 `Modal` 确认（复用工作台删除确认模式：标题 + 危险语正文 + 取消 / 确认按钮，Esc / 点遮罩关闭）；`Designer` 剪贴板完全禁用时的终极兜底 `window.prompt` 按决议保留；对应页测试同步改为 Modal 交互断言（确认 / 取消两分支）。
+- **横幅通用类（F-07，AC-02）**：`styles.css` 新增 `.banner` / `.banner.error` / `.banner.notice` 通用类（基类含 flex 布局——纯文本横幅与原 block 版视觉一致，横幅内需排按钮的场合可直接水平排列），7 处错误横幅（Designer / DataPrint / Devices / DownloadCenter / JobHistory / PluginPackages / Workbench）+ 3 处通知横幅（Devices / DownloadCenter / PluginPackages）统一引用，消除内联复制，视觉与改前一致。
+- **Devices 空态（F-16 决议 a 案，AC-03）**：初始 `devices = null` +「正在加载设备列表…」文案行（与插件管理页同模式），首次拉取完成前不再闪现「暂无设备」；新增页级测试覆盖「挂起→加载态→空列表→真空态」路径。
+- **工作台刷新（F-17，AC-04）**：页头新增「刷新」按钮（与作业历史同款：加载中禁用 + 「刷新中…」文案），失败横幅旁附「重试」按钮——列表加载失败不再只能切页重试。
+- **文案（F-20，AC-05）**：DataPrint 列映射弹层表头「字段键」→「模板字段」（与选项「显示名（字段名）」格式自洽）。
+- **lint 清零（F-06，AC-06）**：6 条 warning 逐一处理——`mapping.ts` 字符类内 `\-` 无谓转义修正（`[\s_-]` 语义不变）；`App.tsx` 周期探测 effect 解构出三个稳定成员入依赖（消除对 `app` 聚合对象的缺依赖告警，语义不变）；`CanvasViewport` 的 `clampStage`（useCallback，依赖同三项）声明上移并入 stageBox effect 依赖；`AppContext.useApp` 的 `only-export-components` 显式豁免并注明理由（React Context 标准模式）；其余两条 `only-export-components` 随死代码删除自然消除。`pnpm lint` 0 warnings 0 errors。
+- **死代码与配置残留（F-11 / F-21，AC-07）**：删除全仓零引用的 `TransportQuickSwitch`（`TransportPanel.tsx`）、`findElement`（`CanvasViewport.tsx`）、`elementTypeName`（`ElementNode.tsx`）导出（git 历史可溯）；删除 `vitest.config.ts` 从 vite 配置拷贝残留的 `server.port` / `build.outDir` 无效段。
+- **测试（全绿）**：前端新增 1 项至 378 项；pnpm lint 0 warnings 0 errors + 双模式测试（client / server 各 378 项）+ 双构建（`pnpm build` / `pnpm build:server`）全绿；后端零改动，dotnet build 0 警告 0 错误、dotnet test（排除 Perf/Soak）861 项零回归。
+- **不在范围**：可访问性（F-08）与工作台预览惰性加载（F-18）、oxlint `--max-warnings=0` 纳入 CI（流程治理）、工作台卡片直达打印（#133 承载）、横幅以外样式体系重构。
+- **记账**：ROADMAP 状态行随验收结项收口。
+
 ## 迭代 92：设计器未保存离开保护与页级测试补齐 · 2026-09-18
 
 - **动机与范围（#150；前端评审 2026-09-18 F-02（P1）/ F-03（P1），立项前逐条核验属实，用户拍板 a 案——dirty 判定 = 历史栈有任一已提交更改（`undoCount > 0`，现成计数实现最小，决策 #149））**：设计器三处离开路径（Shell 导航切 tab、顶栏返回按钮、加载失败返回）均直接卸载组件——`stateRef` / `historyRef` 随之全部丢弃，工作台双击卡片误触、返回键误触、肌肉记忆点导航任一动作丢失整段排版工作（设计器属低频高成本操作）；且设计器是 `web/src/pages/` 下唯一没有页级 `.test.tsx` 的页面——加载分支、同名覆盖确认、`toContract` / `toLayout` 组装等装配逻辑回归无拦截。

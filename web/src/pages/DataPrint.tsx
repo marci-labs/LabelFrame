@@ -755,9 +755,7 @@ export function DataPrint() {
         </div>
       )}
 
-      {error && (
-        <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12 }}>{error}</div>
-      )}
+      {error && <div className="banner error">{error}</div>}
 
       <div className="grid-2" style={{ flex: 1, overflow: 'auto', padding: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -934,7 +932,7 @@ function MappingModal({
           <tr>
             <th style={{ width: 44 }}>列</th>
             <th>Excel 列名</th>
-            <th style={{ width: 200 }}>字段键</th>
+            <th style={{ width: 200 }}>模板字段</th>
             <th>示例值</th>
           </tr>
         </thead>

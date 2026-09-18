@@ -24,7 +24,9 @@ function formatTime(iso?: string): string {
 
 export function Devices() {
   const app = useApp()
-  const [devices, setDevices] = useState<DeviceView[]>([])
+  // 迭代 93（#151 F-16 决议 a 案）：初始 null = 首次拉取未完成（加载中文案行），[] = 确为空——
+  // 与插件管理页同一模式，消除进页瞬间闪现「暂无设备」的误导。
+  const [devices, setDevices] = useState<DeviceView[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [running, setRunning] = useState(true)
@@ -93,15 +95,16 @@ export function Devices() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12 }}>{error}</div>
-      )}
-      {notice && (
-        <div style={{ padding: '6px 16px', background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: 12 }}>{notice}</div>
-      )}
+      {error && <div className="banner error">{error}</div>}
+      {notice && <div className="banner notice">{notice}</div>}
 
       <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
-        {devices.length === 0 ? (
+        {devices === null ? (
+          <div className="empty">
+            <Icon name="refresh" />
+            <div className="empty-title">正在加载设备列表…</div>
+          </div>
+        ) : devices.length === 0 ? (
           <div className="empty">
             <Icon name="grid" />
             <div className="empty-title">暂无设备</div>
