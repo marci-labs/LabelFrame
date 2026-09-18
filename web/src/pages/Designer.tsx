@@ -35,7 +35,7 @@ interface DesignerProps {
 export function Designer({ request, onClose }: DesignerProps) {
   const app = useApp()
   const { serverMode } = app
-  /** 业务 API 跟随模式：服务端 = serverApi（模板中心）；单机降级 = localApi（本机 WinHost 模板库）。 */
+  /** 业务 API 跟随模式（迭代 91 F-13 与 Workbench 对齐：unknown 时下方加载 effect 不发请求，待探测完成）。 */
   const biz = serverMode === 'server' ? serverApi : localApi
   const [state, setState] = useState<DesignState | null>(null)
   const [selected, setSelected] = useState<string[]>([])
@@ -58,6 +58,15 @@ export function Designer({ request, onClose }: DesignerProps) {
   const contractNameRef = useRef('')
   const contractVersionRef = useRef('1')
   const selectedRef = useRef<string[]>([])
+  // 迭代 91（F-13）：加载单次闩锁 + 挂载标记（见下方加载 effect 注释）
+  const initedRef = useRef(false)
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const commit = useCallback((next: DesignState) => {
     stateRef.current = next
@@ -83,13 +92,18 @@ export function Designer({ request, onClose }: DesignerProps) {
   }, [])
 
   // ---------- 加载 ----------
-  // 注意：effect 依赖只用 request —— app 为 context 对象，每次渲染新引用，
-  // 若作为依赖会与 setStatus（触发 context 更新）形成无限循环。
+  // 迭代 91（F-13）：与 Workbench 的 serverMode 守卫对齐——unknown（模式探测未完成）时不以 localApi 误发请求，
+  // 待 AppContext 解析出 server / standalone 后重跑本 effect 按正确 base 加载。serverMode 为原始值入依赖，
+  // 不会触发既有注释所述的无限循环（app 为 context 对象、每次渲染新引用，才是不能入依赖的雷区）；
+  // initedRef 单次闩锁——模式中途翻转（10s 周期探测 server ↔ standalone）不重拉模板、不重置编辑中状态
+  // （组件在 App 按 key 重挂，request 在一次挂载内不变，故无需按 request 变化作废在途结果）。
   useEffect(() => {
-    let cancelled = false
+    if (request.kind !== 'new' && serverMode === 'unknown') return
+    if (initedRef.current) return
+    initedRef.current = true
     const status = app.setStatus
     const init = (s: DesignState, pkg?: TemplatePackage) => {
-      if (cancelled) return
+      if (!mountedRef.current) return
       stateRef.current = s
       historyRef.current = createHistory(s, snap, parse)
       setState(s)
@@ -111,11 +125,9 @@ export function Designer({ request, onClose }: DesignerProps) {
       status('新建模板：控件栏添加元素，保存后返回工作台。')
       return
     }
-    let alive = true
     void biz
       .getTemplate(request.name!)
       .then((pkg) => {
-        if (!alive) return
         init(
           {
             paperW: pkg.layout?.widthMm || 100,
@@ -125,18 +137,13 @@ export function Designer({ request, onClose }: DesignerProps) {
           },
           pkg,
         )
-        status(`已打开模板「${pkg.name}」。`)
+        if (mountedRef.current) status(`已打开模板「${pkg.name}」。`)
       })
       .catch((err) => {
-        if (!alive) return
-        setLoadError(err instanceof ApiError ? err.message : '加载模板失败。')
+        if (mountedRef.current) setLoadError(err instanceof ApiError ? err.message : '加载模板失败。')
       })
-    return () => {
-      alive = false
-      cancelled = true
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [request])
+  }, [request, serverMode])
 
   // ---------- 选择 ----------
   const handleSelect = useCallback((ids: string[], toggle?: boolean) => {

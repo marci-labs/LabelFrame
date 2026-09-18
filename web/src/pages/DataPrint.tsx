@@ -371,16 +371,30 @@ export function DataPrint() {
       .catch((err) => setError(err instanceof ApiError ? err.message : '加载模板列表失败。'))
   }, [deviceMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 模板详情（迭代 91 F-12）：cancelled 守卫与同文件预览弹层 previewGenRef 同一竞态标准——
+  // 快速切换模板时，前一个慢响应（setPkg / setError / setLoading）不得覆盖新选择（字段表单 / 打印数据用错模板）。
   useEffect(() => {
     if (!selectedName) return
+    let cancelled = false
     setLoading(true)
     setPkg(null)
     setError(null)
     void biz
       .getTemplate(selectedName)
-      .then((p) => setPkg(p))
-      .catch((err) => setError(err instanceof ApiError ? err.message : '加载模板失败。'))
-      .finally(() => setLoading(false))
+      .then((p) => {
+        if (cancelled) return
+        setPkg(p)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err instanceof ApiError ? err.message : '加载模板失败。')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [selectedName, deviceMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 打印字段（键 + 显示名）：contract.fields 优先，空则从版式推导；
