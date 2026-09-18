@@ -8,7 +8,8 @@ namespace LabelFrame.WinHost.Tests.Transport;
 
 /// <summary>
 /// Zebra 原生指令编译器单测（迭代 78 文本 #120 + 迭代 79 条码与二维码 #121；DESIGN §5.4）：
-/// 能力与参数声明（能力位真 / printMode Select）+ 文本编译正确性（整页自包含结构 / ^A 字体与字高 DPI 换算 /
+/// 能力与参数声明（能力位真 / printMode Select / 原生模式 QR 中文说明文案锚定，迭代 90 #148）+
+/// 文本编译正确性（整页自包含结构 / ^A 字体与字高 DPI 换算 /
 /// 超长文本不换行不缩放直接输出 / 锚定与对齐起始坐标换算路径 / 中文 LF_ENC_002 显式拒绝）+
 /// Code 128 条码编译（^BC 结构 / 模块宽与高度 DPI 换算 / displayValue 映射 / 中文 LF_ENC_001 既有语义零回归）+
 /// QR 二维码编译（^BQ 结构 / ECC 与边距映射 / 放大倍数尺寸换算 / UTF-8 中文 / 混合模板整页自包含）。
@@ -156,6 +157,37 @@ public class ZebraLabelCompilerTests
         Assert.Equal(
             new[] { TransportPrintMode.Image, TransportPrintMode.Native },
             spec.Options!.Select(o => o.Value).ToArray());
+    }
+
+    [Fact]
+    public void Plugin_description_and_print_mode_hint_should_note_native_qr_chinese_limit()
+    {
+        // 迭代 90（#148，a 案仅说明文案）：原生指令模式下二维码（QR）数据不支持中文（仅 ASCII）——真机实证见 #121
+        // （原生 ^CI28 下中文被打印机静默过滤），中文走文本框（图片模式 / 原生 LF_ENC_002 既有拒绝口径）；
+        // GET /api/transport 的 Description / Hint 为 descriptor 字段透传（#119 WinHostEndpointsTests 已锚定映射），
+        // 此处锚定源头（插件声明 + 注册表 descriptor——API availablePlugins 的数据来源）。
+        var plugin = new ZebraTransportPlugin();
+
+        // 说明文（Description）：含该说明且限定「原生指令模式」，句读完整（迭代 82 文案风格）
+        Assert.Contains("原生指令模式下二维码（QR）数据不支持中文（仅 ASCII）", plugin.Description);
+        Assert.Contains("中文请用文本框（图片模式）", plugin.Description);
+        Assert.EndsWith("。", plugin.Description);
+
+        // 打印方式提示（printMode Hint）：首句限定原生指令模式，QR 中文说明随其后（同句境限定，不外溢图片模式）
+        var spec = plugin.Parameters.Single(p => p.Key == TransportPrintMode.ParameterKey);
+        Assert.NotNull(spec.Hint);
+        Assert.StartsWith("原生指令模式", spec.Hint);
+        Assert.Contains("二维码（QR）数据不支持中文（仅 ASCII）", spec.Hint);
+        Assert.Contains("中文请用文本框（图片模式）", spec.Hint);
+
+        // 注册表 descriptor（GET /api/transport.availablePlugins 透出来源）同文案锚定
+        var registry = new TransportPluginRegistry();
+        registry.Register(plugin);
+        var descriptor = registry.GetPlugin(TransportPluginIdPolicy.ZebraPluginId);
+        Assert.NotNull(descriptor);
+        Assert.Contains("原生指令模式下二维码（QR）数据不支持中文（仅 ASCII）", descriptor!.Description);
+        var descriptorSpec = descriptor.Parameters.Single(p => p.Key == TransportPrintMode.ParameterKey);
+        Assert.Contains("二维码（QR）数据不支持中文（仅 ASCII）", descriptorSpec.Hint);
     }
 
     // ── AC-02：整页自包含结构（^XA / ^XZ / ^PW / ^LL）与文本指令 ──
