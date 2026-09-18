@@ -71,6 +71,26 @@ describe('在线设备页：列表渲染', () => {
     expect(screen.getByText('仓库-2 打印电脑')).toBeTruthy()
     expect(screen.getByText('离线')).toBeTruthy()
   })
+
+  it('首次拉取完成前显示加载态而非「暂无设备」（迭代 93 · #151 F-16 决议 a 案）', async () => {
+    // 首次请求挂起：进页只见「正在加载设备列表…」，不闪现空态误导
+    let resolveList: (list: DeviceView[]) => void = () => {}
+    mocks.server.listDevices.mockReturnValue(
+      new Promise<DeviceView[]>((resolve) => {
+        resolveList = resolve
+      }),
+    )
+    render(<Harness />)
+    expect(screen.getByText('正在加载设备列表…')).toBeTruthy()
+    expect(screen.queryByText('暂无设备')).toBeNull()
+
+    // 拉取完成（空列表）：才呈现真正的空态
+    await act(async () => {
+      resolveList([])
+    })
+    expect(await screen.findByText('暂无设备')).toBeTruthy()
+    expect(screen.queryByText('正在加载设备列表…')).toBeNull()
+  })
 })
 
 describe('在线设备页：点击设为默认（Y2）', () => {

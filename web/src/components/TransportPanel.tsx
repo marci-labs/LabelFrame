@@ -1,8 +1,9 @@
-// 连接方式（迭代 15 §6.2 恢复，迭代 18 F3）：设置页完整面板 + DataPrint 顶部快速切换。
+// 连接方式（迭代 15 §6.2 恢复，迭代 18 F3）：设置页完整面板。
 // 迭代 22：传输插件化——后端 availablePlugins（spec 驱动）存在时按插件目录动态渲染参数表单；
 // 旧后端（无 availablePlugins）回退内置 4 模式（Log / Tcp / WindowsDriver / Zebra）。
 // 交互：先测试后生效（非 testOnly 后端先测试再切换持久化）；失败返回当前连接、前端全局状态不动。
 // 全部走 localApi（本机 Client 127.0.0.1:53960 / 页面来源）。连接徽标优先后端 displayText。
+// 迭代 93（#151 F-11）：删除全仓零引用的 DataPrint 顶部快速切换组件（git 历史可溯）。
 
 import { useCallback, useEffect, useState } from 'react'
 import { localApi } from '../lib/api/client'
@@ -426,84 +427,6 @@ export function TransportPanel() {
       </div>
 
       <div className="hint">「测试连接」通过后才会切换，失败会提示原因且当前连接保持不变；保存后重启仍使用该连接。</div>
-    </div>
-  )
-}
-
-/** DataPrint 顶部快速切换：当前连接徽标 + 插件 / 模式下拉 + 参数内联 + 应用（测试+生效）。 */
-export function TransportQuickSwitch() {
-  const app = useApp()
-  const form = useTransportForm()
-  const [busy, setBusy] = useState(false)
-  const [errMsg, setErrMsg] = useState<string | null>(null)
-
-  const apply = async () => {
-    setBusy(true)
-    setErrMsg(null)
-    try {
-      const r = await localApi.setTransport(form.buildRequest())
-      if (r.ok) {
-        app.applyTransportConfig(r.config)
-        app.setStatus(r.message)
-      } else {
-        setErrMsg(r.message)
-      }
-    } catch (err) {
-      setErrMsg(err instanceof ApiError ? err.message : '切换连接失败。')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const currentPlugin = form.plugins.find((p) => p.id === form.pluginId) ?? form.plugins[0]
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      {/* 迭代 80（#128「三名义」）：本机连接状态点随「本机打印服务」运行状态（本机事实），不随服务端地址连通性 */}
-      <span className={'conn' + (app.localServiceUp ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <span className={'status-dot' + (app.localServiceUp ? ' on' : '')} />
-        {formatTransport(app.transportConfig) || app.transport || '未连接'}
-      </span>
-      {form.pluginMode ? (
-        <select
-          className="input"
-          value={form.pluginId}
-          onChange={(ev) => {
-            const p = form.plugins.find((x) => x.id === ev.target.value)
-            if (p) form.switchPlugin(p)
-          }}
-          title="快速切换连接方式（点击「应用」会先测试，通过后生效）"
-        >
-          {form.plugins.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.displayName}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <select
-          className="input"
-          value={form.mode}
-          onChange={(ev) => form.switchMode(ev.target.value as TransportMode)}
-          title="快速切换连接方式（点击「应用」会先测试，通过后生效）"
-        >
-          {(app.transportConfig?.availableModes ?? ALL_TRANSPORT_MODES).map((m) => (
-            <option key={m} value={m}>
-              {MODE_LABELS[m]}
-            </option>
-          ))}
-        </select>
-      )}
-      {form.pluginMode ? (
-        currentPlugin && <TransportPluginParamsEditor plugin={currentPlugin} params={form.pluginParams} setParam={form.setPluginParam} />
-      ) : (
-        <TransportParamsEditor mode={form.mode} params={form.params} setParam={form.setParam} />
-      )}
-      {formNativeMode(currentPlugin, form.pluginParams) && <NativePrintModeHint />}
-      <button className="btn sm" onClick={() => void apply()} disabled={busy}>
-        <Icon name="link" size={12} />
-        {busy ? '应用中…' : '应用'}
-      </button>
-      {errMsg && <span className="error-text" style={{ fontSize: 12 }}>{errMsg}</span>}
     </div>
   )
 }

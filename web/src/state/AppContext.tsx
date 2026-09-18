@@ -390,6 +390,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
 
+// 迭代 93（#151 F-06）：显式豁免 only-export-components——React Context 标准模式，
+// Provider 组件与配套 useApp 钩子同文件导出是社区惯例，拆文件无收益。
+// eslint-disable-next-line react/only-export-components
 export function useApp(): AppContextValue {
   const ctx = useContext(AppContext)
   if (!ctx) throw new Error('useApp 必须在 AppProvider 内使用')

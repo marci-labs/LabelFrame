@@ -6,7 +6,7 @@ import type Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { pxv } from '../../lib/design/geometry'
 import type { BarcodeElement, DesignElement, QrCodeElement, TextElement } from '../../lib/design/types'
-import { elementContent, typeLabel } from '../../lib/design/types'
+import { elementContent } from '../../lib/design/types'
 import { fitImageRect, makeBarcodeCanvas, makeQrCanvas } from '../../lib/design/barcode'
 
 interface ElementNodeProps {
@@ -165,9 +165,4 @@ function ImageContent({ e, wPx, hPx, qr }: { e: BarcodeElement | QrCodeElement; 
   const canvas = useMemo(() => (qr ? makeQrCanvas(e as QrCodeElement, innerW, innerH) : makeBarcodeCanvas(e as BarcodeElement)), [e, qr, innerW, innerH])
   const fit = useMemo(() => fitImageRect(canvas, innerW, innerH), [canvas, innerW, innerH])
   return <KImage image={canvas} x={fit.x + padH} y={fit.y + padV} width={fit.w} height={fit.h} listening={false} />
-}
-
-/** 图层 / 属性面板用：元素类型中文名。 */
-export function elementTypeName(e: DesignElement): string {
-  return typeLabel(e)
 }

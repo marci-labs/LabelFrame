@@ -569,28 +569,26 @@ describe('插件管理（迭代 23 §5.6）', () => {
     await waitFor(() => expect(mocks.local.listInstalledPlugins).toHaveBeenCalledTimes(2))
   })
 
-  it('覆盖安装：已安装同 pluginId 时 confirm「将覆盖 x → y」；确认后安装', async () => {
+  it('覆盖安装：已安装同 pluginId 时弹确认 Modal「将覆盖」；确认后安装', async () => {
     mocks.server.listPluginPackages.mockResolvedValue([PKG])
     mocks.local.listInstalledPlugins.mockResolvedValue([INSTALLED])
-    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => true)
     renderSettings()
     fireEvent.click(await screen.findByRole('button', { name: /^安装$/ }))
-    await waitFor(() => expect(confirmSpy).toHaveBeenCalled())
-    expect(String(confirmSpy.mock.calls[0][0])).toContain('将覆盖')
-    expect(mocks.local.installPlugin).toHaveBeenCalledTimes(1)
-    confirmSpy.mockRestore()
+    // 迭代 93（#151 F-04）：自研 Modal 确认（替代原生 confirm 弹窗）
+    expect(await screen.findByText(/将覆盖为/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '确认覆盖安装' }))
+    await waitFor(() => expect(mocks.local.installPlugin).toHaveBeenCalledTimes(1))
   })
 
-  it('覆盖安装取消：confirm 返回 false → 不下载不安装', async () => {
+  it('覆盖安装取消：关闭确认 Modal → 不下载不安装', async () => {
     mocks.server.listPluginPackages.mockResolvedValue([PKG])
     mocks.local.listInstalledPlugins.mockResolvedValue([INSTALLED])
-    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => false)
     renderSettings()
     fireEvent.click(await screen.findByRole('button', { name: /^安装$/ }))
-    await waitFor(() => expect(confirmSpy).toHaveBeenCalled())
+    expect(await screen.findByText(/将覆盖为/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '取消' }))
     expect(mocks.server.downloadPluginPackage).not.toHaveBeenCalled()
     expect(mocks.local.installPlugin).not.toHaveBeenCalled()
-    confirmSpy.mockRestore()
   })
 
   it('单机模式：可用插件区提示需先连接服务端、不调 listPluginPackages；已安装区仍渲染', async () => {
@@ -625,14 +623,15 @@ describe('插件管理（迭代 23 §5.6）', () => {
     expect(screen.queryByText('卸载中…')).toBeNull()
   })
 
-  it('卸载：confirm → uninstallPlugin(pluginId) → 提示 message + 刷新', async () => {
+  it('卸载：确认 Modal → uninstallPlugin(pluginId) → 提示 message + 刷新', async () => {
     mocks.local.listInstalledPlugins.mockResolvedValue([INSTALLED])
-    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => true)
     renderSettings()
     fireEvent.click(await screen.findByRole('button', { name: /^卸载$/ }))
+    // 迭代 93（#151 F-04）：自研 Modal 确认（替代原生 confirm 弹窗）
+    expect(await screen.findByText(/确认卸载插件/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '确认卸载' }))
     await waitFor(() => expect(mocks.local.uninstallPlugin).toHaveBeenCalledWith('sample'))
     expect(await screen.findByText(/已卸载，重启客户端后生效/)).toBeTruthy()
-    confirmSpy.mockRestore()
   })
 
   it('安装失败（后端 400 ErrorView）：展示 message（文件锁提示）', async () => {

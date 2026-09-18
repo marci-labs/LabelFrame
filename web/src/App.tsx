@@ -59,19 +59,22 @@ function Shell() {
     designerLeaveRef.current = fn
   }, [])
   const app = useApp()
+  // 迭代 93（#151 F-06）：解构出三个成员再入依赖——exhaustive-deps 按 `app` 聚合对象报缺依赖，
+  // 而三者均为 AppContext 的 useCallback 稳定引用（baseUrl 用于地址变更后重排周期探测），语义与原写法一致。
+  const { checkConnection, checkLocalService, baseUrl } = app
 
   useEffect(() => {
-    void app.checkConnection()
+    void checkConnection()
     // 迭代 80（#128 决议 2「三名义」）：client 构建周期探测本机打印服务（页面来源 /healthz）——
     // 状态栏「本机打印服务：运行中 / 未运行」数据源，与服务端地址连通性（checkConnection）各自独立
-    if (!isServerUi) void app.checkLocalService()
+    if (!isServerUi) void checkLocalService()
     // 周期探测连接（10s），后端重启后状态自动恢复
     const timer = setInterval(() => {
-      void app.checkConnection()
-      if (!isServerUi) void app.checkLocalService()
+      void checkConnection()
+      if (!isServerUi) void checkLocalService()
     }, 10000)
     return () => clearInterval(timer)
-  }, [app.checkConnection, app.checkLocalService, app.baseUrl])
+  }, [checkConnection, checkLocalService, baseUrl])
 
   const openDesigner = (req: DesignerRequest) => {
     setDesignerReq(req)

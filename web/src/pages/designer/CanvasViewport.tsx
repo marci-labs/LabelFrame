@@ -84,21 +84,6 @@ export function CanvasViewport(props: CanvasViewportProps) {
     setTotal(base * zoom)
   }, [viewport, canvasSize, preview, dpi, zoom])
 
-  // stageBox 尺寸 / 位置（直接操作 DOM，避免重渲染循环）
-  useLayoutEffect(() => {
-    const box = boxRef.current
-    const stage = stageRef.current
-    if (!box || !stage || viewport.w === 0) return
-    box.style.width = canvasSize.w * total + 'px'
-    box.style.height = canvasSize.h * total + 'px'
-    box.style.left = Math.max(0, (viewport.w - canvasSize.w * total) / 2) + 'px'
-    box.style.top = Math.max(0, (viewport.h - canvasSize.h * total - 20) / 2) + 'px'
-    stage.width(canvasSize.w * total)
-    stage.height(canvasSize.h * total)
-    stage.scale({ x: total, y: total })
-    clampStage()
-  }, [canvasSize, total, viewport])
-
   /** 平移不越界：画布至少一块区域在视口内。 */
   const clampStage = useCallback(() => {
     const stage = stageRef.current
@@ -116,6 +101,22 @@ export function CanvasViewport(props: CanvasViewportProps) {
     if (x !== stage.x()) stage.x(x)
     if (y !== stage.y()) stage.y(y)
   }, [canvasSize, total, viewport])
+
+  // stageBox 尺寸 / 位置（直接操作 DOM，避免重渲染循环）
+  useLayoutEffect(() => {
+    const box = boxRef.current
+    const stage = stageRef.current
+    if (!box || !stage || viewport.w === 0) return
+    box.style.width = canvasSize.w * total + 'px'
+    box.style.height = canvasSize.h * total + 'px'
+    box.style.left = Math.max(0, (viewport.w - canvasSize.w * total) / 2) + 'px'
+    box.style.top = Math.max(0, (viewport.h - canvasSize.h * total - 20) / 2) + 'px'
+    stage.width(canvasSize.w * total)
+    stage.height(canvasSize.h * total)
+    stage.scale({ x: total, y: total })
+    clampStage()
+    // 迭代 93（#151 F-06）：clampStage 为 useCallback（依赖同三项），入依赖消除 exhaustive-deps 告警
+  }, [canvasSize, total, viewport, clampStage])
 
   // 参考线
   const clearGuides = useCallback(() => {
@@ -536,9 +537,4 @@ export function CanvasViewport(props: CanvasViewportProps) {
       )}
     </div>
   )
-}
-
-/** 元素查询（供组件内使用）。 */
-export function findElement(els: readonly DesignElement[], id: string): DesignElement | undefined {
-  return elementById(els, id)
 }

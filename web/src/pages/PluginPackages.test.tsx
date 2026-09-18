@@ -110,18 +110,20 @@ describe('插件管理页（迭代 23 §5.4）', () => {
     expect(mocks.server.uploadPluginPackage).not.toHaveBeenCalled()
   })
 
-  it('删除：确认后调用 deletePluginPackage + 刷新；取消不调用', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => true)
+  it('删除：确认 Modal 后调用 deletePluginPackage + 刷新；取消不调用', async () => {
     render(<PluginPackages />)
     await screen.findByText('示例插件')
 
     fireEvent.click(screen.getAllByRole('button', { name: /删除/ })[0])
+    // 迭代 93（#151 F-04）：自研 Modal 确认（替代原生 confirm 弹窗）——确认后删除 + 刷新
+    expect(await screen.findByText('删除插件包')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '确认删除' }))
     await waitFor(() => expect(mocks.server.deletePluginPackage).toHaveBeenCalledWith('sample-1.0.0.lfplugin'))
     await waitFor(() => expect(mocks.server.listPluginPackages).toHaveBeenCalledTimes(2))
 
-    confirmSpy.mockImplementation(() => false)
-    fireEvent.click(screen.getAllByRole('button', { name: /删除/ })[1])
+    // 取消：关闭确认框，不再调用删除
+    fireEvent.click(screen.getAllByRole('button', { name: /删除/ })[0])
+    fireEvent.click(await screen.findByRole('button', { name: '取消' }))
     expect(mocks.server.deletePluginPackage).toHaveBeenCalledTimes(1)
-    confirmSpy.mockRestore()
   })
 })

@@ -10,6 +10,7 @@ import { clientPackageDownloadUrl, pdaPackageDownloadUrl, serverApi } from '../l
 import { ApiError } from '../lib/api/types'
 import type { ClientPackageInfo, PdaPackageInfo } from '../lib/api/types'
 import { Icon } from '../components/Icon'
+import { Modal } from '../components/Modal'
 import { formatSize } from '../lib/download'
 
 /** 修改时间：本地时间 MM-dd HH:mm:ss。 */
@@ -164,6 +165,8 @@ export function DownloadCenter() {
   const [uploadingClient, setUploadingClient] = useState(false)
   const [uploadingPda, setUploadingPda] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  // 迭代 93（#151 F-04）：删除确认改自研 Modal（复用工作台删除确认模式），替代原生 confirm 弹窗
+  const [pendingRemove, setPendingRemove] = useState<{ kind: 'client' | 'pda'; row: PackageRow } | null>(null)
 
   const load = useCallback(async () => {
     setError(null)
@@ -211,7 +214,6 @@ export function DownloadCenter() {
   }
 
   const removeClient = async (p: PackageRow) => {
-    if (!window.confirm(`确认删除安装包「${p.fileName}」？删除后客户端将无法再从服务端下载该文件。`)) return
     setDeleting(p.fileName)
     setError(null)
     setNotice(null)
@@ -227,7 +229,6 @@ export function DownloadCenter() {
   }
 
   const removePda = async (p: PackageRow) => {
-    if (!window.confirm(`确认删除 APK「${p.fileName}」？删除后 PDA 扫码将无法再下载该文件。`)) return
     setDeleting(p.fileName)
     setError(null)
     setNotice(null)
@@ -240,6 +241,15 @@ export function DownloadCenter() {
     } finally {
       setDeleting(null)
     }
+  }
+
+  /** 删除确认 Modal 的「确认删除」：按分区派发并立即关闭确认框（进行中状态由行内按钮呈现）。 */
+  const confirmRemove = () => {
+    if (!pendingRemove) return
+    const { kind, row } = pendingRemove
+    setPendingRemove(null)
+    if (kind === 'client') void removeClient(row)
+    else void removePda(row)
   }
 
   // 时间排序（决议 3：最新在上；页面内排序先行，latest.json 落地后再对齐「推荐 / 最新」标记）
@@ -278,12 +288,8 @@ export function DownloadCenter() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12 }}>{error}</div>
-      )}
-      {notice && (
-        <div style={{ padding: '6px 16px', background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: 12 }}>{notice}</div>
-      )}
+      {error && <div className="banner error">{error}</div>}
+      {notice && <div className="banner notice">{notice}</div>}
 
       <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
         {/* ── 客户端下载（PC；client-packages 既有数据并入展示，行为不动）── */}
@@ -309,7 +315,7 @@ export function DownloadCenter() {
             </div>
           </div>
         ) : (
-          <PackageTable rows={clientRows} qrOrigin={qrOrigin} deleting={deleting} onRemove={removeClient} />
+          <PackageTable rows={clientRows} qrOrigin={qrOrigin} deleting={deleting} onRemove={(row) => setPendingRemove({ kind: 'client', row })} />
         )}
 
         {/* ── PDA 下载（Android 宿主 APK；pda-packages 新目录，迭代 59 决策 #119）── */}
@@ -350,9 +356,33 @@ export function DownloadCenter() {
             </div>
           </div>
         ) : (
-          <PackageTable rows={pdaRows} qrOrigin={qrOrigin} deleting={deleting} onRemove={removePda} />
+          <PackageTable rows={pdaRows} qrOrigin={qrOrigin} deleting={deleting} onRemove={(row) => setPendingRemove({ kind: 'pda', row })} />
         )}
       </div>
+
+      {pendingRemove && (
+        <Modal
+          title={pendingRemove.kind === 'client' ? '删除安装包' : '删除 APK'}
+          onClose={() => setPendingRemove(null)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setPendingRemove(null)}>
+                取消
+              </button>
+              <button className="btn danger" onClick={confirmRemove} disabled={deleting !== null}>
+                <Icon name="trash" size={13} />
+                确认删除
+              </button>
+            </>
+          }
+        >
+          <p>
+            {pendingRemove.kind === 'client'
+              ? <>确定删除安装包「<b>{pendingRemove.row.fileName}</b>」吗？删除后客户端将无法再从服务端下载该文件。</>
+              : <>确定删除 APK「<b>{pendingRemove.row.fileName}</b>」吗？删除后 PDA 扫码将无法再下载该文件。</>}
+          </p>
+        </Modal>
+      )}
     </div>
   )
 }

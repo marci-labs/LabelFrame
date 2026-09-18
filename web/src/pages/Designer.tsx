@@ -670,7 +670,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       </div>
 
       {loadError && (
-        <div style={{ padding: '6px 16px', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="banner error">
           {loadError}
           <button className="btn sm" onClick={requestClose}>
             返回工作台
