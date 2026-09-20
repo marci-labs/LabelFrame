@@ -36,6 +36,9 @@ $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate
 $bytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx, $Password)
 [System.IO.File]::WriteAllBytes($PfxPath, $bytes)
 Remove-Item -LiteralPath $rawPfx -Force -ErrorAction SilentlyContinue
+# 私钥明文不留盘：PFX 已导出，生成中间 PEM 用毕即删
+Remove-Item -LiteralPath $keyPem, $certPem -Force
+if (Test-Path $keyPem) { throw 'key.pem 删除失败：私钥明文仍在盘上，请手动删除。' }
 Write-Host "证书已生成：$PfxPath"
 Write-Host '指纹：' $cert.Thumbprint
 
