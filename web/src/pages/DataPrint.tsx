@@ -9,8 +9,11 @@
 // （复用 render-image 端点实时取图，不建作业不自动下载）；下载由弹层内显式「下载」按钮触发，预览与下载分离。
 // 迭代 84（#132，评审 #114 A-3 / B-6）：副标题改「填写数据并打印 / Excel 批量打印」（本页是日常主打印入口，
 // 不再自称「测试数据」）；作业进度「目标设备」显示设备名（无可解析名称回退设备 ID），与在线设备页 / 目标设备下拉同源。
+// 迭代 85（#133 C-4 / C-5）：接收工作台「打印」直达的预选草稿（同手动选择）；作业进度区指向「作业历史」的
+// 纯文字指引改为可点击跳转（onOpenJobHistory → 切作业历史页，行可展开逐张 / 汇总明细）。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { DeviceView, JobView, SubmitJobRequest, TemplatePackage, TemplateSummary } from '../lib/api/types'
@@ -105,6 +108,15 @@ function useJobPolling(jobId: string | null, biz: Pick<typeof serverApi, 'getJob
   return { job, error, retry }
 }
 
+/** 行内链接式按钮（迭代 85 · #133 C-5）：提示文案中的页内跳转（如「作业历史」）——视觉为链接，语义 / 焦点行为为按钮。 */
+function InlineLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" className="link-like" onClick={onClick}>
+      {children}
+    </button>
+  )
+}
+
 function JobPanel({
   job,
   error,
@@ -112,6 +124,7 @@ function JobPanel({
   debugMode,
   canRetry,
   resolveDeviceName,
+  onOpenJobHistory,
 }: {
   job: JobView | null
   error: string | null
@@ -121,6 +134,8 @@ function JobPanel({
   canRetry: boolean
   /** 迭代 84（#132 B-6）：目标设备显示名解析（设备名优先，无可解析名称回退设备 ID；单机模式无设备列表 = 恒回退 ID）。 */
   resolveDeviceName: (deviceId: string) => string
+  /** 迭代 85（#133 C-5）：跳转「作业历史」页（进度区文字指引可点击——作业历史行可展开明细）。 */
+  onOpenJobHistory: () => void
 }) {
   const app = useApp()
   if (!job) {
@@ -164,7 +179,15 @@ function JobPanel({
           </div>
           {failed > 0 && (
             <div className="hint" style={{ marginTop: 6, color: 'var(--danger)' }}>
-              有 {failed} 张打印失败，{job.items && canRetry ? '可在下方列表中逐张重试。' : '可在「作业历史」中查看失败原因。'}
+              有 {failed} 张打印失败，
+              {job.items && canRetry ? (
+                '可在下方列表中逐张重试。'
+              ) : (
+                // 迭代 85（#133 C-5）：指引可点击跳转——作业历史行可展开查看状态与失败原因
+                <>
+                  可在「<InlineLink onClick={onOpenJobHistory}>作业历史</InlineLink>」中查看失败原因。
+                </>
+              )}
             </div>
           )}
         </div>
@@ -221,14 +244,18 @@ function JobPanel({
           </table>
         )}
         {!job.items && (
-          <div className="hint">（该作业无逐张明细：进度见上方进度条，失败原因可在「作业历史」查看。）</div>
+          <div className="hint">
+            （该作业无逐张明细：进度见上方进度条，失败原因可在「
+            <InlineLink onClick={onOpenJobHistory}>作业历史</InlineLink>
+            」展开该作业查看。）
+          </div>
         )}
       </div>
     </div>
   )
 }
 
-export function DataPrint() {
+export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }) {
   const app = useApp()
   const { printDraft } = app
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
@@ -848,7 +875,15 @@ export function DataPrint() {
           </div>
         </div>
 
-        <JobPanel job={job} error={jobError} retry={retry} debugMode={debugMode} canRetry={!isServerUi} resolveDeviceName={resolveDeviceName} />
+        <JobPanel
+          job={job}
+          error={jobError}
+          retry={retry}
+          debugMode={debugMode}
+          canRetry={!isServerUi}
+          resolveDeviceName={resolveDeviceName}
+          onOpenJobHistory={onOpenJobHistory}
+        />
       </div>
 
       {mappingOpen && excel && pkg && (

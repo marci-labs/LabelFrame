@@ -88,11 +88,12 @@ const DEVICES: DeviceView[] = [
 
 let clickSpy: ReturnType<typeof vi.spyOn>
 
-/** 模拟 DataPrint 挂载在 AppProvider 下的切 tab 行为（provider 不卸载，页面卸载重挂）。 */
-function Harness({ show }: { show: boolean }) {
+/** 模拟 DataPrint 挂载在 AppProvider 下的切 tab 行为（provider 不卸载，页面卸载重挂）。
+ *  迭代 85（#133 C-5）：onOpenJobHistory 注入（进度区「作业历史」指引可点击跳转的断言入口）。 */
+function Harness({ show, onOpenJobHistory }: { show: boolean; onOpenJobHistory?: () => void }) {
   return (
     <AppProvider>
-      <div>{show && <DataPrint />}</div>
+      <div>{show && <DataPrint onOpenJobHistory={onOpenJobHistory ?? (() => {})} />}</div>
     </AppProvider>
   )
 }
@@ -738,8 +739,7 @@ describe('无字段模板（静态标签）打印测试（迭代 65 · #62）', 
 
 // 迭代 91（F-12 · #149）：模板详情加载竞态——cancelled 守卫与同文件预览弹层 previewGenRef 同一标准。
 // 场景：首个模板详情慢响应在途，快速切到第二个模板（立即返回）；慢响应随后到达不得覆盖新选择。
-describe('模板详情加载竞态守卫（迭代 91 F-12）', () => {
-  it('AC-03：快速切换模板（首个慢响应）：字段表单与选中模板始终一致，无错位', async () => {
+describe('模板详情加载竞态守卫（迭代 91 F-12）', () => {  it('AC-03：快速切换模板（首个慢响应）：字段表单与选中模板始终一致，无错位', async () => {
     const PKG_B: TemplatePackage = {
       name: '模板B',
       group: '默认',
@@ -778,5 +778,72 @@ describe('模板详情加载竞态守卫（迭代 91 F-12）', () => {
     expect(screen.queryByDisplayValue('A-01')).toBeNull()
     // 字段标签仍是 B 的（无 A 的字段标签回流）
     expect(screen.getByText('库区B')).toBeTruthy()
+  })
+})
+
+// 迭代 85（#133 C-5）：作业进度区指向「作业历史」的纯文字指引改为可点击跳转（onOpenJobHistory → 切作业历史页，
+// 行可展开逐张 / 汇总明细）——无逐张明细说明与失败汇总提示两处文案均带跳转入口。
+describe('进度区「作业历史」指引可点击跳转（迭代 85 · #133 C-5）', () => {
+  it('无逐张明细（服务端形态 / Server 作业）：底部说明中「作业历史」可点击——onOpenJobHistory 回调触发一次', async () => {
+    const onOpenJobHistory = vi.fn()
+    // Server 作业视图：无 items（本用例默认单机模式下以 localApi 提交返回，形状等价——无 items 即无逐张明细）
+    mocks.local.submitJob.mockResolvedValue(DONE_JOB_SERVER)
+    mocks.local.getJob.mockResolvedValue(DONE_JOB_SERVER)
+    render(<Harness show onOpenJobHistory={onOpenJobHistory} />)
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
+
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    expect(await screen.findByText(/该作业无逐张明细/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '作业历史' }))
+    expect(onOpenJobHistory).toHaveBeenCalledTimes(1)
+  })
+
+  it('失败汇总提示（有 N 张打印失败、无逐张重试表格）：指引「作业历史」可点击跳转', async () => {
+    const onOpenJobHistory = vi.fn()
+    const failedNoItems: JobView = {
+      jobId: 'job-f-1',
+      requestId: 'r-f-1',
+      status: 'Failed',
+      totalItems: 2,
+      completedItems: 1,
+      failedItems: 1,
+      errorMessage: '打印机缺纸',
+    }
+    mocks.local.submitJob.mockResolvedValue(failedNoItems)
+    mocks.local.getJob.mockResolvedValue(failedNoItems)
+    render(<Harness show onOpenJobHistory={onOpenJobHistory} />)
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
+
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    expect(await screen.findByText(/有 1 张打印失败/)).toBeTruthy()
+    // 无 items + 本地本可重试 → 失败提示走指引分支（两处「作业历史」入口均在）
+    const links = screen.getAllByRole('button', { name: '作业历史' })
+    expect(links.length).toBe(2)
+    fireEvent.click(links[0])
+    expect(onOpenJobHistory).toHaveBeenCalledTimes(1)
+  })
+
+  it('本机直连作业（有逐张 items、可重试）：失败提示保持「下方列表逐张重试」，不渲染跳转入口', async () => {
+    const onOpenJobHistory = vi.fn()
+    const failedWithItems: JobView = {
+      jobId: 'job-f-2',
+      requestId: 'r-f-2',
+      status: 'Failed',
+      totalItems: 2,
+      completedItems: 1,
+      items: [
+        { index: 0, status: 'Completed' },
+        { index: 1, status: 'Failed', errorMessage: '打印机缺纸' },
+      ],
+    }
+    mocks.local.submitJob.mockResolvedValue(failedWithItems)
+    mocks.local.getJob.mockResolvedValue(failedWithItems)
+    render(<Harness show onOpenJobHistory={onOpenJobHistory} />)
+    await screen.findByDisplayValue('A-01', undefined, MOUNT_WAIT)
+
+    fireEvent.click(screen.getByRole('button', { name: /打印测试（单张）/ }))
+    expect(await screen.findByText(/可在下方列表中逐张重试/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '作业历史' })).toBeNull()
+    expect(onOpenJobHistory).not.toHaveBeenCalled()
   })
 })

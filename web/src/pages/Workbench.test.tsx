@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 // 迭代 45：工作台模板名搜索——子串匹配、大小写不敏感，与分组过滤叠加生效；清空恢复完整列表。
 // mock 覆盖组件树用到的全部 client 方法（含 AppContext 启动链）。
+// 迭代 85（#133 C-4）：卡片「打印」直达入口——每张卡片均有打印按钮、点击回调携带模板名；双击卡片仍进设计器。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { TemplateSummary } from '../lib/api/types'
 import { AppProvider } from '../state/AppContext'
 import { Workbench } from './Workbench'
@@ -35,10 +36,10 @@ const TEMPLATES: TemplateSummary[] = [
   { name: 'Shelf-Tag', group: '华南仓', updatedAt: '2026-09-03T10:00:00Z' },
 ]
 
-function renderWorkbench() {
+function renderWorkbench(handlers?: { onOpenPrint?: (name: string) => void }) {
   return render(
     <AppProvider>
-      <Workbench onOpenDesigner={() => {}} />
+      <Workbench onOpenDesigner={() => {}} onOpenPrint={handlers?.onOpenPrint ?? (() => {})} />
     </AppProvider>,
   )
 }
@@ -106,5 +107,49 @@ describe('工作台模板名搜索（迭代 45）', () => {
     fireEvent.change(screen.getByPlaceholderText('搜索模板名称'), { target: { value: '  shelf  ' } })
     await waitFor(() => expect(screen.queryByText('Carton-Label-A')).toBeNull())
     expect(screen.getByText('Shelf-Tag')).toBeTruthy()
+  })
+})
+
+// 迭代 85（#133 C-4，决议 1）：模板卡片「打印」直达——跳「数据与打印」页并预选该模板；双击卡片仍进设计器。
+describe('模板卡片打印直达（迭代 85 · #133 C-4）', () => {
+  /** 取指定模板名所在卡片的容器（.wb-card）。 */
+  function cardOf(name: string): HTMLElement {
+    return screen.getByText(name).closest('.wb-card') as HTMLElement
+  }
+
+  it('AC-01：每张卡片操作区均有「打印」按钮——点击回调携带该模板名（App 侧据此预选并跳数据与打印页）', async () => {
+    const onOpenPrint = vi.fn()
+    renderWorkbench({ onOpenPrint })
+    expect(await screen.findByText('Shelf-Tag')).toBeTruthy()
+
+    for (const name of ['Carton-Label-A', 'carton-label-b', 'Shelf-Tag']) {
+      const btn = within(cardOf(name)).getByRole('button', { name: '打印' })
+      expect((btn as HTMLButtonElement).disabled).toBe(false)
+      fireEvent.click(btn)
+    }
+    expect(onOpenPrint).toHaveBeenCalledTimes(3)
+    expect(onOpenPrint).toHaveBeenNthCalledWith(1, 'Carton-Label-A')
+    expect(onOpenPrint).toHaveBeenNthCalledWith(2, 'carton-label-b')
+    expect(onOpenPrint).toHaveBeenNthCalledWith(3, 'Shelf-Tag')
+  })
+
+  it('AC-01 不回归：双击卡片仍进设计器（编辑该模板），单击「打印」不触发设计器', async () => {
+    const onOpenDesigner = vi.fn()
+    const onOpenPrint = vi.fn()
+    render(
+      <AppProvider>
+        <Workbench onOpenDesigner={onOpenDesigner} onOpenPrint={onOpenPrint} />
+      </AppProvider>,
+    )
+    expect(await screen.findByText('Shelf-Tag')).toBeTruthy()
+
+    fireEvent.doubleClick(cardOf('Shelf-Tag'))
+    expect(onOpenDesigner).toHaveBeenCalledTimes(1)
+    expect(onOpenDesigner).toHaveBeenCalledWith({ kind: 'edit', name: 'Shelf-Tag' })
+
+    // 单击「打印」只走打印直达，不打开设计器
+    fireEvent.click(within(cardOf('Shelf-Tag')).getByRole('button', { name: '打印' }))
+    expect(onOpenPrint).toHaveBeenCalledWith('Shelf-Tag')
+    expect(onOpenDesigner).toHaveBeenCalledTimes(1)
   })
 })

@@ -2,6 +2,7 @@
 // 迭代 18 F6：作业历史页——服务端 / 单机降级列表、空态按模式文案、刷新、徽标区分。
 // mock 覆盖组件树用到的全部 client 方法（含 AppContext 启动链）。
 // 迭代 84（#132）：目标设备列设备名解析（AC-02）与编号收敛（AC-03）断言。
+// 迭代 85（#133 C-5，决议 2）：行展开明细——本机直连作业逐张结果（状态 / 失败原因）；服务端形态汇总 + 如实占位。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -254,6 +255,95 @@ describe('作业信息可读性（迭代 84 · #132）', () => {
     await waitFor(() => expect(mocks.clipboard.copyText).toHaveBeenCalledTimes(1))
     // 不抛错（状态栏反馈由 App 布局呈现，本测试树只断言不崩溃 + 列表仍在）
     expect(screen.getByText('job-aaa-')).toBeTruthy()
+  })
+})
+
+// 迭代 85（#133 C-5，决议 2）：作业历史行展开明细。
+describe('作业行展开明细（迭代 85 · #133 C-5）', () => {
+  /** 本机直连作业（WinHost 列表即返回逐张 items）：完成 2 / 失败 2（errorMessage 与 errorCode 回退两形态）。 */
+  const LOCAL_DETAIL_JOB: JobView = {
+    jobId: 'loc-eee-5',
+    requestId: 'req-eee-5',
+    status: 'Failed',
+    totalItems: 4,
+    completedItems: 2,
+    failedItems: 2,
+    errorMessage: '第 3 张发送失败',
+    createdAt: '2026-08-11T11:00:00Z',
+    printImageDir: 'C:\\print\\loc-eee-5',
+    printImageCount: 4,
+    items: [
+      { index: 0, status: 'Completed' },
+      { index: 1, status: 'Completed' },
+      { index: 2, status: 'Failed', errorMessage: '打印机离线，发送失败' },
+      { index: 3, status: 'Failed', errorCode: 'LF_IO_SEND_FAILED' },
+    ],
+  }
+
+  it('AC-02：本机直连作业展开行——逐张明细（每张状态 / 失败原因：errorMessage 优先、errorCode 回退），Log 出图目录附注', async () => {
+    // 单机降级（服务端不可达 → standalone）：列表走 localApi（本机历史，WinHost 返回逐张 items）
+    mocks.server.healthz.mockRejectedValue(new Error('down'))
+    mocks.local.getJobs.mockResolvedValue([LOCAL_DETAIL_JOB])
+    renderJobHistory()
+    expect(await screen.findByText('loc-eee-')).toBeTruthy()
+    // 展开前明细不可见
+    expect(screen.queryByText(/本机直接打印作业——逐张明细/)).toBeNull()
+
+    fireEvent.click(screen.getByTitle('展开明细'))
+    expect(await screen.findByText(/本机直接打印作业——逐张明细（共 4 张）/)).toBeTruthy()
+    // 逐张状态徽标（两张完成）与序号
+    expect(screen.getAllByText('已完成').length).toBe(2)
+    // 失败原因完整呈现：errorMessage 优先、errorCode 回退、双失败均无「未知错误」兜底
+    expect(screen.getByText('打印机离线，发送失败')).toBeTruthy()
+    expect(screen.getByText('LF_IO_SEND_FAILED')).toBeTruthy()
+    expect(screen.queryByText('未知错误')).toBeNull()
+    // Log 模拟打印出图目录附注（信息展示）
+    expect(screen.getByText(/模拟打印生成的图片保存在/)).toBeTruthy()
+    // 本机逐张作业不出服务端形态占位说明
+    expect(screen.queryByText(/逐张明细仅本机直接打印的作业提供/)).toBeNull()
+  })
+
+  it('AC-03：服务端形态作业展开行——状态 / 完成失败 / 失败原因完整呈现＋决议 2 如实占位；再点收起', async () => {
+    renderJobHistory() // 默认服务端模式（JOBS 均无 items）
+    expect(await screen.findByText('已完成')).toBeTruthy()
+
+    // 展开 job-bbb（Failed，失败原因「打印机缺纸」）
+    fireEvent.click(screen.getAllByTitle('展开明细')[1])
+    expect(await screen.findByText('逐张明细仅本机直接打印的作业提供，服务端下发作业显示汇总。')).toBeTruthy()
+    // 汇总完整呈现：状态徽标 + 完成失败张数 + 失败原因（主行与明细两处）
+    expect(screen.getAllByText('打印机缺纸').length).toBe(2)
+    expect(screen.getByText(/已完成 1 \/ 2 张/)).toBeTruthy()
+    expect(screen.getByText(/（失败 1 张）/)).toBeTruthy()
+
+    // 收起：占位说明与汇总随之消失，列表行仍在
+    fireEvent.click(screen.getAllByTitle('收起明细')[0])
+    await waitFor(() => expect(screen.queryByText(/逐张明细仅本机直接打印的作业提供/)).toBeNull())
+    expect(screen.getAllByText('打印机缺纸').length).toBe(1) // 仅剩主行列
+  })
+
+  it('点击行内非按钮区域（状态徽标单元格）同样切换展开；点击作业编号复制不触发展开', async () => {
+    renderJobHistory()
+    expect(await screen.findByText('已过期')).toBeTruthy()
+
+    // 点行内徽标 → 行 onClick 展开（job-ddd，服务端形态）
+    fireEvent.click(screen.getByText('已过期'))
+    expect(await screen.findByText(/逐张明细仅本机直接打印的作业提供/)).toBeTruthy()
+
+    // 收起后点「作业编号」复制按钮：stopPropagation，不触发展开
+    fireEvent.click(screen.getAllByTitle('收起明细')[0])
+    await waitFor(() => expect(screen.queryByText(/逐张明细仅本机直接打印的作业提供/)).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: /job-aaa-/ }))
+    await waitFor(() => expect(mocks.clipboard.copyText).toHaveBeenCalledWith('job-aaa-1'))
+    expect(screen.queryByText(/逐张明细仅本机直接打印的作业提供/)).toBeNull()
+  })
+
+  it('无错误信息的服务端作业展开：失败原因显示「无」占位，不误导', async () => {
+    mocks.server.getJobs.mockResolvedValue([{ ...JOBS[0] }]) // job-aaa：Completed，无 errorMessage
+    renderJobHistory()
+    expect(await screen.findByText('已完成')).toBeTruthy()
+    fireEvent.click(screen.getByTitle('展开明细'))
+    expect(await screen.findByText(/逐张明细仅本机直接打印的作业提供/)).toBeTruthy()
+    expect(screen.getByText(/无（该作业未上报错误信息）/)).toBeTruthy()
   })
 })
 

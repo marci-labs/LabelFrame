@@ -97,6 +97,13 @@ function Shell() {
     setTab(id)
   }
 
+  // 迭代 85（#133 C-4，决议 1）：工作台卡片「打印」直达——先把该模板写入打印草稿（与手动在下拉选择同一入口，
+  // 字段值 / 调试开关等草稿行为一致），再切到「数据与打印」页；两步内可开始填数据打印。
+  const openPrintFromTemplate = (name: string) => {
+    app.setDraftSelected(name)
+    switchTab('data')
+  }
+
   return (
     <div className="app">
       <div className="app-body">
@@ -136,12 +143,13 @@ function Shell() {
         </nav>
 
         <main className="main">
-          {tab === 'workbench' && <Workbench onOpenDesigner={openDesigner} />}
+          {tab === 'workbench' && <Workbench onOpenDesigner={openDesigner} onOpenPrint={openPrintFromTemplate} />}
           {tab === 'designer' && designerReq && (
             <Designer key={designerReq.name ?? 'new'} request={designerReq} onClose={closeDesigner} registerLeaveGuard={registerDesignerLeave} />
           )}
           {tab === 'designer' && !designerReq && <DesignerEmpty onNew={() => openDesigner({ kind: 'new' })} />}
-          {tab === 'data' && <DataPrint />}
+          {/* 迭代 85（#133 C-5）：数据与打印进度区的「作业历史」指引可点击跳转（经 switchTab 统一入口） */}
+          {tab === 'data' && <DataPrint onOpenJobHistory={() => switchTab('jobs')} />}
           {tab === 'devices' && <Devices />}
           {tab === 'jobs' && <JobHistory />}
           {tab === 'packages' && <DownloadCenter />}
