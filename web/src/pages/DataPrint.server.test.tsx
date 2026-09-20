@@ -106,7 +106,7 @@ const DEFAULT_TARGET_KEY = 'labelframe.defaultTargetDeviceId'
 function Harness() {
   return (
     <AppProvider>
-      <DataPrint />
+      <DataPrint onOpenJobHistory={() => {}} />
     </AppProvider>
   )
 }
@@ -236,8 +236,9 @@ describe('DataPrint server 构建：隐藏逐张失败重试表格（G4）', () 
     // G4：server 构建强制隐藏逐张表格 / 重试按钮
     expect(screen.queryByRole('button', { name: /重试/ })).toBeNull()
     expect(screen.queryByText(/可在下方列表中逐张重试/)).toBeNull()
-    // 失败原因提示走汇总文案
-    expect(screen.getByText(/可在「作业历史」中查看失败原因/)).toBeTruthy()
+    // 失败原因提示走汇总文案（迭代 85 · #133：指引改为可点击「作业历史」跳转入口——文本经按钮分段）
+    expect(screen.getByText(/可在「」中查看失败原因/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: '作业历史' })).toBeTruthy()
   })
 })
 

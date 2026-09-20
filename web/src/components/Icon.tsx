@@ -8,7 +8,7 @@ export type IconName =
   | 'retry' | 'test' | 'link' | 'printer' | 'clear' | 'layers'
   | 'check' | 'x' | 'search' | 'file' | 'grid' | 'zoom' | 'save'
   | 'back' | 'preview' | 'copy' | 'clipboard' | 'alert' | 'keyboard'
-  | 'puzzle'
+  | 'puzzle' | 'chevron'
 
 const PATHS: Record<IconName, React.ReactNode> = {
   workbench: (
@@ -125,6 +125,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M20 10h1.5a1.5 1.5 0 0 1 0 3H20" />
     </>
   ),
+  // 迭代 85（#133）：下箭头（作业历史行展开 / 收起，展开时经 transform 旋转 180°）
+  chevron: <path d="M6 9l6 6 6-6" />,
 }
 
 interface IconProps extends SVGProps<SVGSVGElement> {

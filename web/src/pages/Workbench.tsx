@@ -4,6 +4,8 @@
 // 迭代 46：预览缩略图（列表加载后按需拉取全部预览，会话内缓存随列表刷新失效；点击居中灯箱放大）。
 // 迭代 48：整体信息架构重构（用户定稿方案 A）——表格形态收敛为卡片网格（缩略图主视觉），
 //   自适应多列卡片，名称 / 分组 / 日期 / 操作收于卡片下部；既有能力全部保留。
+// 迭代 85（#133 C-4，决议 1）：卡片操作区新增「打印」——经 onOpenPrint 跳「数据与打印」页并预选该模板
+//   （字段草稿行为与手动选择一致）；双击卡片仍进设计器（现状不变）。
 
 import { useCallback, useEffect, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
@@ -48,7 +50,14 @@ function PreviewThumb({
   )
 }
 
-export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRequest) => void }) {
+export function Workbench({
+  onOpenDesigner,
+  onOpenPrint,
+}: {
+  onOpenDesigner: (req: DesignerRequest) => void
+  /** 迭代 85（#133 C-4）：卡片「打印」直达——跳「数据与打印」页并预选该模板（预选写草稿由 App 侧统一完成）。 */
+  onOpenPrint: (name: string) => void
+}) {
   const app = useApp()
   const { serverMode } = app
   /** 业务 API 跟随模式（unknown 时不拉取，待探测完成）。 */
@@ -253,6 +262,15 @@ export function Workbench({ onOpenDesigner }: { onOpenDesigner: (req: DesignerRe
                   </div>
                 </div>
                 <div className="wb-card-foot">
+                  {/* 迭代 85（#133 C-4，决议 1）：「打印」为卡片主操作（主色）——两步内到达打印页；双击卡片进设计器维持不变 */}
+                  <button
+                    className="btn sm primary"
+                    onClick={() => onOpenPrint(t.name)}
+                    title="去「数据与打印」页填写数据并打印此模板"
+                  >
+                    <Icon name="printer" size={12} />
+                    打印
+                  </button>
                   <button className="btn sm" onClick={() => onOpenDesigner({ kind: 'edit', name: t.name })}>
                     <Icon name="edit" size={12} />
                     编辑

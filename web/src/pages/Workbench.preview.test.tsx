@@ -51,7 +51,7 @@ const png = () => new Blob(['png-bytes'], { type: 'image/png' })
 function renderWorkbench() {
   return render(
     <AppProvider>
-      <Workbench onOpenDesigner={() => {}} />
+      <Workbench onOpenDesigner={() => {}} onOpenPrint={() => {}} />
     </AppProvider>,
   )
 }
