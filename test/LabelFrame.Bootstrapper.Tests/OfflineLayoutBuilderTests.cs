@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using LabelFrame.Bootstrapper.Manifest;
 using LabelFrame.Bootstrapper.OfflineLayout;
+using LabelFrame.Bootstrapper.Prerequisites;
 using Xunit;
 
 namespace LabelFrame.Bootstrapper.Tests;
@@ -103,7 +104,7 @@ public sealed class OfflineLayoutBuilderTests : IDisposable
         using var client = new HttpClient(http);
 
         var result = await OfflineLayoutBuilder.BuildAsync(
-            manifest, json, "{\"labelframeVersion\":\"0.27.0\"}", target, bootstrapper, client);
+            manifest, json, "{\"labelframeVersion\":\"0.27.0\"}", target, bootstrapper, client, authenticodeVerifier: AcceptAllVerifier());
 
         Assert.Equal(2, result.ComponentCount);
         Assert.Equal(2, result.DownloadedCount);
@@ -130,7 +131,7 @@ public sealed class OfflineLayoutBuilderTests : IDisposable
         });
 
         using var client = new HttpClient(http);
-        var result = await OfflineLayoutBuilder.BuildAsync(manifest, json, null, target, null, client);
+        var result = await OfflineLayoutBuilder.BuildAsync(manifest, json, null, target, null, client, authenticodeVerifier: AcceptAllVerifier());
 
         Assert.Equal(2, result.DownloadedCount);
         Assert.Equal(serverBytes, await File.ReadAllBytesAsync(Path.Combine(target, "LabelFrame-Server-0.27.0.msi")));
@@ -152,7 +153,7 @@ public sealed class OfflineLayoutBuilderTests : IDisposable
 
         using var client = new HttpClient(http);
         var ex = await Assert.ThrowsAsync<OfflineLayoutException>(
-            () => OfflineLayoutBuilder.BuildAsync(manifest, json, null, target, null, client));
+            () => OfflineLayoutBuilder.BuildAsync(manifest, json, null, target, null, client, authenticodeVerifier: AcceptAllVerifier()));
 
         Assert.Contains("server-msi", ex.Message);
         Assert.False(File.Exists(Path.Combine(target, "LabelFrame-Server-0.27.0.msi")));
@@ -176,7 +177,7 @@ public sealed class OfflineLayoutBuilderTests : IDisposable
         });
 
         using var client = new HttpClient(http);
-        var result = await OfflineLayoutBuilder.BuildAsync(manifest, json, null, target, null, client);
+        var result = await OfflineLayoutBuilder.BuildAsync(manifest, json, null, target, null, client, authenticodeVerifier: AcceptAllVerifier());
 
         Assert.Equal(1, result.DownloadedCount);
         Assert.Equal(1, result.ReusedCount);
@@ -198,7 +199,7 @@ public sealed class OfflineLayoutBuilderTests : IDisposable
         });
 
         using var client = new HttpClient(http);
-        await OfflineLayoutBuilder.BuildAsync(manifest, json, null, target, null, client);
+        await OfflineLayoutBuilder.BuildAsync(manifest, json, null, target, null, client, authenticodeVerifier: AcceptAllVerifier());
 
         Assert.Equal(serverBytes, await File.ReadAllBytesAsync(Path.Combine(target, "LabelFrame-Server-0.27.0.msi")));
     }
@@ -215,7 +216,7 @@ public sealed class OfflineLayoutBuilderTests : IDisposable
 
         using var client = new HttpClient(http);
         await Assert.ThrowsAsync<OfflineLayoutException>(
-            () => OfflineLayoutBuilder.BuildAsync(manifest, json, null, Path.Combine(_root, "layout"), Path.Combine(_root, "missing.exe"), client));
+            () => OfflineLayoutBuilder.BuildAsync(manifest, json, null, Path.Combine(_root, "layout"), Path.Combine(_root, "missing.exe"), client, authenticodeVerifier: AcceptAllVerifier()));
     }
 
     [Fact]
@@ -231,12 +232,99 @@ public sealed class OfflineLayoutBuilderTests : IDisposable
         var progress = new ProgressCollector(phases);
 
         using var client = new HttpClient(http);
-        await OfflineLayoutBuilder.BuildAsync(manifest, json, null, Path.Combine(_root, "layout"), null, client, progress);
+        await OfflineLayoutBuilder.BuildAsync(manifest, json, null, Path.Combine(_root, "layout"), null, client, progress, authenticodeVerifier: AcceptAllVerifier());
 
         Assert.Contains(OfflineLayoutPhase.Downloading, phases);
         Assert.Contains(OfflineLayoutPhase.Verifying, phases);
         Assert.Contains(OfflineLayoutPhase.Finalizing, phases);
         Assert.Equal(OfflineLayoutPhase.Completed, phases[^1]);
+    }
+
+    [Fact]
+    public async Task Evergreen_entry_verifies_by_publisher_instead_of_stale_hash_and_reuses_existing_file()
+    {
+        // 决策 #151：evergreen 条目（version=evergreen）按微软 Authenticode 发布者验签——manifest sha256 已因微软轮换
+        // 「过期」（与在位文件哈希不符）但签名有效 → 仍然复用零下载（rotation-immune 的生成期锚点）
+        var (manifest, json, serverBytes, _) = BuildManifest();
+        var target = Path.Combine(_root, "layout");
+        Directory.CreateDirectory(target);
+        var rotatedBytes = "webview2-bootstrapper-ROTATED-BY-MICROSOFT"u8.ToArray();
+        await File.WriteAllBytesAsync(Path.Combine(target, "MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe"), rotatedBytes);
+        var http = new RoutingHttpMessageHandler(new Dictionary<string, Func<byte[]>>
+        {
+            ["https://main.example/LabelFrame-Server-0.27.0.msi"] = () => serverBytes,
+            ["https://go.example/fwlink/p/?LinkId=2124703"] = () => "should-not-be-requested"u8.ToArray(),
+        });
+
+        using var client = new HttpClient(http);
+        var result = await OfflineLayoutBuilder.BuildAsync(
+            manifest, json, null, target, null, client, authenticodeVerifier: AcceptAllVerifier());
+
+        Assert.Equal(1, result.DownloadedCount);
+        Assert.Equal(1, result.ReusedCount); // webview2 复用（签名有效即接受，无视清单哈希漂移）
+        Assert.DoesNotContain(http.Requests, request => request.Url.Contains("fwlink", StringComparison.Ordinal));
+        Assert.Equal(rotatedBytes, await File.ReadAllBytesAsync(Path.Combine(target, "MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe")));
+    }
+
+    [Fact]
+    public async Task Evergreen_entry_with_invalid_signature_on_all_sources_fails_closed()
+    {
+        // fail-closed：evergreen 源验签全部拒绝（签名无效 / 发布者不符）→ 绝不落位（不装不明文件）
+        var (manifest, json, serverBytes, webView2Bytes) = BuildManifest();
+        var target = Path.Combine(_root, "layout");
+        var http = new RoutingHttpMessageHandler(new Dictionary<string, Func<byte[]>>
+        {
+            ["https://main.example/LabelFrame-Server-0.27.0.msi"] = () => serverBytes,
+            ["https://go.example/fwlink/p/?LinkId=2124703"] = () => webView2Bytes,
+        });
+
+        using var client = new HttpClient(http);
+        var ex = await Assert.ThrowsAsync<OfflineLayoutException>(
+            () => OfflineLayoutBuilder.BuildAsync(
+                manifest, json, null, target, null, client,
+                authenticodeVerifier: new FakeAuthenticodeVerifier(_ => AuthenticodeVerificationResult.Invalid(
+                    unchecked((int)0x80091007), "文件哈希与签名不符（文件可能被改动）。"))));
+
+        Assert.Contains("runtime-webview2", ex.Message);
+        Assert.Contains("验签拒绝", ex.Message);
+        Assert.False(File.Exists(Path.Combine(target, "MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe")));
+    }
+
+    [Fact]
+    public async Task Evergreen_entry_with_wrong_publisher_is_rejected()
+    {
+        // 发布者双条件：签名有效但签名者非 Microsoft Corporation → 拒绝落位
+        var (manifest, json, serverBytes, webView2Bytes) = BuildManifest();
+        var target = Path.Combine(_root, "layout");
+        var http = new RoutingHttpMessageHandler(new Dictionary<string, Func<byte[]>>
+        {
+            ["https://main.example/LabelFrame-Server-0.27.0.msi"] = () => serverBytes,
+            ["https://go.example/fwlink/p/?LinkId=2124703"] = () => webView2Bytes,
+        });
+
+        using var client = new HttpClient(http);
+        var ex = await Assert.ThrowsAsync<OfflineLayoutException>(
+            () => OfflineLayoutBuilder.BuildAsync(
+                manifest, json, null, target, null, client,
+                authenticodeVerifier: new FakeAuthenticodeVerifier(_ =>
+                    new AuthenticodeVerificationResult(true, "CN=Contoso Ltd, O=Contoso, C=US", 0, null))));
+
+        Assert.Contains("发布者不符", ex.Message);
+    }
+
+    private static AuthenticodeVerificationResult MicrosoftSignedResult() => new(
+        true, "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US", 0, null);
+
+    /// <summary>测试用「全部通过」验签器（evergreen 条目模拟微软签名有效；常规条目不进验签路径）。</summary>
+    private static FakeAuthenticodeVerifier AcceptAllVerifier() => new(_ => MicrosoftSignedResult());
+
+    private sealed class FakeAuthenticodeVerifier : IAuthenticodeVerifier
+    {
+        private readonly Func<string, AuthenticodeVerificationResult> _behavior;
+
+        public FakeAuthenticodeVerifier(Func<string, AuthenticodeVerificationResult> behavior) => _behavior = behavior;
+
+        public AuthenticodeVerificationResult Verify(string filePath) => _behavior(filePath);
     }
 
     private sealed class ProgressCollector(List<OfflineLayoutPhase> phases) : IProgress<OfflineLayoutProgress>

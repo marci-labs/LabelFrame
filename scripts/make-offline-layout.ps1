@@ -3,8 +3,11 @@
 #       拷贝（U 盘 / 内网共享）分发后，目标机运行目录中的引导 EXE 即无外网完成首装（VS layout 式）。
 # 语义与引导程序 --layout 模式（核心库 OfflineLayoutBuilder）一致：
 #   - 组件文件名 = urls[0] 路径末段（须含扩展名）；查询型直链按固定名兜底（runtime-webview2）；
-#   - 逐组件按 urls 顺序下载，sha256 与 manifest 逐字节一致才落位（不符换下一源，全源失败 exit 1，fail-closed）；
-#   - 重复生成幂等（已存在且哈希一致跳过下载，不符重新下载）；manifest / latest 原样字节落盘。
+#   - 逐组件按 urls 顺序下载，按策略校验一致才落位（不符换下一源，全源失败 exit 1，fail-closed）——
+#     常规条目 = sha256 与 manifest 逐字节一致；evergreen 条目（version = evergreen，决策 #151/#173）=
+#     微软 Authenticode 发布者验签（Get-AuthenticodeSignature 有效 + 签名者 CN=Microsoft Corporation），
+#     微软轮换直链文件后重新生成不再因哈希漂移失败；
+#   - 重复生成幂等（已存在且校验一致跳过下载，不符重新下载）；manifest / latest 原样字节落盘。
 # 引导 EXE 来源（迭代 68 起随 Release 发布，决策 #132）：-BootstrapperPath 指定本地产物 >
 #   本地 artifacts\LabelFrame-Bootstrapper-<版本>.exe > -BootstrapperUrl（默认当版 Release 地址）下载；
 #   三者均不可得即失败（布局目录必须内含引导 EXE，fail-closed）。EXE 无 manifest 哈希条目（它本身即
@@ -131,8 +134,35 @@ if (-not $BootstrapperPath) {
     }
 }
 
-# ---- 4) 逐组件获取（urls 顺序回退 + sha256 fail-closed + 幂等复用）----
+# ---- 4) 逐组件获取（urls 顺序回退 + 按策略校验 fail-closed + 幂等复用；决策 #151：evergreen 条目改发布者验签）----
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+
+$expectedPublisher = 'Microsoft Corporation'
+
+function Test-EvergreenComponent([object]$Component) {
+    # 与核心库 OfflineLayoutBuilder 同判定：version = evergreen（恒变直链无摘要可钉）
+    return ($Component.version -is [string]) -and ($Component.version -eq 'evergreen')
+}
+
+function Verify-ComponentFile([string]$Path, [object]$Component) {
+    # 返回 $null = 校验通过；否则返回中文失败原因（与核心库 VerifyComponentByPolicy 同语义）
+    if (Test-EvergreenComponent $Component) {
+        $signature = Get-AuthenticodeSignature -LiteralPath $Path
+        if ($signature.Status -ne 'Valid') {
+            return "验签拒绝：Authenticode 签名无效（$($signature.Status)）"
+        }
+        $subject = $signature.SignerCertificate.Subject
+        if ($subject -notmatch '(^|,\s*)CN=([^,]+)') -or ($Matches[2].Trim() -ne $expectedPublisher)) {
+            return "发布者不符：期望 CN=$expectedPublisher，实际主体 = $subject"
+        }
+        return $null
+    }
+    $actual = Get-Sha256 $Path
+    if ($actual -ne $Component.sha256) {
+        return "哈希不符（manifest=$($Component.sha256.Substring(0,12))… 实测=$($actual.Substring(0,12))…）"
+    }
+    return $null
+}
 
 $downloaded = 0
 $reused = 0
@@ -144,13 +174,13 @@ foreach ($component in @($manifest.components)) {
 
     $targetPath = Join-Path $OutputDir $fileName
     if (Test-Path -LiteralPath $targetPath) {
-        $existing = Get-Sha256 $targetPath
-        if ($existing -eq $component.sha256) {
-            Write-Host "复用（哈希一致）：[$($component.id)] $fileName"
+        $verifyExisting = Verify-ComponentFile $targetPath $component
+        if (-not $verifyExisting) {
+            Write-Host "复用（校验一致）：[$($component.id)] $fileName"
             $reused++
             continue
         }
-        Write-Host "已存在但哈希不符（篡改 / 旧版残留），重新下载：[$($component.id)] $fileName"
+        Write-Host "已存在但校验不符（篡改 / 旧版残留），重新下载：[$($component.id)] $fileName（$verifyExisting）"
     }
 
     $tempPath = "$targetPath.download"
@@ -163,20 +193,21 @@ foreach ($component in @($manifest.components)) {
             $failures += "$url → $($_.Exception.Message)"
             continue
         }
-        $actual = Get-Sha256 $tempPath
-        if ($actual -ne $component.sha256) {
-            $failures += "$url → 哈希不符（manifest=$($component.sha256.Substring(0,12))… 实测=$($actual.Substring(0,12))…）"
+        $verifyFailure = Verify-ComponentFile $tempPath $component
+        if ($verifyFailure) {
+            $failures += "$url → $verifyFailure"
             Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
             continue
         }
         if (Test-Path -LiteralPath $targetPath) { Remove-Item -LiteralPath $targetPath -Force }
         Move-Item -LiteralPath $tempPath -Destination $targetPath
-        Write-Host "下载完成（哈希校验通过）：[$($component.id)] $fileName ← $url"
+        Write-Host "下载完成（校验通过）：[$($component.id)] $fileName ← $url"
         $acquired = $true
         break
     }
     if (-not $acquired) {
-        Write-Failure "组件 $($component.id) 全部 $(@($component.urls).Count) 个源获取失败（sha256 与 manifest 一致才落位，fail-closed）：$($failures -join '；')"
+        $policy = if (Test-EvergreenComponent $component) { '微软 Authenticode 发布者验签通过才落位' } else { 'sha256 与 manifest 一致才落位' }
+        Write-Failure "组件 $($component.id) 全部 $(@($component.urls).Count) 个源获取失败（$policy，fail-closed）：$($failures -join '；')"
     }
     $downloaded++
 }
