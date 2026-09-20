@@ -77,6 +77,8 @@ internal sealed class CompletePage : UserControl, IWizardPage
         Controls.Add(_restartLabel);
     }
 
+    public bool ShouldSkip => false;
+
     public void OnEnter()
     {
         var plan = _session.BuildPlan();
@@ -107,7 +109,9 @@ internal sealed class CompletePage : UserControl, IWizardPage
         var steps = new List<string>();
         if (installedClient)
         {
-            steps.Add("打印客户端可从开始菜单或托盘启动；首次使用在「设置」页确认服务端地址。");
+            steps.Add(_session.ServerUrl is { } url
+                ? $"打印客户端可从开始菜单或托盘启动；已按向导连接服务端 {url}，如需更换可在客户端「设置」页修改。"
+                : "打印客户端可从开始菜单或托盘启动。");
         }
 
         if (installedWebUi)

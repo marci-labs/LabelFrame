@@ -2,17 +2,19 @@ using LabelFrame.Bootstrapper.Wizard;
 
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
-/// <summary>向导壳：分步导航（欢迎 → 部署形态 → 打印机品牌 → 管理界面 → 确认 → 安装进度 → 完成 / 失败报告）。</summary>
+/// <summary>向导壳：分步导航（就绪 →（角色·高级）→ 打印机 → 服务端地址 →（管理界面·服务端角色）→ 确认 → 安装进度 → 完成 / 失败报告；不适用页自动越过，迭代 95 / 决策 #151）。</summary>
 /// <remarks>
 /// 导航索引 / 惰性装配 / 越界防御由 <see cref="WizardNavigator{TPage}"/> 承担（迭代 60 返修，可单测）；
 /// 本类只做 WinForms 呈现与按钮接线——<see cref="NavigateTo"/> 为<b>绝对</b>页索引（原增量 Navigate(delta)
 /// 的 Navigate(0) 会被越界守卫静默吞掉，即验收回流缺陷，见 Issue #53）。
+/// 两层问卷（#151）：<see cref="NavigateTo"/> 先以 <see cref="IWizardPage.ShouldSkip"/> 越过不适用页
+/// （基础模式角色页 / 服务端角色打印机与地址页 / 客户端角色管理界面页），前进向后找、后退向前找。
 /// 确认页「下一步」语义 = 开始安装（进入进度页由进度页驱动 <c>Engine.Apply</c>，决策 #124）；
 /// 执行期间「上一步 / 取消」禁用（中断由引擎 Quit 承担，不自造取消语义）。
 /// </remarks>
 internal sealed class WizardForm : Form
 {
-    private const int ProgressPageIndex = 5;
+    private const int ProgressPageIndex = 6;
 
     private readonly WizardSession _session;
     private readonly LabelFrameBootstrapperBa _ba;
@@ -38,11 +40,12 @@ internal sealed class WizardForm : Form
 
         _navigator = new WizardNavigator<IWizardPage>(
         [
-            () => new WelcomePage(_session, RequestNext),
-            () => new TopologyPage(_session),
+            () => new ReadyPage(_session, RequestNext),
+            () => new RolePage(_session),
             () => new BrandPage(_session),
+            () => new ServerAddressPage(_session),
             () => new ManagementUiPage(_session),
-            () => new ConfirmPage(_session, _ba),
+            () => new ConfirmPage(_session, _ba, ReturnToSource),
             () => new ProgressPage(_session, _ba, this),
             () => new CompletePage(_session, _ba),
         ]);
@@ -63,7 +66,7 @@ internal sealed class WizardForm : Form
         _backButton.Text = "上一步(&B)";
         _backButton.AutoSize = true;
         _backButton.Location = new Point(16, 10);
-        _backButton.Click += (_, _) => NavigateTo(_navigator.CurrentIndex - 1);
+        _backButton.Click += (_, _) => NavigateTo(_navigator.CurrentIndex - 1, forward: false);
 
         _cancelButton.Text = "取消";
         _cancelButton.AutoSize = true;
@@ -99,7 +102,7 @@ internal sealed class WizardForm : Form
     /// <summary>是否处于安装执行中（进度页运行期）：禁用关闭与导航。</summary>
     internal bool InstallInProgress { get; private set; }
 
-    /// <summary>欢迎页加载清单成功后自动进入下一页（避免连点两次）。</summary>
+    /// <summary>就绪页加载清单成功后自动进入下一页（避免连点两次）。</summary>
     private void RequestNext()
     {
         if (!_navigator.IsStarted)
@@ -126,12 +129,6 @@ internal sealed class WizardForm : Form
             return;
         }
 
-        if (_navigator.CurrentIndex == ProgressPageIndex - 1)
-        {
-            NavigateTo(ProgressPageIndex);
-            return;
-        }
-
         NavigateTo(_navigator.CurrentIndex + 1);
     }
 
@@ -154,9 +151,17 @@ internal sealed class WizardForm : Form
         }
     }
 
-    /// <summary>导航到<b>绝对</b>页索引（0 = 首页）；越界 / 非法索引静默拒绝（保持当前页，状态机负责防御）。</summary>
-    private void NavigateTo(int pageIndex)
+    /// <summary>
+    /// 导航到<b>绝对</b>页索引（0 = 首页）；先按 <see cref="IWizardPage.ShouldSkip"/> 越过不适用页
+    /// （前进向后找、后退向前找，#151 两层问卷），越界 / 非法索引静默拒绝（保持当前页，状态机负责防御）。
+    /// </summary>
+    private void NavigateTo(int pageIndex, bool forward = true)
     {
+        while (pageIndex >= 0 && pageIndex < _navigator.PageCount && _navigator.Peek(pageIndex).ShouldSkip)
+        {
+            pageIndex += forward ? 1 : -1;
+        }
+
         if (!_navigator.TryNavigateTo(pageIndex))
         {
             return;
@@ -190,10 +195,28 @@ internal sealed class WizardForm : Form
     /// <summary>进度页 → 完成页（Apply 成功后由进度页调用）。</summary>
     internal void NavigateToComplete() => NavigateTo(_navigator.PageCount - 1);
 
+    /// <summary>确认页明细区「更改」→ 回就绪页并展开手动来源区（高级路径：覆写清单来源后重载）。</summary>
+    private void ReturnToSource()
+    {
+        if (_navigator.Peek(0) is ReadyPage ready)
+        {
+            ready.ExpandManualSource();
+        }
+
+        NavigateTo(0, forward: false);
+    }
+
+    /// <summary>步骤指示（语义名而非序号：两层问卷下适用页随角色变化，序号会跳号）。</summary>
     private string StepLabel(int pageIndex) => pageIndex switch
     {
+        0 => "准备",
+        1 => "选择用途",
+        2 => "选择打印机",
+        3 => "服务端地址",
+        4 => "管理界面",
+        5 => "确认安装",
         ProgressPageIndex => "正在安装…",
         _ when pageIndex == _navigator.PageCount - 1 => "安装完成",
-        _ => $"步骤 {pageIndex + 1} / {_navigator.PageCount}",
+        _ => string.Empty,
     };
 }

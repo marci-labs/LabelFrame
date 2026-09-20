@@ -26,12 +26,9 @@ public sealed class TopologyResolver : ITopologyResolver
         }
 #endif
 
-        // server-docker：无下载组件（镜像完整性由 registry digest 机制保证，§6.2）——空集合 + compose 产物描述
-        if (preset == TopologyPreset.ServerDocker)
-        {
-            return new TopologyPlan(preset, [], 0, InstallTargets.DockerComposeGuidance(options.IncludeWebUi));
-        }
-
+        // server-docker / server-linux 已移出问卷（迭代 95 / 决策 #151）：Docker = Release compose 指引、
+        // Linux = install.sh（#134）；本解析器只服务问卷三角色，manifest 中的 server-docker / server-linux
+        // topologies 标记保留（install.sh 消费），不再有对应枚举值。
         var topologyId = preset.ToManifestId();
         var selected = new Dictionary<string, ManifestComponent>(StringComparer.Ordinal);
         foreach (var component in manifest.Components)
@@ -71,7 +68,7 @@ public sealed class TopologyResolver : ITopologyResolver
             .Select(component => new PlannedComponent(component, InstallTargets.Describe(component, preset)))
             .ToList();
 
-        return new TopologyPlan(preset, planned, planned.Sum(item => item.Component.SizeBytes), null);
+        return new TopologyPlan(preset, planned, planned.Sum(item => item.Component.SizeBytes));
     }
 
     /// <summary>品牌插件条目判定（id 前缀 plugin-；品牌 → 组件映射语义由 #56 完整化）。</summary>

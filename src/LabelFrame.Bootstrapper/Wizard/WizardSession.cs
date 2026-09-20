@@ -7,7 +7,7 @@ using LabelFrame.Bootstrapper.Upgrade;
 
 namespace LabelFrame.Bootstrapper.Wizard;
 
-/// <summary>问卷会话（UI 无关的核心状态机，BA 页面复用）：manifest 来源 → 已加载清单 → 本机已装探测与升级评估 → 预设 / 品牌多选 / 管理界面开关 → 组件集合。</summary>
+/// <summary>问卷会话（UI 无关的核心状态机，BA 页面复用）：manifest 来源 → 已加载清单 → 本机已装探测与升级评估 → 本机角色（基础 / 高级模式，#151）/ 品牌多选 / 服务端地址 / 管理界面开关 → 组件集合。</summary>
 /// <remarks>
 /// 问卷只读契约（Issue #53 AC-03、DESIGN §6.3，决策 #124 修订执行边界）：本类没有任何下载、写入或系统改动方法——
 /// 问卷阶段全程只读（清单获取 + 已装打印机名枚举 + 本机已装版本探测（§6.11：MSI 注册表 / 落位目录 manifest / 运行时探测，均只读））；
@@ -24,19 +24,22 @@ public sealed class WizardSession
     private readonly LocalInstallProbe _localInstallProbe;
     private readonly Func<RuntimeProbeResult>? _runtimeProbe;
     private readonly HttpClient? _http;
+    private readonly Func<string?> _existingServerUrlProbe;
 
     public WizardSession(
         ITopologyResolver? resolver = null,
         Func<IReadOnlyList<string>>? installedPrinterNames = null,
         LocalInstallProbe? localInstallProbe = null,
         Func<RuntimeProbeResult>? runtimeProbe = null,
-        HttpClient? http = null)
+        HttpClient? http = null,
+        Func<string?>? existingServerUrl = null)
     {
         _resolver = resolver ?? new TopologyResolver();
         _installedPrinterNames = installedPrinterNames ?? InstalledPrinters.GetNames;
         _localInstallProbe = localInstallProbe ?? new LocalInstallProbe();
         _runtimeProbe = runtimeProbe;
         _http = http;
+        _existingServerUrlProbe = existingServerUrl ?? (() => new ServerUrlStore().Load());
     }
 
     /// <summary>清单来源：本地路径或 URL（默认稳定通道；布局目录场景 BA 启动时改写为邻接本地清单，决策 #135）。</summary>
@@ -60,8 +63,17 @@ public sealed class WizardSession
     /// <summary>升级评估（清单加载成功后按 §6.11 组件级口径计算；呈现由页面过滤——欢迎页全清单摘要 / 确认页按拓扑计划）。</summary>
     public UpgradeAssessment? Assessment { get; private set; }
 
-    /// <summary>已选拓扑预设（问卷第 2 步）。</summary>
+    /// <summary>已选本机角色（问卷角色页；基础模式由就绪页默认置 <see cref="TopologyPreset.Client"/>，决策 #151）。</summary>
     public TopologyPreset? Preset { get; set; }
+
+    /// <summary>是否进入高级模式（就绪页「高级选项」显式入口，D3）：置位后问卷出现角色页与明细展开，决策 #151 ⑤。</summary>
+    public bool AdvancedMode { get; set; }
+
+    /// <summary>问卷采集的服务端地址原始输入（地址页；规范化与校验见 <see cref="ServerUrlInput.Normalize"/>，装后落位由 BA 承担）。</summary>
+    public string? ServerUrl { get; set; }
+
+    /// <summary>本机已配置的服务端地址（清单加载成功时从 settings.json 只读探测，地址页预填来源；无配置为 null）。</summary>
+    public string? ExistingServerUrl { get; private set; }
 
     /// <summary>已选打印机品牌集合（问卷第 3 步；选项来源仅为 manifest 已有 plugin-&lt;brand&gt; 条目，BA 品牌页直接增删）。</summary>
     public ISet<string> SelectedBrands { get; private set; } = new HashSet<string>(StringComparer.Ordinal);
@@ -72,7 +84,7 @@ public sealed class WizardSession
     /// <summary>当前清单可选择的品牌（无 plugin-* 条目则为空，品牌页展示说明）。</summary>
     public IReadOnlyList<string> AvailableBrands => Manifest is null ? [] : TopologyResolver.AvailableBrands(Manifest);
 
-    /// <summary>加载并校验清单（本地路径 = 文件读取；URL = 单次只读 GET）→ 探测本机已装（§6.11）→ 计算升级评估 → 按已装打印机名预选品牌（决议 2）。</summary>
+    /// <summary>加载并校验清单（本地路径 = 文件读取；URL = 单次只读 GET；迭代 95 起由就绪页自动触发，#151）→ 探测本机已装（§6.11）与已配服务端地址 → 计算升级评估 → 按已装打印机名预选品牌（决议 2）。</summary>
     public async Task LoadManifestAsync(HttpClient? http = null, CancellationToken cancellationToken = default)
     {
         var effectiveHttp = http ?? _http;
@@ -81,6 +93,16 @@ public sealed class WizardSession
 
         // 清单新鲜度（§6.11 latest.json 消费）：推导得到来源才读，失败静默跳过（不阻断主流程）
         Latest = await TryLoadLatestAsync(effectiveHttp, cancellationToken).ConfigureAwait(false);
+
+        // 已配服务端地址只读探测（#151 ④，地址页预填）：读不到 = null，不阻断
+        try
+        {
+            ExistingServerUrl = _existingServerUrlProbe();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ExistingServerUrl = null;
+        }
 
         // 本机已装探测 + 升级评估（只读；探测异常按「全未装」处理——升级清单缺失不阻断安装流程）
         var runtime = ProbeRuntimeSafely();
@@ -159,7 +181,7 @@ public sealed class WizardSession
 
         if (Preset is null)
         {
-            throw new InvalidOperationException("尚未选择部署形态（拓扑预设），无法计算组件集合。");
+            throw new InvalidOperationException("尚未确定本机角色，无法计算组件集合。");
         }
 
         return _resolver.Resolve(Manifest, Preset.Value, new TopologyOptions(SelectedBrands, IncludeWebUi));

@@ -4,76 +4,137 @@ using LabelFrame.Bootstrapper.Wizard;
 
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
-/// <summary>确认页：组件名称 / 版本 / <b>本机版本（§6.11 可升级清单：现版本 → 新版本 / 已是最新）</b> / 体积 / 来源 URL / 目标安装位置；升级或已最新横幅；「下一步 = 安装」进入进度页触发引擎 Plan + Apply（执行边界契约，决策 #124）。</summary>
+/// <summary>
+/// 确认页（迭代 95 / 决策 #151 ⑤ + D2）：默认视图只保留用户做决定必需的三要素——装什么（角色摘要 + 体积）、执行边界一行（#124 语义不变）、
+/// 升级 / 新鲜度状态行；「显示明细」折叠区承载技术细节（组件全表含来源 URL 与本机版本、清单来源覆写入口、离线安装说明）。
+/// 「下一步」= 开始安装（进入进度页触发引擎 Plan + Apply，执行边界契约 #124）。
+/// </summary>
 internal sealed class ConfirmPage : UserControl, IWizardPage
 {
+    private const string ReleasesPageUrl = "https://github.com/marci-labs/LabelFrame/releases";
+
     private readonly WizardSession _session;
     private readonly LabelFrameBootstrapperBa _ba;
-    private readonly Label _banner = new();
+    private readonly Action _returnToSource;
     private readonly Label _summaryLabel = new();
+    private readonly Label _banner = new();
+    private readonly Label _upgradeLabel = new();
+    private readonly Label _freshnessLabel = new();
+    private readonly Button _detailToggle = new();
+    private readonly Panel _detailPanel = new();
     private readonly ListView _listView = new();
-    private readonly Label _guidanceLabel = new();
+    private readonly Label _sourceLabel = new();
+    private readonly Button _changeSourceButton = new();
+    private readonly Label _offlineHintLabel = new();
 
-    public ConfirmPage(WizardSession session, LabelFrameBootstrapperBa ba)
+    public ConfirmPage(WizardSession session, LabelFrameBootstrapperBa ba, Action returnToSource)
     {
         _session = session;
         _ba = ba;
+        _returnToSource = returnToSource;
         Dock = DockStyle.Fill;
 
         var title = new Label
         {
-            Text = "确认：以上问卷结果对应的组件集合",
+            Text = "确认安装",
             Font = new Font(SystemFonts.MessageBoxFont, FontStyle.Bold),
             AutoSize = true,
             Location = new Point(8, 8),
         };
 
+        _summaryLabel.AutoSize = true;
+        _summaryLabel.Location = new Point(8, 36);
+        _summaryLabel.MaximumSize = new Size(680, 0);
+
+        // 执行边界一行（#124 语义、#151 精简表述）
         _banner.Text = ExecuteBoundaryNotice.Banner;
         _banner.AutoSize = false;
-        _banner.Height = 32;
+        _banner.Height = 30;
         _banner.Width = 680;
-        _banner.Location = new Point(8, 36);
+        _banner.Location = new Point(8, 62);
         _banner.BackColor = Color.FromArgb(255, 244, 230);
         _banner.ForeColor = Color.FromArgb(154, 84, 0);
         _banner.TextAlign = ContentAlignment.MiddleLeft;
         _banner.Padding = new Padding(8, 0, 0, 0);
 
-        _summaryLabel.AutoSize = true;
-        _summaryLabel.Location = new Point(8, 74);
+        // 升级 / 已是最新状态行（§6.11，#151 起由欢迎页移到确认页——自动加载后用户不再停留就绪页）
+        _upgradeLabel.AutoSize = false;
+        _upgradeLabel.Height = 30;
+        _upgradeLabel.Width = 680;
+        _upgradeLabel.Location = new Point(8, 96);
+        _upgradeLabel.TextAlign = ContentAlignment.MiddleLeft;
+        _upgradeLabel.Padding = new Padding(8, 0, 0, 0);
+        _upgradeLabel.BackColor = Color.FromArgb(232, 240, 254);
+        _upgradeLabel.ForeColor = Color.FromArgb(22, 84, 160);
+
+        // 清单新鲜度提示（latest.json 消费，§6.11）：仅落后于通道最新时可见
+        _freshnessLabel.AutoSize = false;
+        _freshnessLabel.Height = 26;
+        _freshnessLabel.Width = 680;
+        _freshnessLabel.Location = new Point(8, 130);
+        _freshnessLabel.TextAlign = ContentAlignment.MiddleLeft;
+        _freshnessLabel.Padding = new Padding(8, 0, 0, 0);
+        _freshnessLabel.BackColor = Color.FromArgb(255, 244, 230);
+        _freshnessLabel.ForeColor = Color.FromArgb(154, 84, 0);
+        _freshnessLabel.Visible = false;
+
+        // 「显示明细」折叠区（D2：按钮名用户拍板）
+        _detailToggle.Text = "显示明细";
+        _detailToggle.AutoSize = true;
+        _detailToggle.Location = new Point(8, 164);
+        _detailToggle.Click += (_, _) =>
+        {
+            _detailPanel.Visible = !_detailPanel.Visible;
+            _detailToggle.Text = _detailPanel.Visible ? "隐藏明细" : "显示明细";
+        };
+
+        _detailPanel.Visible = false;
+        _detailPanel.Location = new Point(8, 196);
+        _detailPanel.Size = new Size(680, 236);
 
         _listView.View = View.Details;
         _listView.FullRowSelect = true;
         _listView.HideSelection = true;
-        _listView.Location = new Point(8, 100);
-        _listView.Size = new Size(680, 320);
-        _listView.Columns.Add("组件", 200);
-        _listView.Columns.Add("版本", 64);
-        _listView.Columns.Add("本机版本", 110);
-        _listView.Columns.Add("体积", 62);
-        _listView.Columns.Add("来源 URL", 150);
+        _listView.Location = new Point(0, 0);
+        _listView.Size = new Size(680, 170);
+        _listView.Columns.Add("组件", 190);
+        _listView.Columns.Add("版本", 60);
+        _listView.Columns.Add("本机版本", 104);
+        _listView.Columns.Add("体积", 58);
+        _listView.Columns.Add("来源 URL", 140);
         _listView.Columns.Add("安装位置", 190);
 
-        var installHint = new Label
-        {
-            Text = "点击「下一步」开始安装：将按上表下载组件并安装（需要管理员权限，系统会弹出 UAC 确认）。",
-            AutoSize = true,
-            MaximumSize = new Size(680, 0),
-            Location = new Point(8, 432),
-            ForeColor = SystemColors.GrayText,
-        };
+        _sourceLabel.AutoSize = true;
+        _sourceLabel.Location = new Point(0, 178);
+        _sourceLabel.MaximumSize = new Size(560, 0);
+        _sourceLabel.ForeColor = SystemColors.GrayText;
 
-        _guidanceLabel.AutoSize = true;
-        _guidanceLabel.Location = new Point(8, 456);
-        _guidanceLabel.MaximumSize = new Size(680, 0);
-        _guidanceLabel.ForeColor = SystemColors.GrayText;
+        _changeSourceButton.Text = "更改…";
+        _changeSourceButton.AutoSize = true;
+        _changeSourceButton.Location = new Point(600, 174);
+        _changeSourceButton.Click += (_, _) => _returnToSource();
+
+        _offlineHintLabel.AutoSize = true;
+        _offlineHintLabel.Location = new Point(0, 208);
+        _offlineHintLabel.MaximumSize = new Size(680, 0);
+        _offlineHintLabel.ForeColor = SystemColors.GrayText;
+        _offlineHintLabel.Text = $"无法联网时使用离线安装目录（制作方法见发布页说明：{ReleasesPageUrl}）。";
+
+        _detailPanel.Controls.Add(_listView);
+        _detailPanel.Controls.Add(_sourceLabel);
+        _detailPanel.Controls.Add(_changeSourceButton);
+        _detailPanel.Controls.Add(_offlineHintLabel);
 
         Controls.Add(title);
-        Controls.Add(_banner);
         Controls.Add(_summaryLabel);
-        Controls.Add(_listView);
-        Controls.Add(installHint);
-        Controls.Add(_guidanceLabel);
+        Controls.Add(_banner);
+        Controls.Add(_upgradeLabel);
+        Controls.Add(_freshnessLabel);
+        Controls.Add(_detailToggle);
+        Controls.Add(_detailPanel);
     }
+
+    public bool ShouldSkip => false;
 
     public void OnEnter()
     {
@@ -82,19 +143,22 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
         var plannedEntries = assessment.Entries
             .Where(entry => plan.Components.Any(item => item.Component.Id == entry.ComponentId))
             .ToList();
-        _ba.Log($"确认安装计划：预设 {_session.Preset}，品牌 [{string.Join(",", _session.SelectedBrands)}]，管理界面 {_session.IncludeWebUi}，组件 [{string.Join(",", plan.Components.Select(item => item.Component.Id))}]，{DescribeRuntimeProbes(plan)}");
+        _ba.Log($"确认安装计划：角色 {_session.Preset}，品牌 [{string.Join(",", _session.SelectedBrands)}]，管理界面 {_session.IncludeWebUi}，服务端地址 {_session.ServerUrl ?? "<未采集>"}，组件 [{string.Join(",", plan.Components.Select(item => item.Component.Id))}]，{DescribeRuntimeProbes(plan)}");
         _ba.Log($"升级评估（§6.11）：{UpgradePresentation.Summarize(assessment.Entries)}");
 
-        // 横幅：升级 / 已最新优先于既有「确认前只读」提示（决策 #126：用户最关心的状态放最上层）
-        var upgradeBanner = UpgradePresentation.ConfirmBanner(plannedEntries);
-        _banner.Text = upgradeBanner ?? ExecuteBoundaryNotice.Banner;
-        _banner.BackColor = upgradeBanner is null
-            ? Color.FromArgb(255, 244, 230)
-            : Color.FromArgb(232, 240, 254);
-        _banner.ForeColor = upgradeBanner is null
-            ? Color.FromArgb(154, 84, 0)
-            : Color.FromArgb(22, 84, 160);
+        // 装什么（角色摘要）+ 体积
+        _summaryLabel.Text = plan.Components.Count == 0
+            ? $"清单版本 {_session.Manifest!.LabelframeVersion}：本问卷结果无下载组件。"
+            : $"将安装：{DescribeRole(plan)}，共约 {SizeFormat.Format(plan.TotalSizeBytes)}。";
 
+        // 升级状态行（§6.11：全新 / 可升级 / 已是最新）+ 新鲜度（落后于通道最新时可见）
+        _upgradeLabel.Text = UpgradePresentation.Summarize(plannedEntries);
+        var freshness = UpgradePresentation.DescribeFreshness(_session.Manifest!, _session.Latest);
+        _freshnessLabel.Visible = freshness is not null;
+        _freshnessLabel.Text = freshness ?? string.Empty;
+
+        // 明细：组件全表（来源 URL / 本机版本 / 安装位置）+ 清单来源
+        _sourceLabel.Text = $"安装信息来源：{_session.ManifestSource}";
         _listView.BeginUpdate();
         _listView.Items.Clear();
 
@@ -128,17 +192,48 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
         }
 
         _listView.EndUpdate();
-
-        _summaryLabel.Text = plan.Components.Count == 0
-            ? $"清单版本 {_session.Manifest!.LabelframeVersion}：本形态无下载组件。"
-            : $"清单版本 {_session.Manifest!.LabelframeVersion}，共 {plan.Components.Count} 个组件，合计约 {SizeFormat.Format(plan.TotalSizeBytes)}。";
-
-        _guidanceLabel.Visible = plan.DockerComposeGuidance is not null;
-        _guidanceLabel.Text = plan.DockerComposeGuidance ?? string.Empty;
     }
 
-    /// <summary>运行时探测腿文案（观察项①修正，决策 #129 ③）：按当轮计划集合过滤——计划不含的运行时不输出「未装（将安装）」，
-    /// 避免与引擎 InstallCondition 过滤后的实际执行计划（execute: None）矛盾。</summary>
+    /// <summary>角色摘要（装什么，用户语言）：服务端 ± 客户端 + 品牌插件 + 管理界面。</summary>
+    private string DescribeRole(TopologyPlan plan)
+    {
+        var hasServer = plan.Components.Any(item => item.Component.Id == "server-msi");
+        var hasClient = plan.Components.Any(item => item.Component.Id == "client-msi");
+        var brands = string.Join("、", _session.SelectedBrands.Select(BrandDisplayName));
+        var parts = new List<string>();
+        if (hasServer && hasClient)
+        {
+            parts.Add($"LabelFrame 服务端 + 打印客户端（同机，客户端指向 {_session.ServerUrl ?? ServerUrlInput.LocalServerDefault}）");
+        }
+        else if (hasClient)
+        {
+            parts.Add($"LabelFrame 打印客户端（连接服务端 {_session.ServerUrl ?? "（地址未填写）"}）");
+        }
+        else if (hasServer)
+        {
+            parts.Add("LabelFrame 服务端（Windows 服务）");
+        }
+
+        if (!string.IsNullOrEmpty(brands))
+        {
+            parts.Add($"{brands}打印机插件");
+        }
+
+        if (_session.IncludeWebUi)
+        {
+            parts.Add("管理界面");
+        }
+
+        return string.Join(" + ", parts);
+    }
+
+    private static string BrandDisplayName(string brand) => brand.ToLowerInvariant() switch
+    {
+        "zebra" => "Zebra（斑马）",
+        _ => brand,
+    };
+
+    /// <summary>运行时探测腿文案（决策 #129 ③）：按当轮计划集合过滤——计划不含的运行时不输出「未装（将安装）」。</summary>
     private string DescribeRuntimeProbes(TopologyPlan plan)
     {
         var notes = new List<string>();
@@ -183,7 +278,7 @@ internal sealed class ConfirmPage : UserControl, IWizardPage
     {
         if (_session.BuildPlan().Components.Count == 0)
         {
-            reason = "本形态无下载组件（如 Docker / Linux 部署指引形态），无需在本机执行安装。你可以直接关闭向导，按页面指引部署。";
+            reason = "本问卷结果无组件可安装，请返回「上一步」检查选项。";
             return false;
         }
 

@@ -110,6 +110,8 @@ internal sealed class ProgressPage : UserControl, IWizardPage
         Controls.Add(_failureBox);
     }
 
+    public bool ShouldSkip => false;
+
     public void OnEnter()
     {
         _ba.StateChanged += OnStateChanged;
