@@ -106,12 +106,12 @@ public sealed class QuestionnaireContractTests
     [Fact]
     public void Execute_boundary_notice_should_state_readonly_before_confirm()
     {
-        // #124 执行边界 UI 明示：确认页横幅必须含「确认前只读 + 尚未下载 / 尚未安装 + 不改动」语义
-        Assert.Contains("确认前", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
-        Assert.Contains("尚未下载", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
-        Assert.Contains("尚未安装", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
-        Assert.Contains("改动", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
-        Assert.Contains("安装", ExecuteBoundaryNotice.WelcomeHint, StringComparison.Ordinal);
+        // #124 执行边界 UI 明示（#151 精简表述、语义不变）：确认页可见行必须含「点击「安装」前不下载 / 不安装 / 不改动系统」语义
+        Assert.Contains("「安装」前", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
+        Assert.Contains("不会下载", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
+        Assert.Contains("不安装", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
+        Assert.Contains("不改动系统", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
+        Assert.Contains("管理员", ExecuteBoundaryNotice.Banner, StringComparison.Ordinal);
     }
 
     /// <summary>递归快照（相对路径 + 文件大小 + 修改时间），用于「无系统改动」比对。</summary>

@@ -4,7 +4,7 @@ using Xunit;
 
 namespace LabelFrame.Bootstrapper.Tests;
 
-/// <summary>「预设 + 开关 → 组件集合」全矩阵（AC-02：对照 DESIGN §6.3 映射表；含 AC-01 场景）。</summary>
+/// <summary>「角色 + 开关 → 组件集合」全矩阵（AC-02：对照 DESIGN §6.3 映射表；含 AC-01 场景。迭代 95 / #151 问卷收敛为本机角色三选，server-docker / server-linux 用例移除）。</summary>
 public sealed class TopologyResolverTests
 {
     private readonly TopologyResolver _resolver = new();
@@ -32,7 +32,6 @@ public sealed class TopologyResolverTests
 
         AssertIds(plan, "server-msi", "client-msi", "webui", "plugin-zebra");
         Assert.Equal(11534336L + 12582912L + 4194304L + 9437184L, plan.TotalSizeBytes);
-        Assert.Null(plan.DockerComposeGuidance);
     }
 
     [Fact]
@@ -94,42 +93,6 @@ public sealed class TopologyResolverTests
     }
 
     [Fact]
-    public void Resolve_server_docker_should_be_empty_with_compose_guidance()
-    {
-        // Docker 预设：无下载组件（镜像完整性由 registry digest 保证），空集合 + compose 产物描述
-        var planOff = _resolver.Resolve(Full, TopologyPreset.ServerDocker, Options());
-        var planOn = _resolver.Resolve(Full, TopologyPreset.ServerDocker, Options(webUi: true));
-
-        Assert.Empty(planOff.Components);
-        Assert.Equal(0, planOff.TotalSizeBytes);
-        Assert.NotNull(planOff.DockerComposeGuidance);
-        Assert.Contains("docker-compose", planOff.DockerComposeGuidance, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("ghcr.io/marci-labs/labelframe-server", planOff.DockerComposeGuidance, StringComparison.Ordinal);
-        Assert.NotEqual(planOff.DockerComposeGuidance, planOn.DockerComposeGuidance);
-        Assert.Contains("管理界面", planOn.DockerComposeGuidance, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Resolve_server_linux_default_should_be_linux_archive_only()
-    {
-        var plan = _resolver.Resolve(Full, TopologyPreset.ServerLinux, Options());
-
-        AssertIds(plan, "linux-server");
-        var archive = Assert.Single(plan.Components);
-        Assert.Contains("/opt/labelframe/server", archive.InstallTarget, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Resolve_server_linux_webui_should_target_linux_plugin_dir()
-    {
-        var plan = _resolver.Resolve(Full, TopologyPreset.ServerLinux, Options(webUi: true));
-
-        AssertIds(plan, "webui", "linux-server");
-        var webUi = Assert.Single(plan.Components, item => item.Component.Id == "webui");
-        Assert.Contains("/var/lib/labelframe/server/plugins/web-ui", webUi.InstallTarget, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void Resolve_client_default_should_include_runtimes_and_client_msi()
     {
         // 追加客户端核心（迭代 62 二次返修补 aspnetcore，决策 #129——WinHost 亦 Sdk.Web）：
@@ -183,6 +146,19 @@ public sealed class TopologyResolverTests
         Assert.Contains(".NET Desktop Runtime", Assert.Single(plan.Components, item => item.Component.Id == "runtime-desktop").InstallTarget, StringComparison.Ordinal);
         Assert.Contains("ASP.NET Core Runtime", Assert.Single(plan.Components, item => item.Component.Id == "runtime-aspnetcore").InstallTarget, StringComparison.Ordinal);
         Assert.Contains("WebView2", Assert.Single(plan.Components, item => item.Component.Id == "runtime-webview2").InstallTarget, StringComparison.Ordinal);
+    }
+
+    // ---- 角色适用性（迭代 95 / #151 两层问卷：打印机 / 地址 / 管理界面页跳过依据）----
+
+    [Fact]
+    public void Role_applicability_should_cover_three_questionnaire_roles()
+    {
+        Assert.True(TopologyPreset.Client.IncludesClient());
+        Assert.False(TopologyPreset.Client.IncludesServer());
+        Assert.True(TopologyPreset.Standalone.IncludesClient());
+        Assert.True(TopologyPreset.Standalone.IncludesServer());
+        Assert.False(TopologyPreset.ServerWin.IncludesClient());
+        Assert.True(TopologyPreset.ServerWin.IncludesServer());
     }
 
     // ---- 清单健壮性 --------

@@ -3,7 +3,7 @@ using LabelFrame.Bootstrapper.Wizard;
 
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
-/// <summary>打印机品牌多选页（Issue #53 决议 2）：选项来源仅为清单已有 plugin-&lt;brand&gt; 条目；ZDesigner 驱动名预选 Zebra。</summary>
+/// <summary>打印机品牌多选页（Issue #53 决议 2；迭代 95 / #151 仅含客户端角色出现）：选项来源仅为清单已有 plugin-&lt;brand&gt; 条目；ZDesigner 驱动名预选 Zebra。</summary>
 internal sealed class BrandPage : UserControl, IWizardPage
 {
     private readonly WizardSession _session;
@@ -26,6 +26,7 @@ internal sealed class BrandPage : UserControl, IWizardPage
         _hintLabel.AutoSize = true;
         _hintLabel.Location = new Point(8, 40);
         _hintLabel.MaximumSize = new Size(650, 0);
+        _hintLabel.ForeColor = SystemColors.GrayText;
 
         _brandPanel.Location = new Point(16, 88);
         _brandPanel.Size = new Size(650, 220);
@@ -36,6 +37,8 @@ internal sealed class BrandPage : UserControl, IWizardPage
         Controls.Add(_hintLabel);
         Controls.Add(_brandPanel);
     }
+
+    public bool ShouldSkip => !(_session.Preset?.IncludesClient() ?? false);
 
     public void OnEnter()
     {
@@ -49,20 +52,10 @@ internal sealed class BrandPage : UserControl, IWizardPage
         _brandPanel.Controls.Clear();
 
         var brands = _session.AvailableBrands;
-        var applicable = _session.Preset is TopologyPreset.Standalone or TopologyPreset.Client;
 
-        if (brands.Count == 0)
-        {
-            _hintLabel.Text = "当前安装清单没有品牌插件条目，暂无可选品牌（可跳过此页；品牌插件可稍后在客户端「插件管理」安装）。";
-        }
-        else if (applicable)
-        {
-            _hintLabel.Text = "已检测到本机安装的打印机驱动时会预选对应品牌；未选的品牌将不安装其插件（客户端未装该品牌插件时该品牌不可用）。";
-        }
-        else
-        {
-            _hintLabel.Text = "品牌插件仅适用于含打印客户端的部署（单机一体 / 追加打印客户端），当前形态可跳过此页。";
-        }
+        _hintLabel.Text = brands.Count == 0
+            ? "当前安装清单没有品牌插件条目，可直接进入下一步（品牌插件可稍后在客户端「插件管理」安装）。"
+            : "已按本机打印机驱动预选品牌；未勾选的品牌不安装其插件。";
 
         foreach (var brand in brands)
         {
@@ -70,8 +63,7 @@ internal sealed class BrandPage : UserControl, IWizardPage
             {
                 Text = BrandDisplayName(brand),
                 AutoSize = true,
-                Enabled = applicable,
-                Checked = applicable && _session.SelectedBrands.Contains(brand),
+                Checked = _session.SelectedBrands.Contains(brand),
                 Tag = brand,
             };
             checkBox.CheckedChanged += (_, _) =>
@@ -94,7 +86,7 @@ internal sealed class BrandPage : UserControl, IWizardPage
 
     public bool CanProceed(out string? reason)
     {
-        // 品牌多选允许为空（不装任何品牌插件）；非适用预设同样直接放行
+        // 品牌多选允许为空（不装任何品牌插件）
         reason = null;
         return true;
     }

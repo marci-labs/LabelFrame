@@ -3,47 +3,45 @@ using LabelFrame.Bootstrapper.Wizard;
 
 namespace LabelFrame.Bootstrapper.Ba.Ui;
 
-/// <summary>拓扑预设选择页（DESIGN §6.3 五个 PC 预设，单选）。</summary>
-internal sealed class TopologyPage : UserControl, IWizardPage
+/// <summary>本机角色页（迭代 95 / 决策 #151 ①：仅高级模式出现，基础模式由就绪页默认「仅打印客户端」直接越过）。</summary>
+internal sealed class RolePage : UserControl, IWizardPage
 {
     private readonly WizardSession _session;
     private readonly Dictionary<TopologyPreset, RadioButton> _radioButtons = [];
 
-    public TopologyPage(WizardSession session)
+    public RolePage(WizardSession session)
     {
         _session = session;
         Dock = DockStyle.Fill;
 
         var title = new Label
         {
-            Text = "这台电脑的部署形态是什么？",
+            Text = "这台电脑的用途是什么？",
             Font = new Font(SystemFonts.MessageBoxFont, FontStyle.Bold),
             AutoSize = true,
             Location = new Point(8, 8),
         };
 
-        var presets = new[]
+        var roles = new[]
         {
+            TopologyPreset.Client,
             TopologyPreset.Standalone,
             TopologyPreset.ServerWin,
-            TopologyPreset.ServerDocker,
-            TopologyPreset.ServerLinux,
-            TopologyPreset.Client,
         };
 
         var y = 48;
-        foreach (var preset in presets)
+        foreach (var role in roles)
         {
             var radio = new RadioButton
             {
-                Text = preset.DisplayName(),
+                Text = role.DisplayName(),
                 AutoSize = true,
                 Location = new Point(16, y),
-                Tag = preset,
+                Tag = role,
             };
             var description = new Label
             {
-                Text = preset.Description(),
+                Text = role.Description(),
                 AutoSize = true,
                 ForeColor = SystemColors.GrayText,
                 Location = new Point(36, y + 24),
@@ -53,11 +51,11 @@ internal sealed class TopologyPage : UserControl, IWizardPage
             {
                 if (radio.Checked)
                 {
-                    _session.Preset = preset;
+                    _session.Preset = role;
                 }
             };
 
-            _radioButtons[preset] = radio;
+            _radioButtons[role] = radio;
             Controls.Add(radio);
             Controls.Add(description);
             y += 56;
@@ -66,10 +64,14 @@ internal sealed class TopologyPage : UserControl, IWizardPage
         Controls.Add(title);
     }
 
+    public bool ShouldSkip => !_session.AdvancedMode;
+
     public void OnEnter()
     {
-        // 回显已选预设（导航往返）
-        if (_session.Preset is { } preset && _radioButtons.TryGetValue(preset, out var radio))
+        // 回显已选角色；首次进入默认「仅打印客户端」（导航往返）
+        var preset = _session.Preset ?? TopologyPreset.Client;
+        _session.Preset ??= preset;
+        if (_radioButtons.TryGetValue(preset, out var radio))
         {
             radio.Checked = true;
         }
@@ -79,7 +81,7 @@ internal sealed class TopologyPage : UserControl, IWizardPage
     {
         if (_session.Preset is null)
         {
-            reason = "请选择一个部署形态。";
+            reason = "请选择这台电脑的用途。";
             return false;
         }
 

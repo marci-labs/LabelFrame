@@ -10,8 +10,9 @@ using LabelFrame.Bootstrapper.Wizard;
 using WixToolset.BootstrapperApplicationApi;
 
 /// <summary>
-/// LabelFrame 引导 BA（WiX Burn out-of-proc，决策 #122 / #124）：五步问卷（只读）→ 确认页「安装」→
-/// <see cref="IEngine.Plan"/> + <see cref="IEngine.Apply"/> 真装。执行边界契约见 DESIGN §6.3 / §6.9（确认前绝不 Apply）。
+/// LabelFrame 引导 BA（WiX Burn out-of-proc，决策 #122 / #124；迭代 95 / #151 问卷收敛）：两层问卷（基础三步 / 高级角色模式，只读，
+/// 就绪页自动加载清单）→ 确认页「安装」→ <see cref="IEngine.Plan"/> + <see cref="IEngine.Apply"/> 真装；装后按问卷写入客户端服务端地址（#151 ④）。
+/// 执行边界契约见 DESIGN §6.3 / §6.9（确认前绝不 Apply）。
 /// 下载体验（迭代 61 / #54，DESIGN §6.10）：多源回退（CacheAcquireResolving 消费清单 urls，决策核心在
 /// <see cref="CacheSourceFallback"/>）+ 下载侧进度 / 失败分类 / 换源提示的事件映射。
 /// 离线布局（迭代 70 / #89，决策 #135）：<c>--layout &lt;目录&gt;</c> 生成模式（<see cref="OfflineLayoutBuilder"/>）
@@ -278,14 +279,22 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
             return;
         }
 
-        // 布局目录隐式检测（决策 #135）：引导 EXE 同目录存在 install-manifest.json → 欢迎页清单来源默认该本地文件
-        // （拷贝布局目录后双击 EXE 即离线首装，零网络起步）；无邻接清单 → 稳定通道（现状不变）
+        // 布局目录隐式检测（决策 #135）+ 命令行 --manifest 显式覆写（迭代 95 / #151：测试注入与指定版本安装路径）：
+        // 优先级 = 命令行 > 同目录布局清单 > 稳定通道；就绪页进入即按此来源自动加载（#151 ③）
         var session = new WizardSession();
-        var adjacentManifest = TryDetectAdjacentLayoutManifest();
-        if (adjacentManifest is not null)
+        if (!string.IsNullOrWhiteSpace(layoutArguments.ManifestSource))
         {
-            session.ManifestSource = adjacentManifest;
-            Log($"检测到引导程序同目录安装清单，默认离线布局安装（清单所在目录 = 本地优先源）：{adjacentManifest}");
+            session.ManifestSource = layoutArguments.ManifestSource!;
+            Log($"命令行指定清单来源：{layoutArguments.ManifestSource}");
+        }
+        else
+        {
+            var adjacentManifest = TryDetectAdjacentLayoutManifest();
+            if (adjacentManifest is not null)
+            {
+                session.ManifestSource = adjacentManifest;
+                Log($"检测到引导程序同目录安装清单，默认离线布局安装（清单所在目录 = 本地优先源）：{adjacentManifest}");
+            }
         }
 
         using var wizard = CreateWizardOrExit(session);
@@ -557,7 +566,34 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 
         lock (_stateLock)
         {
+            // 装后服务端地址落位（迭代 95 / #151 ④，与 WinHost HostConfigStore 同一事实源）：
+            // 仅计划含打印客户端且问卷已确认地址时写入；写失败不改变安装结果（客户端「设置」页仍可手改）
+            if (_state.Phase == InstallPhase.Completed)
+            {
+                SaveServerUrlIfPlanned(plan, session);
+            }
+
             return _state;
+        }
+    }
+
+    /// <summary>装后服务端地址落位（迭代 95 / #151 ④）：写入 %ProgramData%\LabelFrame\Client\settings.json——装完客户端即按问卷地址连接服务端，无需进设置页手改。</summary>
+    private void SaveServerUrlIfPlanned(Topology.TopologyPlan plan, WizardSession session)
+    {
+        var normalized = ServerUrlInput.Normalize(session.ServerUrl);
+        if (normalized is null || !plan.Components.Any(item => item.Component.Id == "client-msi"))
+        {
+            return;
+        }
+
+        try
+        {
+            new ServerUrlStore().Save(normalized);
+            Log($"服务端地址已按问卷写入客户端配置（{ServerUrlStore.DefaultPath()}）：{normalized}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            Log($"服务端地址写入失败（可在客户端「设置」页手动填写）：{ex.Message}");
         }
     }
 

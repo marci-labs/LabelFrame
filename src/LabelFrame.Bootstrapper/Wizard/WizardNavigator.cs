@@ -48,6 +48,28 @@ public sealed class WizardNavigator<TPage> where TPage : class
         ? _pages[CurrentIndex]
         : throw new InvalidOperationException($"向导尚未装配页面（当前索引 {CurrentIndex}），禁止访问当前页。");
 
+    /// <summary>窥视指定页（按需惰性装配但不导航）：迭代 95（#151）两层问卷——向导壳查询目标页 <c>ShouldSkip</c> 以越过不适用页。</summary>
+    public TPage Peek(int pageIndex)
+    {
+        if (pageIndex < 0 || pageIndex >= _pageFactories.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pageIndex), pageIndex, $"页索引越界（0~{_pageFactories.Length - 1}）。");
+        }
+
+        while (_pages.Count <= pageIndex)
+        {
+            var page = _pageFactories[_pages.Count]();
+            if (page is null)
+            {
+                throw new InvalidOperationException($"第 {_pages.Count + 1} 页工厂返回 null，页面装配失败。");
+            }
+
+            _pages.Add(page);
+        }
+
+        return _pages[pageIndex];
+    }
+
     /// <summary>
     /// 导航到<b>绝对</b>页索引（0 = 首页装配入口；目标页按需惰性装配，已装配页复用实例）。
     /// 越界返回 false 且状态不变；页工厂异常向上传播（不吞）——装配停留在已装配页，重试从同一索引重新装配。

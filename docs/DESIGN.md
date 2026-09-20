@@ -223,6 +223,7 @@ flowchart LR
 | 148 | 前端请求层健壮性——业务请求超时分档与错误通道归一（迭代 91，2026-09-18；前端评审 2026-09-18 F-01 / F-09 / F-12 / F-13（Issue #149 立项前逐条核验属实）——请求原语 `makeRequest` / `makeFetchBlob` 均未挂超时 signal，后端挂起（接了不回）时提交 / 出图 / 上传类操作永久「处理中…」无恢复路径；`exportTemplate` 绕开统一 `fetchBlob` 自写 fetch，失败固定 `EXPORT_FAILED` 吞掉后端 ErrorView 真实原因；DataPrint 模板详情加载无竞态守卫（同文件预览弹层有 `previewGenRef` 防护，标准不一）；Designer 加载 effect 缺 `serverMode === 'unknown'` 守卫（Workbench 有），启动早期以 `localApi` 误发请求；决议按 Issue #149 用户拍板 **a 案：普通请求 30s + 出图 / 上传类放宽至 120s**，否决 b 案全部统一 60s） | ① **超时分档（F-01）**：请求原语统一挂默认超时中止信号（手动 AbortController + 计时器 + 闭包超时标志，非 `AbortSignal.timeout`——可被单测注入秒级短超时验证且结束时即清理计时器），超时归一化为 `ApiError('TIMEOUT', 中文文案)` 走既有错误通道（`NETWORK_ERROR` 语义不变——非超时的传输层失败仍原语义）；分档 = normal 30s（列表 / 保存 / 提交等）+ heavy 120s（出图 renderImage / renderImages / previewTemplate、导入导出 exportTemplate / importTemplate / importExcel / excelTemplate、安装包上传下载与插件安装——大负载端点按 API 语义归类）；fetchBlob 的超时覆盖整个下载过程（含 `res.blob()` 响应体读取）；既有 healthz / probeHealthz 5s 独立超时与迭代 86 空地址短路语义零变化。② **导出错误通道（F-09）**：`exportTemplate` 改走 `makeFetchBlob` 同构——失败解析后端 ErrorView 呈现真实 code / message（无 JSON 体回退既有「导出失败（HTTP xxx）。」文案），Content-Disposition 解析收敛到 fetchBlob 一处。③ **详情竞态守卫（F-12）**：DataPrint 模板详情 effect 加 `cancelled` 守卫（cleanup 置位，过期响应不 setPkg / setError / setLoading），与预览弹层 `previewGenRef` 同一竞态标准。④ **serverMode 守卫（F-13）**：Designer 加载 effect 把 `serverMode`（原始值，无 context 无限循环问题）纳入依赖并守卫 unknown 不发请求，模式解析后按正确 base 加载；initedRef 单次闩锁——模式中途翻转（10s 周期探测）不重拉 / 不重置编辑中状态 | 后端挂起时操作在 30s / 120s 内以中文超时错误终止、按钮恢复，不再永久「处理中…」；导出失败可看到后端真实原因；快速切换模板字段表单不错位；设计器启动早期无误发请求（与 Workbench 行为一致）；请求自动重试明确不做（局域网 + 10s 周期健康探测已构成恢复通道）、API 层更大重构（拦截器化）不在范围；后端零改动（纯前端语义修复） |
 | 149 | 设计器未保存离开保护——dirty 判定口径与三选离开确认（迭代 92，2026-09-18；前端评审 2026-09-18 F-02（P1）/ F-03（P1）（Issue #150 立项前逐条核验属实）——设计器三处离开路径（Shell 导航切 tab、顶栏返回按钮、加载失败返回）均直接卸载组件，`stateRef` / `historyRef` 全部丢弃，任一误触丢失整段排版工作（设计器属低频高成本操作）；决议按 Issue #150 用户拍板 **a 案：dirty = 历史栈有任一已提交更改即 dirty（`undoCount > 0`，`lib/design/history.ts` 现成计数）**，否决 b 案与初始快照深比较（语义更精确但实现重）；编入历史即视为编辑，撤销回起点 = 不 dirty 自然放行） | ① **拦截范围**：Shell 层导航 tab 切换统一经 `switchTab` 入口——设计器通过 `registerLeaveGuard` prop 向 Shell 注册守卫（挂载注册 / 卸载自动注销），dirty 时本次切换交守卫挂起（弹三选确认后再切换，非 dirty 守卫直接放行）；设计器返回按钮（含加载失败返回）同经守卫。② **三选 Modal**：复用既有 `components/Modal.tsx`（不新造弹窗组件）——「保存并离开 / 放弃更改 / 继续编辑」，Esc / 点遮罩 / 右上角关闭 = 继续编辑（默认安全侧）；「保存并离开」走既有保存链路（空名校验 / 同名覆盖确认），成功后执行挂起的离开动作（保存成功自然复位 dirty——组件随离开卸载），失败停留显示错误不丢编辑；挂起离开动作在各终止路径（继续编辑 / 保存失败 / 覆盖取消 / 名称缺失）就地作废（`pendingLeaveRef`），防陈旧动作误触发后续普通保存；普通保存成功回工作台的既有行为零变化。③ **dirty 口径边界**：名称 / 分组文本修改不入历史栈（不构成 dirty）、画布拖拽在途未提交（`applyElements` 未 `commitNow`）不构成 dirty——按 a 案口径接受，与撤销栈语义一致 | 误触离开不再丢失排版工作（dirty 必经三选确认，无编辑直接离开零打扰）；浏览器 `beforeunload` / 窗口关闭拦截明确不在范围（WebView2 壳关闭场景，如需要另行立项）；Konva 画布交互测试维持决策 #82③ 断言边界（页级测试 mock `biz` 覆盖装配链路，画布留 E2E 层）；后端 / 模板包契约零改动（纯前端行为） |
 | 150 | release.yml 前端产物自检特征过时修复与 v0.28.0 恢复出库路径（迭代 94 流程治理，2026-09-18；来源 = v0.28.0 发版实证 run 35326712703——「前端产物自检（双模式区分，迭代 22 修复）」client 特征断言依赖的「PDA 日志」随迭代 75（#118）页面下线从 client 产物消失，断言恒失败（fail-closed 拦截、未创建 Release）；反标记「本机未注册到服务端」自迭代 80「三名义」改名后已无出处、断言空转恒真；PR 必需检查不执行 release 专属自检步骤，记账 PR #165 三项全绿未拦截——发布链专属断言只能在发版时暴露） | ① **特征选型以本地双构建取证为准**（不依赖折叠理论）：client 特征与反标记统一改用「本机打印服务」（`App.tsx` 状态栏 client 分支文案，迭代 80 三名义①——一串双职责：client 必含 + server 必不含；实证 client 在场 / server 不在场，两形态均单 chunk、`First 1` 取样有效）；server 特征「客户端下载」维持。② **v0.28.0 恢复出库走 `workflow_dispatch`（version=0.28.0，ref=master）**：不删不重推 tag v0.28.0（无强推语义）；产物源 master 与 tag 仅差本 workflow 修复、产物内容一致；修复合入后尽快 dispatch 避免 master 漂移。③ **验证口径**：本地双构建 grep 在场性取证 + YAML 解析自检；真实出库复核 = dispatch run 全绿 + Release 附件核验（同发版检查单） | 发版链自检三断言全部恢复有效防护（消除一空转 + 修复一恒失败）；特征串绑定现存 client 专属文案，对后续「页面下线 / 文案改名」类前端内容变更仍可能过时——属机制固有边界（自检目的即拦截形态混装，特征失效表现为发版失败而非静默错发）；tag / Release 历史零改写；范围约束：仅动 release.yml 自检步骤与注释，ci.yml / 三项必需检查口径不动 |
+| 151 | 安装引导体验收敛——两层问卷、清单自动加载与形态精简（迭代 95，2026-09-20；来源 = Issue #175 用户三轮产品讨论拍板：引导界面第一受众是非技术用户，默认零技术细节，技术细节经显式「高级选项」触达） | ① **问卷收敛为本机角色三选（§6.3 表同步改写）**：`仅打印客户端`（基础模式默认，= 既有 `client`）/ `本机作为服务端 + 同机打印客户端`（= `standalone`）/ `本机作为服务端`（= `server-win`）——standalone 与 server-win 在问卷面合并为「服务端角色 + 是否同机装客户端」语义，manifest `topologies` 标记与 schema **零修改**（角色映射到既有 topology id）。② **server-docker / server-linux 移出问卷**（不藏进高级模式）：Docker 形态为空组件集死胡同（确认页拦截 + 指引文字）、Linux 形态为纯展示（`linux-server` 归档不在 Burn 链、实际不下载，且 server-linux + webui 显示 Linux 路径实际落位本机 Windows 的矛盾随移除消失）；Linux 承接 = `install.sh`（#134）、Docker 承接 = Release `compose.yml`（#134），文档指路；两 topology id 保留在 manifest 标记集合（`install.sh` 消费 `linux-server` / `webui` 条目）。③ **清单自动加载**：进入向导即按已定来源（命令行 `--manifest` 显式覆写 > 邻接布局清单 → 本地；否则稳定通道 URL——`--manifest` 自本迭代起同时作用于交互安装路径，原仅布局生成用，测试注入与指定版本安装共用）自动获取，成功自动进问卷——**口径变化：打开向导即访问稳定通道 URL**（原为手动点「加载清单」触发，语义差异小、立项时明示）；加载失败给一句可行动提示并展开手动来源区（浏览 / 重试 / 高级选项），#75 断网自动切换离线流程维持独立 Issue 不并入。④ **服务端地址采集与落位**：含客户端角色（client / standalone）在问卷内采集服务端地址（client 必填、standalone 预填 `127.0.0.1:53961` 可改；已装机器从 `settings.json` 预填）；落位机制 = BA 在 Apply 成功后写 `%ProgramData%\LabelFrame\Client\settings.json`（`{"serverUrl": …}`，与 WinHost `HostConfigStore` 同一事实源，客户端设置页直接可读——机制等价于「Burn 变量 → MSI property」链且避免 MSI 内 JSON 改写；写动作归 BA，`WizardSession` 只读契约不变）。⑤ **两层呈现**：基础流程 = 打印机品牌 → 服务端地址 → 简版确认（三行内 + 「显示明细」折叠区，D2 用户拍板按钮名）；高级选项 = 就绪页角落链接（D3）进入角色页 + 管理界面开关（仅服务端角色）+ 明细区（组件来源 URL、清单来源覆写、离线安装说明）；升级摘要 / 新鲜度横幅移至确认页（自动加载后用户不再停留就绪页）精简措辞、语义保留（#124「确认前只读」承诺不变，测试锚点同步）。⑥ **后续登记**：「下载中心提供带服务端地址的客户端安装包」（zip = 引导 EXE + 地址配置文件，引导程序读同目录配置自动预填——#135 同目录隐式检测同款手法）独立迭代；「局域网自动发现服务端」入 §7 未决问题 | 非技术用户全流程 = 双击 → 确认打印机 → 填 / 确认服务端地址 → 安装（装完即连上服务端，无需进设置页）；问卷枚举与真实安装能力一致（不再展示零功能形态）；「打开即联网」与「装后写 settings.json」两处行为变化如实记录；布局目录离线首装（#135）与升级链（#126）行为回归不受影响 |
 
 ## 5. API 概览
 
@@ -395,7 +396,7 @@ public sealed record LabelCommandCompileResult(
 
 ## 6. 安装引导（Bootstrapper）
 
-> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）/ #124（安装执行链与失败处置，§6.9）/ #125（下载体验与多源回退，§6.10）/ #126（升级模式与版本比较，§6.11）/ #127（外置插件加载 ALC 生命周期，§6.8——迭代 63 返修）/ #128（前置链 AspNetCore 运行时补齐，§6.2 / §6.9——迭代 62 返修）/ #129（前置链 AspNetCore 补 client 链腿，§6.2 / §6.3 / §6.9——迭代 62 二次返修）/ #134（Linux 服务端一键安装 install.sh 与 compose 分发，§6.12——迭代 71）/ #135（离线布局目录与本地源首装，§6.2 / §6.10——迭代 70）。
+> 来源：安装引导专项（迭代 57~64，Issue [#50](https://github.com/marci-labs/LabelFrame/issues/50) 起拆 8 个迭代，清单见 §6.7）；本节是专项公共契约（AGENTS 强化路径：跨迭代契约先入 DESIGN 再改代码），专项 2/8 起的实现（#51 CI 生成 manifest、#53~#57 引导程序本体）以本节为准，与实现有出入先回本节补决策。决策记账：#114（形态与选型）/ #115（manifest 格式）/ #116（拓扑预设）/ #117（信任模型与分发源）/ #118（更新策略与签名）/ #122（形态修订：WiX Burn Bundle + 托管 BA）/ #123（官方插件体系与品牌映射，§6.8）/ #124（安装执行链与失败处置，§6.9）/ #125（下载体验与多源回退，§6.10）/ #126（升级模式与版本比较，§6.11）/ #127（外置插件加载 ALC 生命周期，§6.8——迭代 63 返修）/ #128（前置链 AspNetCore 运行时补齐，§6.2 / §6.9——迭代 62 返修）/ #129（前置链 AspNetCore 补 client 链腿，§6.2 / §6.3 / §6.9——迭代 62 二次返修）/ #134（Linux 服务端一键安装 install.sh 与 compose 分发，§6.12——迭代 71）/ #135（离线布局目录与本地源首装，§6.2 / §6.10——迭代 70）/ #151（引导体验收敛：两层问卷 + 清单自动加载 + 角色三选，§6.3——迭代 95）。
 
 定位：**安装引导程序（setup）**——首次接触 LabelFrame 的部署者运行一个小 EXE，回答少量问题（部署拓扑、打印机品牌、是否带管理界面），程序解析安装清单（install manifest）、按需下载组件并完成静默安装 / 落位；PDA 不进 PC 引导（经服务端下载中心扫码下载，专项 3/8 #52）。目标：把「装什么、怎么装」从「读懂 DEPLOY 文档 + 手工排组件」降为「回答三个问题」。语言边界：引导问卷与向导文案**中文单语**，i18n 不进 setup 问卷（REQUIREMENTS §7「多语言」边界不变）。
 
@@ -578,31 +579,35 @@ public sealed record LabelCommandCompileResult(
 }
 ```
 
-### 6.3 拓扑预设（决策 #116）
+### 6.3 拓扑预设（决策 #116；**迭代 95 / 决策 #151 问卷面收敛为本机角色**）
 
-预设 = 有限枚举 + 仅两项自由开关；**不提供任意组件勾选**（防组合爆炸与未测试组合）。
+预设 = 有限枚举 + 仅两项自由开关；**不提供任意组件勾选**（防组合爆炸与未测试组合）。迭代 95 起问卷**两层呈现**：基础模式（默认）零技术细节，直接按「仅打印客户端」角色走三步问卷；「高级选项」（就绪页角落链接，D3）进入角色选择与技术细节。
 
-| 预设（id） | 场景 | 核心组件（默认纳入） | 开关适用性 |
-|---|---|---|---|
-| 单机一体（`standalone`） | 一台 Windows PC 承载全部（Server 服务 + Client 同机，客户端托管 Web UI） | `runtime-desktop`、`runtime-aspnetcore`、`runtime-webview2`、`server-msi`、`client-msi` | 管理界面（默认关）/ 品牌插件 |
-| 服务端 · Windows 服务（`server-win`） | 分离部署：Windows 服务器跑服务 | `runtime-desktop`、`runtime-aspnetcore`、`server-msi` | 管理界面（建议开） |
-| 服务端 · Docker（`server-docker`） | Docker 宿主跑服务 | **无下载组件**——引导程序生成 compose 文件 + ghcr 镜像拉取指引；管理界面开关 = compose 启用镜像内置 web-ui（镜像携带文件默认无头，决策 #87） | 管理界面（= compose 启用） |
-| 服务端 · Linux systemd（`server-linux`） | Ubuntu 裸机 systemd（决策 #59） | `linux-server` 归档（下载 + 输出部署指引，编排口径 #55）——**Linux 侧承接 = `install.sh` 一键安装（迭代 71 起随 Release 归档默认 self-contained，§6.12 / 决策 #134）** | 管理界面（webui-zip 落位 `plugins/web-ui`） |
-| 追加打印客户端（`client`） | 已有服务端的网络追加一台打印 PC | `runtime-desktop`、`runtime-aspnetcore`、`runtime-webview2`、`client-msi`（**aspnetcore 条目补 client，决策 #129**——WinHost 亦 Sdk.Web 隐式依赖） | 品牌插件（多选）；问卷可探测内网服务端并将其设为下载优先源（§6.4） |
-| 离线全量包（`offline`） | 工厂内网 / 无外网机器（**一等形态**） | 全部组件（含 runtime、APK、官方插件）汇集为**离线布局目录**（§6.2，决策 #135——原「单 zip 全量包」构想的落地形态：目录含组件 + `install-manifest.json` + `latest.json` + 引导 EXE），引导程序从本地文件读清单并以布局目录为隐式优先源（无需网络，§6.10） | 两项开关在离线引导流程内同样生效 |
+**问卷枚举（迭代 95 起 = 本机角色三选，决策 #151）**：
 
-拓扑标记补充语义：`pda` 仅用于 `pda-apk` 条目（PDA 不进 PC 引导预设，该条目由服务端下载中心 #52 消费）；`offline` 标记组件是否进布局目录。
+| 角色（问卷呈现） | 对应 topology id | 场景 | 核心组件（默认纳入） | 开关适用性 |
+|---|---|---|---|---|
+| 仅打印客户端（基础模式默认，无需选择） | `client` | 已有服务端的网络追加一台打印 PC | `runtime-desktop`、`runtime-aspnetcore`、`runtime-webview2`、`client-msi`（**aspnetcore 条目补 client，决策 #129**——WinHost 亦 Sdk.Web 隐式依赖） | 品牌插件（多选）；服务端地址必填（决策 #151 ④，从已装 `settings.json` 预填） |
+| 本机作为服务端 + 同机打印客户端 | `standalone` | 一台 Windows PC 承载全部（Server 服务 + Client 同机，客户端托管 Web UI） | `runtime-desktop`、`runtime-aspnetcore`、`runtime-webview2`、`server-msi`、`client-msi` | 管理界面（默认关）/ 品牌插件；服务端地址预填 `127.0.0.1:53961` 可改 |
+| 本机作为服务端 | `server-win` | 分离部署：Windows 服务器跑服务，其他电脑走「仅打印客户端」 | `runtime-desktop`、`runtime-aspnetcore`、`server-msi` | 管理界面（建议开） |
 
-**仅有的两项自由开关**：
+**不在问卷枚举的 topology id**（manifest 标记集合保留，schema 零修改——仅问卷不再产出这些预设）：
 
-1. **打印机品牌多选**：品牌 → `plugin-<brand>` 组件映射（**已完整化（迭代 63，决策 #123）：Zebra → `plugin-zebra`，manifest 已有条目，选项生效；brand → 组件 id → 插件包 pluginId 完整映射表见 §6.8**）；适用于含客户端的预设（`standalone` / `client`）。**品牌勾选只有两条置位路径**：驱动名预选（清单加载时按已装打印机名预勾选，如 ZDesigner → zebra——页面提示已声明该语义）与用户勾选 / 取消勾选；预设默认集合**不含**品牌插件（AC-01 验收观察 ① 裁定见决策 #128 ④）。
-2. **是否带管理界面**：`webui`（webui-zip）落位服务端 `plugins/web-ui`（放入即生效，决策 #62）；`standalone` 默认关（客户端本机 UI 已完整），分离部署建议开；Docker 形态 = 启用镜像内置界面（不下载 zip）。
+- `server-docker`：Docker 形态为空组件集（镜像完整性由 registry digest 保证），曾以「compose 指引」形态占问卷一项但无实际功能——迭代 95 移出（决策 #151 ②），承接 = Release `compose.yml`（§6.12）。
+- `server-linux`：`linux-server` 归档不在 Burn 链（纯展示条目、实际不下载），Linux 侧承接 = `install.sh` 一键安装（§6.12 / 决策 #134）。
+- `offline`：一等离线形态，经布局目录隐式检测进入（§6.2 / 决策 #135），不进问卷枚举；`pda` 仅用于 `pda-apk` 条目（服务端下载中心 #52 消费）。
+
+**仅有的两项自由开关**（迭代 95 起品牌开关仅在含客户端角色出现、管理界面开关仅在服务端角色出现，不适用的问卷页自动跳过）：
+
+1. **打印机品牌多选**：品牌 → `plugin-<brand>` 组件映射（**已完整化（迭代 63，决策 #123）：Zebra → `plugin-zebra`，manifest 已有条目，选项生效；brand → 组件 id → 插件包 pluginId 完整映射表见 §6.8**）；适用于含客户端的角色（`standalone` / `client`）。**品牌勾选只有两条置位路径**：驱动名预选（清单加载时按已装打印机名预勾选，如 ZDesigner → zebra——页面提示已声明该语义）与用户勾选 / 取消勾选；角色默认集合**不含**品牌插件（AC-01 验收观察 ① 裁定见决策 #128 ④）。
+2. **是否带管理界面**：`webui`（webui-zip）落位服务端 `plugins/web-ui`（放入即生效，决策 #62）；`standalone` 默认关（客户端本机 UI 已完整），`server-win` 建议开。
 
 **「预设 + 开关 → 组件集合」解析契约**（专项 4/8 #53 实现；输出是 #54 下载引擎 / #55 安装编排的公共契约。**形状细化（迭代 60，#53 实现，决策 #121）**：返回值由「裸组件清单」升级为 `TopologyPlan`——server-docker 的 compose 产物描述、确认页 / 编排所需的安装位置不是 `ManifestComponent` 的字段，裸 `IReadOnlyList<ManifestComponent>` 无法承载；映射语义与上表不变）：
 
 ```csharp
 // LabelFrame.Bootstrapper；#53 实现，#54 / #55 消费——接口形状先契约后实现（强化路径）
-public enum TopologyPreset { Standalone, ServerWin, ServerDocker, ServerLinux, Client }
+// 迭代 95 / 决策 #151：问卷枚举收敛为本机角色三选（server-docker / server-linux 移出，DockerComposeGuidance 字段移除）
+public enum TopologyPreset { Standalone, ServerWin, Client }
 
 // 仅两项自由开关：品牌多选（brand id，如 "zebra"，映射 manifest 的 plugin-<brand> 条目）+ 是否带管理界面
 // （形状微调 #122：ISet<string>——net48 BA 复用约束，net48 无 IReadOnlySet<T>；集合成员资格语义不变）
@@ -614,8 +619,7 @@ public sealed record PlannedComponent(ManifestComponent Component, string Instal
 public sealed record TopologyPlan(
     TopologyPreset Preset,
     IReadOnlyList<PlannedComponent> Components,   // 按依赖序排列（含依赖闭包；同层按清单声明序）
-    long TotalSizeBytes,
-    string? DockerComposeGuidance);               // 仅 server-docker 非空（无下载组件，compose 生成 + 镜像拉取指引）
+    long TotalSizeBytes);
 
 public interface ITopologyResolver
 {
@@ -627,7 +631,7 @@ public interface ITopologyResolver
 
 - **纳入规则**：核心组件 = `topologies` 命中预设即默认纳入；开关组件 `webui`（id）与 `plugin-<brand>`（id 前缀）由开关决定，且**仍受 `topologies` 过滤**（如 `webui` 未标记 `client`，追加客户端预设开开关也不纳入）；`dependsOn` 闭包递归纳入（仅同 manifest 内条目，缺引用 = 清单非法拒绝），输出按拓扑序（同层按清单声明序，环状依赖拒绝）。
 - **品牌选项来源仅为 manifest 已有 `plugin-<brand>` 条目**（品牌 → 组件映射已完整化：映射表见 §6.8；条目 id → 实际安装目录用插件包 pluginId，如 `plugin-zebra` → `plugins\labelframe-transport-zebra`）；清单无品牌条目时品牌页展示说明而非报错，勾选不添加组件。**预选规则（Issue #53 决议 2）**：读 Windows 已装打印机驱动名，`ZDesigner` → `zebra` 预勾选，其余品牌从零勾选——当前唯一规则，后续品牌扩表零契约变更。
-- **问卷只读契约（#53 AC-03；#124 修订执行边界）**：问卷阶段（欢迎 → 拓扑 → 品牌 → 管理界面 → 确认页展示）保持只读——manifest 获取 = 本地文件读取或单次 HTTP GET，无任何下载、写入、系统改动的代码路径（下载 / 安装能力归 Burn 引擎，问卷阶段不触发）；**执行边界 = 确认页「安装」**——BA 写入问卷变量与运行时探测变量后调用 `Engine.Plan(LaunchAction.Install, BundleScope.Default)`，Plan 成功即 `Engine.Apply(向导窗口句柄)` 真装（#53 的「绝不 Apply」口径由 #124 修订为「**确认前绝不 Apply**」；确认页 UI 明示「确认前不下载、不安装、不改动系统」）。
+- **问卷只读契约（#53 AC-03；#124 修订执行边界；#151 增补自动加载口径）**：问卷阶段（就绪（自动加载）→ 角色（高级）→ 打印机 → 服务端地址 → 管理界面 → 确认页展示）保持只读——manifest 获取 = 本地文件读取或单次 HTTP GET（**迭代 95 起进入向导即自动触发**，成功自动进问卷；失败给可行动提示并展开手动来源区），无任何下载、写入、系统改动的代码路径（下载 / 安装能力归 Burn 引擎，问卷阶段不触发）；**执行边界 = 确认页「安装」**——BA 写入问卷变量与运行时探测变量后调用 `Engine.Plan(LaunchAction.Install, BundleScope.Default)`，Plan 成功即 `Engine.Apply(向导窗口句柄)` 真装（#53 的「绝不 Apply」口径由 #124 修订为「**确认前绝不 Apply**」；确认页 UI 明示「确认前不下载、不安装、不改动系统」）。**唯一装后写入（#151 ④）**：Apply 成功后 BA 把问卷确认的服务端地址写入 `%ProgramData%\LabelFrame\Client\settings.json`（与 WinHost `HostConfigStore` 同一事实源；写动作归 BA 侧编排，`WizardSession` 只读契约不变）。
 - **Burn 变量契约（BA ↔ Bundle 链）**：`InstallPreset`（string：预设 manifest id）+ `InstallServer` / `InstallClient` / `InstallWebUi` / `InstallPluginZebra`（numeric 0/1，按解析结果中 `server-msi` / `client-msi` / `webui` / `plugin-zebra` 是否在集合内置位）——映射为纯函数入核心库（net10 测试锚定），Bundle 链内包以 `InstallCondition` 消费；**运行时探测变量（#124）**：`DesktopRuntimeInstalled` / `WebView2Installed`（numeric 0/1，BA 在 `engine.Detect()` 前按 §6.9 检测口径写入，链内 runtime ExePackage 以 `DetectCondition` 消费）；**落位目标变量（#124）**：`WebUiTargetDir` / `PluginZebraTargetDir`（string，BA 计算的绝对路径，链内落位包 `InstallArguments` 以 `[变量]` 引用）；后续新增品牌插件时按 `InstallPlugin<Brand>` / `<Brand>TargetDir` 同构扩展（映射表 §6.8）。
 - **Burn 变量契约（BA ↔ Bundle 链）**：`InstallPreset`（string：预设 manifest id）+ `InstallServer` / `InstallClient` / `InstallWebUi` / `InstallPluginZebra`（numeric 0/1，按解析结果中 `server-msi` / `client-msi` / `webui` / `plugin-zebra` 是否在集合内置位）——映射为纯函数入核心库（net10 测试锚定），Bundle 链内 `MsiPackage` 以 `<Condition>` 消费；后续新增品牌插件时按 `InstallPlugin<Brand>` 同构扩展（映射表 §6.8；Bundle 链内 `.lfplugin` 的下载与安装归 #54 / #55）。
 - **构建接入（Issue #53 范围 3 fallback，#122 修订）**：核心逻辑库与 BA 工程加入 `LabelFrame.slnx` 由日常 CI 做 PR 构建验证；**Bundle 本体**（`wix build`，构建时需真实 MSI 提取包元数据，无法在 slnx 解决方案构建阶段获得 MSI）由 `scripts/build-bundle.ps1` 本地 / 发版时构建——按 #53 fallback「仅 PR 构建验证」口径如实记录，release.yml 本轮不动（是否随 Release 附件发布引导 EXE 未定）。
@@ -824,7 +828,7 @@ public interface ITopologyResolver
 
 **下载行为测试矩阵（`scripts/test-bundle-download-matrix.ps1`，本地脚本化验证，不进 CI）**：
 
-- **载体** = per-user 测试 Bundle（双 ExePackage：id=ServerMsi / ClientMsi，PayloadTool 无参空操作作包载体，`Compressed=no` + `DownloadUrl`，条件消费问卷变量——复刻 #55 per-user 测试 Bundle 方法规避提权）+ **真实 BA** 驱动七页向导（Win32 UI 自动化：清单来源注入本地测试清单 → 单机一体 → 确认安装）；多源 url 序由**运行时清单**驱动（正是被测消费路径）。
+- **载体** = per-user 测试 Bundle（双 ExePackage：id=ServerMsi / ClientMsi，PayloadTool 无参空操作作包载体，`Compressed=no` + `DownloadUrl`，条件消费问卷变量——复刻 #55 per-user 测试 Bundle 方法规避提权）+ **真实 BA** 驱动两层问卷向导（Win32 UI 自动化：邻接布局清单自动加载 → 打印机 → 服务端地址 → 确认安装；迭代 95 / #151 前为「清单来源注入 → 单机一体 → 确认」七页流）；多源 url 序由**运行时清单**驱动（正是被测消费路径）。
 - **本地 HTTP 测试源**（TcpListener 双实例，行为按 URL 路由内嵌）：`/ok/` 正常、`/404/` 不存在、`/hang/` 无响应挂起（超时；45s 上限 404 兜底）、`/corrupt/` 篡改一字节（哈希不符）、`/truncate/` 半量截断（连接中断）；访问日志落盘供断言。
 - **七场景断言（Burn 日志 + 退出码 + 访问日志三通道）**：S1 正常下载；S2 主源 404 → 换源镜像成功；S3 主源挂起超时 → 换源成功；S4a 坏哈希 → 换源重取干净副本成功；S4b 坏哈希单源 → 引擎重取额度内同源重试仍坏 → **失败（fail-closed，不装不明文件）**；S5 截断中断 → 镜像完整重传成功（**Burn 载体下「续传」语义 = 失败后重试 / 换源重新获取**——引擎不做 HTTP Range 断点续传，与原自研下载器 AC 口径的差异如实记录）；S6 缓存命中 + 断网续装（run1 挂起下载中**强制中断**（无正常回滚——缓存阶段失败会被引擎回滚清缓存，中断才保留 InProgress 注册与已缓存包）→ run2 双源停机：已缓存包零网络请求（缓存命中跳过获取）+ 未缓存包逐源尝试均拒绝 → 换源 2/2 → 源耗尽失败 + 分类提示）。
 - **工程注记**：wix build 会在输出目录留包载荷的硬链接中间产物——构建后必须清除，否则 Burn 以 Bundle 同目录为本地源直接 copy 跳过下载（S1 首跑实测踩坑）；WinForms 控件为注册类名（`WindowsForms10.*`），UI 自动化需 `EnumChildWindows` 递归 + 类名子串匹配。
@@ -846,11 +850,11 @@ public interface ITopologyResolver
 | `webui`（webui-zip） | —— | **无独立版本概念**（§6.9 覆盖重写语义），不入可升级清单（呈现为「重跑覆盖更新」） |
 | 其他（`linux-server` / `pda-apk` 等下载 / 指引条目） | —— | 非本机安装组件，不探测不比较 |
 
-**「已是最新」判定（AC-02）**：本机检测到**至少一个**可版本比较组件已装，且**没有任何已装组件**判定为「升级」（未装组件属新装，不参与判定）→ 整体「已是最新」——欢迎页明示、确认页横幅「无需重复安装」；不阻止继续（重跑改选 = Burn Modify 语义仍可用，执行按 §6.9 幂等口径跳过或覆盖重写）。任一已装组件 < 目标版本 → 「有可用更新」，确认页呈现「组件、现版本 → 新版本」清单，确认后复用现成 Apply 链升级。
+**「已是最新」判定（AC-02）**：本机检测到**至少一个**可版本比较组件已装，且**没有任何已装组件**判定为「升级」（未装组件属新装，不参与判定）→ 整体「已是最新」——确认页明示（迭代 95 / #151 前在欢迎页，自动加载后用户不再停留就绪页，横幅随决策 #151 移至确认页）；不阻止继续（重跑改选 = Burn Modify 语义仍可用，执行按 §6.9 幂等口径跳过或覆盖重写）。任一已装组件 < 目标版本 → 「有可用更新」，确认页呈现「组件、现版本 → 新版本」清单，确认后复用现成 Apply 链升级。
 
 **包级口径（Bundle 自身 / 引导程序）**：本机已装引导程序版本 = Burn `DetectRelatedBundle` 事件检测的同 UpgradeCode 相关 Bundle 版本（BA 记录并写入日志）；当前引导程序版本 = `WixBundleVersion`。包级不驱动安装决策（组件级清单已覆盖用户视角），仅用于日志与升级走查证据。
 
-**latest.json 消费（清单新鲜度）**：清单来源为**稳定通道 URL**（`releases/latest/download/install-manifest.json`）时推导同通道 `latest.json`，或**本地路径**时读同目录 `latest.json`（离线包内嵌场景）；两者解析 `{ labelframeVersion, manifestUrl }`（#51 生成）。manifest `labelframeVersion` < 通道最新 → 欢迎页提示「清单非最新（最新 X.Y.Z），建议改用官方稳定通道」；推导不到 / 读取失败 → 静默跳过（不阻断主流程）。latest.json **不参与组件级比较**（组件版本权威 = manifest）。
+**latest.json 消费（清单新鲜度）**：清单来源为**稳定通道 URL**（`releases/latest/download/install-manifest.json`）时推导同通道 `latest.json`，或**本地路径**时读同目录 `latest.json`（离线包内嵌场景）；两者解析 `{ labelframeVersion, manifestUrl }`（#51 生成）。manifest `labelframeVersion` < 通道最新 → 确认页提示「清单非最新（最新 X.Y.Z），建议改用官方稳定通道」（迭代 95 / #151 前在欢迎页，随升级摘要移至确认页）；推导不到 / 读取失败 → 静默跳过（不阻断主流程）。latest.json **不参与组件级比较**（组件版本权威 = manifest）。
 
 **客户端「检查更新」提示闭环（#71 / #72 分发之上，不做应用内自动下载安装）**：WinHost `GET /api/host/config` 响应新增只读 `version` 字段（程序集 InformationalVersion，向后兼容增量，对齐 AndroidHost 决策 #104 ⑤ 先例；POST 忽略该字段）；客户端设置页「更新与安装包」卡片从 `client-packages` 列表按发版命名事实解析客户端 MSI 版本（文件名 `LabelFrame-Client-<版本>.msi`），取最高与本机版本比较（同一 `VersionSemantics` 语义的前端等价实现，数值段比较）：
 
@@ -915,6 +919,7 @@ public interface ITopologyResolver
 
 **暂不做（有需求再排）**：
 
+- 局域网自动发现服务端（迭代 95 / 决策 #151 ⑥ 登记）：打印客户端安装时自动发现内网 LabelFrame 服务端、地址零输入——涉及发现协议（mDNS / UDP 广播）与安全边界（伪造服务端），远期独立立项；近期形态见「下载中心带地址分发包」（决策 #151 ⑥，独立迭代）。
 - 跨组件关联 ID（TraceId / Activity）贯通（2026-09-11 日志与错误可诊断性审计 P2-9，迭代 52 明确不做）：一次打印横跨业务系统 → Server → 宿主（客户端 / PDA）→ 打印机，各端日志目前靠 requestId / jobId / deviceId 人工拼链；引入统一 TraceId（HTTP header 透传 + Activity 贯通 + 各日志通道输出关联字段）涉及跨端契约与日志检索习惯，出现真实排障诉求先按强化路径更新 DESIGN 再单独立项。
 - PDA 日志 / 崩溃摘要回传服务端管道（决策 #95 ⑤ 曾移除；迭代 53 确认仍不做）：PDA 现场取证走 adb logcat（tag 前缀 `LabelFrame.`）或应用私有目录本地文件（滚动日志 `{FilesDir}/logs/`、崩溃摘要 `{FilesDir}/crash/`，可 `adb pull` / 下次启动检测）。回传涉及 Server 接收端点与跨端契约（传输协议、批次 / 压缩、设备鉴别、存储与清理），出现真实诉求先按强化路径更新 DESIGN 再实施。
 - Code128 中文值专门校验（2026-09-07 决策）：Code 128 字符集仅 ASCII，中文值在渲染 / 编码层按编码异常拒绝（作业项 Failed + `LF_ENC_001` + 原因）即为正确语义，不在提交前加专门校验；了结 v0.22.1 遗留的「独立校验问题后续处理」。

@@ -316,11 +316,13 @@ function Remove-TestRegistration {
 }
 
 # ---------- 驱动向导走完问卷并等待终态 ----------
-# -ManifestSourceText：注入清单来源输入框（空串 = 不注入——I1/I2 验证邻接清单隐式默认）；
+# -ManifestSourceText：清单来源经 --manifest 命令行指定（空串 = 不指定——I1/I2 验证邻接清单隐式默认）；
 # -UseBundle：运行哪个 EXE（布局目录内副本 vs 构建产物）。
 function Invoke-WizardInstall([string]$LogPath, [int]$TimeoutSeconds, [string]$ManifestSourceText = '', [string]$UseBundle = '') {
     $exe = if ($UseBundle) { $UseBundle } else { $bundleExe }
-    $proc = Start-Process -FilePath $exe -ArgumentList @('-l', $LogPath) -PassThru
+    # 迭代 95（#151）：清单来源由命令行 --manifest 显式覆写（测试注入路径），向导启动即自动加载
+    $arguments = if ($ManifestSourceText) { @('--manifest', $ManifestSourceText, '-l', $LogPath) } else { @('-l', $LogPath) }
+    $proc = Start-Process -FilePath $exe -ArgumentList $arguments -PassThru
     try {
         $deadline = (Get-Date).AddSeconds(40)
         $mainHwnd = [IntPtr]::Zero
@@ -337,25 +339,32 @@ function Invoke-WizardInstall([string]$LogPath, [int]$TimeoutSeconds, [string]$M
         if ($mainHwnd -eq [IntPtr]::Zero) { throw '40 秒内未找到 BA 向导主窗口' }
         [void][OfflineUi.Native]::SetForegroundWindow($mainHwnd)
 
-        # 欢迎页：按需注入清单来源 → 加载（成功自动进下一页）
-        if ($ManifestSourceText) {
-            $sourceEdit = Find-ChildByCaption $mainHwnd 'EDIT' '*'
-            if (-not $sourceEdit) { throw '未找到清单来源输入框' }
-            Set-EditText $sourceEdit.Handle $ManifestSourceText
-        }
-        $loadButton = Find-ChildByCaption $mainHwnd 'BUTTON' '加载清单'
-        if (-not $loadButton) { throw '未找到「加载清单」按钮' }
-        Click-Button $loadButton.Handle
+        # 就绪页：清单自动加载成功自动进打印机页（基础模式默认「仅打印客户端」，#151）
+        $brandTitle = Wait-ChildByCaption $mainHwnd 'STATIC' '需要哪些打印机品牌*' 30
+        if (-not $brandTitle) { throw '30 秒内未自动进入问卷（清单加载失败？）' }
 
-        # 拓扑页：选「单机一体」（两包都纳入：InstallServer + InstallClient）
-        $standalone = Wait-ChildByCaption $mainHwnd 'BUTTON' '单机一体' 20
-        if (-not $standalone) { throw '20 秒内未进入拓扑页（清单加载失败？）' }
+        # 高级路径选服务端角色（#151 两层问卷）：上一步回就绪页 → 高级选项 → 下一步进角色页
+        $backButton = Find-ChildByCaption $mainHwnd 'BUTTON' '上一步*'
+        if (-not $backButton) { throw '未找到「上一步」按钮' }
+        Click-Button $backButton.Handle
+        Start-Sleep -Milliseconds 500
+        $advancedButton = Find-ChildByCaption $mainHwnd 'BUTTON' '高级选项'
+        if (-not $advancedButton) { throw '未找到「高级选项」按钮' }
+        Click-Button $advancedButton.Handle
+        Start-Sleep -Milliseconds 300
+        $readyNext = Find-ChildByCaption $mainHwnd 'BUTTON' '下一步*'
+        if (-not $readyNext) { throw '未找到就绪页「下一步」按钮' }
+        Click-Button $readyNext.Handle
+
+        # 角色页：选「本机作为服务端，并安装打印客户端」（两包都纳入：InstallServer + InstallClient）
+        $standalone = Wait-ChildByCaption $mainHwnd 'BUTTON' '本机作为服务端，并安装打印客户端' 10
+        if (-not $standalone) { throw '10 秒内未进入角色页' }
         Start-Sleep -Milliseconds 400
         Click-Button $standalone.Handle
         Start-Sleep -Milliseconds 300
 
-        # 「下一步」×4：品牌 → 管理界面 → 确认页 → 确认页「下一步」= 开始安装
-        for ($click = 0; $click -lt 4; $click++) {
+        # 「下一步」×5：打印机 → 服务端地址（预填本机默认）→ 管理界面 → 确认页 → 确认页「下一步」= 开始安装
+        for ($click = 0; $click -lt 5; $click++) {
             $nextButton = Wait-ChildByCaption $mainHwnd 'BUTTON' '下一步*' 10
             if (-not $nextButton) { throw "未找到「下一步」按钮（第 $($click + 1) 次）" }
             Click-Button $nextButton.Handle

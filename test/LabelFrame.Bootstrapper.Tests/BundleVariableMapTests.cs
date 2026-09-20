@@ -76,23 +76,6 @@ public sealed class BundleVariableMapTests
     }
 
     [Fact]
-    public void To_variables_server_docker_should_clear_all_package_flags()
-    {
-        // Docker 预设无下载组件：全部包变量清零，仅保留预设名（compose 指引由确认页展示）
-        var plan = Resolver.Resolve(
-            LoadManifest("install-manifest.full.json"),
-            TopologyPreset.ServerDocker,
-            new TopologyOptions(new HashSet<string>(StringComparer.Ordinal), IncludeWebUi: true));
-        var variables = BundleVariableMap.ToVariables(plan);
-
-        Assert.Equal("server-docker", variables[BundleVariableMap.PresetVariable]);
-        Assert.Equal("0", variables[BundleVariableMap.ServerVariable]);
-        Assert.Equal("0", variables[BundleVariableMap.ClientVariable]);
-        Assert.Equal("0", variables[BundleVariableMap.WebUiVariable]);
-        Assert.Equal("0", variables[BundleVariableMap.ZebraPluginVariable]);
-    }
-
-    [Fact]
     public void To_variables_current_manifest_with_zebra_selected_should_set_zebra_flag()
     {
         // 迭代 63 起产物现状（plugin-zebra 条目已收录）：勾选 Zebra → InstallPluginZebra 置位（#56 接线主线）

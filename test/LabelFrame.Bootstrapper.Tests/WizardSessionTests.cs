@@ -108,7 +108,7 @@ public sealed class WizardSessionTests
         await session.LoadManifestAsync();
 
         var ex = Assert.Throws<InvalidOperationException>(() => session.BuildPlan());
-        Assert.Contains("部署形态", ex.Message);
+        Assert.Contains("本机角色", ex.Message);
     }
 
     // ---- 隐式优先源目录（迭代 70 / #89，决策 #135）：本地清单所在目录 = 布局目录 ----

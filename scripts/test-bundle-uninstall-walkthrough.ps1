@@ -370,9 +370,10 @@ function New-TestBundle([string]$ServerMsi, [string]$ClientMsi, [string]$WebUiZi
     return $OutputPath
 }
 
-# ---------- 驱动向导安装（复刻既有走查脚本；品牌 / 管理界面复选框按需勾选 / 取消）----------
+# ---------- 驱动向导安装（迭代 95 / #151 新问卷流：高级路径选服务端角色；品牌 / 管理界面复选框按需勾选 / 取消）----------
 function Invoke-WizardInstall([string]$BundleExe, [string]$ManifestPath, [string]$LogPath, [int]$TimeoutSeconds, [bool]$SelectZebra, [bool]$SelectWebUi) {
-    $proc = Start-Process -FilePath $BundleExe -ArgumentList @('-l', $LogPath) -PassThru
+    # 清单来源由命令行 --manifest 显式覆写（本地测试清单），向导启动即自动加载（#151）
+    $proc = Start-Process -FilePath $BundleExe -ArgumentList @('--manifest', $ManifestPath, '-l', $LogPath) -PassThru
     try {
         $deadline = (Get-Date).AddSeconds(40)
         $mainHwnd = [IntPtr]::Zero
@@ -386,36 +387,50 @@ function Invoke-WizardInstall([string]$BundleExe, [string]$ManifestPath, [string
         if ($mainHwnd -eq [IntPtr]::Zero) { throw '40 秒内未找到 BA 向导主窗口' }
         [void][UninstallWalk.Native]::SetForegroundWindow($mainHwnd)
 
-        # 欢迎页：清单来源输入本地测试清单 → 加载（成功自动进下一页）
-        $sourceEdit = Find-ChildByCaption $mainHwnd 'EDIT' '*'
-        if (-not $sourceEdit) { throw '未找到清单来源输入框' }
-        Set-EditText $sourceEdit.Handle $ManifestPath
-        $loadButton = Find-ChildByCaption $mainHwnd 'BUTTON' '加载清单'
-        if (-not $loadButton) { throw '未找到「加载清单」按钮' }
-        Click-Button $loadButton.Handle
+        # 就绪页：清单自动加载成功自动进打印机页（基础模式默认「仅打印客户端」，#151）
+        $brandTitle = Wait-ChildByCaption $mainHwnd 'STATIC' '需要哪些打印机品牌*' 30
+        if (-not $brandTitle) { throw '30 秒内未自动进入问卷（清单加载失败？）' }
 
-        # 拓扑页：选「单机一体」（四包条件变量全部就位：双 MSI + webui 开关 + 品牌开关）
-        $standalone = Wait-ChildByCaption $mainHwnd 'BUTTON' '单机一体' 30
-        if (-not $standalone) { throw '30 秒内未进入拓扑页（清单加载失败？）' }
+        # 高级路径选服务端角色（#151 两层问卷）：上一步回就绪页 → 高级选项 → 下一步进角色页
+        $backButton = Find-ChildByCaption $mainHwnd 'BUTTON' '上一步*'
+        if (-not $backButton) { throw '未找到「上一步」按钮' }
+        Click-Button $backButton.Handle
+        Start-Sleep -Milliseconds 500
+        $advancedButton = Find-ChildByCaption $mainHwnd 'BUTTON' '高级选项'
+        if (-not $advancedButton) { throw '未找到「高级选项」按钮' }
+        Click-Button $advancedButton.Handle
+        Start-Sleep -Milliseconds 300
+        $readyNext = Find-ChildByCaption $mainHwnd 'BUTTON' '下一步*'
+        if (-not $readyNext) { throw '未找到就绪页「下一步」按钮' }
+        Click-Button $readyNext.Handle
+
+        # 角色页：选「本机作为服务端，并安装打印客户端」（四包条件变量全部就位：双 MSI + webui 开关 + 品牌开关）
+        $standalone = Wait-ChildByCaption $mainHwnd 'BUTTON' '本机作为服务端，并安装打印客户端' 10
+        if (-not $standalone) { throw '10 秒内未进入角色页' }
         Start-Sleep -Milliseconds 400
         Click-Button $standalone.Handle
         Start-Sleep -Milliseconds 300
 
-        # 下一步 → 品牌页：Zebra 勾选态按场景驱动（ZDesigner 驱动名预选可能已勾选，须读态后按需点击）
+        # 下一步 → 打印机页：Zebra 勾选态按场景驱动（ZDesigner 驱动名预选可能已勾选，须读态后按需点击）
         $nextButton = Wait-ChildByCaption $mainHwnd 'BUTTON' '下一步*' 10
-        if (-not $nextButton) { throw '未找到拓扑页「下一步」按钮' }
+        if (-not $nextButton) { throw '未找到角色页「下一步」按钮' }
         Click-Button $nextButton.Handle
         $zebraCheck = Wait-ChildByCaption $mainHwnd 'BUTTON' 'Zebra*' 10
-        if (-not $zebraCheck) { throw '未找到品牌页 Zebra 复选框' }
+        if (-not $zebraCheck) { throw '未找到打印机页 Zebra 复选框' }
         Set-CheckBoxByToggle $zebraCheck.Handle (Get-ZebraPreselected) $SelectZebra
 
-        # 下一步 → 管理界面页：开关按场景驱动
+        # 下一步 → 服务端地址页（同机角色预填本机默认，直接下一步）→ 管理界面页：开关按场景驱动
         $nextButton = Wait-ChildByCaption $mainHwnd 'BUTTON' '下一步*' 10
-        if (-not $nextButton) { throw '未找到品牌页「下一步」按钮' }
+        if (-not $nextButton) { throw '未找到打印机页「下一步」按钮' }
+        Click-Button $nextButton.Handle
+        $addressTitle = Wait-ChildByCaption $mainHwnd 'STATIC' '打印客户端连接哪台服务端*' 10
+        if (-not $addressTitle) { throw '未进入服务端地址页' }
+        $nextButton = Find-ChildByCaption $mainHwnd 'BUTTON' '下一步*'
+        if (-not $nextButton) { throw '未找到地址页「下一步」按钮' }
         Click-Button $nextButton.Handle
         $webUiCheck = Wait-ChildByCaption $mainHwnd 'BUTTON' '安装管理界面*' 10
         if (-not $webUiCheck) { throw '未找到管理界面页开关' }
-        Set-CheckBoxByToggle $webUiCheck.Handle $false $SelectWebUi # standalone 预设初始不勾（确定性）
+        Set-CheckBoxByToggle $webUiCheck.Handle $false $SelectWebUi # 服务端 + 同机客户端角色初始不勾（确定性）
 
         # 下一步 → 确认页 → 下一步 = 开始安装；等终态（完成页 / 失败报告）
         for ($click = 0; $click -lt 2; $click++) {
