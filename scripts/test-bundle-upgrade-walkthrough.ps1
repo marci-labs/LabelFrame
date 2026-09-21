@@ -316,12 +316,14 @@ function Invoke-WizardAndCaptureBanner([string]$BundleExe, [string]$ManifestPath
             Click-Button $nextButton.Handle
             Start-Sleep -Milliseconds 500
         }
+        # 锚点集 = UpgradePresentation.Summarize 三态（可升级 / 已最新 / 全新安装），与确认页升级状态行 1:1；
+        # 执行边界横幅（含「不会下载」字样）与清单新鲜度行是常驻 / 场景性行，不参与抓取——#181 教训：*不会下载* 曾抢走首命中致断言错位
         $banner = $null
         $deadline = (Get-Date).AddSeconds(10)
         while ((Get-Date) -lt $deadline) {
             $hit = Get-DescendantWindows $mainHwnd | Where-Object {
                 $_.Class.Contains('STATIC') -and (
-                    $_.Caption -like '*检测到可用更新*' -or $_.Caption -like '*已是最新版本*' -or $_.Caption -like '*全新安装*' -or $_.Caption -like '*不会下载*')
+                    $_.Caption -like '*检测到可用更新*' -or $_.Caption -like '*已是最新版本*' -or $_.Caption -like '*全新安装*')
             } | Select-Object -First 1
             if ($hit) { $banner = $hit.Caption; break }
             Start-Sleep -Milliseconds 100
@@ -437,7 +439,7 @@ try {
                 # 升新：重跑 v$newVersion Bundle——确认页「可升级清单」→ RelatedBundle 升级 + MSI MajorUpgrade 覆盖
                 $run = Invoke-WizardAndCaptureBanner $bundleNew $manifestNew $logPath 240
                 Add-Result $scenario ($run.ExitCode -eq 0 -and $run.Terminal -eq 'complete') "exit=$($run.ExitCode) 终态=$($run.Terminal)"
-                Add-Result $scenario ($run.Banner -like '*确认后将执行升级*') "确认页升级横幅：$($run.Banner)"
+                Add-Result $scenario ($run.Banner -like "*检测到可用更新：服务端 $oldVersion → $newVersion*") "确认页升级横幅：$($run.Banner)"
                 Assert-LogContains $logPath "升级评估（§6.11）：检测到可用更新：服务端 $oldVersion → $newVersion" $scenario 'BA 可升级清单（服务端）'
                 Assert-LogContains $logPath "打印客户端 $oldVersion → $newVersion" $scenario 'BA 可升级清单（客户端）'
                 $after = @{ Server = Get-InstalledFamilyVersion $serverUpgradeCode; Client = Get-InstalledFamilyVersion $clientUpgradeCode }
