@@ -70,6 +70,28 @@ public class JobSubmissionServiceTests
     }
 
     [Fact]
+    public async Task Direct_submit_with_callback_url_should_be_accepted_and_ignored()
+    {
+        // 直连模式（决策 #154）：SubmitJobRequest 为三端共用契约，callbackUrl 字段接受但忽略——
+        // 受理成功、作业照常创建进入队列，本地作业模型无回调概念（不产生出站回调）
+        var (service, store, _) = CreateService();
+        var request = CreateRequest("req-cb-direct", new Dictionary<string, string>
+        {
+            ["zone"] = "A-01",
+            ["locationCode"] = "A-01-02-03",
+        }) with { CallbackUrl = "http://127.0.0.1:9/hook" };
+
+        var result = await service.SubmitAsync(request);
+
+        Assert.NotNull(result.Job);
+        Assert.True(result.Created);
+        Assert.Null(result.ErrorCode);
+        Assert.Equal(LabelJobStatus.Pending, result.Job!.Status);
+        var stored = await store.GetJobAsync(result.Job.Id);
+        Assert.Contains("^GF", stored!.Items[0].Zpl);
+    }
+
+    [Fact]
     public async Task Duplicate_request_id_should_return_existing_job()
     {
         var (service, store, _) = CreateService();

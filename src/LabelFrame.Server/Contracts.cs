@@ -18,6 +18,9 @@ public sealed record DeviceView(
     string? LastIp = null);
 
 /// <summary>作业视图。</summary>
+/// <param name="CallbackStatus">终态回调投递状态（决策 #154：Pending / Delivered / DeadLetter；null = 无回调）。</param>
+/// <param name="CallbackAttempts">回调已尝试次数（无回调为 null）。</param>
+/// <param name="CallbackLastError">回调末次失败原因（中文；无回调或已成功为 null）。</param>
 public sealed record ServerJobView(
     string JobId,
     string RequestId,
@@ -28,7 +31,10 @@ public sealed record ServerJobView(
     int CompletedItems,
     int FailedItems,
     string? ErrorMessage,
-    string DeviceStatus);
+    string DeviceStatus,
+    string? CallbackStatus = null,
+    int? CallbackAttempts = null,
+    string? CallbackLastError = null);
 
 /// <summary>设备领取到的作业（含载荷）。</summary>
 public sealed record ClaimedJob(string JobId, string RequestId, int TotalItems, JobPayload Payload);

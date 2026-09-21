@@ -76,6 +76,9 @@ public sealed partial class ClaimedJobTimeoutService : BackgroundService
         var now = _time.GetUtcNow();
         var reason = $"宿主失联超时（{ServerErrorCodes.HostLostTimeout}）：领取后超过 {timeout.TotalMinutes:0.##} 分钟未回报终态，服务端已按失败回收（结果未知，可能已实际打印）；需重打请用新 requestId 重发，不会自动重新投递。";
         var count = await _db.MarkTimedOutClaimedJobsAsync(now, now - timeout, reason, cancellationToken);
+
+        // 终态回调登记（决策 #154，三处终态转移点之一）：失联回收同样通知调用方（不漏报），幂等登记
+        await _db.EnqueueJobCallbacksAsync(now, cancellationToken: cancellationToken);
         LogScanCompleted(_logger, count);
         return count;
     }

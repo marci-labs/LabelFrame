@@ -27,11 +27,25 @@ public sealed class ServerDb
             completed_items INTEGER NOT NULL DEFAULT 0,
             failed_items    INTEGER NOT NULL DEFAULT 0,
             error_message   TEXT NULL,
-            payload_json    TEXT NOT NULL
+            payload_json    TEXT NOT NULL,
+            callback_url    TEXT NULL
         );
 
         CREATE INDEX IF NOT EXISTS ix_server_jobs_status_device ON server_jobs(status, target_device_id);
         CREATE INDEX IF NOT EXISTS ix_server_jobs_device ON server_jobs(target_device_id, created_at);
+
+        CREATE TABLE IF NOT EXISTS job_callbacks (
+            job_id        TEXT PRIMARY KEY,
+            request_id    TEXT NOT NULL,
+            url           TEXT NOT NULL,
+            status        TEXT NOT NULL,
+            attempts      INTEGER NOT NULL DEFAULT 0,
+            next_retry_at TEXT NOT NULL,
+            last_error    TEXT NULL,
+            created_at    TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_job_callbacks_due ON job_callbacks(status, next_retry_at);
         """;
 
     private readonly string _connectionString;
@@ -51,6 +65,7 @@ public sealed class ServerDb
         await command.ExecuteNonQueryAsync(cancellationToken);
 
         await MigrateDevicesLastIpAsync(connection, cancellationToken);
+        await MigrateServerJobsCallbackUrlAsync(connection, cancellationToken);
     }
 
     /// <summary>旧库兼容迁移：devices 表缺少 last_ip 列时补列（已存在则跳过；失败静默忽略，不影响启动）。</summary>
@@ -80,6 +95,41 @@ public sealed class ServerDb
         {
             await using var alter = connection.CreateCommand();
             alter.CommandText = "ALTER TABLE devices ADD COLUMN last_ip TEXT NULL;";
+            await alter.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch
+        {
+            // 已存在列等竞态 / 约束差异：静默忽略，保持旧库可启动
+        }
+    }
+
+    /// <summary>旧库兼容迁移：server_jobs 表缺少 callback_url 列时补列（决策 #154，迭代 98；已存在则跳过；失败静默忽略，不影响启动）。</summary>
+    private static async Task MigrateServerJobsCallbackUrlAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        var hasCallbackUrl = false;
+        await using (var probe = connection.CreateCommand())
+        {
+            probe.CommandText = "PRAGMA table_info(server_jobs);";
+            await using var reader = await probe.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                if (string.Equals(reader.GetString(1), "callback_url", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasCallbackUrl = true;
+                    break;
+                }
+            }
+        }
+
+        if (hasCallbackUrl)
+        {
+            return;
+        }
+
+        try
+        {
+            await using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE server_jobs ADD COLUMN callback_url TEXT NULL;";
             await alter.ExecuteNonQueryAsync(cancellationToken);
         }
         catch
@@ -211,10 +261,10 @@ public sealed class ServerDb
         command.CommandText = """
             INSERT OR IGNORE INTO server_jobs
                 (id, request_id, target_device_id, status, created_at, claimed_at, finished_at,
-                 total_items, completed_items, failed_items, error_message, payload_json)
+                 total_items, completed_items, failed_items, error_message, payload_json, callback_url)
             VALUES
                 ($id, $requestId, $targetDeviceId, $status, $createdAt, NULL, NULL,
-                 $totalItems, 0, 0, NULL, $payloadJson);
+                 $totalItems, 0, 0, NULL, $payloadJson, $callbackUrl);
             """;
         command.Parameters.AddWithValue("$id", job.Id);
         command.Parameters.AddWithValue("$requestId", job.RequestId);
@@ -223,6 +273,7 @@ public sealed class ServerDb
         command.Parameters.AddWithValue("$createdAt", SqliteSupport.Format(job.CreatedAt));
         command.Parameters.AddWithValue("$totalItems", job.TotalItems);
         command.Parameters.AddWithValue("$payloadJson", job.PayloadJson);
+        command.Parameters.AddWithValue("$callbackUrl", (object?)job.CallbackUrl ?? DBNull.Value);
         var inserted = await command.ExecuteNonQueryAsync(cancellationToken);
         return inserted == 0 ? await GetJobByRequestIdAsync(job.RequestId, cancellationToken) : job;
     }
@@ -460,10 +511,27 @@ public sealed class ServerDb
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    /// <summary>删除终态（Completed / Failed / Expired）且结束 / 创建时间早于截止时间的作业（历史清理用）。</summary>
+    /// <summary>
+    /// 删除终态（Completed / Failed / Expired）且结束 / 创建时间早于截止时间的作业（历史清理用）；
+    /// 投递行（job_callbacks）随作业一并删除（先删投递行再删作业行，同一判定口径）。
+    /// </summary>
     public async Task<int> DeleteTerminalJobsBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
+        await using (var callbacks = connection.CreateCommand())
+        {
+            callbacks.CommandText = """
+                DELETE FROM job_callbacks
+                WHERE job_id IN (
+                    SELECT id FROM server_jobs
+                    WHERE status IN ('Completed', 'Failed', 'Expired')
+                      AND COALESCE(finished_at, created_at) < $cutoff
+                );
+                """;
+            callbacks.Parameters.AddWithValue("$cutoff", SqliteSupport.Format(cutoff));
+            await callbacks.ExecuteNonQueryAsync(cancellationToken);
+        }
+
         await using var command = connection.CreateCommand();
         command.CommandText = """
             DELETE FROM server_jobs
@@ -473,6 +541,107 @@ public sealed class ServerDb
         command.Parameters.AddWithValue("$cutoff", SqliteSupport.Format(cutoff));
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// 终态回调登记统一出口（决策 #154，幂等）：把已到终态且带 callback_url、尚未登记的作业写入投递表
+    /// （job_id 主键 + INSERT OR IGNORE，并发 / 重复登记安全）。三处终态转移点（宿主回报、失联回收、
+    /// 超 TTL 过期）都经此登记；<paramref name="jobId"/> 非 null 时只处理该作业（回报路径单作业精准登记）。
+    /// 返回新登记条数。
+    /// </summary>
+    public async Task<int> EnqueueJobCallbacksAsync(DateTimeOffset now, string? jobId = null, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT OR IGNORE INTO job_callbacks
+                (job_id, request_id, url, status, attempts, next_retry_at, last_error, created_at)
+            SELECT id, request_id, callback_url, $pending, 0, $now, NULL, $now
+            FROM server_jobs
+            WHERE callback_url IS NOT NULL
+              AND status IN ('Completed', 'Failed', 'Expired')
+              AND ($jobId IS NULL OR id = $jobId)
+              AND NOT EXISTS (SELECT 1 FROM job_callbacks WHERE job_callbacks.job_id = server_jobs.id);
+            """;
+        command.Parameters.AddWithValue("$pending", JobCallbackStatus.Pending.ToString());
+        command.Parameters.AddWithValue("$now", SqliteSupport.Format(now));
+        command.Parameters.AddWithValue("$jobId", (object?)jobId ?? DBNull.Value);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <summary>查询到期的待投递回调任务（Pending 且 next_retry_at 不晚于 now，按到期先后；limit 上限）。</summary>
+    public async Task<IReadOnlyList<JobCallbackTask>> ListDueJobCallbacksAsync(DateTimeOffset now, int limit, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        var tasks = new List<JobCallbackTask>();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT job_id, request_id, url, status, attempts, next_retry_at, last_error, created_at
+            FROM job_callbacks
+            WHERE status = $pending AND next_retry_at <= $now
+            ORDER BY next_retry_at, job_id
+            LIMIT $limit;
+            """;
+        command.Parameters.AddWithValue("$pending", JobCallbackStatus.Pending.ToString());
+        command.Parameters.AddWithValue("$now", SqliteSupport.Format(now));
+        command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 500));
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            tasks.Add(ReadCallbackTask(reader));
+        }
+
+        return tasks;
+    }
+
+    /// <summary>查询单个作业的回调投递任务（无回调或未登记时返回 null；作业视图透出投递状态用）。</summary>
+    public async Task<JobCallbackTask?> GetJobCallbackAsync(string jobId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT job_id, request_id, url, status, attempts, next_retry_at, last_error, created_at
+            FROM job_callbacks WHERE job_id = $jobId LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$jobId", jobId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadCallbackTask(reader) : null;
+    }
+
+    /// <summary>更新投递任务状态（成功 Delivered / 失败退避 Pending / 死信 DeadLetter；nextRetryAt 按状态语义填写，lastError 成功时清空）。</summary>
+    public async Task<int> UpdateJobCallbackStatusAsync(
+        string jobId,
+        JobCallbackStatus status,
+        int attempts,
+        DateTimeOffset nextRetryAt,
+        string? lastError,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE job_callbacks
+            SET status = $status, attempts = $attempts, next_retry_at = $nextRetryAt, last_error = $lastError
+            WHERE job_id = $jobId;
+            """;
+        command.Parameters.AddWithValue("$status", status.ToString());
+        command.Parameters.AddWithValue("$attempts", attempts);
+        command.Parameters.AddWithValue("$nextRetryAt", SqliteSupport.Format(nextRetryAt));
+        command.Parameters.AddWithValue("$lastError", (object?)lastError ?? DBNull.Value);
+        command.Parameters.AddWithValue("$jobId", jobId);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static JobCallbackTask ReadCallbackTask(Microsoft.Data.Sqlite.SqliteDataReader reader) => new()
+    {
+        JobId = reader.GetString(0),
+        RequestId = reader.GetString(1),
+        Url = reader.GetString(2),
+        Status = Enum.Parse<JobCallbackStatus>(reader.GetString(3)),
+        Attempts = reader.GetInt32(4),
+        NextRetryAt = SqliteSupport.Parse(reader.GetString(5)),
+        LastError = reader.IsDBNull(6) ? null : reader.GetString(6),
+        CreatedAt = SqliteSupport.Parse(reader.GetString(7)),
+    };
 
     private async Task<ServerJob?> GetJobCoreAsync(string key, bool byRequestId, CancellationToken cancellationToken)
     {
@@ -491,7 +660,7 @@ public sealed class ServerDb
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT id, request_id, target_device_id, status, created_at, claimed_at, finished_at,
-                   total_items, completed_items, failed_items, error_message, payload_json
+                   total_items, completed_items, failed_items, error_message, payload_json, callback_url
             FROM server_jobs WHERE id = $id LIMIT 1;
             """;
         command.Parameters.AddWithValue("$id", jobId);
@@ -515,6 +684,7 @@ public sealed class ServerDb
             FailedItems = reader.GetInt32(9),
             ErrorMessage = reader.IsDBNull(10) ? null : reader.GetString(10),
             PayloadJson = reader.GetString(11),
+            CallbackUrl = reader.IsDBNull(12) ? null : reader.GetString(12),
         };
     }
 

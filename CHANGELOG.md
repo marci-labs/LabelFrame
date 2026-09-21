@@ -2,6 +2,17 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 98：打印任务终态回调（webhook）——路由模式提交附带回调 URL，终态异步通知外部系统 · 2026-09-21
+
+- **动机（#190）**：外部业务系统经路由模式提交打印任务后只能轮询 `GET /api/jobs/{jobId}` 得知结果，成本高、时效差；期望提交时附带回调 URL（webhook），作业到达终态时由 Server 异步 POST 通知，载荷含状态与幂等键。
+- **契约（决策 #154，先文档后代码）**：`SubmitJobRequest` 增可选可空 `callbackUrl`（三端共用契约向后兼容；DESIGN 决策 #154 + §5.1 同步 + §7 登记 HMAC 未决问题）；callbackUrl 只落 Server 侧 `server_jobs.callback_url` 新列（旧库自动补列），不进投递载荷——宿主零感知。
+- **Server 回调投递**：三处终态转移点（宿主回报 `ReportResultAsync` / 失联回收 `ClaimedJobTimeoutService` / 超 TTL 置 Expired `PendingJobExpirationService`）经统一出口幂等登记进 SQLite `job_callbacks` 投递表；`JobCallbackDeliveryService` 后台扫描（5 秒周期）异步投递——不内联宿主回报路径，外部端点慢 / 挂不拖住打印；指数退避（30s 起翻倍）、至多 5 次、超限死信；投递扫描自带登记自愈（补偿「终态落库但登记缺失」窗口）；投递状态持久化，进程重启后未完成任务继续投递（至少一次）；作业历史清理时投递行随作业删除。
+- **载荷与投递状态**：POST JSON `{ jobId, requestId, status（Completed / Failed / Expired）, completedAt, totalItems, completedItems, failedItems, errorMessage? }`（requestId 即幂等键，重复 POST 由调用方去重）；`GET /api/jobs/{jobId}` 视图新增 `callbackStatus` / `callbackAttempts` / `callbackLastError`（无回调为 null）。
+- **安全边界（重试上限 / 超时 / 退避参数集中常量 `JobCallbackDeliveryPolicy`）**：URL scheme 白名单仅 http/https——提交即拒（400 + `LF_SRV_002` 中文错误，空串 / 裸字符串 / `file://` 等一律拒，作业不入队）；投递超时 10 秒；不跟随重定向（3xx 按失败重试）；响应体读弃不落地。
+- **直连模式**：WinHost（53960）与 AndroidHost（53970）接受 `callbackUrl` 字段但忽略，不产生出站回调。
+- **测试**：新增 23 项至 923 项（基线 900）——投递成功与载荷 schema / Failed / Expired / 失联回收三终态无漏报 / 指数退避重试（FakeTimeProvider）/ 死信 / 重启恢复（持久化）/ 登记幂等 / 非法 scheme 拒绝（file:、裸字符串、空串等 5 形态 + 端点级 400）/ 直连接受忽略 / 契约反序列化兼容；`HttpJobCallbackSender` 真实套接字测试锚定 2xx 判成功、不跟随重定向、非 2xx 与不可达分类。dotnet build / test（排除 Perf/Soak）全绿零回归；前端无消费方零改动。
+- **记账**：DESIGN 决策 #154；ROADMAP 状态行随验收结项收口。
+
 ## 测试债修复（#181）：升级走查脚本两条横幅断言锚点对齐 #151 现行文案 · 2026-09-21
 
 - **现象与根因（#175 AC-07 真机走查实证，产品零缺陷）**：`test-bundle-upgrade-walkthrough.ps1` S1/S2/S3 功能断言全绿，仅 2 条确认页横幅 UI 断言红——①横幅抓取过滤含 `*不会下载*`，抢先命中 #178（决策 #151 文案精简）后常驻确认页的执行边界横幅「点击『安装』前不会下载…」，首命中取错控件，S3「已是最新」断言随捕获文本错位；②S2 断言仍期望旧措辞「确认后将执行升级」，而确认页升级状态行现行文案为 `UpgradePresentation.Summarize` 的「检测到可用更新：…」。
