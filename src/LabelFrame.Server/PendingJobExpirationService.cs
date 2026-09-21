@@ -75,6 +75,9 @@ public sealed partial class PendingJobExpirationService : BackgroundService
         var now = _time.GetUtcNow();
         var reason = $"暂存超过 {ttl.TotalHours:0.##} 小时未投递，服务端已放弃；需重打请用新 requestId 重发。";
         var count = await _db.MarkExpiredJobsAsync(now, now - ttl, reason, cancellationToken);
+
+        // 终态回调登记（决策 #154，三处终态转移点之一）：Expired 同样通知调用方（不漏报），幂等登记
+        await _db.EnqueueJobCallbacksAsync(now, cancellationToken: cancellationToken);
         LogScanCompleted(_logger, count);
         return count;
     }

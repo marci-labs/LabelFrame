@@ -121,6 +121,15 @@ public sealed partial class ServerService : IDisposable
             throw new ServerException(ServerErrorCodes.InvalidRequest, "缺少 requestId（幂等键）。");
         }
 
+        // 终态回调地址校验（决策 #154）：scheme 白名单仅 http/https，提交即拒（作业不入队）——
+        // 空串 / 纯空白 / 裸字符串 / file:// 等一律拒绝，走既有错误码体系（LF_SRV_002 + 中文消息）
+        if (request.CallbackUrl is not null && !JobCallbackUrl.IsAllowed(request.CallbackUrl))
+        {
+            throw new ServerException(ServerErrorCodes.InvalidRequest, $"callbackUrl 无效（仅支持 http/https 地址）：{request.CallbackUrl}。");
+        }
+
+        var callbackUrl = string.IsNullOrWhiteSpace(request.CallbackUrl) ? null : request.CallbackUrl.Trim();
+
         // 目标设备解析：targetDeviceId 优先；未提供时按 targetIp 查找（找不到 404）。
         var targetDeviceId = request.TargetDeviceId;
         if (string.IsNullOrWhiteSpace(targetDeviceId))
@@ -180,6 +189,7 @@ public sealed partial class ServerService : IDisposable
                 CreatedAt = _time.GetUtcNow(),
                 TotalItems = request.Labels.Count,
                 PayloadJson = payloadJson,
+                CallbackUrl = callbackUrl,
             }, cancellationToken);
             LogJobCreated(job!.Id, job.RequestId, targetDeviceId, job.TotalItems);
             _notifier?.Notify(targetDeviceId);
@@ -251,6 +261,14 @@ public sealed partial class ServerService : IDisposable
                 _time.GetUtcNow(),
                 cancellationToken);
         LogJobFinished(jobId, deviceId, job.RequestId, updated!.Status.ToString(), report.CompletedItems ?? 0, report.FailedItems ?? 0, report.ErrorMessage);
+
+        // 终态回调登记（决策 #154，三处终态转移点之一）：异步投递，不内联在回报路径中——
+        // 外部端点慢 / 挂不影响宿主回报；幂等登记，重复到达安全
+        if (updated.CallbackUrl is not null)
+        {
+            await _db.EnqueueJobCallbacksAsync(_time.GetUtcNow(), jobId, cancellationToken);
+        }
+
         return await ToJobViewAsync(updated!, cancellationToken);
     }
 
@@ -323,6 +341,9 @@ public sealed partial class ServerService : IDisposable
         var deviceStatus = device is null
             ? DeviceStatus.Offline
             : IsOnline(device, _time.GetUtcNow()) ? DeviceStatus.Online : DeviceStatus.Offline;
+
+        // 终态回调投递状态（决策 #154）：无回调地址的作业不查投递表（绝大多数作业零开销）
+        JobCallbackTask? callback = job.CallbackUrl is null ? null : await _db.GetJobCallbackAsync(job.Id, cancellationToken);
         return new ServerJobView(
             job.Id,
             job.RequestId,
@@ -333,7 +354,10 @@ public sealed partial class ServerService : IDisposable
             job.CompletedItems,
             job.FailedItems,
             job.ErrorMessage,
-            deviceStatus.ToString());
+            deviceStatus.ToString(),
+            callback?.Status.ToString(),
+            callback?.Attempts,
+            callback?.LastError);
     }
 
     private static DeviceView ToView(Device device, DateTimeOffset now) => new(

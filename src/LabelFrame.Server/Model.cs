@@ -86,6 +86,9 @@ public sealed class ServerJob
 
     /// <summary>作业载荷（模板 + labels 的 JSON，领取时原样返回宿主）。</summary>
     public required string PayloadJson { get; init; }
+
+    /// <summary>终态回调地址（决策 #154：可选，提交时经 scheme 白名单校验；null = 无回调。不进投递载荷，宿主零感知）。</summary>
+    public string? CallbackUrl { get; init; }
 }
 
 /// <summary>设备回报的作业结果。</summary>

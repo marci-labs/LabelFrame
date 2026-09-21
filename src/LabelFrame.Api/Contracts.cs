@@ -4,13 +4,15 @@ using LabelFrame.Core.Layout;
 namespace LabelFrame.Api;
 
 /// <summary>提交作业请求（模板自包含：契约 + 版式 + 标签数据；路由模式附加目标设备 / 模板名）。</summary>
+/// <param name="CallbackUrl">终态回调地址（可选可空，决策 #154）：仅路由模式 Server 消费——作业到达终态（Completed / Failed / Expired）后异步 POST 通知；仅允许 http/https 绝对地址，提交即校验拒绝。直连模式（WinHost / AndroidHost）接受但忽略。</param>
 public sealed record SubmitJobRequest(
     string? RequestId,
     TemplateDto? Template,
     IReadOnlyList<LabelDto>? Labels,
     string? TargetDeviceId = null,
     string? TemplateName = null,
-    string? TargetIp = null);
+    string? TargetIp = null,
+    string? CallbackUrl = null);
 
 /// <summary>自包含模板（Contract + Layout 必带；Name / Images 可选）。</summary>
 public sealed record TemplateDto(

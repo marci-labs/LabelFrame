@@ -86,6 +86,9 @@ builder.Services.AddHostedService(sp => new DataCleanupService(db, logStore, ser
 builder.Services.AddHostedService(sp => new PendingJobExpirationService(db, serverOptions, timeProvider, sp.GetRequiredService<ILogger<PendingJobExpirationService>>()));
 // Claimed 超时回收扫描（超时关闭时任务直接退出）；回收为终态即最终，不重新投递
 builder.Services.AddHostedService(sp => new ClaimedJobTimeoutService(db, serverOptions, timeProvider, sp.GetRequiredService<ILogger<ClaimedJobTimeoutService>>()));
+// 终态回调投递（决策 #154）：独立发送器（加固 HttpClient）+ 周期扫描；指数退避至多 5 次、超限死信、状态持久化（重启续投）
+builder.Services.AddSingleton<IJobCallbackSender>(_ => new HttpJobCallbackSender());
+builder.Services.AddHostedService(sp => new JobCallbackDeliveryService(db, timeProvider, sp.GetRequiredService<IJobCallbackSender>(), sp.GetRequiredService<ILogger<JobCallbackDeliveryService>>()));
 // Skia 渲染器实例单例：DI 与共享端点（模板预览 / 调试出图）共用同一实例
 var skiaRenderer = new SkiaLabelRenderer();
 builder.Services.AddSingleton<ILabelBitmapRenderer>(skiaRenderer);
