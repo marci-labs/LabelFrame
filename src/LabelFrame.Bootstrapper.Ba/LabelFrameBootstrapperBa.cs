@@ -430,7 +430,8 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
                     var latestJson = await TryLoadLatestTextAsync(source, http, form.CancellationToken).ConfigureAwait(false);
                     var bootstrapper = GetBundleOriginalSourceOrFail();
                     var result = await OfflineLayoutBuilder.BuildAsync(
-                        manifest, manifestJson, latestJson, layoutDirectory!, bootstrapper, http, progress, form.CancellationToken).ConfigureAwait(false);
+                        manifest, manifestJson, latestJson, layoutDirectory!, bootstrapper, http, progress,
+                        cancellationToken: form.CancellationToken).ConfigureAwait(false);
                     completion.TrySetResult((0,
                         $"布局目录生成完成：{layoutDirectory}\n"
                         + $"组件 {result.ComponentCount} 个（下载 {result.DownloadedCount} / 复用 {result.ReusedCount}），"
@@ -546,6 +547,12 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         var plan = session.BuildPlan();
         var variables = BundleVariableMap.ToVariables(plan);
         WriteVariablesToEngine(variables);
+
+        // evergreen 源变量（决策 #151，#173）：布局目录本地文件在位优先 → 清单 urls；空 = 工具官方 fwlink 兜底
+        //（获取与验签在 WebView2Runtime 包执行期的工具内完成，引擎零远程载荷——§6.9 evergreen 获取机制）
+        var webView2Source = EvergreenRuntime.BuildWebView2SourceValue(session.Manifest, session.LocalSourceDirectory);
+        engine.SetVariableString(BundleVariableMap.WebView2SourceVariable, webView2Source, false);
+        Log($"WebView2 evergreen 源：{(string.IsNullOrEmpty(webView2Source) ? "<空——工具按官方 fwlink 兜底>" : webView2Source)}");
 
         await WaitStageAsync(_detectCompleted.Task, "包探测（Detect）").ConfigureAwait(true);
         engine.Plan(LaunchAction.Install, BundleScope.Default);

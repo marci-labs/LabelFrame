@@ -5,7 +5,9 @@
 #       .\scripts\package-server-webui.ps1 -Version x.y.z（管理界面 zip）
 #       .\scripts\build-zebra-plugin.ps1 -Version x.y.z（官方插件 .lfplugin）
 # runtime 安装器按 install manifest 获取（#115：厂商直链 + CI 锁哈希）：本地缓存缺失即按 urls[0] 下载，
-# sha256 与 manifest 逐字节校验不符即构建失败（fail-closed：厂商轮转直链文件 = 重新发版刷新 manifest）。
+# sha256 与 manifest 逐字节校验不符即构建失败（fail-closed）——仅 .NET 双 runtime（版本化直链，字节不轮换）；
+# WebView2 evergreen 例外（决策 #151，#173）：不进引擎获取（链包 = PayloadTool 包装，下载 / Authenticode 验签在
+# 安装期包执行期完成），构建期不下载、不钉哈希——免疫微软轮换直链文件。
 # 迭代 68（#101，决策 #132）起随发版构建：release.yml bundle job 以 -ManifestSource 指向当版本地 manifest
 # 调用本脚本，产物 LabelFrame-Bootstrapper-<版本>.exe 纳入 Release 附件；Secrets 在场时以 -Sign 复用 MSI 自签证书签名。
 param(
@@ -93,7 +95,7 @@ function Resolve-RuntimePackage([string]$ComponentId, [string]$CacheFileName) {
 
     $actual = Get-Sha256 $path
     if ($actual -ne $entry.sha256) {
-        throw "runtime 组件 $ComponentId 哈希校验失败：manifest=$($entry.sha256) 实测=$actual —— 厂商可能轮转了直链文件，请以新 manifest 为准（重新发版刷新清单，§6.2 残余风险口径）。"
+        throw "runtime 组件 $ComponentId 哈希校验失败：manifest=$($entry.sha256) 实测=$actual —— 版本化直链内容不应轮换，请核对清单与直链（§6.2 校验策略，决策 #151：仅 .NET 双 runtime 走哈希钉死）。"
     }
     Write-Host "runtime 哈希校验通过：[$ComponentId] $CacheFileName（$actual）"
 
@@ -104,7 +106,7 @@ $desktopVersion = ($manifest.components | Where-Object { $_.id -eq 'runtime-desk
 $desktopRuntime = Resolve-RuntimePackage 'runtime-desktop' "windowsdesktop-runtime-$desktopVersion-win-x64.exe"
 $aspnetCoreVersion = ($manifest.components | Where-Object { $_.id -eq 'runtime-aspnetcore' } | Select-Object -First 1).version
 $aspnetCoreRuntime = Resolve-RuntimePackage 'runtime-aspnetcore' "aspnetcore-runtime-$aspnetCoreVersion-win-x64.exe"
-$webview2Runtime = Resolve-RuntimePackage 'runtime-webview2' 'MicrosoftEdgeWebView2RuntimeInstallerSimpleX64.exe'
+# WebView2（runtime-webview2）不在此获取（决策 #151）：evergreen 直链无摘要可钉，安装期由 PayloadTool 验签获取
 
 # 5) wix build（Burn 核心内置，自研 BA 无需 Bal 扩展）
 $bundleExe = Join-Path $root "artifacts\LabelFrame-Bootstrapper-$Version.exe"
@@ -117,7 +119,6 @@ $global:LASTEXITCODE = 0
     -d "WebUiZipPath=$webUiZip" -d "ZebraPluginPath=$zebraPlugin" `
     -d "RuntimeDesktopPath=$($desktopRuntime.Path)" -d "RuntimeDesktopUrl=$($desktopRuntime.Url)" -d "RuntimeDesktopVersion=$($desktopRuntime.Version)" `
     -d "RuntimeAspNetCorePath=$($aspnetCoreRuntime.Path)" -d "RuntimeAspNetCoreUrl=$($aspnetCoreRuntime.Url)" -d "RuntimeAspNetCoreVersion=$($aspnetCoreRuntime.Version)" `
-    -d "RuntimeWebView2Path=$($webview2Runtime.Path)" -d "RuntimeWebView2Url=$($webview2Runtime.Url)" `
     -o $bundleExe -arch x64 2>&1 | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
 

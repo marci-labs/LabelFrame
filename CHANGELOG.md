@@ -31,6 +31,19 @@
 - **`scripts/create-signing-cert.ps1`**：PFX 导出成功后自删 `key.pem` / `cert.pem`（未加密私钥明文不留盘），删除失败显式报错提示手动处理。
 - 两协议文件已入库版本化，本地事实源随 master 同步后下次轮值触发即生效。
 
+## 缺陷修复（#173）：引导器 WebView2 evergreen 载荷校验改微软 Authenticode 验签＋已装跳过 acquire · 2026-09-20
+
+- **缺陷与根因（#173；v0.28.0 真机实证，决策 #153）**：`runtime-webview2` 条目使用无版本 evergreen fwlink 直链且钉死 SHA-256——微软每轮换直链背后文件（同日实测四哈希），全体历史版本引导器全新装机 / 清缓存重装 fail-closed 失败（`0x80091007` 哈希不符）；且 WebView2 已装（Present）机器因 Burn「keep × Present ⇒ 尝试缓存」计划语义被迫陪跑这个注定失败的下载校验（缺陷放大器）。
+- **校验策略变更（evergreen 载荷专项）**：`runtime-desktop` / `runtime-aspnetcore`（版本化直链）维持哈希钉死；`runtime-webview2`（version = `evergreen`）改**微软 Authenticode 发布者验签**——WinVerifyTrust 签名链完整 + 签名者 CN = Microsoft Corporation 双条件，任一不满足 fail-closed 拒装（免疫轮换、仍防投毒）；manifest 的 sha256 / sizeBytes 对 evergreen 条目降为信息性观测值（schema 零修改）。契约变更见 DESIGN §6.2 / §6.4 / §6.9 / §6.10（决策 #153）。
+- **校验落点定案 = ExePackage 包装 PayloadTool（获取内移至包执行）**：`WebView2Runtime` 链包载体改内嵌 PayloadTool（`-install-webview2 -source [WebView2Source]`），evergreen 文件下载 / 验签 / 静默安装全部在包执行期（引擎提权上下文内）完成，引擎零远程载荷；`WebView2Source` 变量由 BA 写入（布局目录本地文件在位优先 → 清单 urls → 工具内官方 fwlink 兜底）。否决 BA 侧下载后交引擎（引擎对本地源副本同样按构建期摘要强制校验，轮换照旧失败）与构建期内嵌安装器（固化快照有违 evergreen 语义）。
+- **已装跳过 acquire（配套）**：三个 runtime 包（Permanent 永不随 Bundle 卸载）`Cache` 改 `remove`——执行才缓存、结束即清，已装（Present）/ 未选组件零获取；已装机器不再陪跑 .NET 双运行时约 70MB 下载。MSI 与落位包缓存策略不动（MSI 修复需驻留缓存；落位包每次安装会话都执行）。
+- **布局链路同策略**：布局生成（`OfflineLayoutBuilder` / `make-offline-layout.ps1`）对 evergreen 条目的落位 / 复用校验由 sha256 改发布者验签——微软轮换后重新生成布局不再因哈希漂移失败；安装期布局本地文件经 `WebView2Source` 交包装工具验签执行（离线首装零外网维持）。
+- **构建链**：`build-bundle.ps1` 不再构建期下载 / 钉哈希 evergreen 文件（bundle 构建对轮换免疫）。
+- **测试与实证**：新增单测 22 项（发布者策略矩阵 / CN 提取 / 源解析 / BA 源变量构造 / 获取编排正反例 / 布局 evergreen 策略，含真实 WinVerifyTrust 冒烟——微软签名内嵌文件通过、篡改 / 未签名拒绝），Bootstrapper 套件 255 项全绿；沙箱走查 `scripts/test-webview2-authverify.ps1` 九项全过——Part A 工具级（真实 fwlink 下载验签通过 + 篡改 / 未签名 / 发布者不符三反例 40 拒绝）、Part B 引擎级（per-user 测试 Bundle × 真实 BA：`Cache=remove` × Present **0 次请求**、默认 keep × Present 2 次请求（机制根源对照）、remove × 缺失正常获取）。
+- **兼容影响与回退**：旧引导器（≤ v0.28.0）内嵌构建期哈希照旧、轮换后其全新装机仍失败（无法事后修复，只能升级引导器）；新引导器对旧 manifest 兼容；回退 = revert 本变更。发版链两阶段 evergreen 哈希跨 job 断言在轮换窗口可能误拦（fail-closed 方向，重跑即过）——出库链排查归 #169。真机全新装机走查（AC-4 真机口径）转「待验收」。
+- **不在范围**：release.yml 与发布链出库路径（#173 次生发现归 #169）；应急 v0.28.1 止血（用户拍板不发）；MSI / 落位包缓存策略。
+- **记账**：DESIGN 决策 #153；ROADMAP 状态行随验收结项收口。
+
 ## v0.28.0 迭代 68-84、86-87、89-93 汇总发布 · 2026-09-18
 
 - **打包范围**：v0.27.1 之后合入 master 的全部迭代与缺陷修复——安装与分发链补全：迭代 68（流程治理：引导 EXE 随 Release 发布——release.yml bundle job 接线与 manifest 分阶段跨 job 一致性断言，决策 #132 / #134）、迭代 69（安装卸载收尾对称化——Bundle 卸载清理插件落位目录，决策 #133）、迭代 70（离线布局安装——`make-offline-layout.ps1` 与本地源无网首装，决策 #135）、迭代 71（Linux 服务端一键安装——install.sh + compose 随发版分发、linux 归档默认 self-contained，决策 #134）、迭代 72（模拟打印出图目录保留清理，决策 #136）；插件命令打印落地：迭代 76（契约设计，决策 #137）→ 77（宿主链路 1/4，`ILabelCommandCompiler` 与 `printMode` 分派）→ 78（Zebra 编译器·文本 2/4）→ 79（条码与二维码 3/4，`^BC` / `^BQ`）；使用体验：迭代 73 / 80-84 / 87（界面文案用户化与可读性系列）、74（模拟打印作业数据留痕）、75（「PDA 日志 / 设备日志」页面下线）；缺陷修复与健壮性：迭代 86（设置页空地址徽标谎报）、89（图片模式锚定文本垂直坐标语义，决策 #146）、90（Zebra 插件说明——原生指令模式 QR 不支持中文）、91（前端请求层健壮性——超时分档 / 竞态守卫，决策 #148）、92（设计器未保存离开保护，决策 #149）、93（前端交互一致性收尾——确认弹窗统一 / 横幅通用类 / lint 清零）；另有流程卫生一条（轮值协议补齐 worktree 与本地分支回收闭环，#126）与界面可用性评审（#114）。详见各迭代条目。

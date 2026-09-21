@@ -1,11 +1,15 @@
+using System.Diagnostics;
 using System.Text;
 using LabelFrame.Bootstrapper.Placement;
+using LabelFrame.Bootstrapper.Prerequisites;
 
 namespace LabelFrame.Bootstrapper.PayloadTool;
 
 /// <summary>
 /// 非 MSI 组件落位工具入口（迭代 62，决策 #124）：管理界面 zip → <c>plugins\web-ui</c>；<c>.lfplugin</c> → <c>plugins\&lt;pluginId&gt;\</c>。
 /// 卸载清理（迭代 69，决策 #133）：<c>-clean</c> 与落位动作同目标对称（Bundle 卸载 / Modify 改选 / 回滚时机由 Burn 以 UninstallArguments 驱动）。
+/// evergreen 安装（决策 #151，#173）：<c>-install-webview2</c> = 下载 / 本地布局文件 → 微软 Authenticode 发布者验签 → 静默安装（退出码透传）；
+/// <c>-verify</c> = 同源解析与验签但不执行（诊断 / 沙箱走查载体）。
 /// 中文输出写入 Burn 包日志（引擎捕获进程输出）；退出码契约见工程注释。
 /// </summary>
 internal static class Program
@@ -13,6 +17,8 @@ internal static class Program
     private const int ExitSuccess = 0;
     private const int ExitRefusedDowngrade = 20;
     private const int ExitInvalidArchive = 30;
+    private const int ExitSignatureRejected = 40;
+    private const int ExitSourceExhausted = 41;
     private const int ExitUnexpected = 90;
 
     private static int Main(string[] args)
@@ -51,6 +57,8 @@ internal static class Program
         string? archive = null;
         string? target = null;
         string? version = null;
+        string? source = null;
+        string? publisher = null;
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -58,6 +66,8 @@ internal static class Program
                 case "-place":
                 case "-plugin":
                 case "-clean":
+                case "-install-webview2":
+                case "-verify":
                     mode = args[i];
                     break;
                 case "-archive" when i + 1 < args.Length:
@@ -69,11 +79,23 @@ internal static class Program
                 case "-version" when i + 1 < args.Length:
                     version = args[++i];
                     break;
+                case "-source" when i + 1 < args.Length:
+                    source = args[++i];
+                    break;
+                case "-publisher" when i + 1 < args.Length:
+                    publisher = args[++i];
+                    break;
                 default:
                     Console.Error.WriteLine($"未知参数：{args[i]}");
                     Console.WriteLine(Usage);
                     return ExitUnexpected;
             }
+        }
+
+        // evergreen 安装 / 验签模式（决策 #151）：独立参数契约（-source 可缺省走官方 fwlink 兜底）
+        if (mode is "-install-webview2" or "-verify")
+        {
+            return RunEvergreenInstall(source, publisher, execute: mode == "-install-webview2");
         }
 
         // -clean 只需 -target（卸载会话无包文件参与）；落位模式还需 -archive
@@ -151,8 +173,107 @@ internal static class Program
         }
     }
 
+    /// <summary>
+    /// evergreen 安装 / 验签模式（决策 #151，#173）：源解析（本地布局文件优先 → urls 逐源；空 = 官方 fwlink 兜底）→
+    /// 微软 Authenticode 发布者验签（WinVerifyTrust + 签名者 CN 双条件，fail-closed）→（<c>-install-webview2</c>）静默安装并透传退出码。
+    /// 退出码：0 = 验签通过（-verify 到此为止）/ 安装成功；40 = 验签拒绝（签名无效或发布者不符）；41 = 全源获取失败；其余 = 安装器退出码透传。
+    /// </summary>
+    private static int RunEvergreenInstall(string? source, string? publisher, bool execute)
+    {
+        var resolved = EvergreenRuntime.ResolveSource(source);
+        if (resolved.IsEmpty)
+        {
+            resolved = EvergreenRuntime.ResolveSource(EvergreenRuntime.WebView2DefaultDownloadUrl);
+            Console.WriteLine($"未提供源，按官方 evergreen 直链兜底：{EvergreenRuntime.WebView2DefaultDownloadUrl}");
+        }
+
+        var expectedPublisher = string.IsNullOrWhiteSpace(publisher)
+            ? AuthenticodePublisherPolicy.MicrosoftCorporation
+            : publisher!;
+        var acquirer = new EvergreenPayloadAcquirer(new WinTrustAuthenticodeVerifier(), expectedPublisher);
+        var downloadPath = Path.Combine(
+            Path.GetTempPath(), "labelframe-evergreen-" + Guid.NewGuid().ToString("N") + ".exe");
+
+        var acquired = acquirer.Acquire(resolved, downloadPath);
+
+        if (acquired.Outcome == EvergreenAcquireOutcome.Failed)
+        {
+            Console.Error.WriteLine("evergreen 载荷获取失败（全部源已尝试，fail-closed 不装不明文件）：");
+            foreach (var failure in acquired.Failures)
+            {
+                Console.Error.WriteLine($"  - {failure}");
+            }
+
+            TryDelete(downloadPath);
+            return acquired.AnySignatureRejected ? ExitSignatureRejected : ExitSourceExhausted;
+        }
+
+        Console.WriteLine(
+            $"验签通过：{(acquired.FromLocalSource ? "本地布局文件" : "下载副本")} {acquired.VerifiedPath}");
+        Console.WriteLine($"签名者主体：{acquired.SignerSubject}");
+        if (acquired.Failures.Count > 0)
+        {
+            Console.WriteLine("换源留痕（此前失败的源）：");
+            foreach (var failure in acquired.Failures)
+            {
+                Console.WriteLine($"  - {failure}");
+            }
+        }
+
+        if (!execute)
+        {
+            Console.WriteLine("verify 模式：不执行安装（诊断 / 走查载体，决策 #151）。");
+            if (!acquired.FromLocalSource)
+            {
+                TryDelete(downloadPath);
+            }
+
+            return ExitSuccess;
+        }
+
+        try
+        {
+            var startInfo = new ProcessStartInfo(acquired.VerifiedPath!, EvergreenRuntime.WebView2InstallArguments)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("无法启动 evergreen 安装器进程。");
+            process.WaitForExit();
+            Console.WriteLine($"evergreen 安装器退出码：{process.ExitCode}");
+            return process.ExitCode;
+        }
+        finally
+        {
+            if (!acquired.FromLocalSource)
+            {
+                TryDelete(downloadPath);
+            }
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (IOException)
+        {
+            // 临时文件清理失败不阻断（%TEMP% 兜底由系统清理）
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
     private const string Usage =
         "用法：LabelFrame.Bootstrapper.PayloadTool.exe -place|-plugin -archive <包文件名> -target <目标目录> [-version <Bundle 版本>]（-place = 覆盖解压；-plugin = 按 #123 版本比较落位；-version = 写落位凭据，决策 #133）\n"
         + "卸载清理：LabelFrame.Bootstrapper.PayloadTool.exe -clean -target <目标目录>（与落位同目标对称，决策 #133）\n"
+        + "evergreen 安装（决策 #151）：-install-webview2 [-source <本地路径|URL;URL…>]（源缺省 = 官方 fwlink；验签失败不装）\n"
+        + "evergreen 验签诊断：-verify [-source <…>] [-publisher <CN>]（同源解析与验签，不执行安装）\n"
         + "无参数 = 空操作成功（清理包 install 形态——登记包已装，卸载语义由 Burn 规划）";
 }

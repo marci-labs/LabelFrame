@@ -30,6 +30,9 @@ public static class BundleVariableMap
     /// <summary>WebView2 是否已装（链内 DetectCondition 消费，BA 于 Detect 前按 §6.9 口径写入）。</summary>
     public const string WebView2Variable = "WebView2Installed";
 
+    /// <summary>evergreen 源变量（决策 #151，#173）：WebView2Runtime 包装包 InstallArguments 以 [变量] 引用——BA 随确认页写入（布局目录本地文件在位优先，否则清单 urls 顺序拼接；空 = 工具官方 fwlink 兜底）。</summary>
+    public const string WebView2SourceVariable = "WebView2Source";
+
     /// <summary>webui 落位目标目录（链内落位包 InstallArguments 以 [变量] 引用）。</summary>
     public const string WebUiTargetDirVariable = "WebUiTargetDir";
 

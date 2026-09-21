@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using LabelFrame.Bootstrapper.Manifest;
+using LabelFrame.Bootstrapper.Prerequisites;
 
 /// <summary>离线布局目录生成异常（fail-closed：任一组件全源失败 / 无法定位引导 EXE 等致命条件）。</summary>
 public sealed class OfflineLayoutException : Exception
@@ -56,21 +57,25 @@ public sealed record OfflineLayoutResult(
 
 /// <summary>
 /// 离线布局目录生成器（迭代 70 / #89，DESIGN §6.2，决策 #132）——把当版全部组件 + 官方 manifest / latest 原样字节 +
-/// 引导 EXE 汇集到目标目录；逐组件按 <c>urls</c> 顺序下载、sha256 与 manifest 逐字节一致才落位（fail-closed）。
+/// 引导 EXE 汇集到目标目录；逐组件按 <c>urls</c> 顺序下载、按策略校验一致才落位（fail-closed）：
+/// 常规条目 = sha256 与 manifest 逐字节一致；evergreen 条目（version = <c>evergreen</c>）= 微软 Authenticode
+/// 发布者验签（决策 #151，#173——微软轮换直链文件后重新生成不再因哈希漂移失败）。
 /// </summary>
 /// <remarks>
 /// 与 <c>scripts/make-offline-layout.ps1</c>（IT 脚本形态）语义一致：命名约定共用 <see cref="OfflineLayoutNaming"/>；
-/// 重复生成幂等（已存在且哈希一致跳过下载；不符 = 篡改 / 旧版残留，重新下载）。
-/// UI 无关（net48 / net10 双腿，net10 测试锚定）；BA 仅承担进度呈现与 EXE 源定位（<c>WixBundleOriginalSource</c>）。
+/// 重复生成幂等（已存在且校验一致跳过下载；不符 = 篡改 / 旧版残留，重新下载）。
+/// UI 无关（net48 / net10 双腿，net10 测试锚定——验签器可注入）；BA 仅承担进度呈现与 EXE 源定位（<c>WixBundleOriginalSource</c>）。
 /// </remarks>
 public static class OfflineLayoutBuilder
 {
-    /// <summary>生成布局目录。<paramref name="http"/> 可注入用于测试（注入时归调用方释放）。</summary>
+    /// <summary>生成布局目录。<paramref name="http"/> / <paramref name="authenticodeVerifier"/> 可注入用于测试（注入时归调用方释放）。</summary>
     /// <param name="manifest">已解析的安装清单（组件集合权威）。</param>
     /// <param name="manifestJson">官方 manifest 原样 JSON 文本（原样落盘，不重序列化——与官方发布字节一致）。</param>
     /// <param name="latestJson">官方 latest.json 原样文本（null = 不写入指针文件）。</param>
     /// <param name="targetDirectory">布局目标目录（不存在则创建）。</param>
     /// <param name="bootstrapperSourcePath">引导 EXE 源路径（复制入目录；null = 跳过——脚本形态由调用方自备）。</param>
+    /// <param name="http">HTTP 客户端（缺省自建）。</param>
+    /// <param name="authenticodeVerifier">Authenticode 验签器（evergreen 条目校验用；缺省 WinVerifyTrust 实现）。</param>
     public static async Task<OfflineLayoutResult> BuildAsync(
         InstallManifest manifest,
         string manifestJson,
@@ -79,6 +84,7 @@ public static class OfflineLayoutBuilder
         string? bootstrapperSourcePath,
         HttpClient? http = null,
         IProgress<OfflineLayoutProgress>? progress = null,
+        IAuthenticodeVerifier? authenticodeVerifier = null,
         CancellationToken cancellationToken = default)
     {
 #if NET10_0_OR_GREATER
@@ -108,13 +114,14 @@ public static class OfflineLayoutBuilder
             throw new OfflineLayoutException("清单内容为空，无法生成布局目录。");
         }
 
+        var verifier = authenticodeVerifier ?? new WinTrustAuthenticodeVerifier();
         if (http is null)
         {
             using var owned = new HttpClient();
-            return await BuildCoreAsync(manifest, manifestJson, latestJson, targetDirectory, bootstrapperSourcePath, owned, progress, cancellationToken).ConfigureAwait(false);
+            return await BuildCoreAsync(manifest, manifestJson, latestJson, targetDirectory, bootstrapperSourcePath, owned, progress, verifier, cancellationToken).ConfigureAwait(false);
         }
 
-        return await BuildCoreAsync(manifest, manifestJson, latestJson, targetDirectory, bootstrapperSourcePath, http, progress, cancellationToken).ConfigureAwait(false);
+        return await BuildCoreAsync(manifest, manifestJson, latestJson, targetDirectory, bootstrapperSourcePath, http, progress, verifier, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<OfflineLayoutResult> BuildCoreAsync(
@@ -125,6 +132,7 @@ public static class OfflineLayoutBuilder
         string? bootstrapperSourcePath,
         HttpClient client,
         IProgress<OfflineLayoutProgress>? progress,
+        IAuthenticodeVerifier verifier,
         CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(targetDirectory);
@@ -142,11 +150,11 @@ public static class OfflineLayoutBuilder
 
             var targetPath = Path.Combine(targetDirectory, fileName);
 
-            // 幂等复用：已存在且哈希与 manifest 一致（生成机重复生成 / 局部续传场景零下载）
+            // 幂等复用：已存在且按策略校验一致（sha256 / evergreen 发布者验签——生成机重复生成 / 局部续传场景零下载）
             if (File.Exists(targetPath))
             {
                 progress?.Report(new OfflineLayoutProgress(OfflineLayoutPhase.Verifying, component.Id, index, total, null, 0, component.SizeBytes));
-                if (string.Equals(ComputeSha256(targetPath), component.Sha256, StringComparison.Ordinal))
+                if (VerifyComponentByPolicy(targetPath, component, verifier) is null)
                 {
                     reused++;
                     progress?.Report(new OfflineLayoutProgress(OfflineLayoutPhase.Reused, component.Id, index, total, null, component.SizeBytes, component.SizeBytes));
@@ -154,7 +162,7 @@ public static class OfflineLayoutBuilder
                 }
             }
 
-            await AcquireComponentAsync(component, targetPath, client, progress, index, total, cancellationToken).ConfigureAwait(false);
+            await AcquireComponentAsync(component, targetPath, client, verifier, progress, index, total, cancellationToken).ConfigureAwait(false);
             downloaded++;
         }
 
@@ -183,11 +191,12 @@ public static class OfflineLayoutBuilder
         return new OfflineLayoutResult(total, downloaded, reused, bootstrapperFileName);
     }
 
-    /// <summary>单组件获取：按 urls 顺序尝试（下载到同目录临时文件 → sha256 校验 → 一致才落位）；全源失败 fail-closed。</summary>
+    /// <summary>单组件获取：按 urls 顺序尝试（下载到同目录临时文件 → 按策略校验 → 一致才落位）；全源失败 fail-closed。</summary>
     private static async Task AcquireComponentAsync(
         ManifestComponent component,
         string targetPath,
         HttpClient client,
+        IAuthenticodeVerifier verifier,
         IProgress<OfflineLayoutProgress>? progress,
         int index,
         int total,
@@ -202,10 +211,10 @@ public static class OfflineLayoutBuilder
                 await DownloadToTempAsync(url, tempPath, client, component, progress, index, total, cancellationToken).ConfigureAwait(false);
 
                 progress?.Report(new OfflineLayoutProgress(OfflineLayoutPhase.Verifying, component.Id, index, total, url, component.SizeBytes, component.SizeBytes));
-                var actual = ComputeSha256(tempPath);
-                if (!string.Equals(actual, component.Sha256, StringComparison.Ordinal))
+                var verifyFailure = VerifyComponentByPolicy(tempPath, component, verifier);
+                if (verifyFailure is not null)
                 {
-                    failures.Add($"{url} → 哈希不符（manifest={component.Sha256.Substring(0, 12)}… 实测={actual.Substring(0, 12)}…）");
+                    failures.Add($"{url} → {verifyFailure}");
                     TryDelete(tempPath);
                     continue; // 换下一源（源内容被替换 / 损坏——与引擎安装期坏哈希换源同语义，§6.10）
                 }
@@ -231,7 +240,36 @@ public static class OfflineLayoutBuilder
         }
 
         throw new OfflineLayoutException(
-            $"组件 {component.Id} 全部 {component.Urls.Count} 个源获取失败（sha256 与 manifest 一致才落位，fail-closed）：{string.Join("；", failures)}");
+            $"组件 {component.Id} 全部 {component.Urls.Count} 个源获取失败（{DescribePolicy(component)}，fail-closed）：{string.Join("；", failures)}");
+    }
+
+    /// <summary>evergreen 条目判定（version = <c>evergreen</c>：恒变直链无摘要可钉——校验策略 = 发布者验签，决策 #151）。</summary>
+    private static bool IsEvergreenEntry(ManifestComponent component) =>
+        string.Equals(component.Version, "evergreen", StringComparison.OrdinalIgnoreCase);
+
+    private static string DescribePolicy(ManifestComponent component) =>
+        IsEvergreenEntry(component) ? "微软 Authenticode 发布者验签通过才落位" : "sha256 与 manifest 一致才落位";
+
+    /// <summary>按策略校验组件文件：常规条目 sha256 比对；evergreen 条目 WinVerifyTrust + 发布者 CN 双条件。返回 null = 通过。</summary>
+    private static string? VerifyComponentByPolicy(string path, ManifestComponent component, IAuthenticodeVerifier verifier)
+    {
+        if (!IsEvergreenEntry(component))
+        {
+            var actual = ComputeSha256(path);
+            return string.Equals(actual, component.Sha256, StringComparison.Ordinal)
+                ? null
+                : $"哈希不符（manifest={component.Sha256.Substring(0, Math.Min(12, component.Sha256.Length))}… 实测={actual.Substring(0, 12)}…）";
+        }
+
+        var result = verifier.Verify(path);
+        if (!result.SignatureValid)
+        {
+            return $"验签拒绝：{result.FailureReason ?? "签名无效"}";
+        }
+
+        return AuthenticodePublisherPolicy.IsAllowedPublisher(result.SignerSubject, AuthenticodePublisherPolicy.MicrosoftCorporation)
+            ? null
+            : $"发布者不符：期望 CN={AuthenticodePublisherPolicy.MicrosoftCorporation}，实际主体 = {result.SignerSubject}";
     }
 
     /// <summary>流式下载到临时文件（HttpCompletionOption.ResponseHeadersRead——HttpClient.Timeout 只约束响应头，大文件主体按流读取）。</summary>
