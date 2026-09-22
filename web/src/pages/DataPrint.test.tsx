@@ -775,7 +775,9 @@ describe('模板详情加载竞态守卫（迭代 91 F-12）', () => {  it('AC-0
     render(<Harness show />)
     // 列表加载后默认选中第一项「模板A」，其详情挂起在途（全量并行负载下放宽等待，见 MOUNT_WAIT 注释）
     await waitFor(() => expect((screen.getAllByRole('combobox')[0] as HTMLSelectElement).value).toBe('模板A'), { timeout: 8000 })
-    expect(mocks.local.getTemplate).toHaveBeenCalledWith('模板A')
+    // 选中值渲染与详情加载 effect 之间存在调度间隙——断言收敛等待而非立即判定
+    //（CI 高负载下两度复现：PR #196 run 35687207583 / PR #207 run 35743386663，#183 残留观察点补治）
+    await waitFor(() => expect(mocks.local.getTemplate).toHaveBeenCalledWith('模板A'), { timeout: 8000 })
 
     // 快速切到「模板B」：B 立即返回并渲染（字段值 B-99）
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '模板B' } })
