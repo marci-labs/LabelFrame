@@ -99,11 +99,19 @@ public sealed class RoutingLatencyTests : IDisposable
         var p99 = latencies[(int)(latencies.Count * 0.99)];
         _output.WriteLine($"设备 {deviceCount} 并发（每设备 {jobsPerDevice} 作业，每作业 2 张）：p50={p50}ms p95={p95}ms p99={p99}ms max={latencies[^1]}ms");
 
-        // 实测特征（PERF-BASELINE.md）：p50 恒 3-4ms；SQLite 单写者使高并发下写事务排队，
-        // 20 设备时 p95 尾部 2-3s（busy_timeout 排队，不丢不错）——按规模分层阈值：
-        // ≤5 设备（典型规模）p95 < 2s；20 设备（压力位）p95 < 5s + p50 < 50ms（主体不受影响）
-        var p95Limit = deviceCount <= 5 ? 2000 : 5000;
-        Assert.True(p50 < 50, $"p50={p50}ms 主体延迟回归");
+        // 实测特征（PERF-BASELINE.md）：本机 p50 恒 3-9ms；SQLite 单写者使高并发下写事务排队，
+        // 20 设备时 p95 尾部 2-3s（busy_timeout 排队，不丢不错）。阈值分环境口径（迭代 99 / 决策 #155）：
+        // 本地严格——p50 < 50ms（主体不受影响）+ p95 分层（≤5 设备 < 2s、20 设备 < 5s）；
+        // GitHub 共享宿主 p50 轮间抖动 10-300 倍（4 轮实测 51-1169ms，同代码本机 6-9ms）无判别力——
+        // 只判「无错误 + p95 分层」（放大至 5s / 10s），p50 转观测不判定。
+        var onSharedCi = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
+        var p95Limit = onSharedCi
+            ? (deviceCount <= 5 ? 5000 : 10000)
+            : (deviceCount <= 5 ? 2000 : 5000);
+        if (!onSharedCi)
+        {
+            Assert.True(p50 < 50, $"p50={p50}ms 主体延迟回归");
+        }
         Assert.True(p95 < p95Limit, $"p95={p95}ms 超过 {p95Limit}ms（{deviceCount} 设备），锁竞争异常");
     }
 

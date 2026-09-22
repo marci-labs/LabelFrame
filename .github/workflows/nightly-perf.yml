@@ -1,5 +1,7 @@
 # 每周性能 / 稳定性夜间流水线（迭代 33）：
 # 周一 04:00（UTC）跑 soak（15 分钟稳态）+ Perf 延迟 + 微基准——日常 ci.yml 不含这些（时长 / 抖动考虑）。
+# 迭代 99（#198）：Perf 拆两个独立步骤——多命令合写一个 pwsh 步骤时退出码只取末条命令，
+# 曾长期掩盖 Server Perf 断言失败（8-31 / 9-7 两轮「成功」日志里实有 FAIL）；阈值分环境口径见 docs/PERF-BASELINE.md。
 name: nightly-perf
 
 on:
@@ -19,19 +21,20 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: 构建测试
         run: dotnet build LabelFrame.slnx -c Release
 
-      - name: 延迟 / 并发（Perf）
-        run: |
-          dotnet test test/LabelFrame.Server.Tests -c Release --no-build -v minimal --filter 'Category=Perf'
-          dotnet test test/LabelFrame.WinHost.Tests -c Release --no-build -v minimal --filter 'Category=Perf'
+      - name: 延迟 / 并发（Server Perf）
+        run: dotnet test test/LabelFrame.Server.Tests -c Release --no-build -v minimal --filter 'Category=Perf'
+
+      - name: 延迟（WinHost 单张 Perf）
+        run: dotnet test test/LabelFrame.WinHost.Tests -c Release --no-build -v minimal --filter 'Category=Perf'
 
       - name: 稳定性 soak（15 分钟）
         env:
