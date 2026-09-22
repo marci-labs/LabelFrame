@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 流程治理（#199）：release.yml 签名链修复——bundle job 数组 splat 改哈希表＋MSI job 证书 env 映射补齐 · 2026-09-22
+
+- **现象（v0.29.0 发版实证，run 35683434328）**：tag v0.29.0 首跑失败于「构建安装引导 EXE（Burn Bundle）」job——`A positional parameter cannot be found that accepts argument 'artifacts/cert/labelframe.pfx'`；「创建 GitHub Release」被跳过，出库未发生。
+- **根因（三处叠加；签名 Secrets 配置后链条首次被真正走到即暴露）**：①bundle job 构建步骤以**数组** `$sign = @('-Sign','-PfxPath',…)` 做 `@sign` splatting——数组 splat 按位置逐元素绑定，`-Sign` / `-PfxPath` 被当作位置实参即报错（应**哈希表** splat 按参数名绑定）；②MSI job「准备签名证书」步骤缺 `env: MSI_SIGN_CERT_BASE64` 映射（#169 已定位的遗留）——证书从不落盘、`Test-Path` 恒假、双 MSI 静默不签名（两 job 证书从未在场也是 ① 此前不暴露的原因）；③MSI job 两打包步骤缺 `env: MSI_SIGN_PASSWORD` 映射（修复 ② 后即暴露的连带缺口）。
+- **修复**：三处数组 splat 改哈希表 splat（`@{ Sign = $true; PfxPath = …; PfxPassword = … }`）；MSI job 证书步骤补 `MSI_SIGN_CERT_BASE64` env、Client / Server 两打包步骤补 `MSI_SIGN_PASSWORD` env；Secrets 未配置时各步骤仍按既有行为优雅跳过。
+- **验证（AC-3）**：哈希表 splat 语义实证（同签名 dummy 函数：`Sign=True PfxPath=artifacts/cert/labelframe.pfx PwLen=9`——按名绑定正确）；release.yml YAML 解析通过（7 个 job 齐全）。出库恢复走 `workflow_dispatch`（version=0.29.0）——tag 不删不重推（迭代 94 / #167 先例：产物源 master 与 tag 仅差本 workflow 修复）；出库核验证据回写 #199。
+- **不在范围**：release.yml 签名 fail-closed 断言（#169 建议，后续单独治理）。
+
 ## 迭代 99：nightly-perf 治理——Perf 步骤失败语义修复与阈值 CI 口径重标（流程治理） · 2026-09-22
 
 - **动机（#198）**：nightly-perf 9-14、9-21 连续失败且 soak / 微基准被连带跳过，近两周性能监控信号丢失。排查定性三层：① Perf 步骤两条 `dotnet test` 合写一个多行 pwsh 块、步骤退出码只取末条命令——Server Perf 断言失败自首轮（8-31）起被掩盖（8-31 / 9-7 两轮「成功」日志实有 FAIL）；② 阈值按开发机标定（p50 恒 3-9ms），GitHub 共享宿主实测 51-1169ms 且轮间抖动 10-300 倍无判别力——同代码本机复跑全达标（Routing device-1/5/20 p50=9/7/6ms、WinHost 单张 p50=8ms），排除代码回归；③ 9-14 起 runner 镜像 `win25-vs2026/20260824.214 → 20260907.229`，WinHost 单张 p50 20ms→31ms 作为末条命令首次把步骤顶红。
