@@ -4,34 +4,52 @@ using System.Text;
 using LabelFrame.AndroidHost.Api;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Transport;
+using LabelFrame.Core.Transport.Plugins;
 
 namespace LabelFrame.AndroidHost;
 
 /// <summary>
 /// 本地 HTTP 服务（PDA 网页直连，不经 Server）：基于 TcpListener 的极简实现，
 /// 避免 Android 上承载完整 ASP.NET Core。仅监听 127.0.0.1。
+/// 迭代 96（决策 #156）增插件端点（与 WinHost 同构：已装列表 / 安装 / 卸载，重启生效）。
 /// </summary>
 public sealed class EmbeddedHttpServer : IDisposable
 {
+    /// <summary>插件端点错误码（与 LabelFrame.Api 的 ApiErrorCodes 同值——AndroidHost 不引用 Api 工程，字面量对齐）。</summary>
+    private static class PluginErrorCodes
+    {
+        public const string Invalid = "LF_PLUGIN_INVALID";
+        public const string Busy = "LF_PLUGIN_BUSY";
+    }
+
     private readonly int _port;
     private readonly SubmissionService _submission;
     private readonly LabelJobQueue _queue;
     private readonly ILabelJobStore _store;
     private readonly IPrintTransport _transport;
     private readonly IPrinterStatusProvider? _status;
+    private readonly PluginInstaller? _pluginInstaller;
     private readonly Android.Content.Context _context;
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
     private Task? _loop;
 
     /// <summary>创建本地 HTTP 服务。</summary>
+    /// <param name="port">监听端口（127.0.0.1）。</param>
+    /// <param name="submission">本地提交服务。</param>
+    /// <param name="queue">本地作业队列。</param>
+    /// <param name="store">作业存储。</param>
+    /// <param name="transport">当前打印传输（作业发送与打印机测试）。</param>
+    /// <param name="context">Android 上下文（版本读取）。</param>
+    /// <param name="pluginInstaller">插件安装服务（迭代 96；null = 插件端点不可用——理论不发生，防御式）。</param>
     public EmbeddedHttpServer(
         int port,
         SubmissionService submission,
         LabelJobQueue queue,
         ILabelJobStore store,
         IPrintTransport transport,
-        Android.Content.Context context)
+        Android.Content.Context context,
+        PluginInstaller? pluginInstaller = null)
     {
         _port = port;
         _submission = submission;
@@ -39,6 +57,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         _store = store;
         _transport = transport;
         _status = transport as IPrinterStatusProvider;
+        _pluginInstaller = pluginInstaller;
         _context = context;
     }
 
@@ -93,10 +112,10 @@ public sealed class EmbeddedHttpServer : IDisposable
         try
         {
             using var stream = client.GetStream();
-            var (m, p, headers, body) = await ReadRequestAsync(stream, cancellationToken);
+            var (m, p, headers, bodyBytes) = await ReadRequestAsync(stream, cancellationToken);
             method = m;
             path = p;
-            var response = Route(method, path, body, cancellationToken);
+            var response = Route(method, path, headers, bodyBytes, cancellationToken);
             await WriteResponseAsync(stream, response, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -120,15 +139,16 @@ public sealed class EmbeddedHttpServer : IDisposable
     }
 
     /// <summary>
-    /// 统一缓冲读取请求：请求头与请求体从同一份累积字节中解析。
+    /// 统一缓冲读取请求：请求头与请求体从同一份累积字节中解析；请求体以原始字节返回
+    /// （JSON 端点自行按 UTF-8 解码，插件包上传端点直接消费字节——迭代 96）。
     /// 不能先 StreamReader 读头再读体——StreamReader 预读缓冲会把请求体一并吞掉，
     /// 后续按 Content-Length 直读网络流将永久等待（POST 带体请求挂死）。
     /// </summary>
-    private static async Task<(string Method, string Path, Dictionary<string, string> Headers, string Body)> ReadRequestAsync(
+    private static async Task<(string Method, string Path, Dictionary<string, string> Headers, byte[] BodyBytes)> ReadRequestAsync(
         Stream stream, CancellationToken cancellationToken)
     {
         const int MaxHeaderBytes = 64 * 1024;
-        const int MaxBodyBytes = 32 * 1024 * 1024;
+        const int MaxBodyBytes = 64 * 1024 * 1024;
 
         var received = new List<byte>(2048);
         var buffer = new byte[4096];
@@ -168,7 +188,7 @@ public sealed class EmbeddedHttpServer : IDisposable
             }
         }
 
-        var body = string.Empty;
+        var bodyBytes = Array.Empty<byte>();
         if (headers.TryGetValue("Content-Length", out var lengthText)
             && int.TryParse(lengthText, out var length) && length > 0)
         {
@@ -177,7 +197,7 @@ public sealed class EmbeddedHttpServer : IDisposable
                 throw new InvalidDataException("请求体超出大小上限。");
             }
 
-            var bodyBytes = new byte[length];
+            bodyBytes = new byte[length];
             var buffered = Math.Min(received.Count - headerEnd - 4, length);
             for (var i = 0; i < buffered; i++)
             {
@@ -196,10 +216,13 @@ public sealed class EmbeddedHttpServer : IDisposable
                 read += n;
             }
 
-            body = Encoding.UTF8.GetString(bodyBytes, 0, read);
+            if (read < length)
+            {
+                bodyBytes = bodyBytes[..read];
+            }
         }
 
-        return (parts[0].ToUpperInvariant(), parts[1], headers, body);
+        return (parts[0].ToUpperInvariant(), parts[1], headers, bodyBytes);
     }
 
     /// <summary>在已接收字节中查找请求头结束符 \r\n\r\n 的起始下标。</summary>
@@ -217,9 +240,10 @@ public sealed class EmbeddedHttpServer : IDisposable
     }
 
     private (int Status, string ContentType, byte[] Body) Route(
-        string method, string path, string body, CancellationToken cancellationToken)
+        string method, string path, Dictionary<string, string> headers, byte[] bodyBytes, CancellationToken cancellationToken)
     {
         var basePath = path.Split('?')[0];
+        var body = Encoding.UTF8.GetString(bodyBytes);
 
         // JS 桥（第三方 WebView / 浏览器页面跨源直连）：宽松 CORS 预检直接放行
         if (method == "OPTIONS")
@@ -298,6 +322,22 @@ public sealed class EmbeddedHttpServer : IDisposable
         if (method == "POST" && basePath == "/api/host/test-print")
         {
             return TestPrint();
+        }
+
+        // ---- 插件安装 / 卸载（迭代 96 / 决策 #156，与 WinHost 端点同构；安装 / 卸载重启生效）----
+        if (method == "GET" && basePath == "/api/plugins/installed")
+        {
+            return ListInstalledPlugins();
+        }
+
+        if (method == "POST" && basePath == "/api/plugins/install")
+        {
+            return InstallPlugin(bodyBytes);
+        }
+
+        if (method == "POST" && basePath == "/api/plugins/uninstall")
+        {
+            return UninstallPlugin(body);
         }
 
         return Json(404, new ErrorView(JobErrorCodes.JobNotFound, "接口不存在。"));
@@ -441,6 +481,95 @@ public sealed class EmbeddedHttpServer : IDisposable
     private sealed record HostConfigUpdateDto(
         string? ServerUrl, string? PrinterBrand, string? ConnectionType,
         string? TcpHost, int? TcpPort, string? BluetoothMac, string? DeviceName);
+
+    /// <summary>已装插件列表（与 WinHost GET /api/plugins/installed 同构；加载状态 / 失败原因透出）。</summary>
+    private (int, string, byte[]) ListInstalledPlugins()
+    {
+        if (_pluginInstaller is null)
+        {
+            return Json(503, new ErrorView(PluginErrorCodes.Invalid, "插件通道不可用。"));
+        }
+
+        return Json(200, _pluginInstaller.ListInstalled());
+    }
+
+    /// <summary>
+    /// 安装插件包：请求体 = .lfplugin 包原始字节（Content-Type application/octet-stream / zip 均可——
+    /// 三层校验（含平台门，PDA 只收 android 包）在 PluginInstaller 内执行）。
+    /// </summary>
+    private (int, string, byte[]) InstallPlugin(byte[] bodyBytes)
+    {
+        if (_pluginInstaller is null)
+        {
+            return Json(503, new ErrorView(PluginErrorCodes.Invalid, "插件通道不可用。"));
+        }
+
+        if (bodyBytes.Length == 0)
+        {
+            return Json(400, new ErrorView(PluginErrorCodes.Invalid, "请选择要安装的插件包。"));
+        }
+
+        try
+        {
+            var view = _pluginInstaller.InstallAsync(new MemoryStream(bodyBytes), null, CancellationToken.None)
+                .GetAwaiter().GetResult();
+            return Json(200, new { ok = true, message = $"插件「{view.Name} {view.Version}」已安装，重启打印服务后生效。", plugin = view });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return Json(400, new ErrorView(PluginErrorCodes.Busy, ex.Message));
+        }
+        catch (Core.Transport.Plugins.Package.PluginPackageException ex)
+        {
+            // 业务性失败（非 zip / zip 损坏 / manifest 缺失或非法 / 平台不匹配 / 内置 id 冲突等）：消息已是中文可行动提示
+            return Json(400, new ErrorView(PluginErrorCodes.Invalid, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            HostLog.Error(HostLog.Tags.Http, $"插件安装失败（POST /api/plugins/install）：{ex.Message}", ex.ToString());
+            return Json(500, new ErrorView(PluginErrorCodes.Invalid, "插件安装失败，请重试；问题持续请联系管理员。"));
+        }
+    }
+
+    /// <summary>卸载插件（JSON { pluginId }；删目录 + 重启生效）。</summary>
+    private (int, string, byte[]) UninstallPlugin(string body)
+    {
+        if (_pluginInstaller is null)
+        {
+            return Json(503, new ErrorView(PluginErrorCodes.Invalid, "插件通道不可用。"));
+        }
+
+        string? pluginId = null;
+        try
+        {
+            pluginId = System.Text.Json.JsonSerializer.Deserialize<UninstallPluginDto>(body, HostJson.Options)?.PluginId;
+        }
+        catch (Exception ex)
+        {
+            return Json(400, new ErrorView(PluginErrorCodes.Invalid, $"请求解析失败：{ex.Message}"));
+        }
+
+        if (string.IsNullOrWhiteSpace(pluginId))
+        {
+            return Json(400, new ErrorView(PluginErrorCodes.Invalid, "缺少插件 ID。"));
+        }
+
+        try
+        {
+            _pluginInstaller.Uninstall(pluginId);
+            return Json(200, new { ok = true, message = $"插件「{pluginId}」已卸载，重启打印服务后生效。" });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return Json(400, new ErrorView(PluginErrorCodes.Busy, ex.Message));
+        }
+        catch (Core.Transport.Plugins.Package.PluginPackageException ex)
+        {
+            return Json(400, new ErrorView(PluginErrorCodes.Invalid, ex.Message));
+        }
+    }
+
+    private sealed record UninstallPluginDto(string? PluginId);
 
     private (int, string, byte[]) GetPrinterStatus()
     {

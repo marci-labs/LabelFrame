@@ -58,8 +58,8 @@ public static class ZebraPluginMigration
                 return;
             }
 
-            // 复用 PluginInstaller 三层校验（zip + manifest / 内置 id 拒绝 / 临时 ALC 预检核对插件 id）
-            var installer = new PluginInstaller(options.PluginsPath, new TransportPluginRegistry(), hostLogWriter);
+            // 复用 PluginInstaller 三层校验（zip + manifest / 内置 id 拒绝 / 临时 ALC 预检核对插件 id；迭代 96 起下沉 Core）
+            var installer = new Core.Transport.Plugins.PluginInstaller(options.PluginsPath, new TransportPluginRegistry(), hostLogWriter);
             using var stream = File.OpenRead(packagePath);
             var view = installer.InstallAsync(stream, Path.GetFileName(packagePath), CancellationToken.None).GetAwaiter().GetResult();
             hostInfo(

@@ -124,7 +124,7 @@ public static class WinHostApp
         builder.Services.AddSingleton<ITransportManager>(transportManager);
         builder.Services.AddSingleton<ITransportPluginRegistry>(transportRegistry);
 #if WINDOWS
-        builder.Services.AddSingleton(sp => new Transport.PluginInstaller(
+        builder.Services.AddSingleton(sp => new Core.Transport.Plugins.PluginInstaller(
             options.PluginsPath,
             sp.GetRequiredService<ITransportPluginRegistry>(),
             hostLogWriter,

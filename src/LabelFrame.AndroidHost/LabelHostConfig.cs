@@ -57,6 +57,12 @@ public sealed class LabelHostConfig
     /// <summary>数据库路径（宿主私有目录）。</summary>
     public required string DatabasePath { get; set; }
 
+    /// <summary>
+    /// 外置插件根目录（迭代 96 / 决策 #156 ⑤）：{FilesDir}/plugins，一插件一子目录
+    /// （语义对齐 Windows %ProgramData%\LabelFrame\Client\plugins——卸载 = 删目录 + 重启生效）。
+    /// </summary>
+    public required string PluginsPath { get; set; }
+
     /// <summary>从 SharedPreferences 加载（旧装机数据自动迁移：tcp_host 键沿用，端口与品牌缺失取默认值；
     /// 存量 tcp 配置零迁移直入 SDK TCP 路径，AC-03）。</summary>
     public static LabelHostConfig Load(Context context)
@@ -67,6 +73,7 @@ public sealed class LabelHostConfig
         return new LabelHostConfig
         {
             DatabasePath = System.IO.Path.Combine(context.FilesDir!.AbsolutePath, "labelframe", "jobs.db"),
+            PluginsPath = System.IO.Path.Combine(context.FilesDir!.AbsolutePath, Transport.Plugins.PluginHost.PluginsDirName),
             ServerUrl = prefs.GetString("server_url", string.Empty) ?? string.Empty,
             PrinterBrand = prefs.GetString("printer_brand", DefaultPrinterBrand) ?? DefaultPrinterBrand,
             ConnectionType = Transport.ZebraSdkTransport.NormalizeConnectionType(prefs.GetString("connection_type", DefaultConnectionType)),
@@ -120,14 +127,24 @@ public sealed class LabelHostConfig
         }
     }
 
-    /// <summary>打印机连接方式的用户可读摘要（主页状态卡 / 通知 / 状态页共用，按连接类型给一句话）。</summary>
-    public string PrinterDisplay() => Transport.ZebraSdkTransport.NormalizeConnectionType(ConnectionType) switch
+    /// <summary>打印机连接方式的用户可读摘要（主页状态卡 / 通知 / 状态页共用，按连接类型给一句话）。
+    /// 外置插件品牌（brand ≠ zebra，迭代 96）统一显示「IP:端口」——插件品牌连接类型固定网口 tcp 起步。</summary>
+    public string PrinterDisplay()
     {
-        Transport.ZebraSdkTransport.ConnectionTypeBluetooth =>
-            string.IsNullOrWhiteSpace(BluetoothMac) ? "蓝牙（地址未填）" : $"蓝牙 {BluetoothMac}",
-        Transport.ZebraSdkTransport.ConnectionTypeUsb => "USB 数据线",
-        _ => string.IsNullOrWhiteSpace(TcpHost) ? "网口（地址未填）" : TcpHost,
-    };
+        var brand = PrinterBrand.Trim();
+        if (brand.Length > 0 && !string.Equals(brand, DefaultPrinterBrand, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.IsNullOrWhiteSpace(TcpHost) ? "网口（地址未填）" : $"{TcpHost}:{TcpPort}";
+        }
+
+        return Transport.ZebraSdkTransport.NormalizeConnectionType(ConnectionType) switch
+        {
+            Transport.ZebraSdkTransport.ConnectionTypeBluetooth =>
+                string.IsNullOrWhiteSpace(BluetoothMac) ? "蓝牙（地址未填）" : $"蓝牙 {BluetoothMac}",
+            Transport.ZebraSdkTransport.ConnectionTypeUsb => "USB 数据线",
+            _ => string.IsNullOrWhiteSpace(TcpHost) ? "网口（地址未填）" : TcpHost,
+        };
+    }
 
     /// <summary>
     /// 设备号取系统唯一码 ANDROID_ID 原值（每台设备唯一、卸载重装不变、恢复出厂后变化——重置后的设备视为新设备）。

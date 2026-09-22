@@ -29,6 +29,9 @@ public static class HostLog
         /// <summary>配置页（Activity）交互。</summary>
         public const string Ui = "Ui";
 
+        /// <summary>外置插件通道（加载 / 安装 / 品牌路由，迭代 96）。</summary>
+        public const string Plugin = "Plugin";
+
         /// <summary>全局崩溃捕获。</summary>
         public const string Crash = "Crash";
     }
