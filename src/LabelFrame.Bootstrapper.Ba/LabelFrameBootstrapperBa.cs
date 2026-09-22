@@ -38,6 +38,10 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
     /// <summary>多源回退状态机（DESIGN §6.10，迭代 61 / #54）：每次 Apply 从当轮清单重建；引擎事件线程独占访问。</summary>
     private CacheSourceFallback? _sourceFallback;
 
+    /// <summary>缓存重试策略（#171 返修，决策 #156 ③，DESIGN §6.10）：包级兜底 / 载荷获取 / 校验三重试点共用每包预算
+    /// （指数退避 + 连续无进展终止）；每次 Apply 复位。引擎事件线程独占访问。</summary>
+    private CacheRetryPolicy _cacheRetryPolicy = new();
+
     /// <summary>下载侧辅助状态锁（缓存命中识别集合；引擎事件线程读写）。</summary>
     private readonly object _downloadSideLock = new();
 
@@ -128,11 +132,24 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
             });
 
             // 多源回退兜底驱动（DESIGN §6.10）：包级缓存失败且仍有未试源 → 覆写引擎动作为 Retry，
-            // 下一轮 CacheAcquireResolving 由 CacheSourceFallback 提供下一源（无源则不空转，走失败报告）
+            // 下一轮 CacheAcquireResolving 由 CacheSourceFallback 提供下一源（无源则不空转，走失败报告）。
+            // 重试预算（#171 返修，决策 #156 ③）：只判「有无未试源」不判「重试间是否推进」的兜底重试对无源可换类失败
+            // （附加容器获取 0x80070002——失败不进多源回退计数）形成无退避无终止热循环（真机实测 5 分钟 9.3 万次重试、
+            // 日志 219–240MB）；改经 CacheRetryPolicy 指数退避 + 连续无进展三次即终止交失败报告页。
             if (args.Status != 0 && SourceFallback?.HasUntriedSources(args.PackageId) == true)
             {
-                args.Action = BOOTSTRAPPER_CACHEPACKAGECOMPLETE_ACTION.Retry;
-                Log($"多源回退：组件 {args.PackageId} 获取失败（0x{args.Status:X8}），清单内仍有未尝试的源，驱动引擎重试换源。");
+                var decision = _cacheRetryPolicy.ShouldRetry(args.PackageId, SourceFallback.FailureCount(args.PackageId));
+                if (decision.AllowRetry)
+                {
+                    Log($"多源回退：组件 {args.PackageId} 获取失败（0x{args.Status:X8}），清单内仍有未尝试的源，驱动引擎重试换源（第 {decision.GrantedRetries} 次，退避 {(int)decision.Delay.TotalMilliseconds}ms）。");
+                    Thread.Sleep(decision.Delay); // 引擎缓存事件回调线程——阻塞应答即重试节流
+                    args.Action = BOOTSTRAPPER_CACHEPACKAGECOMPLETE_ACTION.Retry;
+                }
+                else
+                {
+                    Log($"多源回退：组件 {args.PackageId} 连续 {decision.StalledRetries} 次重试无进展（重试未推进源游标），停止重试，交引擎按失败回滚进失败报告。");
+                    AppendError($"[{args.PackageId}] 连续 {decision.StalledRetries} 次获取重试均无进展，已停止重试——请查看安装日志定位失败组件（常见：安装源不完整或被占用）。");
+                }
             }
         };
 
@@ -541,6 +558,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
         _sourceFallback = CacheSourceFallback.FromManifest(
             session.Manifest ?? throw new InvalidOperationException("尚未加载安装清单，无法开始安装。"),
             session.LocalSourceDirectory);
+        _cacheRetryPolicy.Reset(); // 缓存重试预算同轮复位（决策 #156 ③：「重试」= 全新 Plan + Apply）
 
         SetState(new InstallState { Phase = InstallPhase.Planning });
 
@@ -686,6 +704,17 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
     /// </summary>
     private void HandleCacheAcquireBegin(CacheAcquireBeginEventArgs args)
     {
+        // 附加容器获取本地源注入（#171 返修，决策 #156 ②，DESIGN §6.9 落位机制）：容器获取形态（payload id 为空——
+        // 托管事件对容器取 string.Empty 而非 null，#171 沙箱实测）只发生在引擎以「引擎桩副本」运行的会话——
+        // 提权工作副本与包缓存 Bundle EXE 均只含引擎桩（无 WixAttachedContainer），
+        // 内嵌载荷须经源解析搜索路径获取，原始源变量失效即 0x80070002 获取永不能完成（真机升级链三连败根因）。
+        // 注入运行中的引导 EXE（WixBundleOriginalSource）为容器首搜索路径：引擎仍按最小尺寸探测校验，
+        // 路径失效（不在位 / 截断）自动落回引擎默认搜索序（无害兜底）。
+        if (string.IsNullOrEmpty(args.PayloadId) && string.Equals(args.PackageOrContainerId, AttachedContainerId, StringComparison.Ordinal))
+        {
+            InjectAttachedContainerSource();
+        }
+
         var payloadKey = PayloadKeyOf(args.PackageOrContainerId, args.PayloadId);
         var isRemote = string.IsNullOrEmpty(args.PayloadContainerId);
         if (isRemote)
@@ -764,6 +793,34 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
     /// <summary>获取 / 校验事件的载荷键（包载荷的 payload id = 包 id；容器获取无 payload id 时回退包 id）。</summary>
     private static string PayloadKeyOf(string? packageOrContainerId, string? payloadId) => payloadId ?? packageOrContainerId ?? string.Empty;
 
+    /// <summary>WiX v4+ 内嵌载荷默认附加容器 id（Burn 引擎内置命名，链内 Compressed=yes 载荷全部收入其中）。</summary>
+    private const string AttachedContainerId = "WixAttachedContainer";
+
+    /// <summary>
+    /// 附加容器本地源注入（#171 返修，决策 #156 ②）：把运行中的引导 EXE 原始路径交给引擎作为
+    /// <c>WixAttachedContainer</c> 的首搜索路径（<see cref="IEngine.SetLocalSource"/>——与 §6.10 本地源注入同一事件入口）。
+    /// 诊断行（原始源在位性）随注入留痕——此类故障此前在 Burn 日志中无 BA 侧可定位信号。
+    /// </summary>
+    private void InjectAttachedContainerSource()
+    {
+        string? originalSource = null;
+        try
+        {
+            originalSource = engine.GetVariableString("WixBundleOriginalSource");
+        }
+        catch (Exception)
+        {
+            originalSource = null; // 变量尚未建立等极端场景——按不可注入处理
+        }
+
+        var present = !string.IsNullOrWhiteSpace(originalSource) && File.Exists(originalSource);
+        Log($"附加容器获取：引导 EXE 原始源 = {originalSource ?? "<未知>"}（{(present ? "在位，已注入为容器本地源" : "不在位，保留引擎默认搜索序")}）。");
+        if (present)
+        {
+            engine.SetLocalSource(AttachedContainerId, null, originalSource!);
+        }
+    }
+
     /// <summary>该载荷是否为远程下载载荷（依据获取开始时的容器归属登记；未登记 = 内嵌或未发生获取）。</summary>
     private bool IsRemotePayload(string? packageOrContainerId, string? payloadId)
     {
@@ -813,7 +870,18 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 
         if (hasUntried)
         {
-            args.Action = BOOTSTRAPPER_CACHEACQUIRECOMPLETE_ACTION.Retry; // 逐载荷重试 → 重新 Resolving → 换源
+            // 逐载荷重试 → 重新 Resolving → 换源；重试预算（决策 #156 ③）：换源推进源游标属合法重试不衰减，
+            // 退避（事件回调内阻塞）避免快失败源的紧密轮询
+            var decision = _cacheRetryPolicy.ShouldRetry(args.PackageOrContainerId, fallback?.FailureCount(args.PackageOrContainerId) ?? 0);
+            if (decision.AllowRetry)
+            {
+                Thread.Sleep(decision.Delay);
+                args.Action = BOOTSTRAPPER_CACHEACQUIRECOMPLETE_ACTION.Retry;
+            }
+            else
+            {
+                Log($"多源回退：组件 {args.PackageOrContainerId} 获取重试连续 {decision.StalledRetries} 次无进展，停止重试交引擎失败处置。");
+            }
         }
     }
 
@@ -841,8 +909,18 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 
         if (hasUntried && args.Recommendation == BOOTSTRAPPER_CACHEVERIFYCOMPLETE_ACTION.None)
         {
-            args.Action = BOOTSTRAPPER_CACHEVERIFYCOMPLETE_ACTION.RetryAcquisition;
-            Log($"多源回退：组件 {args.PackageOrContainerId} 校验失败且引擎重取额度用尽，清单内仍有未尝试的源，追加换源重取。");
+            // 重试预算（决策 #156 ③）：换源推进属合法重试；连续无进展超限即停（同载荷获取试点）
+            var decision = _cacheRetryPolicy.ShouldRetry(args.PackageOrContainerId, fallback?.FailureCount(args.PackageOrContainerId) ?? 0);
+            if (decision.AllowRetry)
+            {
+                Thread.Sleep(decision.Delay);
+                args.Action = BOOTSTRAPPER_CACHEVERIFYCOMPLETE_ACTION.RetryAcquisition;
+                Log($"多源回退：组件 {args.PackageOrContainerId} 校验失败且引擎重取额度用尽，清单内仍有未尝试的源，追加换源重取（第 {decision.GrantedRetries} 次，退避 {(int)decision.Delay.TotalMilliseconds}ms）。");
+            }
+            else
+            {
+                Log($"多源回退：组件 {args.PackageOrContainerId} 校验重取连续 {decision.StalledRetries} 次无进展，停止重试交引擎失败处置。");
+            }
         }
     }
 

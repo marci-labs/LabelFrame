@@ -2,6 +2,17 @@
 
 本文件记录每个迭代的变更。
 
+## #171 返修：升级链获取阶段三重缺陷——CacheId 版本化 / 附加容器获取本地源注入 / BA 重试热循环终止（决策 #156） · 2026-09-22
+
+- **动机（#171 真机验收走查不通过）**：v0.28.0 → v0.29.0 覆盖升级三次尝试均无法越过获取阶段——①落位 / 清理包常量 `CacheId` 跨版本共享 `%ProgramData%\Package Cache\` 子目录，PayloadTool.exe 每版本哈希必变 → 升级会话缓存校验必冲突（`0x80091007` 删缓存转重取）；②重跑会话解析附加容器即 `WixAttachedContainer 0x80070002`（预删冲突缓存目录仍失败——与 ① 独立）；③BA 包级缓存重试无退避无终止（`e346` 热循环：实测 5 分钟 92,993 次重试、Burn 日志 219–240MB、向导滞留进度页永不出现失败页）。
+- **引擎级定论（WiX Burn v7.0.0 源码考证 + 沙箱取证）**：`Compressed="yes"` 载荷全部收入 `WixAttachedContainer`（EXE 尾部附加容器，偏移 = `cbEngineSize`）；引擎按**运行中 EXE 实测尺寸**判定容器随行与否（section.cpp），而 Burn 存在两类**设计上不含附加容器**的「引擎桩副本」——提权工作副本（`.be` 目录，`CopyEngineWithSignatureFixup` 只复制 `cbEngineSize` 字节；ShellExecuteEx 无法继承句柄）与包缓存中的 Bundle EXE 本体（提权会话缓存调用链 apply.cpp `ApplyRegister` → `ElevationSessionBegin` → registration.cpp `RegistrationSessionBegin(wzEngineWorkingPath)` → cache.cpp `CacheCompleteBundle` 全程以 `.be` 工作副本为源——真机实测 0.28.0 缓存 EXE 1,576,024B < 原件 2,032,368B 即此设计而非损坏）；桩会话取内嵌载荷必须走源解析搜索路径，而默认搜索序对附加容器是**结构性死路**——附加容器内嵌文件名 = `bundle-attached.cab`（构建中间产物名，分发机器任何目录不存在 → 「搜索目录 + 相对名」路径永不命中）＋运行自包缓存的会话不派生原始源目录（`-burn.originalsource` 只设变量不派生目录）＋附加容器无 DownloadUrl（无下载兜底）→ 桩形态会话 `0x80070002` 确定性失败（e054 只可能出自桩形态会话——与真机「首装成功 / 重跑三连败」观测一致）；**分水岭 = 原始源可用性（沙箱实测补强）**：原始源 / 最近源目录可用且原件在位时引擎原生自救（`i336: Acquiring container … copy from <原始源>`），原件不在位或 per-machine 提权子进程内变量不可用（真机三连败形态）即结构性死路。
+- **修复①（Bundle.wxs）**：四个落位 / 清理包 `CacheId` 版本化（`WebUiPlacement.<BundleVersion>` 等四包）——每版本独立缓存目录，升级零哈希冲突；`WebView2Runtime` 不动（`Cache="remove"` 无驻留冲突面）。
+- **修复②（BA）**：容器获取事件（`CacheAcquireBegin` 容器形态——payload id 为 `string.Empty` 而非 null，沙箱实测修正判定）注入运行中引导 EXE（`WixBundleOriginalSource`，BA 非提权进程侧读数跨提权边界成立）为 `WixAttachedContainer` 首搜索路径（引擎仍按尺寸 / 摘要探测校验，注入失效无害落回引擎默认序）；补容器源诊断日志行（原始源在位性）——同类故障此前无 BA 侧可定位信号；边界：裸缓存桩重跑且原始源变量未建立的 ARP 维护会话不触发注入（引擎边界、非生产升级路径，沙箱 S4 如实记录该形态由 ③ 保证有界失败）。
+- **修复③（BA + 核心库）**：新增 `CacheRetryPolicy`（净逻辑入 `LabelFrame.Bootstrapper`，net10 测试锚定）——三个缓存重试点（包级兜底 Retry / 载荷获取 Retry / 校验 RetryAcquisition）共用每包预算：指数退避（500ms × 2^(n-1)，上限 30s）+ **连续无进展三次终止**（「进展」= 多源回退源游标前进，合法换源不衰减）+ 终止交引擎失败回滚进既有失败报告页（「重试」= 全新 Plan + Apply）；每轮 Apply 复位。
+- **测试**：新增 `CacheRetryPolicyTests` 7 项（退避调度 / 无进展终止 / 换源不衰减 / 进展后重新起算 / 复位 / 未知包 / 上限钳制）；新增 `scripts/test-bundle-upgrade-acquire.ps1`（合成 0.90.1→0.90.2 双 Bundle 升级链走查——复现-验证证据载体，场景 S1/S4（桩裸重跑复现 `0x80070002` + 热循环）/ S5（原始源在位注入验证）/ S2（升级全链路）/ S3（不可达源快速失败），支持 `-UserScope` 免提权用户态形态与 `-SourceRoot` 基线源构建）。全量 dotnet build 0 警 0 错 / test 930 项全绿（排除 Perf/Soak，净增 7 项）。
+- **沙箱取证（-UserScope 用户态形态，2026-09-22 实测）**：基线（常量 CacheId + 未修 BA）——S2 升级会话四载荷 `0x80091007` 哈希冲突删缓存转重取、S4 桩会话 `WixAttachedContainer 0x80070002` + `e346` 热循环 30 秒采样 17,661 次 / 日志增量 41.87MB、S5 原始源在位时引擎原生 `i336` 自救（分水岭证据）；修复后（版本化 CacheId + 修复 BA）23 项断言全绿——S2 升级全链路（RelatedBundle 检测并移除旧链（子会话非交互执行留痕）→ 重落位 → 凭据 0.90.2 → exit 0，全程零哈希冲突）、S4 退避 500ms→1s→2s 后无进展终止进失败报告页（日志有界）、S5 注入生效（「在位，已注入为容器本地源」+ 容器经注入路径解析）、S3 不可达源快速失败页（日志 0.02MB，对照真机 219–240MB）。
+- **遗留与边界**：旧引导器（≤ v0.29.0）升级失败无法事后修复（运行新引导器即治本——与 #153 同口径）；旧版本缓存目录可能残留约 3MB/版本（目录名隔离，无害）；是否出 v0.29.1 补丁版属发版决策（未推 tag）；真机复跑走查由验收侧执行（#171 维持待验收）。
+
 ## 流程治理（#199）：release.yml 签名链修复——bundle job 数组 splat 改哈希表＋MSI job 证书 env 映射补齐 · 2026-09-22
 
 - **现象（v0.29.0 发版实证，run 35683434328）**：tag v0.29.0 首跑失败于「构建安装引导 EXE（Burn Bundle）」job——`A positional parameter cannot be found that accepts argument 'artifacts/cert/labelframe.pfx'`；「创建 GitHub Release」被跳过，出库未发生。

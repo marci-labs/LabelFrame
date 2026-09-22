@@ -23,6 +23,8 @@
   - 缓存策略（决策 #151）：三个 runtime 包 Cache="remove"（Permanent 永不随 Bundle 卸载——执行才缓存、结束即清；
     WiX v4+ 计划语义 keep + Present 会尝试缓存 = 已装机器陪跑下载的机制根源，wixtoolset/issues#7021）——
     已装（Present）/ 未选的 runtime 包零获取。MSI 与落位包缓存策略不动（MSI 修复需驻留缓存；落位包每次安装会话都执行）。
+  - 落位 / 清理包 CacheId 版本化（#171 返修，决策 #156 ①）：<包名>.<BundleVersion>——常量 CacheId 跨版本共享
+    Package Cache 子目录 × PayloadTool.exe 每版本哈希必变 = 升级会话缓存校验必冲突（真机 #171 实测 0x80091007）。
   - 构建：scripts/build-bundle.ps1（wix build；需真实包文件提取元数据，故不进 LabelFrame.slnx）。
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
@@ -146,9 +148,11 @@
                   DownloadUrl="$(var.DownloadBase)/LabelFrame-Client-$(var.ProductVersion).msi" />
 
       <!-- 6) 管理界面 zip 落位：PayloadTool 内嵌（Compressed=yes）+ zip 子 Payload 远程下载；目标目录变量由 BA 写入；
-           -version 传 Bundle 版本供落位凭据写入（§6.8 落位凭据，迭代 69）。Permanent 维持（安装路径零改动，决策 #133） -->
+           -version 传 Bundle 版本供落位凭据写入（§6.8 落位凭据，迭代 69）。Permanent 维持（安装路径零改动，决策 #133）。
+           CacheId 版本化（#171 返修，决策 #156 ①）：PayloadTool.exe 每版本哈希必变，常量 CacheId 跨版本共享包缓存目录
+           → 升级会话缓存校验必冲突（0x80091007 删缓存转重取）；版本化后每版本独立缓存目录，升级零冲突 -->
       <ExePackage Id="WebUiPlacement"
-                  CacheId="WebUiPlacement"
+                  CacheId="WebUiPlacement.$(var.BundleVersion)"
                   SourceFile="$(var.PayloadToolPath)"
                   Name="LabelFrame.PayloadTool.exe"
                   Compressed="yes"
@@ -164,9 +168,10 @@
       </ExePackage>
 
       <!-- 7) webui 成对清理包（迭代 69，决策 #133）：install = 无参空操作（登记包已装）；卸载 / Modify 改选（InstallCondition
-           假）/ 失败回滚时 Burn 执行 UninstallArguments -clean 清理落位目录；DetectCondition = 凭据探测变量（BA 启动期写入） -->
+           假）/ 失败回滚时 Burn 执行 UninstallArguments -clean 清理落位目录；DetectCondition = 凭据探测变量（BA 启动期写入）；
+           CacheId 版本化同 6（决策 #156 ①） -->
       <ExePackage Id="WebUiPlacementCleanup"
-                  CacheId="WebUiPlacementCleanup"
+                  CacheId="WebUiPlacementCleanup.$(var.BundleVersion)"
                   SourceFile="$(var.PayloadToolPath)"
                   Name="LabelFrame.PayloadTool.exe"
                   Compressed="yes"
@@ -178,9 +183,9 @@
       </ExePackage>
 
       <!-- 8) Zebra 官方插件 .lfplugin 落位（#123 版本比较：新版本覆盖 / 同版本幂等 / 降级拒绝）；-version 写凭据；Permanent 维持。
-           机制通用：后续品牌落位包按本行 + 成对清理包同构扩展（决策 #133） -->
+           机制通用：后续品牌落位包按本行 + 成对清理包同构扩展（决策 #133）；CacheId 版本化同 6（决策 #156 ①） -->
       <ExePackage Id="ZebraPluginPlacement"
-                  CacheId="ZebraPluginPlacement"
+                  CacheId="ZebraPluginPlacement.$(var.BundleVersion)"
                   SourceFile="$(var.PayloadToolPath)"
                   Name="LabelFrame.PayloadTool.exe"
                   Compressed="yes"
@@ -195,9 +200,9 @@
                  DownloadUrl="$(var.DownloadBase)/labelframe-transport-zebra-$(var.ProductVersion).lfplugin" />
       </ExePackage>
 
-      <!-- 9) zebra 成对清理包（同 7，迭代 69，决策 #133） -->
+      <!-- 9) zebra 成对清理包（同 7，迭代 69，决策 #133；CacheId 版本化同 6，决策 #156 ①） -->
       <ExePackage Id="ZebraPluginPlacementCleanup"
-                  CacheId="ZebraPluginPlacementCleanup"
+                  CacheId="ZebraPluginPlacementCleanup.$(var.BundleVersion)"
                   SourceFile="$(var.PayloadToolPath)"
                   Name="LabelFrame.PayloadTool.exe"
                   Compressed="yes"
