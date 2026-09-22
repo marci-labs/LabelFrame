@@ -61,8 +61,16 @@ if ($MsiPath) {
         $ver = $rec.GetType().InvokeMember('StringData', 'GetProperty', $null, $rec, @(2))
         if ($name -like '*|*') { $name = ($name -split '\|')[-1] }
         if (-not $actual.ContainsKey($name)) { $actual[$name] = "$ver" }
+        if ($rec) { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($rec); $rec = $null }
     }
     $view.GetType().InvokeMember('Close', 'InvokeMethod', $null, $view, $null) | Out-Null
+    # 显式释放 COM RCW（#199）：本脚本被 build-msi.ps1 进程内调用（& 调用），Database 只读句柄
+    # 随 RCW 存活持有文件共享读锁——GC 未及时回收时，紧随其后的 signtool 签名写 MSI 即被拒
+    # （「The file is being used by another process」）；v0.28.0 前签名从不执行故未暴露。
+    foreach ($o in @($view, $db, $installer)) { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($o) }
+    $view = $db = $installer = $null
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
 } else {
     if (-not (Test-Path (Join-Path $PublishDir 'LabelFrame.WinHost.exe'))) { throw "发布目录无效：$PublishDir" }
 }
