@@ -6,10 +6,15 @@
 // 未保存离开保护三选路径（AC-01~03，dirty = 历史栈有已提交更改，决议 a）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ApiError } from '../lib/api/types'
 import type { TemplatePackage } from '../lib/api/types'
 import { AppProvider, useApp } from '../state/AppContext'
+
+// 迭代 96（#183）：挂载链（AppContext 启动链 → 模板加载）为多段 promise + React 真实宏任务调度，
+// CI 高负载 runner 上偶发超过 findBy / waitFor 默认 1000ms；统一放宽到 8000ms（与 JobHistory /
+// DataPrint / Settings 同口径），单测总超时由 vitest.config testTimeout（20s）兜住。
+configure({ asyncUtilTimeout: 8000 })
 import { Designer } from './Designer'
 
 const mocks = vi.hoisted(() => ({

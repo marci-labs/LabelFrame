@@ -5,8 +5,12 @@
 // K2 守门：跳过 localApi 探测（getHostConfig / getTransport 不被调用）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
+// 迭代 96（#183）：挂载链（AppContext 启动链 → 模板列表加载）为多段 promise + React 真实宏任务
+// 调度，CI 高负载 runner 上偶发超过 findBy / waitFor 默认 1000ms；统一放宽到 8000ms（与
+// JobHistory / DataPrint / Settings 同口径），单测总超时由 vitest.config testTimeout（20s）兜住。
+configure({ asyncUtilTimeout: 8000 })
 
 const mocks = vi.hoisted(() => ({
   server: {

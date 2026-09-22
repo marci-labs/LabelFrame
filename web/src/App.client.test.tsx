@@ -6,8 +6,13 @@
 // 不再用「服务端已连接」兼指本机后台服务可达（评审 #114 B-9）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, configure, render, screen } from '@testing-library/react'
 import App from './App'
+
+// 迭代 96（#183）：App 挂载链（AppContext 启动链）为多段 promise + React 真实宏任务调度，
+// CI 高负载 runner 上偶发超过 findBy 默认 1000ms；统一放宽到 8000ms（与其余页面测试同口径），
+// 单测总超时由 vitest.config testTimeout（20s）兜住。
+configure({ asyncUtilTimeout: 8000 })
 
 const mocks = vi.hoisted(() => ({
   server: {
