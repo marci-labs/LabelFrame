@@ -8,6 +8,7 @@
 - **根因（三处叠加；签名 Secrets 配置后链条首次被真正走到即暴露）**：①bundle job 构建步骤以**数组** `$sign = @('-Sign','-PfxPath',…)` 做 `@sign` splatting——数组 splat 按位置逐元素绑定，`-Sign` / `-PfxPath` 被当作位置实参即报错（应**哈希表** splat 按参数名绑定）；②MSI job「准备签名证书」步骤缺 `env: MSI_SIGN_CERT_BASE64` 映射（#169 已定位的遗留）——证书从不落盘、`Test-Path` 恒假、双 MSI 静默不签名（两 job 证书从未在场也是 ① 此前不暴露的原因）；③MSI job 两打包步骤缺 `env: MSI_SIGN_PASSWORD` 映射（修复 ② 后即暴露的连带缺口）。
 - **修复**：三处数组 splat 改哈希表 splat（`@{ Sign = $true; PfxPath = …; PfxPassword = … }`）；MSI job 证书步骤补 `MSI_SIGN_CERT_BASE64` env、Client / Server 两打包步骤补 `MSI_SIGN_PASSWORD` env；Secrets 未配置时各步骤仍按既有行为优雅跳过。
 - **验证（AC-3）**：哈希表 splat 语义实证（同签名 dummy 函数：`Sign=True PfxPath=artifacts/cert/labelframe.pfx PwLen=9`——按名绑定正确）；release.yml YAML 解析通过（7 个 job 齐全）。出库恢复走 `workflow_dispatch`（version=0.29.0）——tag 不删不重推（迭代 94 / #167 先例：产物源 master 与 tag 仅差本 workflow 修复）；出库核验证据回写 #199。
+- **根因第四层（dispatch 首跑实证，run 35685388254；修复① ② 后签名首次真正执行再暴露）**：`assert-client-deps-baseline.ps1` 经 WindowsInstaller COM `OpenDatabase`（只读）读 File 表后仅 `View.Close()`，`Database` / `Installer` / `Record` 的 RCW 未显式释放——该脚本被 `build-msi.ps1` 进程内调用（`&` 调用），只读句柄随 RCW 存活持有文件共享读锁，GC 未及时回收时紧随的 signtool 签名写 MSI 即被拒（`SignTool Error: The file is being used by another process`）。修复：循环内释放 `Record`、查询完 `ReleaseComObject` 三件套（view / db / installer）＋ `GC.Collect` + `WaitForPendingFinalizers`；v0.28.0 前签名从不执行故未暴露，仅 Client MSI 存在此「断言→签名」链（build-server-msi / build-bundle 无 COM 读 MSI）。
 - **不在范围**：release.yml 签名 fail-closed 断言（#169 建议，后续单独治理）。
 
 ## 迭代 99：nightly-perf 治理——Perf 步骤失败语义修复与阈值 CI 口径重标（流程治理） · 2026-09-22
