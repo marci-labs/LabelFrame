@@ -4,7 +4,7 @@ using LabelFrame.Core.Transport.Plugins.Package;
 
 namespace LabelFrame.Server;
 
-/// <summary>插件包视图（GET /api/plugin-packages 列表项；invalid 条目元数据字段缺失，仅文件信息有效）。</summary>
+/// <summary>插件包视图（GET /api/plugin-packages 列表项；invalid 条目元数据字段缺失，仅文件信息有效；platforms 为增量可选字段——迭代 96 / 决策 #156 跨端标记，未标记 = Windows 端既有包）。</summary>
 public sealed record PluginPackageView(
     string FileName,
     string? PluginId,
@@ -15,7 +15,8 @@ public sealed record PluginPackageView(
     DateTimeOffset ModifiedAt,
     string Url,
     bool Valid,
-    string? InvalidReason);
+    string? InvalidReason,
+    IReadOnlyList<string>? Platforms = null);
 
 /// <summary>
 /// 服务端插件包目录服务：独立 plugin-packages 目录 + /api/plugin-packages——
@@ -89,14 +90,15 @@ public sealed class PluginPackagesService : FilePackageService<PluginPackageView
             return new PluginPackageView(
                 info.Name,
                 content!.Manifest.PluginId,
-                content.Manifest.Name,
-                content.Manifest.Version,
-                content.Manifest.Description,
+                content!.Manifest.Name,
+                content!.Manifest.Version,
+                content!.Manifest.Description,
                 info.Length,
                 info.LastWriteTimeUtc,
                 $"/api/plugin-packages/{Uri.EscapeDataString(info.Name)}",
                 Valid: true,
-                InvalidReason: null);
+                InvalidReason: null,
+                content.Manifest.Platforms);
         }
 
         return InvalidView(path, info, error ?? "插件包无效。");

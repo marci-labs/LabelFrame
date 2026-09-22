@@ -21,9 +21,9 @@ internal static class PluginApi
     public static IEndpointRouteBuilder MapPluginApi(this IEndpointRouteBuilder app)
     {
     // ---- 插件安装 / 卸载（插件包上传服务端 → 客户端下载安装 / 卸载；安装 / 卸载 = 写文件 + 重启生效）----
-    app.MapGet("/api/plugins/installed", (Transport.PluginInstaller installer) => Results.Ok(installer.ListInstalled()));
+    app.MapGet("/api/plugins/installed", (PluginInstaller installer) => Results.Ok(installer.ListInstalled()));
 
-    app.MapPost("/api/plugins/install", async (IFormFile file, Transport.PluginInstaller installer, CancellationToken ct) =>
+    app.MapPost("/api/plugins/install", async (IFormFile file, PluginInstaller installer, CancellationToken ct) =>
     {
         if (file is null || file.Length == 0)
         {
@@ -54,7 +54,7 @@ internal static class PluginApi
         // 其余意外异常（解压 / 写入故障等）交给全局异常处理器 → 500，不再误报 400 或透出内部信息
     }).DisableAntiforgery();
 
-    app.MapPost("/api/plugins/uninstall", (Api.UninstallPluginRequest? request, Transport.PluginInstaller installer) =>
+    app.MapPost("/api/plugins/uninstall", (Api.UninstallPluginRequest? request, PluginInstaller installer) =>
     {
         if (request is null || string.IsNullOrWhiteSpace(request.PluginId))
         {

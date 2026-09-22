@@ -54,6 +54,26 @@ public sealed class ZebraSdkTransport : IPrintTransport, IPrinterStatusProvider,
         config.BluetoothMac,
         context);
 
+    /// <summary>
+    /// 按参数创建 SDK 传输（内置 zebra 插件路径，迭代 96 / 决策 #156——参数模型即
+    /// { brand, connectionType, host, port } 配置结构）。语义与 <see cref="Create(LabelHostConfig, Context)"/> 一致。
+    /// </summary>
+    public static ZebraSdkTransport Create(string connectionType, string host, int port, string bluetoothMac, Context context) => new(
+        NormalizeConnectionType(connectionType),
+        host,
+        port,
+        bluetoothMac,
+        context);
+
+    /// <summary>连接目标的用户可读摘要（静态版：插件 Describe 与配置页共用同一文案）。</summary>
+    public static string DescribeTarget(string connectionType, string host, int port, string bluetoothMac) =>
+        NormalizeConnectionType(connectionType) switch
+        {
+            ConnectionTypeBluetooth => $"蓝牙 {bluetoothMac}",
+            ConnectionTypeUsb => "USB（自动识别第一台 Zebra 打印机）",
+            _ => $"{host}:{port}",
+        };
+
     /// <summary>归一化连接类型：未识别值回退 tcp（存量配置只有 tcp，向前兼容新值）。</summary>
     public static string NormalizeConnectionType(string? value) => value switch
     {

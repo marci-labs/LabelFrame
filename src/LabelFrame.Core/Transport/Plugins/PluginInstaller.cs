@@ -1,10 +1,9 @@
-﻿using LabelFrame.Core.IO;
-using LabelFrame.Core.Transport.Plugins;
+using LabelFrame.Core.IO;
 using LabelFrame.Core.Transport.Plugins.Package;
 
-namespace LabelFrame.WinHost.Transport;
+namespace LabelFrame.Core.Transport.Plugins;
 
-/// <summary>已安装插件视图（GET /api/plugins/installed）。</summary>
+/// <summary>已安装插件视图（GET /api/plugins/installed；WinHost 与 AndroidHost 同构）。</summary>
 public sealed record InstalledPluginView(
     string PluginId,
     string Name,
@@ -16,12 +15,13 @@ public sealed record InstalledPluginView(
     string Source,
     DateTimeOffset? InstalledAt);
 
-
 /// <summary>
-/// 客户端插件安装 / 卸载服务：
-/// 安装 = 三层校验（zip + manifest / 内置 id 拒绝 / 临时 ALC 预检）→ 解压到 plugins/&lt;pluginId&gt;/（覆盖旧目录）→ 重启生效；
+/// 客户端插件安装 / 卸载服务（迭代 96 自 WinHost 下沉 Core 供 Windows / Android 双端共用，决策 #156）：
+/// 安装 = 三层校验（① zip + manifest 必填与平台门 ② 内置 id 拒绝 ③ 临时 ALC 预检核对插件 id）→
+/// 解压到 plugins/&lt;pluginId&gt;/（覆盖旧目录）→ 重启生效；
+/// 平台门：宿主平台不在 manifest <c>platforms</c> 声明集合内拒绝（无字段的既有包按 Windows 端解释——向后兼容）；
 /// 官方插件（labelframe- 前缀）覆盖安装先做版本比较：新版本覆盖 / 同版本幂等跳过 / 降级拒绝（决策 #123 ④；第三方维持不做版本比较）；
-/// 卸载 = 删除 plugins/&lt;pluginId&gt;/ → 重启生效；运行时热卸载不做。
+/// 卸载 = 删除 plugins/&lt;pluginId&gt;/ → 重启生效；运行时热卸载不做（#68 口径跨端一致）。
 /// </summary>
 public sealed class PluginInstaller
 {
@@ -29,15 +29,23 @@ public sealed class PluginInstaller
     private readonly ITransportPluginRegistry _registry;
     private readonly TextWriter _hostLog;
     private readonly IReadOnlyDictionary<string, string> _lastLoadErrors;
+    private readonly string _hostPlatform;
 
     /// <summary>创建安装服务（插件目录不存在自动创建）。</summary>
+    /// <param name="pluginsPath">插件根目录（Windows %ProgramData%\LabelFrame\Client\plugins；Android {FilesDir}/plugins）。</param>
+    /// <param name="registry">传输插件注册表（内置 id 拒绝按注册表动态判定）。</param>
+    /// <param name="hostLog">宿主日志写入器。</param>
+    /// <param name="lastLoadErrors">启动装配期的加载失败（已装列表透出原因用）。</param>
+    /// <param name="hostPlatform">宿主平台 id（PluginPlatforms.Windows / Android；默认 Windows——既有调用方向后兼容）。</param>
     public PluginInstaller(string pluginsPath, ITransportPluginRegistry registry, TextWriter hostLog,
-        IReadOnlyDictionary<string, string>? lastLoadErrors = null)
+        IReadOnlyDictionary<string, string>? lastLoadErrors = null, string hostPlatform = PluginPlatforms.Windows)
     {
         _pluginsPath = pluginsPath ?? throw new ArgumentNullException(nameof(pluginsPath));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _hostLog = hostLog ?? throw new ArgumentNullException(nameof(hostLog));
         _lastLoadErrors = lastLoadErrors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        _hostPlatform = PluginPlatforms.Normalize(hostPlatform)
+            ?? throw new ArgumentException("宿主平台 id 不能为空。", nameof(hostPlatform));
     }
 
     /// <summary>
@@ -114,7 +122,7 @@ public sealed class PluginInstaller
     }
 
     /// <summary>
-    /// 安装插件包：三层校验（zip + 根 manifest / 内置 id 拒绝 / 临时 ALC 预检核对插件 id）→
+    /// 安装插件包：三层校验（① zip + 根 manifest + 必填字段与平台门 ② 内置插件 ID 拒绝 ③ 临时 ALC 预检核对插件 id）→
     /// 解压到 plugins/&lt;pluginId&gt;/（覆盖旧目录）。失败抛 <see cref="PluginPackageException"/> /
     /// IOException（中文消息）。
     /// </summary>
@@ -139,7 +147,15 @@ public sealed class PluginInstaller
         // ① zip 完整性 + 根 manifest + 必填字段 + zip-slip（PluginPackageReader.Read 内部校验）
         var content = PluginPackageReader.Read(bytes);
 
-        // ② 内置插件 ID 拒绝
+        // ①b 平台门（迭代 96，决策 #156）：宿主平台不在 manifest platforms 声明集合内拒绝——
+        // 无字段的既有包按 Windows 端解释（Windows 兼容安装、PDA 拒绝存量 Windows 包）
+        if (!content.Manifest.SupportsPlatform(_hostPlatform))
+        {
+            throw new PluginPackageException(
+                $"插件「{content.Manifest.Name}」面向 {content.Manifest.PlatformsDisplay()} 平台，与本机平台（{_hostPlatform}）不匹配，无法安装——请选择与本机平台匹配的插件包。");
+        }
+
+        // ② 内置插件 ID 拒绝（按宿主注册表动态判定：Windows = log/tcp9100/winspool；PDA = zebra（SDK 档）+ Core 保留 id）
         var existing = _registry.GetPlugin(content.Manifest.PluginId);
         if (existing is { IsExternal: false })
         {
@@ -150,7 +166,7 @@ public sealed class PluginInstaller
         var safeId = SafeFileName.Normalize(content.Manifest.PluginId)
             ?? throw new PluginPackageException($"pluginId「{content.Manifest.PluginId}」不是合法的插件目录名。");
 
-        // ②b 官方插件覆盖安装版本比较（决策 #123 ④，率先于第三方启用）：新版本覆盖 / 同版本幂等 / 降级拒绝
+        // ②b 官方插件覆盖安装版本比较（决策 #123 ④，率先于第三方启用；迭代 96 起双端一致）：新版本覆盖 / 同版本幂等 / 降级拒绝
         var installedManifest = ReadInstalledManifest(safeId);
         if (installedManifest is not null && TransportPluginIdPolicy.IsOfficial(content.Manifest.PluginId))
         {
@@ -193,7 +209,7 @@ public sealed class PluginInstaller
                 throw new PluginPackageException($"manifest.pluginId「{content.Manifest.PluginId}」与插件实际 ID（{string.Join(" / ", probe.PluginIds)}）不一致。");
             }
 
-            // 覆盖安装：删除旧目录（已加载插件被 Windows 文件锁占用 → 明确提示重启后重试）
+            // 覆盖安装：删除旧目录（字节加载不锁文件，正常运行时可直接删除；被外部占用时明确提示重启后重试）
             Directory.CreateDirectory(_pluginsPath);
             var targetDir = Path.Combine(_pluginsPath, safeId);
             if (Directory.Exists(targetDir))
@@ -204,7 +220,7 @@ public sealed class PluginInstaller
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
-                    throw new IOException($"插件「{content.Manifest.PluginId}」正在使用中（DLL 被客户端占用），请重启客户端后重试。");
+                    throw new IOException($"插件「{content.Manifest.PluginId}」正在使用中，请重启后重试。", ex);
                 }
             }
 
@@ -268,7 +284,7 @@ public sealed class PluginInstaller
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            throw new IOException($"插件「{pluginId}」正在使用中（DLL 被客户端占用），请重启客户端后重试。");
+            throw new IOException($"插件「{pluginId}」正在使用中，请重启后重试。", ex);
         }
 
         _hostLog.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] 已卸载插件包：{pluginId}（重启后生效）。");

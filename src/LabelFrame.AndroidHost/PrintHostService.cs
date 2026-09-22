@@ -5,6 +5,7 @@ using Android.OS;
 using LabelFrame.AndroidHost.Api;
 using LabelFrame.AndroidHost.Rendering;
 using LabelFrame.AndroidHost.Transport;
+using LabelFrame.AndroidHost.Transport.Plugins;
 using LabelFrame.Core.Jobs;
 using LabelFrame.Core.Transport;
 
@@ -13,7 +14,8 @@ namespace LabelFrame.AndroidHost;
 /// <summary>
 /// 前台打印宿主服务：本地 HTTP + 打印 Worker + Server 路由轮询。
 /// 前台服务常驻，开机由 BootReceiver 拉起；运行状态经 <see cref="HostStatus"/> 快照供配置页 / 状态页读取。
-/// 打印传输自迭代 56（决策 #111）走 Zebra 官方 SDK（tcp 默认 / bluetooth / usb，见 <see cref="ZebraSdkTransport"/>）。
+/// 打印传输自迭代 56（决策 #111）走 Zebra 官方 SDK（tcp 默认 / bluetooth / usb，见 <see cref="ZebraSdkTransport"/>）；
+/// 自迭代 96（决策 #156）按品牌路由：zebra 走内置 SDK 档，外置插件品牌走轻量档插件传输（<see cref="AndroidTransportFactory"/>）。
 /// </summary>
 [Service(Exported = true, ForegroundServiceType = Android.Content.PM.ForegroundService.TypeDataSync)]
 public sealed class PrintHostService : Service
@@ -22,7 +24,7 @@ public sealed class PrintHostService : Service
     private const int NotificationId = 1001;
 
     private LabelJobQueue? _queue;
-    private ZebraSdkTransport? _transport;
+    private IPrintTransport? _transport;
     private EmbeddedHttpServer? _http;
     private ServerPoller? _poller;
     private CancellationTokenSource? _cts;
@@ -47,28 +49,25 @@ public sealed class PrintHostService : Service
         Java.Lang.JavaSystem.LoadLibrary("e_sqlite3");
 
         var config = LabelHostConfig.Load(this);
-        // 打印机目标：SDK 传输的连接描述（tcp 地址端口 / 蓝牙 MAC / USB），与状态卡 / 通知文案共用同一摘要
-        var printerTarget = ZebraSdkTransport.NormalizeConnectionType(config.ConnectionType) switch
-        {
-            ZebraSdkTransport.ConnectionTypeTcp => $"{config.TcpHost}:{config.TcpPort}",
-            _ => config.PrinterDisplay(),
-        };
-        HostStatus.NoteServiceStarted(config.ServerUrl, config.PrinterDisplay());
+        // 外置插件通道装配（迭代 96，决策 #156）：内置 zebra 注册 + {FilesDir}/plugins 目录扫描（失败留痕不阻断）
+        var pluginHost = PluginHost.Load(this);
+        // 打印传输品牌路由：zebra → 内置 SDK（既有路径原样）；外置插件品牌 → 插件传输；未安装 → 回退 zebra + 留痕
+        _transport = AndroidTransportFactory.Create(config, pluginHost.Registry, pluginHost.PluginContext, this);
+        var printerTarget = config.PrinterDisplay();
+        HostStatus.NoteServiceStarted(config.ServerUrl, printerTarget);
         HostLog.Info(
             HostLog.Tags.Host,
             $"打印服务启动：版本 {HostInfo.GetVersion(this)}，设备 {config.DeviceId}（{config.DeviceName}），" +
             $"服务器 {(config.ServerUrl.Length == 0 ? "未设置" : config.ServerUrl)}，" +
-            $"打印机 {ZebraSdkTransport.NormalizeConnectionType(config.ConnectionType)} {printerTarget}，" +
+            $"打印机品牌 {config.PrinterBrand} {printerTarget}，" +
             $"本地 HTTP 127.0.0.1:{LabelHostConfig.LocalPort}");
         var store = new SqliteLabelJobStore(config.DatabasePath);
         store.InitializeAsync().GetAwaiter().GetResult();
         _queue = new LabelJobQueue(store);
-        // Zebra 官方 SDK 传输（迭代 56）：替换裸 socket Tcp9100PrintTransport；存量 tcp 配置同一键直读（AC-03）
-        _transport = ZebraSdkTransport.Create(config, this);
         var submission = new SubmissionService(_queue, LabelHostConfig.Dpi);
 
         _cts = new CancellationTokenSource();
-        _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, store, _transport, this);
+        _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, submission, _queue, store, _transport, this, pluginHost.Installer);
         _http.Start();
 
         _printLoop = Task.Run(() => PrintLoopAsync(printerTarget, _cts.Token));

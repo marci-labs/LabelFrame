@@ -2,6 +2,7 @@
 
 本文件记录每个迭代的变更。
 
+
 ## #171 返修：升级链获取阶段三重缺陷——CacheId 版本化 / 附加容器获取本地源注入 / BA 重试热循环终止（决策 #156） · 2026-09-22
 
 - **动机（#171 真机验收走查不通过）**：v0.28.0 → v0.29.0 覆盖升级三次尝试均无法越过获取阶段——①落位 / 清理包常量 `CacheId` 跨版本共享 `%ProgramData%\Package Cache\` 子目录，PayloadTool.exe 每版本哈希必变 → 升级会话缓存校验必冲突（`0x80091007` 删缓存转重取）；②重跑会话解析附加容器即 `WixAttachedContainer 0x80070002`（预删冲突缓存目录仍失败——与 ① 独立）；③BA 包级缓存重试无退避无终止（`e346` 热循环：实测 5 分钟 92,993 次重试、Burn 日志 219–240MB、向导滞留进度页永不出现失败页）。
@@ -12,6 +13,17 @@
 - **测试**：新增 `CacheRetryPolicyTests` 7 项（退避调度 / 无进展终止 / 换源不衰减 / 进展后重新起算 / 复位 / 未知包 / 上限钳制）；新增 `scripts/test-bundle-upgrade-acquire.ps1`（合成 0.90.1→0.90.2 双 Bundle 升级链走查——复现-验证证据载体，场景 S1/S4（桩裸重跑复现 `0x80070002` + 热循环）/ S5（原始源在位注入验证）/ S2（升级全链路）/ S3（不可达源快速失败），支持 `-UserScope` 免提权用户态形态与 `-SourceRoot` 基线源构建）。全量 dotnet build 0 警 0 错 / test 930 项全绿（排除 Perf/Soak，净增 7 项）。
 - **沙箱取证（-UserScope 用户态形态，2026-09-22 实测）**：基线（常量 CacheId + 未修 BA）——S2 升级会话四载荷 `0x80091007` 哈希冲突删缓存转重取、S4 桩会话 `WixAttachedContainer 0x80070002` + `e346` 热循环 30 秒采样 17,661 次 / 日志增量 41.87MB、S5 原始源在位时引擎原生 `i336` 自救（分水岭证据）；修复后（版本化 CacheId + 修复 BA）23 项断言全绿——S2 升级全链路（RelatedBundle 检测并移除旧链（子会话非交互执行留痕）→ 重落位 → 凭据 0.90.2 → exit 0，全程零哈希冲突）、S4 退避 500ms→1s→2s 后无进展终止进失败报告页（日志有界）、S5 注入生效（「在位，已注入为容器本地源」+ 容器经注入路径解析）、S3 不可达源快速失败页（日志 0.02MB，对照真机 219–240MB）。
 - **遗留与边界**：旧引导器（≤ v0.29.0）升级失败无法事后修复（运行新引导器即治本——与 #153 同口径）；旧版本缓存目录可能残留约 3MB/版本（目录名隔离，无害）；是否出 v0.29.1 补丁版属发版决策（未推 tag）；真机复跑走查由验收侧执行（#171 维持待验收）。
+
+## 迭代 96：PDA 插件机制——.lfplugin 跨端契约与 AndroidHost 外置插件通道（双档模型） · 2026-09-22
+
+- **动机（#185）**：仓库未来引入非 Zebra 品牌标签打印机（国内 TSPL 兼容机为主力预期）时，PDA 宿主能以「外置插件」方式接入新品牌——管理员经服务端集中分发、PDA 在线安装，而不是为每个品牌发 APK 或等宿主发版（用户 2026-09-21 定稿：PDA 走插件模式，否决「一个品牌一个 APK」主路线）。
+- **契约（决策 #157，先文档后代码——强化路径）**：`.lfplugin` manifest 新增可选字段 `platforms`（小写平台 id `windows` / `android`，单包单端起步；**无该字段的既有包按 Windows 端解释**——存量 zebra 官方包零迁移，`[]` 空数组非法拒绝）；三层校验新增**平台门**（宿主平台不在声明集合内拒绝：Windows 拒 `android` 包、PDA 拒 `windows` 包与未标记存量包），与内置 id 拒绝、ALC 预检同属安装端校验（服务端 `plugin-packages` 不做平台过滤，列表视图增量透出 `platforms`）；官方插件版本比较（#123 ④）语义双端一致；指令集分级登记：PostScript 不做、CPCL / ESC-POS 需求触发占位（ESC 语义待用户确认）、TSPL = 迭代 97。
+- **双档模型与 PDA 通道**：SDK 档 Zebra Link-OS 维持内置 APK（决策 #111 口径不变，外置化评估结论 = 不做）；轻量档纯托管插件外置动态加载（含 Java binding / 原生 so 的厂商 SDK 插件不可行——JNI 类型注册是构建时机制）。Android 侧安装目录 = `{FilesDir}/plugins/<pluginId>/` 一插件一目录（语义对齐 Windows `%ProgramData%\LabelFrame\Client\plugins`：卸载 = 删目录 + 重启生效，不做运行时热卸载）；加载生命周期完全继承决策 #127（包目录单 collectible ALC 整体字节加载 + 注册表强持有 ALC 根；单插件加载失败 HostLog + 已装列表 loadError 留痕不阻断宿主）。实现载体：`PluginInstaller` 自 WinHost 下沉 Core（双端共用，Windows 行为不变）、AndroidHost 新增 `PluginHost` 装配 + `AndroidTransportFactory` 品牌路由（zebra → 内置 SDK 既有路径原样；插件品牌 → 插件传输 `{ connectionType: tcp, host, port }`；配置引用未安装插件回退 zebra + 中文留痕）。
+- **PDA 界面与端点**：配置页新增「插件管理」子页（已装列表含加载失败原因 + 浏览服务端 `plugin-packages` 下载安装 + 卸载，安装 / 卸载自动重启打印服务生效）；「连接打印机」子页顶部新增品牌选择（Zebra 内置 + 已装插件动态扩展——决策 #95 预埋兑现，配置 `{ brand, connectionType, host, port }` 结构零变更；插件品牌固定网口 tcp 起步，Zebra 三连接方式不变）；AndroidHost 本地 HTTP 新增 `GET /api/plugins/installed` / `POST /api/plugins/install`（原始包字节）/ `POST /api/plugins/uninstall`（与 WinHost 同构，JS 桥可达）。
+- **fake 插件单测矩阵（AC-03，19 用例全绿）**：新增 `test/LabelFrame.TransportPlugin.Fake`（纯托管假想品牌插件：发送内容落盘留痕）+ `PluginInstallerCrossPlatformTests`（platforms 契约解析 / 平台门双向 / 坏包拒绝——损坏 zip、manifest 缺失、非 zip、无 DLL、DLL 非程序集、内置 id 冲突、manifest id 不一致 / 官方版本比较（android 路径幂等 + 降级拒绝）/ 安装→加载→发现→装配→发送全链路 / 装后损坏 loadError 留痕）；既有 WinHost 插件 28 用例随 PluginInstaller 下沉全数通过（Windows 行为零回归）。
+- **Spike 资产（AC-02 真机部分转待验收）**：`scripts/build-fake-android-plugin.ps1`（构建 `labelframe-transport-fake-<版本>.lfplugin`，platforms=android，宿主必带程序集排除对齐打包脚本）+ `scripts/test-pda-plugin-spike.ps1`（Release AOT APK 构建 → adb 安装 → 本地 HTTP 装插件 → 重启 → 发现 loaded=true → 配置路由 → 测试打印 → run-as 取证 sink 落盘 → 回退清理，全链路逐步 PASS/FAIL 输出）。worker 沙箱已实证：fake 包构建成功（0MB/1 程序集）+ Release AOT APK 构建成功（22.8MB，EmbedAssembliesIntoApk，与 CI「Android 构建」同型）；**真机动态加载实证（UROVO DT50 同级）转待验收**（恢复条件 = 真机可得，验收侧执行走查脚本；若跑出失败按 fail-fast 中止机制段转用户评估）。
+- **不在范围**（#185 明示）：Zebra SDK 外置化 / 全插件化；PDA 侧 ZPL 命令打印（§5.4.7 维持远期）；任一真实指令集插件（TSPL = #186）；插件检测更新 / 自动更新（归「服务端分发枢纽」主题）；「一个品牌一个 APK」构建变体；Android 平台打印 API。
+
 
 ## 流程治理（#199）：release.yml 签名链修复——bundle job 数组 splat 改哈希表＋MSI job 证书 env 映射补齐 · 2026-09-22
 

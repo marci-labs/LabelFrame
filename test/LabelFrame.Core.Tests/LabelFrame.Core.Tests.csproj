@@ -20,6 +20,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\LabelFrame.Core\LabelFrame.Core.csproj" />
     <ProjectReference Include="..\LabelFrame.TransportPlugin.Sample\LabelFrame.TransportPlugin.Sample.csproj" />
+    <!-- fake 传输插件（迭代 96 / #185）：platforms:android 声明包的测试程序集源（跨端平台门 / 安装 / 装配矩阵） -->
+    <ProjectReference Include="..\LabelFrame.TransportPlugin.Fake\LabelFrame.TransportPlugin.Fake.csproj" />
   </ItemGroup>
 
 </Project>
