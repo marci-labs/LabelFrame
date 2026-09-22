@@ -125,6 +125,7 @@
 | — | 测试债修复：升级走查脚本两条横幅断言锚点对齐 #151 现行文案（#181；`*不会下载*` 通配抢首命中致 S3 断言错位 → 横幅抓取收敛 UpgradePresentation.Summarize 三态锚点集 + S2 锚点改「检测到可用更新：服务端 <旧> → <新>」含版本号，与同场景 Burn 日志断言同口径） | ✅ 已完成（2026-09-21 PR #189 修复合入 `89bb203`（本地全量走查 18/18 + CI 三项必需检查全绿），欠账「全新安装臂未实际命中」于 2026-09-22 在 LF-Accept-Win10 纯净基线真机复跑补齐——S1 横幅实测「未检测到本机已安装的 LabelFrame 组件，将执行全新安装。」、三态锚点三场景各命中一次零错位，18/18 断言 exit=0，证据回写 [#181](https://github.com/marci-labs/LabelFrame/issues/181)） |
 | 发布 | v0.29.0 汇总发布（安装引导体验：迭代 95 两层问卷与清单自动加载＋#173 WebView2 Authenticode 验签治本（旧版引导器全新装机随微软轮换必败的缺陷修复）；使用体验：迭代 85 模板直达打印与作业明细；外部集成：迭代 98 终态回调 webhook；流程与测试债：迭代 94 / #183 CI 偶发失败治理 / #176 / #181；发版后走查复核联动待验收 #171） | ✅ 已完成（2026-09-22，tag v0.29.0；首跑失败于签名链缺陷转 #199，修复后 workflow_dispatch 恢复出库） |
 | — | 流程治理：release.yml 签名链缺陷修复（#199；v0.29.0 首跑实证——bundle job 构建步骤**数组** splat 按位置绑定报「位置参数不能接受 artifacts/cert/labelframe.pfx」阻断出库；MSI job 证书步骤缺 env 映射致证书从不落盘、双 MSI 静默不签名（#169 定位遗留）＋两打包步骤缺密码映射——三处改哈希表 splat＋补两处 env，Secrets 未配置仍优雅跳过；出库以 workflow_dispatch version=0.29.0 恢复，tag 不删不重推（迭代 94 先例）） | ✅ 已完成（2026-09-22 修复合入；哈希表 splat 语义实证 + YAML 解析通过；dispatch 恢复出库与 Release 附件 / 签名态 / ghcr 镜像核验证据随 #199 回写，[#199](https://github.com/marci-labs/LabelFrame/issues/199)） |
+| 99 | 流程治理——nightly-perf 治理：Perf 步骤拆分独立失败语义与阈值分环境口径（9-14 起连续失败排查定性三层：多行 pwsh 块退出码只取末条命令掩盖 Server 断言失败（8-31 / 9-7 两轮「成功」日志实有 FAIL）＋阈值按开发机标定而 GitHub 共享宿主 p50 轮间抖动 10-300 倍无判别力（同代码本机复跑全达标排除代码回归）＋9-14 起 runner 镜像更新后 WinHost 单张 31ms 顶红；Perf 段拆「Server Perf」「WinHost 单张 Perf」独立步骤，`GITHUB_ACTIONS` 分档——本地严格口径保留、CI 改「无错误 + p95 分层」（Routing p50 转观测 / WinHost 单张 p50<100ms p99<1s，决策 #155）；actions checkout@v7 / setup-dotnet@v6 清 Node 20 弃用警告；ci.yml / release.yml 的 actions 升级记待需求） | ✅ 已完成（2026-09-22 PR #200 CI 三项必需检查全绿 squash 合入 master `bd4d3bd`；本地 build 0 警 0 错 / test 923 项全绿（排除 Perf/Soak）+ Perf 双口径全绿（`GITHUB_ACTIONS=true` 下 device-20 p50=2051ms 通过实证分档分支生效）；合并后手动 dispatch nightly-perf 全步骤绿（AC-04 证据见 Issue），[#198](https://github.com/marci-labs/LabelFrame/issues/198)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
@@ -132,6 +133,7 @@
 > 2026-09-10 迭代 44 验收后用户提出五项候选，已全部交付：批次首张节奏 / 设置页布局 / 工作台搜索与操作列（迭代 45，[#11](https://github.com/marci-labs/LabelFrame/issues/11)）、缩略图预览（迭代 46，[#15](https://github.com/marci-labs/LabelFrame/issues/15)）、进度增量上报与日志细化（迭代 47，[#16](https://github.com/marci-labs/LabelFrame/issues/16)）；工作台整体信息架构重构亦随候选讨论定稿排期（迭代 48，[#27](https://github.com/marci-labs/LabelFrame/issues/27)，卡片网格形态交付）。
 
 - net48 版 WinHost（Win7 / Win8 老电脑，尽量兼容）。
+- `ci.yml` / `release.yml` 的 actions 升级（checkout@v7 / setup-dotnet@v6，同款 Node 20 弃用警告清理——迭代 99 只动了 nightly-perf.yml，门禁 / 发版链路敏感，另行小迭代）。
 - WMS 模板下发（复用模板包格式）。
 - 其他打印机指令集（TSPL / CPCL）。
 - PDA 蓝牙传输（原 P1；2026-09-07 Niimbot 专用插件迭代已放弃而降级——PDA 宿主走 IP 打印、不依赖蓝牙，出现真实蓝牙打印机需求时按传输插件接入）。
