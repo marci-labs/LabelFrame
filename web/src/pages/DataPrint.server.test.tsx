@@ -141,7 +141,8 @@ afterEach(() => {
 
 /** 挂载链等待超时（ms）：DataPrint 挂载要串行走完「设备列表 → 模板列表 → 模板详情 → testData 预填」多段异步链，
  *  CI 高负载下可能超过 findBy / waitFor 默认 1000ms（迭代 38：ci run 34081028327 偶发超时），统一放宽。 */
-const MOUNT_WAIT = { timeout: 3000 }
+// 迭代 96（#183）：3000ms 在 CI 高负载下被击穿（见 DataPrint.test.tsx 注释），对齐放宽到 8000ms
+const MOUNT_WAIT = { timeout: 8000 }
 
 async function renderDataPrint() {
   render(<Harness />)

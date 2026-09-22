@@ -2,6 +2,13 @@
 
 本文件记录每个迭代的变更。
 
+## 测试债修复（#183）：CI「构建与测试」偶发失败治理——前端测试时序确定性改造与 FailureLog 超时根因修复 · 2026-09-22
+
+- **动机（#183，用户拍板 B 案）**：docs-only / 无前端改动 的 CI run 接连出现互不相同的前端时序失败（覆盖 JobHistory / DataPrint / Settings 三文件 5 处）与 WinHost `JobPrintWorkerFailureLogTests` 约 20s 超时特征失败，与改动内容无因果、与 runner 负载相关，偶发红阻塞无关 PR。
+- **前端时序确定性改造（只改测试与测试基建，被测产品代码零改动）**：根因同源——AppProvider 启动链（getHostConfig → healthz / getTransport → serverMode → 各页列表加载）为多段 promise + React 真实宏任务调度，默认 1000ms 的 findBy / waitFor 与「固定轮数冲洗后同步断言」在 CI 高负载下被击穿或残留未落定渲染代际。①实证三文件：JobHistory / DataPrint 挂载链等待统一 MOUNT_WAIT 8000ms（3000ms 实证被击穿）；Settings 以 `configure({ asyncUtilTimeout: 8000 })` 统一口径，TCP 参数表单用例改为「连接配置落定（折叠头摘要出现）后再展开点选」消除与挂载期并发 mock 的渲染交错；②fake timers 用例（JobHistory 轮询 describe、DataPrint 设备探测周期、Devices 5s 轮询、Workbench.preview 全文件）：固定 1–2 轮冲洗改为有界落定循环（以「拉取已发生 + 列表已渲染 / mock 计数静默」为准出条件），消除迟到真实宏任务渲染落入计时窗口造成的轮询计数错位（实证：「2s 退避后重试」期望 2 实得 3）；③同类高频挂载用例（Workbench / App.server `configure` 统一、DataPrint.server MOUNT_WAIT 对齐、Devices / 旧连接方式用例同步点选改 `findByRole` 先等后点）；④`vitest.config.ts` 单测超时 5s → 20s（兜住全同步断言用例的墙钟停顿——实证：Settings「三分组渲染」5000ms 超时）。
+- **WinHost FailureLog 根因结论（测试债，非产品债）**：worker 失败路径无锁 / 无固定睡眠（信号驱动唤醒 + WAL + 池化 SQLite、busy 超时 5s），本地 <1s 即落 Failed；CI 高负载下并行测试类放大轮询循环与 worker 的 SQLite 往返延迟，原「200 次 × 50ms 固定迭代轮询 + 15s 总 CTS 同管收尾」墙钟预算被击穿、CTS 轮询中途到期抛取消——呈约 20s 超时特征。修复：改按截止时间轮询（30s 预算 / 100ms 间隔）+ 总 CTS 放宽 60s 并与轮询解耦 + 未落 Failed 时显式断言报错（不再以取消异常形态失败）。
+- **验证**：pnpm lint 0 警告 0 错误；双模式全量测试（client / server 各 387 项）全绿、`pnpm build` 全绿；dotnet build / test（排除 Perf/Soak）全绿零回归；治理过的前端测试文件连续 3 轮全绿、FailureLog 用例连续 3 轮全绿（轮次数字见 Issue 自评）。被测产品代码零改动。
+
 ## 迭代 98：打印任务终态回调（webhook）——路由模式提交附带回调 URL，终态异步通知外部系统 · 2026-09-21
 
 - **动机（#190）**：外部业务系统经路由模式提交打印任务后只能轮询 `GET /api/jobs/{jobId}` 得知结果，成本高、时效差；期望提交时附带回调 URL（webhook），作业到达终态时由 Server 异步 POST 通知，载荷含状态与幂等键。

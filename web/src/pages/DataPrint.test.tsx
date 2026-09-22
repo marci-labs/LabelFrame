@@ -135,8 +135,10 @@ afterEach(() => {
 })
 
 /** 挂载链等待超时（ms）：DataPrint 挂载要串行走完「设备探测 → 模板列表 → 模板详情 → testData 预填」多段异步链，
- *  CI 高负载下可能超过 findBy / waitFor 默认 1000ms（迭代 38：ci run 34081028327 偶发超时），统一放宽。 */
-const MOUNT_WAIT = { timeout: 3000 }
+ *  CI 高负载下可能超过 findBy / waitFor 默认 1000ms（迭代 38：ci run 34081028327 偶发超时，统一放宽）。
+ *  迭代 96（#183）：3000ms 仍被击穿（实证：「切 tab（页面卸载重挂）保留」找不到 A-01），对齐
+ *  本文件竞态用例既有口径放宽到 8000ms；单测总超时由 vitest.config testTimeout（20s）兜住。 */
+const MOUNT_WAIT = { timeout: 8000 }
 
 async function renderDataPrint() {
   render(<Harness show />)
@@ -627,15 +629,26 @@ describe('连接状态徽标（迭代 80「三名义」③：已加入 / 未加�
     try {
       mocks.server.listDevices.mockResolvedValue([DEVICES[1]])
       render(<Harness show />)
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(200)
-      })
+      // 挂载链落定（配置 → 探测 → 模板列表 → 详情 → testData 预填 + 首次设备探测）：
+      // fake timers 下 findBy 轮询不可用（interval 已被 fake），用有界多轮冲洗、以渲染条件为落定准出
+      for (let i = 0; i < 20 && !(screen.queryByDisplayValue('A-01') && screen.queryByText('未加入')); i++) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(0)
+        })
+      }
       expect(screen.getByDisplayValue('A-01')).toBeTruthy()
       expect(screen.getByText('未加入')).toBeTruthy()
 
       mocks.server.listDevices.mockResolvedValue(DEVICES)
       await act(async () => {
         await vi.advanceTimersByTimeAsync(10_000)
+      })
+      // 探测周期定时器已触发；其 promise → 徽标渲染链再补两轮空转落定后断言（消除 #183 同类时序敏感）
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
       })
       expect(screen.getByText('已加入')).toBeTruthy()
     } finally {

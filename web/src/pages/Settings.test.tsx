@@ -3,11 +3,17 @@
 // mock 覆盖组件树用到的全部 client 方法（含 AppContext 启动链：getHostConfig / getTransport / healthz）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { ApiError } from '../lib/api/types'
 import type { InstalledPluginInfo, PluginPackageInfo } from '../lib/api/types'
 import { AppProvider } from '../state/AppContext'
 import { Settings } from './Settings'
+
+// 迭代 96（#183）：挂载链（getHostConfig → getTransport / healthz → 各分组列表）为多段 promise +
+// React 真实宏任务调度，CI 高负载 runner 上偶发超过 findBy / waitFor 默认 1000ms（实证：TCP 参数表单
+// findByLabelText 1s 超时）。本文件统一把异步查询超时放宽到 8000ms（与 JobHistory / DataPrint 的
+// MOUNT_WAIT 同口径），消除对默认 1s 的隐式时序依赖；单测总超时由 vitest.config testTimeout（20s）兜住。
+configure({ asyncUtilTimeout: 8000 })
 
 const mocks = vi.hoisted(() => ({
   server: {
@@ -239,7 +245,7 @@ describe('连接方式（F3，恢复迭代 15；迭代 73 起默认折叠，交�
   it('模式单选只显示当前模式参数（切到网络打印机显示 IP / 端口）', async () => {
     renderSettings()
     openTransportPanel()
-    fireEvent.click(screen.getByRole('radio', { name: /^网络打印机/ }))
+    fireEvent.click(await screen.findByRole('radio', { name: /^网络打印机/ }))
     expect(await screen.findByLabelText('打印机 IP / 主机名')).toBeTruthy()
     expect(screen.getByLabelText('端口')).toBeTruthy()
   })
@@ -247,7 +253,7 @@ describe('连接方式（F3，恢复迭代 15；迭代 73 起默认折叠，交�
   it('测试连接：发送候选参数（testOnly 注入在 client 层，组件只传表单参数），成功后显示后端 message 且不调 setTransport', async () => {
     renderSettings()
     openTransportPanel()
-    fireEvent.click(screen.getByRole('radio', { name: /^网络打印机/ }))
+    fireEvent.click(await screen.findByRole('radio', { name: /^网络打印机/ }))
     await screen.findByLabelText('打印机 IP / 主机名')
     fireEvent.change(screen.getByLabelText('打印机 IP / 主机名'), { target: { value: '192.168.1.50' } })
     fireEvent.click(within(withinSection('连接方式')).getByRole('button', { name: /^测试连接/ }))
@@ -259,7 +265,7 @@ describe('连接方式（F3，恢复迭代 15；迭代 73 起默认折叠，交�
   it('保存并应用：setTransport 不带 testOnly，成功后当前连接徽标更新', async () => {
     renderSettings()
     openTransportPanel()
-    fireEvent.click(screen.getByRole('radio', { name: /^网络打印机/ }))
+    fireEvent.click(await screen.findByRole('radio', { name: /^网络打印机/ }))
     await screen.findByLabelText('打印机 IP / 主机名')
     fireEvent.change(screen.getByLabelText('打印机 IP / 主机名'), { target: { value: '192.168.1.50' } })
     fireEvent.click(screen.getByRole('button', { name: /保存并应用/ }))
@@ -351,6 +357,10 @@ describe('连接文案用户化（迭代 82，#130：评审 #114 B-1 / A-1 / B-5
   it('AC-02：TCP 选项列表显示「网口打印机（TCP 9100）」，选中后参数表单保持', async () => {
     mockLogPluginTransport()
     renderSettings()
+    // 挂载链先落定（连接配置已加载——折叠头摘要「模拟打印」出现为准），再展开交互：
+    // 实证（#183，PR #177 run 35553586518）：配置未落定即展开点选时，挂载期并发 mock 的迟到
+    // 渲染会与单选列表 / 参数表单的渲染交错（选中态与表单不同步），findByLabelText 默认 1s 超时
+    expect(await screen.findByText('模拟打印')).toBeTruthy()
     openTransportPanel()
     fireEvent.click(await screen.findByRole('radio', { name: /网口打印机（TCP 9100）/ }))
     // 必填参数标签带「 *」必填标记，用正则匹配

@@ -66,11 +66,26 @@ const thumbOf = (name: string) => screen.getByAltText(`模板「${name}」缩略
 /** 放大图（浮层内大图）。 */
 const enlargedOf = (name: string) => screen.getByAltText(`模板「${name}」预览`) as HTMLImageElement
 
-/** 冲洗微任务链（探测 → 列表加载 → 预览 promise 等）。 */
+/** 冲洗挂载链（探测 → 列表加载 → 预览请求 → blob 渲染）至静默。
+ *  挂载链为纯 promise + React 状态更新，但 React 调度走真实宏任务——固定单轮冲洗在高负载
+ *  runner 上可能残留未落定的渲染代际（#183 同类时序敏感，届时同步断言 getByText / mock 计数
+ *  会偶发失败）。改为有界循环：以「模板行已渲染且相关 mock 调用计数连续两轮不变」为静默条件。 */
 async function flush() {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(0)
-  })
+  const counts = () =>
+    mocks.server.previewTemplate.mock.calls.length +
+    mocks.local.previewTemplate.mock.calls.length +
+    mocks.createObjectURL.mock.calls.length +
+    mocks.revokeObjectURL.mock.calls.length
+  let last = -1
+  let stable = 0
+  for (let i = 0; i < 20 && (stable < 2 || screen.queryAllByText('Carton-Label-A').length === 0); i++) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    const now = counts()
+    stable = now === last ? stable + 1 : 0
+    last = now
+  }
 }
 
 beforeAll(() => {
