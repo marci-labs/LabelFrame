@@ -6,11 +6,14 @@
 // 迭代 75（#112）：「PDA 日志 / 设备日志」页下线（回传链路不存在前界面收敛，决策 #140）——双形态导航入口移除。
 // 迭代 92（#150 F-02）：导航切 tab 统一走 switchTab——设计器在编辑且有未保存更改时经其注册的离开守卫
 // 弹三选确认（保存并离开 / 放弃更改 / 继续编辑），确认后才切换，防误触丢失排版工作。
+// 迭代 104（#225，决策 #161）：日志抽屉「清空」升级实心红 danger＋点击先弹确认——
+// 销毁类操作必须先确认（此前灰色 ghost 无确认直接执行），Esc / 遮罩点击默认取消。
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppProvider, useApp } from './state/AppContext'
 import { Icon, LabelLogo } from './components/Icon'
 import type { IconName } from './components/Icon'
+import { Modal } from './components/Modal'
 import type { DesignerRequest, TabId } from './state/types'
 import { isServerUi } from './lib/uiMode'
 import { Workbench } from './pages/Workbench'
@@ -52,6 +55,8 @@ function truncateIps(ips: string[], max = 28): string {
 function Shell() {
   const [tab, setTab] = useState<TabId>('workbench')
   const [designerReq, setDesignerReq] = useState<DesignerRequest | null>(null)
+  // 迭代 104（#225，决策 #161）：日志抽屉「清空」的确认弹窗开关——点击先确认，确认后才清空
+  const [confirmingClearLogs, setConfirmingClearLogs] = useState(false)
   // 迭代 92（#150 F-02）：设计器注册的离开守卫——设计器 tab 在编辑且有未保存更改时，
   // 导航切 tab 交由守卫挂起（弹三选 Modal：保存并离开 / 放弃更改 / 继续编辑），确认后再切换。
   const designerLeaveRef = useRef<((leave: () => void) => void) | null>(null)
@@ -201,7 +206,9 @@ function Shell() {
           <div className="log-head">
             <span>运行日志</span>
             <span className="spacer" />
-            <button className="btn sm ghost" style={{ color: '#8b96a3' }} onClick={app.clearLogs}>
+            {/* 迭代 104（#225，决策 #161）：清空 = 销毁类操作——实心红 danger＋先弹确认（原灰色 ghost 直执行） */}
+            <button className="btn sm danger" onClick={() => setConfirmingClearLogs(true)}>
+              <Icon name="clear" size={13} />
               清空
             </button>
             <button className="btn sm ghost" style={{ color: '#8b96a3' }} onClick={() => app.setDrawerOpen(false)}>
@@ -217,6 +224,33 @@ function Shell() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* 迭代 104（#225）：清空日志确认——文案含「不可恢复」，Esc / 遮罩默认取消（通用 Modal 既有语义） */}
+      {confirmingClearLogs && (
+        <Modal
+          title="清空运行日志"
+          onClose={() => setConfirmingClearLogs(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setConfirmingClearLogs(false)}>
+                取消
+              </button>
+              <button
+                className="btn danger"
+                onClick={() => {
+                  app.clearLogs()
+                  setConfirmingClearLogs(false)
+                }}
+              >
+                <Icon name="trash" size={13} />
+                确认清空
+              </button>
+            </>
+          }
+        >
+          <p>确定清空全部运行日志吗？该操作不可恢复。</p>
+        </Modal>
       )}
     </div>
   )

@@ -3,6 +3,14 @@
 本文件记录每个迭代的变更。
 
 
+## 迭代 104：工作台卡片操作收纳（修复删除按钮被裁回归）＋删除类操作警示统一（#225） · 2026-09-23
+
+- **动机（#225）**：**回归**——迭代 85 卡片脚新增「打印」后四按钮平铺，最小需宽约 216px 超出最窄卡片可用宽度 176px（`.wb-grid` 轨道 `minmax(196px,1fr)`、`.wb-card` `overflow:hidden`），「删除」整枚被裁不可见不可点（2026-09-23 用户截图实证）；用户设计意见「编辑高频高亮、打印 / 导出 / 删除低频折叠」「删除按钮要醒目、警示不要轻易点击」。**警示缺口**（同日全仓审查）——日志抽屉「清空」灰 ghost 无确认直接执行（`App.tsx`）；PDA 插件「卸载」点击即删插件目录并自动重启打印服务（`MainActivity.cs`，风险最高）；`.btn.danger` 为红字浅描边轻量样式醒目度不足。
+- **改动 ①（工作台卡片脚，修订决策 #152①）**：主操作 = 「编辑」（`btn sm primary` 列首），「打印」降常驻普通按钮，低频「导出 / 删除」收进 ⋯ 图标按钮（`Icon.tsx` 新增 `more` 三点图标）锚定弹出菜单；删除为 danger 菜单项、点击仍走既有确认 Modal（文案含「不可恢复」）。新增仓库首个下拉菜单组件 `web/src/components/Popover.tsx`：**portal 到 body ＋ `position:fixed` 锚定**（防 `.wb-card` `overflow:hidden` 裁剪——实施已知坑），点击菜单外 / Esc / 页面滚动关闭，配套 `.popover` / `.menu-item` 样式（`.wb-more` 图标按钮不占弹性宽度——卡片脚最窄两按钮一图标不被裁）。
+- **改动 ②（删除类警示统一，新增决策 #161，实心红方案用户立项拍板）**：`.btn.danger` 升级实心红（红底白字、hover 加深）——新增 `--danger-strong` 供 hover，`--danger` / `--danger-soft` 语义不变（状态灯 / badge / banner / 错误文本等非按钮场景复用不受影响）；工作台 / 插件包 / 下载中心 / 设置各确认弹窗确认按钮（及设计器属性面板触发按钮）随类名全局统一。日志抽屉「清空」→ 实心红＋点击先弹确认 Modal（不可恢复文案，Esc / 遮罩默认取消），确认后才清空（`App.tsx`）。PDA「插件管理」卸载 → 红底白字触发按钮（`DangerButton`）＋原生 `AlertDialog` 确认（danger 文案：品牌暂不能打印 / 不可恢复 / 自动重启提示；确认按钮红字），确认后才执行卸载＋重启服务（`MainActivity.cs`）。
+- **记账**：`docs/DESIGN.md` 先行修订决策 #152①（卡片主操作：打印→编辑；低频操作收纳）＋新增决策 #161「删除类操作警示规范」（触发与确认按钮实心红 danger＋确认弹窗＋Esc / 遮罩默认取消；收编迭代 93 #151 F-04 只记 CHANGELOG 未入决策表的口径；设计器元素删除可撤销惯例与 Settings 覆盖安装维持现状的边界一并记明）。
+- **验证**：`pnpm lint` 零告警；`pnpm test` client / server 双模式 407 项全绿（净增 14 项回归：Popover 组件 portal＋fixed＋关闭语义 5 项、工作台卡片脚结构与 ⋯ 菜单交互与删除确认流 7 项、日志抽屉清空确认流 2 项；既有 Workbench.preview AC-03 适配菜单化删除路径）；`pnpm build` / `build:server` 通过；`dotnet build LabelFrame.slnx` 0 警 0 错、`dotnet test`（排除 Perf/Soak）951 项全绿（src/ 仅 AndroidHost UI 层改动，门禁例行）；AndroidHost Release（EmbedAssembliesIntoApk，同 CI 命令）本地构建 0 警 0 错。AC-01 视觉裁剪以结构断言＋样式走查自证（卡片脚恒 3 枚按钮、菜单不在卡片子树且 fixed）；**AC-05 PDA 交互以代码走查自证（确认对话框先于卸载执行）＋「Android 构建（PDA 宿主）」必需检查 PR CI 覆盖，真机走查归验收；AC-07 用户实际走查转 `待验收`**（恢复条件 = 用户在工作台 / 日志抽屉实际走查布局与警示效果）。
+
 ## 迭代 102：导出与调试出图下载文件名中文变下划线——前端 Content-Disposition 解析支持 filename*（RFC 5987） · 2026-09-23
 
 - **动机（#220）**：用户反馈导出中文名模板，下载到本地的文件名中文全部变 `_`（如「货架标签」导出为 `____.lfpkg`）。根因（立项前已定位并实测）：后端 ASP.NET Core 对非 ASCII 文件名按 RFC 6266/5987 同时发两个参数——`filename=____.lfpkg`（ASCII 回退值）与 `filename*=UTF-8''%E4%B8%AD...`（百分号编码，无损）；前端 `makeFetchBlob` 解析正则命中**第一个** `filename=`（下划线回退值），未优先读 `filename*`。后端行为符合 RFC 不改（浏览器直链下载正常即证），单点修前端解析；受影响三端点：模板导出 `{name}.lfpkg`、调试出图单张 `{name}-print.png`、批量 `{name}-debug-{ts}.zip`。
