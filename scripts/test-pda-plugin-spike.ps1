@@ -13,6 +13,8 @@
 #   ② 启动入口不得硬编码「包名/短类名」——Release AOT 产物 ACW 类名为 crc*.MainActivity 形态，按 LAUNCHER 动态解析；
 #   ③ 端口打通用 adb forward（reverse 会令设备端 adbd 监听 127.0.0.1:53970，与应用 EmbeddedHttpServer 抢占同址
 #      导致宿主 Address already in use 崩溃循环）；宿主侧映射端口取 53971，避开 53970 的任何本机占用。
+#   ④ sink 落盘取证优先 run-as，Release 产物（android:debuggable=false）run-as 被拒时回退 logcat 双断言
+#      （[FAKE] 发送行在场 + 落盘失败行缺席）——复跑时暴露（约束面版 fake 发送段已通后走到该步）。
 param(
     [Parameter(Mandatory = $true)][string]$Version,
     [string]$Serial = '',                       # 多设备时指定 adb 序列号
@@ -196,11 +198,28 @@ Step '测试打印：内置测试标签走完整链路到 fake 传输' {
     "作业 $($final.JobId) Completed（$($final.CompletedItems)/$($final.TotalItems)）"
 }
 
-Step '取证：fake 传输发送内容落盘（adb run-as 读取插件数据目录）' {
-    $sink = Invoke-Adb @('shell', 'run-as', $applicationId, 'cat', 'files/plugins-data/fake-transport-sent.txt')
-    $text = ($sink -join "`n")
-    if ($text -notmatch '\^XA') { throw "sink 文件无 ZPL 内容：$($text.Substring(0, [Math]::Min(200, $text.Length)))" }
-    "fake 传输已收到 $((($text -split "`n") | Where-Object { $_ -match '\^XA' }).Count) 条发送记录（首条：$($text.Substring(0, 80))…）"
+Step '取证：fake 传输发送内容（sink 落盘优先，logcat 回退）' {
+    # Release 产物 android:debuggable=false，run-as 被系统拒绝（package not debuggable）——
+    # 优先 run-as 直读 sink 落盘文件；不可读时回退 logcat 双断言：[FAKE] 发送行必须在场、落盘失败行必须缺席。
+    $text = $null
+    try {
+        $sink = Invoke-Adb @('shell', 'run-as', $applicationId, 'cat', 'files/plugins-data/fake-transport-sent.txt')
+        $text = ($sink -join "`n")
+    }
+    catch {
+        Write-Host '    run-as 不可用（Release 非 debuggable），回退 logcat 取证'
+    }
+    if ($text -and $text -match '\^XA') {
+        "fake 传输 sink 已收到 $((($text -split "`n") | Where-Object { $_ -match '\^XA' }).Count) 条发送记录（首条：$($text.Substring(0, 80))…）"
+    }
+    else {
+        $log = Invoke-Adb @('logcat', '-d', '-v', 'time', '-s', 'LabelFrame.Plugin')
+        $sendLines = @($log | Where-Object { $_ -match '\[FAKE\] 模拟发送' })
+        $sinkFail = @($log | Where-Object { $_ -match '落盘失败' })
+        if ($sendLines.Count -eq 0) { throw 'sink 与 logcat 双通道均无发送证据（[FAKE] 模拟发送行缺席）' }
+        if ($sinkFail.Count -gt 0) { throw "发送内容落盘失败：$($sinkFail[0])" }
+        "logcat 取证：[FAKE] 发送行共 $($sendLines.Count) 条（$($sendLines[-1].Substring(0, [Math]::Min(110, $sendLines[-1].Length)))…），无落盘失败行"
+    }
 }
 
 # ---- 6) 收尾（默认清理：回 zebra + 卸载插件，验证删目录卸载语义） ----
