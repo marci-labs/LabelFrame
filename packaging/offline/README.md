@@ -16,6 +16,9 @@ sha256sum -c SHA256SUMS                                            # 完整性�
 docker load -i images/labelframe-server-__LABELFRAME_VERSION__.image.tar.gz
 
 # 2. 启动（compose.yml 与 .env 已预配好：端口 53961 / 时区 / 数据路径 / 挂载目录）
+#    先预建三个分发挂载目录：目录若缺失，up 时会被 Docker 守护进程（root）自动创建为 root:root，
+#    非 root 部署者随后拷入安装包将被拒（详见「常见问题」；install.sh 已内置本步）
+mkdir -p client-packages pda-packages plugin-packages
 docker compose up -d
 
 # 3. 验证
@@ -27,7 +30,7 @@ curl http://127.0.0.1:53961/healthz        # {"service":"LabelFrame.Server","sta
 ## 一键脚本（等价于上面三步）
 
 ```bash
-bash install.sh    # 校验 -> docker load -> compose up -> 等待就绪并输出访问地址；幂等可重跑
+bash install.sh    # 校验 -> docker load -> 预建挂载目录 -> compose up -> 等待就绪并输出访问地址；幂等可重跑
 ```
 
 ## 分发客户端 / PDA / 插件安装包（离线环境闭环）
@@ -40,12 +43,15 @@ bash install.sh    # 校验 -> docker load -> compose up -> 等待就绪并输�
 | `packages/pda/*.apk` | `./pda-packages/` | PDA 扫下载中心二维码安装 |
 | `packages/plugin/*.lfplugin` | `./plugin-packages/` | 客户端 / PDA「插件管理」安装 |
 
+三个挂载目录须由部署者创建（首次 `docker compose up -d` **之前** `mkdir -p`，`install.sh` 已内置）；若曾被 Docker 守护进程以 root 自动创建，直接拷入会被拒——处置见「常见问题」。也可不经目录直接经管理界面「下载中心」上传（效果相同，不受宿主目录属主影响）。
+
 ## 常见问题
 
 - **端口 / 防火墙**：默认 `53961`；放行 `sudo ufw allow 53961/tcp`。Windows 客户端连接地址填 `http://<本机 IP>:53961`。
 - **看日志**：`docker compose logs -f`，或文本日志 `./logs/server-<yyyyMMdd>.log`。
 - **数据在哪**：命名卷 `labelframe-data`（`docker volume ls` 可见）；容器重建 / 升级数据不动。
 - **升级**：拿新版本离线包，在新目录重复三步即可（旧目录 `docker compose down` 停止）。
+- **拷入安装包报 `Permission denied`**：分发挂载目录（`client-packages/` / `pda-packages/` / `plugin-packages/`）属主为 root——成因是首次 `docker compose up -d` 前目录不存在，被 Docker 守护进程（root）自动创建为 `root:root 0755`，非 root 部署者不可写。处置：`sudo chown -R "$(id -un):$(id -gn)" client-packages pda-packages plugin-packages` 后重拷，或改经管理界面「下载中心」上传。预防：首次 up 前先 `mkdir -p` 三目录（`install.sh` 已内置，重跑会检测并提示）。
 - **起不来排查**：`docker compose ps` 看状态，`docker compose logs --tail=100` 看报错；常见为端口被占用（改 `compose.yml` 端口映射）或数据卷权限。
 - **为何离线可用**：镜像以 ghcr 全名 tag 导入本机（`docker load`），compose 起容器时本地命中即不再联网拉取。
 

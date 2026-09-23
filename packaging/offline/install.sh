@@ -6,7 +6,9 @@
 #   bash install.sh
 #
 # 行为：SHA256SUMS 全件校验（不符即拒，fail-closed）→ docker load 镜像（tag 为 ghcr 全名，load 后本地命中，
-#   compose 默认 pull=missing 不再联网拉取）→ docker compose up -d → /healthz 轮询就绪 → 输出访问地址。
+#   compose 默认 pull=missing 不再联网拉取）→ 预建三个分发挂载宿主目录（部署者属主——防 Docker 守护进程以
+#   root 自动创建致非 root 部署者拷包被拒，#213 AC-06 返修）→ docker compose up -d → /healthz 轮询就绪 →
+#   输出访问地址。
 # 幂等：重跑无害（重复 load / up 均合法）；升级 = 换新版本离线包目录重跑（数据在命名卷 labelframe-data，不动）。
 set -euo pipefail
 
@@ -35,7 +37,7 @@ probe_healthz() {
 
 # ---- 1) 完整性校验（fail-closed：U 盘 / 内网共享拷贝后必过此关）----
 [ -s SHA256SUMS ] || die "缺 SHA256SUMS——包不完整，请重新解压或重新获取离线包。"
-info "[1/4] 校验包完整性（SHA256SUMS，$(wc -l < SHA256SUMS) 条）..."
+info "[1/5] 校验包完整性（SHA256SUMS，$(wc -l < SHA256SUMS) 条）..."
 if ! sha256sum -c SHA256SUMS --quiet; then
   die "SHA256SUMS 校验失败——包不完整或被篡改，拒绝部署。"
 fi
@@ -52,16 +54,39 @@ IMAGE_TAR="images/labelframe-server-$VERSION.image.tar.gz"
 [ -s "$IMAGE_TAR" ] || die "缺镜像 tar：$IMAGE_TAR（与 .env 版本 $VERSION 不匹配？）"
 
 # ---- 3) docker load（load 后本地命中 ghcr 全名 tag，起容器不再联网拉取）----
-info "[2/4] 加载镜像 $IMAGE ..."
+info "[2/5] 加载镜像 $IMAGE ..."
 docker load -i "$IMAGE_TAR"
 docker image inspect "$IMAGE" >/dev/null 2>&1 || die "load 后仍未找到镜像 $IMAGE——镜像 tar 与 .env 版本可能不一致。"
 info "镜像就位（本地命中，后续 compose 起容器不再联网拉取）。"
 
-# ---- 4) compose up + 就绪等待 ----
-info "[3/4] 启动服务（docker compose up -d）..."
+# ---- 4) 预建分发挂载宿主目录（compose.yml bind-mount ./client-packages 等三个相对目录）----
+# 缺陷背景（#213 AC-06 走查）：目录若在 up 时才首次出现，Docker 守护进程（root）会自动创建为 root:root 0755，
+# 非 root 部署者随后把 packages/ 拷入即 Permission denied、下载中心三列表为空。先由部署者预建（属主=部署者），
+# 守护进程对已存在目录不再接管属主。幂等：已存在且可写则静默通过；不可写（历史 root 残留）仅输出警告与处置
+# 提示（不自动 sudo、不阻断服务部署），并在完成输出中标注受阻目录。
+info "[3/5] 预建分发挂载目录（client-packages / pda-packages / plugin-packages）..."
+PKGDIR_BLOCKED=""
+for d in client-packages pda-packages plugin-packages; do
+  if [ -e "$d" ] && [ ! -d "$d" ]; then
+    die "./$d 已存在且不是目录——compose 挂载点须为目录，请移开后重跑本脚本。"
+  fi
+  if [ -d "$d" ]; then
+    if [ ! -w "$d" ]; then
+      PKGDIR_BLOCKED="$PKGDIR_BLOCKED $d"
+      echo "[LabelFrame 离线部署] 警告：挂载目录 ./$d 已存在但当前用户（$(id -un)）不可写。" >&2
+      echo "  常见成因：曾未经预建直接 docker compose up，目录被 Docker 守护进程以 root 自动创建（root:root 0755）。" >&2
+      echo "  处置：sudo chown -R \"$(id -un):$(id -gn)\" ./$d 后重跑本脚本复核（本脚本不自动 sudo）。" >&2
+    fi
+  else
+    mkdir -p "$d" || die "预建挂载目录 ./$d 失败——当前目录对部署者不可写？"
+  fi
+done
+
+# ---- 5) compose up + 就绪等待 ----
+info "[4/5] 启动服务（docker compose up -d）..."
 docker compose up -d
 
-info "[4/4] 等待服务就绪（最长 90 秒）..."
+info "[5/5] 等待服务就绪（最长 90 秒）..."
 READY=0
 for _ in $(seq 1 90); do
   if probe_healthz | grep -q '"status":"ok"'; then READY=1; break; fi
@@ -83,6 +108,9 @@ echo "================ LabelFrame Server 离线部署完成 ================"
 echo "健康检查：http://127.0.0.1:$PORT/healthz"
 echo "管理界面：http://$SERVER_IP:$PORT/（已随包预装，开箱可用）"
 echo "Windows Client「设置 → 连接方式」服务端地址填：http://$SERVER_IP:$PORT"
+if [ -n "$PKGDIR_BLOCKED" ]; then
+  echo "注意：以下分发挂载目录当前用户不可写，处置（见上方警告）完成前拷入安装包会被拒：$PKGDIR_BLOCKED"
+fi
 echo "分发安装包：把 packages/ 下文件拷入当前目录对应挂载目录即可经下载中心分发——"
 echo "  packages/client/*.msi        -> ./client-packages/（客户端安装 / 更新）"
 echo "  packages/pda/*.apk           -> ./pda-packages/（PDA 扫下载中心二维码安装）"
