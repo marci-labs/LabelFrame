@@ -10,6 +10,11 @@
 - **回归测试（client.test.ts，fetch stub + Response headers 实测头形态，净增 6 项）**：双参数实测头 → 解析出中文名（exportTemplate / renderImage 两条调用链各一）；纯 ASCII 未加引号实测形态不回归（带引号既有用例全保）；仅 `filename*`（无 `filename=`）直接解码取用；畸形值回退 `filename=` 回退值与 fallbackName 两向。
 - **验证**：`pnpm lint / test / build` 全绿（前端 393 项含新增 6 项）；`dotnet build LabelFrame.slnx` 0 警 0 错、`dotnet test`（排除 Perf/Soak）951 项全绿（src/ 零改动，门禁例行）。**AC-05 真浏览器走查（管理界面导出中文名模板核对下载文件名）转 `待验收`**（恢复条件 = LF-Accept-Win10 或用户环境实际导出一个中文名模板并核对）。
 
+## 迭代 103：离线部署包开箱自动分发 packages 三件入挂载目录（#221） · 2026-09-23
+
+- **动机（#221，用户环境实测）**：v0.30.0 离线包部署后管理界面可用但下载中心三列表（客户端 / PDA / 插件）全空——包内 `packages/` 三件齐备（MSI 24MB / APK 22MB / `.lfplugin` 10MB），`install.sh` 却只在完成横幅打印手工拷贝提示、从不拷入 compose 挂载目录，离线闭环断在最后一公里（离线环境无 GitHub Release 通道，下载中心是唯一分发渠道）；用户手动 `cp + chown` 后三列表 API 即时返回条目，证明缺陷仅在自动分发缺失。
+- **改动（纯 packaging / 文档，`src/` 与 `web/` 零改动）**：① `packaging/offline/install.sh` 在 #219 预建挂载目录步骤之后、`docker compose up` 之前新增自动分发步骤（步骤计数 [x/5]→[x/6]）：`packages/client/*.msi` → `client-packages/`、`packages/pda/*.apk` → `pda-packages/`、`packages/plugin/*.lfplugin` → `plugin-packages/`；`cp -f` 幂等覆盖、包内 `packages/` 原件保留（重跑第 1 步 `sha256sum -c SHA256SUMS` 仍全过，故不用 `mv`）；与 `PKGDIR_BLOCKED` 语义衔接——不可写目录（历史 root:root 残留）整类跳过拷贝并在完成输出标注，不阻断部署；单件缺失告警继续（fail-closed 兜底在 SHA256SUMS）；完成横幅改「已自动分发」口径并保留后续手工增删 / 管理界面上传指引。② `packaging/offline/README.md` 分发章节同步开箱自动分进口径（一键脚本步骤串、后续增删指引、手动三步路径与常见问题 chown 处置补「重跑即补齐分发」）。③ `docs/DESIGN.md` 决策 #160 ② 补注「开箱即分发」口径（不开新决策号）。
+- **验证**：`bash -n` 通过；shellcheck（koalaman/shellcheck:stable，LF 归一化副本——本地 worktree autocrlf 检出为 CRLF 属本地形态）零告警；ubuntu:24.04 容器关键段实机演练（sed 按行号提取真实被测段 62-111 / 133-149、非 root 部署者真实 uid 语义）四场景断言全过——① 全新目录三件自动分发（属主＝部署者、内容与包内原件逐字节一致）；② 幂等重跑（污染副本被 `cp -f` 覆盖恢复 + `sha256sum -c SHA256SUMS` 重跑全过）；③ root:root 0755 残留目录跳过拷贝＋完成标注＋退出码 0 不阻断；④ 单件缺失告警继续、其余两件照常分发。`dotnet build` 0 警 0 错 / `dotnet test`（排除 Perf/Soak）6 项目 951 项全绿；web/ `pnpm install` + `lint`（0 告警）+ 双模式 `test`（387×2）+ 双 `build` 全绿（本迭代无 .NET / 前端改动，按 AC-03 跑全套件）。**AC-05 真离线复验转 `待验收`**（下版 `v*` 自动组包生效；可与 #213 AC-06 复跑合并执行）。
 
 ## #213 返修（迭代 101 AC-06）：离线部署包非 root 部署者挂载目录预建——install.sh 预建三目录与 README 手动路径同步 · 2026-09-23
 

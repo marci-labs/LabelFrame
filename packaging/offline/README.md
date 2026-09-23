@@ -30,12 +30,12 @@ curl http://127.0.0.1:53961/healthz        # {"service":"LabelFrame.Server","sta
 ## 一键脚本（等价于上面三步）
 
 ```bash
-bash install.sh    # 校验 -> docker load -> 预建挂载目录 -> compose up -> 等待就绪并输出访问地址；幂等可重跑
+bash install.sh    # 校验 -> docker load -> 预建挂载目录 -> 自动分发 packages 三件 -> compose up -> 等待就绪并输出访问地址；幂等可重跑
 ```
 
 ## 分发客户端 / PDA / 插件安装包（离线环境闭环）
 
-把 `packages/` 下的文件拷入当前目录的对应挂载目录，服务端各页面即可分发（也可经管理界面上传，效果相同）：
+`install.sh` 在启动服务前**自动**把 `packages/` 三件拷入对应挂载目录（`cp -f` 幂等覆盖，包内原件保留），部署完成即可用——下载中心三列表开箱非空，客户端 / PDA / 插件安装全程无需外网。对应关系：
 
 | 包内文件 | 拷入目录 | 分发通道 |
 |---|---|---|
@@ -43,7 +43,7 @@ bash install.sh    # 校验 -> docker load -> 预建挂载目录 -> compose up -
 | `packages/pda/*.apk` | `./pda-packages/` | PDA 扫下载中心二维码安装 |
 | `packages/plugin/*.lfplugin` | `./plugin-packages/` | 客户端 / PDA「插件管理」安装 |
 
-三个挂载目录须由部署者创建（首次 `docker compose up -d` **之前** `mkdir -p`，`install.sh` 已内置）；若曾被 Docker 守护进程以 root 自动创建，直接拷入会被拒——处置见「常见问题」。也可不经目录直接经管理界面「下载中心」上传（效果相同，不受宿主目录属主影响）。
+后续增删安装包：直接向上述挂载目录拷入 / 删除文件（即时生效），或经管理界面「下载中心」上传（效果相同，不受宿主目录属主影响）。三个挂载目录由 `install.sh` 预建（部署者属主）并自动分发；走手动三步（不经 `install.sh`）时须在首次 `docker compose up -d` **之前** `mkdir -p` 三目录并自行拷贝 `packages/` 三件——目录若曾被 Docker 守护进程以 root 自动创建，拷入会被拒（处置见「常见问题」；`install.sh` 对不可写目录跳过自动分发并在完成输出标注，处置后重跑即补齐）。
 
 ## 常见问题
 
@@ -51,7 +51,7 @@ bash install.sh    # 校验 -> docker load -> 预建挂载目录 -> compose up -
 - **看日志**：`docker compose logs -f`，或文本日志 `./logs/server-<yyyyMMdd>.log`。
 - **数据在哪**：命名卷 `labelframe-data`（`docker volume ls` 可见）；容器重建 / 升级数据不动。
 - **升级**：拿新版本离线包，在新目录重复三步即可（旧目录 `docker compose down` 停止）。
-- **拷入安装包报 `Permission denied`**：分发挂载目录（`client-packages/` / `pda-packages/` / `plugin-packages/`）属主为 root——成因是首次 `docker compose up -d` 前目录不存在，被 Docker 守护进程（root）自动创建为 `root:root 0755`，非 root 部署者不可写。处置：`sudo chown -R "$(id -un):$(id -gn)" client-packages pda-packages plugin-packages` 后重拷，或改经管理界面「下载中心」上传。预防：首次 up 前先 `mkdir -p` 三目录（`install.sh` 已内置，重跑会检测并提示）。
+- **拷入安装包报 `Permission denied`**：分发挂载目录（`client-packages/` / `pda-packages/` / `plugin-packages/`）属主为 root——成因是首次 `docker compose up -d` 前目录不存在，被 Docker 守护进程（root）自动创建为 `root:root 0755`，非 root 部署者不可写；此形态下 `install.sh` 会跳过向该目录自动分发并在完成输出标注。处置：`sudo chown -R "$(id -un):$(id -gn)" client-packages pda-packages plugin-packages` 后重跑 `install.sh`（自动补齐分发，幂等）或手工重拷，或改经管理界面「下载中心」上传。预防：首次 up 前先 `mkdir -p` 三目录（`install.sh` 已内置，重跑会检测并提示）。
 - **起不来排查**：`docker compose ps` 看状态，`docker compose logs --tail=100` 看报错；常见为端口被占用（改 `compose.yml` 端口映射）或数据卷权限。
 - **为何离线可用**：镜像以 ghcr 全名 tag 导入本机（`docker load`），compose 起容器时本地命中即不再联网拉取。
 
