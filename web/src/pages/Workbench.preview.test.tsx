@@ -174,9 +174,11 @@ describe('工作台模板预览列（迭代 46 修订：内嵌缩略图）', () 
     expect(mocks.server.previewTemplate).toHaveBeenCalledTimes(3)
 
     // 删除一个模板 → 服务端列表少一项 → 重新 load = 新列表周期
+    //（迭代 104 / #225：删除收进 ⋯ 溢出菜单——先开菜单再点删除项，仍走确认 Modal）
     mocks.server.deleteTemplate.mockResolvedValue(undefined)
     mocks.server.listTemplates.mockResolvedValue(TEMPLATES.filter((t) => t.name !== 'Shelf-Tag'))
-    fireEvent.click(within(cardOf('Shelf-Tag')).getByText('删除'))
+    fireEvent.click(within(cardOf('Shelf-Tag')).getByRole('button', { name: /更多操作/ }))
+    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: '删除' }))
     fireEvent.click(screen.getByText('确认删除'))
     await flush()
     expect(mocks.server.deleteTemplate).toHaveBeenCalledWith('Shelf-Tag')

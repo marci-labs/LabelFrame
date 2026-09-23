@@ -6,7 +6,7 @@
 // 不再用「服务端已连接」兼指本机后台服务可达（评审 #114 B-9）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, configure, render, screen } from '@testing-library/react'
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from './App'
 
 // 迭代 96（#183）：App 挂载链（AppContext 启动链）为多段 promise + React 真实宏任务调度，
@@ -155,5 +155,47 @@ describe('client 构建：状态栏「本机打印服务」（迭代 80 决议 2
     mocks.server.healthz.mockRejectedValue(new Error('down'))
     render(<App />)
     expect(await screen.findByText('本机打印服务：运行中')).toBeTruthy()
+  })
+})
+
+// 迭代 104（#225，决策 #161）：日志抽屉「清空」= 销毁类操作——实心红 danger＋点击先弹确认
+//（原灰色 ghost 无确认直接执行）；Esc / 遮罩 / 取消均不清空，确认后才清空（AC-04）。
+describe('client 构建：日志抽屉「清空」确认流（迭代 104 · #225）', () => {
+  /** 日志抽屉容器（状态栏 msg 与抽屉同文——断言一律限定抽屉内，避免状态栏同名干扰）。 */
+  const drawer = () => document.querySelector('.log-drawer') as HTMLElement
+
+  /** 打开日志抽屉并等启动日志落盘（client 挂载链必写一条「已读取本机配置」）。 */
+  async function openDrawerWithLogs() {
+    render(<App />)
+    expect(await screen.findByText('本机打印服务：运行中')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '日志' }))
+    expect(await waitFor(() => expect(within(drawer()).getAllByText(/已读取本机配置/).length).toBeGreaterThan(0))).toBeTruthy()
+  }
+
+  it('「清空」为实心红 danger 按钮；点击先弹确认（不可恢复文案），确认后才清空', async () => {
+    await openDrawerWithLogs()
+    const clearBtn = within(drawer()).getByRole('button', { name: '清空' }) as HTMLButtonElement
+    expect(clearBtn.className).toContain('danger')
+
+    // 点击 → 确认弹窗（含不可恢复），日志尚未清空
+    fireEvent.click(clearBtn)
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(screen.getByText(/不可恢复/)).toBeTruthy()
+    const confirmBtn = screen.getByRole('button', { name: /确认清空/ }) as HTMLButtonElement
+    expect(confirmBtn.className).toContain('danger')
+    expect(within(drawer()).getAllByText(/已读取本机配置/).length).toBeGreaterThan(0)
+
+    // 确认 → 弹窗关闭、日志清空（抽屉内不再有该行）
+    fireEvent.click(confirmBtn)
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(within(drawer()).queryByText(/已读取本机配置/)).toBeNull()
+  })
+
+  it('确认框点「取消」不清空日志（Esc / 遮罩同默认取消语义）', async () => {
+    await openDrawerWithLogs()
+    fireEvent.click(within(drawer()).getByRole('button', { name: '清空' }))
+    fireEvent.click(screen.getByRole('button', { name: '取消' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(within(drawer()).getAllByText(/已读取本机配置/).length).toBeGreaterThan(0)
   })
 })

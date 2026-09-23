@@ -23,6 +23,7 @@
   --warn-soft: #fdf0e0;
   --danger: #c2413a;
   --danger-soft: #fdeceb;
+  --danger-strong: #a8352f;  /* 实心红 hover 加深（迭代 104 / #225 决策 #161；--danger / --danger-soft 语义不变供非按钮场景复用） */
   --ruler-ink: #9aa6b4;     /* 标尺刻度 */
   --grid-a: #e3e9f0;        /* 网格主线 */
   --grid-b: #eef1f5;        /* 网格细线 */
@@ -191,8 +192,10 @@ body {
 .btn svg { width: 14px; height: 14px; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.btn.danger { color: var(--danger); border-color: #e4b8b5; }
-.btn.danger:hover { background: var(--danger-soft); }
+/* 迭代 104（#225，决策 #161）：删除类警示按钮升级实心红——红底白字、hover 加深（醒目 + 防误触）；
+   此前为红字浅描边轻量样式。非按钮场景（状态灯 / badge / banner / 错误文字）继续用 --danger / --danger-soft */
+.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger:hover { background: var(--danger-strong); border-color: var(--danger-strong); }
 .btn.sm { padding: 2px 8px; font-size: 12px; }
 .btn.ghost { border-color: transparent; background: transparent; }
 .btn.ghost:hover { background: var(--bg); }
@@ -328,6 +331,44 @@ label.field > .input, label.field > select.input { width: 100%; }
   padding: 11px 16px;
   border-top: 1px solid var(--line-soft);
 }
+
+/* ---------- 锚定弹出菜单（迭代 104 / #225，仓库首个下拉菜单组件 components/Popover.tsx） ---------- */
+/* position:fixed 由组件内联注入（portal 到 body，防 .wb-card overflow:hidden 裁剪）；
+   z-index 低于 modal-mask(100)：菜单之上弹确认框时菜单不遮挡确认框 */
+.popover {
+  min-width: 128px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(23, 31, 41, 0.18);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+.menu-item:hover { background: var(--bg); }
+.menu-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.menu-item:disabled { opacity: 0.45; cursor: not-allowed; }
+.menu-item svg { width: 14px; height: 14px; }
+/* 删除类菜单项 = 触发按钮（决策 #161：实心红醒目标准，点击后另有确认弹窗把关） */
+.menu-item.danger { background: var(--danger); color: #fff; }
+.menu-item.danger:hover { background: var(--danger-strong); }
 
 /* ---------- 工作台模板预览（迭代 46，修订：预览列内嵌缩略图 + 点击放大） ---------- */
 /* 缩略图（单元格内）：等比缩到 40px 高，点击放大 */
@@ -502,6 +543,8 @@ label.field > .input, label.field > select.input { width: 100%; }
   border-top: 1px solid var(--line-soft);
 }
 .wb-card-foot .btn { flex: 1; justify-content: center; padding: 3px 4px; }
+/* ⋯ 更多操作按钮（迭代 104）：图标按钮不占弹性宽度——两常驻按钮分剩余空间，最窄卡片不裁按钮 */
+.wb-card-foot .btn.wb-more { flex: 0 0 auto; padding: 3px 7px; }
 
 
 

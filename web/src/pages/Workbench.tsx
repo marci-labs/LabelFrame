@@ -6,6 +6,9 @@
 //   自适应多列卡片，名称 / 分组 / 日期 / 操作收于卡片下部；既有能力全部保留。
 // 迭代 85（#133 C-4，决议 1）：卡片操作区新增「打印」——经 onOpenPrint 跳「数据与打印」页并预选该模板
 //   （字段草稿行为与手动选择一致）；双击卡片仍进设计器（现状不变）。
+// 迭代 104（#225，修订决策 #152①）：卡片主操作 = 「编辑」（主色），「打印」降常驻普通按钮；
+//   低频「导出 / 删除」收进 ⋯ 溢出菜单（锚定 Popover：portal + fixed 防 .wb-card overflow 裁剪）——
+//   修复四按钮平铺最小需宽约 216px 超出最窄卡片可用宽度 176px 致「删除」被裁的回归。
 
 import { useCallback, useEffect, useState } from 'react'
 import { localApi, serverApi } from '../lib/api/client'
@@ -15,6 +18,7 @@ import { useApp } from '../state/AppContext'
 import type { DesignerRequest } from '../state/types'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
+import { MenuItem, Popover } from '../components/Popover'
 import { useTemplatePreviewCache } from './useTemplatePreview'
 import type { TemplatePreviewEntry } from './useTemplatePreview'
 import { TemplatePreviewModal } from './WorkbenchPreview'
@@ -70,6 +74,8 @@ export function Workbench({
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<TemplateSummary | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  /** 迭代 104（#225）：当前打开 ⋯ 溢出菜单的卡片（模板 + 触发按钮锚点）；同一时刻至多一个。 */
+  const [menu, setMenu] = useState<{ tpl: TemplateSummary; anchor: HTMLElement } | null>(null)
 
   // 预览缩略图（迭代 46 修订）：缓存随 biz 模式切换后的重新 load 失效
   const preview = useTemplatePreviewCache(biz.previewTemplate)
@@ -262,26 +268,32 @@ export function Workbench({
                   </div>
                 </div>
                 <div className="wb-card-foot">
-                  {/* 迭代 85（#133 C-4，决议 1）：「打印」为卡片主操作（主色）——两步内到达打印页；双击卡片进设计器维持不变 */}
+                  {/* 迭代 104（#225，修订决策 #152①）：主操作 = 「编辑」（主色列首）＋「打印」常驻；
+                      低频「导出 / 删除」收进 ⋯ 溢出菜单——卡片脚最窄可容两按钮一图标，删除不再被裁 */}
+                  <button className="btn sm primary" onClick={() => onOpenDesigner({ kind: 'edit', name: t.name })}>
+                    <Icon name="edit" size={12} />
+                    编辑
+                  </button>
                   <button
-                    className="btn sm primary"
+                    className="btn sm"
                     onClick={() => onOpenPrint(t.name)}
                     title="去「数据与打印」页填写数据并打印此模板"
                   >
                     <Icon name="printer" size={12} />
                     打印
                   </button>
-                  <button className="btn sm" onClick={() => onOpenDesigner({ kind: 'edit', name: t.name })}>
-                    <Icon name="edit" size={12} />
-                    编辑
-                  </button>
-                  <button className="btn sm" onClick={() => void doExport(t)} disabled={busy !== null}>
-                    <Icon name="download" size={12} />
-                    导出
-                  </button>
-                  <button className="btn sm danger" onClick={() => setDeleting(t)}>
-                    <Icon name="trash" size={12} />
-                    删除
+                  <button
+                    className="btn sm wb-more"
+                    aria-haspopup="menu"
+                    aria-expanded={menu?.tpl.name === t.name}
+                    aria-label={`模板「${t.name}」更多操作`}
+                    title="更多操作（导出 / 删除）"
+                    onClick={(ev) => {
+                      const anchor = ev.currentTarget
+                      setMenu((cur) => (cur?.tpl.name === t.name ? null : { tpl: t, anchor }))
+                    }}
+                  >
+                    <Icon name="more" size={14} />
                   </button>
                 </div>
               </div>
@@ -289,6 +301,34 @@ export function Workbench({
           </div>
         )}
       </div>
+
+      {/* 迭代 104（#225）：⋯ 溢出菜单（导出 / 删除）——portal 到 body + fixed 锚定，防 .wb-card overflow 裁剪；
+          「删除」为 danger 菜单项，点击仍走下方确认 Modal（决策 #161：销毁操作必须先确认） */}
+      {menu && (
+        <Popover anchor={menu.anchor} ariaLabel={`模板「${menu.tpl.name}」更多操作`} onClose={() => setMenu(null)}>
+          <MenuItem
+            disabled={busy !== null}
+            onClick={() => {
+              const tpl = menu.tpl
+              setMenu(null)
+              void doExport(tpl)
+            }}
+          >
+            <Icon name="download" size={13} />
+            导出
+          </MenuItem>
+          <MenuItem
+            danger
+            onClick={() => {
+              setDeleting(menu.tpl)
+              setMenu(null)
+            }}
+          >
+            <Icon name="trash" size={13} />
+            删除
+          </MenuItem>
+        </Popover>
+      )}
 
       {enlarged && (() => {
         const entry = preview.get(enlarged)

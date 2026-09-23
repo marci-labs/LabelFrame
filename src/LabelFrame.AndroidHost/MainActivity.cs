@@ -828,7 +828,8 @@ public sealed class MainActivity : Activity
 
             var buttonRow = new LinearLayout(this) { Orientation = Orientation.Horizontal };
             buttonRow.SetPadding(0, Dp(8), 0, 0);
-            var uninstallButton = ActionButton("卸载", () => RunAsync(() => UninstallPluginAsync(pluginId)), Dp(88));
+            // 迭代 104（#225，决策 #161）：卸载 = 销毁类操作——红底白字 danger 视觉，点击先弹原生确认对话框
+            var uninstallButton = DangerButton("卸载", () => ConfirmUninstallPlugin(pluginId, plugin.Name), Dp(88));
             buttonRow.AddView(uninstallButton);
             card.AddView(buttonRow);
 
@@ -981,6 +982,25 @@ public sealed class MainActivity : Activity
             HostLog.Warn(HostLog.Tags.Ui, $"安装插件失败（{package.FileName}）：{ex.Message}");
             RunOnUiThread(() => SetResult(_pluginStatusText, "✗ 安装失败——打印服务没反应，请点「保存并重启服务」后重试", ColorErr));
         }
+    }
+
+    /// <summary>
+    /// 卸载确认（迭代 104 / #225，决策 #161：销毁类操作必须先确认）——原生 AlertDialog，danger 文案与视觉：
+    /// 标题 + 后果说明（含「不可恢复」与自动重启提示）+ 确认按钮红字；确认后才执行卸载（删插件目录并重启打印服务）。
+    /// </summary>
+    private void ConfirmUninstallPlugin(string pluginId, string pluginName)
+    {
+        var builder = new AlertDialog.Builder(this);
+        builder.SetTitle("卸载插件");
+        builder.SetMessage($"确定卸载「{pluginName}」吗？卸载后这个品牌的打印机暂时不能打印，该操作不可恢复；确认后会自动重启打印服务。");
+        builder.SetNegativeButton("取消", (_, _) => { });
+        builder.SetPositiveButton("卸载", (_, _) => RunAsync(() => UninstallPluginAsync(pluginId)));
+        // 绑定注解将 Create() 标为可空（Java 契约实际不返回 null），按仓库 0 警口径显式断言非空（与 Typeface.Monospace! 同款）
+        var dialog = builder.Create()!;
+        dialog.Show();
+        // danger 视觉：确认（卸载）按钮红字警示；取消为常规次要色
+        dialog.GetButton((int)DialogButtonType.Positive)?.SetTextColor(ColorErr);
+        dialog.GetButton((int)DialogButtonType.Negative)?.SetTextColor(ColorTextSecondary);
     }
 
     /// <summary>卸载已装插件（本地 HTTP）→ 重启打印服务生效；卸载后如配置还指向该品牌则回退 Zebra。</summary>
@@ -1457,6 +1477,19 @@ public sealed class MainActivity : Activity
         button.SetAllCaps(false);
         button.SetTextColor(ColorPrimary);
         button.Background = OutlineDrawable();
+        button.SetMinimumHeight(Dp(48));
+        button.LayoutParameters = new LinearLayout.LayoutParams(width ?? ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent);
+        button.Click += (_, _) => onClick();
+        return button;
+    }
+
+    /// <summary>销毁类操作按钮（卸载，迭代 104 / #225 决策 #161）：红底白字实心 danger 视觉，高度 ≥48dp。</summary>
+    private Button DangerButton(string text, Action onClick, int? width = null)
+    {
+        var button = new Button(this) { Text = text };
+        button.SetAllCaps(false);
+        button.SetTextColor(Color.White);
+        button.Background = RoundDrawable(ColorErr, RadiusButtonDp);
         button.SetMinimumHeight(Dp(48));
         button.LayoutParameters = new LinearLayout.LayoutParams(width ?? ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent);
         button.Click += (_, _) => onClick();
