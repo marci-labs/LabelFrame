@@ -8,6 +8,16 @@
 - Linux x64 + Docker Engine（含 `docker compose` v2 子命令）——**本包不含 Docker 本体**，需目标机已安装；
 - `sha256sum`（coreutils，一般发行版自带）。
 
+## 解压（固定部署目录）
+
+在放包的目录执行（`--strip-components=1` 剥掉包内版本号顶层目录，命令对任意版本通用；部署与升级始终用**同一目录**——数据卷实际名 = `<部署目录名>_labelframe-data`，见「常见问题 · 数据在哪」）：
+
+```bash
+mkdir -p labelframe-offline
+tar -xzf labelframe-offline-__LABELFRAME_VERSION__-linux-x64.tar.gz -C labelframe-offline --strip-components=1
+cd labelframe-offline
+```
+
 ## 三步部署
 
 ```bash
@@ -49,8 +59,8 @@ bash install.sh    # 校验 -> docker load -> 预建挂载目录 -> 自动分发
 
 - **端口 / 防火墙**：默认 `53961`；放行 `sudo ufw allow 53961/tcp`。Windows 客户端连接地址填 `http://<本机 IP>:53961`。
 - **看日志**：`docker compose logs -f`，或文本日志 `./logs/server-<yyyyMMdd>.log`。
-- **数据在哪**：命名卷 `labelframe-data`（`docker volume ls` 可见）；容器重建 / 升级数据不动。
-- **升级**：拿新版本离线包，在新目录重复三步即可（旧目录 `docker compose down` 停止）。
+- **数据在哪**：命名卷，实际卷名 = `<部署目录名>_labelframe-data`（compose 未钉定卷名，卷名随部署目录——如部署目录 `labelframe-offline` → 卷 `labelframe-offline_labelframe-data`，`docker volume ls` 可见）；容器重建 / 同目录升级数据不动。
+- **升级**：拿新版本离线包，解压到**当初部署的同一目录**（同「解压」一节命令，`--strip-components=1` 覆盖解压）后重跑 `install.sh`（或三步）即可——数据卷沿用、模板 / 数据库不中断；**勿换新目录升级**：换目录会新建空卷（数据不跟随），且容器名 `labelframe-server` 固定，新目录起服务前须先在旧目录 `docker compose down`。可选清理：删除 `images/` 下旧版本 `.image.tar.gz` 释放磁盘（约 150MB+/ 版本，不影响运行与数据）。
 - **拷入安装包报 `Permission denied`**：分发挂载目录（`client-packages/` / `pda-packages/` / `plugin-packages/`）属主为 root——成因是首次 `docker compose up -d` 前目录不存在，被 Docker 守护进程（root）自动创建为 `root:root 0755`，非 root 部署者不可写；此形态下 `install.sh` 会跳过向该目录自动分发并在完成输出标注。处置：`sudo chown -R "$(id -un):$(id -gn)" client-packages pda-packages plugin-packages` 后重跑 `install.sh`（自动补齐分发，幂等）或手工重拷，或改经管理界面「下载中心」上传。预防：首次 up 前先 `mkdir -p` 三目录（`install.sh` 已内置，重跑会检测并提示）。
 - **起不来排查**：`docker compose ps` 看状态，`docker compose logs --tail=100` 看报错；常见为端口被占用（改 `compose.yml` 端口映射）或数据卷权限。
 - **为何离线可用**：镜像以 ghcr 全名 tag 导入本机（`docker load`），compose 起容器时本地命中即不再联网拉取。

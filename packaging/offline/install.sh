@@ -8,8 +8,9 @@
 # 行为：SHA256SUMS 全件校验（不符即拒，fail-closed）→ docker load 镜像（tag 为 ghcr 全名，load 后本地命中，
 #   compose 默认 pull=missing 不再联网拉取）→ 预建三个分发挂载宿主目录（部署者属主——防 Docker 守护进程以
 #   root 自动创建致非 root 部署者拷包被拒，#213 AC-06 返修）→ 自动把 packages/ 三件拷入挂载目录（下载中心
-#   开箱可用，#221）→ docker compose up -d → /healthz 轮询就绪 → 输出访问地址。
-# 幂等：重跑无害（重复 load / up 均合法）；升级 = 换新版本离线包目录重跑（数据在命名卷 labelframe-data，不动）。
+#   开箱可用，#222）→ docker compose up -d → /healthz 轮询就绪 → 输出访问地址。
+# 幂等：重跑无害（重复 load / up 均合法）；升级 = 同一部署目录解压新版本包重跑（tar -xzf 新包 -C 本目录
+#   --strip-components=1 后重跑本脚本；数据卷实际名 = <部署目录名>_labelframe-data，固定目录即跨版本同一卷）。
 set -euo pipefail
 
 BUNDLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,7 +83,7 @@ for d in client-packages pda-packages plugin-packages; do
   fi
 done
 
-# ---- 5) 自动分发 packages 三件入挂载目录（下载中心开箱可用，#221）----
+# ---- 5) 自动分发 packages 三件入挂载目录（下载中心开箱可用，#222 缺陷②；实施自 PR #224 salvage）----
 # 离线闭环最后一公里：下载中心三列表实时读挂载目录，文件就位即分发。cp -f 幂等覆盖、包内 packages/ 原件
 # 保留（重跑第 1 步 sha256sum -c SHA256SUMS 依赖其在位，故不用 mv）；挂载目录不可写（上方 PKGDIR_BLOCKED——
 # 历史 root 残留）整类跳过并在完成输出标注，不阻断部署；包内单件缺失仅告警（完整性已由第 1 步 fail-closed 兜底）。
@@ -149,5 +150,5 @@ echo "  packages/plugin/*.lfplugin   -> ./plugin-packages/（客户端 / PDA 插
 echo "后续增删安装包：直接向上述目录拷入 / 删除文件（或经管理界面「下载中心」上传，效果相同），即时生效。"
 echo "常用命令：docker compose logs -f（跟日志）/ docker compose restart（重启）/ docker compose down（停止，数据卷保留）"
 echo "防火墙放行：sudo ufw allow $PORT/tcp"
-echo "升级：换新版本离线包目录重跑 install.sh（数据在命名卷 labelframe-data，不动）。"
+echo "升级：新版本离线包解压到本部署目录（tar -xzf 新包 -C . --strip-components=1）后重跑 install.sh——同一目录数据卷沿用（实际卷名 = <部署目录名>_labelframe-data），数据不动。"
 echo "================================================================="
