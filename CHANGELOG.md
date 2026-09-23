@@ -3,6 +3,13 @@
 本文件记录每个迭代的变更。
 
 
+## #213 返修（迭代 101 AC-06）：离线部署包非 root 部署者挂载目录预建——install.sh 预建三目录与 README 手动路径同步 · 2026-09-23
+
+- **动机（AC-06 真离线走查 FAIL×3）**：纯净 Ubuntu 24.04 物理断网走查（非 root 部署者 uid 1000 + docker 组）中，按包内 README 字面把 `packages/` 三件（Client MSI / PDA APK / `.lfplugin`）拷入挂载目录全部 `Permission denied`，下载中心三个列表 API 均返回 `[]`；其余走查项（SHA256SUMS / load / up / healthz / 管理界面）全部通过。
+- **根因**：`docker compose up -d` 时三个 bind-mount 宿主目录（`client-packages/`、`pda-packages/`、`plugin-packages/`）缺失，Docker 守护进程（root）自动创建为 `root:root 0755`——非 root 部署者 `cp` 被拒，「U 盘拷贝即用」主路径失效。
+- **修复（采纳走查建议「预建目录」；compose 挂载形态不动——与在线版逐字节同源是 AC-01 契约与决策 #160 口径）**：① `packaging/offline/install.sh` 在 compose up 前预建三挂载目录（部署者属主——目录先于 Docker 存在则守护进程不再以 root 重建）；目录已存在但当前用户不可写（历史 root 残留）时输出警告与 `sudo chown` 处置提示，不自动 sudo、不阻断服务部署，完成输出同步标注受阻目录；既有幂等重跑语义不变（另有「路径被同名文件占用」fail-closed 检查）。② `packaging/offline/README.md` 手动三步走路径第 2 步补「首次 up 前先 `mkdir -p` 三目录」说明，「分发安装包」一节补目录属主要求与上传替代通道，常见问题新增「拷入安装包报 Permission denied」条目（成因 + chown 处置 + 预防）。
+- **验证**：`bash -n` / shellcheck 通过；本机关键段实机演练通过——目录预建（三目录以部署者属主创建）、root:root 残留警告分支（Linux 容器内真实 uid/属主语义复现）、幂等重跑静默通过、同名文件占位 fail-closed；`dotnet build` / `dotnet test`（排除 Perf/Soak）通过（`src/` 零改动）。**AC-06 真离线复跑走查留待验收侧**（合并后转 `待验收`）。
+
 ## v0.30.0 迭代 96、99、100、101 与 #171 返修、#199 流程治理汇总发布 · 2026-09-23
 
 - **打包范围**：v0.29.0 之后合入 master 的全部迭代、缺陷修复与流程治理——打印生态：迭代 96（PDA 插件机制——`.lfplugin` 跨端契约与 AndroidHost 外置插件通道双档模型，决策 #157）与其收口（fake 插件 API 面约束，决策 #159）；安装升级：缺陷返修 #171（升级链获取阶段三重缺陷，决策 #156）；部署形态：迭代 101（Linux 离线部署包，决策 #160，修订 #64）；依赖与性能：迭代 100（TemplateFrame.Excel.Simple 2.4.1，决策 #158）；流程与测试债：#199 release.yml 签名链修复（流程治理）、迭代 99（nightly-perf 治理，决策 #155）、#183 残留补治（#208）。详见各迭代条目。
