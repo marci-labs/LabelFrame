@@ -3,6 +3,14 @@
 本文件记录每个迭代的变更。
 
 
+## 迭代 102：导出与调试出图下载文件名中文变下划线——前端 Content-Disposition 解析支持 filename*（RFC 5987） · 2026-09-23
+
+- **动机（#220）**：用户反馈导出中文名模板，下载到本地的文件名中文全部变 `_`（如「货架标签」导出为 `____.lfpkg`）。根因（立项前已定位并实测）：后端 ASP.NET Core 对非 ASCII 文件名按 RFC 6266/5987 同时发两个参数——`filename=____.lfpkg`（ASCII 回退值）与 `filename*=UTF-8''%E4%B8%AD...`（百分号编码，无损）；前端 `makeFetchBlob` 解析正则命中**第一个** `filename=`（下划线回退值），未优先读 `filename*`。后端行为符合 RFC 不改（浏览器直链下载正常即证），单点修前端解析；受影响三端点：模板导出 `{name}.lfpkg`、调试出图单张 `{name}-print.png`、批量 `{name}-debug-{ts}.zip`。
+- **修复（web/src/lib/api/client.ts，下载型端点解析仍收敛 fetchBlob 一处）**：新增 `parseDispositionFilename`——优先解析 `filename*=UTF-8''...`（RFC 5987，`decodeURIComponent` 还原中文；非 UTF-8 charset 不误解直接回退）；无 / 畸形（截断百分号编码）的 `filename*` 回退现行为 `filename=`，再回退调用方 fallbackName，全程容错不抛未捕获异常；纯 ASCII 名（后端仅发 `filename=`）行为不变。
+- **回归测试（client.test.ts，fetch stub + Response headers 实测头形态，净增 6 项）**：双参数实测头 → 解析出中文名（exportTemplate / renderImage 两条调用链各一）；纯 ASCII 未加引号实测形态不回归（带引号既有用例全保）；仅 `filename*`（无 `filename=`）直接解码取用；畸形值回退 `filename=` 回退值与 fallbackName 两向。
+- **验证**：`pnpm lint / test / build` 全绿（前端 393 项含新增 6 项）；`dotnet build LabelFrame.slnx` 0 警 0 错、`dotnet test`（排除 Perf/Soak）951 项全绿（src/ 零改动，门禁例行）。**AC-05 真浏览器走查（管理界面导出中文名模板核对下载文件名）转 `待验收`**（恢复条件 = LF-Accept-Win10 或用户环境实际导出一个中文名模板并核对）。
+
+
 ## #213 返修（迭代 101 AC-06）：离线部署包非 root 部署者挂载目录预建——install.sh 预建三目录与 README 手动路径同步 · 2026-09-23
 
 - **动机（AC-06 真离线走查 FAIL×3）**：纯净 Ubuntu 24.04 物理断网走查（非 root 部署者 uid 1000 + docker 组）中，按包内 README 字面把 `packages/` 三件（Client MSI / PDA APK / `.lfplugin`）拷入挂载目录全部 `Permission denied`，下载中心三个列表 API 均返回 `[]`；其余走查项（SHA256SUMS / load / up / healthz / 管理界面）全部通过。
