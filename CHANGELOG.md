@@ -3,6 +3,14 @@
 本文件记录每个迭代的变更。
 
 
+## 迭代 100：依赖升级 TemplateFrame.Excel.Simple 2.0.0 → 2.4.1——Excel 导入容错与读性能（决策 #158） · 2026-09-23
+
+- **动机（#210）**：上游已发 2.4.1，与本仓 Excel 导入场景直接相关的改进——2.2.0 修复「表头不在 A 列起始的第三方表格错读（前几列恒空、末列静默丢弃）」与「zip 有效但 XML 损坏时漏裸 `XmlException`」；2.4.0 读性能优化（行 / 单元格索引复用，上游 5000 行样本 1690ms → 199ms）；2.4.1 文档与包描述修正（直接上 2.4.1）。全仓唯一引用点 `src/LabelFrame.Core/LabelFrame.Core.csproj`，产品代码零改动。
+- **兼容性（升级前评估实证）**：上游全系列钉死 `DocumentFormat.OpenXml 3.3.0`（无传递依赖冲突，升级后断言复核）；2.1.0 破坏性变更（`ITemplateEngine` 移除 DIM 成员）不涉及本仓（只用 `SimpleExcel` 静态类，不实现引擎接口）；传输插件包 `HostProvided` 排除清单按 DLL 文件名匹配，文件名不变无影响；用户手中 2.0.0 生成的存量模板跨版本读取已实证不回退。
+- **回归测试补强（AC-03）**：`test/LabelFrame.Core.Tests/Excel/ExcelTableReaderRegressionTests.cs` 新增 2 项——① **续填行识别**（2.0.0 升级修复场景，防上游回退）：`ExcelTemplateWriter.CreateTemplate` 生成模板（命名区域 `TF_Table` 仅覆盖表头 + 示例行）→ OpenXml 模拟用户在命名区域下方续填 2 行（inline string，Excel 手工输入形态）→ `ExcelTableReader.ReadTextTable` 断言全部 3 个数据行（含续填行）识别、值正确；② **非 A 列起始表头读取**（2.2.0 修复场景）：OpenXml 直接构造表头在 C/D 列的第三方表格（A / B 列空）→ `SimpleExcel.Read` / `ExcelTableReader` 双层断言表头与数据完整读出、无前导空列、无末列丢失。测试项目显式引用 `DocumentFormat.OpenXml 3.3.0`（与 Core 传递依赖同钉，防版本漂移）。
+- **不在范围**（#210 明示）：上游新能力（`ParseDetailed` / `ConversionFailed` 告警 / 服务层并发与映射缓存改进）的接入启用；v0.29.1 发版决策（与本迭代正交）。真机「下载模板 → 续填 → 导入」冒烟转 `待验收` 欠账（AC-05，恢复条件 = LF-Accept-Win10 或用户环境实际跑一轮）。
+
+
 ## #171 返修：升级链获取阶段三重缺陷——CacheId 版本化 / 附加容器获取本地源注入 / BA 重试热循环终止（决策 #156） · 2026-09-22
 
 - **动机（#171 真机验收走查不通过）**：v0.28.0 → v0.29.0 覆盖升级三次尝试均无法越过获取阶段——①落位 / 清理包常量 `CacheId` 跨版本共享 `%ProgramData%\Package Cache\` 子目录，PayloadTool.exe 每版本哈希必变 → 升级会话缓存校验必冲突（`0x80091007` 删缓存转重取）；②重跑会话解析附加容器即 `WixAttachedContainer 0x80070002`（预删冲突缓存目录仍失败——与 ① 独立）；③BA 包级缓存重试无退避无终止（`e346` 热循环：实测 5 分钟 92,993 次重试、Burn 日志 219–240MB、向导滞留进度页永不出现失败页）。
