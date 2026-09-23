@@ -7,9 +7,10 @@
 #
 # 行为：SHA256SUMS 全件校验（不符即拒，fail-closed）→ docker load 镜像（tag 为 ghcr 全名，load 后本地命中，
 #   compose 默认 pull=missing 不再联网拉取）→ 预建三个分发挂载宿主目录（部署者属主——防 Docker 守护进程以
-#   root 自动创建致非 root 部署者拷包被拒，#213 AC-06 返修）→ docker compose up -d → /healthz 轮询就绪 →
-#   输出访问地址。
-# 幂等：重跑无害（重复 load / up 均合法）；升级 = 换新版本离线包目录重跑（数据在命名卷 labelframe-data，不动）。
+#   root 自动创建致非 root 部署者拷包被拒，#213 AC-06 返修）→ 自动把 packages/ 三件拷入挂载目录（下载中心
+#   开箱可用，#222）→ docker compose up -d → /healthz 轮询就绪 → 输出访问地址。
+# 幂等：重跑无害（重复 load / up 均合法）；升级 = 同一部署目录解压新版本包重跑（tar -xzf 新包 -C 本目录
+#   --strip-components=1 后重跑本脚本；数据卷实际名 = <部署目录名>_labelframe-data，固定目录即跨版本同一卷）。
 set -euo pipefail
 
 BUNDLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,7 +38,7 @@ probe_healthz() {
 
 # ---- 1) 完整性校验（fail-closed：U 盘 / 内网共享拷贝后必过此关）----
 [ -s SHA256SUMS ] || die "缺 SHA256SUMS——包不完整，请重新解压或重新获取离线包。"
-info "[1/5] 校验包完整性（SHA256SUMS，$(wc -l < SHA256SUMS) 条）..."
+info "[1/6] 校验包完整性（SHA256SUMS，$(wc -l < SHA256SUMS) 条）..."
 if ! sha256sum -c SHA256SUMS --quiet; then
   die "SHA256SUMS 校验失败——包不完整或被篡改，拒绝部署。"
 fi
@@ -54,7 +55,7 @@ IMAGE_TAR="images/labelframe-server-$VERSION.image.tar.gz"
 [ -s "$IMAGE_TAR" ] || die "缺镜像 tar：$IMAGE_TAR（与 .env 版本 $VERSION 不匹配？）"
 
 # ---- 3) docker load（load 后本地命中 ghcr 全名 tag，起容器不再联网拉取）----
-info "[2/5] 加载镜像 $IMAGE ..."
+info "[2/6] 加载镜像 $IMAGE ..."
 docker load -i "$IMAGE_TAR"
 docker image inspect "$IMAGE" >/dev/null 2>&1 || die "load 后仍未找到镜像 $IMAGE——镜像 tar 与 .env 版本可能不一致。"
 info "镜像就位（本地命中，后续 compose 起容器不再联网拉取）。"
@@ -64,7 +65,7 @@ info "镜像就位（本地命中，后续 compose 起容器不再联网拉取�
 # 非 root 部署者随后把 packages/ 拷入即 Permission denied、下载中心三列表为空。先由部署者预建（属主=部署者），
 # 守护进程对已存在目录不再接管属主。幂等：已存在且可写则静默通过；不可写（历史 root 残留）仅输出警告与处置
 # 提示（不自动 sudo、不阻断服务部署），并在完成输出中标注受阻目录。
-info "[3/5] 预建分发挂载目录（client-packages / pda-packages / plugin-packages）..."
+info "[3/6] 预建分发挂载目录（client-packages / pda-packages / plugin-packages）..."
 PKGDIR_BLOCKED=""
 for d in client-packages pda-packages plugin-packages; do
   if [ -e "$d" ] && [ ! -d "$d" ]; then
@@ -82,11 +83,39 @@ for d in client-packages pda-packages plugin-packages; do
   fi
 done
 
-# ---- 5) compose up + 就绪等待 ----
-info "[4/5] 启动服务（docker compose up -d）..."
+# ---- 5) 自动分发 packages 三件入挂载目录（下载中心开箱可用，#222 缺陷②；实施自 PR #224 salvage）----
+# 离线闭环最后一公里：下载中心三列表实时读挂载目录，文件就位即分发。cp -f 幂等覆盖、包内 packages/ 原件
+# 保留（重跑第 1 步 sha256sum -c SHA256SUMS 依赖其在位，故不用 mv）；挂载目录不可写（上方 PKGDIR_BLOCKED——
+# 历史 root 残留）整类跳过并在完成输出标注，不阻断部署；包内单件缺失仅告警（完整性已由第 1 步 fail-closed 兜底）。
+DIST_MISSING=""
+distribute_packages() {
+  local src_glob="$1" dst="$2" label="$3" copied=0 f
+  if [ ! -w "$dst" ]; then
+    echo "[LabelFrame 离线部署] 跳过：挂载目录 ./$dst 当前用户（$(id -un)）不可写，$label 未自动分发（处置见上方警告）。" >&2
+    return 0
+  fi
+  for f in $src_glob; do
+    [ -f "$f" ] || continue
+    cp -f "$f" "$dst/" || die "拷贝 $f -> ./$dst/ 失败——磁盘空间 / 权限异常？"
+    copied=$((copied + 1))
+  done
+  if [ "$copied" -eq 0 ]; then
+    DIST_MISSING="$DIST_MISSING $label（$src_glob）"
+    echo "[LabelFrame 离线部署] 警告：包内未找到 $label（$src_glob），未分发——包完整性以第 1 步 SHA256SUMS 校验为准。" >&2
+  else
+    info "  已分发 $label -> ./$dst/（$copied 件）"
+  fi
+}
+info "[4/6] 自动分发随包安装包入挂载目录（客户端 MSI / PDA APK / 插件包）..."
+distribute_packages 'packages/client/*.msi'      'client-packages' '客户端 MSI'
+distribute_packages 'packages/pda/*.apk'         'pda-packages'    'PDA APK'
+distribute_packages 'packages/plugin/*.lfplugin' 'plugin-packages' '插件包 .lfplugin'
+
+# ---- 6) compose up + 就绪等待 ----
+info "[5/6] 启动服务（docker compose up -d）..."
 docker compose up -d
 
-info "[5/5] 等待服务就绪（最长 90 秒）..."
+info "[6/6] 等待服务就绪（最长 90 秒）..."
 READY=0
 for _ in $(seq 1 90); do
   if probe_healthz | grep -q '"status":"ok"'; then READY=1; break; fi
@@ -109,13 +138,17 @@ echo "健康检查：http://127.0.0.1:$PORT/healthz"
 echo "管理界面：http://$SERVER_IP:$PORT/（已随包预装，开箱可用）"
 echo "Windows Client「设置 → 连接方式」服务端地址填：http://$SERVER_IP:$PORT"
 if [ -n "$PKGDIR_BLOCKED" ]; then
-  echo "注意：以下分发挂载目录当前用户不可写，处置（见上方警告）完成前拷入安装包会被拒：$PKGDIR_BLOCKED"
+  echo "注意：以下分发挂载目录当前用户不可写，本次已跳过向其自动分发（处置见上方警告，完成前手工拷入同样会被拒）：$PKGDIR_BLOCKED"
 fi
-echo "分发安装包：把 packages/ 下文件拷入当前目录对应挂载目录即可经下载中心分发——"
+if [ -n "$DIST_MISSING" ]; then
+  echo "注意：以下随包安装包未在包内找到、未分发（包完整性以安装时第 1 步 SHA256SUMS 校验为准）：$DIST_MISSING"
+fi
+echo "分发安装包：随包 packages/ 三件已按以下映射自动拷入挂载目录（下载中心三列表开箱可用）——"
 echo "  packages/client/*.msi        -> ./client-packages/（客户端安装 / 更新）"
 echo "  packages/pda/*.apk           -> ./pda-packages/（PDA 扫下载中心二维码安装）"
 echo "  packages/plugin/*.lfplugin   -> ./plugin-packages/（客户端 / PDA 插件管理安装）"
+echo "后续增删安装包：直接向上述目录拷入 / 删除文件（或经管理界面「下载中心」上传，效果相同），即时生效。"
 echo "常用命令：docker compose logs -f（跟日志）/ docker compose restart（重启）/ docker compose down（停止，数据卷保留）"
 echo "防火墙放行：sudo ufw allow $PORT/tcp"
-echo "升级：换新版本离线包目录重跑 install.sh（数据在命名卷 labelframe-data，不动）。"
+echo "升级：新版本离线包解压到本部署目录（tar -xzf 新包 -C . --strip-components=1）后重跑 install.sh——同一目录数据卷沿用（实际卷名 = <部署目录名>_labelframe-data），数据不动。"
 echo "================================================================="

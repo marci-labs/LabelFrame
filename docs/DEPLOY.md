@@ -89,11 +89,12 @@ docker compose -f .\packaging\e2e\compose.yaml down
 
 ### 4.2 离线 / 内网部署（offline bundle，迭代 101）
 
-从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 `labelframe-offline-<版本>-linux-x64.tar.gz`，拷到目标机（U 盘 / 内网共享）解压，包内自带全部所需（镜像 tar + 与在线版逐字节同源的 `compose.yml` + 版本钉定 `.env` + 管理界面预解压 + 客户端 / PDA / 插件安装包），部署全程零外网：
+从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 `labelframe-offline-<版本>-linux-x64.tar.gz`，拷到目标机（U 盘 / 内网共享），解压到**固定部署目录**（`--strip-components=1` 剥掉包内版本号顶层目录，命令对任意版本通用），包内自带全部所需（镜像 tar + 与在线版逐字节同源的 `compose.yml` + 版本钉定 `.env` + 管理界面预解压 + 客户端 / PDA / 插件安装包），部署全程零外网：
 
 ```bash
-tar -xzf labelframe-offline-<版本>-linux-x64.tar.gz
-cd labelframe-offline-<版本>-linux-x64
+mkdir -p labelframe-offline
+tar -xzf labelframe-offline-<版本>-linux-x64.tar.gz -C labelframe-offline --strip-components=1
+cd labelframe-offline
 bash install.sh          # 或按 README 三步手动：sha256sum -c → docker load → docker compose up -d
 curl http://127.0.0.1:53961/healthz
 ```
@@ -102,8 +103,9 @@ curl http://127.0.0.1:53961/healthz
 - **完整性**：`install.sh` 强制 `SHA256SUMS` 全件校验（镜像 + 分发产物），不符即拒装（fail-closed）；
 - **离线原理**：镜像以 ghcr 全名 tag `docker load` 进本机，compose 默认 pull=missing 本地命中即不再联网拉取；
 - **管理界面开箱可用**（`plugins/web-ui/` 已预解压，即 compose 默认挂载的服务端 WebUiPath）；
-- **分发闭环**：`packages/` 下 Client MSI / PDA APK / `.lfplugin` 拷入对应挂载目录（`./client-packages/` 等）即经下载中心分发——离线环境客户端 / PDA / 插件安装包不用再出网；
-- **幂等 / 升级**：`install.sh` 重跑无害；升级 = 新版本包目录重跑（数据在命名卷 `labelframe-data` 不动）；
+- **分发闭环**：`install.sh` 在启动服务前自动把 `packages/` 下 Client MSI / PDA APK / `.lfplugin` 拷入对应挂载目录（`./client-packages/` 等，`cp -f` 幂等、包内原件保留），下载中心开箱可用；后续增删安装包可直接向挂载目录拷入 / 删除文件或经管理界面「下载中心」上传（即时生效）——离线环境客户端 / PDA / 插件安装包不用再出网；
+- **幂等 / 升级**：`install.sh` 重跑无害；升级 = **同一部署目录**解压新版本包重跑（`mkdir -p` + `tar -xzf 新包 -C 同一目录 --strip-components=1` 覆盖解压后 `bash install.sh`——`SHA256SUMS` 按当版清单校验，旧版本残留文件不影响；勿换目录升级：compose 未钉定卷名，数据卷实际名 = `<部署目录名>_labelframe-data`（如 `labelframe-offline` → `labelframe-offline_labelframe-data`），换目录会新建**空卷**、模板 / 数据库 / 日志不跟随，且 `container_name` 固定 `labelframe-server`，新目录起服务前须先在旧目录 `docker compose down`）；
+- **存量版本号目录迁移**（曾按「解压得同名目录」旧口径部署，如 `labelframe-offline-0.30.0-linux-x64/`）：新版本包解压到**当初部署的同一目录**重跑即可（`tar --strip-components=1` 剥掉顶层版本号目录后布局一致，数据沿用该目录对应的既有卷，无需搬迁）；旧版本镜像 tar 可选清理——删除目录内 `images/` 下旧版本 `.image.tar.gz` 释放磁盘（约 150MB+/ 版本，不影响运行与数据），`docker image rm ghcr.io/marci-labs/labelframe-server:<旧版本>` 同为可选；
 - 发版流水线对该包做**真离线自验**（offline-bundle job 在无镜像的 runner 上以包内 `install.sh` 走用户全链），不可用即发版失败；组包脚本 `scripts/make-offline-bundle.sh` 可本地复用。决策记录见 [DESIGN.md](DESIGN.md) 决策 #160（修订 #64「Release 不含 docker 离线包」）。
 
 ## 5. Ubuntu（systemd 裸机部署）
