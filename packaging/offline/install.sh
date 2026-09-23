@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# LabelFrame Server 离线部署一键脚本（迭代 101，Issue #213；契约：docs/DESIGN.md 决策 #159）
+# LabelFrame Server 离线部署一键脚本（迭代 101，Issue #213；契约：docs/DESIGN.md 决策 #160）
 # 位于离线包内，随包分发（scripts/make-offline-bundle.sh 组包时复制；源文件 packaging/offline/install.sh）。
 #
 # 用法（离线包解压目录内，无需 root；目标机需已装 Docker Engine 含 compose v2）：

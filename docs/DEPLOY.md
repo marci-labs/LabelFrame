@@ -104,7 +104,7 @@ curl http://127.0.0.1:53961/healthz
 - **管理界面开箱可用**（`plugins/web-ui/` 已预解压，即 compose 默认挂载的服务端 WebUiPath）；
 - **分发闭环**：`packages/` 下 Client MSI / PDA APK / `.lfplugin` 拷入对应挂载目录（`./client-packages/` 等）即经下载中心分发——离线环境客户端 / PDA / 插件安装包不用再出网；
 - **幂等 / 升级**：`install.sh` 重跑无害；升级 = 新版本包目录重跑（数据在命名卷 `labelframe-data` 不动）；
-- 发版流水线对该包做**真离线自验**（offline-bundle job 在无镜像的 runner 上以包内 `install.sh` 走用户全链），不可用即发版失败；组包脚本 `scripts/make-offline-bundle.sh` 可本地复用。决策记录见 [DESIGN.md](DESIGN.md) 决策 #159（修订 #64「Release 不含 docker 离线包」）。
+- 发版流水线对该包做**真离线自验**（offline-bundle job 在无镜像的 runner 上以包内 `install.sh` 走用户全链），不可用即发版失败；组包脚本 `scripts/make-offline-bundle.sh` 可本地复用。决策记录见 [DESIGN.md](DESIGN.md) 决策 #160（修订 #64「Release 不含 docker 离线包」）。
 
 ## 5. Ubuntu（systemd 裸机部署）
 

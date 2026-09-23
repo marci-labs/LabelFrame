@@ -3,7 +3,7 @@
 本文件记录每个迭代的变更。
 
 
-## 迭代 101：Linux 离线部署包——Release 附件自带镜像 tar + 同源 compose + 分发产物（决策 #159） · 2026-09-23
+## 迭代 101：Linux 离线部署包——Release 附件自带镜像 tar + 同源 compose + 分发产物（决策 #160） · 2026-09-23
 
 - **动机（#213）**：离线 / 内网 Linux 服务器部署此前只有 systemd 裸机一条路（`install-server-linux.sh --manifest <布局目录>`，迭代 71）；而 DEPLOY §4 推荐的 Docker 形态必须联网拉 ghcr 镜像——在线推荐 Docker、离线只有裸机，形态倒挂。用户 2026-09-23 四项拍板：不带 linux-client 镜像、带 `packages/`、带 `install.sh`、真离线自验进发版流水线。
 - **决策（#159，修订 #64「Release 不含 docker 离线包」）**：发版新增单附件 `labelframe-offline-<版本>-linux-x64.tar.gz`，结构 = 镜像 tar（`docker save | gzip`，**ghcr 全名 tag 原样保留**：load 后本地命中 tag、compose 默认 pull=missing 不再联网拉取，包内 `compose.yml` 因此与在线分发附件**逐字节同源**防漂移）＋ 版本钉定 `.env` ＋ README / `install.sh` ＋ `SHA256SUMS`（镜像 + 分发产物全件，`install.sh` 强制校验，U 盘 / 内网拷贝场景 fail-closed）＋ `packages/`（Client MSI / PDA APK / zebra `.lfplugin`——拷入挂载目录即经下载中心分发，离线环境分发闭环）＋ 管理界面 zip **预解压**至 `plugins/web-ui/`（即 compose 默认挂载的服务端默认 WebUiPath，管理界面开箱可用，免手工解压）。整包不进 install-manifest（与 compose 分发附件同口径：自足分发单元而非可安装产物，#116 / #134）。

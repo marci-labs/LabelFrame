@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 组装 LabelFrame Linux 离线部署包（迭代 101，Issue #213；契约：docs/DESIGN.md 决策 #159——修订 #64「Release 不含 docker 离线包」）
+# 组装 LabelFrame Linux 离线部署包（迭代 101，Issue #213；契约：docs/DESIGN.md 决策 #160——修订 #64「Release 不含 docker 离线包」）
 #
 # 用途：发版流水线（release.yml offline-bundle job）把已验收的 Server 镜像 tar 与当版分发产物组装成单个
 #       离线部署包附件 labelframe-offline-<版本>-linux-x64.tar.gz——解压后按 README 三步（docker load →
@@ -43,7 +43,7 @@ info() { echo "[离线包] $*"; }
 
 usage() {
   cat <<'USAGE'
-LabelFrame Linux 离线部署包组装脚本（docs/DEPLOY.md §4.2 / DESIGN 决策 #159）
+LabelFrame Linux 离线部署包组装脚本（docs/DEPLOY.md §4.2 / DESIGN 决策 #160）
 用法：
   bash scripts/make-offline-bundle.sh -v <版本> --image-tar <镜像tar.gz> \
     --client-package <Client.msi> --pda-package <APK> \
