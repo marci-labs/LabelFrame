@@ -45,7 +45,7 @@
 
 ## 4. Docker（推荐的服务端部署方式）
 
-**快速启动（Release compose 分发，迭代 71）**：从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 `compose.yml` 与 `.env` 放同一目录，`docker compose up -d` 即可——`.env` 已把 `LABELFRAME_VERSION` 钉定为本 Release 版本（想跟随最新版可改回 `latest`，镜像源覆盖见文件内注释）。两者与仓库 `packaging/ubuntu/docker-compose.yml` 同源（发版流水线直接复制生成）。
+**快速启动（Release compose 分发，迭代 71）**：从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 `compose.yml` 与 `.env` 放同一目录，`docker compose up -d` 即可——`.env` 已把 `LABELFRAME_VERSION` 钉定为本 Release 版本（想跟随最新版可改回 `latest`，镜像源覆盖见文件内注释）。两者与仓库 `packaging/ubuntu/docker-compose.yml` 同源（发版流水线直接复制生成）。**离线 / 内网环境**改用同 Release 的离线部署包（`labelframe-offline-<版本>-linux-x64.tar.gz`，见 §4.2）。
 
 镜像 `ghcr.io/marci-labs/labelframe-server`（`latest` 指向最新版）：
 
@@ -86,6 +86,25 @@ docker compose -f .\packaging\e2e\compose.yaml down
 ```
 
 脚本验证 Linux 能力边界、模板 / 预览 / 包导入导出、Excel / 日志公共端点、设备注册、幂等、单张 / 多张、离线暂存、Skia 渲染、PNG 数量与条码内容、Server 终态回报、Client 重启持久化及重启后继续领取；数据保存在 Compose 命名卷。端口冲突时传 `-ServerPort <端口>`。完整测试大纲与排障方式见 [LINUX-CLIENT-E2E.md](LINUX-CLIENT-E2E.md)。
+
+### 4.2 离线 / 内网部署（offline bundle，迭代 101）
+
+从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 `labelframe-offline-<版本>-linux-x64.tar.gz`，拷到目标机（U 盘 / 内网共享）解压，包内自带全部所需（镜像 tar + 与在线版逐字节同源的 `compose.yml` + 版本钉定 `.env` + 管理界面预解压 + 客户端 / PDA / 插件安装包），部署全程零外网：
+
+```bash
+tar -xzf labelframe-offline-<版本>-linux-x64.tar.gz
+cd labelframe-offline-<版本>-linux-x64
+bash install.sh          # 或按 README 三步手动：sha256sum -c → docker load → docker compose up -d
+curl http://127.0.0.1:53961/healthz
+```
+
+- **前置**：目标机已装 Docker Engine（含 compose v2）与 `sha256sum`——包不含 Docker 本体；
+- **完整性**：`install.sh` 强制 `SHA256SUMS` 全件校验（镜像 + 分发产物），不符即拒装（fail-closed）；
+- **离线原理**：镜像以 ghcr 全名 tag `docker load` 进本机，compose 默认 pull=missing 本地命中即不再联网拉取；
+- **管理界面开箱可用**（`plugins/web-ui/` 已预解压，即 compose 默认挂载的服务端 WebUiPath）；
+- **分发闭环**：`packages/` 下 Client MSI / PDA APK / `.lfplugin` 拷入对应挂载目录（`./client-packages/` 等）即经下载中心分发——离线环境客户端 / PDA / 插件安装包不用再出网；
+- **幂等 / 升级**：`install.sh` 重跑无害；升级 = 新版本包目录重跑（数据在命名卷 `labelframe-data` 不动）；
+- 发版流水线对该包做**真离线自验**（offline-bundle job 在无镜像的 runner 上以包内 `install.sh` 走用户全链），不可用即发版失败；组包脚本 `scripts/make-offline-bundle.sh` 可本地复用。决策记录见 [DESIGN.md](DESIGN.md) 决策 #159（修订 #64「Release 不含 docker 离线包」）。
 
 ## 5. Ubuntu（systemd 裸机部署）
 

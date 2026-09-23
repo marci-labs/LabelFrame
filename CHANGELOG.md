@@ -3,6 +3,14 @@
 本文件记录每个迭代的变更。
 
 
+## 迭代 101：Linux 离线部署包——Release 附件自带镜像 tar + 同源 compose + 分发产物（决策 #159） · 2026-09-23
+
+- **动机（#213）**：离线 / 内网 Linux 服务器部署此前只有 systemd 裸机一条路（`install-server-linux.sh --manifest <布局目录>`，迭代 71）；而 DEPLOY §4 推荐的 Docker 形态必须联网拉 ghcr 镜像——在线推荐 Docker、离线只有裸机，形态倒挂。用户 2026-09-23 四项拍板：不带 linux-client 镜像、带 `packages/`、带 `install.sh`、真离线自验进发版流水线。
+- **决策（#159，修订 #64「Release 不含 docker 离线包」）**：发版新增单附件 `labelframe-offline-<版本>-linux-x64.tar.gz`，结构 = 镜像 tar（`docker save | gzip`，**ghcr 全名 tag 原样保留**：load 后本地命中 tag、compose 默认 pull=missing 不再联网拉取，包内 `compose.yml` 因此与在线分发附件**逐字节同源**防漂移）＋ 版本钉定 `.env` ＋ README / `install.sh` ＋ `SHA256SUMS`（镜像 + 分发产物全件，`install.sh` 强制校验，U 盘 / 内网拷贝场景 fail-closed）＋ `packages/`（Client MSI / PDA APK / zebra `.lfplugin`——拷入挂载目录即经下载中心分发，离线环境分发闭环）＋ 管理界面 zip **预解压**至 `plugins/web-ui/`（即 compose 默认挂载的服务端默认 WebUiPath，管理界面开箱可用，免手工解压）。整包不进 install-manifest（与 compose 分发附件同口径：自足分发单元而非可安装产物，#116 / #134）。
+- **流水线接线（release.yml）**：docker job 推 ghcr 后 `docker save | gzip` 导出原料（只取版本 tag）；新增 `offline-bundle` job（needs docker + package + android）调 `scripts/make-offline-bundle.sh` 组包 → 对最终 tar.gz 的 fail-closed 结构断言（README / compose / .env / SHA256SUMS / 镜像 tar / packages 三件 / 管理界面逐项在场）→ **真离线自验**：与 docker job 不同 runner 天然无本地镜像，解压最终 tar.gz 后以包内 `install.sh` 走用户路径全链（校验 → load → compose up → `/healthz` 就绪），不可用即整次发版失败；release job needs 增列并挂附件（`fail_on_unmatched_files` 兜底）。
+- **用户侧**：解压后 `bash install.sh` 一键（SHA256SUMS 校验 → load → `docker compose up -d` → 就绪轮询 + 访问地址与分发指引输出），或按包内 README 三步手动；幂等重跑，升级 = 新版本包目录重跑（数据在命名卷 `labelframe-data` 不动）。文档 DEPLOY §4 快速启动补离线指引、新增 §4.2。
+- **验证**：AC-02 本地 Docker 全链演练通过（构建镜像 → 组包 → 篡改拒装 → load / up / healthz / 管理界面 → 幂等重跑），证据见 #213；AC-01 结构断言随组包脚本落地、AC-03 接线随本 PR；**AC-04 发版流水线全链与 AC-06 用户离线环境走查转 `待验收`**（恢复条件 = 下一版 `v*` tag 发版 / 真实离线环境可得）。
+
 ## 迭代 100：依赖升级 TemplateFrame.Excel.Simple 2.0.0 → 2.4.1——Excel 导入容错与读性能（决策 #158） · 2026-09-23
 
 - **动机（#210）**：上游已发 2.4.1，与本仓 Excel 导入场景直接相关的改进——2.2.0 修复「表头不在 A 列起始的第三方表格错读（前几列恒空、末列静默丢弃）」与「zip 有效但 XML 损坏时漏裸 `XmlException`」；2.4.0 读性能优化（行 / 单元格索引复用，上游 5000 行样本 1690ms → 199ms）；2.4.1 文档与包描述修正（直接上 2.4.1）。全仓唯一引用点 `src/LabelFrame.Core/LabelFrame.Core.csproj`，产品代码零改动。
