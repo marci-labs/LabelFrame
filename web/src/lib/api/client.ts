@@ -132,6 +132,26 @@ function makeRequest(base: () => string, label: '服务端' | '本机客户端')
   }
 }
 
+/** 解析 Content-Disposition 下载文件名（迭代 102 · #220）。
+ *  后端 ASP.NET Core 对非 ASCII 文件名按 RFC 6266/5987 同时发两个参数——
+ *  `filename=____.lfpkg`（ASCII 回退值，非 ASCII 字符替换为 _）与 `filename*=UTF-8''%E4%B8%AD...`（百分号编码，无损）。
+ *  优先解析 filename* 并 decodeURIComponent 还原中文；无 / 畸形 / 非 UTF-8 的 filename* 回退现行为 filename=，
+ *  均无则返回 null（调用方用 fallbackName）——全程容错不抛异常。纯 ASCII 名后端仅发 filename=，行为不变。 */
+function parseDispositionFilename(disposition: string): string | null {
+  // RFC 5987 ext-value 形态：charset 'language' 百分号编码值（language 可空；本仓后端固定 UTF-8''）
+  const star = /filename\*\s*=\s*([^']*)'[^']*'([^;]*)/i.exec(disposition)
+  // decodeURIComponent 只按 UTF-8 语义解码，非 UTF-8 charset 不误解（回退 filename=）
+  if (star && /^utf-?8$/i.test(star[1].trim())) {
+    try {
+      const decoded = decodeURIComponent(star[2].trim())
+      if (decoded) return decoded
+    } catch {
+      // 畸形百分号编码（如 %E4 截断）：弃用 filename*，回退 filename= 回退值
+    }
+  }
+  return /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? null
+}
+
 /** 下载型端点（render-image / render-images / 模板导出）：返回 blob + Content-Disposition 文件名，错误解析 ErrorView。
  *  迭代 91（F-01）：超时覆盖整个下载过程（含 res.blob() 响应体读取）——大负载端点调用处传 heavy 档。 */
 function makeFetchBlob(base: () => string, label: '服务端' | '本机客户端') {
@@ -167,8 +187,8 @@ function makeFetchBlob(base: () => string, label: '服务端' | '本机客户端
         throw transportError(timeout, timeoutMs, base, label)
       }
       const disposition = res.headers.get('Content-Disposition') ?? ''
-      const match = /filename="?([^";]+)"?/.exec(disposition)
-      const filename = match?.[1] ?? fallbackName
+      // 迭代 102（#220）：优先 filename*（RFC 5987）还原中文，回退链 filename= → fallbackName
+      const filename = parseDispositionFilename(disposition) ?? fallbackName
       return { blob, filename }
     } finally {
       timeout.dispose()

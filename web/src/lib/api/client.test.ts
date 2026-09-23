@@ -319,3 +319,110 @@ describe('exportTemplate 错误通道与 fetchBlob 同构（迭代 91 F-09）', 
     }
   })
 })
+
+// ── 迭代 102（#220）：Content-Disposition 文件名解析优先 filename*（RFC 5987）──
+// 后端 ASP.NET Core 对非 ASCII 文件名按 RFC 6266/5987 同时发两个参数（实测形态见 Issue #220「目标与依据」）：
+// filename=____.lfpkg（ASCII 回退值，非 ASCII 替换为 _）在前、filename*=UTF-8''%E4%B8%AD...（百分号编码，无损）在后。
+
+describe('Content-Disposition 文件名解析：filename*（RFC 5987）优先还原中文（迭代 102 · #220）', () => {
+  it('AC-01：双参数实测头 → 优先取 filename* 解码还原中文（exportTemplate 链），不再用下划线回退值', async () => {
+    const mod = await loadClient('client')
+    const fetchStub = vi.fn().mockResolvedValue(
+      new Response(new Blob(['pkg-bytes']), {
+        status: 200,
+        headers: { 'Content-Disposition': "attachment; filename=____.lfpkg; filename*=UTF-8''%E4%B8%AD%E6%96%87%E6%A8%A1%E6%9D%BF.lfpkg" },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchStub)
+    try {
+      const result = await mod.localApi.exportTemplate('中文模板')
+      expect(result.filename).toBe('中文模板.lfpkg')
+      expect(result.blob.size).toBeGreaterThan(0)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('AC-01：renderImage 链同覆盖——{name}-print.png 中文名还原（货架标签 → 货架标签-print.png）', async () => {
+    const mod = await loadClient('client')
+    const fetchStub = vi.fn().mockResolvedValue(
+      new Response(new Blob(['png-bytes'], { type: 'image/png' }), {
+        status: 200,
+        headers: { 'Content-Disposition': "attachment; filename=____-print.png; filename*=UTF-8''%E8%B4%A7%E6%9E%B6%E6%A0%87%E7%AD%BE-print.png" },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchStub)
+    try {
+      const result = await mod.localApi.renderImage({ requestId: 'r-1', labels: [] })
+      expect(result.filename).toBe('货架标签-print.png')
+      expect(result.blob.size).toBeGreaterThan(0)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('AC-02：纯 ASCII 名（仅 filename=，实测未加引号形态）行为不变（带引号形态既有用例已覆盖）', async () => {
+    const mod = await loadClient('client')
+    const fetchStub = vi.fn().mockResolvedValue(
+      new Response(new Blob(['xlsx-bytes']), { status: 200, headers: { 'Content-Disposition': 'attachment; filename=excel-template.xlsx' } }),
+    )
+    vi.stubGlobal('fetch', fetchStub)
+    try {
+      const result = await mod.localApi.excelTemplate([{ key: 'sku', displayName: 'SKU' }], { sku: 'A-1' })
+      expect(result.filename).toBe('excel-template.xlsx')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('AC-02：仅 filename*（无 filename=）——直接解码取用，不再落到 fallbackName', async () => {
+    const mod = await loadClient('client')
+    const fetchStub = vi.fn().mockResolvedValue(
+      new Response(new Blob(['pkg-bytes']), {
+        status: 200,
+        headers: { 'Content-Disposition': "attachment; filename*=UTF-8''%E8%B4%A7%E6%9E%B6%E6%A0%87%E7%AD%BE.lfpkg" },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchStub)
+    try {
+      const result = await mod.localApi.exportTemplate('货架标签')
+      expect(result.filename).toBe('货架标签.lfpkg')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('AC-02：畸形 filename* 值（截断百分号编码）容错——回退 filename= 回退值，不抛未捕获异常', async () => {
+    const mod = await loadClient('client')
+    const fetchStub = vi.fn().mockResolvedValue(
+      new Response(new Blob(['pkg-bytes']), {
+        status: 200,
+        headers: { 'Content-Disposition': "attachment; filename=____.lfpkg; filename*=UTF-8''%E4%B8" },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchStub)
+    try {
+      const result = await mod.localApi.exportTemplate('中文模板')
+      expect(result.filename).toBe('____.lfpkg')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('AC-02：畸形 filename* 且无 filename= ——回退调用方 fallbackName（renderImage → label-print.png）', async () => {
+    const mod = await loadClient('client')
+    const fetchStub = vi.fn().mockResolvedValue(
+      new Response(new Blob(['png-bytes'], { type: 'image/png' }), {
+        status: 200,
+        headers: { 'Content-Disposition': "attachment; filename*=UTF-8''%E4%B8" },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchStub)
+    try {
+      const result = await mod.localApi.renderImage({ requestId: 'r-1', labels: [] })
+      expect(result.filename).toBe('label-print.png')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+})
