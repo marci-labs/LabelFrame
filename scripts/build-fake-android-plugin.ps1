@@ -1,6 +1,9 @@
-﻿# 构建 fake 传输插件包（.lfplugin，迭代 96 / Issue #185 AC-02 Spike 资产，决策 #156，DESIGN §6.8）
+﻿# 构建 fake 传输插件包（.lfplugin，迭代 96 / Issue #185 AC-02 Spike 资产，决策 #157，DESIGN §6.8）
 # 产物：artifacts\labelframe-transport-fake-<版本>.lfplugin（manifest platforms:["android"]——PDA 外置插件通道专用；
 # 纯托管轻量档：Release AOT 宿主内动态加载走 MonoVM interpreter 解释执行，Spike 实证目标）。
+# 插件源码受保守 API 面约束（#185 Spike 实证后拍板方案 A，决策 #159）：近似 netstandard2.0 级老牌 API，
+# 禁用 .NET 6+ 新增 BCL API（如 ReplaceLineEndings）——interpreter 可解析面缺口会在发送段以
+# MissingMethodException 暴露；本包打印链路即该约束面的门槛用例。
 # 真机走查脚本：scripts/test-pda-plugin-spike.ps1（本脚本为其第 1 步，也可独立使用）。
 # 兼容 Windows PowerShell 5.1（本地自验）与 PowerShell 7（CI 同型环境）。
 param(
