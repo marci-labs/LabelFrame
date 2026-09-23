@@ -3,6 +3,15 @@
 本文件记录每个迭代的变更。
 
 
+## v0.30.0 迭代 96、99、100、101 与 #171 返修、#199 流程治理汇总发布 · 2026-09-23
+
+- **打包范围**：v0.29.0 之后合入 master 的全部迭代、缺陷修复与流程治理——打印生态：迭代 96（PDA 插件机制——`.lfplugin` 跨端契约与 AndroidHost 外置插件通道双档模型，决策 #157）与其收口（fake 插件 API 面约束，决策 #159）；安装升级：缺陷返修 #171（升级链获取阶段三重缺陷，决策 #156）；部署形态：迭代 101（Linux 离线部署包，决策 #160，修订 #64）；依赖与性能：迭代 100（TemplateFrame.Excel.Simple 2.4.1，决策 #158）；流程与测试债：#199 release.yml 签名链修复（流程治理）、迭代 99（nightly-perf 治理，决策 #155）、#183 残留补治（#208）。详见各迭代条目。
+- **本版可感知变化（覆盖升级治本）**：v0.28.0 → v0.29.0 覆盖升级确定性失败的获取阶段三重缺陷全部修复——四个落位 / 清理包 `CacheId` 版本化（升级零缓存哈希冲突 `0x80091007`）、BA 容器获取注入运行中引导 EXE 为首搜索路径（根治重跑 `WixAttachedContainer 0x80070002`）、缓存重试指数退避 + 连续无进展三次终止进失败页（日志有界）；真机复验四组断言全绿（#171）。旧版本引导器无法事后修复，**升级本版引导器即治本**。
+- **本版可感知变化（PDA 插件机制）**：`.lfplugin` manifest 新增可选 `platforms` 字段（无字段的存量 Windows 包零迁移）；PDA 宿主支持外置插件动态加载——配置页新增「插件管理」子页（浏览服务端插件包 → 安装 / 卸载，自动重启打印服务生效）、「连接打印机」新增品牌选择（Zebra 内置 + 已装插件动态扩展，插件品牌固定网口 tcp 起步）；AndroidHost 本地 HTTP 新增插件三端点（与 WinHost 同构）；插件 API 面按近似 netstandard2.0 级保守约束（决策 #159，禁 .NET 6+ 新增 BCL API）。
+- **本版可感知变化（部署与依赖）**：Release 首发 **Linux 离线部署包**单附件 `labelframe-offline-<版本>-linux-x64.tar.gz`（镜像 tar（ghcr 全名 tag 保留）+ 与在线版逐字节同源 compose + 版本钉定 .env + `install.sh` 强制 SHA256SUMS 校验 + packages 三件（Client MSI / PDA APK / zebra `.lfplugin`）+ 管理界面预解压开箱可用；`bash install.sh` 一键离线部署，U 盘 / 内网拷贝场景 fail-closed）；Excel 导入升级 TemplateFrame.Excel.Simple 2.4.1——第三方「表头不在 A 列起始」表格不再错读 / 丢列、损坏 XML 容错、读性能优化（上游 5000 行样本 1690ms → 199ms），存量模板跨版本续填实证不回退。
+- **本版可感知变化（发版链）**：release.yml 签名链缺陷修复（#199 四层）——签名 Secrets 配置后双 MSI 与引导 EXE 首次真正完成 Authenticode 签名（此前证书从不落盘、静默不签名）；nightly-perf 治理（迭代 99）——Perf 失败语义独立显红 + 阈值分环境口径，恢复性能监控信号。
+- **版本同步**：ServerOptions / HostOptions `ProductVersion` 与 e2e compose 默认版本更新为 `0.30.0`（客户端「检查更新」比较口径随升，决策 #126）。
+
 ## 迭代 101：Linux 离线部署包——Release 附件自带镜像 tar + 同源 compose + 分发产物（决策 #160） · 2026-09-23
 
 - **动机（#213）**：离线 / 内网 Linux 服务器部署此前只有 systemd 裸机一条路（`install-server-linux.sh --manifest <布局目录>`，迭代 71）；而 DEPLOY §4 推荐的 Docker 形态必须联网拉 ghcr 镜像——在线推荐 Docker、离线只有裸机，形态倒挂。用户 2026-09-23 四项拍板：不带 linux-client 镜像、带 `packages/`、带 `install.sh`、真离线自验进发版流水线。
