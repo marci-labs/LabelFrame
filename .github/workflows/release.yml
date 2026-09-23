@@ -1,6 +1,6 @@
-# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123；迭代 67 修复步骤序——插件包构建先于 Client MSI 打包并加 fail-closed 断言，#97；迭代 68 增加引导 Bundle EXE——bundle job 分阶段生成 manifest 构建、随 Release 附件发布，决策 #132；迭代 71 起 Linux 归档默认 self-contained + compose 分发附件 compose.yml / .env 随 Release 发布，决策 #134；迭代 94 修复前端产物自检特征——迭代 75 下线「PDA 日志」页致旧特征消失、反标记空转，决策 #150）
+# LabelFrame 自动发布流水线（迭代 21；迭代 49 增加 Android APK；迭代 58 增加安装清单；迭代 63 增加 Zebra 官方插件包 .lfplugin——随 Release 附件发布、随 Client MSI 附带并收录 install manifest，决策 #123；迭代 67 修复步骤序——插件包构建先于 Client MSI 打包并加 fail-closed 断言，#97；迭代 68 增加引导 Bundle EXE——bundle job 分阶段生成 manifest 构建、随 Release 附件发布，决策 #132；迭代 71 起 Linux 归档默认 self-contained + compose 分发附件 compose.yml / .env 随 Release 发布，决策 #134；迭代 94 修复前端产物自检特征——迭代 75 下线「PDA 日志」页致旧特征消失、反标记空转，决策 #150；迭代 101 增加 Linux 离线部署包——offline-bundle job 组包 + 真离线自验后随 Release 附件发布，修订决策 #64「Release 不含 docker 离线包」口径，决策 #160）
 # 触发：推送 v* tag（如 v0.17.0）；也可手动运行 workflow_dispatch 指定版本号。
-# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Zebra 官方插件包 / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 引导 Bundle EXE（bundle job）→ 生成安装清单 → 创建 GitHub Release。
+# 流程：测试（dotnet + 前端双模式）→ 打包（双 MSI / 插件 zip / Zebra 官方插件包 / Linux 归档 / Android APK）→ 双镜像候选 E2E → 推送 ghcr.io → 引导 Bundle EXE（bundle job）+ Linux 离线部署包（offline-bundle job，含真离线自验）→ 生成安装清单 → 创建 GitHub Release。
 # MSI 签名：仓库配置 MSI_SIGN_CERT_BASE64 / MSI_SIGN_PASSWORD Secret 时自动签名，否则跳过（自签证书过渡方案）。
 # APK 签名：四个 ANDROID_KEYSTORE_* / ANDROID_KEY_* Secret 必须齐备，缺失即构建失败——不回退 debug 签名（签名稳定化，迭代 59 决策 #119）。
 # 安装清单：install-manifest.json（+ latest.json 指针）由 release job 从当版真实产物生成并断言（schema 见 docs/DESIGN.md §6.2，迭代 58 决策 #115 / #120）；禁止人工维护。
@@ -404,6 +404,22 @@ jobs:
           docker push "$LABELFRAME_CLIENT_IMAGE:$VERSION"
           docker push "$LABELFRAME_CLIENT_IMAGE:latest"
 
+      # 离线包原料（迭代 101，#213，决策 #160）：save 已通过候选 E2E 并推送的 server 镜像——ghcr 全名 tag
+      # 原样保留（offline-bundle job 消费侧 docker load 后本地命中 tag，compose 默认 pull=missing 不再联网拉取，
+      # 离线包内 compose.yml 因此可与在线分发附件逐字节同源）。save 只取版本 tag（latest 属在线跟随语义）。
+      - name: 导出 Server 镜像 tar（离线包原料）
+        run: |
+          mkdir -p artifacts/offline-image
+          docker save "$LABELFRAME_SERVER_IMAGE:$VERSION" | gzip > "artifacts/offline-image/labelframe-server-$VERSION.image.tar.gz"
+          test -s "artifacts/offline-image/labelframe-server-$VERSION.image.tar.gz"
+          echo "镜像 tar 就位：$(du -h "artifacts/offline-image/labelframe-server-$VERSION.image.tar.gz" | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: offline-image-tar
+          path: artifacts/offline-image/labelframe-server-*.image.tar.gz
+          if-no-files-found: error
+
   # 引导 Bundle（迭代 68，#101，决策 #132）：Windows job 构建引导 EXE 并随 Release 附件发布。
   # 步骤序（#97 教训——先声明依赖再排步骤）：bundle 构建需五类产物在场（双 MSI / webui zip / .lfplugin 来自
   # release-assets，APK 来自 android-apk——manifest 收录 pda-apk 条目，缺产物即生成失败），故 needs [package, android]；
@@ -518,9 +534,91 @@ jobs:
           path: artifacts/LabelFrame-Bootstrapper-*.exe
           if-no-files-found: error
 
+  # Linux 离线部署包（迭代 101，#213，决策 #160——修订 #64「Release 不含 docker 离线包」）：
+  # 消费 docker job 已验收镜像 tar + package / android job 分发产物 + 管理界面 zip，组装单附件
+  # labelframe-offline-<版本>-linux-x64.tar.gz（镜像 tar + 同源 compose.yml + 钉定 .env + README / install.sh +
+  # packages 三件 + 预解压管理界面 + SHA256SUMS；组包契约见 scripts/make-offline-bundle.sh 头注）。
+  # 真离线自验：本 job 与 docker job 不同 runner、无本地镜像——解压最终 tar.gz 后以包内 install.sh 走用户
+  # 路径（校验 → load → compose up → /healthz 就绪），离线包不可用即整次发版失败（fail-closed，#97 口径）。
+  # 整包不进 install-manifest（与 compose 分发附件同口径：自足分发单元而非可安装产物，#116 / #134）。
+  offline-bundle:
+    name: 组装 Linux 离线部署包（真离线自验）
+    needs: [version, docker, package, android]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载发布产物（MSI / 插件包 / 管理界面 zip）
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: release
+
+      - name: 下载 Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: release
+
+      - name: 下载镜像 tar
+        uses: actions/download-artifact@v4
+        with:
+          name: offline-image-tar
+          path: image
+
+      - name: 组装离线包
+        run: |
+          bash scripts/make-offline-bundle.sh \
+            -v "$VERSION" \
+            --image-tar "image/labelframe-server-$VERSION.image.tar.gz" \
+            --client-package "release/LabelFrame-Client-$VERSION.msi" \
+            --pda-package "release/LabelFrame-AndroidHost-$VERSION.apk" \
+            --plugin-package "release/labelframe-transport-zebra-$VERSION.lfplugin" \
+            --webui-zip "release/labelframe-server-webui-$VERSION.zip" \
+            -o bundle
+
+      # fail-closed 结构断言（对最终 tar.gz 再验一次，防「组包成功但归档错位」；脚本内已有布局断言）
+      - name: 断言离线包结构（fail-closed）
+        run: |
+          TARBALL="bundle/labelframe-offline-$VERSION-linux-x64.tar.gz"
+          test -s "$TARBALL"
+          mkdir -p verify && tar -xzf "$TARBALL" -C verify
+          cd "verify/labelframe-offline-$VERSION-linux-x64"
+          test -s README.md && test -s install.sh && test -s compose.yml && test -s .env && test -s SHA256SUMS
+          test -s "images/labelframe-server-$VERSION.image.tar.gz"
+          test -s plugins/web-ui/index.html
+          ls packages/client/LabelFrame-Client-$VERSION.msi >/dev/null
+          ls packages/pda/LabelFrame-AndroidHost-$VERSION.apk >/dev/null
+          ls packages/plugin/labelframe-transport-zebra-$VERSION.lfplugin >/dev/null
+          grep -q "^LABELFRAME_VERSION=$VERSION$" .env
+          echo "离线包结构断言通过：$TARBALL（$(du -h "../../$TARBALL" | cut -f1)）"
+
+      # 真离线自验：解压 tar.gz 后以包内 install.sh 走用户路径全链（本 runner 无该镜像，load 前本地必不存在）
+      - name: 真离线自验（包内 install.sh 全链）
+        run: |
+          docker image inspect "ghcr.io/${{ github.repository_owner }}/labelframe-server:$VERSION" >/dev/null 2>&1 \
+            && { echo '::error::本 runner 意外已有目标镜像，自验前提不成立'; exit 1; } || true
+          cd "verify/labelframe-offline-$VERSION-linux-x64"
+          bash install.sh
+
+      - name: 清理自验环境
+        if: always()
+        run: |
+          if [ -d "verify/labelframe-offline-$VERSION-linux-x64" ]; then
+            (cd "verify/labelframe-offline-$VERSION-linux-x64" && docker compose down --volumes) || true
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: offline-bundle
+          path: bundle/labelframe-offline-*.tar.gz
+          if-no-files-found: error
+
   release:
     name: 创建 GitHub Release
-    needs: [version, package, docker, android, bundle]
+    needs: [version, package, docker, android, bundle, offline-bundle]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -541,6 +639,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: bundle-exe
+          path: release
+
+      - name: 下载 Linux 离线部署包
+        uses: actions/download-artifact@v4
+        with:
+          name: offline-bundle
           path: release
 
       # 安装清单（迭代 58，#51）：从当版全部产物生成 install-manifest.json + latest.json（决策 #115 / #120）。
@@ -631,6 +735,7 @@ jobs:
             release/LabelFrame-AndroidHost-*.apk
             release/labelframe-server-webui-*.zip
             release/labelframe-server-*-linux-x64.tar.gz
+            release/labelframe-offline-*-linux-x64.tar.gz
             release/labelframe-transport-zebra-*.lfplugin
             release/compose.yml
             release/.env
