@@ -240,6 +240,8 @@ flowchart LR
 | 161 | 删除类操作警示规范——实心红 danger＋确认弹窗＋Esc / 遮罩默认取消（迭代 104，2026-09-23；来源 = #225 用户拍板「删除按钮要醒目、警示不要轻易点击」（立项已决议-1：触发按钮与确认按钮均实心红，放弃「触发轻描边、仅确认实心」克制方案）＋立项会话全仓删除类操作审查底账；**收编迭代 93 #151 F-04 口径**——「日志清空无确认直执行」当轮只记 CHANGELOG 未入决策表，本轮补齐机制并升格规范） | ① **视觉规范（web）**：删除 / 清空类**触发按钮与确认弹窗确认按钮**一律 `.btn.danger` **实心红**——红底白字、hover 加深（新增 `--danger-strong` 变量供 hover；`--danger` / `--danger-soft` 语义不变，状态灯 / badge / banner / 错误文本等非按钮场景继续复用原变量不受影响）；使用 `.btn.danger` 的存量触发点（工作台 / 插件包 / 下载中心 / 设置及设计器属性面板）视觉随之全局统一。② **交互规范**：销毁类操作（删除 / 清空 / 卸载）**必须先弹确认**——web 走通用确认 Modal（文案含「不可恢复」），PDA 原生侧走 `AlertDialog`（danger 文案：标题 + 后果说明 + 确认按钮红字；触发按钮红底白字），确认后才执行；确认弹窗 **Esc / 遮罩点击默认取消**（不执行销毁，沿用通用 Modal 既有语义）。③ **本轮补齐的两处缺口**：客户端日志抽屉「清空」（原灰色 ghost 无确认直接执行）→ 实心红＋确认弹窗；PDA 宿主「插件管理」卸载（原点击即删插件目录并自动重启打印服务、无 danger 视觉）→ 红底触发按钮＋原生确认对话框。④ **范围边界**：设计器元素删除（属性面板按钮 / 键盘 Delete）会话内 Ctrl+Z 可撤销、编辑器惯例不弹窗，维持现状（仅随类名升级视觉）；Settings「覆盖安装插件」属安装行为中低风险，确认按钮维持 primary；后续新增销毁类操作一律循此规范（评审锚点） | 全仓删除类操作警示一致（醒目可辨识＋防误触双保险）；「无确认直执行」类高危缺口清零；实心红为全局统一视觉语言，非按钮 danger 场景（状态灯 / badge / banner）不受变量语义变化影响；真机 / 用户实际走查归验收侧（#225 AC-07） |
 
 
+| 162 | 离线包可选接入一个外部 Docker 网络（迭代 105，2026-09-28，#230；在线版另议） | 离线包原 `compose.yml` 与在线版保持逐字节同源。`install.sh` 从独立的 `network.env` 或同名进程环境变量读取 `LABELFRAME_EXTERNAL_NETWORK`；非空时先校验现有用户自定义 bridge 网络，再生成部署目录内的 Compose 覆盖文件，把 Server 同时接入默认网络和该外部网络（别名 `labelframe-server`），使用双文件执行 `up`。配置文件随同目录升级保留；不配置时仍仅使用原 Compose。网络不存在或不合规时启动前拒绝；共享网络仅用于受信任调用方，无 API 鉴权扩展。 | 宿主端口 53961、数据卷和 API 均不变；调用方容器在同一网络内使用 `http://labelframe-server:53961`，宿主机和远端仍使用宿主机可达地址。受支持的重建 / 升级入口为 `bash install.sh`；直接运行原生 `docker compose up -d` 不应用可选网络配置。多个外部网络、在线版发布入口不在本轮范围。 |
+
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`（常量定义于 `ApiErrorCodes.InternalError`，全仓仅此一处字面量）。分类修正（决策 #107）：请求体反序列化失败（非法 JSON / 非 UTF-8 / 类型不匹配）→ 400 + `LF_API_BAD_BODY`（中文消息，原始解析异常详情只进服务端日志）；`POST /api/printer/test` 发送失败 → 400 + `LF_TRANSPORT_TEST_FAILED`（消息含目标地址与原因）；403（非归属设备回报 / 进度）同样返回 ErrorView——错误响应不存在空 body 形态。
@@ -957,6 +959,8 @@ public interface ITopologyResolver
 - `dotnet run -f` 短 TFM 名的误匹配隐患（迭代 38 本机实证）：机器上残留旧 TFM 时代产物（如 `bin/Debug/net10.0-windows/`，现行 Windows TFM 为 `net10.0-windows10.0.26100`）时，`dotnet run -f net10.0-windows` 会匹配到旧目录、静默运行月龄旧代码（联调表现为端点大面积 404）。已清理该遗留目录，清理后同一命令被 NETSDK1005 拒绝（提示该 TFM 不在 TargetFrameworks 内）。约定：本机起服务调试使用完整 TFM 名；发现旧 TFM 残留 bin 目录随手清理（2026-09-07 已按 csproj 现行 TFM 集合清理全仓 bin/obj 旧残留，含已移除项目 Studio.Tests 的整目录构建残留）。
 
 **暂不做（有需求再排）**：
+
+- Docker 在线版可选共享网络：当前 Release 仅分发 compose.yml 与 .env，仍以独立网络和宿主端口部署；在线部署脚本及发布入口需另立流程治理迭代评估，不纳入离线包网络接入 #230。
 
 - 离线部署包 compose 卷名钉定（迭代 103 / #222 登记，决策 #160 关联）：compose 卷未钉定 `name:`，数据卷实际名 = `<部署目录名>_labelframe-data`、`container_name` 固定 `labelframe-server`——换目录升级即新建**空卷**且需先在旧目录 `docker compose down`；文档口径已修正为「固定部署目录部署 / 升级」（迭代 103，#222）规避，存量版本号目录用户按「新包解压到当初部署目录重跑」迁移。根因加固（`.env` 钉 `COMPOSE_PROJECT_NAME` 或 compose 卷显式 `name:` 使卷名与部署目录解耦）属 compose 契约改动——离线包内 compose 与在线分发附件逐字节同源（决策 #160 ①），须两处同步评估且只对未发布包生效（存量部署的卷名迁移影响需一并设计），真实需求出现再立项。
 - 方案 B：调宿主 AOT 配置扩大 interpreter 可解析面（#185 Spike 实证后用户 2026-09-23 拍板登记，决策 #159 ④；方案 A 保守 API 面约束先行）：当前 PDA 轻量档插件以保守 API 面（近似 netstandard2.0 级）承接 interpreter BCL 缺口（实证：宿主 AOT 图未引用的 .NET 6+ API 在动态加载插件内解析失败）；若未来插件确需约束面外 API（新 BCL 类型 / 新重载），评估调整宿主 AOT 配置（扩大 AOT 图 / interpreter 兜底完整性）——涉及 APK 体积与 AOT 构建链复查，收益 = 插件自由度，出现真实诉求再立项（迭代 97 TSPL 插件 #186 的 API 选型受决策 #159 约束面指导）。
