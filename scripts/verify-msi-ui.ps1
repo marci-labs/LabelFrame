@@ -125,7 +125,30 @@ foreach ($path in $MsiPaths) {
             if ($shutdownAction[0][2] -notlike "*$required*") { throw "ShutdownWinHost MSI 命令缺少安全退出逻辑：$required" }
         }
         if ($customActions -contains 'KillWinHost') { throw 'Client MSI 不得再用 taskkill 强制结束 WinHost' }
-        Write-Host "运行中升级协调：同步动作 ShutdownWinHost($shutdownSeq) 位于 CostFinalize 后、InstallValidate 前；命令含旧版作业预检与 15 秒退出等待，卸载跳过。"
+
+        # 迭代 106 返修（#229）：CA Target 属 MSI Formatted 语义——引擎剥除空花括号对 {}、把 [x] 序列按属性替换
+        # （无效属性名置空），非空且无 [属性] 引用的花括号原样保留。曾因空 catch {} 被剥成裸 catch，CA 实际执行的
+        # 32 位 powershell.exe（SystemFolder = SysWOW64）解析失败 exit 1 → CA 1722 → 全新安装与覆盖升级中止。
+        # 静态防复发：① 表内原文不得含空花括号；② 经真实引擎 Formatted 转换（只读会话 FormatRecord，不安装）
+        # 后的内层 PowerShell 必须仍可解析（本脚本类语法与 32 位 / 64 位解析器等价，用宿主 Parser 静态校验）。
+        $caTarget = $shutdownAction[0][2]
+        if ($caTarget -match '\{\}') { throw 'ShutdownWinHost 命令含空花括号 {}（Formatted 语义剥除花括号对，破坏 PowerShell 语法）' }
+        $pkgSession = $installer.GetType().InvokeMember('OpenPackage', 'InvokeMethod', $null, $installer, @($db, 0))
+        $fmtRecord = $installer.GetType().InvokeMember('CreateRecord', 'InvokeMethod', $null, $installer, @(1))
+        $fmtRecord.GetType().InvokeMember('StringData', 'SetProperty', $null, $fmtRecord, @(0, $caTarget)) | Out-Null
+        $formattedTarget = $pkgSession.GetType().InvokeMember('FormatRecord', 'InvokeMethod', $null, $pkgSession, @($fmtRecord))
+        $commandMarker = '-Command "'
+        $commandIndex = $formattedTarget.IndexOf($commandMarker)
+        if ($commandIndex -lt 0) { throw 'ShutdownWinHost 命令缺少 -Command " 前缀，无法提取内层脚本' }
+        $innerScript = $formattedTarget.Substring($commandIndex + $commandMarker.Length)
+        if ($innerScript.EndsWith('"')) { $innerScript = $innerScript.Substring(0, $innerScript.Length - 1) }
+        $parseTokens = $null; $parseErrors = $null
+        [System.Management.Automation.Language.Parser]::ParseInput($innerScript, [ref]$parseTokens, [ref]$parseErrors) | Out-Null
+        if ($parseErrors.Count -gt 0) {
+            $firstError = $parseErrors[0]
+            throw "ShutdownWinHost 命令经 Formatted 语义转换后不是可解析 PowerShell（首个错误 offset $($firstError.Extent.StartOffset)：$($firstError.Message)）——检查空花括号 / [x] 方括号序列"
+        }
+        Write-Host "运行中升级协调：同步动作 ShutdownWinHost($shutdownSeq) 位于 CostFinalize 后、InstallValidate 前；命令含旧版作业预检与 15 秒退出等待，卸载跳过；命令经引擎 Formatted 转换后仍可解析。"
     }
 
     Write-Host "断言通过：向导齐全，运行时检查（.NET $runtimeSeq / WebView2 $webview2Seq）先于欢迎页（$welcomeSeq）。"

@@ -7,6 +7,7 @@
 - Client MSI 在 `CostFinalize` 后、`InstallValidate` 前请求 WinHost 安全退出，等待上限 15 秒；状态读取失败、发现打印中项目、API 不可达或超时均中止安装，不再强制结束进程。
 - 安装器预检旧版 `/api/jobs` 的作业与逐张状态；新版 shutdown API 在队列锁内阻止退出检查与新领取 / 提交竞态。旧版预检与关闭之间的并发窗口见 DESIGN 决策 #163，待 VM 验收验证。
 - 增加队列退出门闩与实际传输 lease 单测、shutdown API 忙态集成测试和 MSI 执行序 / CustomAction 结构断言。Windows 10/11 的直接 MSI、静默、Bundle 与真实打印忙态走查由独立验收会话执行，#229 保持开放。
+- 返修（验收实测 AC-02/03 失败）：`ShutdownWinHost` 命令中的空 `catch {}` 被 MSI Formatted 语义剥除花括号对，CA 实际执行的 32 位 powershell.exe 解析失败（CA 1722，0.30.99 候选全新安装与覆盖升级全部中止）；探测失败分支改为非空体 `catch { $null }`，MSI 结构断言新增「Target 不含空花括号 + 经真实引擎 FormatRecord 转换后仍可解析 PowerShell」静态检查防复发，Formatted 约束补记 DESIGN 决策 #163。AC-02～05 归验收会话整轮重测。
 
 ## 迭代 105：离线包可选接入一个外部 Docker 网络（#230） · 2026-09-28
 
