@@ -107,6 +107,27 @@ foreach ($path in $MsiPaths) {
     if ($retryChain.Count -lt 1) { throw 'WebView2MissingDlg.RetryButton 应触发 RecheckWebView2（装完运行时无需重启安装程序）' }
     Write-Host 'WebView2 缺失对话框：重新检测链路 OK'
 
+    # Client MSI 运行中升级协调（迭代 106 / #229）：安全退出必须早于 InstallValidate，且卸载跳过。
+    if ($null -ne $optRec) {
+        $executeRows = Invoke-MsiQuery $db 'SELECT Action, Condition, Sequence FROM InstallExecuteSequence'
+        $shutdownRow = @($executeRows | Where-Object { $_[0] -eq 'ShutdownWinHost' })
+        $validateRow = @($executeRows | Where-Object { $_[0] -eq 'InstallValidate' })
+        $costRow = @($executeRows | Where-Object { $_[0] -eq 'CostFinalize' })
+        if ($shutdownRow.Count -ne 1 -or $validateRow.Count -ne 1 -or $costRow.Count -ne 1) { throw 'Client MSI 缺少唯一的 ShutdownWinHost / CostFinalize / InstallValidate 序列行' }
+        $shutdownSeq = [int]::Parse($shutdownRow[0][2])
+        if ($shutdownSeq -le [int]::Parse($costRow[0][2]) -or $shutdownSeq -ge [int]::Parse($validateRow[0][2])) {
+            throw "ShutdownWinHost($shutdownSeq) 必须位于 CostFinalize 与 InstallValidate 之间"
+        }
+        if ($shutdownRow[0][1] -notlike '*REMOVE*ALL*') { throw 'ShutdownWinHost 必须在完整卸载时跳过' }
+        $shutdownAction = @(Invoke-MsiQuery $db "SELECT Action, Type, Target FROM CustomAction WHERE Action = 'ShutdownWinHost'")
+        if ($shutdownAction.Count -ne 1 -or [int]::Parse($shutdownAction[0][1]) -ne 34) { throw 'ShutdownWinHost 必须是同步、失败阻断的立即 EXE 自定义动作' }
+        foreach ($required in @('/api/jobs?limit=500', '/api/host/shutdown', 'Printing', '15 秒内安全退出')) {
+            if ($shutdownAction[0][2] -notlike "*$required*") { throw "ShutdownWinHost MSI 命令缺少安全退出逻辑：$required" }
+        }
+        if ($customActions -contains 'KillWinHost') { throw 'Client MSI 不得再用 taskkill 强制结束 WinHost' }
+        Write-Host "运行中升级协调：同步动作 ShutdownWinHost($shutdownSeq) 位于 CostFinalize 后、InstallValidate 前；命令含旧版作业预检与 15 秒退出等待，卸载跳过。"
+    }
+
     Write-Host "断言通过：向导齐全，运行时检查（.NET $runtimeSeq / WebView2 $webview2Seq）先于欢迎页（$welcomeSeq）。"
     Write-Host ''
     [System.Runtime.InteropServices.Marshal]::ReleaseComObject($db) | Out-Null

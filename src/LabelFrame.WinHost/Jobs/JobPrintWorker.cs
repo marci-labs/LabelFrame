@@ -109,6 +109,12 @@ public sealed class JobPrintWorker : BackgroundService
                     await Task.Delay(TimeSpan.FromMilliseconds(settings.BatchIntervalMs), _time, stoppingToken);
                 }
 
+                using var sendLease = await _queue.TryBeginPrintSendAsync(stoppingToken);
+                if (sendLease is null)
+                {
+                    return;
+                }
+
                 _logger.LogInformation("开始打印作业 {JobId} 第 {Index} 张。", jobId, item.Index);
                 try
                 {

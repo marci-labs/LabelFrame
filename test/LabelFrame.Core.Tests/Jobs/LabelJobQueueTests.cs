@@ -121,6 +121,44 @@ public class LabelJobQueueTests
     }
 
     [Fact]
+    public async Task Shutdown_preparation_should_reject_while_an_item_is_printing()
+    {
+        using var db = new TempJobDb();
+        await db.Queue.SubmitAsync("req-shutdown-busy", ["zpl-0"]);
+        await db.Queue.ClaimNextItemAsync();
+
+        Assert.False(await db.Queue.TryPrepareForShutdownAsync());
+        var job = await db.Queue.GetAsync((await db.Store.ListJobsByStatusAsync(LabelJobStatus.Printing)).Single().Id);
+        var printingItem = Assert.Single(job!.Items, item => item.Status == LabelJobItemStatus.Printing);
+        await db.Queue.CompleteItemAsync(job.Id, printingItem.Id);
+        Assert.True(await db.Queue.TryPrepareForShutdownAsync());
+    }
+
+    [Fact]
+    public async Task Shutdown_preparation_should_block_new_submissions_and_claims_when_idle()
+    {
+        using var db = new TempJobDb();
+        await db.Queue.SubmitAsync("req-shutdown-idle", ["zpl-0"]);
+
+        Assert.True(await db.Queue.TryPrepareForShutdownAsync());
+        Assert.Null(await db.Queue.ClaimNextItemAsync());
+        await Assert.ThrowsAsync<LabelJobException>(() => db.Queue.SubmitAsync("req-after-shutdown", ["zpl-1"]));
+    }
+
+    [Fact]
+    public async Task Shutdown_preparation_should_wait_for_transport_even_if_job_is_cancelled()
+    {
+        using var db = new TempJobDb();
+        await db.Queue.SubmitAsync("req-shutdown-cancelled", ["zpl-0"]);
+        var claimed = (await db.Queue.ClaimNextItemAsync())!.Value;
+        using var send = await db.Queue.TryBeginPrintSendAsync();
+        Assert.NotNull(send);
+        await db.Queue.CancelAsync(claimed.JobId);
+
+        Assert.False(await db.Queue.TryPrepareForShutdownAsync());
+    }
+
+    [Fact]
     public async Task Complete_all_items_should_mark_job_completed()
     {
         using var db = new TempJobDb();
