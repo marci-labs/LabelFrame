@@ -35,6 +35,19 @@ public sealed class WinHostEndpointsTests : WinHostIntegrationTestBase
     }
 
     [Fact]
+    public async Task Host_shutdown_should_reject_when_a_print_item_is_in_flight()
+    {
+        var queue = Services.GetRequiredService<LabelFrame.Core.Jobs.LabelJobQueue>();
+        await queue.SubmitAsync($"shutdown-busy-{Guid.NewGuid():N}", ["^XA^XZ"]);
+        await queue.ClaimNextItemAsync();
+
+        using var response = await Client.PostAsync("/api/host/shutdown", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains("正在打印", (await JsonAsync(response)).GetProperty("message").GetString());
+    }
+
+    [Fact]
     public async Task Transport_get_should_list_builtin_plugins_and_post_invalid_should_400()
     {
         var config = await JsonAsync("/api/transport");
@@ -317,6 +330,7 @@ public abstract class WinHostIntegrationTestBase : IDisposable
     private readonly string _directory;
     private readonly WebApplication _app;
     protected HttpClient Client { get; }
+    protected IServiceProvider Services => _app.Services;
 
     protected WinHostIntegrationTestBase()
     {

@@ -12,6 +12,22 @@ public sealed class LabelJobQueue : IDisposable
     private readonly ILabelJobStore _store;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly SemaphoreSlim _pendingWake = new(0, int.MaxValue);
+    private bool _shutdownPrepared;
+    private int _activeSends;
+
+    private sealed class PrintSendLease(LabelJobQueue owner) : IDisposable
+    {
+        private LabelJobQueue? _owner = owner;
+
+        public void Dispose()
+        {
+            var queue = Interlocked.Exchange(ref _owner, null);
+            if (queue is not null)
+            {
+                Interlocked.Decrement(ref queue._activeSends);
+            }
+        }
+    }
 
     /// <summary>创建作业队列。</summary>
     public LabelJobQueue(ILabelJobStore store)
@@ -35,6 +51,11 @@ public sealed class LabelJobQueue : IDisposable
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_shutdownPrepared)
+            {
+                throw new LabelJobException(JobErrorCodes.InvalidTransition, "宿主正在安全退出，暂不接受新打印作业。");
+            }
+
             var existing = await _store.GetJobByRequestIdAsync(requestId, cancellationToken);
             if (existing is not null)
             {
@@ -104,6 +125,11 @@ public sealed class LabelJobQueue : IDisposable
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_shutdownPrepared)
+            {
+                return null;
+            }
+
             // 一个批内可连续领取：同时扫描 Pending 与在途 Printing 作业（最旧优先）
             var activeJobs = new List<LabelJob>();
             activeJobs.AddRange(await _store.ListJobsByStatusAsync(LabelJobStatus.Pending, cancellationToken));
@@ -129,6 +155,60 @@ public sealed class LabelJobQueue : IDisposable
             var fresh = await _store.GetJobAsync(job.Id, cancellationToken);
             var freshItem = fresh!.Items.First(i => i.Id == item.Id);
             return (job.Id, freshItem);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// 原子准备宿主退出：在队列锁内确认没有正在发送的标签，并阻止后续提交 / 领取。
+    /// 若当前打印仍在进行则不改变队列状态，调用方应拒绝本次退出请求。
+    /// </summary>
+    public async Task<bool> TryPrepareForShutdownAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_shutdownPrepared)
+            {
+                return true;
+            }
+
+            if (Volatile.Read(ref _activeSends) > 0)
+            {
+                return false;
+            }
+
+            var printingJobs = await _store.ListJobsByStatusAsync(LabelJobStatus.Printing, cancellationToken);
+            if (printingJobs.Any(job => job.Items.Any(item => item.Status == LabelJobItemStatus.Printing)))
+            {
+                return false;
+            }
+
+            _shutdownPrepared = true;
+            return true;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>登记一次真实传输区间；返回 null 表示退出已准备好，不得再开始发送。</summary>
+    public async Task<IDisposable?> TryBeginPrintSendAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_shutdownPrepared)
+            {
+                return null;
+            }
+
+            Interlocked.Increment(ref _activeSends);
+            return new PrintSendLease(this);
         }
         finally
         {

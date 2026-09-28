@@ -2,6 +2,12 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 106：Windows Client MSI 运行中升级安全退出 WinHost（#229） · 2026-09-28
+
+- Client MSI 在 `CostFinalize` 后、`InstallValidate` 前请求 WinHost 安全退出，等待上限 15 秒；状态读取失败、发现打印中项目、API 不可达或超时均中止安装，不再强制结束进程。
+- 安装器预检旧版 `/api/jobs` 的作业与逐张状态；新版 shutdown API 在队列锁内阻止退出检查与新领取 / 提交竞态。旧版预检与关闭之间的并发窗口见 DESIGN 决策 #163，待 VM 验收验证。
+- 增加队列退出门闩与实际传输 lease 单测、shutdown API 忙态集成测试和 MSI 执行序 / CustomAction 结构断言。Windows 10/11 的直接 MSI、静默、Bundle 与真实打印忙态走查由独立验收会话执行，#229 保持开放。
+
 ## 迭代 105：离线包可选接入一个外部 Docker 网络（#230） · 2026-09-28
 
 - 离线包 `install.sh` 支持 `network.env` 中的 `LABELFRAME_EXTERNAL_NETWORK`（进程环境变量优先）：启动前验证现有本地用户自定义 bridge 网络，生成最小 Compose 覆盖文件并将 Server 同时接入原默认网络和指定网络，提供 `labelframe-server` 别名；未配置时保持独立部署、端口和数据卷不变。

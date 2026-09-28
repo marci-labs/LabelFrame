@@ -241,6 +241,7 @@ flowchart LR
 
 
 | 162 | 离线包可选接入一个外部 Docker 网络（迭代 105，2026-09-28，#230；在线版另议） | 离线包原 `compose.yml` 与在线版保持逐字节同源。`install.sh` 从独立的 `network.env` 或同名进程环境变量读取 `LABELFRAME_EXTERNAL_NETWORK`；非空时先校验现有用户自定义 bridge 网络，再生成部署目录内的 Compose 覆盖文件，把 Server 同时接入默认网络和该外部网络（别名 `labelframe-server`），使用双文件执行 `up`。配置文件随同目录升级保留；不配置时仍仅使用原 Compose。网络不存在或不合规时启动前拒绝；共享网络仅用于受信任调用方，无 API 鉴权扩展。 | 宿主端口 53961、数据卷和 API 均不变；调用方容器在同一网络内使用 `http://labelframe-server:53961`，宿主机和远端仍使用宿主机可达地址。受支持的重建 / 升级入口为 `bash install.sh`；直接运行原生 `docker compose up -d` 不应用可选网络配置。多个外部网络、在线版发布入口不在本轮范围。 |
+| 163 | Windows Client MSI 运行中升级的宿主退出协调（迭代 106，2026-09-28，#229；#229 纯净 Win10 VM 复现：RM 的 WM_CLOSE 被托盘逻辑取消，现有 `KillWinHost` 晚于 `InstallValidate`） | MSI 在 `CostFinalize` 后、`InstallValidate` 前同步执行安全退出动作。先查旧版 `/api/jobs?limit=500` 的作业与 item 状态；查询失败、找不到本机 API 端口或存在 `Printing` 项均中止安装。空闲时 POST 旧版已有 `/api/host/shutdown`，最多等待 15 秒至同一 PID 退出；失败或超时中止。卸载与 MajorUpgrade 旧产品卸载子会话跳过；首次安装无进程为空操作；静默 / Bundle 新产品安装与直接 MSI 共用序列。新版 shutdown API 在队列锁内检查 `Printing` 状态与实际传输 lease，并禁止后续提交 / 领取；旧版兼容使用 MSI 状态预检。**旧版预检至关闭之间仍有短并发窗口**，需由真实 VM 并发验收确认。MSI immediate action 不跨用户强杀进程 | 消除升级时 RM 文件占用弹窗循环；打印中状态明确拒绝升级；不再 `/F` 强杀；所有检查与退出等待有界，失败即中止。回退 = 移除 MSI 动作和队列退出门闩 / lease。Windows 10/11 直接 MSI、静默、Bundle、卸载与打印忙态按 #229 AC-01～06 验收；真实 VM 证据由独立会话补充 |
 
 ## 5. API 概览
 

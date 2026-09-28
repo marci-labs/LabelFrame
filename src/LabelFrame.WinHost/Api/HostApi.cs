@@ -59,12 +59,18 @@ internal static class HostApi
         Api.PrintSettingsApi.Post(context.Connection.RemoteIpAddress, request, store, printSettings));
 
     // ---- 本机服务关闭（Web UI 设置页「退出程序」用；与托盘菜单共用统一退出路径，缺陷 #58）----
-    app.MapPost("/api/host/shutdown", (HttpContext context, HostExitCoordinator exit) =>
+    app.MapPost("/api/host/shutdown", async (HttpContext context, HostExitCoordinator exit, LabelJobQueue queue, CancellationToken cancellationToken) =>
     {
         var remote = context.Connection.RemoteIpAddress;
         if (remote is null || !System.Net.IPAddress.IsLoopback(remote))
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        // 队列锁内原子拒绝正在打印的退出请求，并停止新提交 / 领取，避免检查与开始打印之间的竞态。
+        if (!await queue.TryPrepareForShutdownAsync(cancellationToken))
+        {
+            return Results.Conflict(new ErrorView(JobErrorCodes.InvalidTransition, "当前有标签正在打印。请等待本张完成后重试升级。"));
         }
 
         // 200ms 缓冲让本响应先送达客户端，再进入「优雅停止 + 限时兜底强退」序列——
