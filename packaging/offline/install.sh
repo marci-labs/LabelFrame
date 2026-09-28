@@ -17,6 +17,8 @@ BUNDLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$BUNDLE_DIR"
 PORT=53961
 IMAGE_REPO_DEFAULT="ghcr.io/marci-labs/labelframe-server"
+NETWORK_FILE="network.env"
+NETWORK_OVERRIDE=".labelframe-network.compose.yml"
 
 die() { echo "[LabelFrame 离线部署] 错误：$*" >&2; exit 1; }
 info() { echo "[LabelFrame 离线部署] $*"; }
@@ -24,6 +26,47 @@ info() { echo "[LabelFrame 离线部署] $*"; }
 command -v docker >/dev/null 2>&1 || die "未找到 docker——本包不含 Docker 本体，请先在目标机安装 Docker Engine。"
 docker compose version >/dev/null 2>&1 || die "未找到 docker compose 子命令（需 Docker Compose v2）。"
 command -v sha256sum >/dev/null 2>&1 || die "未找到 sha256sum（Ubuntu / Debian：apt-get install -y coreutils）。"
+
+# 进程环境变量优先；独立配置文件不随新版本离线包解压而覆盖。
+NETWORK_SET=${LABELFRAME_EXTERNAL_NETWORK+x}
+NETWORK_NAME=${LABELFRAME_EXTERNAL_NETWORK:-}
+if [ -z "$NETWORK_SET" ] && [ -f "$NETWORK_FILE" ]; then
+  while IFS='=' read -r key value || [ -n "$key" ]; do
+    case "$key" in
+      ''|\#*) continue ;;
+      LABELFRAME_EXTERNAL_NETWORK)
+        [ -z "$NETWORK_SET" ] || die "$NETWORK_FILE 重复定义 LABELFRAME_EXTERNAL_NETWORK。"
+        NETWORK_NAME="${value%$'\r'}"
+        NETWORK_SET=1 ;;
+      *) die "$NETWORK_FILE 含未知配置项：$key。" ;;
+    esac
+  done < "$NETWORK_FILE"
+fi
+
+COMPOSE_ARGS=(-f compose.yml)
+if [ -n "$NETWORK_NAME" ]; then
+  [[ "$NETWORK_NAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] || die "外部网络名无效：仅允许字母、数字、下划线、点和连字符，且须以字母或数字开头。"
+  NETWORK_INFO=$(docker network inspect --format '{{.Driver}}|{{.Name}}|{{.Scope}}' "$NETWORK_NAME" 2>/dev/null) || die "外部网络 $NETWORK_NAME 不存在；请先由网络所有者创建用户自定义 bridge 网络。"
+  [ "$NETWORK_INFO" = "bridge|$NETWORK_NAME|local" ] && [ "$NETWORK_NAME" != bridge ] || die "外部网络 $NETWORK_NAME 须为现有的本地用户自定义 bridge 网络。"
+  cat > "$NETWORK_OVERRIDE" <<EOF
+services:
+  labelframe-server:
+    networks:
+      default: {}
+      shared:
+        aliases:
+          - labelframe-server
+networks:
+  shared:
+    external: true
+    name: $NETWORK_NAME
+EOF
+  COMPOSE_ARGS+=(-f "$NETWORK_OVERRIDE")
+  info "将接入外部网络 $NETWORK_NAME（网络内地址：http://labelframe-server:53961）。"
+else
+  rm -f -- "$NETWORK_OVERRIDE"
+fi
+docker compose "${COMPOSE_ARGS[@]}" config -q || die "Compose 网络配置无效，服务未启动。"
 
 # 就绪探测：宿主 curl / wget 优先，两者皆无则借容器内 curl（最小化主机也可用）
 probe_healthz() {
@@ -113,7 +156,7 @@ distribute_packages 'packages/plugin/*.lfplugin' 'plugin-packages' '插件包 .l
 
 # ---- 6) compose up + 就绪等待 ----
 info "[5/6] 启动服务（docker compose up -d）..."
-docker compose up -d
+docker compose "${COMPOSE_ARGS[@]}" up -d
 
 info "[6/6] 等待服务就绪（最长 90 秒）..."
 READY=0
@@ -122,8 +165,8 @@ for _ in $(seq 1 90); do
   sleep 1
 done
 if [ "$READY" -ne 1 ]; then
-  docker compose ps || true
-  docker compose logs --tail=50 || true
+  docker compose "${COMPOSE_ARGS[@]}" ps || true
+  docker compose "${COMPOSE_ARGS[@]}" logs --tail=50 || true
   die "服务未在 90 秒内就绪（/healthz 不通）——见上方容器状态与日志定位。"
 fi
 
@@ -151,4 +194,7 @@ echo "后续增删安装包：直接向上述目录拷入 / 删除文件（或�
 echo "常用命令：docker compose logs -f（跟日志）/ docker compose restart（重启）/ docker compose down（停止，数据卷保留）"
 echo "防火墙放行：sudo ufw allow $PORT/tcp"
 echo "升级：新版本离线包解压到本部署目录（tar -xzf 新包 -C . --strip-components=1）后重跑 install.sh——同一目录数据卷沿用（实际卷名 = <部署目录名>_labelframe-data），数据不动。"
+if [ -n "$NETWORK_NAME" ]; then
+  echo "外部网络：$NETWORK_NAME（调用方容器须自行接入同一网络，ServerUrl=http://labelframe-server:$PORT）。重建 / 升级请始终运行 bash install.sh。"
+fi
 echo "================================================================="

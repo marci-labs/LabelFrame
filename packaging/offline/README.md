@@ -43,6 +43,20 @@ curl http://127.0.0.1:53961/healthz        # {"service":"LabelFrame.Server","sta
 bash install.sh    # 校验 -> docker load -> 预建挂载目录 -> 自动分发 packages 三件 -> compose up -> 等待就绪并输出访问地址；幂等可重跑
 ```
 
+### 可选：接入一个现有 Docker 网络
+
+默认不配置时，服务只加入自身 Compose 网络，仍发布宿主端口 53961。若同机其他容器需要通过容器 DNS 访问服务，先由网络所有者创建一个受信任的用户自定义 bridge 网络，然后在离线包部署目录创建 `network.env`：
+
+```bash
+docker network create shared-print       # 网络已存在时跳过
+printf 'LABELFRAME_EXTERNAL_NETWORK=shared-print\n' > network.env
+bash install.sh
+```
+
+也可单次运行 `LABELFRAME_EXTERNAL_NETWORK=shared-print bash install.sh`（进程变量优先于 `network.env`）。脚本在启动前检查网络存在且为本地用户自定义 bridge 网络；无效名称或不存在时明确报错。同目录升级时保留 `network.env`，无需重新填写；重建 / 升级均运行 `bash install.sh`，不要绕过脚本只执行 `docker compose up -d`，后者不会应用可选网络配置。清空 `network.env` 中的变量值并重跑可恢复独立模式。一个部署只支持一个外部网络，多网络另行评估。
+
+调用方容器须由其自身部署接入相同网络，`ServerUrl=http://labelframe-server:53961`；宿主机进程仍用 `http://127.0.0.1:53961`，远端 PC / PDA 使用 `http://<宿主机可达 IP>:53961`（需放通防火墙并保证路由可达）。网络别名仅在共享网络内解析，避免在该网络上给其他容器使用同名别名。服务端 API 当前无鉴权，接入共享网络会扩大容器内可达范围，只接入受信任网络。在线版 Release `compose.yml` + `.env` 的直接 Compose 部署暂不支持此选项。
+
 ## 分发客户端 / PDA / 插件安装包（离线环境闭环）
 
 `install.sh` 在启动服务前**自动**把 `packages/` 三件拷入对应挂载目录（`cp -f` 幂等覆盖，包内原件保留），部署完成即可用——下载中心三列表开箱非空，客户端 / PDA / 插件安装全程无需外网。对应关系：
