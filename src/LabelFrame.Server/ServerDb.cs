@@ -27,6 +27,7 @@ public sealed class ServerDb
             completed_items INTEGER NOT NULL DEFAULT 0,
             failed_items    INTEGER NOT NULL DEFAULT 0,
             error_message   TEXT NULL,
+            error_code      TEXT NULL,
             payload_json    TEXT NOT NULL,
             callback_url    TEXT NULL
         );
@@ -66,6 +67,7 @@ public sealed class ServerDb
 
         await MigrateDevicesLastIpAsync(connection, cancellationToken);
         await MigrateServerJobsCallbackUrlAsync(connection, cancellationToken);
+        await MigrateServerJobsErrorCodeAsync(connection, cancellationToken);
     }
 
     /// <summary>旧库兼容迁移：devices 表缺少 last_ip 列时补列（已存在则跳过；失败静默忽略，不影响启动）。</summary>
@@ -130,6 +132,41 @@ public sealed class ServerDb
         {
             await using var alter = connection.CreateCommand();
             alter.CommandText = "ALTER TABLE server_jobs ADD COLUMN callback_url TEXT NULL;";
+            await alter.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch
+        {
+            // 已存在列等竞态 / 约束差异：静默忽略，保持旧库可启动
+        }
+    }
+
+    /// <summary>旧库兼容迁移：server_jobs 表缺少 error_code 列时补列（决策 #164 ③ / #166，迭代 109；已存在则跳过；失败静默忽略，不影响启动）。error_message 中文存量不迁移（历史行 error_code 为 NULL）。</summary>
+    private static async Task MigrateServerJobsErrorCodeAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        var hasErrorCode = false;
+        await using (var probe = connection.CreateCommand())
+        {
+            probe.CommandText = "PRAGMA table_info(server_jobs);";
+            await using var reader = await probe.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                if (string.Equals(reader.GetString(1), "error_code", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasErrorCode = true;
+                    break;
+                }
+            }
+        }
+
+        if (hasErrorCode)
+        {
+            return;
+        }
+
+        try
+        {
+            await using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE server_jobs ADD COLUMN error_code TEXT NULL;";
             await alter.ExecuteNonQueryAsync(cancellationToken);
         }
         catch
@@ -357,6 +394,7 @@ public sealed class ServerDb
     }
 
     /// <summary>更新作业结果。</summary>
+    /// <param name="errorCode">失败原因码（决策 #164 ③ / #166：宿主回报可选携带；成功回报传 null）。</param>
     public async Task<ServerJob?> UpdateJobResultAsync(
         string jobId,
         ServerJobStatus status,
@@ -364,6 +402,7 @@ public sealed class ServerDb
         int failedItems,
         string? errorMessage,
         DateTimeOffset now,
+        string? errorCode = null,
         CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
@@ -371,13 +410,14 @@ public sealed class ServerDb
         command.CommandText = """
             UPDATE server_jobs
             SET status = $status, completed_items = $completedItems, failed_items = $failedItems,
-                error_message = $errorMessage, finished_at = $finishedAt
+                error_message = $errorMessage, error_code = $errorCode, finished_at = $finishedAt
             WHERE id = $id;
             """;
         command.Parameters.AddWithValue("$status", status.ToString());
         command.Parameters.AddWithValue("$completedItems", completedItems);
         command.Parameters.AddWithValue("$failedItems", failedItems);
         command.Parameters.AddWithValue("$errorMessage", (object?)errorMessage ?? DBNull.Value);
+        command.Parameters.AddWithValue("$errorCode", (object?)errorCode ?? DBNull.Value);
         command.Parameters.AddWithValue("$finishedAt", SqliteSupport.Format(now));
         command.Parameters.AddWithValue("$id", jobId);
         var affected = await command.ExecuteNonQueryAsync(cancellationToken);
@@ -471,42 +511,44 @@ public sealed class ServerDb
         return await command.ExecuteScalarAsync(cancellationToken) is long exists && exists != 0;
     }
 
-    /// <summary>把超期 Pending 作业批量标记为 Expired 终态（失败原因由调用方给出，含具体 TTL 时长）；返回标记条数。</summary>
-    public async Task<int> MarkExpiredJobsAsync(DateTimeOffset now, DateTimeOffset ttlCutoff, string reason, CancellationToken cancellationToken = default)
+    /// <summary>把超期 Pending 作业批量标记为 Expired 终态（失败原因由调用方给出，含具体 TTL 时长；原因码 LF_SRV_011 落 error_code）；返回标记条数。</summary>
+    public async Task<int> MarkExpiredJobsAsync(DateTimeOffset now, DateTimeOffset ttlCutoff, string reason, string? errorCode, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
             UPDATE server_jobs
-            SET status = $expired, finished_at = $now, error_message = $reason
+            SET status = $expired, finished_at = $now, error_message = $reason, error_code = $errorCode
             WHERE status = $pending AND created_at < $cutoff;
             """;
         command.Parameters.AddWithValue("$expired", ServerJobStatus.Expired.ToString());
         command.Parameters.AddWithValue("$pending", ServerJobStatus.Pending.ToString());
         command.Parameters.AddWithValue("$now", SqliteSupport.Format(now));
         command.Parameters.AddWithValue("$reason", reason);
+        command.Parameters.AddWithValue("$errorCode", (object?)errorCode ?? DBNull.Value);
         command.Parameters.AddWithValue("$cutoff", SqliteSupport.Format(ttlCutoff));
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
-    /// 把失联 Claimed 作业批量回收为 Failed 终态（原因由调用方给出，含错误码与超时时长）；返回回收条数。
+    /// 把失联 Claimed 作业批量回收为 Failed 终态（原因由调用方给出，含错误码与超时时长；原因码 LF_SRV_009 落 error_code）；返回回收条数。
     /// 与回报的竞态由「status = Claimed」条件收敛：回报先落库（Completed / Failed）则本 UPDATE 不命中；
     /// 回收先落库则回报走幂等重放返回既有终态——两个方向都不会互相覆盖。
     /// </summary>
-    public async Task<int> MarkTimedOutClaimedJobsAsync(DateTimeOffset now, DateTimeOffset timeoutCutoff, string reason, CancellationToken cancellationToken = default)
+    public async Task<int> MarkTimedOutClaimedJobsAsync(DateTimeOffset now, DateTimeOffset timeoutCutoff, string reason, string? errorCode, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
             UPDATE server_jobs
-            SET status = $failed, finished_at = $now, error_message = $reason
+            SET status = $failed, finished_at = $now, error_message = $reason, error_code = $errorCode
             WHERE status = $claimed AND COALESCE(claimed_at, created_at) < $cutoff;
             """;
         command.Parameters.AddWithValue("$failed", ServerJobStatus.Failed.ToString());
         command.Parameters.AddWithValue("$claimed", ServerJobStatus.Claimed.ToString());
         command.Parameters.AddWithValue("$now", SqliteSupport.Format(now));
         command.Parameters.AddWithValue("$reason", reason);
+        command.Parameters.AddWithValue("$errorCode", (object?)errorCode ?? DBNull.Value);
         command.Parameters.AddWithValue("$cutoff", SqliteSupport.Format(timeoutCutoff));
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
@@ -660,7 +702,7 @@ public sealed class ServerDb
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT id, request_id, target_device_id, status, created_at, claimed_at, finished_at,
-                   total_items, completed_items, failed_items, error_message, payload_json, callback_url
+                   total_items, completed_items, failed_items, error_message, error_code, payload_json, callback_url
             FROM server_jobs WHERE id = $id LIMIT 1;
             """;
         command.Parameters.AddWithValue("$id", jobId);
@@ -683,8 +725,9 @@ public sealed class ServerDb
             CompletedItems = reader.GetInt32(8),
             FailedItems = reader.GetInt32(9),
             ErrorMessage = reader.IsDBNull(10) ? null : reader.GetString(10),
-            PayloadJson = reader.GetString(11),
-            CallbackUrl = reader.IsDBNull(12) ? null : reader.GetString(12),
+            ErrorCode = reader.IsDBNull(11) ? null : reader.GetString(11),
+            PayloadJson = reader.GetString(12),
+            CallbackUrl = reader.IsDBNull(13) ? null : reader.GetString(13),
         };
     }
 

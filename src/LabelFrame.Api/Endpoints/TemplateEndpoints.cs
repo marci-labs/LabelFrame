@@ -45,9 +45,17 @@ public static class TemplateEndpoints
         app.MapGet("/api/templates/{name}", async (string name, CancellationToken ct) =>
         {
             var package = await options.Store.GetAsync(name, ct);
-            return package is null
-                ? Results.NotFound(new ErrorView(options.TemplateNotFoundCode, $"模板不存在:{name}。"))
-                : Results.Ok(package);
+            if (package is not null)
+            {
+                return Results.Ok(package);
+            }
+
+            // 模板化消息（决策 #164 ③ / #166）：渲染结果与旧内插文案逐字一致（冒号后无空格为既有文案形态）
+            var parameters = new Dictionary<string, string> { ["name"] = name };
+            return Results.NotFound(new ErrorView(
+                options.TemplateNotFoundCode,
+                LabelFrame.Core.Errors.ErrorMessageTemplates.Format("模板不存在:{name}。", parameters),
+                Params: parameters));
         });
 
         app.MapDelete("/api/templates/{name}", async (string name, CancellationToken ct) =>
@@ -59,9 +67,16 @@ public static class TemplateEndpoints
         app.MapGet("/api/templates/{name}/export", async (string name, CancellationToken ct) =>
         {
             var package = await options.Store.GetAsync(name, ct);
-            return package is null
-                ? Results.NotFound(new ErrorView(options.TemplateNotFoundCode, $"模板不存在:{name}。"))
-                : Results.File(TemplatePackageSerializer.Export(package), "application/zip", $"{name}.lfpkg");
+            if (package is not null)
+            {
+                return Results.File(TemplatePackageSerializer.Export(package), "application/zip", $"{name}.lfpkg");
+            }
+
+            var exportParameters = new Dictionary<string, string> { ["name"] = name };
+            return Results.NotFound(new ErrorView(
+                options.TemplateNotFoundCode,
+                LabelFrame.Core.Errors.ErrorMessageTemplates.Format("模板不存在:{name}。", exportParameters),
+                Params: exportParameters));
         });
 
         app.MapPost("/api/templates/import", async (IFormFile file, CancellationToken ct) =>
@@ -91,7 +106,11 @@ public static class TemplateEndpoints
             var package = await options.Store.GetAsync(name, ct);
             if (package is null)
             {
-                return Results.NotFound(new ErrorView(options.TemplateNotFoundCode, $"模板不存在:{name}。"));
+                var previewParameters = new Dictionary<string, string> { ["name"] = name };
+                return Results.NotFound(new ErrorView(
+                    options.TemplateNotFoundCode,
+                    LabelFrame.Core.Errors.ErrorMessageTemplates.Format("模板不存在:{name}。", previewParameters),
+                    Params: previewParameters));
             }
 
             var document = new LabelDocument

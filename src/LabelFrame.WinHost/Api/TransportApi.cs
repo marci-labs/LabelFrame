@@ -54,7 +54,11 @@ internal static class TransportApi
             // 旧格式兼容：mode + 平铺参数 → 迁移为 pluginId + params
             if (!Enum.TryParse<TransportMode>(request.Mode, ignoreCase: true, out var mode))
             {
-                return Results.BadRequest(new ErrorView(ApiErrorCodes.TransportInvalid, $"不支持的连接方式：{request.Mode}。"));
+                var modeParameters = new Dictionary<string, string> { ["mode"] = request.Mode };
+                return Results.BadRequest(new ErrorView(
+                    ApiErrorCodes.TransportInvalid,
+                    LabelFrame.Core.Errors.ErrorMessageTemplates.Format("不支持的连接方式：{mode}。", modeParameters),
+                    Params: modeParameters));
             }
 
             config = new TransportConfig

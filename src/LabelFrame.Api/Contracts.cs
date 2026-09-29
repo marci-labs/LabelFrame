@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using LabelFrame.Core.Contracts;
 using LabelFrame.Core.Layout;
 
@@ -44,5 +45,14 @@ public sealed record ExcelTemplateRequest(IReadOnlyList<ExcelTemplateColumnDto>?
 /// <summary>Excel 模板列。</summary>
 public sealed record ExcelTemplateColumnDto(string? Key, string? DisplayName);
 
-/// <summary>错误响应：问题码 + 中文消息（可选字段键）。</summary>
-public sealed record ErrorView(string Code, string Message, string? FieldKey = null);
+/// <summary>
+/// 错误响应：问题码 + 中文消息（可选字段键、可选模板参数）。
+/// params（决策 #164 ③ / #166，迭代 109）：扁平字符串键值对象，键名与消息模板占位符 <c>{key}</c> 一致，
+/// 供展示端按码表翻译插值；后端 message 永远为渲染后的中文兜底文案。缺省 / null 时序列化与旧形态逐字节等价
+/// （<see cref="JsonIgnoreAttribute"/> WhenWritingNull——params 不出现在 JSON，旧调用方无感）。
+/// </summary>
+public sealed record ErrorView(
+    string Code,
+    string Message,
+    string? FieldKey = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyDictionary<string, string>? Params = null);

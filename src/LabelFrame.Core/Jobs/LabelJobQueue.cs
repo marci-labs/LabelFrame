@@ -1,4 +1,6 @@
-﻿namespace LabelFrame.Core.Jobs;
+﻿using LabelFrame.Core.Errors;
+
+namespace LabelFrame.Core.Jobs;
 
 /// <summary>
 /// 作业队列：幂等提交、逐张状态、挂起 / 恢复 / 取消、批内顺序。
@@ -14,6 +16,10 @@ public sealed class LabelJobQueue : IDisposable
     private readonly SemaphoreSlim _pendingWake = new(0, int.MaxValue);
     private bool _shutdownPrepared;
     private int _activeSends;
+
+    /// <summary>模板化领域异常构造（决策 #164 ③ / #166）：模板 + 参数，message 渲染后与旧内插文案等价，参数随异常透传 ErrorView.params。</summary>
+    private static LabelJobException Templated(string code, string template, Dictionary<string, string> parameters)
+        => new(code, ErrorMessageTemplates.Format(template, parameters), parameters);
 
     private sealed class PrintSendLease(LabelJobQueue owner) : IDisposable
     {
@@ -223,7 +229,7 @@ public sealed class LabelJobQueue : IDisposable
         try
         {
             var job = await _store.SetItemStatusAsync(jobId, itemId, LabelJobItemStatus.Completed, null, null, cancellationToken)
-                ?? throw new LabelJobException(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+                ?? throw Templated(JobErrorCodes.JobNotFound, "作业不存在：{jobId}。", new() { ["jobId"] = jobId });
 
             if (job.Status is LabelJobStatus.Cancelled or LabelJobStatus.Completed)
             {
@@ -256,7 +262,7 @@ public sealed class LabelJobQueue : IDisposable
         try
         {
             var job = await _store.SetItemStatusAsync(jobId, itemId, LabelJobItemStatus.Failed, errorCode, errorMessage, cancellationToken)
-                ?? throw new LabelJobException(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+                ?? throw Templated(JobErrorCodes.JobNotFound, "作业不存在：{jobId}。", new() { ["jobId"] = jobId });
 
             if (job.Status is LabelJobStatus.Cancelled or LabelJobStatus.Completed)
             {
@@ -283,10 +289,10 @@ public sealed class LabelJobQueue : IDisposable
         try
         {
             var job = await _store.GetJobAsync(jobId, cancellationToken)
-                ?? throw new LabelJobException(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+                ?? throw Templated(JobErrorCodes.JobNotFound, "作业不存在：{jobId}。", new() { ["jobId"] = jobId });
             if (job.Status is not (LabelJobStatus.Pending or LabelJobStatus.Printing))
             {
-                throw new LabelJobException(JobErrorCodes.InvalidTransition, $"作业当前状态 {job.Status} 不允许挂起。");
+                throw Templated(JobErrorCodes.InvalidTransition, "作业当前状态 {status} 不允许挂起。", new() { ["status"] = job.Status.ToString() });
             }
 
             return await _store.SetJobStatusAsync(jobId, LabelJobStatus.Suspended, cancellationToken) ?? job;
@@ -304,10 +310,10 @@ public sealed class LabelJobQueue : IDisposable
         try
         {
             var job = await _store.GetJobAsync(jobId, cancellationToken)
-                ?? throw new LabelJobException(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+                ?? throw Templated(JobErrorCodes.JobNotFound, "作业不存在：{jobId}。", new() { ["jobId"] = jobId });
             if (job.Status != LabelJobStatus.Suspended)
             {
-                throw new LabelJobException(JobErrorCodes.InvalidTransition, $"作业当前状态 {job.Status} 不允许恢复。");
+                throw Templated(JobErrorCodes.InvalidTransition, "作业当前状态 {status} 不允许恢复。", new() { ["status"] = job.Status.ToString() });
             }
 
             if (!job.Items.Any(i => i.Status == LabelJobItemStatus.Pending))
@@ -332,10 +338,10 @@ public sealed class LabelJobQueue : IDisposable
         try
         {
             var job = await _store.GetJobAsync(jobId, cancellationToken)
-                ?? throw new LabelJobException(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+                ?? throw Templated(JobErrorCodes.JobNotFound, "作业不存在：{jobId}。", new() { ["jobId"] = jobId });
             if (job.Status is LabelJobStatus.Completed or LabelJobStatus.Cancelled or LabelJobStatus.Failed)
             {
-                throw new LabelJobException(JobErrorCodes.InvalidTransition, $"作业当前状态 {job.Status} 不允许取消。");
+                throw Templated(JobErrorCodes.InvalidTransition, "作业当前状态 {status} 不允许取消。", new() { ["status"] = job.Status.ToString() });
             }
 
             foreach (var item in job.Items.Where(i => i.Status is LabelJobItemStatus.Pending or LabelJobItemStatus.Printing))
@@ -358,21 +364,21 @@ public sealed class LabelJobQueue : IDisposable
         try
         {
             var job = await _store.GetJobAsync(jobId, cancellationToken)
-                ?? throw new LabelJobException(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+                ?? throw Templated(JobErrorCodes.JobNotFound, "作业不存在：{jobId}。", new() { ["jobId"] = jobId });
             if (job.Status == LabelJobStatus.Completed || job.Status == LabelJobStatus.Cancelled)
             {
-                throw new LabelJobException(JobErrorCodes.InvalidTransition, $"作业当前状态 {job.Status} 不允许重打。");
+                throw Templated(JobErrorCodes.InvalidTransition, "作业当前状态 {status} 不允许重打。", new() { ["status"] = job.Status.ToString() });
             }
 
             if (itemIndex < 0 || itemIndex >= job.Items.Count)
             {
-                throw new LabelJobException(JobErrorCodes.InvalidTransition, $"作业没有第 {itemIndex} 张标签。");
+                throw Templated(JobErrorCodes.InvalidTransition, "作业没有第 {itemIndex} 张标签。", new() { ["itemIndex"] = itemIndex.ToString(System.Globalization.CultureInfo.InvariantCulture) });
             }
 
             var item = job.Items[itemIndex];
             if (item.Status != LabelJobItemStatus.Failed)
             {
-                throw new LabelJobException(JobErrorCodes.InvalidTransition, $"第 {itemIndex} 张状态为 {item.Status}，仅 Failed 可重打。");
+                throw Templated(JobErrorCodes.InvalidTransition, "第 {itemIndex} 张状态为 {itemStatus}，仅 Failed 可重打。", new() { ["itemIndex"] = itemIndex.ToString(System.Globalization.CultureInfo.InvariantCulture), ["itemStatus"] = item.Status.ToString() });
             }
 
             await _store.SetItemStatusAsync(job.Id, item.Id, LabelJobItemStatus.Pending, null, null, cancellationToken);

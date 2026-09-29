@@ -29,8 +29,8 @@ app.MapPost("/api/jobs", async (SubmitJobRequest? request, ServerService svc, Ca
     catch (ServerException ex)
     {
         return ex.Code == ServerErrorCodes.DeviceNotFound
-            ? Results.NotFound(new ErrorView(ex.Code, ex.Message))
-            : Results.BadRequest(new ErrorView(ex.Code, ex.Message));
+            ? Results.NotFound(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters))
+            : Results.BadRequest(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters));
     }
 });
 
@@ -45,7 +45,7 @@ app.MapGet("/api/jobs/{jobId}", async (string jobId, ServerService svc, Cancella
     }
     catch (ServerException ex)
     {
-        return Results.NotFound(new ErrorView(ex.Code, ex.Message));
+        return Results.NotFound(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters));
     }
 });
 
@@ -68,7 +68,7 @@ app.MapGet("/api/devices/{deviceId}/jobs/notify", async (string deviceId, int? t
     }
     catch (ServerException ex)
     {
-        return Results.NotFound(new ErrorView(ex.Code, ex.Message));
+        return Results.NotFound(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters));
     }
 });
 
@@ -80,7 +80,7 @@ app.MapGet("/api/devices/{deviceId}/jobs/pending", async (string deviceId, HttpC
     }
     catch (ServerException ex)
     {
-        return Results.NotFound(new ErrorView(ex.Code, ex.Message));
+        return Results.NotFound(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters));
     }
 });
 
@@ -99,9 +99,9 @@ app.MapPost("/api/devices/{deviceId}/jobs/{jobId}/result", async (string deviceI
     {
         return ex.Code switch
         {
-            ServerErrorCodes.JobNotFound => Results.NotFound(new ErrorView(ex.Code, ex.Message)),
-            ServerErrorCodes.NotJobOwner => Results.Json(new ErrorView(ex.Code, ex.Message), statusCode: StatusCodes.Status403Forbidden),
-            _ => Results.Conflict(new ErrorView(ex.Code, ex.Message)),
+            ServerErrorCodes.JobNotFound => Results.NotFound(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters)),
+            ServerErrorCodes.NotJobOwner => Results.Json(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters), statusCode: StatusCodes.Status403Forbidden),
+            _ => Results.Conflict(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters)),
         };
     }
 });
@@ -122,9 +122,9 @@ app.MapPost("/api/devices/{deviceId}/jobs/{jobId}/progress", async (string devic
     {
         return ex.Code switch
         {
-            ServerErrorCodes.JobNotFound => Results.NotFound(new ErrorView(ex.Code, ex.Message)),
-            ServerErrorCodes.NotJobOwner => Results.Json(new ErrorView(ex.Code, ex.Message), statusCode: StatusCodes.Status403Forbidden),
-            _ => Results.Conflict(new ErrorView(ex.Code, ex.Message)),
+            ServerErrorCodes.JobNotFound => Results.NotFound(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters)),
+            ServerErrorCodes.NotJobOwner => Results.Json(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters), statusCode: StatusCodes.Status403Forbidden),
+            _ => Results.Conflict(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters)),
         };
     }
 });

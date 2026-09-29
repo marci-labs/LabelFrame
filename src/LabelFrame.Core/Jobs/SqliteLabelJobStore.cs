@@ -1,4 +1,5 @@
 ﻿using LabelFrame.Core.Data;
+using LabelFrame.Core.Errors;
 using Microsoft.Data.Sqlite;
 
 namespace LabelFrame.Core.Jobs;
@@ -74,8 +75,13 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
             if (inserted == 0)
             {
                 await transaction.RollbackAsync(cancellationToken);
+                // 模板化消息（决策 #164 ③ / #166）：渲染结果与旧内插文案等价
+                var requestIdParams = new Dictionary<string, string> { ["requestId"] = job.RequestId };
                 return await GetJobByRequestIdCoreAsync(connection, job.RequestId, cancellationToken)
-                    ?? throw new LabelJobException(JobErrorCodes.InvalidRequest, $"请求重复且作业不存在：{job.RequestId}。");
+                    ?? throw new LabelJobException(
+                        JobErrorCodes.InvalidRequest,
+                        ErrorMessageTemplates.Format("请求重复且作业不存在：{requestId}。", requestIdParams),
+                        requestIdParams);
             }
         }
 

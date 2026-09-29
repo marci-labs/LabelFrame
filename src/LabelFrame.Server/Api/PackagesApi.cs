@@ -120,8 +120,13 @@ app.MapPost("/api/plugin-packages", async (IFormFile file, PluginPackagesService
     }
     catch (PluginPackageException ex)
     {
-        // 业务性失败（非 zip / zip 损坏 / manifest 缺失或非法等）：消息已是中文可行动提示
-        return Results.BadRequest(new ErrorView(ServerErrorCodes.InvalidRequest, $"插件包无效：{ex.Message}"));
+        // 业务性失败（非 zip / zip 损坏 / manifest 缺失或非法等）：消息已是中文可行动提示；
+        // 模板化（决策 #164 ③ / #166）——detail 为异常原因（动态数据，展示端插值原样呈现）
+        var parameters = new Dictionary<string, string> { ["detail"] = ex.Message };
+        return Results.BadRequest(new ErrorView(
+            ServerErrorCodes.InvalidRequest,
+            LabelFrame.Core.Errors.ErrorMessageTemplates.Format("插件包无效：{detail}", parameters),
+            Params: parameters));
     }
     catch (InvalidDataException)
     {
