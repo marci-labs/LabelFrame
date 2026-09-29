@@ -28,7 +28,8 @@ app.MapPost("/api/jobs", async (SubmitJobRequest? request, ServerService svc, Ca
     }
     catch (ServerException ex)
     {
-        return ex.Code == ServerErrorCodes.DeviceNotFound
+        // 设备未注册 / 按 IP 未找到设备均 404（#242 返修：by-ip 拆码 LF_SRV_012 后两码都映射 404，HTTP 语义不变）
+        return ex.Code is ServerErrorCodes.DeviceNotFound or ServerErrorCodes.DeviceNotFoundByIp
             ? Results.NotFound(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters))
             : Results.BadRequest(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters));
     }

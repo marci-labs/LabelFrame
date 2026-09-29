@@ -225,7 +225,8 @@ public sealed class JobCallbackTests : IDisposable
         var ex = await Assert.ThrowsAsync<ServerException>(() =>
             _temp.Service.SubmitJobAsync(CreateRequest("req-bad", "dev", callbackUrl)));
 
-        Assert.Equal(ServerErrorCodes.InvalidRequest, ex.Code);
+        // #242 返修：callbackUrl 校验拆出专属码 LF_SRV_013（原 LF_SRV_002，单码单参数键集）
+        Assert.Equal(ServerErrorCodes.InvalidCallbackUrl, ex.Code);
         Assert.Contains("callbackUrl", ex.Message);
         Assert.Null(await _temp.Db.GetJobByRequestIdAsync("req-bad"));
         Assert.Empty(await _temp.Db.ListJobsAsync());

@@ -372,13 +372,15 @@ public sealed class LabelJobQueue : IDisposable
 
             if (itemIndex < 0 || itemIndex >= job.Items.Count)
             {
-                throw Templated(JobErrorCodes.InvalidTransition, "作业没有第 {itemIndex} 张标签。", new() { ["itemIndex"] = itemIndex.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+                // #242 返修：条目级越界与「作业状态不允许」（LF_JOB_002 {status}）语义不同——拆码 LF_JOB_003
+                throw Templated(JobErrorCodes.ItemNotFound, "作业没有第 {itemIndex} 张标签。", new() { ["itemIndex"] = itemIndex.ToString(System.Globalization.CultureInfo.InvariantCulture) });
             }
 
             var item = job.Items[itemIndex];
             if (item.Status != LabelJobItemStatus.Failed)
             {
-                throw Templated(JobErrorCodes.InvalidTransition, "第 {itemIndex} 张状态为 {itemStatus}，仅 Failed 可重打。", new() { ["itemIndex"] = itemIndex.ToString(System.Globalization.CultureInfo.InvariantCulture), ["itemStatus"] = item.Status.ToString() });
+                // #242 返修：条目状态不可重打拆码 LF_JOB_004（{itemIndex} + {itemStatus}），保持单码单参数键集
+                throw Templated(JobErrorCodes.ItemNotRetriable, "第 {itemIndex} 张状态为 {itemStatus}，仅 Failed 可重打。", new() { ["itemIndex"] = itemIndex.ToString(System.Globalization.CultureInfo.InvariantCulture), ["itemStatus"] = item.Status.ToString() });
             }
 
             await _store.SetItemStatusAsync(job.Id, item.Id, LabelJobItemStatus.Pending, null, null, cancellationToken);

@@ -319,7 +319,22 @@ public class LabelJobQueueTests
 
         var exception = await Assert.ThrowsAsync<LabelJobException>(async () => await db.Queue.RetryItemAsync((await db.Store.GetJobByRequestIdAsync("req-retry-bad"))!.Id, 0));
 
-        Assert.Equal(JobErrorCodes.InvalidTransition, exception.Code);
+        // #242 返修：条目状态不可重打拆码 LF_JOB_004（{itemIndex} + {itemStatus}），与 LF_JOB_002 {status} 区分
+        Assert.Equal(JobErrorCodes.ItemNotRetriable, exception.Code);
+        Assert.Equal(["itemIndex", "itemStatus"], exception.Parameters!.Keys.Order().ToList());
+    }
+
+    [Fact]
+    public async Task Retry_out_of_range_item_should_throw_item_not_found()
+    {
+        using var db = new TempJobDb();
+        var (job, _) = await db.Queue.SubmitAsync("req-retry-oob", ["zpl-0"]);
+
+        var exception = await Assert.ThrowsAsync<LabelJobException>(() => db.Queue.RetryItemAsync(job.Id, 7));
+
+        // #242 返修：条目越界拆码 LF_JOB_003（{itemIndex}），与 LF_JOB_002 {status} 区分
+        Assert.Equal(JobErrorCodes.ItemNotFound, exception.Code);
+        Assert.Equal(["itemIndex"], exception.Parameters!.Keys.Order().ToList());
     }
 
     [Fact]

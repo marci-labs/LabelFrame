@@ -455,16 +455,17 @@ describe('错误响应文案解析（迭代 109：LF_* 码表 + params 插值）
   }
 
   it('en + 已知码 + params：message 为码表英文插值（ApiError 携带 params）', async () => {
+    // #242 返修：按 IP 未找到设备拆码 LF_SRV_012（LF_SRV_001 保留设备未注册 {deviceId}）
     const err = await fetchError(
       {
-        code: 'LF_SRV_001',
+        code: 'LF_SRV_012',
         message: '按 IP 未找到设备：10.0.0.9。',
         fieldKey: null,
         params: { ip: '10.0.0.9' },
       },
       'en',
     )
-    expect(err.code).toBe('LF_SRV_001')
+    expect(err.code).toBe('LF_SRV_012')
     expect(err.message).toBe('No device found for IP: 10.0.0.9.')
     expect(err.params).toEqual({ ip: '10.0.0.9' })
   })
@@ -476,7 +477,7 @@ describe('错误响应文案解析（迭代 109：LF_* 码表 + params 插值）
 
   it('zh-CN + 已知码：直用后端中文 message（现状不变）', async () => {
     const err = await fetchError({
-      code: 'LF_SRV_001',
+      code: 'LF_SRV_012',
       message: '按 IP 未找到设备：10.0.0.9。',
       fieldKey: null,
       params: { ip: '10.0.0.9' },
