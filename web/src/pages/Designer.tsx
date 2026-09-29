@@ -306,7 +306,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     setState(next.data)
     setSelected([])
     selectedRef.current = []
-    app.setStatus('已撤销。')
+    app.setStatus(t('status.undone'))
   }, [app, t])
 
   const redo = useCallback(() => {
@@ -322,7 +322,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     setState(next.data)
     setSelected([])
     selectedRef.current = []
-    app.setStatus('已恢复。')
+    app.setStatus(t('status.redone'))
   }, [app, t])
 
   const clipboardRef = useRef<DesignElement[]>([])

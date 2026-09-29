@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 112：Web 文案迁移第二批与全站收尾——设置、设计器与下载中心（#246） · 2026-09-29
+- **页面 key 化（末批，108/111 惯例沿用）**：`Settings.tsx` / `TransportPanel.tsx` / `Designer.tsx` / `designer/SidePanel.tsx` / `designer/PropsPanel.tsx` / `designer/CanvasViewport.tsx` / `designer/ElementNode.tsx` / `DownloadCenter.tsx` / `PluginPackages.tsx` / `Devices.tsx` 用户可见文案全部 t() 化；按页新增域 `designer.json` / `downloadCenter.json` / `devices.json` / `pluginPackages.json`，`settings.json` 从语言卡片扩至全页，`common` 增补 action（save/download/delete/deleting/uploading/confirmDelete）、api.pluginTooLarge、transport.mode / zebraKind——zh-CN 值与原硬编码逐字一致（中文回归零变化）。
+- **lib 层兜底与显示名**：`design/types.ts`（typeLabel / layerLabel / elementContent / defaultElement）、`design/barcode.ts`（未绑定占位）、`design/format.ts`（导入错误）、`designer/shortcuts.ts`（快捷键清单改函数式）、`transport.ts`（MODE_LABELS / ZEBRA_KIND_LABELS 改 modeLabel / zebraKindLabel 函数）、`pluginLimits.ts`、`useTemplatePreview.ts`、`AppContext.tsx` 状态消息——调用期读 i18next 单例，消费组件订阅重渲染；条码占位判别从本地化字符串比较改为语义态 `elementContentState`（跨语言不再依赖文案比对）。
+- **待决议-1（数据性默认值，按建议项）**：UI 层默认值随 locale、模板存储值不受语言影响——新建文本元素默认占位「文本」/「Text」（`designer:elementDefaultText`）、设计器分组默认「默认」/「Default」；存量模板 Literal 不回写不回译（双语冒烟测试锚定）。PropsPanel 字体下拉**显示名**随语言（微软雅黑 → Microsoft YaHei 等；字体内部名 / 模板存储值不变，白名单 6 项维持现状）。
+- **全站圈禁（AC-01/02）**：`labelframe/no-bare-cjk-jsx` 从「已迁文件清单」升级为全站顶层规则（语言包 JSON 不在 oxlint 范围；测试 fixtures 白名单仅 Popover / ErrorBoundary 两测试文件），新增页面自动受保护；en 覆盖 zh-CN 全 key 断言纳入 4 个新域（11 域逐文件，缺失即红）。
+- **机制文档（AC-05）**：`web/src/i18n/README.md`——key 惯例、新增文案流程、en 词条维护 + 覆盖断言、圈禁白名单口径、数据性默认值语义（待决议-1 结论）。
+- **测试与走查**：新增第二批双语冒烟 6 项（设计器 / 属性面板 / 设置 / 下载中心 zh→en→zh + 待决议-1 锚定；净增 → 471）；存量中文断言仅 shortcuts.test.ts 随函数式接口机械调整（zh 断言值不变）；AC-03 英文布局走查（沙箱 stub API + 双 vite 实例 + playwright headless）22/22 程序化断言＋20 截图：设置页（连接表单 / 卸载弹窗）、设计器（属性面板密集表单 16 行两档滚动位 / 快捷键弹窗 / 离开保护三选）、下载中心（双分区表格 / PDA 长提示 / 删除确认弹窗）中英两态无溢出无未插值、0 未捕获 JS 异常。
+- en 翻译口径沿用 #245 术语表；107 底账 web 侧逐文件销账（结果评论回写 #240）；AC-06 用户全站英文态终验转 `待验收`。
+
 ## 迭代 111：Web 文案迁移第一批——工作台、作业历史与数据打印（#245） · 2026-09-29
 - **页面 key 化（108 惯例沿用）**：`Workbench.tsx` / `WorkbenchPreview.tsx` / `JobHistory.tsx` / `DataPrint.tsx`（含 MappingModal / ImagePreviewModal / JobPanel）用户可见文案全部 t() 化；按页新增域文件 `workbench.json`（39 词条）/ `jobHistory.json`（25）/ `dataPrint.json`（112），跨页共用词条入 `common`（action / state / jobStatus / column / device / value / api / transport 组，+42）——共用作业状态口径抽 `useJobStatusLabel()` hook（未知状态回退原始值与迁移前一致）；zh-CN 值与原硬编码逐字一致（中文回归零变化）。
 - **壳层残余收尾**：AppContext 状态栏初始「就绪」与启动消息（`shell.statusbar.ready` / `shell.startup.*`）、ErrorBoundary 错误页（`shell.errorBoundary.*`）、`document.title` 随语言切换（`shell.appTitle`，108 遗留项）；`NativePrintModeHint` 徽标 key 化（`common.transport.*`，同时用于设置页表单——面板其余归 112）。
