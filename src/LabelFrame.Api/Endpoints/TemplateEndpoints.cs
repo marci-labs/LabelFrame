@@ -51,10 +51,12 @@ public static class TemplateEndpoints
             }
 
             // 模板化消息（决策 #164 ③ / #166）：渲染结果与旧内插文案逐字一致（冒号后无空格为既有文案形态）
-            var parameters = new Dictionary<string, string> { ["name"] = name };
+            // 参数键 templateName（#242 返修：单码单参数键集——与 ServerService 作业提交链的同码变体统一，
+            // 否则 en 码表 {{templateName}} 词条对不上 name 变体会回退中文）
+            var parameters = new Dictionary<string, string> { ["templateName"] = name };
             return Results.NotFound(new ErrorView(
                 options.TemplateNotFoundCode,
-                LabelFrame.Core.Errors.ErrorMessageTemplates.Format("模板不存在:{name}。", parameters),
+                LabelFrame.Core.Errors.ErrorMessageTemplates.Format("模板不存在:{templateName}。", parameters),
                 Params: parameters));
         });
 
@@ -72,10 +74,10 @@ public static class TemplateEndpoints
                 return Results.File(TemplatePackageSerializer.Export(package), "application/zip", $"{name}.lfpkg");
             }
 
-            var exportParameters = new Dictionary<string, string> { ["name"] = name };
+            var exportParameters = new Dictionary<string, string> { ["templateName"] = name };
             return Results.NotFound(new ErrorView(
                 options.TemplateNotFoundCode,
-                LabelFrame.Core.Errors.ErrorMessageTemplates.Format("模板不存在:{name}。", exportParameters),
+                LabelFrame.Core.Errors.ErrorMessageTemplates.Format("模板不存在:{templateName}。", exportParameters),
                 Params: exportParameters));
         });
 
@@ -106,10 +108,10 @@ public static class TemplateEndpoints
             var package = await options.Store.GetAsync(name, ct);
             if (package is null)
             {
-                var previewParameters = new Dictionary<string, string> { ["name"] = name };
+                var previewParameters = new Dictionary<string, string> { ["templateName"] = name };
                 return Results.NotFound(new ErrorView(
                     options.TemplateNotFoundCode,
-                    LabelFrame.Core.Errors.ErrorMessageTemplates.Format("模板不存在:{name}。", previewParameters),
+                    LabelFrame.Core.Errors.ErrorMessageTemplates.Format("模板不存在:{templateName}。", previewParameters),
                     Params: previewParameters));
             }
 

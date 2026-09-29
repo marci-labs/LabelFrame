@@ -59,7 +59,8 @@ public sealed class ErrorParamsEndpointsTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-        Assert.Equal("LF_SRV_001", body.GetProperty("code").GetString());
+        // #242 返修：按 IP 未找到拆码 LF_SRV_012（原 LF_SRV_001 与「设备未注册 {deviceId}」双键变体混用）
+        Assert.Equal("LF_SRV_012", body.GetProperty("code").GetString());
         // 后端中文 message 与改造前内插文案等价（中文兜底，决策 #164 ③）
         Assert.Equal("按 IP 未找到设备：10.99.99.99。", body.GetProperty("message").GetString());
         // params：扁平字符串键值对象，键名与模板占位符一致（#242 待决议-1 建议形态）
@@ -79,9 +80,58 @@ public sealed class ErrorParamsEndpointsTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-        Assert.Equal("LF_SRV_001", body.GetProperty("code").GetString());
+        Assert.Equal("LF_SRV_012", body.GetProperty("code").GetString());
         Assert.Equal("按 IP 未找到设备：10.88.88.88。", body.GetProperty("message").GetString());
         Assert.Equal("10.88.88.88", body.GetProperty("params").GetProperty("ip").GetString());
+    }
+
+    [Fact]
+    public async Task Submit_with_invalid_callback_url_should_return_dedicated_code_and_params()
+    {
+        // #242 返修：callbackUrl 校验从 LF_SRV_002 拆出专属码 LF_SRV_013（单码单参数键集，决策 #166 ⑥）
+        using var response = await _client.PostAsync(
+            "/api/jobs",
+            Json("""{ "requestId": "ep-cb", "targetDeviceId": "any", "callbackUrl": "file://x", "template": { "contract": { "name": "t", "version": "1", "fields": [] }, "layout": { "name": "l", "contractName": "t", "contractVersion": "1", "widthMm": 40, "heightMm": 20, "elements": [] } }, "labels": [ { "data": {} } ] }"""));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal("LF_SRV_013", body.GetProperty("code").GetString());
+        Assert.Equal("callbackUrl 无效（仅支持 http/https 地址）：file://x。", body.GetProperty("message").GetString());
+        Assert.Equal("file://x", body.GetProperty("params").GetProperty("callbackUrl").GetString());
+        Assert.Single(body.GetProperty("params").EnumerateObject());
+    }
+
+    [Fact]
+    public async Task Get_unknown_template_should_return_unified_template_name_key()
+    {
+        // #242 返修锚点（验收失败项 1a）：模板库共享端点变体的参数键必须与作业提交链一致（templateName）——
+        // en 码表词条 "Template not found: {{templateName}}." 对两个变体均可插值，不再回退中文
+        using var response = await _client.GetAsync("/api/templates/不存在的模板X");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal("LF_SRV_006", body.GetProperty("code").GetString());
+        Assert.Equal("模板不存在:不存在的模板X。", body.GetProperty("message").GetString());
+        var parameters = body.GetProperty("params");
+        Assert.Equal("不存在的模板X", parameters.GetProperty("templateName").GetString());
+        Assert.Single(parameters.EnumerateObject());
+    }
+
+    [Fact]
+    public async Task Submit_with_unknown_template_name_should_return_template_name_key()
+    {
+        // #242 返修锚点：作业提交链变体（与上一测试同码同键集；提交链按既有映射返回 400）
+        using var response = await _client.PostAsync(
+            "/api/jobs",
+            Json("""{ "requestId": "ep-tpl", "targetDeviceId": "any", "templateName": "no-such-template", "labels": [ { "data": {} } ] }"""));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal("LF_SRV_006", body.GetProperty("code").GetString());
+        Assert.Equal("模板不存在：no-such-template。", body.GetProperty("message").GetString());
+        var parameters = body.GetProperty("params");
+        Assert.Equal("no-such-template", parameters.GetProperty("templateName").GetString());
+        Assert.Single(parameters.EnumerateObject());
     }
 
     [Fact]

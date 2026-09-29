@@ -60,10 +60,10 @@ public sealed class JobCallbackEndpointsTests : IDisposable
               "labels": [ { "data": { "code": "A-01" } } ] }
             """));
 
-        // 4xx 中文错误、走既有错误码体系（LF_SRV_002）
+        // 4xx 中文错误、走既有错误码体系（#242 返修：callbackUrl 校验拆出专属码 LF_SRV_013）
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(ServerErrorCodes.InvalidRequest, error.GetProperty("code").GetString());
+        Assert.Equal(ServerErrorCodes.InvalidCallbackUrl, error.GetProperty("code").GetString());
         Assert.Contains("callbackUrl", error.GetProperty("message").GetString());
 
         // 作业不入队

@@ -69,8 +69,11 @@ describe('错误码展示端翻译（AC-04）', () => {
   it('en + 已知码 + params 齐全：按 en 码表模板插值渲染', () => {
     changeLocale('en')
     expect(
-      resolveApiErrorMessage('LF_SRV_001', { ip: '10.0.0.9' }, '按 IP 未找到设备：10.0.0.9。'),
+      resolveApiErrorMessage('LF_SRV_012', { ip: '10.0.0.9' }, '按 IP 未找到设备：10.0.0.9。'),
     ).toBe('No device found for IP: 10.0.0.9.')
+    expect(
+      resolveApiErrorMessage('LF_SRV_001', { deviceId: 'dev-1' }, '设备未注册：dev-1。'),
+    ).toBe('Device not registered: dev-1.')
     expect(
       resolveApiErrorMessage('LF_SRV_003', { jobId: 'job-7' }, '作业不存在：job-7。'),
     ).toBe('Job not found: job-7.')
@@ -83,11 +86,11 @@ describe('错误码展示端翻译（AC-04）', () => {
     )
   })
 
-  it('en + 已知码但 params 缺失（多消息变体同码）：回退后端中文 message，不出现裸 {{key}}', () => {
+  it('en + 已知码但 params 缺失（无参消息变体同码）：回退后端中文 message，不出现裸 {{key}}', () => {
     changeLocale('en')
-    // LF_SRV_001 的码表模板带 {{ip}}；后端发「设备未注册」变体（无 params）→ 回退后端原文
-    const resolved = resolveApiErrorMessage('LF_SRV_001', undefined, '设备未注册：dev-1。')
-    expect(resolved).toBe('设备未注册：dev-1。')
+    // LF_PLUGIN_INVALID 的码表模板带 {{detail}}；WinHost 端点变体不带 params → 回退后端原文
+    const resolved = resolveApiErrorMessage('LF_PLUGIN_INVALID', undefined, '插件包无效，无法完成安装。')
+    expect(resolved).toBe('插件包无效，无法完成安装。')
     expect(resolved).not.toContain('{{')
   })
 
@@ -102,7 +105,7 @@ describe('错误码展示端翻译（AC-04）', () => {
 
   it('zh-CN：已知码也直用后端 message（中文权威在后端）', () => {
     changeLocale('zh-CN')
-    expect(resolveApiErrorMessage('LF_SRV_001', { ip: '10.0.0.9' }, '按 IP 未找到设备：10.0.0.9。')).toBe(
+    expect(resolveApiErrorMessage('LF_SRV_012', { ip: '10.0.0.9' }, '按 IP 未找到设备：10.0.0.9。')).toBe(
       '按 IP 未找到设备：10.0.0.9。',
     )
   })

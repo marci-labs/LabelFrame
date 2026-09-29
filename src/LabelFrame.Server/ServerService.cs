@@ -127,11 +127,11 @@ public sealed partial class ServerService : IDisposable
         }
 
         // 终态回调地址校验（决策 #154）：scheme 白名单仅 http/https，提交即拒（作业不入队）——
-        // 空串 / 纯空白 / 裸字符串 / file:// 等一律拒绝，走既有错误码体系（LF_SRV_002 + 中文消息）
+        // 空串 / 纯空白 / 裸字符串 / file:// 等一律拒绝（#242 返修：从 LF_SRV_002 拆出专属码 LF_SRV_013，参数键 callbackUrl 单码单键集）
         if (request.CallbackUrl is not null && !JobCallbackUrl.IsAllowed(request.CallbackUrl))
         {
             throw Templated(
-                ServerErrorCodes.InvalidRequest,
+                ServerErrorCodes.InvalidCallbackUrl,
                 "callbackUrl 无效（仅支持 http/https 地址）：{callbackUrl}。",
                 new() { ["callbackUrl"] = request.CallbackUrl });
         }
@@ -151,7 +151,8 @@ public sealed partial class ServerService : IDisposable
             var byIp = await _db.FindDeviceByIpAsync(normalizedIp, cancellationToken);
             if (byIp is null)
             {
-                throw Templated(ServerErrorCodes.DeviceNotFound, "按 IP 未找到设备：{ip}。", new() { ["ip"] = request.TargetIp });
+                // #242 返修：按 IP 未找到与「设备未注册（LF_SRV_001 {deviceId}）」语义不同——拆码 LF_SRV_012，各自单参数键集
+                throw Templated(ServerErrorCodes.DeviceNotFoundByIp, "按 IP 未找到设备：{ip}。", new() { ["ip"] = request.TargetIp });
             }
 
             targetDeviceId = byIp.Id;

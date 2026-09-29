@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 109 返修：LF_* 错误码参数键统一与拆码——单码单参数键集（#242） · 2026-09-29
+
+- **根因修复（AC-04 走查失败项 1a）**：LF_SRV_006 同码两处后端调用点参数键不一致（`TemplateEndpoints.cs` GET/导出/预览键 `name` vs `ServerService.cs` 作业提交链键 `templateName`），en 码表词条 `{{templateName}}` 只适配后者 → 模板库全部共享端点（工作台编辑/打印打开、数据页模板加载、预览、导出）在 en 态回退中文。统一为 `templateName`（共享端点同时覆盖 WinHost 接线的 LF_TPL_001），中文渲染输出不变（占位名变化不改变替换后文案）。
+- **同型风险全仓清扫（逐码处置，决策 #166 ⑥「单码单参数键集」）**：审查全部 `LF_*` 码的多调用点参数键变体——① LF_SRV_001 `{ip}`（按 IP 查设备 ×2）/`{deviceId}`（设备未注册 ×3）语义不同 → 拆码 `LF_SRV_012`（按 IP 未找到设备 `{ip}`），LF_SRV_001 保留 `{deviceId}`；② LF_JOB_002 条目级重打变体（`{itemIndex}` 越界、`{itemIndex}`+`{itemStatus}` 非 Failed）与 `{status}` 状态转移语义不同 → 拆码 `LF_JOB_003` / `LF_JOB_004`；③ LF_SRV_002 的 callbackUrl 校验变体 `{callbackUrl}` 与 `{detail}` 变体键集不一致 → 拆码 `LF_SRV_013`；④ 其余多调用点码（LF_JOB_001 / LF_IO_001 / LF_PLUGIN_INVALID / LF_SRV_003~006 等）键集已一致，词条无占位符的通用桶码（LF_SRV_002 / LF_API_001 / LF_TRANSPORT_INVALID）params 仅透传不插值、维持现状。拆码仅细分码语义：HTTP 状态码与中文 message 均不变（by-ip 404、callbackUrl 400、条目重打 409 映射保持）。
+- **码表同步**：web `errorCodes.json`（zh-CN + en）与 PDA `LfErrorCatalog.cs`（zh + en）同步新码词条、LF_TPL_001/LF_SRV_006 占位 `{{name}}`→`{{templateName}}`、LF_SRV_001 代表性词条改为 `{{deviceId}}` 变体；覆盖断言（web vitest + AndroidHost.Tests 解析注册表）自动要求新码入表。
+- **防复发断言**：① dotnet 源扫描测试（`ErrorParamKeyConsistencyTests`）——解析 `src` 全部携带 params 的错误构造调用点（Templated 助手 / Dictionary 惯用法，含共享端点 Server/WinHost 接线展开），按码分组断言键集一致，并与 zh / en 两份码表词条占位符逐键对齐；站点数下限 + 解析完整性断言防正则失配假绿。② web en 渲染变体矩阵（`errorParamVariants.test.ts`）——全部 19 个变体逐条断言英文词条、插值正确、无 `{{` 残留（含 LF_SRV_006 两变体与 LF_SRV_001/012 各变体）。③ 端点集成锚点：模板库 404 / 提交链 / by-ip / callbackUrl 的 code+params 断言。
+- 不在范围（维持验收侧）：渲染层多键兼容、接受变体回退、en 界面整轮复测（walk 脚本与证据链可复用）。
+
 ## 迭代 110：PDA 宿主多语言——Android 资源体系与错误码翻译（#244） · 2026-09-29
 
 - **Android 资源体系（决策 #164 ⑤，待决议-1 按建议项）**：`Resources/values/strings.xml`（缺省＝中文，与现状文案逐条等价）＋`Resources/values-en/strings.xml`（135 键含语言哨兵 `current_language`），MainActivity 各页面 / 对话框 / 保存提示 / Toast、`[Activity(Label)]` 与 manifest 应用名（`@string/app_name`）、PrintHostService 常驻通知标题与状态内容、`LabelHostConfig.PrinterDisplay` 连接方式摘要全部改资源 id 引用——语言跟随系统（其余系统语言回退缺省中文），带参模板用 `{0}` 位置占位（string.Format + InvariantCulture）。**通知渠道名不改名**（Android 渠道创建后不可改名，维持中文现状——决策 #164 ⑤ 既有口径）；HostLog 诊断 / 崩溃摘要维持中文（#164 ②）。

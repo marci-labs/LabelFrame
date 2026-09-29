@@ -156,7 +156,9 @@ public class DeviceIpTests
 
         var exception = await Assert.ThrowsAsync<ServerException>(() => db.Service.SubmitJobAsync(CreateRequest("req-ip-x", targetIp: "192.168.1.99")));
 
-        Assert.Equal(ServerErrorCodes.DeviceNotFound, exception.Code);
+        // #242 返修：按 IP 未找到拆码 LF_SRV_012（与 LF_SRV_001 设备未注册 {deviceId} 各自单参数键集）
+        Assert.Equal(ServerErrorCodes.DeviceNotFoundByIp, exception.Code);
+        Assert.Equal(["ip"], exception.Parameters!.Keys.Order().ToList());
     }
 
     [Fact]
