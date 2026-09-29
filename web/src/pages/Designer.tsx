@@ -5,6 +5,7 @@
 // 均弹三选 Modal（保存并离开 / 放弃更改 / 继续编辑）；无编辑直接离开不弹窗。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { TemplatePackage } from '../lib/api/types'
@@ -22,9 +23,10 @@ import { deriveFieldInfos } from '../lib/design/fields'
 import { createHistory } from '../lib/design/history'
 import { r2 } from '../lib/design/geometry'
 import { exportDesign, parseDesign } from '../lib/design/format'
+import i18next from '../i18n'
 import { capturePasteOnce, copyText, readClipboardText } from '../lib/clipboard'
 import { applyContractDisplayNames, fromBackendElements, toContract, toLayout } from '../lib/design/convert'
-import { SHORTCUT_GROUPS } from './designer/shortcuts'
+import { shortcutGroups } from './designer/shortcuts'
 
 const snap = (s: DesignState) => JSON.stringify({ paperW: s.paperW, paperH: s.paperH, elements: s.elements })
 const parse = (s: string): DesignState => JSON.parse(s) as DesignState
@@ -38,6 +40,8 @@ interface DesignerProps {
 
 export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps) {
   const app = useApp()
+  // 迭代 112（#246）：设计器文案 key 化（designer 域）；数据性默认值（分组「默认」）随界面语言（待决议-1）
+  const { t } = useTranslation('designer')
   const { serverMode } = app
   /** 业务 API 跟随模式（迭代 91 F-13 与 Workbench 对齐：unknown 时下方加载 effect 不发请求，待探测完成）。 */
   const biz = serverMode === 'server' ? serverApi : localApi
@@ -49,7 +53,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
   const [gridOn, setGridOn] = useState(true)
   const [pendingType, setPendingType] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [group, setGroup] = useState('默认')
+  const [group, setGroup] = useState(() => i18next.t('designer:defaultGroup'))
   const [rightTab, setRightTab] = useState<'props' | 'data'>('props')
   const [saving, setSaving] = useState(false)
   const [confirmOverwrite, setConfirmOverwrite] = useState(false)
@@ -122,7 +126,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       setViewMode('fit')
       if (pkg) {
         setName(pkg.name)
-        setGroup(pkg.group || '默认')
+        setGroup(pkg.group || i18next.t('designer:defaultGroup'))
         initialNameRef.current = pkg.name
         contractNameRef.current = pkg.contract?.name ?? pkg.name
         contractVersionRef.current = pkg.contract?.version ?? '1'
@@ -131,7 +135,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
 
     if (request.kind === 'new') {
       init({ paperW: 100, paperH: 60, elements: [] })
-      status('新建模板：控件栏添加元素，保存后返回工作台。')
+      status(t('status.newTemplate'))
       return
     }
     void biz
@@ -146,10 +150,10 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
           },
           pkg,
         )
-        if (mountedRef.current) status(`已打开模板「${pkg.name}」。`)
+        if (mountedRef.current) status(t('status.opened', { name: pkg.name }))
       })
       .catch((err) => {
-        if (mountedRef.current) setLoadError(err instanceof ApiError ? err.message : '加载模板失败。')
+        if (mountedRef.current) setLoadError(err instanceof ApiError ? err.message : t('status.loadFailed'))
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request, serverMode])
@@ -176,7 +180,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       setSelected([e.id])
       selectedRef.current = [e.id]
       setPendingType(null)
-      app.setStatus(`已添加「${type === 'Barcode' ? '条码' : type === 'QrCode' ? '二维码' : type === 'Rect' ? '矩形' : '文本'}」。`)
+      app.setStatus(t('status.added', { type: elementTypeName(type) }))
     },
     [app, commit],
   )
@@ -198,7 +202,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       commit(next)
       setSelected([])
       selectedRef.current = []
-      app.setStatus(`已删除 ${ids.length} 个元素。`)
+      app.setStatus(t('status.deleted', { count: ids.length }))
     },
     [app, commit],
   )
@@ -209,7 +213,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       if (!s) return
       const sel = s.elements.filter((e) => selectedRef.current.includes(e.id) && e.type !== 'Region')
       if (sel.length < 2) {
-        app.setStatus('对齐需要至少 2 个元素（容器除外）。')
+        app.setStatus(t('status.alignNeedTwo'))
         return
       }
       const left = Math.min(...sel.map((e) => e.x))
@@ -247,7 +251,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
         }),
       }
       commit(next)
-      app.setStatus(`已对齐 ${sel.length} 个元素。`)
+      app.setStatus(t('status.aligned', { count: sel.length }))
     },
     [app, commit],
   )
@@ -257,7 +261,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     (delta: number) => {
       const s = stateRef.current
       if (!s || selectedRef.current.length !== 1) {
-        app.setStatus('请先单选一个元素再调整层级。')
+        app.setStatus(t('status.layerNeedSingle'))
         return
       }
       const idx = s.elements.findIndex((e) => e.id === selectedRef.current[0])
@@ -294,7 +298,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     if (!h) return
     const next = h.undo()
     if (!next) {
-      app.setStatus('没有可撤销的操作。')
+      app.setStatus(t('status.nothingToUndo'))
       return
     }
     historyRef.current = next
@@ -310,7 +314,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     if (!h) return
     const next = h.redo()
     if (!next) {
-      app.setStatus('没有可恢复的操作。')
+      app.setStatus(t('status.nothingToRedo'))
       return
     }
     historyRef.current = next
@@ -329,7 +333,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     const items = s.elements.filter((e) => selectedRef.current.includes(e.id))
     if (!items.length) return
     clipboardRef.current = items.map((e) => cloneElement(e))
-    app.setStatus(`已复制 ${clipboardRef.current.length} 个元素。`)
+    app.setStatus(t('status.copied', { count: clipboardRef.current.length }))
   }, [app])
 
   const pasteClipboard = useCallback(() => {
@@ -345,7 +349,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     const ids = copies.map((c) => c.id)
     setSelected(ids)
     selectedRef.current = ids
-    app.setStatus(`已粘贴 ${copies.length} 个元素（偏移 5mm）。`)
+    app.setStatus(t('status.pasted', { count: copies.length }))
   }, [app, commit])
 
   // ---------- 设计 JSON 导入 / 导出（剪贴板，多级降级；迭代 22 修复：不再弹 prompt 重复复制） ----------
@@ -354,22 +358,22 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     if (!s) return
     const text = exportDesign(s.paperW, s.paperH, s.elements)
     if (await copyText(text)) {
-      app.setStatus(`设计已复制到剪贴板（${s.elements.length} 个元素），可用「导入设计」恢复。`)
+      app.setStatus(t('status.exported', { count: s.elements.length }))
       return
     }
     // 终极兜底：浏览器完全禁用剪贴板时展示代码供手动复制
-    const input = window.prompt('复制以下设计代码（Ctrl+C），可用「导入设计」恢复：', text)
-    if (input !== null) app.setStatus('已生成设计代码。')
+    const input = window.prompt(t('status.exportPrompt'), text)
+    if (input !== null) app.setStatus(t('status.exportFallback'))
   }, [app])
 
   const doImportDesign = useCallback(async () => {
     let text = await readClipboardText()
     if (!text) {
       // 读取权限不可用：聚焦隐藏输入，用户按一次 Ctrl+V 即完成（Esc / 超时取消）
-      app.setStatus('剪贴板读取不可用：请按 Ctrl+V 粘贴设计代码（Esc 取消）。')
+      app.setStatus(t('status.clipboardUnavailable'))
       text = await capturePasteOnce()
       if (!text) {
-        app.setStatus('已取消导入设计。')
+        app.setStatus(t('status.importCancelled'))
         return
       }
     }
@@ -379,9 +383,9 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       setSelected([])
       selectedRef.current = []
       setPendingType(null)
-      app.setStatus(`已从剪贴板导入设计（${d.elements.length} 个元素）。`)
+      app.setStatus(t('status.imported', { count: d.elements.length }))
     } catch (err) {
-      app.setStatus('导入失败：' + (err instanceof Error ? err.message : '未知错误'))
+      app.setStatus(t('status.importFailed', { reason: err instanceof Error ? err.message : i18next.t('job.unknownError') }))
     }
   }, [app, commit])
 
@@ -434,7 +438,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       }
       if (ev.key === 'Escape' && pendingType) {
         setPendingType(null)
-        app.setStatus('已取消放置。')
+        app.setStatus(t('status.placementCancelled'))
       }
     }
     document.addEventListener('keydown', onKey)
@@ -447,13 +451,13 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       setViewMode('fit')
       setZoom(1)
       setPendingType(null)
-      app.setStatus('已退出预览，画布适应窗口。')
+      app.setStatus(t('status.previewExited'))
     } else {
       setViewMode('preview')
       setZoom(1)
       setSelected([])
       selectedRef.current = []
-      app.setStatus(`打印预览：${dpi} dpi（1mm ≈ ${Math.round(dpi / 25.4)} 点）；网格 / 标尺已隐藏，画布已锁定；可中键平移 / Ctrl+滚轮缩放。`)
+      app.setStatus(t('status.previewEntered', { dpi, dots: Math.round(dpi / 25.4) }))
     }
   }, [app, dpi, viewMode])
 
@@ -472,13 +476,13 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
         const contractName = request.kind === 'new' ? finalName : contractNameRef.current
         const pkg: TemplatePackage = {
           name: finalName,
-          group: group.trim() || '默认',
+          group: group.trim() || i18next.t('designer:defaultGroup'),
           contract: toContract(contractName, version, fields),
           // 迭代 12：不传 testData——由后端从元素 previewValue 自动派生（读-改-写，旧值不丢）
           layout: toLayout(finalName, contractName, version, s.paperW, s.paperH, s.elements),
         }
         await biz.saveTemplate(pkg)
-        app.setStatus(`模板「${finalName}」已保存。`)
+        app.setStatus(t('status.saved', { name: finalName }))
         // 迭代 92（#150）：「保存并离开」成功后执行挂起的离开动作（保存成功自然复位 dirty——组件随离开卸载）；
         // 普通保存无挂起动作，维持既有 onClose 回工作台
         const leave = pendingLeaveRef.current
@@ -486,7 +490,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
         if (leave) leave()
         else onClose()
       } catch (err) {
-        app.setStatus(err instanceof ApiError ? err.message : '保存失败。')
+        app.setStatus(err instanceof ApiError ? err.message : t('status.saveFailed'))
         // 迭代 92（#150，AC-03）：保存失败停留设计器、不丢编辑——挂起的离开动作就地作废
         pendingLeaveRef.current = null
       } finally {
@@ -501,7 +505,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     if (!trimmed) {
       // 迭代 92（#150）：「保存并离开」无模板名时止步于此（停留设计器补名称），挂起动作作废
       pendingLeaveRef.current = null
-      app.setStatus('请先填写模板名称。')
+      app.setStatus(t('status.nameRequired'))
       return
     }
     const isNew = request.kind === 'new'
@@ -593,14 +597,14 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
   return (
     <div className="page designer-page">
       <div className="designer-toolbar">
-        <button className="btn ghost" onClick={requestClose} title="返回工作台">
+        <button className="btn ghost" onClick={requestClose} title={t('toolbar.backTitle')}>
           <Icon name="back" size={14} />
         </button>
-        <input className="input" style={{ width: 150 }} value={name} onChange={(ev) => setName(ev.target.value)} placeholder="模板名称" title="模板名称" />
-        <input className="input" style={{ width: 100 }} value={group} onChange={(ev) => setGroup(ev.target.value)} placeholder="分组" title="分组" />
+        <input className="input" style={{ width: 150 }} value={name} onChange={(ev) => setName(ev.target.value)} placeholder={t('toolbar.namePlaceholder')} title={t('toolbar.namePlaceholder')} />
+        <input className="input" style={{ width: 100 }} value={group} onChange={(ev) => setGroup(ev.target.value)} placeholder={t('toolbar.groupPlaceholder')} title={t('toolbar.groupPlaceholder')} />
         <span className="toolbar-sep" />
         <label className="toolbar-label">
-          宽
+          {t('toolbar.width')}
           <input
             className="input num"
             type="number"
@@ -617,7 +621,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
           mm
         </label>
         <label className="toolbar-label">
-          高
+          {t('toolbar.height')}
           <input
             className="input num"
             type="number"
@@ -634,38 +638,38 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
           mm
         </label>
         <span className="toolbar-sep" />
-        <select className="input" value={dpi} onChange={(ev) => setDpi(parseInt(ev.target.value, 10))} title="打印 DPI">
+        <select className="input" value={dpi} onChange={(ev) => setDpi(parseInt(ev.target.value, 10))} title={t('toolbar.dpiTitle')}>
           <option value={203}>203 dpi</option>
           <option value={300}>300 dpi</option>
         </select>
-        <button className={'btn' + (viewMode === 'preview' ? ' active' : '')} onClick={togglePreview} title="按所选 DPI 以真实打印比例显示">
+        <button className={'btn' + (viewMode === 'preview' ? ' active' : '')} onClick={togglePreview} title={t('toolbar.previewTitle')}>
           <Icon name="preview" size={13} />
-          {viewMode === 'preview' ? '退出预览' : '预览打印效果'}
+          {viewMode === 'preview' ? t('toolbar.exitPreview') : t('toolbar.preview')}
         </button>
-        <label className="toolbar-label" title="显示毫米网格">
+        <label className="toolbar-label" title={t('toolbar.gridTitle')}>
           <input type="checkbox" checked={gridOn} onChange={(ev) => setGridOn(ev.target.checked)} />
-          网格
+          {t('toolbar.grid')}
         </label>
         <span className="toolbar-sep" />
-        <span className="mono zoom-label" title="内容缩放（Ctrl+滚轮）">
+        <span className="mono zoom-label" title={t('toolbar.zoomTitle')}>
           {Math.round(zoom * 100)}%
         </span>
         <span className="spacer" style={{ flex: 1 }} />
-        <button className="btn ghost" onClick={() => setShortcutsOpen(true)} title="快捷键与画布操作说明">
+        <button className="btn ghost" onClick={() => setShortcutsOpen(true)} title={t('toolbar.shortcutsTitle')}>
           <Icon name="keyboard" size={13} />
-          快捷键
+          {t('toolbar.shortcuts')}
         </button>
         <button className="btn" onClick={() => void doExportDesign()} title="Ctrl+Shift+C">
           <Icon name="clipboard" size={13} />
-          导出设计
+          {t('toolbar.exportDesign')}
         </button>
         <button className="btn" onClick={() => void doImportDesign()} title="Ctrl+Shift+V">
           <Icon name="upload" size={13} />
-          导入设计
+          {t('toolbar.importDesign')}
         </button>
         <button className="btn primary" onClick={save} disabled={saving || !state}>
           <Icon name="save" size={13} />
-          {saving ? '保存中…' : '保存模板'}
+          {saving ? t('toolbar.saving') : t('toolbar.save')}
         </button>
       </div>
 
@@ -673,7 +677,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
         <div className="banner error">
           {loadError}
           <button className="btn sm" onClick={requestClose}>
-            返回工作台
+            {t('loadError.back')}
           </button>
         </div>
       )}
@@ -710,10 +714,10 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
           <aside className="designer-right">
             <div className="right-tabs">
               <button className={'right-tab' + (rightTab === 'props' ? ' active' : '')} onClick={() => setRightTab('props')}>
-                属性
+                {t('right.props')}
               </button>
               <button className={'right-tab' + (rightTab === 'data' ? ' active' : '')} onClick={() => setRightTab('data')}>
-                测试默认值
+                {t('right.data')}
               </button>
             </div>
             {rightTab === 'props' ? (
@@ -730,19 +734,19 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
             ) : (
               <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="group">
-                  <div className="group-title">测试默认值（由元素预览值自动生成）</div>
+                  <div className="group-title">{t('dataTab.title')}</div>
                   {!previewDefaults || previewDefaults.size === 0 ? (
-                    <div className="hint">暂无默认值。为「字段填充」控件设置预览值后，保存时自动生成测试默认值。</div>
+                    <div className="hint">{t('dataTab.empty')}</div>
                   ) : (
                     [...previewDefaults.entries()].map(([k, v]) => (
                       <div className="field" key={k} style={{ marginTop: 6 }}>
-                        <span className="mono" style={{ minWidth: 90 }} title={displayNameByKey.get(k) ? `字段名：${k}` : undefined}>{displayNameByKey.get(k) || k}</span>
+                        <span className="mono" style={{ minWidth: 90 }} title={displayNameByKey.get(k) ? t('dataTab.fieldNameTitle', { key: k }) : undefined}>{displayNameByKey.get(k) || k}</span>
                         <span className="mono" style={{ color: 'var(--text-2)', wordBreak: 'break-all' }}>{v}</span>
                       </div>
                     ))
                   )}
                   <div className="hint" style={{ marginTop: 8 }}>
-                    测试默认值由元素预览值自动生成，保存后作为打印测试 / PDA 测试默认值；保存后生效。
+                    {t('dataTab.hint')}
                   </div>
                 </div>
               </div>
@@ -753,17 +757,17 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
 
       {shortcutsOpen && (
         <Modal
-          title="快捷操作"
+          title={t('shortcutsModal.title')}
           onClose={() => setShortcutsOpen(false)}
           width={520}
           footer={
             <button className="btn primary" onClick={() => setShortcutsOpen(false)}>
-              知道了
+              {t('shortcutsModal.ok')}
             </button>
           }
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {SHORTCUT_GROUPS.map((g) => (
+            {shortcutGroups().map((g) => (
               <div key={g.title}>
                 <div className="group-title" style={{ marginBottom: 4 }}>{g.title}</div>
                 <table className="table">
@@ -788,48 +792,58 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
 
       {confirmOverwrite && (
         <Modal
-          title="模板已存在"
+          title={t('overwrite.title')}
           onClose={cancelOverwrite}
           footer={
             <>
               <button className="btn" onClick={cancelOverwrite}>
-                取消
+                {t('action.cancel')}
               </button>
               <button className="btn primary" onClick={() => { setConfirmOverwrite(false); void doSave(name.trim()) }}>
-                覆盖保存
+                {t('overwrite.confirm')}
               </button>
             </>
           }
         >
           <p>
-            已存在同名模板「<b>{name.trim()}</b>」，保存将覆盖原模板。确定继续吗？
+            {t('overwrite.body', { name: name.trim() })}
           </p>
         </Modal>
       )}
 
       {leaveGuardOpen && (
         <Modal
-          title="未保存的更改"
+          title={t('leaveGuard.title')}
           onClose={stayInEditor}
           footer={
             <>
               <button className="btn" onClick={stayInEditor}>
-                继续编辑
+                {t('leaveGuard.stay')}
               </button>
               <button className="btn danger" onClick={discardAndLeave}>
-                放弃更改
+                {t('leaveGuard.discard')}
               </button>
               <button className="btn primary" onClick={saveAndLeave} disabled={saving}>
-                保存并离开
+                {t('leaveGuard.saveAndLeave')}
               </button>
             </>
           }
         >
           <p>
-            当前模板有未保存的更改，离开后将丢失本次编辑。要保存后再离开吗？
+            {t('leaveGuard.body')}
           </p>
         </Modal>
       )}
     </div>
   )
+}
+
+/** 控件类型显示名（状态栏「已添加」消息用；随界面语言）。 */
+function elementTypeName(type: string): string {
+  switch (type) {
+    case 'Barcode': return i18next.t('designer:type.barcode')
+    case 'QrCode': return i18next.t('designer:type.qrcode')
+    case 'Rect': return i18next.t('designer:type.rect')
+    default: return i18next.t('designer:type.text')
+  }
 }

@@ -1,16 +1,18 @@
 // 设计器左侧栏：控件栏（点击放置 / 拖入画布）+ 打印字段（只读推导）+ 图层
+// 迭代 112（#246）：文案 key 化（designer 域 side.*）；控件栏标签随界面语言。
 
+import { useTranslation } from 'react-i18next'
 import type { DesignElement } from '../../lib/design/types'
 import { layerLabel } from '../../lib/design/types'
 import { elementsByIds } from '../../lib/design/model'
 import type { FieldInfo } from '../../lib/design/fields'
 import { Icon } from '../../components/Icon'
 
-const PALETTE: { type: string; label: string; icon: 'text' | 'barcode' | 'qrcode' | 'rect' }[] = [
-  { type: 'Text', label: '文本', icon: 'text' },
-  { type: 'Barcode', label: '条码', icon: 'barcode' },
-  { type: 'QrCode', label: '二维码', icon: 'qrcode' },
-  { type: 'Rect', label: '矩形', icon: 'rect' },
+const PALETTE: { type: string; labelKey: string; icon: 'text' | 'barcode' | 'qrcode' | 'rect' }[] = [
+  { type: 'Text', labelKey: 'type.text', icon: 'text' },
+  { type: 'Barcode', labelKey: 'type.barcode', icon: 'barcode' },
+  { type: 'QrCode', labelKey: 'type.qrcode', icon: 'qrcode' },
+  { type: 'Rect', labelKey: 'type.rect', icon: 'rect' },
 ]
 
 export interface SidePanelProps {
@@ -28,6 +30,7 @@ export interface SidePanelProps {
 }
 
 export function SidePanel(p: SidePanelProps) {
+  const { t } = useTranslation('designer')
   const locked = p.viewMode === 'preview'
   const sel = elementsByIds(p.elements, p.selected)
 
@@ -35,8 +38,8 @@ export function SidePanel(p: SidePanelProps) {
     <aside className="designer-side">
       <section>
         <h3>
-          控件栏
-          <small>点击后在画布放置 / 拖入</small>
+          {t('side.paletteTitle')}
+          <small>{t('side.paletteHint')}</small>
         </h3>
         <div className="palette">
           {PALETTE.map((it) => (
@@ -56,30 +59,30 @@ export function SidePanel(p: SidePanelProps) {
               }}
             >
               <PaletteIcon name={it.icon} />
-              {it.label}
+              {t(it.labelKey)}
             </button>
           ))}
         </div>
         {p.pendingType && (
           <div className="pending-hint">
-            {locked ? '预览中，先退出预览。' : `点击画布放置「${PALETTE.find((x) => x.type === p.pendingType)?.label}」（Esc 取消）`}
+            {locked ? t('side.previewLocked') : t('side.pendingHint', { label: t(PALETTE.find((x) => x.type === p.pendingType)?.labelKey ?? 'type.text') })}
           </div>
         )}
       </section>
 
       <section>
         <h3>
-          打印字段
-          <small>自动推导</small>
+          {t('side.fieldsTitle')}
+          <small>{t('side.fieldsHint')}</small>
         </h3>
         {locked ? (
-          <div className="side-empty">预览中</div>
+          <div className="side-empty">{t('side.previewing')}</div>
         ) : p.fields.length === 0 ? (
-          <div className="side-empty">暂无字段</div>
+          <div className="side-empty">{t('side.noFields')}</div>
         ) : (
           <ul className="field-list">
             {p.fields.map((f) => (
-              <li key={f.key} className="mono" title={f.displayName && f.displayName !== f.key ? `字段名：${f.key}` : undefined}>
+              <li key={f.key} className="mono" title={f.displayName && f.displayName !== f.key ? t('side.fieldNameTitle', { key: f.key }) : undefined}>
                 {f.displayName || f.key}
               </li>
             ))}
@@ -89,11 +92,11 @@ export function SidePanel(p: SidePanelProps) {
 
       <section style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <h3>
-          图层
-          <small>点击选中 · Delete 删除</small>
+          {t('side.layersTitle')}
+          <small>{t('side.layersHint')}</small>
         </h3>
         {locked ? (
-          <div className="side-empty">预览中（退出后可编辑）</div>
+          <div className="side-empty">{t('side.previewLockedEditable')}</div>
         ) : (
           <ul className="layer-list">
             {p.elements.map((e, i) => (
@@ -110,18 +113,18 @@ export function SidePanel(p: SidePanelProps) {
           </ul>
         )}
         <div className="layer-actions">
-          <button className="btn sm" onClick={p.onLayerTop} disabled={locked || sel.length !== 1} title="置顶">
+          <button className="btn sm" onClick={p.onLayerTop} disabled={locked || sel.length !== 1} title={t('side.toTop')}>
             <Icon name="layers" size={12} />
-            置顶
+            {t('side.toTop')}
           </button>
-          <button className="btn sm" onClick={() => p.onMoveLayer(-1)} disabled={locked || sel.length !== 1} title="上移">
-            上移
+          <button className="btn sm" onClick={() => p.onMoveLayer(-1)} disabled={locked || sel.length !== 1} title={t('side.up')}>
+            {t('side.up')}
           </button>
-          <button className="btn sm" onClick={() => p.onMoveLayer(1)} disabled={locked || sel.length !== 1} title="下移">
-            下移
+          <button className="btn sm" onClick={() => p.onMoveLayer(1)} disabled={locked || sel.length !== 1} title={t('side.down')}>
+            {t('side.down')}
           </button>
-          <button className="btn sm" onClick={p.onLayerBottom} disabled={locked || sel.length !== 1} title="置底">
-            置底
+          <button className="btn sm" onClick={p.onLayerBottom} disabled={locked || sel.length !== 1} title={t('side.toBottom')}>
+            {t('side.toBottom')}
           </button>
         </div>
       </section>
