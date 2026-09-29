@@ -33,6 +33,7 @@ import type {
 import { ApiError, DEFAULT_LOCAL_BASE_URL } from './types'
 import { getBaseUrl } from '../settings'
 import { UI_MODE } from '../uiMode'
+import { resolveApiErrorMessage } from '../../i18n/errorMessages'
 
 // ── base 解析 ──
 
@@ -112,7 +113,11 @@ function makeRequest(base: () => string, label: '服务端' | '本机客户端')
         } catch {
           body = null
         }
-        throw new ApiError(body?.code ?? 'HTTP_' + res.status, body?.message ?? `请求失败（HTTP ${res.status}）。`, body?.fieldKey)
+        throw new ApiError(
+          body?.code ?? 'HTTP_' + res.status,
+          resolveApiErrorMessage(body?.code, body?.params, body?.message ?? `请求失败（HTTP ${res.status}）。`),
+          body?.fieldKey,
+          body?.params)
       }
       if (res.status === 204) return undefined as T
       try {
@@ -177,7 +182,11 @@ function makeFetchBlob(base: () => string, label: '服务端' | '本机客户端
         } catch {
           body = null
         }
-        throw new ApiError(body?.code ?? 'HTTP_' + res.status, body?.message ?? `${failMessage}（HTTP ${res.status}）。`, body?.fieldKey)
+        throw new ApiError(
+          body?.code ?? 'HTTP_' + res.status,
+          resolveApiErrorMessage(body?.code, body?.params, body?.message ?? `${failMessage}（HTTP ${res.status}）。`),
+          body?.fieldKey,
+          body?.params)
       }
       let blob: Blob
       try {

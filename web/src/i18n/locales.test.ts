@@ -8,9 +8,11 @@ import { describe, expect, it } from 'vitest'
 import zhCNCommon from './locales/zh-CN/common.json'
 import zhCNShell from './locales/zh-CN/shell.json'
 import zhCNSettings from './locales/zh-CN/settings.json'
+import zhCNErrorCodes from './locales/zh-CN/errorCodes.json'
 import enCommon from './locales/en/common.json'
 import enShell from './locales/en/shell.json'
 import enSettings from './locales/en/settings.json'
+import enErrorCodes from './locales/en/errorCodes.json'
 
 /** 展平嵌套 JSON 为 `a.b.c` 全量 key 路径集合。 */
 function flattenKeys(obj: unknown, prefix = ''): Set<string> {
@@ -35,6 +37,7 @@ const NAMESPACES: Record<string, { zh: unknown; en: unknown }> = {
   common: { zh: zhCNCommon, en: enCommon },
   shell: { zh: zhCNShell, en: enShell },
   settings: { zh: zhCNSettings, en: enSettings },
+  errorCodes: { zh: zhCNErrorCodes, en: enErrorCodes },
 }
 
 describe('语言包 en 覆盖 zh-CN 全部 key（AC-04）', () => {
