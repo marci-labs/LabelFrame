@@ -8,6 +8,7 @@ using Android.Runtime;
 using Android.Text;
 using Android.Views;
 using Android.Widget;
+using LabelFrame.AndroidHost.Errors;
 using System.Globalization;
 using System.Net.Http;
 using System.Text.Json;
@@ -15,11 +16,13 @@ using System.Text.Json;
 namespace LabelFrame.AndroidHost;
 
 /// <summary>
-/// 宿主配置页（唯一 UI）：主页展示运行状态与设置入口，「连接服务器 / 连接打印机 / 本机信息」
-/// 三个子页各自编辑并保存（保存即重启宿主服务生效）；设备号由系统唯一码自动生成只读展示。
+/// 宿主配置页（唯一 UI）：主页展示运行状态与设置入口，「连接服务器 / 连接打印机 / 插件管理 / 本机信息」
+/// 子页各自编辑并保存（保存即重启宿主服务生效）；设备号由系统唯一码自动生成只读展示。
 /// 文案面向不懂技术的仓库用户：只说「这里填什么 / 点按钮会发生什么 / 状态意味着什么与下一步」。
+/// 迭代 110（#244，决策 #164 ⑤）：全部 UI 文案经 <c>Resources/values</c>（缺省中文）+
+/// <c>values-en</c> 资源 id 引用，语言跟随系统；错误消息经 <see cref="LfErrorCatalog"/> 按码翻译。
 /// </summary>
-[Activity(Label = "LabelFrame 标签打印", MainLauncher = true, Exported = true, LaunchMode = LaunchMode.SingleTop,
+[Activity(Label = "@string/app_name", MainLauncher = true, Exported = true, LaunchMode = LaunchMode.SingleTop,
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.KeyboardHidden)]
 public sealed class MainActivity : Activity
 {
@@ -182,6 +185,17 @@ public sealed class MainActivity : Activity
         }
     }
 
+    // ---------- 本地化辅助（迭代 110 / #244，决策 #164 ⑤：文案一律资源 id 引用） ----------
+
+    private string L(int resId) => GetString(resId)!;
+
+    private string L(int resId, params object?[] args)
+        => string.Format(CultureInfo.InvariantCulture, GetString(resId)!, args);
+
+    /// <summary>错误消息按码翻译：en 态已知码本地翻译、未知码 / 参数不全回退后端中文 message（语义对齐迭代 109）。</summary>
+    private string ResolveError(string? code, IReadOnlyDictionary<string, string>? parameters, string backendMessage)
+        => LfErrorCatalog.Resolve(code, parameters, backendMessage, HostLocale.IsEnglish(this));
+
     // ---------- 屏幕切换 ----------
 
     private void ShowScreen(Screen screen)
@@ -215,8 +229,8 @@ public sealed class MainActivity : Activity
     {
         var content = ScrollColumn();
 
-        content.AddView(PageTitle("LabelFrame 标签打印"));
-        content.AddView(Subtle("这台 PDA 的打印设置"));
+        content.AddView(PageTitle(L(Resource.String.app_name)));
+        content.AddView(Subtle(L(Resource.String.home_subtitle)));
         content.AddView(Spacing(12));
 
         _statusCard = Card(ColorMutedBg);
@@ -224,7 +238,7 @@ public sealed class MainActivity : Activity
         _statusSummary = TextView(string.Empty, 16, ColorText, bold: true);
         _statusServer = TextView(string.Empty, 13, ColorText);
         _statusPrinter = TextView(string.Empty, 13, ColorText);
-        var autoNote = TextView("状态每 5 秒自动刷新", 11, ColorTextSecondary);
+        var autoNote = TextView(L(Resource.String.home_status_auto_refresh), 11, ColorTextSecondary);
         autoNote.SetPadding(0, Dp(6), 0, 0);
         _statusCard.AddView(_statusSummary);
         _statusCard.AddView(Spacing(2));
@@ -235,13 +249,13 @@ public sealed class MainActivity : Activity
         content.AddView(_statusCard);
         content.AddView(Spacing(14));
 
-        content.AddView(EntryRow("① 连接服务器", ShowServer, out _serverEntrySummary));
+        content.AddView(EntryRow(L(Resource.String.entry_server), ShowServer, out _serverEntrySummary));
         content.AddView(Spacing(10));
-        content.AddView(EntryRow("② 连接打印机", ShowPrinter, out _printerEntrySummary));
+        content.AddView(EntryRow(L(Resource.String.entry_printer), ShowPrinter, out _printerEntrySummary));
         content.AddView(Spacing(10));
-        content.AddView(EntryRow("③ 插件管理", ShowPlugins, out _pluginsEntrySummary));
+        content.AddView(EntryRow(L(Resource.String.entry_plugins), ShowPlugins, out _pluginsEntrySummary));
         content.AddView(Spacing(10));
-        content.AddView(EntryRow("④ 本机信息", ShowDevice, out _deviceEntrySummary));
+        content.AddView(EntryRow(L(Resource.String.entry_device), ShowDevice, out _deviceEntrySummary));
 
         return WrapScroll(content);
     }
@@ -295,18 +309,18 @@ public sealed class MainActivity : Activity
     {
         var content = ScrollColumn();
 
-        content.AddView(Header("连接服务器"));
-        content.AddView(Subtle("地址问管理员要；不用服务器就留空。"));
+        content.AddView(Header(L(Resource.String.server_title)));
+        content.AddView(Subtle(L(Resource.String.server_hint)));
         content.AddView(Spacing(10));
 
-        content.AddView(FieldLabel("服务器地址"));
-        _serverInput = Input("例如 http://192.168.1.10:53961", _config.ServerUrl, InputTypes.ClassText | InputTypes.TextVariationUri);
+        content.AddView(FieldLabel(L(Resource.String.server_field_label)));
+        _serverInput = Input(L(Resource.String.server_input_hint), _config.ServerUrl, InputTypes.ClassText | InputTypes.TextVariationUri);
         content.AddView(_serverInput);
         content.AddView(Spacing(10));
 
         var testRow = new LinearLayout(this) { Orientation = Orientation.Horizontal };
         testRow.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
-        var testButton = ActionButton("测试连接", () => RunAsync(TestServerAsync));
+        var testButton = ActionButton(L(Resource.String.server_test_button), () => RunAsync(TestServerAsync));
         _serverTestText = TextView(string.Empty, 13, ColorTextSecondary);
         _serverTestText.SetPadding(Dp(10), 0, 0, 0);
         _serverTestText.LayoutParameters = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f)
@@ -331,33 +345,33 @@ public sealed class MainActivity : Activity
         var url = (_serverInput.Text?.Trim() ?? string.Empty).TrimEnd('/');
         if (url.Length == 0)
         {
-            SetResult(_serverTestText, "请先在上面填服务器地址", ColorTextSecondary);
+            SetResult(_serverTestText, L(Resource.String.server_test_empty), ColorTextSecondary);
             return;
         }
 
         if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            SetResult(_serverTestText, "地址不对——要以 http:// 开头，像 http://192.168.1.10:53961 这样", ColorErr);
+            SetResult(_serverTestText, L(Resource.String.server_test_bad_scheme), ColorErr);
             return;
         }
 
-        SetResult(_serverTestText, "正在连接…", ColorTextSecondary);
+        SetResult(_serverTestText, L(Resource.String.server_test_testing), ColorTextSecondary);
         try
         {
             using var response = await Http.GetAsync($"{url}/healthz");
             if (response.IsSuccessStatusCode)
             {
-                SetResult(_serverTestText, "✓ 能连上服务器", ColorOk);
+                SetResult(_serverTestText, L(Resource.String.server_test_ok), ColorOk);
             }
             else
             {
-                SetResult(_serverTestText, $"✗ 连不上——请检查地址是否正确（服务器返回码 {(int)response.StatusCode}）", ColorErr);
+                SetResult(_serverTestText, L(Resource.String.server_test_http_error, (int)response.StatusCode), ColorErr);
             }
         }
         catch (Exception ex)
         {
             HostLog.Warn(HostLog.Tags.Ui, $"测试服务器连接失败（{url}）：{ex.Message}");
-            SetResult(_serverTestText, "✗ 连不上服务器——请检查地址是否正确、PDA 是否连着 WiFi", ColorErr);
+            SetResult(_serverTestText, L(Resource.String.error_server_unreachable), ColorErr);
         }
     }
 
@@ -368,7 +382,7 @@ public sealed class MainActivity : Activity
             && !url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
             && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            ShowSaveHint(_serverSaveHint, "还没保存——服务器地址要以 http:// 开头，像 http://192.168.1.10:53961；不用服务器就清空");
+            ShowSaveHint(_serverSaveHint, L(Resource.String.server_save_bad_scheme));
             return;
         }
 
@@ -381,15 +395,15 @@ public sealed class MainActivity : Activity
     {
         var content = ScrollColumn();
 
-        content.AddView(Header("连接打印机"));
+        content.AddView(Header(L(Resource.String.printer_title)));
         content.AddView(Spacing(10));
 
         // 打印机品牌（迭代 96 / 决策 #156 / 决策 #95 预埋兑现）：Zebra 内置 + 已装外置插件动态扩展
-        content.AddView(FieldLabel("打印机品牌"));
+        content.AddView(FieldLabel(L(Resource.String.printer_brand_label)));
         _brandGroup = new RadioGroup(this);
         _brandGroup.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
         _brandIds.Clear();
-        var zebraRadio = ConnectionRadio("Zebra（内置）", "网线 / 蓝牙 / USB 三种连接方式");
+        var zebraRadio = ConnectionRadio(L(Resource.String.printer_brand_zebra), L(Resource.String.printer_brand_zebra_hint));
         zebraRadio.Id = 0x2001;
         _brandIds[0x2001] = LabelHostConfig.DefaultPrinterBrand;
         _brandGroup.AddView(zebraRadio);
@@ -397,21 +411,21 @@ public sealed class MainActivity : Activity
         _brandGroup.CheckedChange += (_, _) => UpdateConnectionFields();
         content.AddView(_brandGroup);
         content.AddView(Spacing(6));
-        content.AddView(Subtle("其他品牌的打印机先在「插件管理」装对应插件，装好重启后这里就能选。"));
+        content.AddView(Subtle(L(Resource.String.printer_brand_plugin_hint)));
         content.AddView(Spacing(10));
         RunAsync(RefreshBrandOptionsAsync);
 
         // 连接类型（网口默认且一级路径；蓝牙 / USB 为增量类型，迭代 56 决策 #111）——Zebra 专属，插件品牌隐藏整块
         _connectionTypeCard = new LinearLayout(this) { Orientation = Orientation.Vertical };
         _connectionTypeCard.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
-        _connectionTypeCard.AddView(FieldLabel("连接方式"));
+        _connectionTypeCard.AddView(FieldLabel(L(Resource.String.conn_type_label)));
         _connectionTypeGroup = new RadioGroup(this);
         _connectionTypeGroup.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
-        var tcpRadio = ConnectionRadio("网线（推荐）", "插网线的打印机，填 IP 地址");
+        var tcpRadio = ConnectionRadio(L(Resource.String.conn_tcp), L(Resource.String.conn_tcp_hint));
         tcpRadio.Id = 0x1001;
-        var bluetoothRadio = ConnectionRadio("蓝牙", "在打印机设置里能找到蓝牙地址");
+        var bluetoothRadio = ConnectionRadio(L(Resource.String.conn_bluetooth), L(Resource.String.conn_bluetooth_hint));
         bluetoothRadio.Id = 0x1002;
-        var usbRadio = ConnectionRadio("USB 数据线", "打印机用数据线连着这台 PDA");
+        var usbRadio = ConnectionRadio(L(Resource.String.conn_usb), L(Resource.String.conn_usb_hint));
         usbRadio.Id = 0x1003;
         _connectionTypeGroup.AddView(tcpRadio);
         _connectionTypeGroup.AddView(bluetoothRadio);
@@ -431,36 +445,36 @@ public sealed class MainActivity : Activity
         {
             MarginEnd = Dp(10),
         };
-        ipColumn.AddView(FieldLabel("打印机 IP 地址"));
-        _ipInput = Input("例如 192.168.1.50", _config.TcpHost, InputTypes.ClassText);
+        ipColumn.AddView(FieldLabel(L(Resource.String.printer_ip_label)));
+        _ipInput = Input(L(Resource.String.printer_ip_hint), _config.TcpHost, InputTypes.ClassText);
         ipColumn.AddView(_ipInput);
         var portColumn = new LinearLayout(this) { Orientation = Orientation.Vertical };
         portColumn.LayoutParameters = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f);
-        portColumn.AddView(FieldLabel("端口"));
-        _portInput = Input("9100", _config.TcpPort.ToString(CultureInfo.InvariantCulture), InputTypes.ClassNumber);
+        portColumn.AddView(FieldLabel(L(Resource.String.printer_port_label)));
+        _portInput = Input(L(Resource.String.printer_port_hint), _config.TcpPort.ToString(CultureInfo.InvariantCulture), InputTypes.ClassNumber);
         portColumn.AddView(_portInput);
         fieldRow.AddView(ipColumn);
         fieldRow.AddView(portColumn);
         _tcpFields.AddView(fieldRow);
         _tcpFields.AddView(Spacing(6));
-        _tcpFields.AddView(Subtle("不知道 IP 就问管理员；端口一般填 9100，不用改。"));
+        _tcpFields.AddView(Subtle(L(Resource.String.printer_tcp_note)));
         _tcpFields.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
         content.AddView(_tcpFields);
 
         // 蓝牙参数：MAC 地址手输（迭代 56 预授权决议 1：首版最简）
         _bluetoothFields = new LinearLayout(this) { Orientation = Orientation.Vertical };
         _bluetoothFields.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
-        _bluetoothFields.AddView(FieldLabel("打印机蓝牙地址"));
-        _macInput = Input("例如 00:11:22:33:44:55", _config.BluetoothMac, InputTypes.ClassText | InputTypes.TextVariationVisiblePassword);
+        _bluetoothFields.AddView(FieldLabel(L(Resource.String.printer_bt_label)));
+        _macInput = Input(L(Resource.String.printer_bt_hint), _config.BluetoothMac, InputTypes.ClassText | InputTypes.TextVariationVisiblePassword);
         _bluetoothFields.AddView(_macInput);
         _bluetoothFields.AddView(Spacing(6));
-        _bluetoothFields.AddView(Subtle("打印机开机后在设置里找「蓝牙地址」或问管理员；先用蓝牙配对不需要，直接填地址就行。"));
+        _bluetoothFields.AddView(Subtle(L(Resource.String.printer_bt_note)));
         content.AddView(_bluetoothFields);
 
         // USB 参数：自动发现锁定第一台（无可选设备给可行动错误，迭代 56 预授权决议 2）
         _usbFields = new LinearLayout(this) { Orientation = Orientation.Vertical };
         _usbFields.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
-        var usbNote = TextView("保存后自动识别用数据线连着的第一台 Zebra 打印机；第一次用会弹「允许访问 USB 设备」，点允许。", 12.5f, ColorTextSecondary);
+        var usbNote = TextView(L(Resource.String.printer_usb_note), 12.5f, ColorTextSecondary);
         _usbFields.AddView(usbNote);
         content.AddView(_usbFields);
         UpdateConnectionFields();
@@ -468,7 +482,7 @@ public sealed class MainActivity : Activity
 
         var testRow = new LinearLayout(this) { Orientation = Orientation.Horizontal };
         testRow.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
-        var testButton = ActionButton("打印测试标签", () => RunAsync(TestPrintAsync));
+        var testButton = ActionButton(L(Resource.String.printer_test_button), () => RunAsync(TestPrintAsync));
         _printTestText = TextView(string.Empty, 13, ColorTextSecondary);
         _printTestText.SetPadding(Dp(10), 0, 0, 0);
         _printTestText.LayoutParameters = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f)
@@ -526,7 +540,7 @@ public sealed class MainActivity : Activity
                 foreach (var plugin in installed.Where(p => p.Loaded && p.Source == "package"))
                 {
                     var id = 0x2100 + index++;
-                    var radio = ConnectionRadio(plugin.Name, $"插件品牌（{plugin.PluginId}）—— 网线连接");
+                    var radio = ConnectionRadio(plugin.Name, L(Resource.String.printer_plugin_brand_radio, plugin.PluginId));
                     radio.Id = id;
                     _brandIds[id] = plugin.PluginId;
                     _brandGroup.AddView(radio);
@@ -602,25 +616,27 @@ public sealed class MainActivity : Activity
     {
         if (PrinterInputDirty())
         {
-            SetResult(_printTestText, "先保存再测试——上面填的地址还没保存，现在测试用的还是旧地址", ColorWarn);
+            SetResult(_printTestText, L(Resource.String.printer_test_dirty), ColorWarn);
             return;
         }
 
-        SetResult(_printTestText, "正在发送到打印机…", ColorTextSecondary);
+        SetResult(_printTestText, L(Resource.String.printer_test_sending), ColorTextSecondary);
         try
         {
             using var response = await Http.PostAsync($"http://127.0.0.1:{LabelHostConfig.LocalPort}/api/host/test-print", content: null);
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                SetResult(_printTestText, $"✗ 没打出来——请再试一次（{Truncate(body)}）", ColorErr);
+                // 错误码翻译（迭代 110 / #244）：已知码本地翻译、未知码回退后端中文 message
+                var detail = Truncate(DescribeErrorBody(body));
+                SetResult(_printTestText, L(Resource.String.printer_test_http_error, detail), ColorErr);
                 return;
             }
 
             var job = JsonSerializer.Deserialize<JobStatusDto>(body, Json);
             if (job is null)
             {
-                SetResult(_printTestText, "✗ 没打出来——请再试一次", ColorErr);
+                SetResult(_printTestText, L(Resource.String.printer_test_parse_error), ColorErr);
                 return;
             }
 
@@ -637,32 +653,34 @@ public sealed class MainActivity : Activity
 
                 if (current.Status is "Completed")
                 {
-                    SetResult(_printTestText, $"✓ 打印成功——打印机应该已经出纸（{current.CompletedItems}/{current.TotalItems}）", ColorOk);
+                    SetResult(_printTestText, L(Resource.String.printer_test_ok, current.CompletedItems, current.TotalItems), ColorOk);
                     return;
                 }
 
                 if (current.Status is "Failed" or "Cancelled")
                 {
-                    var error = current.Items?.FirstOrDefault(i2 => i2.ErrorMessage is not null)?.ErrorMessage;
-                    SetResult(_printTestText, PrintFailText(error ?? current.Status), ColorErr);
+                    var failedItem = current.Items?.FirstOrDefault(i2 => i2.ErrorMessage is not null);
+                    // 失败项按码翻译（项级无 params：模板带参的码自然回退中文，语义对齐迭代 109）
+                    var reason = ResolveError(failedItem?.ErrorCode, null, failedItem?.ErrorMessage ?? current.Status);
+                    SetResult(_printTestText, PrintFailText(reason), ColorErr);
                     return;
                 }
 
-                SetResult(_printTestText, "正在打印…", ColorTextSecondary);
+                SetResult(_printTestText, L(Resource.String.printer_test_printing), ColorTextSecondary);
             }
 
-            SetResult(_printTestText, "等了 1 分钟还没打完——请再点一次；反复失败就看看打印机是不是卡纸或缺纸", ColorWarn);
+            SetResult(_printTestText, L(Resource.String.printer_test_timeout), ColorWarn);
         }
         catch (Exception ex)
         {
             HostLog.Warn(HostLog.Tags.Ui, $"测试打印失败：{ex.Message}");
-            SetResult(_printTestText, "✗ 打印服务没反应——请点「保存并重启服务」后再试", ColorErr);
+            SetResult(_printTestText, L(Resource.String.printer_test_no_service), ColorErr);
         }
     }
 
     /// <summary>打印失败的可行动提示；原始原因作为第二行小字附后，供管理员远程排障。</summary>
-    private static string PrintFailText(string reason) =>
-        $"✗ 没打出来——请检查打印机是否开机、连接方式与地址是否正确、是否缺纸卡纸\n原因：{reason}";
+    private string PrintFailText(string reason) =>
+        L(Resource.String.printer_test_fail, reason);
 
     /// <summary>输入的打印机配置与已保存（正在使用）的是否不一致（品牌 + 按连接类型比较对应参数）。</summary>
     private bool PrinterInputDirty()
@@ -710,13 +728,13 @@ public sealed class MainActivity : Activity
             var ip = _ipInput.Text?.Trim() ?? string.Empty;
             if (ip.Length == 0)
             {
-                ShowSaveHint(_printerSaveHint, "还没保存——请先填写打印机 IP 地址");
+                ShowSaveHint(_printerSaveHint, L(Resource.String.printer_save_no_ip));
                 return;
             }
 
             if (!int.TryParse(_portInput.Text?.Trim(), out var port) || port is < 1 or > 65535)
             {
-                ShowSaveHint(_printerSaveHint, "还没保存——端口要填 1 到 65535 之间的数字，一般填 9100");
+                ShowSaveHint(_printerSaveHint, L(Resource.String.printer_save_bad_port));
                 return;
             }
 
@@ -730,7 +748,7 @@ public sealed class MainActivity : Activity
             mac = _macInput.Text?.Trim() ?? string.Empty;
             if (!IsValidBluetoothMac(mac))
             {
-                ShowSaveHint(_printerSaveHint, "还没保存——蓝牙地址要像 00:11:22:33:44:55 这样（12 位数字和字母），问管理员要");
+                ShowSaveHint(_printerSaveHint, L(Resource.String.printer_save_bad_mac));
                 return;
             }
 
@@ -756,13 +774,13 @@ public sealed class MainActivity : Activity
     {
         var content = ScrollColumn();
 
-        content.AddView(Header("插件管理"));
+        content.AddView(Header(L(Resource.String.plugins_title)));
         content.AddView(Spacing(4));
-        content.AddView(Subtle("新品牌的打印机在这里装插件；装好重启后「连接打印机」里就能选这个品牌。"));
+        content.AddView(Subtle(L(Resource.String.plugins_hint)));
         content.AddView(Spacing(10));
 
-        content.AddView(FieldLabel("已安装的插件"));
-        _installedSummary = TextView("正在读取…", 13, ColorTextSecondary);
+        content.AddView(FieldLabel(L(Resource.String.plugins_installed_label)));
+        _installedSummary = TextView(L(Resource.String.plugins_loading), 13, ColorTextSecondary);
         content.AddView(_installedSummary);
         content.AddView(Spacing(6));
         _installedList = new LinearLayout(this) { Orientation = Orientation.Vertical };
@@ -770,7 +788,7 @@ public sealed class MainActivity : Activity
         content.AddView(_installedList);
 
         content.AddView(Spacing(16));
-        content.AddView(FieldLabel("服务器上的插件"));
+        content.AddView(FieldLabel(L(Resource.String.plugins_server_label)));
         _pluginStatusText = TextView(string.Empty, 13, ColorTextSecondary);
         content.AddView(_pluginStatusText);
         content.AddView(Spacing(6));
@@ -806,19 +824,19 @@ public sealed class MainActivity : Activity
         _installedList.RemoveAllViews();
         var packages = installed.Where(p => p.Source == "package").ToList();
         _installedSummary.Text = packages.Count == 0
-            ? "还没装任何插件——Zebra 打印机不用插件（内置）。"
-            : $"共 {packages.Count} 个插件。卸载或安装后要重启打印服务才生效。";
+            ? L(Resource.String.plugins_installed_empty)
+            : L(Resource.String.plugins_installed_count, packages.Count);
 
         foreach (var plugin in packages)
         {
             var pluginId = plugin.PluginId;
             var statusText = plugin.Loaded
-                ? "✓ 已加载，可在「连接打印机」选择该品牌"
-                : $"未加载：{plugin.LoadError ?? "重启打印服务后生效"}";
+                ? L(Resource.String.plugins_item_loaded)
+                : L(Resource.String.plugins_item_not_loaded, plugin.LoadError ?? L(Resource.String.plugins_item_not_loaded_fallback));
             var card = Card(plugin.Loaded ? Color.White : ColorWarnBg);
             card.SetPadding(Dp(14), Dp(12), Dp(14), Dp(10));
 
-            var title = TextView($"{plugin.Name}（{plugin.Version}）", 15, ColorText, bold: true);
+            var title = TextView(L(Resource.String.common_name_version, plugin.Name, plugin.Version), 15, ColorText, bold: true);
             var idLine = TextView(pluginId, 12, ColorTextSecondary);
             var status = TextView(statusText, 12.5f, plugin.Loaded ? ColorOk : ColorWarn);
             status.SetPadding(0, Dp(4), 0, 0);
@@ -829,7 +847,7 @@ public sealed class MainActivity : Activity
             var buttonRow = new LinearLayout(this) { Orientation = Orientation.Horizontal };
             buttonRow.SetPadding(0, Dp(8), 0, 0);
             // 迭代 104（#225，决策 #161）：卸载 = 销毁类操作——红底白字 danger 视觉，点击先弹原生确认对话框
-            var uninstallButton = DangerButton("卸载", () => ConfirmUninstallPlugin(pluginId, plugin.Name), Dp(88));
+            var uninstallButton = DangerButton(L(Resource.String.plugins_uninstall), () => ConfirmUninstallPlugin(pluginId, plugin.Name), Dp(88));
             buttonRow.AddView(uninstallButton);
             card.AddView(buttonRow);
 
@@ -852,13 +870,13 @@ public sealed class MainActivity : Activity
             RunOnUiThread(() =>
             {
                 _serverPackagesList.RemoveAllViews();
-                _pluginStatusText.Text = "还没填服务器地址——先在「连接服务器」里填好再回来装插件。";
+                _pluginStatusText.Text = L(Resource.String.plugins_server_no_url);
                 _pluginStatusText.SetTextColor(ColorWarn);
             });
             return;
         }
 
-        RunOnUiThread(() => _pluginStatusText.Text = "正在读取服务器插件列表…");
+        RunOnUiThread(() => _pluginStatusText.Text = L(Resource.String.plugins_server_loading));
         try
         {
             using var response = await Http.GetAsync($"{serverUrl}/api/plugin-packages");
@@ -867,7 +885,7 @@ public sealed class MainActivity : Activity
                 RunOnUiThread(() =>
                 {
                     _serverPackagesList.RemoveAllViews();
-                    _pluginStatusText.Text = $"✗ 读不到插件列表（服务器返回码 {(int)response.StatusCode}）——请检查服务器地址";
+                    _pluginStatusText.Text = L(Resource.String.plugins_server_http_error, (int)response.StatusCode);
                     _pluginStatusText.SetTextColor(ColorErr);
                 });
                 return;
@@ -883,7 +901,7 @@ public sealed class MainActivity : Activity
             RunOnUiThread(() =>
             {
                 _serverPackagesList.RemoveAllViews();
-                _pluginStatusText.Text = "✗ 连不上服务器——请检查地址是否正确、PDA 是否连着 WiFi";
+                _pluginStatusText.Text = L(Resource.String.error_server_unreachable);
                 _pluginStatusText.SetTextColor(ColorErr);
             });
         }
@@ -895,20 +913,20 @@ public sealed class MainActivity : Activity
         _serverPackagesList.RemoveAllViews();
         var valid = packages.Where(p => p.Valid).ToList();
         _pluginStatusText.Text = valid.Count == 0
-            ? "服务器上还没有可装的插件——让管理员在服务端「插件分发」页上传。"
-            : $"服务器共 {valid.Count} 个插件可装。";
+            ? L(Resource.String.plugins_server_empty)
+            : L(Resource.String.plugins_server_count, valid.Count);
         _pluginStatusText.SetTextColor(ColorTextSecondary);
 
         foreach (var package in valid)
         {
             var captured = package;
-            var platforms = captured.Platforms is { Count: > 0 } list ? string.Join("、", list) : "windows";
+            var platforms = captured.Platforms is { Count: > 0 } list ? string.Join(L(Resource.String.common_list_separator), list) : "windows";
             var isAndroid = captured.Platforms?.Contains("android", StringComparer.OrdinalIgnoreCase) == true;
             var card = Card(Color.White);
             card.SetPadding(Dp(14), Dp(12), Dp(14), Dp(10));
 
-            var title = TextView($"{captured.Name}（{captured.Version}）", 15, ColorText, bold: true);
-            var idLine = TextView($"{captured.PluginId} · 平台：{platforms}", 12, ColorTextSecondary);
+            var title = TextView(L(Resource.String.common_name_version, captured.Name, captured.Version), 15, ColorText, bold: true);
+            var idLine = TextView(L(Resource.String.plugins_server_platforms, captured.PluginId, platforms), 12, ColorTextSecondary);
             card.AddView(title);
             card.AddView(idLine);
             if (!string.IsNullOrWhiteSpace(captured.Description))
@@ -918,11 +936,11 @@ public sealed class MainActivity : Activity
 
             var buttonRow = new LinearLayout(this) { Orientation = Orientation.Horizontal };
             buttonRow.SetPadding(0, Dp(8), 0, 0);
-            var installButton = ActionButton("安装", () => RunAsync(() => InstallPluginAsync(serverUrl, captured)), Dp(88));
+            var installButton = ActionButton(L(Resource.String.plugins_install), () => RunAsync(() => InstallPluginAsync(serverUrl, captured)), Dp(88));
             if (!isAndroid)
             {
                 installButton.Enabled = false;
-                installButton.Text = "电脑专用";
+                installButton.Text = L(Resource.String.plugins_windows_only);
             }
 
             buttonRow.AddView(installButton);
@@ -938,7 +956,7 @@ public sealed class MainActivity : Activity
     {
         RunOnUiThread(() =>
         {
-            _pluginStatusText.Text = $"正在下载「{package.Name}」…";
+            _pluginStatusText.Text = L(Resource.String.plugins_downloading, package.Name);
             _pluginStatusText.SetTextColor(ColorTextSecondary);
         });
 
@@ -950,11 +968,11 @@ public sealed class MainActivity : Activity
         catch (Exception ex)
         {
             HostLog.Warn(HostLog.Tags.Ui, $"下载插件包失败（{package.FileName}）：{ex.Message}");
-            RunOnUiThread(() => SetResult(_pluginStatusText, "✗ 下载失败——请检查 PDA 与服务器的网络后重试", ColorErr));
+            RunOnUiThread(() => SetResult(_pluginStatusText, L(Resource.String.plugins_download_error), ColorErr));
             return;
         }
 
-        RunOnUiThread(() => _pluginStatusText.Text = "正在安装…");
+        RunOnUiThread(() => _pluginStatusText.Text = L(Resource.String.plugins_installing));
         try
         {
             using var response = await Http.PostAsync(
@@ -963,8 +981,10 @@ public sealed class MainActivity : Activity
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                var error = TryReadErrorMessage(body) ?? $"安装失败（服务器返回码 {(int)response.StatusCode}）";
-                RunOnUiThread(() => SetResult(_pluginStatusText, $"✗ {error}", ColorErr));
+                var error = TryReadErrorView(body) is { } view
+                    ? ResolveError(view.Code, view.Params, view.Message ?? string.Empty)
+                    : L(Resource.String.plugins_install_http_fallback, (int)response.StatusCode);
+                RunOnUiThread(() => SetResult(_pluginStatusText, L(Resource.String.error_prefix, error), ColorErr));
                 return;
             }
 
@@ -972,29 +992,30 @@ public sealed class MainActivity : Activity
             await RestartServiceAsync();
             RunOnUiThread(() =>
             {
-                Toast.MakeText(this, $"插件「{package.Name}」已安装，打印服务已重启生效", ToastLength.Long)?.Show();
-                SetResult(_pluginStatusText, $"✓ 「{package.Name}」已安装并生效——去「连接打印机」选这个品牌", ColorOk);
+                Toast.MakeText(this, L(Resource.String.plugins_installed_toast, package.Name), ToastLength.Long)?.Show();
+                SetResult(_pluginStatusText, L(Resource.String.plugins_installed_ok, package.Name), ColorOk);
             });
             await RefreshPluginsScreenAsync();
         }
         catch (Exception ex)
         {
             HostLog.Warn(HostLog.Tags.Ui, $"安装插件失败（{package.FileName}）：{ex.Message}");
-            RunOnUiThread(() => SetResult(_pluginStatusText, "✗ 安装失败——打印服务没反应，请点「保存并重启服务」后重试", ColorErr));
+            RunOnUiThread(() => SetResult(_pluginStatusText, L(Resource.String.plugins_install_no_service), ColorErr));
         }
     }
 
     /// <summary>
     /// 卸载确认（迭代 104 / #225，决策 #161：销毁类操作必须先确认）——原生 AlertDialog，danger 文案与视觉：
-    /// 标题 + 后果说明（含「不可恢复」与自动重启提示）+ 确认按钮红字；确认后才执行卸载（删插件目录并重启打印服务）。
+    /// 标题 + 后果说明（含不可恢复语义与自动重启提示）+ 确认按钮红字；确认后才执行卸载（删插件目录并重启打印服务）。
+    /// 迭代 110（#244）：文案双语化，仅换文案来源——danger 视觉（确认红字 / 取消次要色）与确认语义不变。
     /// </summary>
     private void ConfirmUninstallPlugin(string pluginId, string pluginName)
     {
         var builder = new AlertDialog.Builder(this);
-        builder.SetTitle("卸载插件");
-        builder.SetMessage($"确定卸载「{pluginName}」吗？卸载后这个品牌的打印机暂时不能打印，该操作不可恢复；确认后会自动重启打印服务。");
-        builder.SetNegativeButton("取消", (_, _) => { });
-        builder.SetPositiveButton("卸载", (_, _) => RunAsync(() => UninstallPluginAsync(pluginId)));
+        builder.SetTitle(L(Resource.String.plugins_uninstall_dialog_title));
+        builder.SetMessage(L(Resource.String.plugins_uninstall_dialog_message, pluginName));
+        builder.SetNegativeButton(L(Resource.String.dialog_cancel), (_, _) => { });
+        builder.SetPositiveButton(L(Resource.String.plugins_uninstall), (_, _) => RunAsync(() => UninstallPluginAsync(pluginId)));
         // 绑定注解将 Create() 标为可空（Java 契约实际不返回 null），按仓库 0 警口径显式断言非空（与 Typeface.Monospace! 同款）
         var dialog = builder.Create()!;
         dialog.Show();
@@ -1014,8 +1035,10 @@ public sealed class MainActivity : Activity
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                var error = TryReadErrorMessage(body) ?? $"卸载失败（服务器返回码 {(int)response.StatusCode}）";
-                RunOnUiThread(() => Toast.MakeText(this, $"✗ {error}", ToastLength.Long)?.Show());
+                var error = TryReadErrorView(body) is { } view
+                    ? ResolveError(view.Code, view.Params, view.Message ?? string.Empty)
+                    : L(Resource.String.plugins_uninstall_http_fallback, (int)response.StatusCode);
+                RunOnUiThread(() => Toast.MakeText(this, L(Resource.String.error_prefix, error), ToastLength.Long)?.Show());
                 return;
             }
 
@@ -1026,13 +1049,13 @@ public sealed class MainActivity : Activity
             }
 
             await RestartServiceAsync();
-            RunOnUiThread(() => Toast.MakeText(this, $"插件「{pluginId}」已卸载，打印服务已重启生效", ToastLength.Long)?.Show());
+            RunOnUiThread(() => Toast.MakeText(this, L(Resource.String.plugins_uninstalled_toast, pluginId), ToastLength.Long)?.Show());
             await RefreshPluginsScreenAsync();
         }
         catch (Exception ex)
         {
             HostLog.Warn(HostLog.Tags.Ui, $"卸载插件失败（{pluginId}）：{ex.Message}");
-            RunOnUiThread(() => Toast.MakeText(this, "✗ 卸载失败，请再试一次", ToastLength.Long)?.Show());
+            RunOnUiThread(() => Toast.MakeText(this, L(Resource.String.plugins_uninstall_error_toast), ToastLength.Long)?.Show());
         }
     }
 
@@ -1057,18 +1080,23 @@ public sealed class MainActivity : Activity
         }
     }
 
-    /// <summary>从错误响应 JSON 里取中文消息（取不到返回 null）。</summary>
-    private static string? TryReadErrorMessage(string body)
+    /// <summary>从错误响应 JSON 里取错误视图（码 + 可选 params + 中文消息；取不到返回 null）。
+    /// 形状对齐本地 HTTP / Server 的 ErrorView（迭代 109 加 params，迭代 110 PDA 侧接入）。</summary>
+    private static ErrorViewDto? TryReadErrorView(string body)
     {
         try
         {
-            return JsonSerializer.Deserialize<ErrorMessageDto>(body, Json)?.Message;
+            return JsonSerializer.Deserialize<ErrorViewDto>(body, Json);
         }
         catch
         {
             return null;
         }
     }
+
+    /// <summary>错误响应体的展示文案：按码翻译（en 态已知码本地翻译、未知码 / 参数不全回退后端中文）；非 JSON 原样返回。</summary>
+    private string DescribeErrorBody(string body) =>
+        TryReadErrorView(body) is { } view ? ResolveError(view.Code, view.Params, view.Message ?? body) : body;
 
     /// <summary>本机已装插件视图（GET /api/plugins/installed 响应形状，PascalCase）。</summary>
     private sealed record InstalledPluginDto(
@@ -1092,7 +1120,8 @@ public sealed class MainActivity : Activity
         bool Valid,
         IReadOnlyList<string>? Platforms);
 
-    private sealed record ErrorMessageDto(string? Message);
+    /// <summary>错误响应视图（本地 HTTP ErrorView，宽松反序列化：code / message / params）。</summary>
+    private sealed record ErrorViewDto(string? Code, string? Message, IReadOnlyDictionary<string, string>? Params);
 
     // ---------- 本机信息子页 ----------
 
@@ -1100,10 +1129,10 @@ public sealed class MainActivity : Activity
     {
         var content = ScrollColumn();
 
-        content.AddView(Header("本机信息"));
+        content.AddView(Header(L(Resource.String.device_title)));
         content.AddView(Spacing(10));
 
-        content.AddView(FieldLabel("设备号"));
+        content.AddView(FieldLabel(L(Resource.String.device_id_label)));
         var idRow = new LinearLayout(this) { Orientation = Orientation.Horizontal };
         idRow.LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
         _deviceIdText = TextView(_config.DeviceId, 14, ColorText);
@@ -1112,17 +1141,17 @@ public sealed class MainActivity : Activity
         {
             Gravity = GravityFlags.CenterVertical,
         };
-        var copyButton = ActionButton("复制", CopyDeviceId, Dp(72));
+        var copyButton = ActionButton(L(Resource.String.device_copy), CopyDeviceId, Dp(72));
         idRow.AddView(_deviceIdText);
         idRow.AddView(copyButton);
         content.AddView(idRow);
         content.AddView(Spacing(14));
 
-        content.AddView(FieldLabel("设备名称"));
-        _deviceNameInput = Input("例如：仓库门口 PDA", _config.DeviceName, InputTypes.ClassText);
+        content.AddView(FieldLabel(L(Resource.String.device_name_label)));
+        _deviceNameInput = Input(L(Resource.String.device_name_hint), _config.DeviceName, InputTypes.ClassText);
         content.AddView(_deviceNameInput);
         content.AddView(Spacing(6));
-        content.AddView(Subtle("服务器设备列表里显示的名字"));
+        content.AddView(Subtle(L(Resource.String.device_name_note)));
         content.AddView(Spacing(20));
 
         _deviceSaveHint = SaveHint();
@@ -1130,10 +1159,10 @@ public sealed class MainActivity : Activity
         content.AddView(SaveButton(() => RunAsync(SaveDeviceAsync)));
         content.AddView(Spacing(16));
 
-        content.AddView(FieldLabel("程序版本"));
+        content.AddView(FieldLabel(L(Resource.String.device_version_label)));
         content.AddView(TextView(HostInfo.GetVersion(this), 14, ColorText));
         content.AddView(Spacing(4));
-        content.AddView(Subtle("有问题上报时把这个号告诉管理员"));
+        content.AddView(Subtle(L(Resource.String.device_version_note)));
 
         return WrapScroll(content);
     }
@@ -1141,8 +1170,8 @@ public sealed class MainActivity : Activity
     private void CopyDeviceId()
     {
         var clipboard = GetSystemService(ClipboardService)?.JavaCast<Android.Content.ClipboardManager>();
-        clipboard?.PrimaryClip = ClipData.NewPlainText("LabelFrame 设备号", _config.DeviceId);
-        Toast.MakeText(this, "已复制设备号", ToastLength.Short)?.Show();
+        clipboard?.PrimaryClip = ClipData.NewPlainText(L(Resource.String.device_clipboard_label), _config.DeviceId);
+        Toast.MakeText(this, L(Resource.String.device_copied_toast), ToastLength.Short)?.Show();
     }
 
     private async Task SaveDeviceAsync() =>
@@ -1160,10 +1189,10 @@ public sealed class MainActivity : Activity
         string? bluetoothMac = null,
         string? deviceName = null)
     {
-        Toast.MakeText(this, "已保存，正在重启打印服务…", ToastLength.Short)?.Show();
+        Toast.MakeText(this, L(Resource.String.apply_saving_toast), ToastLength.Short)?.Show();
         _config.Persist(this, serverUrl, printerBrand: printerBrand, connectionType: connectionType, tcpHost: tcpHost, tcpPort: tcpPort, bluetoothMac: bluetoothMac, deviceName: deviceName);
         await RestartServiceAsync();
-        Toast.MakeText(this, "设置已保存，打印服务已重启", ToastLength.Short)?.Show();
+        Toast.MakeText(this, L(Resource.String.apply_saved_toast), ToastLength.Short)?.Show();
     }
 
     /// <summary>重启宿主服务并等待本地 HTTP 就绪（配置保存 / 插件安装 / 卸载后共用——重启生效）。</summary>
@@ -1265,7 +1294,9 @@ public sealed class MainActivity : Activity
         _statusPrinter.Text = view.PrinterLine;
         _serverEntrySummary.Text = view.ServerEntry;
         _printerEntrySummary.Text = view.PrinterEntry;
-        _pluginsEntrySummary.Text = _installedPluginsCache is null ? "新增打印机品牌在这里装" : $"已装 {_installedPluginsCache.Count} 个插件";
+        _pluginsEntrySummary.Text = _installedPluginsCache is null
+            ? L(Resource.String.home_plugins_entry_hint)
+            : L(Resource.String.home_plugins_entry_count, _installedPluginsCache.Count);
         _deviceEntrySummary.Text = _config.DeviceName;
     }
 
@@ -1273,7 +1304,7 @@ public sealed class MainActivity : Activity
         Color SummaryColor, Color SummaryBg, string Summary,
         string ServerLine, string PrinterLine, string ServerEntry, string PrinterEntry);
 
-    private static StatusView ComputeStatus()
+    private StatusView ComputeStatus()
     {
         var s = HostStatus.Current;
         static string Local(DateTime? utc) => utc is null ? string.Empty : utc.Value.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture);
@@ -1285,23 +1316,23 @@ public sealed class MainActivity : Activity
         string serverLine, serverEntry;
         if (!serverConfigured)
         {
-            serverLine = "服务器：未设置——只用本机网页打印";
-            serverEntry = "未设置";
+            serverLine = L(Resource.String.status_server_unset);
+            serverEntry = L(Resource.String.status_server_entry_unset);
         }
         else if (serverError)
         {
-            serverLine = "服务器：连不上——请检查地址是否正确、PDA 是否连着 WiFi";
-            serverEntry = $"连不上 · {UrlHost(s.ActiveServerUrl)}";
+            serverLine = L(Resource.String.status_server_error);
+            serverEntry = L(Resource.String.status_server_entry_error, UrlHost(s.ActiveServerUrl));
         }
         else if (serverOk)
         {
-            serverLine = $"服务器：已连接 · {Local(s.LastServerContactUtc)} 通话正常";
-            serverEntry = $"已连接 · {UrlHost(s.ActiveServerUrl)}";
+            serverLine = L(Resource.String.status_server_ok, Local(s.LastServerContactUtc));
+            serverEntry = L(Resource.String.status_server_entry_ok, UrlHost(s.ActiveServerUrl));
         }
         else
         {
-            serverLine = "服务器：正在连接…";
-            serverEntry = $"正在连接 · {UrlHost(s.ActiveServerUrl)}";
+            serverLine = L(Resource.String.status_server_connecting);
+            serverEntry = L(Resource.String.status_server_entry_connecting, UrlHost(s.ActiveServerUrl));
         }
 
         // ActivePrinterEndpoint 已是按连接类型生成的用户可读摘要（网口 IP / 蓝牙地址 / USB 数据线）
@@ -1310,18 +1341,18 @@ public sealed class MainActivity : Activity
         string printerLine, printerEntry;
         if (printerError)
         {
-            printerLine = "打印机：连不上——请检查打印机是否开机、连接方式与地址是否正确";
-            printerEntry = $"{printerDisplay} · 连不上";
+            printerLine = L(Resource.String.status_printer_error);
+            printerEntry = L(Resource.String.status_printer_entry_error, printerDisplay);
         }
         else if (s.LastPrintUtc is not null)
         {
-            printerLine = $"打印机：正常 · {Local(s.LastPrintUtc)} 出过纸（{printerDisplay}）";
-            printerEntry = $"{printerDisplay} · 正常";
+            printerLine = L(Resource.String.status_printer_ok, Local(s.LastPrintUtc), printerDisplay);
+            printerEntry = L(Resource.String.status_printer_entry_ok, printerDisplay);
         }
         else
         {
-            printerLine = $"打印机：还没打印过（{printerDisplay}）";
-            printerEntry = $"{printerDisplay} · 还没打印过";
+            printerLine = L(Resource.String.status_printer_never, printerDisplay);
+            printerEntry = L(Resource.String.status_printer_entry_never, printerDisplay);
         }
 
         Color summaryColor, summaryBg;
@@ -1330,31 +1361,31 @@ public sealed class MainActivity : Activity
         {
             summaryColor = ColorTextSecondary;
             summaryBg = ColorMutedBg;
-            summary = "打印服务没有在运行——重启 PDA 试试";
+            summary = L(Resource.String.status_summary_service_stopped);
         }
         else if (serverError && printerError)
         {
             summaryColor = ColorErr;
             summaryBg = ColorErrBg;
-            summary = "服务器和打印机都连不上";
+            summary = L(Resource.String.status_summary_both_error);
         }
         else if (serverError)
         {
             summaryColor = ColorErr;
             summaryBg = ColorErrBg;
-            summary = "服务器连不上——正在自动重试";
+            summary = L(Resource.String.status_summary_server_error);
         }
         else if (printerError)
         {
             summaryColor = ColorErr;
             summaryBg = ColorErrBg;
-            summary = "打印机连不上";
+            summary = L(Resource.String.status_summary_printer_error);
         }
         else
         {
             summaryColor = ColorOk;
             summaryBg = ColorOkBg;
-            summary = "一切正常，随时可以打印";
+            summary = L(Resource.String.status_summary_ok);
         }
 
         return new StatusView(summaryColor, summaryBg, summary, serverLine, printerLine, serverEntry, printerEntry);
@@ -1507,7 +1538,7 @@ public sealed class MainActivity : Activity
     /// <summary>主操作按钮（保存并重启服务）：通栏、蓝底白字、高度 ≥52dp。</summary>
     private Button SaveButton(Action onClick)
     {
-        var button = new Button(this) { Text = "保存并重启服务" };
+        var button = new Button(this) { Text = L(Resource.String.save_button) };
         button.SetAllCaps(false);
         button.SetTextColor(Color.White);
         button.SetTypeface(Android.Graphics.Typeface.DefaultBold!, Android.Graphics.TypefaceStyle.Bold);
@@ -1557,7 +1588,7 @@ public sealed class MainActivity : Activity
         catch (Exception ex)
         {
             HostLog.Warn(HostLog.Tags.Ui, $"操作执行失败：{ex.Message}");
-            RunOnUiThread(() => Toast.MakeText(this, "出错了，请再试一次", ToastLength.Short)?.Show());
+            RunOnUiThread(() => Toast.MakeText(this, L(Resource.String.run_error_toast), ToastLength.Short)?.Show());
         }
     }
 

@@ -2,6 +2,13 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 110：PDA 宿主多语言——Android 资源体系与错误码翻译（#244） · 2026-09-29
+
+- **Android 资源体系（决策 #164 ⑤，待决议-1 按建议项）**：`Resources/values/strings.xml`（缺省＝中文，与现状文案逐条等价）＋`Resources/values-en/strings.xml`（135 键含语言哨兵 `current_language`），MainActivity 各页面 / 对话框 / 保存提示 / Toast、`[Activity(Label)]` 与 manifest 应用名（`@string/app_name`）、PrintHostService 常驻通知标题与状态内容、`LabelHostConfig.PrinterDisplay` 连接方式摘要全部改资源 id 引用——语言跟随系统（其余系统语言回退缺省中文），带参模板用 `{0}` 位置占位（string.Format + InvariantCulture）。**通知渠道名不改名**（Android 渠道创建后不可改名，维持中文现状——决策 #164 ⑤ 既有口径）；HostLog 诊断 / 崩溃摘要维持中文（#164 ②）。
+- **PDA 侧 `LF_*` 错误码表（语义对齐迭代 109 的 web 端）**：`Errors/LfErrorCatalog.cs` zh / en 静态字典（27 码，模板与 web `errorCodes.json` 逐码对齐，占位按端各自惯例——web `{{key}}` / PDA `{key}`，插值复用 Core `ErrorMessageTemplates.Format` 单遍语义）；展示规则——en 已知码本地翻译、未知码或模板所需参数不全回退后端中文 message（不出现裸占位符），zh 直接采用后端 message；语言判定经资源哨兵（不解析 Configuration）。宿主自有 ErrorView 副本补可选 `params` 字段（与 API 契约同形，缺省序列化逐字节等价），`GET /api/jobs/{id}` 404、测试页发送失败、插件安装 / 卸载包校验失败四处透出模板参数；插件安装兜底失败从 `LF_PLUGIN_INVALID` 修正挂 `LF_PLUGIN_INSTALL_FAILED`（翻译语义与注册表对齐）。接入点：测试打印失败项与提交失败、插件安装 / 卸载错误提示。
+- **danger 规范同步（决策 #161）**：插件卸载确认对话框双语化仅换文案来源——标题 / 后果说明（含不可恢复语义与自动重启提示）/ 确认按钮文案经资源 id 引用，红底触发按钮、确认按钮红字 / 取消次要色与「先确认后执行」语义不变。
+- **测试与自证**：新增 `test/LabelFrame.AndroidHost.Tests`（net10.0，码表纯托管源码按文件链接编译——AndroidHost 为 android TFM 不可整工程引用），14 项单测——注册表覆盖双断言（解析 ApiErrorCodes / ServerErrorCodes / JobErrorCodes 源码，新增码漏表即红）、zh / en 键集一致、同码占位符键集一致、en 已知码插值 / 未知码与参数不全回退中文 / zh 直用后端 message、单遍不级联；AC-01 裸中文扫描（MainActivity 除 HostLog 诊断外 0 命中；PrintHostService 仅渠道名白名单＋日志）与 AC-02 zh 等价对照（97 条逐字命中＋30 条内插模板片段等价，日志 / 渠道名按范围排除）自证入 PR。本地验证：Android Release APK（CI 同款命令）0 警 0 错＋aapt2 取证（en 标签 / 哨兵资源入包）；`dotnet build` / `dotnet test`（排除 Perf/Soak）全绿。AC-05 真机走查转 `待验收`。
+
 ## 迭代 109：API 错误消息多语言链路——ErrorView 可选 params 与 LF_* 码表（#242） · 2026-09-29
 
 - **ErrorView 可选 `params`（决策 #164 ③ / #166，契约见 DESIGN §5）**：错误响应增可选 `params` 字段——扁平字符串键值对象（如 `{ "ip": "192.168.1.5" }`），键名与消息模板占位符 `{key}` 一致；缺省 / null 时序列化输出与旧形态**逐字节等价**（单测 + HTTP 原文断言锚定），纯加法、旧调用方无感；WMS 终态回调载荷（#154 schema）字段集零变化（断言锚定）。

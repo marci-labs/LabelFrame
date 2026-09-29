@@ -16,6 +16,7 @@
     <Project Path="test/LabelFrame.ClientHost.Tests/LabelFrame.ClientHost.Tests.csproj" />
     <Project Path="test/LabelFrame.Server.Tests/LabelFrame.Server.Tests.csproj" />
     <Project Path="test/LabelFrame.Api.Tests/LabelFrame.Api.Tests.csproj" />
+    <Project Path="test/LabelFrame.AndroidHost.Tests/LabelFrame.AndroidHost.Tests.csproj" />
     <Project Path="test/LabelFrame.Bootstrapper.Tests/LabelFrame.Bootstrapper.Tests.csproj" />
     <Project Path="test/LabelFrame.Benchmarks/LabelFrame.Benchmarks.csproj" />
   </Folder>

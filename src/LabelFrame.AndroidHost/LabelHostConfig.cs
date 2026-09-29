@@ -128,21 +128,28 @@ public sealed class LabelHostConfig
     }
 
     /// <summary>打印机连接方式的用户可读摘要（主页状态卡 / 通知 / 状态页共用，按连接类型给一句话）。
-    /// 外置插件品牌（brand ≠ zebra，迭代 96）统一显示「IP:端口」——插件品牌连接类型固定网口 tcp 起步。</summary>
-    public string PrinterDisplay()
+    /// 外置插件品牌（brand ≠ zebra，迭代 96）统一显示「IP:端口」——插件品牌连接类型固定网口 tcp 起步。
+    /// 迭代 110（#244，决策 #164 ⑤）：连接方式词经资源 id 引用，随系统语言（values 缺省中文与原字面量等价）。</summary>
+    public string PrinterDisplay(Android.Content.Context context)
     {
         var brand = PrinterBrand.Trim();
         if (brand.Length > 0 && !string.Equals(brand, DefaultPrinterBrand, StringComparison.OrdinalIgnoreCase))
         {
-            return string.IsNullOrWhiteSpace(TcpHost) ? "网口（地址未填）" : $"{TcpHost}:{TcpPort}";
+            return string.IsNullOrWhiteSpace(TcpHost)
+                ? HostStrings.L(context, Resource.String.printer_display_tcp_empty)
+                : $"{TcpHost}:{TcpPort}";
         }
 
         return Transport.ZebraSdkTransport.NormalizeConnectionType(ConnectionType) switch
         {
             Transport.ZebraSdkTransport.ConnectionTypeBluetooth =>
-                string.IsNullOrWhiteSpace(BluetoothMac) ? "蓝牙（地址未填）" : $"蓝牙 {BluetoothMac}",
-            Transport.ZebraSdkTransport.ConnectionTypeUsb => "USB 数据线",
-            _ => string.IsNullOrWhiteSpace(TcpHost) ? "网口（地址未填）" : TcpHost,
+                string.IsNullOrWhiteSpace(BluetoothMac)
+                    ? HostStrings.L(context, Resource.String.printer_display_bt_empty)
+                    : HostStrings.L(context, Resource.String.printer_display_bt, BluetoothMac),
+            Transport.ZebraSdkTransport.ConnectionTypeUsb => HostStrings.L(context, Resource.String.printer_display_usb),
+            _ => string.IsNullOrWhiteSpace(TcpHost)
+                ? HostStrings.L(context, Resource.String.printer_display_tcp_empty)
+                : TcpHost,
         };
     }
 

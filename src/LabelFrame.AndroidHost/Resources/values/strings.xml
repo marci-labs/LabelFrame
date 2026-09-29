@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- 迭代 110（#244，决策 #164 ⑤）：PDA 宿主 Android 资源体系。values/ 缺省 = 中文（待决议-1 建议项：
+       目标用户主场景，缺省兜底中文比 en 安全），values-en/ 为英文；语言跟随系统切换。
+       zh 文案与资源化前的硬编码字面量逐条等价（AC-02）；带参模板用 {0} 位置占位（string.Format，InvariantCulture）。 -->
+
+  <!-- 语言哨兵：当前生效资源语言（values = zh / values-en = en），错误码翻译据此选道，不直接解析 Configuration -->
+  <string name="current_language">zh</string>
+
+  <!-- 通用 -->
+  <string name="app_name">LabelFrame 标签打印</string>
+  <string name="common_name_version">{0}（{1}）</string>
+  <string name="common_list_separator">、</string>
+  <string name="error_prefix">✗ {0}</string>
+  <string name="save_button">保存并重启服务</string>
+
+  <!-- 主页 -->
+  <string name="home_subtitle">这台 PDA 的打印设置</string>
+  <string name="home_status_auto_refresh">状态每 5 秒自动刷新</string>
+  <string name="entry_server">① 连接服务器</string>
+  <string name="entry_printer">② 连接打印机</string>
+  <string name="entry_plugins">③ 插件管理</string>
+  <string name="entry_device">④ 本机信息</string>
+  <string name="home_plugins_entry_hint">新增打印机品牌在这里装</string>
+  <string name="home_plugins_entry_count">已装 {0} 个插件</string>
+
+  <!-- 主页状态卡 -->
+  <string name="status_summary_service_stopped">打印服务没有在运行——重启 PDA 试试</string>
+  <string name="status_summary_both_error">服务器和打印机都连不上</string>
+  <string name="status_summary_server_error">服务器连不上——正在自动重试</string>
+  <string name="status_summary_printer_error">打印机连不上</string>
+  <string name="status_summary_ok">一切正常，随时可以打印</string>
+  <string name="status_server_unset">服务器：未设置——只用本机网页打印</string>
+  <string name="status_server_entry_unset">未设置</string>
+  <string name="status_server_error">服务器：连不上——请检查地址是否正确、PDA 是否连着 WiFi</string>
+  <string name="status_server_entry_error">连不上 · {0}</string>
+  <string name="status_server_ok">服务器：已连接 · {0} 通话正常</string>
+  <string name="status_server_entry_ok">已连接 · {0}</string>
+  <string name="status_server_connecting">服务器：正在连接…</string>
+  <string name="status_server_entry_connecting">正在连接 · {0}</string>
+  <string name="status_printer_error">打印机：连不上——请检查打印机是否开机、连接方式与地址是否正确</string>
+  <string name="status_printer_entry_error">{0} · 连不上</string>
+  <string name="status_printer_ok">打印机：正常 · {0} 出过纸（{1}）</string>
+  <string name="status_printer_entry_ok">{0} · 正常</string>
+  <string name="status_printer_never">打印机：还没打印过（{0}）</string>
+  <string name="status_printer_entry_never">{0} · 还没打印过</string>
+
+  <!-- 打印机连接摘要（主页状态 / 通知 / 状态页共用，按连接类型） -->
+  <string name="printer_display_tcp_empty">网口（地址未填）</string>
+  <string name="printer_display_bt_empty">蓝牙（地址未填）</string>
+  <string name="printer_display_bt">蓝牙 {0}</string>
+  <string name="printer_display_usb">USB 数据线</string>
+
+  <!-- 服务器子页 -->
+  <string name="server_title">连接服务器</string>
+  <string name="server_hint">地址问管理员要；不用服务器就留空。</string>
+  <string name="server_field_label">服务器地址</string>
+  <string name="server_input_hint">例如 http://192.168.1.10:53961</string>
+  <string name="server_test_button">测试连接</string>
+  <string name="server_test_empty">请先在上面填服务器地址</string>
+  <string name="server_test_bad_scheme">地址不对——要以 http:// 开头，像 http://192.168.1.10:53961 这样</string>
+  <string name="server_test_testing">正在连接…</string>
+  <string name="server_test_ok">✓ 能连上服务器</string>
+  <string name="server_test_http_error">✗ 连不上——请检查地址是否正确（服务器返回码 {0}）</string>
+  <string name="error_server_unreachable">✗ 连不上服务器——请检查地址是否正确、PDA 是否连着 WiFi</string>
+  <string name="server_save_bad_scheme">还没保存——服务器地址要以 http:// 开头，像 http://192.168.1.10:53961；不用服务器就清空</string>
+
+  <!-- 打印机子页 -->
+  <string name="printer_title">连接打印机</string>
+  <string name="printer_brand_label">打印机品牌</string>
+  <string name="printer_brand_zebra">Zebra（内置）</string>
+  <string name="printer_brand_zebra_hint">网线 / 蓝牙 / USB 三种连接方式</string>
+  <string name="printer_brand_plugin_hint">其他品牌的打印机先在「插件管理」装对应插件，装好重启后这里就能选。</string>
+  <string name="conn_type_label">连接方式</string>
+  <string name="conn_tcp">网线（推荐）</string>
+  <string name="conn_tcp_hint">插网线的打印机，填 IP 地址</string>
+  <string name="conn_bluetooth">蓝牙</string>
+  <string name="conn_bluetooth_hint">在打印机设置里能找到蓝牙地址</string>
+  <string name="conn_usb">USB 数据线</string>
+  <string name="conn_usb_hint">打印机用数据线连着这台 PDA</string>
+  <string name="printer_ip_label">打印机 IP 地址</string>
+  <string name="printer_ip_hint">例如 192.168.1.50</string>
+  <string name="printer_port_label">端口</string>
+  <string name="printer_port_hint">9100</string>
+  <string name="printer_tcp_note">不知道 IP 就问管理员；端口一般填 9100，不用改。</string>
+  <string name="printer_bt_label">打印机蓝牙地址</string>
+  <string name="printer_bt_hint">例如 00:11:22:33:44:55</string>
+  <string name="printer_bt_note">打印机开机后在设置里找「蓝牙地址」或问管理员；先用蓝牙配对不需要，直接填地址就行。</string>
+  <string name="printer_usb_note">保存后自动识别用数据线连着的第一台 Zebra 打印机；第一次用会弹「允许访问 USB 设备」，点允许。</string>
+  <string name="printer_plugin_brand_radio">插件品牌（{0}）—— 网线连接</string>
+  <string name="printer_test_button">打印测试标签</string>
+  <string name="printer_test_dirty">先保存再测试——上面填的地址还没保存，现在测试用的还是旧地址</string>
+  <string name="printer_test_sending">正在发送到打印机…</string>
+  <string name="printer_test_http_error">✗ 没打出来——请再试一次（{0}）</string>
+  <string name="printer_test_parse_error">✗ 没打出来——请再试一次</string>
+  <string name="printer_test_ok">✓ 打印成功——打印机应该已经出纸（{0}/{1}）</string>
+  <string name="printer_test_fail">✗ 没打出来——请检查打印机是否开机、连接方式与地址是否正确、是否缺纸卡纸\n原因：{0}</string>
+  <string name="printer_test_printing">正在打印…</string>
+  <string name="printer_test_timeout">等了 1 分钟还没打完——请再点一次；反复失败就看看打印机是不是卡纸或缺纸</string>
+  <string name="printer_test_no_service">✗ 打印服务没反应——请点「保存并重启服务」后再试</string>
+  <string name="printer_save_no_ip">还没保存——请先填写打印机 IP 地址</string>
+  <string name="printer_save_bad_port">还没保存——端口要填 1 到 65535 之间的数字，一般填 9100</string>
+  <string name="printer_save_bad_mac">还没保存——蓝牙地址要像 00:11:22:33:44:55 这样（12 位数字和字母），问管理员要</string>
+
+  <!-- 插件管理子页 -->
+  <string name="plugins_title">插件管理</string>
+  <string name="plugins_hint">新品牌的打印机在这里装插件；装好重启后「连接打印机」里就能选这个品牌。</string>
+  <string name="plugins_installed_label">已安装的插件</string>
+  <string name="plugins_loading">正在读取…</string>
+  <string name="plugins_installed_empty">还没装任何插件——Zebra 打印机不用插件（内置）。</string>
+  <string name="plugins_installed_count">共 {0} 个插件。卸载或安装后要重启打印服务才生效。</string>
+  <string name="plugins_item_loaded">✓ 已加载，可在「连接打印机」选择该品牌</string>
+  <string name="plugins_item_not_loaded">未加载：{0}</string>
+  <string name="plugins_item_not_loaded_fallback">重启打印服务后生效</string>
+  <string name="plugins_uninstall">卸载</string>
+  <string name="plugins_server_label">服务器上的插件</string>
+  <string name="plugins_server_no_url">还没填服务器地址——先在「连接服务器」里填好再回来装插件。</string>
+  <string name="plugins_server_loading">正在读取服务器插件列表…</string>
+  <string name="plugins_server_http_error">✗ 读不到插件列表（服务器返回码 {0}）——请检查服务器地址</string>
+  <string name="plugins_server_empty">服务器上还没有可装的插件——让管理员在服务端「插件分发」页上传。</string>
+  <string name="plugins_server_count">服务器共 {0} 个插件可装。</string>
+  <string name="plugins_server_platforms">{0} · 平台：{1}</string>
+  <string name="plugins_install">安装</string>
+  <string name="plugins_windows_only">电脑专用</string>
+  <string name="plugins_downloading">正在下载「{0}」…</string>
+  <string name="plugins_download_error">✗ 下载失败——请检查 PDA 与服务器的网络后重试</string>
+  <string name="plugins_installing">正在安装…</string>
+  <string name="plugins_install_http_fallback">安装失败（服务器返回码 {0}）</string>
+  <string name="plugins_installed_toast">插件「{0}」已安装，打印服务已重启生效</string>
+  <string name="plugins_installed_ok">✓ 「{0}」已安装并生效——去「连接打印机」选这个品牌</string>
+  <string name="plugins_install_no_service">✗ 安装失败——打印服务没反应，请点「保存并重启服务」后重试</string>
+  <string name="plugins_uninstall_dialog_title">卸载插件</string>
+  <string name="plugins_uninstall_dialog_message">确定卸载「{0}」吗？卸载后这个品牌的打印机暂时不能打印，该操作不可恢复；确认后会自动重启打印服务。</string>
+  <string name="dialog_cancel">取消</string>
+  <string name="plugins_uninstall_http_fallback">卸载失败（服务器返回码 {0}）</string>
+  <string name="plugins_uninstalled_toast">插件「{0}」已卸载，打印服务已重启生效</string>
+  <string name="plugins_uninstall_error_toast">✗ 卸载失败，请再试一次</string>
+
+  <!-- 本机信息子页 -->
+  <string name="device_title">本机信息</string>
+  <string name="device_id_label">设备号</string>
+  <string name="device_copy">复制</string>
+  <string name="device_name_label">设备名称</string>
+  <string name="device_name_hint">例如：仓库门口 PDA</string>
+  <string name="device_name_note">服务器设备列表里显示的名字</string>
+  <string name="device_version_label">程序版本</string>
+  <string name="device_version_note">有问题上报时把这个号告诉管理员</string>
+  <string name="device_clipboard_label">LabelFrame 设备号</string>
+  <string name="device_copied_toast">已复制设备号</string>
+
+  <!-- 保存 / 通用操作 -->
+  <string name="apply_saving_toast">已保存，正在重启打印服务…</string>
+  <string name="apply_saved_toast">设置已保存，打印服务已重启</string>
+  <string name="run_error_toast">出错了，请再试一次</string>
+
+  <!-- 常驻通知（标题用 app_name；渠道名不双语化——Android 渠道创建后不可改名，维持中文，决策 #164 ⑤） -->
+  <string name="notify_server_unset">服务器：未设置</string>
+  <string name="notify_server_error">服务器：连不上（自动重试中）</string>
+  <string name="notify_server_ok">服务器：已连接</string>
+  <string name="notify_server_connecting">服务器：正在连接…</string>
+  <string name="notify_printer">打印机 {0}</string>
+  <string name="notify_printer_error">打印机 {0} · 连不上</string>
+</resources>

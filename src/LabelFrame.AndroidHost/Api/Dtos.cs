@@ -30,8 +30,15 @@ public sealed record JobView(
 /// <summary>单张标签视图。</summary>
 public sealed record JobItemView(int Index, string Status, string? ErrorCode, string? ErrorMessage);
 
-/// <summary>错误响应。</summary>
-public sealed record ErrorView(string Code, string Message, string? FieldKey = null);
+/// <summary>错误响应：问题码 + 中文消息（可选字段键、可选模板参数）。
+/// params（决策 #164 ③ / #166，迭代 109 定契约、迭代 110 PDA 副本对齐）：扁平字符串键值对象，
+/// 键名与展示端码表模板占位符 <c>{key}</c> 同名，供 PDA / web 按码翻译插值；后端 message 永远为渲染后中文兜底。
+/// 缺省 / null 时序列化与旧形态逐字节等价（<see cref="JsonIgnoreAttribute"/> WhenWritingNull）。</summary>
+public sealed record ErrorView(
+    string Code,
+    string Message,
+    string? FieldKey = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyDictionary<string, string>? Params = null);
 
 /// <summary>提交结果。</summary>
 public sealed record SubmitResult(LabelJob? Job, bool Created, string? ErrorCode, string? ErrorMessage, string? FieldKey)
