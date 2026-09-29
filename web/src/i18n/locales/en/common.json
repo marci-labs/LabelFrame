@@ -4,7 +4,13 @@
     "close": "Close",
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
-    "retry": "Retry"
+    "retry": "Retry",
+    "save": "Save",
+    "download": "Download",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "uploading": "Uploading…",
+    "confirmDelete": "Delete"
   },
   "state": {
     "connectingServer": "Connecting to the server…",
@@ -47,7 +53,8 @@
     "excelTemplateFailed": "Failed to generate the Excel template",
     "renderFailed": "Failed to render the image",
     "previewFailed": "Failed to generate the preview",
-    "debugImagesFailed": "Failed to download debug images"
+    "debugImagesFailed": "Failed to download debug images",
+    "pluginTooLarge": "The plugin package exceeds the size limit (about 64 MB max)."
   },
   "transport": {
     "log": "Simulated printing",
@@ -59,6 +66,17 @@
     "driverFallback": "driver",
     "zebraTcp": "Zebra network printer {{addr}}",
     "nativeModeTitle": "In native command mode the printer renders with its own fonts and commands; the on-screen preview (image-based) no longer represents the actual printout",
-    "nativeModeHint": "No preview in native command mode; actual output depends on the printer"
+    "nativeModeHint": "No preview in native command mode; actual output depends on the printer",
+    "mode": {
+      "log": "Simulated printing",
+      "tcp": "Network printer (TCP)",
+      "windowsDriver": "Windows driver",
+      "zebra": "Zebra printer"
+    },
+    "zebraKind": {
+      "tcp": "Network (TCP)",
+      "usb": "USB (auto-detect)",
+      "driver": "Windows driver"
+    }
   }
 }

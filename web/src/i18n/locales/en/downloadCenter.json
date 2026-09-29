@@ -1,0 +1,46 @@
+{
+  "page": {
+    "title": "Download Center",
+    "subtitle": "Unified distribution of client and PDA packages (upload / download / delete / QR scan)"
+  },
+  "refreshTitle": "Reload the package list",
+  "qrAlt": "QR code for download",
+  "columns": {
+    "fileName": "File Name",
+    "size": "Size",
+    "modifiedAt": "Modified",
+    "qrCode": "QR Code"
+  },
+  "downloadTitle": "Download {{name}}",
+  "deleteTitle": "Delete this package (QR-code and link downloads will stop working)",
+  "loadFailed": "Failed to load the package list.",
+  "uploadFailed": "Upload failed.",
+  "deleteFailed": "Delete failed.",
+  "client": {
+    "title": "Client Download (PC)",
+    "hint": "Installers for print PCs — clients can also download under Settings → Updates & Packages",
+    "uploadLabel": "Upload Client Package",
+    "loading": "Loading client packages…",
+    "empty": "No client packages",
+    "emptyHint": "Click \"Upload Client Package\" to upload an installer file.",
+    "uploadOk": "Package \"{{name}}\" uploaded; clients can download it under Settings → Updates & Packages.",
+    "deleteOk": "Package \"{{name}}\" deleted."
+  },
+  "pda": {
+    "title": "PDA Download (Android)",
+    "hint": "PDA packages (APK) — scan the QR code next to an entry to download",
+    "uploadLabel": "Upload APK",
+    "loading": "Loading PDA packages…",
+    "empty": "No PDA packages",
+    "emptyHint": "Click \"Upload APK\" to upload a PDA package (Android install file).",
+    "installHint": "PDA install note: with the PDA on the same LAN as the server, scan the QR code next to an entry with the camera / scanner app to download. If the first install prompts \"unknown sources\" or \"install blocked\", grant the one-time permission: System settings → Apps → Special access (Install unknown apps) → find the browser → allow installing unknown apps; the exact entry point varies by brand (you can also long-press the browser icon → App info → Install unknown apps). For upgrades, use the APK distributed by the same server (matching signature allows a direct overwrite install; configuration and device ID are kept).",
+    "uploadOk": "APK \"{{name}}\" uploaded; PDAs can scan the QR code on this page to download and install.",
+    "deleteOk": "APK \"{{name}}\" deleted."
+  },
+  "deleteModal": {
+    "titleClient": "Delete Package",
+    "titlePda": "Delete APK",
+    "bodyClient": "Delete package \"{{name}}\"? Clients will no longer be able to download it from the server.",
+    "bodyPda": "Delete APK \"{{name}}\"? PDA QR-code downloads will no longer work."
+  }
+}

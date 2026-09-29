@@ -1,0 +1,29 @@
+{
+  "page": {
+    "title": "在线设备",
+    "subtitle": "点击设备可将其设为「数据与打印」的默认目标"
+  },
+  "loadFailed": "获取设备列表失败。",
+  "pickOffline": "设备「{{name}}」当前离线，无法设为默认目标。",
+  "picked": "已将「{{name}}」设为数据与打印默认目标。",
+  "pauseAuto": "暂停自动刷新",
+  "resumeAuto": "恢复自动刷新",
+  "autoRefresh": "自动刷新",
+  "paused": "已暂停",
+  "refreshNowTitle": "立即刷新",
+  "loading": "正在加载设备列表…",
+  "empty": "暂无设备",
+  "emptyHintInstalled": "客户端（LabelFrame Client）安装并加入服务端后，设备会出现在这里。",
+  "emptyHintOffline": "设备超过 30 秒未连接即显示为离线；列表每 5 秒自动刷新。",
+  "columns": {
+    "deviceId": "设备 ID",
+    "name": "名称",
+    "lastIp": "最近 IP",
+    "status": "在线状态",
+    "lastSeen": "最近连接"
+  },
+  "defaultTitle": "当前为数据与打印默认目标；点击其他设备可切换",
+  "pickTitle": "点击设为数据与打印默认目标",
+  "defaultBadge": "默认",
+  "setDefault": "设为默认"
+}

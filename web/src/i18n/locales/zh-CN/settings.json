@@ -1,9 +1,151 @@
 {
+  "page": {
+    "title": "设置",
+    "subtitle": "服务端地址 / 本机连接与打印机"
+  },
   "language": {
     "title": "语言",
     "label": "界面语言",
     "zhOption": "中文",
     "enOption": "English",
     "hint": "切换立即生效并保存在本浏览器；首次启动默认跟随浏览器语言。"
+  },
+  "serverAddress": {
+    "title": "服务端地址",
+    "label": "服务端地址",
+    "testing": "测试中…",
+    "test": "测试连接",
+    "saving": "保存中…",
+    "save": "保存并生效",
+    "connected": "服务端已连接",
+    "disconnected": "服务端未连接（单机模式可用）",
+    "testOk": "连接成功：该地址可访问服务端。",
+    "testFail": "连接失败：请确认服务端已启动，且地址格式正确（http://主机:端口）。",
+    "saveOk": "已保存到本机配置并立即生效。",
+    "saveFallback": "当前客户端版本较旧：地址已保存在本浏览器中（建议升级客户端）。",
+    "statusSaved": "服务端地址已保存并生效：{{url}}。",
+    "statusFallback": "本机配置接口不可用，已使用浏览器本地保存。",
+    "hint": "服务端保存全部模板与打印记录，地址通常由安装程序自动配置；如需更换，请与管理人员确认后再修改。 保存后立即生效、重启保持；未连接服务端时仍可在本机直接打印（单机模式）。"
+  },
+  "transport": {
+    "title": "连接方式",
+    "current": "当前",
+    "collapseTitle": "收起连接编辑区",
+    "expandTitle": "展开以测试或切换打印机连接",
+    "collapse": "收起",
+    "expand": "展开"
+  },
+  "batch": {
+    "title": "打印批次",
+    "oldClient": "当前客户端版本不支持批次作业。",
+    "loadFailed": "获取批次设置失败。",
+    "loading": "加载批次设置…",
+    "enable": "开启批次作业",
+    "batchSize": "每批次打印数量",
+    "interval": "批次打印间隔（毫秒）",
+    "saving": "保存中…",
+    "saveOk": "已保存并立即生效。",
+    "saveFailed": "保存批次设置失败。",
+    "hint": "开启后，大批量作业将每 {{size}} 张一批发送到打印机，批与批之间间隔 {{interval}} 毫秒。"
+  },
+  "printer": {
+    "title": "打印机",
+    "paperOut": "缺纸",
+    "paused": "已暂停",
+    "noExtraInfo": "（无附加信息）",
+    "reading": "读取中…",
+    "none": "未获取到打印机状态：请确认打印机已开机并连接本机。",
+    "statusFailed": "获取打印机状态失败。",
+    "sending": "发送中…",
+    "test": "测试打印",
+    "sent": "测试页已发送，请确认打印机是否出纸。",
+    "sendFailed": "发送测试页失败。",
+    "hint": "测试打印会发送一张测试页（内容为测试条码）到当前连接的打印机。当前连接方式：{{transport}}（模拟打印无需打印机）。"
+  },
+  "updates": {
+    "title": "更新与安装包",
+    "standalone": "单机模式",
+    "updateAvailable": "发现新版本 {{latest}}（本机 {{local}}）",
+    "updateHint": "请在下方列表下载新版安装包并运行安装（客户端不会自动升级），或请管理人员协助升级。",
+    "upToDate": "已是最新（本机 {{version}}）",
+    "offlineHint": "当前未连接服务端（单机模式）。安装包由服务端统一分发，请先在上方「服务端地址」中连接服务端后查看可用安装包。",
+    "loading": "加载安装包列表…",
+    "loadFailed": "获取安装包列表失败。",
+    "loadFailedWith": "获取安装包列表失败：{{reason}}",
+    "empty": "服务端暂无客户端安装包。可在服务端管理界面「下载中心」页上传后，从此处下载更新。",
+    "columns": {
+      "fileName": "文件名",
+      "size": "大小",
+      "modifiedAt": "修改时间"
+    },
+    "downloadTitle": "从服务端下载 {{name}}",
+    "sourceHint": "下载后运行安装包完成升级（客户端不会自动升级）。安装包来自服务端：{{base}}。"
+  },
+  "plugins": {
+    "title": "插件管理",
+    "availableTitle": "服务端可用插件",
+    "offlineHint": "当前未连接服务端，处于单机模式。插件由服务端统一分发，请连接服务端后查看可用插件。",
+    "loading": "加载可用插件列表…",
+    "loadFailed": "获取可用插件列表失败。",
+    "loadFailedWith": "获取可用插件列表失败：{{reason}}",
+    "oldServer": "服务端版本较旧，暂不支持插件管理；请先将服务端升级到新版本。",
+    "empty": "服务端暂无可用插件。请先在服务端管理界面「插件管理」页上传插件包，再从此处安装。",
+    "columns": {
+      "plugin": "插件",
+      "version": "版本",
+      "size": "大小",
+      "status": "状态"
+    },
+    "valid": "有效",
+    "invalid": "无效",
+    "parseFailed": "解析失败",
+    "invalidTitle": "插件包无效",
+    "install": "安装",
+    "installing": "安装中…",
+    "installTitle": "下载并安装到本机客户端（重启后生效）",
+    "installFailed": "安装失败。",
+    "uninstallFailed": "卸载失败。",
+    "installedTitle": "已安装插件",
+    "installedOld": "当前客户端版本不支持插件管理。",
+    "installedLoadFailedWith": "获取已安装插件列表失败：{{reason}}",
+    "installedLoading": "加载已安装插件…",
+    "installedEmpty": "尚未安装插件。可从上方列表选择插件安装。",
+    "manual": "手动放置",
+    "loaded": "已加载",
+    "loadFailed": "加载失败",
+    "pendingRestart": "待重启生效",
+    "uninstall": "卸载",
+    "uninstalling": "卸载中…",
+    "uninstallTitle": "卸载该插件（重启客户端后生效）",
+    "hint": "安装 / 卸载后需重启客户端生效。",
+    "overwriteModal": {
+      "title": "覆盖安装插件",
+      "confirm": "确认覆盖安装",
+      "body": "已安装「{{existing}}」。将覆盖为「{{target}}」，重启客户端后生效。确认覆盖安装？",
+      "sameIdPlugin": "同 ID 插件"
+    },
+    "uninstallModal": {
+      "title": "卸载插件",
+      "confirm": "确认卸载",
+      "body": "确认卸载插件「{{name}}」？卸载后重启客户端生效。"
+    }
+  },
+  "transportForm": {
+    "currentConnection": "当前连接",
+    "logHint": "不连接打印机：标签会生成为图片保存到本机，便于先确认打印效果。",
+    "noParams": "该插件无参数。",
+    "host": "打印机 IP / 主机名",
+    "port": "端口",
+    "printerName": "打印机名称",
+    "zebraKind": "Zebra 连接方式",
+    "usbName": "USB 设备名",
+    "usbPlaceholder": "留空 = 自动识别第一台",
+    "testing": "测试中…",
+    "test": "测试连接",
+    "applying": "应用中…",
+    "save": "保存并应用",
+    "switched": "连接已切换：{{message}}",
+    "saveFailed": "保存连接失败。",
+    "hint": "「测试连接」通过后才会切换，失败会提示原因且当前连接保持不变；保存后重启仍使用该连接。"
   }
 }

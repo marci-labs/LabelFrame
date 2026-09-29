@@ -12,6 +12,10 @@ import zhCNErrorCodes from './locales/zh-CN/errorCodes.json'
 import zhCNWorkbench from './locales/zh-CN/workbench.json'
 import zhCNJobHistory from './locales/zh-CN/jobHistory.json'
 import zhCNDataPrint from './locales/zh-CN/dataPrint.json'
+import zhCNDesigner from './locales/zh-CN/designer.json'
+import zhCNDownloadCenter from './locales/zh-CN/downloadCenter.json'
+import zhCNDevices from './locales/zh-CN/devices.json'
+import zhCNPluginPackages from './locales/zh-CN/pluginPackages.json'
 import enCommon from './locales/en/common.json'
 import enShell from './locales/en/shell.json'
 import enSettings from './locales/en/settings.json'
@@ -19,6 +23,10 @@ import enErrorCodes from './locales/en/errorCodes.json'
 import enWorkbench from './locales/en/workbench.json'
 import enJobHistory from './locales/en/jobHistory.json'
 import enDataPrint from './locales/en/dataPrint.json'
+import enDesigner from './locales/en/designer.json'
+import enDownloadCenter from './locales/en/downloadCenter.json'
+import enDevices from './locales/en/devices.json'
+import enPluginPackages from './locales/en/pluginPackages.json'
 
 /** 展平嵌套 JSON 为 `a.b.c` 全量 key 路径集合。 */
 function flattenKeys(obj: unknown, prefix = ''): Set<string> {
@@ -47,6 +55,10 @@ const NAMESPACES: Record<string, { zh: unknown; en: unknown }> = {
   workbench: { zh: zhCNWorkbench, en: enWorkbench },
   jobHistory: { zh: zhCNJobHistory, en: enJobHistory },
   dataPrint: { zh: zhCNDataPrint, en: enDataPrint },
+  designer: { zh: zhCNDesigner, en: enDesigner },
+  downloadCenter: { zh: zhCNDownloadCenter, en: enDownloadCenter },
+  devices: { zh: zhCNDevices, en: enDevices },
+  pluginPackages: { zh: zhCNPluginPackages, en: enPluginPackages },
 }
 
 describe('语言包 en 覆盖 zh-CN 全部 key（AC-04）', () => {

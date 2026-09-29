@@ -1,0 +1,46 @@
+{
+  "page": {
+    "title": "下载中心",
+    "subtitle": "客户端与 PDA 安装包统一分发（上传 / 下载 / 删除 / 扫码）"
+  },
+  "refreshTitle": "重新拉取安装包列表",
+  "qrAlt": "扫码下载二维码",
+  "columns": {
+    "fileName": "文件名",
+    "size": "大小",
+    "modifiedAt": "修改时间",
+    "qrCode": "二维码"
+  },
+  "downloadTitle": "下载 {{name}}",
+  "deleteTitle": "删除该安装包（扫码与链接下载将失效）",
+  "loadFailed": "获取安装包列表失败。",
+  "uploadFailed": "上传失败。",
+  "deleteFailed": "删除失败。",
+  "client": {
+    "title": "客户端下载（PC）",
+    "hint": "打印电脑（PC）的安装程序——客户端也可在「设置 → 更新与安装包」中下载",
+    "uploadLabel": "上传客户端安装包",
+    "loading": "正在加载客户端安装包…",
+    "empty": "暂无客户端安装包",
+    "emptyHint": "点击「上传客户端安装包」上传安装文件。",
+    "uploadOk": "安装包「{{name}}」已上传，客户端可在「设置 → 更新与安装包」中下载。",
+    "deleteOk": "安装包「{{name}}」已删除。"
+  },
+  "pda": {
+    "title": "PDA 下载（Android）",
+    "hint": "PDA 安装包（APK）——扫条目旁二维码即可下载",
+    "uploadLabel": "上传 APK",
+    "loading": "正在加载 PDA 安装包…",
+    "empty": "暂无 PDA 安装包",
+    "emptyHint": "点击「上传 APK」上传 PDA 安装包（Android 安装文件）。",
+    "installHint": "PDA 安装提示：PDA 与服务器连同一局域网，用相机 / 扫码工具扫条目旁二维码即可下载。首次安装若提示「未知来源」或「禁止安装」，需一次性授权：系统设置 → 应用 → 特殊权限（安装未知应用）→ 找到浏览器 → 允许安装未知应用；各品牌入口略有差异（也可长按浏览器图标 → 应用信息 → 安装未知应用）。升级请使用同一服务器分发的 APK（签名一致可直接覆盖安装，配置与设备号保留）。",
+    "uploadOk": "APK「{{name}}」已上传，PDA 可在本页扫二维码下载安装。",
+    "deleteOk": "APK「{{name}}」已删除。"
+  },
+  "deleteModal": {
+    "titleClient": "删除安装包",
+    "titlePda": "删除 APK",
+    "bodyClient": "确定删除安装包「{{name}}」吗？删除后客户端将无法再从服务端下载该文件。",
+    "bodyPda": "确定删除 APK「{{name}}」吗？删除后 PDA 扫码将无法再下载该文件。"
+  }
+}
