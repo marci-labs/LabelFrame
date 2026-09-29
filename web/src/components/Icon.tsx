@@ -49,7 +49,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
-  edit: <path d="M13 3 5 11v3h3l8-8zM15 5l2 2" />,
+  edit: <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />,
   trash: <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5" />,
   download: <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" />,
   upload: <path d="M12 15V3m0 0 4 4m-4-4-4 4M4 19h16" />,
