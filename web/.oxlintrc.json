@@ -8,7 +8,15 @@
   },
   "overrides": [
     {
-      "files": ["src/App.tsx", "src/components/Modal.tsx"],
+      "files": [
+        "src/App.tsx",
+        "src/components/Modal.tsx",
+        "src/components/ErrorBoundary.tsx",
+        "src/pages/Workbench.tsx",
+        "src/pages/WorkbenchPreview.tsx",
+        "src/pages/JobHistory.tsx",
+        "src/pages/DataPrint.tsx"
+      ],
       "rules": {
         "labelframe/no-bare-cjk-jsx": "error"
       }

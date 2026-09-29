@@ -34,6 +34,7 @@ import { ApiError, DEFAULT_LOCAL_BASE_URL } from './types'
 import { getBaseUrl } from '../settings'
 import { UI_MODE } from '../uiMode'
 import { resolveApiErrorMessage } from '../../i18n/errorMessages'
+import i18next from '../../i18n'
 
 // ── base 解析 ──
 
@@ -83,13 +84,16 @@ function createRequestTimeout(timeoutMs: number) {
   }
 }
 
-/** fetch 传输层失败归一化：超时 → ApiError('TIMEOUT', 中文文案)；其余（不可达 / 连接被拒）→ 既有 NETWORK_ERROR（语义不变）。 */
+/** fetch 传输层失败归一化：超时 → ApiError('TIMEOUT')；其余（不可达 / 连接被拒）→ 既有 NETWORK_ERROR（语义不变）。
+ *  迭代 111（#245）：兜底文案 key 化（common.api.* 词条，读 i18next 单例当前语言——错误在请求失败期构造，
+ *  语言即当时界面语言；zh-CN 值与原硬编码逐字一致）。 */
 function transportError(t: ReturnType<typeof createRequestTimeout>, timeoutMs: number, base: () => string, label: '服务端' | '本机客户端'): ApiError {
+  const targetKey = label === '服务端' ? 'api.targetServer' : 'api.targetLocalClient'
   if (t.didTimeout()) {
     // 秒数下限 1：注入短超时的测试与极小值场景不出现「超过 0 秒」的病态文案
-    return new ApiError('TIMEOUT', `请求超时（${label}超过 ${Math.max(1, Math.round(timeoutMs / 1000))} 秒未响应），已取消本次请求，请检查服务状态后重试。`)
+    return new ApiError('TIMEOUT', i18next.t('api.timeout', { target: i18next.t(targetKey), seconds: Math.max(1, Math.round(timeoutMs / 1000)) }))
   }
-  return new ApiError('NETWORK_ERROR', `无法连接${label}（${base()}），请检查服务端地址与本机客户端是否已启动。`)
+  return new ApiError('NETWORK_ERROR', i18next.t('api.networkError', { target: i18next.t(targetKey), base: base() }))
 }
 
 // ── 请求原语 ──
@@ -115,7 +119,7 @@ function makeRequest(base: () => string, label: '服务端' | '本机客户端')
         }
         throw new ApiError(
           body?.code ?? 'HTTP_' + res.status,
-          resolveApiErrorMessage(body?.code, body?.params, body?.message ?? `请求失败（HTTP ${res.status}）。`),
+          resolveApiErrorMessage(body?.code, body?.params, body?.message ?? i18next.t('api.httpError', { status: res.status })),
           body?.fieldKey,
           body?.params)
       }
@@ -184,7 +188,7 @@ function makeFetchBlob(base: () => string, label: '服务端' | '本机客户端
         }
         throw new ApiError(
           body?.code ?? 'HTTP_' + res.status,
-          resolveApiErrorMessage(body?.code, body?.params, body?.message ?? `${failMessage}（HTTP ${res.status}）。`),
+          resolveApiErrorMessage(body?.code, body?.params, body?.message ?? i18next.t('api.blobHttpError', { message: failMessage, status: res.status })),
           body?.fieldKey,
           body?.params)
       }
@@ -216,9 +220,9 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
       try {
         res = await fetch(base() + '/healthz', { mode: 'cors', signal: AbortSignal.timeout(5000) })
       } catch {
-        throw new ApiError('NETWORK_ERROR', `无法连接${label}（${base()}），请检查服务端地址与本机客户端是否已启动。`)
+        throw new ApiError('NETWORK_ERROR', i18next.t('api.networkError', { target: i18next.t(label === '服务端' ? 'api.targetServer' : 'api.targetLocalClient'), base: base() }))
       }
-      if (!res.ok) throw new ApiError('HTTP_' + res.status, `请求失败（HTTP ${res.status}）。`)
+      if (!res.ok) throw new ApiError('HTTP_' + res.status, i18next.t('api.httpError', { status: res.status }))
       return (await res.json()) as Healthz
     },
 
@@ -238,7 +242,7 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
         `/api/templates/${encodeURIComponent(name)}/export`,
         { method: 'GET' },
         `${name}.lfpkg`,
-        '导出失败',
+        i18next.t('api.exportFailed'),
         requestTimeouts.heavy,
       ),
     importTemplate: async (file: File): Promise<string> => {
@@ -263,7 +267,7 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
           body: JSON.stringify({ columns, sampleRow }),
         },
         'excel-template.xlsx',
-        '生成 Excel 模板失败',
+        i18next.t('api.excelTemplateFailed'),
         requestTimeouts.heavy,
       ),
 
@@ -292,7 +296,7 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
-      }, 'label-print.png', '出图失败', requestTimeouts.heavy),
+      }, 'label-print.png', i18next.t('api.renderFailed'), requestTimeouts.heavy),
 
     /** 模板预览 PNG（迭代 46：按模板 TestData 渲染，工作台预览列用；Server 与 WinHost 双宿主已实现，
      *  模板不存在等业务失败由调用方按失败态处理）。与 renderImage 同构的 blob 封装。
@@ -303,7 +307,7 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
         `/api/templates/${encodeURIComponent(name)}/preview`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
         `${name}.png`,
-        '生成预览失败',
+        i18next.t('api.previewFailed'),
         requestTimeouts.heavy,
       ),
 
@@ -313,7 +317,7 @@ function makeBusinessApi(base: () => string, label: '服务端' | '本机客户�
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
-      }, 'labels-debug.zip', '下载调试图片失败', requestTimeouts.heavy),
+      }, 'labels-debug.zip', i18next.t('api.debugImagesFailed'), requestTimeouts.heavy),
 
     getLogs: (deviceId?: string, since?: string) => {
       const params = new URLSearchParams()

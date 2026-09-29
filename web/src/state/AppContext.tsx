@@ -14,7 +14,7 @@ import type { TransportConfig } from '../lib/api/types'
 import { getBaseUrl, setBaseUrl as persistBaseUrl } from '../lib/settings'
 import { probeHealthz } from '../lib/api/client'
 import { isServerUi } from '../lib/uiMode'
-import { currentLocale, formatLogTime } from '../i18n'
+import i18next, { currentLocale, formatLogTime } from '../i18n'
 import type { PrintDraft, StorageLike } from './draft'
 import { applyDraftValue, loadPrintDraft, savePrintDraft } from './draft'
 
@@ -126,7 +126,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [defaultTargetDeviceId, setDefaultTargetDeviceIdState] = useState<string | null>(() => (isServerUi ? readDefaultTargetDevice() : null))
   const [transport, setTransport] = useState<string | null>(null)
   const [transportConfig, setTransportConfig] = useState<TransportConfig | null>(null)
-  const [statusMsg, setStatusMsg] = useState('就绪')
+  // 迭代 111（#245）：状态栏初始消息 key 化（shell.statusbar.ready；zh 值与原硬编码一致）——
+  // 惰性初值读 i18next 当前语言；后续消息由各页 setStatus 写入（语言切换后旧消息不回译，属既有语义）
+  const [statusMsg, setStatusMsg] = useState(() => i18next.t('shell:statusbar.ready'))
   const [logs, setLogs] = useState<LogLine[]>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [printDraft, setPrintDraft] = useState<PrintDraft>(() => loadPrintDraft(getSessionStorage()))
@@ -237,12 +239,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setHostDeviceName(cfg.deviceName ?? null)
         setHostIps(cfg.ips ?? [])
         setHostVersion(cfg.version ?? null)
-        setStatus(`已读取本机配置：服务端 ${cfg.serverUrl}。`)
+        setStatus(i18next.t('shell:startup.hostConfigLoaded', { serverUrl: cfg.serverUrl }))
       })
       .catch(() => {
         if (!on) return
         // 旧客户端（0.14 无 /api/host/config）：回退 localStorage 兜底（getBaseUrl 已含默认值）
-        setStatus('本机配置接口不可用，使用浏览器本地保存的服务端地址。')
+        setStatus(i18next.t('shell:startup.hostConfigFallback'))
       })
       .finally(() => {
         // 迭代 86（#142）：配置加载完成（成功读取，或旧客户端回退 localStorage 兜底）后才放行探测——
