@@ -53,7 +53,9 @@ public sealed class PrintHostService : Service
         var pluginHost = PluginHost.Load(this);
         // 打印传输品牌路由：zebra → 内置 SDK（既有路径原样）；外置插件品牌 → 插件传输；未安装 → 回退 zebra + 留痕
         _transport = AndroidTransportFactory.Create(config, pluginHost.Registry, pluginHost.PluginContext, this);
-        var printerTarget = config.PrinterDisplay();
+        // 摘要经资源取值（迭代 110 / #244）：HostStatus 与通知随系统语言；本行日志为诊断内容维持中文（#164 ②），
+        // 摘要主体是地址 / 端口等技术值，仅连接方式词随语言
+        var printerTarget = config.PrinterDisplay(this);
         HostStatus.NoteServiceStarted(config.ServerUrl, printerTarget);
         HostLog.Info(
             HostLog.Tags.Host,
@@ -102,6 +104,7 @@ public sealed class PrintHostService : Service
     {
         if (OperatingSystem.IsAndroidVersionAtLeast(26))
         {
+            // 渠道名不双语化（决策 #164 ⑤）：Android 渠道创建后不可改名，维持中文现状——迭代 110 范围显式排除
             var channel = new NotificationChannel(ChannelId, "LabelFrame 打印服务", NotificationImportance.Low);
             var manager = (NotificationManager?)GetSystemService(NotificationService);
             manager?.CreateNotificationChannel(channel);
@@ -133,7 +136,7 @@ public sealed class PrintHostService : Service
             ? new Notification.Builder(this, ChannelId)
             : new Notification.Builder(this);
         return builder
-            .SetContentTitle("LabelFrame 标签打印")
+            .SetContentTitle(GetString(Resource.String.app_name))
             .SetContentText(text)
             .SetSmallIcon(Resource.Drawable.ic_stat_labelframe)
             .SetOngoing(true)
@@ -141,32 +144,33 @@ public sealed class PrintHostService : Service
             .Build();
     }
 
-    /// <summary>通知文案（面向仓库用户的人话）：服务器状态 + 打印机连接方式，一句话说完。</summary>
-    private static string BuildStatusText()
+    /// <summary>通知文案（面向仓库用户的人话）：服务器状态 + 打印机连接方式，一句话说完。
+    /// 迭代 110（#244）：文案经资源 id 引用（values 缺省中文 / values-en 英文，跟随系统语言）。</summary>
+    private string BuildStatusText()
     {
         var s = HostStatus.Current;
         string server;
         if (s.ActiveServerUrl.Length == 0)
         {
-            server = "服务器：未设置";
+            server = HostStrings.L(this, Resource.String.notify_server_unset);
         }
         else if (s.LastServerError is not null)
         {
-            server = "服务器：连不上（自动重试中）";
+            server = HostStrings.L(this, Resource.String.notify_server_error);
         }
         else if (s.LastServerContactUtc is not null)
         {
-            server = "服务器：已连接";
+            server = HostStrings.L(this, Resource.String.notify_server_ok);
         }
         else
         {
-            server = "服务器：正在连接…";
+            server = HostStrings.L(this, Resource.String.notify_server_connecting);
         }
 
         // ActivePrinterEndpoint 已是按连接类型生成的用户可读摘要（网口 IP / 蓝牙地址 / USB 数据线）
         var printer = s.LastPrintError is not null
-            ? $"打印机 {s.ActivePrinterEndpoint} · 连不上"
-            : $"打印机 {s.ActivePrinterEndpoint}";
+            ? HostStrings.L(this, Resource.String.notify_printer_error, s.ActivePrinterEndpoint)
+            : HostStrings.L(this, Resource.String.notify_printer, s.ActivePrinterEndpoint);
 
         return $"{server} · {printer}";
     }

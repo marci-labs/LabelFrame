@@ -15,11 +15,13 @@ namespace LabelFrame.AndroidHost;
 /// </summary>
 public sealed class EmbeddedHttpServer : IDisposable
 {
-    /// <summary>插件端点错误码（与 LabelFrame.Api 的 ApiErrorCodes 同值——AndroidHost 不引用 Api 工程，字面量对齐）。</summary>
+    /// <summary>插件端点错误码（与 LabelFrame.Api 的 ApiErrorCodes 同值——AndroidHost 不引用 Api 工程，字面量对齐；
+    /// 迭代 110 补 InstallFailed：安装兜底失败原误挂 Invalid，翻译语义与注册表对齐）。</summary>
     private static class PluginErrorCodes
     {
         public const string Invalid = "LF_PLUGIN_INVALID";
         public const string Busy = "LF_PLUGIN_BUSY";
+        public const string InstallFailed = "LF_PLUGIN_INSTALL_FAILED";
     }
 
     private readonly int _port;
@@ -371,7 +373,7 @@ public sealed class EmbeddedHttpServer : IDisposable
     {
         var job = _queue.GetAsync(jobId, CancellationToken.None).GetAwaiter().GetResult();
         return job is null
-            ? Json(404, new ErrorView(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。"))
+            ? Json(404, new ErrorView(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。", null, new Dictionary<string, string> { ["jobId"] = jobId }))
             : Json(200, JobViews.From(job));
     }
 
@@ -449,7 +451,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         public static HostConfigView From(LabelHostConfig config, Android.Content.Context context)
             => new(
                 config.TcpHost, config.TcpPort, config.PrinterBrand, config.ConnectionType,
-                config.BluetoothMac, config.PrinterDisplay(),
+                config.BluetoothMac, config.PrinterDisplay(context),
                 config.ServerUrl, config.DeviceId, config.DeviceName,
                 $"127.0.0.1:{LabelHostConfig.LocalPort}", HostInfo.GetVersion(context));
     }
@@ -521,13 +523,14 @@ public sealed class EmbeddedHttpServer : IDisposable
         }
         catch (Core.Transport.Plugins.Package.PluginPackageException ex)
         {
-            // 业务性失败（非 zip / zip 损坏 / manifest 缺失或非法 / 平台不匹配 / 内置 id 冲突等）：消息已是中文可行动提示
-            return Json(400, new ErrorView(PluginErrorCodes.Invalid, ex.Message));
+            // 业务性失败（非 zip / zip 损坏 / manifest 缺失或非法 / 平台不匹配 / 内置 id 冲突等）：消息已是中文可行动提示；
+            // detail 参数随 ErrorView 透出（迭代 110 / #244），供展示端按码翻译插值
+            return Json(400, new ErrorView(PluginErrorCodes.Invalid, ex.Message, null, new Dictionary<string, string> { ["detail"] = ex.Message }));
         }
         catch (Exception ex)
         {
             HostLog.Error(HostLog.Tags.Http, $"插件安装失败（POST /api/plugins/install）：{ex.Message}", ex.ToString());
-            return Json(500, new ErrorView(PluginErrorCodes.Invalid, "插件安装失败，请重试；问题持续请联系管理员。"));
+            return Json(500, new ErrorView(PluginErrorCodes.InstallFailed, "插件安装失败，请重试；问题持续请联系管理员。"));
         }
     }
 
@@ -565,7 +568,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         }
         catch (Core.Transport.Plugins.Package.PluginPackageException ex)
         {
-            return Json(400, new ErrorView(PluginErrorCodes.Invalid, ex.Message));
+            return Json(400, new ErrorView(PluginErrorCodes.Invalid, ex.Message, null, new Dictionary<string, string> { ["detail"] = ex.Message }));
         }
     }
 
@@ -596,7 +599,7 @@ public sealed class EmbeddedHttpServer : IDisposable
         {
             // 5xx 响应自身的原因此前完全不可见（连接重置 / 无日志），此处补记录
             HostLog.Error(HostLog.Tags.Http, $"打印机测试发送失败（POST /api/printer/test）：{ex.Message}", ex.ToString());
-            return Json(500, new ErrorView(JobErrorCodes.TransportSendFailed, $"发送失败：{ex.Message}"));
+            return Json(500, new ErrorView(JobErrorCodes.TransportSendFailed, $"发送失败：{ex.Message}", null, new Dictionary<string, string> { ["reason"] = ex.Message }));
         }
     }
 

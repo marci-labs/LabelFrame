@@ -14,5 +14,6 @@
   <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
   <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
   <!-- USB 连接类型：无需静态权限，首次连接由 Zebra SDK 触发系统授权弹窗 -->
-  <application android:label="LabelFrame 标签打印" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:usesCleartextTraffic="true" />
+  <!-- 应用名经资源引用（迭代 110 / #244）：values 缺省中文 / values-en 英文，跟随系统语言 -->
+  <application android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:usesCleartextTraffic="true" />
 </manifest>
