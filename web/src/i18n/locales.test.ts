@@ -9,10 +9,16 @@ import zhCNCommon from './locales/zh-CN/common.json'
 import zhCNShell from './locales/zh-CN/shell.json'
 import zhCNSettings from './locales/zh-CN/settings.json'
 import zhCNErrorCodes from './locales/zh-CN/errorCodes.json'
+import zhCNWorkbench from './locales/zh-CN/workbench.json'
+import zhCNJobHistory from './locales/zh-CN/jobHistory.json'
+import zhCNDataPrint from './locales/zh-CN/dataPrint.json'
 import enCommon from './locales/en/common.json'
 import enShell from './locales/en/shell.json'
 import enSettings from './locales/en/settings.json'
 import enErrorCodes from './locales/en/errorCodes.json'
+import enWorkbench from './locales/en/workbench.json'
+import enJobHistory from './locales/en/jobHistory.json'
+import enDataPrint from './locales/en/dataPrint.json'
 
 /** 展平嵌套 JSON 为 `a.b.c` 全量 key 路径集合。 */
 function flattenKeys(obj: unknown, prefix = ''): Set<string> {
@@ -38,6 +44,9 @@ const NAMESPACES: Record<string, { zh: unknown; en: unknown }> = {
   shell: { zh: zhCNShell, en: enShell },
   settings: { zh: zhCNSettings, en: enSettings },
   errorCodes: { zh: zhCNErrorCodes, en: enErrorCodes },
+  workbench: { zh: zhCNWorkbench, en: enWorkbench },
+  jobHistory: { zh: zhCNJobHistory, en: enJobHistory },
+  dataPrint: { zh: zhCNDataPrint, en: enDataPrint },
 }
 
 describe('语言包 en 覆盖 zh-CN 全部 key（AC-04）', () => {

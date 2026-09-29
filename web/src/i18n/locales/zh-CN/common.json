@@ -1,6 +1,64 @@
 {
   "action": {
     "cancel": "取消",
-    "close": "关闭"
+    "close": "关闭",
+    "refresh": "刷新",
+    "refreshing": "刷新中…",
+    "retry": "重试"
+  },
+  "state": {
+    "connectingServer": "正在连接服务端…",
+    "loading": "加载中…"
+  },
+  "jobStatus": {
+    "pending": "排队中",
+    "printing": "打印中",
+    "completed": "已完成",
+    "failed": "失败",
+    "suspended": "已挂起",
+    "cancelled": "已取消",
+    "claimed": "已领取",
+    "expired": "已过期"
+  },
+  "job": {
+    "failedReason": "失败原因",
+    "unknownError": "未知错误"
+  },
+  "column": {
+    "time": "时间",
+    "status": "状态"
+  },
+  "device": {
+    "local": "本机",
+    "online": "在线",
+    "offline": "离线"
+  },
+  "value": {
+    "unknown": "未知"
+  },
+  "api": {
+    "targetServer": "服务端",
+    "targetLocalClient": "本机客户端",
+    "timeout": "请求超时（{{target}}超过 {{seconds}} 秒未响应），已取消本次请求，请检查服务状态后重试。",
+    "networkError": "无法连接{{target}}（{{base}}），请检查服务端地址与本机客户端是否已启动。",
+    "httpError": "请求失败（HTTP {{status}}）。",
+    "blobHttpError": "{{message}}（HTTP {{status}}）。",
+    "exportFailed": "导出失败",
+    "excelTemplateFailed": "生成 Excel 模板失败",
+    "renderFailed": "出图失败",
+    "previewFailed": "生成预览失败",
+    "debugImagesFailed": "下载调试图片失败"
+  },
+  "transport": {
+    "log": "模拟打印",
+    "tcpPrinter": "网络打印机 {{addr}}",
+    "windowsPrinter": "Windows 打印机 {{name}}",
+    "zebraUsb": "Zebra USB",
+    "zebraUsbName": "Zebra USB（{{name}}）",
+    "zebraDriver": "Zebra {{name}}",
+    "driverFallback": "驱动",
+    "zebraTcp": "Zebra 网络打印机 {{addr}}",
+    "nativeModeTitle": "原生指令模式由打印机按自身字体与指令渲染，界面预览（图片口径）不再代表实际出纸效果",
+    "nativeModeHint": "原生指令模式无预览，效果以真机为准"
   }
 }

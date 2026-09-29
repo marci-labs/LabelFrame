@@ -16,6 +16,7 @@
     "serverDisconnected": "Server disconnected"
   },
   "statusbar": {
+    "ready": "Ready",
     "localServiceUp": "Local print service: running",
     "localServiceDown": "Local print service: not running",
     "serverAdminOrigin": "{{origin}} · Server console",
@@ -38,5 +39,14 @@
     "untitled": "No template open yet",
     "hint": "Create or edit a template in the workbench to open the designer",
     "newTemplate": "New Template"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "hint": "The page failed to render; reloading usually fixes it.",
+    "reload": "Reload"
+  },
+  "startup": {
+    "hostConfigLoaded": "Loaded local machine config: server {{serverUrl}}.",
+    "hostConfigFallback": "Local machine config endpoint unavailable; using the server address saved in this browser."
   }
 }
