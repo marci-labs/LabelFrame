@@ -11,6 +11,7 @@
 - **CI 防线（决策 #164 ⑦）**：① oxlint jsPlugins 自定义规则 `labelframe/no-bare-cjk-jsx`（`web/oxlint-plugin-labelframe.cjs`）——圈禁文件内 JSX 文本 / JSX 属性字符串含 CJK 即 error，圈禁清单在 `.oxlintrc.json` overrides 显式维护（初始 `src/App.tsx` + `src/components/Modal.tsx`）；② vitest 断言 en 语言包覆盖 zh-CN 全部 key（缺失 / 多余均红，`src/i18n/locales.test.ts`）。
 - 测试环境 vitest.setup 钉住 `navigator.language = zh-CN`（既有中文断言确定性）；新增 i18n 行为测试 14 项（AC-01/02 组件自证：jsdom 模拟 localStorage 与浏览器语言）。后端零改动。
 - 页面文案批量迁移（111/112）、错误码表（109）、PDA（110）不在本轮。
+- 验收（AC-06 沙箱补验，2026-09-29）：双语走查通过——server / client 双构建中英两轮全导航（工作台 / 设计器 / 数据与打印 / 在线设备 / 作业历史 / 下载中心 / 插件管理 / 设置）无白屏 / 无乱码 / 壳层无横向溢出（含 1280×720 复检与清空日志确认弹窗中英两态），语言卡片切换即时生效且刷新保持，33/33 程序化断言全绿、0 未捕获 JS 异常；DOM 取证与截图留存位置披露回写 #241（用户委托自动结项：2026-09-11 分工协议）。
 
 ## 迭代 107：多语言治理——决策 #164 文档入库与全仓文案盘点底账（#240） · 2026-09-29
 
