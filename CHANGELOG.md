@@ -17,6 +17,7 @@
 - **码表同步**：web `errorCodes.json`（zh-CN + en）与 PDA `LfErrorCatalog.cs`（zh + en）同步新码词条、LF_TPL_001/LF_SRV_006 占位 `{{name}}`→`{{templateName}}`、LF_SRV_001 代表性词条改为 `{{deviceId}}` 变体；覆盖断言（web vitest + AndroidHost.Tests 解析注册表）自动要求新码入表。
 - **防复发断言**：① dotnet 源扫描测试（`ErrorParamKeyConsistencyTests`）——解析 `src` 全部携带 params 的错误构造调用点（Templated 助手 / Dictionary 惯用法，含共享端点 Server/WinHost 接线展开），按码分组断言键集一致，并与 zh / en 两份码表词条占位符逐键对齐；站点数下限 + 解析完整性断言防正则失配假绿。② web en 渲染变体矩阵（`errorParamVariants.test.ts`）——全部 19 个变体逐条断言英文词条、插值正确、无 `{{` 残留（含 LF_SRV_006 两变体与 LF_SRV_001/012 各变体）。③ 端点集成锚点：模板库 404 / 提交链 / by-ip / callbackUrl 的 code+params 断言。
 - 不在范围（维持验收侧）：渲染层多键兼容、接受变体回退、en 界面整轮复测（walk 脚本与证据链可复用）。
+- **验收（返修后 en 界面整轮复验，2026-09-29）**：沙箱走查 18/18 断言通过——原失败项 1a（模板库端点变体）en 渲染 `Template not found: <name>.` 英文词条＋插值在位；拆码 LF_SRV_012（`No device found for IP: <ip>.`）/ LF_SRV_013（`Invalid callbackUrl …: <url>.`）经「真实后端 ErrorView 捕获＋UI 提交链重放」复验通过；未知码回退后端中文、无码回退前端文案、zh-CN 直用后端 message、0 未捕获异常。证据回写 #242 后结项。
 ## 迭代 110：PDA 宿主多语言——Android 资源体系与错误码翻译（#244） · 2026-09-29
 
 ## 迭代 110：PDA 宿主多语言——Android 资源体系与错误码翻译（#244） · 2026-09-29
