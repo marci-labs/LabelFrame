@@ -6,29 +6,20 @@
 // 目标设备下拉同源）；编号收敛（决议 2）——仅「作业编号」可见且可一键复制，「请求编号」收进悬停提示。
 // 迭代 85（#133 C-5，决议 2）：行可展开明细——本机直连作业（WinHost 返回逐张 items）显示每张状态 / 失败原因；
 // 服务端下发作业（无 items）显示汇总（状态 / 失败原因完整）并如实注明「逐张明细仅本机直接打印的作业提供」。
+// 迭代 111（#245）：页面文案 key 化（jobHistory 域；jobStatus / column 等 common 词条经 fallbackNS 兜底）。
 
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { JobView } from '../lib/api/types'
 import { copyText } from '../lib/clipboard'
 import { deviceDisplayName } from '../lib/deviceDisplay'
+import { useJobStatusLabel } from '../lib/jobStatus'
 import { useApp } from '../state/AppContext'
 import { isServerUi } from '../lib/uiMode'
 import { Icon } from '../components/Icon'
 
-const JOB_STATUS_LABEL: Record<string, string> = {
-  Pending: '排队中',
-  Printing: '打印中',
-  Completed: '已完成',
-  Failed: '失败',
-  Suspended: '已挂起',
-  Cancelled: '已取消',
-  Claimed: '已领取',
-  Expired: '已过期',
-}
-
-const jobLabel = (s: string) => JOB_STATUS_LABEL[s] ?? s
 const isTerminal = (s: string) => s === 'Completed' || s === 'Failed' || s === 'Cancelled' || s === 'Expired'
 
 /** 迭代 48：轮询节奏（对齐 DataPrint useJobPolling——1.5s 常规 / 2s 失败退避）。 */
@@ -56,16 +47,19 @@ function statusBadgeClass(status: string): string {
  * - 服务端下发作业（Server 不返回 items）：汇总呈现（状态 / 完成失败张数 / 失败原因全文）＋决议 2 的如实占位说明。
  */
 function JobDetail({ job }: { job: JobView }) {
+  // 迭代 111（#245）：明细文案 key 化（jobHistory 域 detail.*；状态 / 失败原因等 common 词条兜底）
+  const { t } = useTranslation('jobHistory')
+  const jobLabel = useJobStatusLabel()
   if (job.items && job.items.length > 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div className="hint">本机直接打印作业——逐张明细（共 {job.items.length} 张）：</div>
+        <div className="hint">{t('detail.itemsTitle', { count: job.items.length })}</div>
         <table className="table">
           <thead>
             <tr>
               <th style={{ width: 50 }}>#</th>
-              <th style={{ width: 90 }}>状态</th>
-              <th>失败原因</th>
+              <th style={{ width: 90 }}>{t('column.status')}</th>
+              <th>{t('job.failedReason')}</th>
             </tr>
           </thead>
           <tbody>
@@ -77,7 +71,7 @@ function JobDetail({ job }: { job: JobView }) {
                 </td>
                 {/* 失败原因与数据与打印进度区同口径：仅失败张呈现原因（errorMessage 优先，回退 errorCode） */}
                 <td style={{ fontSize: 12, color: it.status === 'Failed' ? 'var(--danger)' : undefined }}>
-                  {it.status === 'Failed' ? it.errorMessage || it.errorCode || '未知错误' : '—'}
+                  {it.status === 'Failed' ? it.errorMessage || it.errorCode || t('job.unknownError') : '—'}
                 </td>
               </tr>
             ))}
@@ -85,7 +79,7 @@ function JobDetail({ job }: { job: JobView }) {
         </table>
         {job.printImageDir && (
           <div className="hint" style={{ wordBreak: 'break-all' }}>
-            模拟打印生成的图片保存在：{job.printImageDir}（共 {job.printImageCount ?? 0} 张，可在资源管理器打开该目录查看）。
+            {t('detail.simPrintDir', { dir: job.printImageDir, count: job.printImageCount ?? 0 })}
           </div>
         )}
       </div>
@@ -97,20 +91,20 @@ function JobDetail({ job }: { job: JobView }) {
       <div style={{ fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span className={statusBadgeClass(job.status)}>{jobLabel(job.status)}</span>
         <span>
-          已完成 {job.completedItems} / {job.totalItems} 张
-          {failedCount > 0 && <span style={{ color: 'var(--danger)' }}>（失败 {failedCount} 张）</span>}
+          {t('detail.progress', { completed: job.completedItems, total: job.totalItems })}
+          {failedCount > 0 && <span style={{ color: 'var(--danger)' }}>{t('detail.failedPart', { count: failedCount })}</span>}
         </span>
       </div>
       <div style={{ fontSize: 12.5 }}>
-        失败原因：
+        {t('detail.failedReasonLabel')}
         {job.errorMessage ? (
           <span style={{ color: 'var(--danger)' }}>{job.errorMessage}</span>
         ) : (
-          <span className="hint">无（该作业未上报错误信息）</span>
+          <span className="hint">{t('detail.noError')}</span>
         )}
       </div>
       {/* 决议 2：如实占位，不伪装有逐张数据（设备侧出图回传属未来能力，不在本迭代范围） */}
-      <div className="hint">逐张明细仅本机直接打印的作业提供，服务端下发作业显示汇总。</div>
+      <div className="hint">{t('detail.serverJobNote')}</div>
     </div>
   )
 }
@@ -118,6 +112,8 @@ function JobDetail({ job }: { job: JobView }) {
 export function JobHistory() {
   const app = useApp()
   const { serverMode } = app
+  const { t } = useTranslation('jobHistory')
+  const jobLabel = useJobStatusLabel()
   // 业务 API 跟随模式：服务端 = serverApi；单机降级 = localApi（本机 WinHost 作业列表）
   const biz = serverMode === 'server' ? serverApi : localApi
   const [jobs, setJobs] = useState<JobView[] | null>(null)
@@ -178,7 +174,7 @@ export function JobHistory() {
         // 轮询失败不清空既有列表（瞬时错误只出横幅）；已知存在进行中作业则退避重试
         failed = true
         setJobs((prev) => prev ?? [])
-        setError(err instanceof ApiError ? err.message : '获取作业历史失败。')
+        setError(err instanceof ApiError ? err.message : t('errors.load'))
         keepPolling = jobsRef.current?.some((j) => !isTerminal(j.status)) ?? false
       } finally {
         if (!opts?.silent) setLoading(false)
@@ -188,7 +184,7 @@ export function JobHistory() {
         timerRef.current = setTimeout(() => void load({ silent: true }), failed ? POLL_ERROR_RETRY_MS : POLL_INTERVAL_MS)
       }
     },
-    [biz, deviceFilter, clearTimer],
+    [biz, deviceFilter, clearTimer, t],
   )
 
   useEffect(() => {
@@ -213,13 +209,13 @@ export function JobHistory() {
     <div className="page">
       <div className="page-head">
         <div className="page-title">
-          作业历史
-          <small>最近 100 条打印记录；有作业进行中时自动刷新</small>
+          {t('title')}
+          <small>{t('subtitle')}</small>
         </div>
         <div className="spacer" />
-        <button className="btn" onClick={() => void load()} disabled={loading || serverMode === 'unknown'} title="重新加载打印记录">
+        <button className="btn" onClick={() => void load()} disabled={loading || serverMode === 'unknown'} title={t('reloadTitle')}>
           <Icon name="refresh" size={13} />
-          {loading ? '刷新中…' : '刷新'}
+          {loading ? t('action.refreshing') : t('action.refresh')}
         </button>
       </div>
 
@@ -229,18 +225,14 @@ export function JobHistory() {
         {serverMode === 'unknown' ? (
           <div className="empty">
             <Icon name="data" />
-            <div className="empty-title">正在连接服务端…</div>
-            <div className="hint">未连接服务端时，将显示本机的打印记录。</div>
+            <div className="empty-title">{t('state.connectingServer')}</div>
+            <div className="hint">{t('empty.standaloneHint')}</div>
           </div>
         ) : !jobs || jobs.length === 0 ? (
           <div className="empty">
             <Icon name="data" />
-            <div className="empty-title">暂无历史作业</div>
-            <div className="hint">
-              {serverMode === 'server'
-                ? '打印记录默认保留 30 天，到期自动清理。'
-                : '保存在本机的打印记录不会自动清理。'}
-            </div>
+            <div className="empty-title">{t('empty.title')}</div>
+            <div className="hint">{serverMode === 'server' ? t('empty.serverRetention') : t('empty.localRetention')}</div>
           </div>
         ) : (
           <table className="table">
@@ -248,12 +240,12 @@ export function JobHistory() {
               <tr>
                 {/* 迭代 85（#133 C-5）：行展开明细开关列（无标题——箭头自明） */}
                 <th style={{ width: 30 }} aria-hidden="true" />
-                <th style={{ width: 150 }}>时间</th>
-                <th style={{ width: 150 }}>作业编号</th>
-                <th style={{ width: 140 }}>目标设备</th>
-                <th style={{ width: 90 }}>状态</th>
-                <th style={{ width: 110 }}>完成 / 失败</th>
-                <th>失败原因</th>
+                <th style={{ width: 150 }}>{t('column.time')}</th>
+                <th style={{ width: 150 }}>{t('column.jobId')}</th>
+                <th style={{ width: 140 }}>{t('column.targetDevice')}</th>
+                <th style={{ width: 90 }}>{t('column.status')}</th>
+                <th style={{ width: 110 }}>{t('column.completedFailed')}</th>
+                <th>{t('job.failedReason')}</th>
               </tr>
             </thead>
             <tbody>
@@ -263,7 +255,7 @@ export function JobHistory() {
                   <Fragment key={j.jobId}>
                     <tr
                       style={{ cursor: 'pointer' }}
-                      title="点击展开 / 收起该作业的明细"
+                      title={t('row.expandTitle')}
                       onClick={() => setExpandedJobId((prev) => (prev === j.jobId ? null : j.jobId))}
                     >
                       <td>
@@ -272,7 +264,7 @@ export function JobHistory() {
                           type="button"
                           className="btn sm ghost"
                           aria-expanded={expanded}
-                          title={expanded ? '收起明细' : '展开明细'}
+                          title={expanded ? t('row.collapseDetail') : t('row.expandDetail')}
                         >
                           <Icon
                             name="chevron"
@@ -289,11 +281,11 @@ export function JobHistory() {
                           type="button"
                           className="btn sm ghost mono"
                           style={{ fontSize: 12 }}
-                          title={`作业编号：${j.jobId}\n请求编号：${j.requestId}\n（点击复制完整作业编号）`}
+                          title={t('row.copyTitle', { jobId: j.jobId, requestId: j.requestId })}
                           onClick={(ev) => {
                             ev.stopPropagation() // 复制不触发行展开切换
                             void copyText(j.jobId).then((ok) =>
-                              app.setStatus(ok ? `已复制作业编号：${j.jobId}` : '复制作业编号失败，请手动复制。'),
+                              app.setStatus(ok ? t('row.copied', { jobId: j.jobId }) : t('row.copyFailed')),
                             )
                           }}
                         >
@@ -302,7 +294,7 @@ export function JobHistory() {
                         </button>
                       </td>
                       <td className="mono" style={{ fontSize: 12 }}>
-                        {j.targetDeviceId ? deviceDisplayName(deviceNames[j.targetDeviceId], j.targetDeviceId) : '本机'}
+                        {j.targetDeviceId ? deviceDisplayName(deviceNames[j.targetDeviceId], j.targetDeviceId) : t('device.local')}
                       </td>
                       <td>
                         <span className={statusBadgeClass(j.status)}>{jobLabel(j.status)}</span>
@@ -310,7 +302,7 @@ export function JobHistory() {
                       <td className="mono" style={{ fontSize: 12 }}>
                         {j.completedItems}/{j.totalItems}
                         {(j.failedItems ?? 0) > 0 && (
-                          <span style={{ color: 'var(--danger)' }}>（失败 {(j.failedItems ?? 0)}）</span>
+                          <span style={{ color: 'var(--danger)' }}>{t('detail.failedCountCell', { count: j.failedItems ?? 0 })}</span>
                         )}
                       </td>
                       <td style={{ color: 'var(--danger)', fontSize: 12 }}>{j.errorMessage ?? ''}</td>
