@@ -107,6 +107,7 @@
     "uninstallFailed": "卸载失败。",
     "installedTitle": "已安装插件",
     "installedOld": "当前客户端版本不支持插件管理。",
+    "installedLoadFailed": "获取已安装插件列表失败。",
     "installedLoadFailedWith": "获取已安装插件列表失败：{{reason}}",
     "installedLoading": "加载已安装插件…",
     "installedEmpty": "尚未安装插件。可从上方列表选择插件安装。",

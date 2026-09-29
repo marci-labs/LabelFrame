@@ -4,30 +4,32 @@
 // 交互：先测试后生效（非 testOnly 后端先测试再切换持久化）；失败返回当前连接、前端全局状态不动。
 // 全部走 localApi（本机 Client 127.0.0.1:53960 / 页面来源）。连接徽标优先后端 displayText。
 // 迭代 93（#151 F-11）：删除全仓零引用的 DataPrint 顶部快速切换组件（git 历史可溯）。
+// 迭代 112（#246）：面板其余文案 key 化（settings 域 transportForm.* + common.transport.mode/zebraKind）。
 
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import i18next from '../i18n'
 import { localApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { PluginParams, PluginParamValue, TransportApplyRequest, TransportMode, TransportParams, TransportPluginInfo, ZebraKind } from '../lib/api/types'
 import {
   ALL_TRANSPORT_MODES,
-  MODE_LABELS,
-  ZEBRA_KIND_LABELS,
+  ZEBRA_KINDS,
   defaultParams,
   defaultPluginParams,
   effectivePluginId,
   formatTransport,
+  modeLabel,
   pluginParamsFromConfig,
   specDefaultValue,
   specOptions,
+  zebraKindLabel,
 } from '../lib/transport'
 import { useApp } from '../state/AppContext'
 import { Icon } from './Icon'
 
 /** 原生指令模式提示（迭代 78，DESIGN §5.4.2）：原生指令无指令级预览，界面以文案说明效果口径。
- *  迭代 111（#245）：随数据与打印页迁移 key 化（common.transport.*——该徽标同时用于本面板表单，
- *  面板其余文案的迁移归迭代 112）。 */
+ *  迭代 111（#245）：随数据与打印页迁移 key 化（common.transport.*——该徽标同时用于本面板表单）。 */
 export function NativePrintModeHint() {
   const { t } = useTranslation()
   return (
@@ -152,14 +154,15 @@ export function TransportParamsEditor({
   params: TransportParams
   setParam: (key: keyof TransportParams, value: string | number | undefined) => void
 }) {
+  const { t } = useTranslation('settings')
   if (mode === 'Log') {
-    return <div className="hint">不连接打印机：标签会生成为图片保存到本机，便于先确认打印效果。</div>
+    return <div className="hint">{t('transportForm.logHint')}</div>
   }
   if (mode === 'Tcp') {
     return (
       <>
         <label className="field" style={{ maxWidth: 240 }}>
-          打印机 IP / 主机名
+          {t('transportForm.host')}
           <input
             className="input mono"
             value={params.tcpHost ?? ''}
@@ -169,7 +172,7 @@ export function TransportParamsEditor({
           />
         </label>
         <label className="field" style={{ maxWidth: 120 }}>
-          端口
+          {t('transportForm.port')}
           <input
             className="input mono"
             type="number"
@@ -185,7 +188,7 @@ export function TransportParamsEditor({
   if (mode === 'WindowsDriver') {
     return (
       <label className="field" style={{ maxWidth: 340 }}>
-        打印机名称
+        {t('transportForm.printerName')}
         <input
           className="input mono"
           value={params.printerName ?? ''}
@@ -201,11 +204,11 @@ export function TransportParamsEditor({
   return (
     <>
       <label className="field" style={{ maxWidth: 220 }}>
-        Zebra 连接方式
+        {t('transportForm.zebraKind')}
         <select className="input" value={kind} onChange={(ev) => setParam('zebraKind', ev.target.value as ZebraKind)}>
-          {(Object.keys(ZEBRA_KIND_LABELS) as ZebraKind[]).map((k) => (
+          {ZEBRA_KINDS.map((k) => (
             <option key={k} value={k}>
-              {ZEBRA_KIND_LABELS[k]}
+              {zebraKindLabel(k)}
             </option>
           ))}
         </select>
@@ -213,7 +216,7 @@ export function TransportParamsEditor({
       {kind === 'Tcp' && (
         <>
           <label className="field" style={{ maxWidth: 240 }}>
-            打印机 IP / 主机名
+            {t('transportForm.host')}
             <input
               className="input mono"
               value={params.tcpHost ?? ''}
@@ -223,7 +226,7 @@ export function TransportParamsEditor({
             />
           </label>
           <label className="field" style={{ maxWidth: 120 }}>
-            端口
+            {t('transportForm.port')}
             <input
               className="input mono"
               type="number"
@@ -237,7 +240,7 @@ export function TransportParamsEditor({
       )}
       {kind === 'Driver' && (
         <label className="field" style={{ maxWidth: 340 }}>
-          打印机名称
+          {t('transportForm.printerName')}
           <input
             className="input mono"
             value={params.printerName ?? ''}
@@ -249,12 +252,12 @@ export function TransportParamsEditor({
       )}
       {kind === 'Usb' && (
         <label className="field" style={{ maxWidth: 260 }}>
-          USB 设备名
+          {t('transportForm.usbName')}
           <input
             className="input mono"
             value={params.zebraUsbName ?? ''}
             onChange={(ev) => setParam('zebraUsbName', ev.target.value)}
-            placeholder="留空 = 自动识别第一台"
+            placeholder={t('transportForm.usbPlaceholder')}
             spellCheck={false}
           />
         </label>
@@ -273,9 +276,10 @@ export function TransportPluginParamsEditor({
   params: PluginParams
   setParam: (key: string, value: PluginParamValue) => void
 }) {
+  const { t } = useTranslation('settings')
   if (plugin.parameters.length === 0) {
     // 迭代 82（#130 A-1）：无参数时说明文直出插件 Description（后端句读已完整），不再追加「（无参数）。」拼接残句
-    return <div className="hint">{plugin.description || '该插件无参数。'}</div>
+    return <div className="hint">{plugin.description || t('transportForm.noParams')}</div>
   }
   return (
     <>
@@ -349,6 +353,7 @@ export function TransportPluginParamsEditor({
 /** 设置页完整面板：当前生效连接 + 插件 / 模式选择 + 参数 + 测试连接 / 保存并应用。 */
 export function TransportPanel() {
   const app = useApp()
+  const { t } = useTranslation('settings')
   const form = useTransportForm()
   const [busy, setBusy] = useState<'test' | 'save' | null>(null)
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null)
@@ -361,14 +366,15 @@ export function TransportPanel() {
       if (r.ok) {
         // 切换成功后立即用响应 config 更新全局状态（不依赖 healthz 10s 轮询）
         app.applyTransportConfig(r.config)
-        if (!testOnly) app.setStatus(`连接已切换：${r.message}`)
+        // 异步闭包文案读 i18next 单例（111 惯例：错误构造期即当时界面语言）
+        if (!testOnly) app.setStatus(i18next.t('settings:transportForm.switched', { message: r.message }))
         setResult({ ok: true, msg: r.message })
       } else {
         // 200 + ok:false：测试失败不切换，config 仍是当前生效连接，全局状态不动
         setResult({ ok: false, msg: r.message })
       }
     } catch (err) {
-      setResult({ ok: false, msg: err instanceof ApiError ? err.message : '保存连接失败。' })
+      setResult({ ok: false, msg: err instanceof ApiError ? err.message : t('transportForm.saveFailed') })
     } finally {
       setBusy(null)
     }
@@ -379,10 +385,10 @@ export function TransportPanel() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="hint">当前连接</span>
+        <span className="hint">{t('transportForm.currentConnection')}</span>
         {/* 迭代 80（#128「三名义」）：本机连接徽标随「本机打印服务」运行状态着色（本机事实），不随服务端地址连通性 */}
         <span className={'badge ' + (app.localServiceUp ? 'ok' : '')}>
-          {formatTransport(app.transportConfig) || app.transport || '未知'}
+          {formatTransport(app.transportConfig) || app.transport || t('value.unknown')}
         </span>
       </div>
 
@@ -408,7 +414,7 @@ export function TransportPanel() {
             {ALL_TRANSPORT_MODES.map((m) => (
               <label key={m} className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, margin: 0 }}>
                 <input type="radio" name="transport-mode" checked={form.mode === m} onChange={() => form.switchMode(m)} />
-                {MODE_LABELS[m]}
+                {modeLabel(m)}
               </label>
             ))}
           </div>
@@ -421,16 +427,16 @@ export function TransportPanel() {
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button className="btn" onClick={() => void run(true)} disabled={busy !== null}>
           <Icon name="link" size={13} />
-          {busy === 'test' ? '测试中…' : '测试连接'}
+          {busy === 'test' ? t('transportForm.testing') : t('transportForm.test')}
         </button>
         <button className="btn primary" onClick={() => void run(false)} disabled={busy !== null}>
           <Icon name="save" size={13} />
-          {busy === 'save' ? '应用中…' : '保存并应用'}
+          {busy === 'save' ? t('transportForm.applying') : t('transportForm.save')}
         </button>
         {result && <span className={result.ok ? 'badge ok' : 'badge err'}>{result.msg}</span>}
       </div>
 
-      <div className="hint">「测试连接」通过后才会切换，失败会提示原因且当前连接保持不变；保存后重启仍使用该连接。</div>
+      <div className="hint">{t('transportForm.hint')}</div>
     </div>
   )
 }

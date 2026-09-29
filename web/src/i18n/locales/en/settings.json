@@ -107,6 +107,7 @@
     "uninstallFailed": "Uninstall failed.",
     "installedTitle": "Installed Plugins",
     "installedOld": "The installed client does not support plugin management.",
+    "installedLoadFailed": "Failed to load the installed plugin list.",
     "installedLoadFailedWith": "Failed to load the installed plugin list: {{reason}}",
     "installedLoading": "Loading installed plugins…",
     "installedEmpty": "No plugins installed yet. Pick one from the list above to install.",
