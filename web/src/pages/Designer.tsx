@@ -182,7 +182,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       setPendingType(null)
       app.setStatus(t('status.added', { type: elementTypeName(type) }))
     },
-    [app, commit],
+    [app, commit, t],
   )
 
   const changeElement = useCallback(
@@ -204,7 +204,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       selectedRef.current = []
       app.setStatus(t('status.deleted', { count: ids.length }))
     },
-    [app, commit],
+    [app, commit, t],
   )
 
   const alignSelected = useCallback(
@@ -253,7 +253,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       commit(next)
       app.setStatus(t('status.aligned', { count: sel.length }))
     },
-    [app, commit],
+    [app, commit, t],
   )
 
   // ---------- 图层 ----------
@@ -271,7 +271,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       ;[els[idx], els[ni]] = [els[ni], els[idx]]
       commit({ ...s, elements: els })
     },
-    [app, commit],
+    [app, commit, t],
   )
 
   const layerToTop = useCallback(() => {
@@ -307,7 +307,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     setSelected([])
     selectedRef.current = []
     app.setStatus('已撤销。')
-  }, [app])
+  }, [app, t])
 
   const redo = useCallback(() => {
     const h = historyRef.current
@@ -323,7 +323,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     setSelected([])
     selectedRef.current = []
     app.setStatus('已恢复。')
-  }, [app])
+  }, [app, t])
 
   const clipboardRef = useRef<DesignElement[]>([])
 
@@ -334,7 +334,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     if (!items.length) return
     clipboardRef.current = items.map((e) => cloneElement(e))
     app.setStatus(t('status.copied', { count: clipboardRef.current.length }))
-  }, [app])
+  }, [app, t])
 
   const pasteClipboard = useCallback(() => {
     const s = stateRef.current
@@ -350,7 +350,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     setSelected(ids)
     selectedRef.current = ids
     app.setStatus(t('status.pasted', { count: copies.length }))
-  }, [app, commit])
+  }, [app, commit, t])
 
   // ---------- 设计 JSON 导入 / 导出（剪贴板，多级降级；迭代 22 修复：不再弹 prompt 重复复制） ----------
   const doExportDesign = useCallback(async () => {
@@ -364,7 +364,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     // 终极兜底：浏览器完全禁用剪贴板时展示代码供手动复制
     const input = window.prompt(t('status.exportPrompt'), text)
     if (input !== null) app.setStatus(t('status.exportFallback'))
-  }, [app])
+  }, [app, t])
 
   const doImportDesign = useCallback(async () => {
     let text = await readClipboardText()
@@ -387,7 +387,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     } catch (err) {
       app.setStatus(t('status.importFailed', { reason: err instanceof Error ? err.message : i18next.t('job.unknownError') }))
     }
-  }, [app, commit])
+  }, [app, commit, t])
 
   // ---------- 快捷键 ----------
   useEffect(() => {
@@ -443,7 +443,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [viewMode, pendingType, app, doExportDesign, doImportDesign, undo, redo, copySelected, pasteClipboard, deleteElements])
+  }, [viewMode, pendingType, app, doExportDesign, doImportDesign, undo, redo, copySelected, pasteClipboard, deleteElements, t])
 
   // ---------- 预览 ----------
   const togglePreview = useCallback(() => {
@@ -459,7 +459,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
       selectedRef.current = []
       app.setStatus(t('status.previewEntered', { dpi, dots: Math.round(dpi / 25.4) }))
     }
-  }, [app, dpi, viewMode])
+  }, [app, dpi, viewMode, t])
 
   // ---------- 保存 ----------
   const doSave = useCallback(
@@ -497,7 +497,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
         setSaving(false)
       }
     },
-    [app, biz, group, onClose, request.kind],
+    [app, biz, group, onClose, request.kind, t],
   )
 
   const save = useCallback(() => {
@@ -521,7 +521,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     } else {
       void doSave(trimmed)
     }
-  }, [app, biz, doSave, name, request.kind])
+  }, [app, biz, doSave, name, request.kind, t])
 
   // ---------- 离开保护（迭代 92 · #150 F-02，决议 a：dirty = 历史栈有任一已提交更改） ----------
   /** 请求离开：无已提交更改（undoCount = 0）直接离开不弹窗（AC-02）；有则弹三选 Modal 挂起本次离开动作（AC-01）。 */
