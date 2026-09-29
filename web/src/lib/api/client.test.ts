@@ -15,6 +15,7 @@ type ClientModule = {
   probeHealthz: typeof ProbeHealthzFn
   pluginPackageDownloadUrl: typeof import('./client')['pluginPackageDownloadUrl']
   localApi: typeof import('./client')['localApi']
+  serverApi: typeof import('./client')['serverApi']
   /** 迭代 91（F-01）：超时分档可变配置——测试注入秒级短超时验证超时分支。 */
   requestTimeouts: typeof import('./client')['requestTimeouts']
 }
@@ -424,5 +425,62 @@ describe('Content-Disposition 文件名解析：filename*（RFC 5987）优先还
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+})
+
+// ── 迭代 109（#242，AC-04）：ErrorView.params 展示链路——已知码按码表渲染、未知码回退后端中文 ──
+
+describe('错误响应文案解析（迭代 109：LF_* 码表 + params 插值）', () => {
+  /** 加载 client（resetModules 后的新模块图）→ 切语言（与 client.ts 绑定同一 i18n 实例）→ 打一个 404 ErrorView，返回抛出的 ApiError。 */
+  async function fetchError(body: unknown, locale?: 'en' | 'zh-CN'): Promise<ApiError> {
+    const mod = await loadClient('client')
+    const i18n = await import('../../i18n/index')
+    if (locale) i18n.changeLocale(locale)
+    const fetchStub = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(body), { status: 404, headers: { 'Content-Type': 'application/json' } }),
+    )
+    vi.stubGlobal('fetch', fetchStub)
+    try {
+      const err = await mod.serverApi.getJob('job-x').then(
+        () => null,
+        (e: unknown) => e,
+      )
+      // resetModules 后 client 模块图内的 ApiError 类对象与测试文件静态导入的不是同一引用，按 name 判型
+      expect((err as ApiError).name).toBe('ApiError')
+      return err as ApiError
+    } finally {
+      if (locale) i18n.changeLocale('zh-CN')
+      vi.unstubAllGlobals()
+    }
+  }
+
+  it('en + 已知码 + params：message 为码表英文插值（ApiError 携带 params）', async () => {
+    const err = await fetchError(
+      {
+        code: 'LF_SRV_001',
+        message: '按 IP 未找到设备：10.0.0.9。',
+        fieldKey: null,
+        params: { ip: '10.0.0.9' },
+      },
+      'en',
+    )
+    expect(err.code).toBe('LF_SRV_001')
+    expect(err.message).toBe('No device found for IP: 10.0.0.9.')
+    expect(err.params).toEqual({ ip: '10.0.0.9' })
+  })
+
+  it('en + 未知码：回退后端中文 message（后端新码漏表 / 旧版兼容路径）', async () => {
+    const err = await fetchError({ code: 'LF_FAKE_999', message: '未知场景的中文原文。', fieldKey: null }, 'en')
+    expect(err.message).toBe('未知场景的中文原文。')
+  })
+
+  it('zh-CN + 已知码：直用后端中文 message（现状不变）', async () => {
+    const err = await fetchError({
+      code: 'LF_SRV_001',
+      message: '按 IP 未找到设备：10.0.0.9。',
+      fieldKey: null,
+      params: { ip: '10.0.0.9' },
+    })
+    expect(err.message).toBe('按 IP 未找到设备：10.0.0.9。')
   })
 })

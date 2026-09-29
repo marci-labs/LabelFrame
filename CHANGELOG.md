@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 109：API 错误消息多语言链路——ErrorView 可选 params 与 LF_* 码表（#242） · 2026-09-29
+
+- **ErrorView 可选 `params`（决策 #164 ③ / #166，契约见 DESIGN §5）**：错误响应增可选 `params` 字段——扁平字符串键值对象（如 `{ "ip": "192.168.1.5" }`），键名与消息模板占位符 `{key}` 一致；缺省 / null 时序列化输出与旧形态**逐字节等价**（单测 + HTTP 原文断言锚定），纯加法、旧调用方无感；WMS 终态回调载荷（#154 schema）字段集零变化（断言锚定）。
+- **后端消息模板化**：带内插的中文错误消息（按 IP 查设备、作业不存在、非归属回报、模板不存在、插件包无效、Excel 解析失败、测试页发送失败、连接方式不支持等）全部改「模板 + 参数」构造——插值收敛到 Core `ErrorMessageTemplates.Format`（`{key}` 单遍替换、缺参占位符原样保留不抛、值内嵌 `{x}` 不级联）；`ServerException` / `LabelJobException` 增可选 `Parameters` 随异常透传；后端 message 输出渲染后中文，与改造前内插文案等价（既有后端测试消息断言全绿即等价锚点）。PDA 宿主（AndroidHost 自有 ErrorView 副本）不在本轮，随 #244。
+- **`server_jobs.error_code` 落库（可空）**：SQLite 自动补列（先例 #154 callback_url；旧库升级测试锚定）；宿主回报体增可选 `errorCode` 字段（WinHost 路由回报取首个失败项原因码）、失联回收 `LF_SRV_009`、超期放弃新增注册表码 `LF_SRV_011`；error_message 中文存量不迁移。
+- **web 端 LF_* 码表（并入 108 语言基座）**：`locales/<locale>/errorCodes.json` 命名空间（码 → 文案模板，zh-CN + en，i18next `{{key}}` 插值与后端 params 同名对接）；`client.ts` 展示规则——zh-CN 直用后端中文 message（中文权威在后端），en 已知码按码表插值渲染、未知码或参数不全的消息变体回退后端中文 message（不出现裸 `{{key}}`）；`ApiError` 携带 `params`。
+- **覆盖防线（AC-05）**：vitest 解析 `ApiErrorCodes` / `ServerErrorCodes` / Core `JobErrorCodes` 注册表源码提取码字面量，断言 zh + en 两份码表全覆盖且无死码（新增码漏表即红），并入 locales en↔zh key 一致性断言；删表取证（注入删除 LF_SRV_011 → 两条断言红 → 还原）见 PR。
+- 测试净增 30 项（dotnet 17：ErrorView 序列化等价 / 模板插值 / 端点 params / error_code 落库与旧库迁移 / 回调 schema；web 13：码表覆盖 + 翻译渲染 + client 链路）；后端注册表加码提示同步码表。PDA 码表（#244）、作业历史存量翻译、后端日志维持中文不在本轮。
+
 ## 迭代 108：Web 前端 i18n 地基——框架接入、语言切换与防线（#241） · 2026-09-29
 
 - **i18n 库接入（决策 #164 ④ / #165 定版）**：react-i18next 17 + i18next 26（React 19 peer 兼容无补丁），资源静态 import 打包（client / server 双构建离线一致）；语言包 `web/src/i18n/locales/<locale>/<域>.json` 按域单文件——初始域 common（跨页复用）/ shell（应用壳层）/ settings，zh-CN 源 + en 全量覆盖。

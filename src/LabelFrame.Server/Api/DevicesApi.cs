@@ -25,7 +25,7 @@ app.MapPost("/api/devices", async (RegisterDeviceRequest? request, HttpContext c
     }
     catch (ServerException ex)
     {
-        return Results.BadRequest(new ErrorView(ex.Code, ex.Message));
+        return Results.BadRequest(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters));
     }
 });
 
@@ -35,9 +35,17 @@ app.MapGet("/api/devices", async (ServerService svc, CancellationToken ct) =>
 app.MapGet("/api/devices/by-ip/{ip}", async (string ip, ServerService svc, CancellationToken ct) =>
 {
     var device = await svc.FindDeviceByIpAsync(ip, ct);
-    return device is null
-        ? Results.NotFound(new ErrorView(ServerErrorCodes.DeviceNotFound, $"按 IP 未找到设备：{ip}。"))
-        : Results.Ok(device);
+    if (device is not null)
+    {
+        return Results.Ok(device);
+    }
+
+    // 模板化消息（决策 #164 ③ / #166）：中文 message 渲染结果与旧内插文案等价，params 供展示端按码表翻译插值
+    var parameters = new Dictionary<string, string> { ["ip"] = ip };
+    return Results.NotFound(new ErrorView(
+        ServerErrorCodes.DeviceNotFound,
+        LabelFrame.Core.Errors.ErrorMessageTemplates.Format("按 IP 未找到设备：{ip}。", parameters),
+        Params: parameters));
 });
 
         return app;

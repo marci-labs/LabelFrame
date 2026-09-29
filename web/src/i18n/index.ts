@@ -16,9 +16,11 @@ import { initReactI18next } from 'react-i18next'
 import zhCNCommon from './locales/zh-CN/common.json'
 import zhCNShell from './locales/zh-CN/shell.json'
 import zhCNSettings from './locales/zh-CN/settings.json'
+import zhCNErrorCodes from './locales/zh-CN/errorCodes.json'
 import enCommon from './locales/en/common.json'
 import enShell from './locales/en/shell.json'
 import enSettings from './locales/en/settings.json'
+import enErrorCodes from './locales/en/errorCodes.json'
 
 /** 界面语言全集（zh-CN 为源语言；en 为第一翻译目标——决策 #164 ①）。 */
 export type AppLocale = 'zh-CN' | 'en'
@@ -82,8 +84,8 @@ function syncDocumentLang(lng: string): void {
 // useSuspense: false —— 组件树无 Suspense 边界，同步资源下禁用 Suspense 语义即可即时返回。
 void i18next.use(initReactI18next).init({
   resources: {
-    'zh-CN': { common: zhCNCommon, shell: zhCNShell, settings: zhCNSettings },
-    en: { common: enCommon, shell: enShell, settings: enSettings },
+    'zh-CN': { common: zhCNCommon, shell: zhCNShell, settings: zhCNSettings, errorCodes: zhCNErrorCodes },
+    en: { common: enCommon, shell: enShell, settings: enSettings, errorCodes: enErrorCodes },
   },
   lng: currentLocaleFromEnv(),
   fallbackLng: 'zh-CN',

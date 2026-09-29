@@ -1,6 +1,7 @@
 namespace LabelFrame.Server;
 
 /// <summary>Server 问题码。约定：LF_SRV_xxx。</summary>
+/// <remarks>新增码须同步 web 端码表（`web/src/i18n/locales/*/errorCodes.json`，覆盖断言测试挡漏译——决策 #166 ④）。</remarks>
 public static class ServerErrorCodes
 {
     /// <summary>设备未注册。</summary>
@@ -32,4 +33,7 @@ public static class ServerErrorCodes
 
     /// <summary>PDA（Android 宿主）安装包不存在（迭代 59 决策 #119）。</summary>
     public const string PdaPackageNotFound = "LF_SRV_010";
+
+    /// <summary>Pending 暂存超期放弃（超 TTL 未投递置 Expired 终态的原因码，落 server_jobs.error_code；迭代 109 决策 #166）。</summary>
+    public const string PendingExpired = "LF_SRV_011";
 }

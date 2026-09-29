@@ -309,21 +309,25 @@ export interface PrinterTestResult {
   bytes: number
 }
 
-/** 后端错误响应（ErrorView）。 */
+/** 后端错误响应（ErrorView；params 为迭代 109 · #242 决策 #164 ③ / #166 新增可选字段）。 */
 export interface ApiErrorBody {
   code: string
   message: string
   fieldKey?: string
+  /** 错误码模板参数：扁平字符串键值对象，键名与后端消息模板占位符一致（已知码按码表插值渲染用）。 */
+  params?: Record<string, string>
 }
 
-/** 前端统一错误：code 用于判断，message 为中文人话可直接展示。 */
+/** 前端统一错误：code 用于判断，message 为可直接展示文案（已知码按当前语言码表渲染，未知码回退后端中文）。 */
 export class ApiError extends Error {
   readonly code: string
   readonly fieldKey?: string
-  constructor(code: string, message: string, fieldKey?: string) {
+  readonly params?: Record<string, string>
+  constructor(code: string, message: string, fieldKey?: string, params?: Record<string, string>) {
     super(message)
     this.name = 'ApiError'
     this.code = code
     this.fieldKey = fieldKey
+    this.params = params
   }
 }

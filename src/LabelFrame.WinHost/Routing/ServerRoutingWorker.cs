@@ -171,7 +171,7 @@ public sealed class ServerRoutingWorker : BackgroundService
             _logger.LogWarning("Server 作业 {JobId} 本地提交失败：{Code} {Message}", job.JobId, result.ErrorCode, result.ErrorMessage);
             await _poller.ReportResultAsync(
                 job.JobId,
-                new ServerJobResult("Failed", 0, job.TotalItems, result.ErrorMessage),
+                new ServerJobResult("Failed", 0, job.TotalItems, result.ErrorMessage, result.ErrorCode),
                 cancellationToken);
             return;
         }
@@ -199,10 +199,11 @@ public sealed class ServerRoutingWorker : BackgroundService
             if (local.Status is LabelJobStatus.Completed or LabelJobStatus.Failed or LabelJobStatus.Cancelled)
             {
                 var status = local.Status == LabelJobStatus.Completed ? "Completed" : "Failed";
-                var errorMessage = local.Items.FirstOrDefault(i => i.ErrorMessage is not null)?.ErrorMessage;
+                // 失败明细取首个带原因的标签（消息与原因码同源），随回报透传给 Server 落 error_code（决策 #166）
+                var failedItem = local.Items.FirstOrDefault(i => i.ErrorMessage is not null);
                 await _poller.ReportResultAsync(
                     serverJobId,
-                    new ServerJobResult(status, completed, failed, errorMessage),
+                    new ServerJobResult(status, completed, failed, failedItem?.ErrorMessage, failedItem?.ErrorCode),
                     cancellationToken);
                 _localToServer.TryRemove(localJobId, out _);
                 _progress.TryRemove(localJobId, out _);

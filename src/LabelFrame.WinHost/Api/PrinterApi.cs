@@ -59,9 +59,12 @@ internal static class PrinterApi
             // 口径对齐 /api/printer/status 的降级信息；客户端日志留痕（目标 / 插件 / 原因）
             var logger = loggerFactory.CreateLogger("LabelFrame.WinHost.Api.PrinterApi");
             logger.LogWarning(ex, "测试页发送失败：目标 {Target}（插件 {PluginId}）", target, config.PluginId);
+            // 模板化消息（决策 #164 ③ / #166）：target / reason 为动态数据，展示端按码表插值呈现
+            var parameters = new Dictionary<string, string> { ["target"] = target, ["reason"] = ex.Message };
             return Results.BadRequest(new ErrorView(
                 ApiErrorCodes.TransportTestFailed,
-                $"测试页发送失败：无法连接打印机「{target}」——{ex.Message}。请检查打印机地址 / 网络 / 驱动后重试。"));
+                LabelFrame.Core.Errors.ErrorMessageTemplates.Format("测试页发送失败：无法连接打印机「{target}」——{reason}。请检查打印机地址 / 网络 / 驱动后重试。", parameters),
+                Params: parameters));
         }
         return Results.Ok(new { sent = true, bytes = System.Text.Encoding.UTF8.GetByteCount(command) });
     });

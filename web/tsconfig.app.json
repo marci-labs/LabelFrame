@@ -4,7 +4,7 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"], // node：src 内 vitest 测试用 node:fs 读仓库内注册表源码（错误码覆盖断言）
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,

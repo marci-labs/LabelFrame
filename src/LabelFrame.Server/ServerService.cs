@@ -1,4 +1,5 @@
 ﻿using LabelFrame.Api;
+using LabelFrame.Core.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace LabelFrame.Server;
@@ -61,6 +62,10 @@ public sealed partial class ServerService : IDisposable
     private DateTimeOffset? PendingTtlCutoff(DateTimeOffset now)
         => _options?.PendingJobTtl is { } ttl ? now - ttl : null;
 
+    /// <summary>模板化领域异常构造（决策 #164 ③ / #166）：模板 + 参数，message 渲染后与旧内插文案等价，参数随异常透传 ErrorView.params。</summary>
+    private static ServerException Templated(string code, string template, Dictionary<string, string> parameters)
+        => new(code, ErrorMessageTemplates.Format(template, parameters), parameters);
+
     /// <summary>注册 / 更新设备并刷新心跳。</summary>
     public async Task<DeviceView> RegisterDeviceAsync(string? deviceId, string? name, string? lastIp = null, CancellationToken cancellationToken = default)
     {
@@ -87,7 +92,7 @@ public sealed partial class ServerService : IDisposable
         var affected = await _db.TouchDeviceAsync(deviceId, now, NormalizeIpText(lastIp), cancellationToken);
         if (affected == 0)
         {
-            throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
+            throw Templated(ServerErrorCodes.DeviceNotFound, "设备未注册：{deviceId}。", new() { ["deviceId"] = deviceId });
         }
     }
 
@@ -125,7 +130,10 @@ public sealed partial class ServerService : IDisposable
         // 空串 / 纯空白 / 裸字符串 / file:// 等一律拒绝，走既有错误码体系（LF_SRV_002 + 中文消息）
         if (request.CallbackUrl is not null && !JobCallbackUrl.IsAllowed(request.CallbackUrl))
         {
-            throw new ServerException(ServerErrorCodes.InvalidRequest, $"callbackUrl 无效（仅支持 http/https 地址）：{request.CallbackUrl}。");
+            throw Templated(
+                ServerErrorCodes.InvalidRequest,
+                "callbackUrl 无效（仅支持 http/https 地址）：{callbackUrl}。",
+                new() { ["callbackUrl"] = request.CallbackUrl });
         }
 
         var callbackUrl = string.IsNullOrWhiteSpace(request.CallbackUrl) ? null : request.CallbackUrl.Trim();
@@ -143,7 +151,7 @@ public sealed partial class ServerService : IDisposable
             var byIp = await _db.FindDeviceByIpAsync(normalizedIp, cancellationToken);
             if (byIp is null)
             {
-                throw new ServerException(ServerErrorCodes.DeviceNotFound, $"按 IP 未找到设备：{request.TargetIp}。");
+                throw Templated(ServerErrorCodes.DeviceNotFound, "按 IP 未找到设备：{ip}。", new() { ["ip"] = request.TargetIp });
             }
 
             targetDeviceId = byIp.Id;
@@ -167,7 +175,7 @@ public sealed partial class ServerService : IDisposable
         {
             if (await _db.GetDeviceAsync(targetDeviceId, cancellationToken) is null)
             {
-                throw new ServerException(ServerErrorCodes.DeviceNotFound, $"目标设备未注册：{targetDeviceId}。");
+                throw Templated(ServerErrorCodes.DeviceNotFound, "目标设备未注册：{deviceId}。", new() { ["deviceId"] = targetDeviceId });
             }
 
             var existing = await _db.GetJobByRequestIdAsync(request.RequestId, cancellationToken);
@@ -211,7 +219,7 @@ public sealed partial class ServerService : IDisposable
             deviceId, now, NormalizeIpText(lastIp), limit: 10, PendingTtlCutoff(now), cancellationToken);
         if (touched == 0)
         {
-            throw new ServerException(ServerErrorCodes.DeviceNotFound, $"设备未注册：{deviceId}。");
+            throw Templated(ServerErrorCodes.DeviceNotFound, "设备未注册：{deviceId}。", new() { ["deviceId"] = deviceId });
         }
 
         foreach (var job in jobs)
@@ -234,10 +242,13 @@ public sealed partial class ServerService : IDisposable
     public async Task<ServerJobView> ReportResultAsync(string deviceId, string jobId, ReportResultRequest report, CancellationToken cancellationToken = default)
     {
         var job = await _db.GetJobAsync(jobId, cancellationToken)
-                ?? throw new ServerException(ServerErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+                ?? throw Templated(ServerErrorCodes.JobNotFound, "作业不存在：{jobId}。", new() { ["jobId"] = jobId });
         if (job.TargetDeviceId != deviceId)
         {
-                throw new ServerException(ServerErrorCodes.NotJobOwner, $"设备 {deviceId} 不是作业 {jobId} 的领取者。");
+                throw Templated(
+                    ServerErrorCodes.NotJobOwner,
+                    "设备 {deviceId} 不是作业 {jobId} 的领取者。",
+                    new() { ["deviceId"] = deviceId, ["jobId"] = jobId });
         }
 
         // 幂等重放：终态作业直接返回
@@ -248,7 +259,10 @@ public sealed partial class ServerService : IDisposable
 
         if (job.Status != ServerJobStatus.Claimed)
         {
-                throw new ServerException(ServerErrorCodes.InvalidTransition, $"作业 {jobId} 当前状态 {job.Status} 不允许回报结果。");
+                throw Templated(
+                    ServerErrorCodes.InvalidTransition,
+                    "作业 {jobId} 当前状态 {status} 不允许回报结果。",
+                    new() { ["jobId"] = jobId, ["status"] = job.Status.ToString() });
         }
 
         var isCompleted = string.Equals(report.Status, "Completed", StringComparison.OrdinalIgnoreCase);
@@ -259,6 +273,7 @@ public sealed partial class ServerService : IDisposable
                 report.FailedItems ?? 0,
                 report.ErrorMessage,
                 _time.GetUtcNow(),
+                report.ErrorCode,
                 cancellationToken);
         LogJobFinished(jobId, deviceId, job.RequestId, updated!.Status.ToString(), report.CompletedItems ?? 0, report.FailedItems ?? 0, report.ErrorMessage);
 
@@ -279,10 +294,13 @@ public sealed partial class ServerService : IDisposable
     public async Task<ServerJobView> ReportProgressAsync(string deviceId, string jobId, ReportProgressRequest progress, CancellationToken cancellationToken = default)
     {
         var job = await _db.GetJobAsync(jobId, cancellationToken)
-                ?? throw new ServerException(ServerErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+                ?? throw Templated(ServerErrorCodes.JobNotFound, "作业不存在：{jobId}。", new() { ["jobId"] = jobId });
         if (job.TargetDeviceId != deviceId)
         {
-            throw new ServerException(ServerErrorCodes.NotJobOwner, $"设备 {deviceId} 不是作业 {jobId} 的领取者。");
+                throw Templated(
+                    ServerErrorCodes.NotJobOwner,
+                    "设备 {deviceId} 不是作业 {jobId} 的领取者。",
+                    new() { ["deviceId"] = deviceId, ["jobId"] = jobId });
         }
 
         // 幂等 no-op：终态作业（含已被超时回收的 Failed）直接返回既有视图，计数不再变化
@@ -293,7 +311,10 @@ public sealed partial class ServerService : IDisposable
 
         if (job.Status != ServerJobStatus.Claimed)
         {
-            throw new ServerException(ServerErrorCodes.InvalidTransition, $"作业 {jobId} 当前状态 {job.Status} 不允许上报进度。");
+                throw Templated(
+                    ServerErrorCodes.InvalidTransition,
+                    "作业 {jobId} 当前状态 {status} 不允许上报进度。",
+                    new() { ["jobId"] = jobId, ["status"] = job.Status.ToString() });
         }
 
         var affected = await _db.UpdateJobProgressAsync(
@@ -318,7 +339,7 @@ public sealed partial class ServerService : IDisposable
     public async Task<ServerJobView> GetJobAsync(string jobId, CancellationToken cancellationToken = default)
     {
         var job = await _db.GetJobAsync(jobId, cancellationToken)
-            ?? throw new ServerException(ServerErrorCodes.JobNotFound, $"作业不存在：{jobId}。");
+            ?? throw Templated(ServerErrorCodes.JobNotFound, "作业不存在：{jobId}。", new() { ["jobId"] = jobId });
         return await ToJobViewAsync(job, cancellationToken);
     }
 
@@ -414,7 +435,10 @@ public sealed partial class ServerService : IDisposable
             var package = await _templates.GetAsync(request.TemplateName, cancellationToken);
             if (package is null)
             {
-                throw new ServerException(ServerErrorCodes.TemplateNotFound, $"模板不存在：{request.TemplateName}。");
+                throw Templated(
+                    ServerErrorCodes.TemplateNotFound,
+                    "模板不存在：{templateName}。",
+                    new() { ["templateName"] = request.TemplateName });
             }
 
             return new TemplateDto(

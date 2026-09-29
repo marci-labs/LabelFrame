@@ -48,9 +48,17 @@ internal static class JobsApi
     app.MapGet("/api/jobs/{jobId}", async (string jobId, LabelJobQueue queue, ITransportManager transportManager, HostOptions options, CancellationToken ct) =>
     {
         var job = await queue.GetAsync(jobId, ct);
-        return job is null
-            ? Results.NotFound(new ErrorView(JobErrorCodes.JobNotFound, $"作业不存在：{jobId}。"))
-            : Results.Ok(EnrichPrintInfo(JobViews.From(job), job.Id, transportManager, options.PrintOutputPath));
+        if (job is not null)
+        {
+            return Results.Ok(EnrichPrintInfo(JobViews.From(job), job.Id, transportManager, options.PrintOutputPath));
+        }
+
+        // 模板化消息（决策 #164 ③ / #166）：渲染结果与旧内插文案等价，params 供展示端按码表翻译插值
+        var parameters = new Dictionary<string, string> { ["jobId"] = jobId };
+        return Results.NotFound(new ErrorView(
+            JobErrorCodes.JobNotFound,
+            LabelFrame.Core.Errors.ErrorMessageTemplates.Format("作业不存在：{jobId}。", parameters),
+            Params: parameters));
     });
 
     app.MapPost("/api/jobs/{jobId}/suspend", async (string jobId, LabelJobQueue queue, ITransportManager transportManager, HostOptions options, CancellationToken ct) =>
@@ -71,11 +79,11 @@ internal static class JobsApi
         }
         catch (LabelJobException ex) when (ex.Code == JobErrorCodes.JobNotFound)
         {
-            return Results.NotFound(new ErrorView(ex.Code, ex.Message));
+            return Results.NotFound(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters));
         }
         catch (LabelJobException ex)
         {
-            return Results.Conflict(new ErrorView(ex.Code, ex.Message));
+            return Results.Conflict(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters));
         }
     });
 
@@ -109,11 +117,11 @@ internal static class JobsApi
         }
         catch (LabelJobException ex) when (ex.Code == JobErrorCodes.JobNotFound)
         {
-            return Results.NotFound(new ErrorView(ex.Code, ex.Message));
+            return Results.NotFound(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters));
         }
         catch (LabelJobException ex)
         {
-            return Results.Conflict(new ErrorView(ex.Code, ex.Message));
+            return Results.Conflict(new ErrorView(ex.Code, ex.Message, Params: ex.Parameters));
         }
     }
 }
