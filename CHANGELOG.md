@@ -2,6 +2,16 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 108：Web 前端 i18n 地基——框架接入、语言切换与防线（#241） · 2026-09-29
+
+- **i18n 库接入（决策 #164 ④ / #165 定版）**：react-i18next 17 + i18next 26（React 19 peer 兼容无补丁），资源静态 import 打包（client / server 双构建离线一致）；语言包 `web/src/i18n/locales/<locale>/<域>.json` 按域单文件——初始域 common（跨页复用）/ shell（应用壳层）/ settings，zh-CN 源 + en 全量覆盖。
+- **语言状态与切换**：设置页新增「语言」卡片（选项名固定各自语言原文）；localStorage 键 `labelframe.locale` 持久化（显式切换才写入）；首启无偏好时跟随浏览器语言（`zh*` → zh-CN，其他 → en）；`<html lang>` 由 languageChanged 事件动态同步（`index.html` 静态默认仅作首帧）。
+- **Intl 化**：清理硬编码 `toLocaleString('zh-CN')` 三处调用点（AppContext 日志时间戳、Workbench 模板卡片日期 / 悬停时间）改跟随当前 locale；页面文案迁移不在本轮（111/112）。
+- **样板迁移（锚定惯例）**：App.tsx 壳层（导航 / 状态栏 / 日志抽屉 / 清空确认弹窗 / 设计器空态）与通用 Modal 组件（关闭按钮 aria-label）文案全部 key 化——key 语义 camelCase 按 UI 区域分组、插值 `{{name}}`、`useTranslation('<域>')` + common fallbackNS，惯例记录 #241 Issue 评论供 111/112 沿用。
+- **CI 防线（决策 #164 ⑦）**：① oxlint jsPlugins 自定义规则 `labelframe/no-bare-cjk-jsx`（`web/oxlint-plugin-labelframe.cjs`）——圈禁文件内 JSX 文本 / JSX 属性字符串含 CJK 即 error，圈禁清单在 `.oxlintrc.json` overrides 显式维护（初始 `src/App.tsx` + `src/components/Modal.tsx`）；② vitest 断言 en 语言包覆盖 zh-CN 全部 key（缺失 / 多余均红，`src/i18n/locales.test.ts`）。
+- 测试环境 vitest.setup 钉住 `navigator.language = zh-CN`（既有中文断言确定性）；新增 i18n 行为测试 14 项（AC-01/02 组件自证：jsdom 模拟 localStorage 与浏览器语言）。后端零改动。
+- 页面文案批量迁移（111/112）、错误码表（109）、PDA（110）不在本轮。
+
 ## 迭代 107：多语言治理——决策 #164 文档入库与全仓文案盘点底账（#240） · 2026-09-29
 
 - **决策入库**：**#164「多语言（英文）支持范围与架构基线」**决策表行（Web UI / API 错误消息 / PDA 三端，zh-CN 源 + en；打印内容 / 安装链 / 日志 / RTL 四类边界显式不做；错误消息 = 错误码权威化 + 展示端翻译（后端零语言状态、不做 .resx）；前端语义 key + `Intl` 化 + 语言偏好持久化；PDA 补建 Android 资源体系；CI 防线与落地路径）——该行已随并行迭代 113（#247，字体回退修复，其 ⑥ 内增补实施记录）先行合入 master，本 PR rebase 保留已合入行不重复添加；本 PR 补齐其余入库件：`docs/REQUIREMENTS.md` §7「多语言」条目从「不做」修订为「限定范围支持（见决策 #164）」，DESIGN §6 定位段与 §6.13 开放点两处「REQUIREMENTS §7『多语言』边界不变」引用改挂决策 #164。

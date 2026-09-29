@@ -11,11 +11,13 @@
 //   修复四按钮平铺最小需宽约 216px 超出最窄卡片可用宽度 176px 致「删除」被裁的回归。
 
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { TemplateSummary } from '../lib/api/types'
 import { useApp } from '../state/AppContext'
 import type { DesignerRequest } from '../state/types'
+import { formatDate, formatDateTime, toAppLocale } from '../i18n'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { MenuItem, Popover } from '../components/Popover'
@@ -64,6 +66,10 @@ export function Workbench({
 }) {
   const app = useApp()
   const { serverMode } = app
+  // 迭代 108（#241）：卡片日期格式化跟随当前界面语言（原硬编码 toLocaleString('zh-CN')）——
+  // useTranslation 订阅语言变化触发重渲染（页面文案迁移归 111/112，本轮仅格式化调用点）
+  const { i18n } = useTranslation()
+  const locale = toAppLocale(i18n.language)
   /** 业务 API 跟随模式（unknown 时不拉取，待探测完成）。 */
   const biz = serverMode === 'server' ? serverApi : localApi
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
@@ -262,8 +268,8 @@ export function Workbench({
                   <div className="wb-card-name" title={t.name}>{t.name}</div>
                   <div className="wb-card-meta">
                     <span className="badge neutral">{t.group}</span>
-                    <span className="mono" title={new Date(t.updatedAt).toLocaleString('zh-CN', { hour12: false })}>
-                      {new Date(t.updatedAt).toLocaleDateString('zh-CN')}
+                    <span className="mono" title={formatDateTime(locale, new Date(t.updatedAt))}>
+                      {formatDate(locale, new Date(t.updatedAt))}
                     </span>
                   </div>
                 </div>

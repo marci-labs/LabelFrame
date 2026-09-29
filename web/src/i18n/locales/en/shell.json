@@ -1,0 +1,42 @@
+{
+  "appTitle": "LabelFrame Label Printing",
+  "nav": {
+    "region": "Main navigation",
+    "workbench": "Workbench",
+    "designer": "Designer",
+    "data": "Data & Print",
+    "devices": "Online Devices",
+    "jobs": "Job History",
+    "packages": "Downloads",
+    "pluginPackages": "Plugins",
+    "settings": "Settings"
+  },
+  "conn": {
+    "serverConnected": "Server connected",
+    "serverDisconnected": "Server disconnected"
+  },
+  "statusbar": {
+    "localServiceUp": "Local print service: running",
+    "localServiceDown": "Local print service: not running",
+    "serverAdminOrigin": "{{origin}} · Server console",
+    "localIps": "Local IP: {{ips}}",
+    "localDevice": "This device: {{name}}",
+    "logs": "Logs"
+  },
+  "logsDrawer": {
+    "title": "Run Logs",
+    "clear": "Clear",
+    "collapse": "Collapse"
+  },
+  "clearLogsConfirm": {
+    "title": "Clear run logs",
+    "confirm": "Clear Logs",
+    "body": "Clear all run logs? This action cannot be undone."
+  },
+  "designerEmpty": {
+    "title": "Designer",
+    "untitled": "No template open yet",
+    "hint": "Create or edit a template in the workbench to open the designer",
+    "newTemplate": "New Template"
+  }
+}

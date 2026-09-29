@@ -22,6 +22,12 @@ pnpm build:server   # 服务端管理界面插件产物 → web/dist-server
 
 产物自检：CI 构建后校验两产物特征（防止 `VITE_UI_MODE` 未生效把 client 产物打进 server 包）。
 
+## i18n（迭代 108 · #241，决策 #165）
+
+- 基座：react-i18next（`src/i18n/index.ts` 模块加载即初始化；语言包 `src/i18n/locales/<locale>/<域>.json` 按域单文件，zh-CN 源 + en 全量覆盖）。
+- 惯例：组件内 `useTranslation('<域>')` 绑定域命名空间，key 语义 camelCase 按 UI 区域分组（`nav.*` / `statusbar.*`），插值 `{{name}}`，跨域复用 common 词条经 fallbackNS 免前缀；语言切换走设置页「语言」卡片（localStorage `labelframe.locale` 持久化，首启跟随浏览器语言）。
+- 防线：① `src/i18n/locales.test.ts` 断言 en 覆盖 zh-CN 全部 key（缺失即红）；② oxlint 自定义规则 `labelframe/no-bare-cjk-jsx`（插件 `oxlint-plugin-labelframe.cjs`）拦截**圈禁文件**内裸中文 JSX——圈禁清单在 `.oxlintrc.json` 的 `overrides.files` 显式维护，页面迁移一个文件就加一个。
+
 ## 开发联调
 
 `vite dev`（:5173）的 proxy 按模式分支：server 模式指向 `http://127.0.0.1:53961`（服务端），client 模式指向 `http://127.0.0.1:53960`（本机客户端），覆盖 `/api` 与 `/healthz`。

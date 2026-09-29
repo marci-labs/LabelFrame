@@ -14,6 +14,7 @@ import type { TransportConfig } from '../lib/api/types'
 import { getBaseUrl, setBaseUrl as persistBaseUrl } from '../lib/settings'
 import { probeHealthz } from '../lib/api/client'
 import { isServerUi } from '../lib/uiMode'
+import { currentLocale, formatLogTime } from '../i18n'
 import type { PrintDraft, StorageLike } from './draft'
 import { applyDraftValue, loadPrintDraft, savePrintDraft } from './draft'
 
@@ -146,7 +147,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [printDraft])
 
   const log = useCallback((msg: string) => {
-    const time = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+    // 迭代 108（#241）：日志行时间戳跟随当前界面语言（原硬编码 toLocaleTimeString('zh-CN')）——
+    // 调用期读取 i18next 单例，语言切换后新日志行即按新 locale 格式化（存量行保留落盘时格式）
+    const time = formatLogTime(currentLocale(), new Date())
     setLogs((prev) => [...prev.slice(-(MAX_LOGS - 1)), { time, msg }])
   }, [])
 
