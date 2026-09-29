@@ -1,6 +1,8 @@
 // 设计器元素渲染（react-konva 声明式）：Group = 边框 + 内容
+// 迭代 112（#246）：画布节点文案（图片 / 容器占位）key 化（designer 域）。
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Group, Image as KImage, Line as KLine, Rect as KRect, Text as KText } from 'react-konva'
 import type Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
@@ -24,6 +26,7 @@ interface ElementNodeProps {
 const hasCjk = (s: string) => /[\u3000-\u30ff\u3400-\u9fff\uf900-\ufaff\uff00-\uffef]/.test(s)
 
 export function ElementNode({ e, editable, ox, oy, onDragStart, onDragMove, onDragEnd }: ElementNodeProps) {
+  const { t } = useTranslation('designer')
   const x = ox + pxv(e.x)
   const y = oy + pxv(e.y)
   const w = Math.max(2, pxv(e.w))
@@ -73,7 +76,7 @@ export function ElementNode({ e, editable, ox, oy, onDragStart, onDragMove, onDr
       return (
         <Group {...common}>
           <KRect x={0} y={0} width={w} height={h} fill="#f5f6f8" stroke={e.border > 0 ? '#000' : '#aab4c0'} strokeWidth={borderW} dash={[4, 3]} strokeScaleEnabled={false} />
-          <KText x={4} y={4} text={'图片: ' + (e.key || '')} fontSize={11} fontFamily="Microsoft YaHei" fill="#6b7684" listening={false} />
+          <KText x={4} y={4} text={t('canvas.imageNode', { key: e.key || '' })} fontSize={11} fontFamily="Microsoft YaHei" fill="#6b7684" listening={false} />
         </Group>
       )
     case 'Line':
@@ -84,7 +87,7 @@ export function ElementNode({ e, editable, ox, oy, onDragStart, onDragMove, onDr
       return (
         <Group {...common}>
           <KRect x={0} y={0} width={w} height={h} fill="rgba(0,128,255,0.06)" stroke={e.border > 0 ? '#000' : '#8a94a0'} strokeWidth={borderW} dash={[6, 4]} strokeScaleEnabled={false} />
-          <KText x={4} y={2} text={'容器 ' + (e.containerId || '')} fontSize={10} fontFamily="Microsoft YaHei" fill="#7a8490" listening={false} />
+          <KText x={4} y={2} text={t('canvas.regionNode', { id: e.containerId || '' })} fontSize={10} fontFamily="Microsoft YaHei" fill="#7a8490" listening={false} />
         </Group>
       )
   }
@@ -158,11 +161,17 @@ function TextContent({ e }: { e: TextElement }) {
 
 /** 条码 / 二维码图片内容（fit 到内盒居中）。 */
 function ImageContent({ e, wPx, hPx, qr }: { e: BarcodeElement | QrCodeElement; wPx: number; hPx: number; qr?: boolean }) {
+  const { i18n } = useTranslation('designer')
   const padH = pxv(e.paddingH || 0)
   const padV = pxv(e.paddingV || 0)
   const innerW = Math.max(2, wPx - padH * 2)
   const innerH = Math.max(2, hPx - padV * 2)
-  const canvas = useMemo(() => (qr ? makeQrCanvas(e as QrCodeElement, innerW, innerH) : makeBarcodeCanvas(e as BarcodeElement)), [e, qr, innerW, innerH])
+  // 迭代 112（#246）：依赖含界面语言——未绑定占位文案随语言重建画布（其余情形重建无副作用，纯函数等价）
+  const canvas = useMemo(
+    () => (qr ? makeQrCanvas(e as QrCodeElement, innerW, innerH) : makeBarcodeCanvas(e as BarcodeElement)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [e, qr, innerW, innerH, i18n.language],
+  )
   const fit = useMemo(() => fitImageRect(canvas, innerW, innerH), [canvas, innerW, innerH])
   return <KImage image={canvas} x={fit.x + padH} y={fit.y + padV} width={fit.w} height={fit.h} listening={false} />
 }

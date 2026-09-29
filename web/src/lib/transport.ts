@@ -9,19 +9,35 @@ import type { PluginParams, PluginParamValue, TransportConfig, TransportMode, Tr
 
 export const ALL_TRANSPORT_MODES: TransportMode[] = ['Log', 'Tcp', 'WindowsDriver', 'Zebra']
 
-// 迭代 73（#108 界面文案用户化）：模式标签用户化——「Log」等开发者向名称改为中文用户语（保留专业语义：
+// 迭代 73（#108 界面文案用户化）：模式标签用户化——「Log」等开发者向名称改为用户语（保留专业语义：
 // Log = 模拟打印、Tcp = 网络打印机、Zebra 为品牌名保留）。
-export const MODE_LABELS: Record<TransportMode, string> = {
-  Log: '模拟打印',
-  Tcp: '网络打印机（TCP）',
-  WindowsDriver: 'Windows 驱动',
-  Zebra: 'Zebra 打印机',
+// 迭代 112（#246）：标签 key 化（common.transport.mode.* / zebraKind.*）——改为函数在调用期取当前
+// 界面语言；消费组件（TransportPanel 单选项）经 useTranslation 订阅语言切换后重渲染刷新。
+export type ModeLabelKey = 'log' | 'tcp' | 'windowsDriver' | 'zebra'
+
+const MODE_LABEL_KEYS: Record<TransportMode, ModeLabelKey> = {
+  Log: 'log',
+  Tcp: 'tcp',
+  WindowsDriver: 'windowsDriver',
+  Zebra: 'zebra',
 }
 
-export const ZEBRA_KIND_LABELS: Record<ZebraKind, string> = {
-  Tcp: '网络（TCP）',
-  Usb: 'USB（自动识别）',
-  Driver: 'Windows 驱动',
+/** 连接模式显示名（设置页连接方式单选项；随当前界面语言）。 */
+export function modeLabel(mode: TransportMode): string {
+  return i18next.t(`transport.mode.${MODE_LABEL_KEYS[mode]}`)
+}
+
+export const ZEBRA_KINDS: ZebraKind[] = ['Tcp', 'Usb', 'Driver']
+
+const ZEBRA_KIND_LABEL_KEYS: Record<ZebraKind, string> = {
+  Tcp: 'tcp',
+  Usb: 'usb',
+  Driver: 'driver',
+}
+
+/** Zebra 连接方式显示名（下拉选项；随当前界面语言）。 */
+export function zebraKindLabel(kind: ZebraKind): string {
+  return i18next.t(`transport.zebraKind.${ZEBRA_KIND_LABEL_KEYS[kind]}`)
 }
 
 // ── 迭代 22：旧模式 ↔ 插件 id 映射（回退显示 / 初始选中；与后端 connection.json 旧配置映射表一致）──

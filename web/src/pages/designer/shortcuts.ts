@@ -1,4 +1,8 @@
 // 设计器快捷操作清单（迭代 15 增强：画布常驻提示条 + 工具栏「快捷键」弹窗完整清单）
+// 迭代 112（#246）：文案 key 化（designer 域 shortcuts.*）——改为函数在调用期取当前界面语言，
+// 消费组件（Designer 弹窗 / CanvasViewport 提示条）经 useTranslation 订阅语言切换后重渲染刷新。
+
+import i18next from '../../i18n'
 
 export interface ShortcutItem {
   keys: string[]
@@ -10,33 +14,38 @@ export interface ShortcutGroup {
   items: ShortcutItem[]
 }
 
-export const SHORTCUT_GROUPS: ShortcutGroup[] = [
-  {
-    title: '编辑',
-    items: [
-      { keys: ['Ctrl+Z', 'Ctrl+Y'], desc: '撤销 / 重做' },
-      { keys: ['Delete', 'Backspace'], desc: '删除选中元素' },
-      { keys: ['Esc'], desc: '取消放置' },
-    ],
-  },
-  {
-    title: '剪贴板',
-    items: [
-      { keys: ['Ctrl+C', 'Ctrl+V'], desc: '复制 / 粘贴元素' },
-      { keys: ['Ctrl+Shift+C', 'Ctrl+Shift+V'], desc: '导出设计 / 导入设计（JSON）' },
-    ],
-  },
-  {
-    title: '画布',
-    items: [
-      { keys: ['中键拖动'], desc: '平移画布' },
-      { keys: ['Ctrl+滚轮'], desc: '缩放画布' },
-      { keys: ['Shift / Ctrl+点击'], desc: '多选元素' },
-      { keys: ['拖拽'], desc: '移动元素（智能参考线吸附，网格兜底）' },
-      { keys: ['拖动手柄'], desc: '缩放元素' },
-    ],
-  },
-]
+/** 完整清单（title / desc 随当前界面语言；键位字符串不翻译）。 */
+export function shortcutGroups(): ShortcutGroup[] {
+  return [
+    {
+      title: i18next.t('designer:shortcuts.groupEdit'),
+      items: [
+        { keys: ['Ctrl+Z', 'Ctrl+Y'], desc: i18next.t('designer:shortcuts.undoRedo') },
+        { keys: ['Delete', 'Backspace'], desc: i18next.t('designer:shortcuts.deleteSelected') },
+        { keys: ['Esc'], desc: i18next.t('designer:shortcuts.cancelPlacement') },
+      ],
+    },
+    {
+      title: i18next.t('designer:shortcuts.groupClipboard'),
+      items: [
+        { keys: ['Ctrl+C', 'Ctrl+V'], desc: i18next.t('designer:shortcuts.copyPaste') },
+        { keys: ['Ctrl+Shift+C', 'Ctrl+Shift+V'], desc: i18next.t('designer:shortcuts.exportImport') },
+      ],
+    },
+    {
+      title: i18next.t('designer:shortcuts.groupCanvas'),
+      items: [
+        { keys: [i18next.t('designer:shortcuts.keyMiddleDrag')], desc: i18next.t('designer:shortcuts.pan') },
+        { keys: [i18next.t('designer:shortcuts.keyCtrlWheel')], desc: i18next.t('designer:shortcuts.zoom') },
+        { keys: [i18next.t('designer:shortcuts.keyShiftCtrlClick')], desc: i18next.t('designer:shortcuts.multiSelect') },
+        { keys: [i18next.t('designer:shortcuts.keyDrag')], desc: i18next.t('designer:shortcuts.dragMove') },
+        { keys: [i18next.t('designer:shortcuts.keyDragHandle')], desc: i18next.t('designer:shortcuts.dragResize') },
+      ],
+    },
+  ]
+}
 
-/** 画布顶部常驻提示条（编辑模式，与预览模式提示同款视觉）。 */
-export const CORE_SHORTCUTS = 'Ctrl+Z 撤销 · Ctrl+C/V 复制粘贴 · Delete 删除 · 中键平移 · Ctrl+滚轮缩放'
+/** 画布顶部常驻提示条（编辑模式，与预览模式提示同款视觉；随当前界面语言）。 */
+export function coreShortcuts(): string {
+  return i18next.t('designer:shortcuts.core')
+}

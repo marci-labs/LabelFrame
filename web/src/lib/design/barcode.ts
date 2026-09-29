@@ -4,7 +4,8 @@ import JsBarcode from 'jsbarcode'
 import qrcode from 'qrcode-generator'
 import { pxv } from '../design/geometry'
 import type { BarcodeElement, QrCodeElement } from '../design/types'
-import { elementContent } from '../design/types'
+import { elementContent, elementContentState } from '../design/types'
+import i18next from '../../i18n'
 
 /** 未绑定占位：虚线框 + 提示文字（元素可见性提示）。 */
 export function makePlaceholderCanvas(wMm: number, hMm: number, text: string): HTMLCanvasElement {
@@ -25,11 +26,11 @@ export function makePlaceholderCanvas(wMm: number, hMm: number, text: string): H
   return c
 }
 
-/** 条码 canvas（fit 到元素内盒，居中）。 */
+/** 条码 canvas（fit 到元素内盒，居中）。迭代 112（#246）：占位判别走语义态、文案随界面语言。 */
 export function makeBarcodeCanvas(e: BarcodeElement): HTMLCanvasElement {
+  const state = elementContentState(e)
+  if (state === 'literal-empty' || state === 'unbound-field') return makePlaceholderCanvas(e.w, e.h, i18next.t('designer:canvas.barcodePlaceholder'))
   const content = elementContent(e)
-  const isUnbound = content === '（未绑定字段）' || content === '（固定值）'
-  if (isUnbound) return makePlaceholderCanvas(e.w, e.h, '条码 · 未绑定字段')
   const c = document.createElement('canvas')
   try {
     JsBarcode(c, content, {
@@ -50,11 +51,11 @@ export function makeBarcodeCanvas(e: BarcodeElement): HTMLCanvasElement {
   return c
 }
 
-/** 二维码 canvas（同步模块绘制，稳定可见）。 */
+/** 二维码 canvas（同步模块绘制，稳定可见）。迭代 112（#246）：占位判别走语义态、文案随界面语言。 */
 export function makeQrCanvas(e: QrCodeElement, wMm: number, hMm: number): HTMLCanvasElement {
+  const state = elementContentState(e)
+  if (state === 'literal-empty' || state === 'unbound-field') return makePlaceholderCanvas(wMm, hMm, i18next.t('designer:canvas.qrPlaceholder'))
   const content = elementContent(e)
-  const isUnbound = content === '（未绑定字段）' || content === '（固定值）'
-  if (isUnbound) return makePlaceholderCanvas(wMm, hMm, '二维码 · 未绑定字段')
   const c = document.createElement('canvas')
   try {
     const qr = qrcode(0, e.qrEcc || 'M')

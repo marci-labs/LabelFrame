@@ -4,6 +4,7 @@
 // dragend / transformend 才提交状态（与原型一致）。
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Layer, Rect as KRect, Line as KLine, Stage, Text as KText, Transformer } from 'react-konva'
 import Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
@@ -12,7 +13,7 @@ import type { DesignElement } from '../../lib/design/types'
 import { elementById } from '../../lib/design/model'
 import { designCanvasSize, fitScale, logicToContentMm, pointerToLogic, previewCanvasSize, previewScale, PX, RULER, viewportToLogic } from '../../lib/design/geometry'
 import { computeSnap } from '../../lib/design/snapping'
-import { CORE_SHORTCUTS } from './shortcuts'
+import { coreShortcuts } from './shortcuts'
 
 export interface DesignState {
   paperW: number
@@ -39,6 +40,8 @@ interface CanvasViewportProps {
 }
 
 export function CanvasViewport(props: CanvasViewportProps) {
+  // 迭代 112（#246）：常驻提示条与打印预览提示随界面语言（订阅重渲染）
+  const { t } = useTranslation('designer')
   const { state, selected, viewMode, dpi, zoom, gridOn } = props
   const { paperW, paperH, elements } = state
   const preview = viewMode === 'preview'
@@ -527,12 +530,12 @@ export function CanvasViewport(props: CanvasViewportProps) {
             zIndex: 2,
           }}
         >
-          {CORE_SHORTCUTS}
+          {coreShortcuts()}
         </div>
       )}
       {preview && (
         <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', background: 'rgba(29,38,51,.78)', color: '#fff', fontSize: 12, padding: '4px 12px', borderRadius: 999, pointerEvents: 'none', fontFamily: 'var(--font-mono)' }}>
-          {dpi} dpi 打印预览 · 中键平移 · Ctrl+滚轮缩放
+          {t('canvas.previewHint', { dpi })}
         </div>
       )}
     </div>
