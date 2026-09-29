@@ -1,0 +1,42 @@
+{
+  "appTitle": "LabelFrame 标签打印",
+  "nav": {
+    "region": "主导航",
+    "workbench": "工作台",
+    "designer": "设计器",
+    "data": "数据与打印",
+    "devices": "在线设备",
+    "jobs": "作业历史",
+    "packages": "下载中心",
+    "pluginPackages": "插件管理",
+    "settings": "设置"
+  },
+  "conn": {
+    "serverConnected": "服务端已连接",
+    "serverDisconnected": "服务端未连接"
+  },
+  "statusbar": {
+    "localServiceUp": "本机打印服务：运行中",
+    "localServiceDown": "本机打印服务：未运行",
+    "serverAdminOrigin": "{{origin}} · 服务端管理界面",
+    "localIps": "本机 IP：{{ips}}",
+    "localDevice": "本机：{{name}}",
+    "logs": "日志"
+  },
+  "logsDrawer": {
+    "title": "运行日志",
+    "clear": "清空",
+    "collapse": "收起"
+  },
+  "clearLogsConfirm": {
+    "title": "清空运行日志",
+    "confirm": "确认清空",
+    "body": "确定清空全部运行日志吗？该操作不可恢复。"
+  },
+  "designerEmpty": {
+    "title": "设计器",
+    "untitled": "尚未打开模板",
+    "hint": "从工作台新建或编辑模板后进入设计器",
+    "newTemplate": "新建模板"
+  }
+}

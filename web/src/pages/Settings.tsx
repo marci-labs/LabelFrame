@@ -4,6 +4,7 @@
 // 迭代 45：内容容器改多列自适应网格（决策 B）——宽窗多列、窄窗单列，替代原固定 640 左对齐窄列。
 
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { clientPackageDownloadUrl, localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { ClientPackageInfo, InstalledPluginInfo, PluginPackageInfo, PrinterStatus, PrintSettings } from '../lib/api/types'
@@ -11,6 +12,8 @@ import { formatSize } from '../lib/download'
 import { checkForUpdate } from '../lib/update'
 import { formatTransport } from '../lib/transport'
 import { pluginPackageTooLarge } from '../lib/pluginLimits'
+import { APP_LOCALES, changeLocale, toAppLocale } from '../i18n'
+import type { AppLocale } from '../i18n'
 import { useApp } from '../state/AppContext'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
@@ -18,6 +21,9 @@ import { TransportPanel } from '../components/TransportPanel'
 
 export function Settings() {
   const app = useApp()
+  // 迭代 108（#241）：「语言」项（设置页唯一 key 化卡片，其余文案迁移归 111/112）——
+  // 绑定 settings 域；选项名固定各自语言原文（「中文」/「English」不随当前语言翻译）
+  const { t, i18n } = useTranslation('settings')
   const [url, setUrl] = useState(app.baseUrl)
   // 迭代 73（#108 决议 1）：连接配置低频收纳——「连接方式」默认折叠为当前连接摘要一行，点击展开完整编辑区
   const [transportOpen, setTransportOpen] = useState(false)
@@ -286,6 +292,29 @@ export function Settings() {
       {/* 迭代 21+：内容容器与其他页面对齐——flex:1 + overflowY:auto，低屏高可滚动（此前被 .page overflow:hidden 裁剪，小分辨率看不到「打印机」卡片）；minWidth:0 防长文本（%ProgramData% 路径）撑破 */}
       {/* 迭代 45（决策定稿 B）：布局随可用宽度自适应——多列网格（每列 ≥560px，列数随宽度自动增减），窄窗自动回退单列、不破版 */}
       <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: 'auto', padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(560px, 1fr))', gap: 14, alignItems: 'start' }}>
+        {/* 迭代 108（#241）：界面语言——切换即时生效（i18next changeLanguage，订阅组件重渲染）、
+            localStorage 持久化、首启默认跟随浏览器语言（zh* → zh-CN，其他 → en，AC-01/02） */}
+        <section className="panel" data-testid="language-panel">
+          <div className="panel-head">{t('language.title')}</div>
+          <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label className="field" style={{ maxWidth: 260 }}>
+              {t('language.label')}
+              <select
+                className="input"
+                value={toAppLocale(i18n.language)}
+                onChange={(ev) => changeLocale(ev.target.value as AppLocale)}
+              >
+                {APP_LOCALES.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {t(loc === 'zh-CN' ? 'language.zhOption' : 'language.enOption')}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="hint">{t('language.hint')}</div>
+          </div>
+        </section>
+
         <section className="panel">
           <div className="panel-head">服务端地址</div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

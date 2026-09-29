@@ -1,8 +1,17 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["react", "typescript", "oxc"],
+  "jsPlugins": ["./oxlint-plugin-labelframe.cjs"],
   "rules": {
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/App.tsx", "src/components/Modal.tsx"],
+      "rules": {
+        "labelframe/no-bare-cjk-jsx": "error"
+      }
+    }
+  ]
 }

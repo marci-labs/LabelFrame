@@ -8,8 +8,12 @@
 // 弹三选确认（保存并离开 / 放弃更改 / 继续编辑），确认后才切换，防误触丢失排版工作。
 // 迭代 104（#225，决策 #161）：日志抽屉「清空」升级实心红 danger＋点击先弹确认——
 // 销毁类操作必须先确认（此前灰色 ghost 无确认直接执行），Esc / 遮罩点击默认取消。
+// 迭代 108（#241）：壳层文案 key 化（样板迁移）——导航 / 状态栏 / 日志抽屉 / 清空确认弹窗全部走 t()
+// （`useTranslation('shell')`，common 词条经 fallbackNS 兜底），作为 111/112 页面迁移的 key 命名与用法样例；
+// 本文件已圈入 lint 防线（.oxlintrc.json overrides，裸中文 JSX 会被 oxlint 拦截——决策 #164 ⑦）。
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AppProvider, useApp } from './state/AppContext'
 import { Icon, LabelLogo } from './components/Icon'
 import type { IconName } from './components/Icon'
@@ -25,26 +29,27 @@ import { Settings } from './pages/Settings'
 import { DownloadCenter } from './pages/DownloadCenter'
 import { PluginPackages } from './pages/PluginPackages'
 
-const TABS: { id: TabId; label: string; icon: IconName }[] = isServerUi
-  ? [
-      { id: 'workbench', label: '工作台', icon: 'workbench' },
-      { id: 'designer', label: '设计器', icon: 'designer' },
-      { id: 'data', label: '数据与打印', icon: 'data' },
-      { id: 'devices', label: '在线设备', icon: 'grid' },
-      { id: 'jobs', label: '作业历史', icon: 'history' },
-      // 迭代 59（决策 #119）：Server UI「客户端下载」页升级为统一「下载中心」——客户端安装包 + PDA APK 同页分区、扫码下载
-      { id: 'packages', label: '下载中心', icon: 'download' },
-      // 迭代 23 §5.4：Server UI「插件管理」页（插件包列表 / 上传 / 下载 / 删除，与「客户端下载」并列）
-      { id: 'plugin-packages', label: '插件管理', icon: 'puzzle' },
-      // 迭代 75（#112）：「设备日志」页下线——/api/logs 端点与 logs.db 保留（未来回传地基）
-    ]
-  : [
-      { id: 'workbench', label: '工作台', icon: 'workbench' },
-      { id: 'designer', label: '设计器', icon: 'designer' },
-      { id: 'data', label: '数据与打印', icon: 'data' },
-      { id: 'jobs', label: '作业历史', icon: 'history' },
-      { id: 'settings', label: '设置', icon: 'settings' },
-    ]
+// 导航元数据（label 经 shell 域 key 在渲染期求值——t() 绑定当前语言，切换即时生效）
+const SERVER_TABS: { id: TabId; labelKey: string; icon: IconName }[] = [
+  { id: 'workbench', labelKey: 'nav.workbench', icon: 'workbench' },
+  { id: 'designer', labelKey: 'nav.designer', icon: 'designer' },
+  { id: 'data', labelKey: 'nav.data', icon: 'data' },
+  { id: 'devices', labelKey: 'nav.devices', icon: 'grid' },
+  { id: 'jobs', labelKey: 'nav.jobs', icon: 'history' },
+  // 迭代 59（决策 #119）：Server UI「客户端下载」页升级为统一「下载中心」——客户端安装包 + PDA APK 同页分区、扫码下载
+  { id: 'packages', labelKey: 'nav.packages', icon: 'download' },
+  // 迭代 23 §5.4：Server UI「插件管理」页（插件包列表 / 上传 / 下载 / 删除，与「客户端下载」并列）
+  { id: 'plugin-packages', labelKey: 'nav.pluginPackages', icon: 'puzzle' },
+  // 迭代 75（#112）：「设备日志」页下线——/api/logs 端点与 logs.db 保留（未来回传地基）
+]
+
+const CLIENT_TABS: { id: TabId; labelKey: string; icon: IconName }[] = [
+  { id: 'workbench', labelKey: 'nav.workbench', icon: 'workbench' },
+  { id: 'designer', labelKey: 'nav.designer', icon: 'designer' },
+  { id: 'data', labelKey: 'nav.data', icon: 'data' },
+  { id: 'jobs', labelKey: 'nav.jobs', icon: 'history' },
+  { id: 'settings', labelKey: 'nav.settings', icon: 'settings' },
+]
 
 /** 状态栏多 IP 过长省略显示（title 给全量）。 */
 function truncateIps(ips: string[], max = 28): string {
@@ -53,6 +58,8 @@ function truncateIps(ips: string[], max = 28): string {
 }
 
 function Shell() {
+  // 迭代 108（#241）：壳层绑定 shell 域命名空间；common 词条（取消等）经 fallbackNS 免前缀兜底
+  const { t } = useTranslation('shell')
   const [tab, setTab] = useState<TabId>('workbench')
   const [designerReq, setDesignerReq] = useState<DesignerRequest | null>(null)
   // 迭代 104（#225，决策 #161）：日志抽屉「清空」的确认弹窗开关——点击先确认，确认后才清空
@@ -109,23 +116,29 @@ function Shell() {
     switchTab('data')
   }
 
+  const tabs = (isServerUi ? SERVER_TABS : CLIENT_TABS).map(({ id, labelKey, icon }) => ({
+    id,
+    label: t(labelKey),
+    icon,
+  }))
+
   return (
     <div className="app">
       <div className="app-body">
-        <nav className="nav" aria-label="主导航">
-          <div className="nav-logo" title="LabelFrame 标签打印">
+        <nav className="nav" aria-label={t('nav.region')}>
+          <div className="nav-logo" title={t('appTitle')}>
             <LabelLogo size={24} />
           </div>
           <div className="nav-tabs">
-            {TABS.map((t) => (
+            {tabs.map((item) => (
               <button
-                key={t.id}
-                className={'nav-tab' + (tab === t.id ? ' active' : '')}
-                onClick={() => switchTab(t.id)}
-                title={t.label}
+                key={item.id}
+                className={'nav-tab' + (tab === item.id ? ' active' : '')}
+                onClick={() => switchTab(item.id)}
+                title={item.label}
               >
-                <Icon name={t.icon} />
-                <span>{t.label}</span>
+                <Icon name={item.icon} />
+                <span>{item.label}</span>
               </button>
             ))}
           </div>
@@ -136,11 +149,11 @@ function Shell() {
             title={
               isServerUi
                 ? app.connected
-                  ? '服务端已连接'
-                  : '服务端未连接'
+                  ? t('conn.serverConnected')
+                  : t('conn.serverDisconnected')
                 : app.localServiceUp
-                  ? '本机打印服务：运行中'
-                  : '本机打印服务：未运行'
+                  ? t('statusbar.localServiceUp')
+                  : t('statusbar.localServiceDown')
             }
           >
             <span className={'status-dot' + ((isServerUi ? app.connected : app.localServiceUp) ? ' on' : '')} />
@@ -169,7 +182,7 @@ function Shell() {
         {!isServerUi && (
           <span className={'conn' + (app.localServiceUp ? ' on' : ' off')}>
             <span className={'status-dot' + (app.localServiceUp ? ' on' : '')} />
-            {app.localServiceUp ? '本机打印服务：运行中' : '本机打印服务：未运行'}
+            {app.localServiceUp ? t('statusbar.localServiceUp') : t('statusbar.localServiceDown')}
           </span>
         )}
         <span className="msg">{app.statusMsg}</span>
@@ -178,7 +191,7 @@ function Shell() {
             // 迭代 20：Server UI 状态栏显示服务端地址（页面 origin）与 UI 模式；无打印机相关内容
             // 迭代 73（#108）：「同源」开发者术语改为直接展示地址与服务端管理界面标识
             <span className="mono" title={window.location.origin}>
-              {window.location.origin} · 服务端管理界面
+              {t('statusbar.serverAdminOrigin', { origin: window.location.origin })}
             </span>
           ) : (
             <>
@@ -187,16 +200,18 @@ function Shell() {
                   迭代 80：随「本机打印服务」运行状态显示（本机事实不依赖服务端地址连通性） */}
               {app.localServiceUp && app.hostIps.length > 0 && (
                 <span className="mono" title={app.hostIps.join(', ')}>
-                  本机 IP：{truncateIps(app.hostIps)}
+                  {t('statusbar.localIps', { ips: truncateIps(app.hostIps) })}
                 </span>
               )}
               {/* 迭代 22 §2.1：客户端状态栏显示本机设备名称（/api/host/config.deviceName，与本机 IP 并列） */}
-              {app.localServiceUp && app.hostDeviceName && <span className="mono">本机：{app.hostDeviceName}</span>}
+              {app.localServiceUp && app.hostDeviceName && (
+                <span className="mono">{t('statusbar.localDevice', { name: app.hostDeviceName })}</span>
+              )}
             </>
           )}
           <button className="btn sm ghost" onClick={() => app.setDrawerOpen(!app.drawerOpen)}>
             <Icon name="logs" size={13} />
-            日志
+            {t('statusbar.logs')}
           </button>
         </span>
       </footer>
@@ -204,15 +219,15 @@ function Shell() {
       {app.drawerOpen && (
         <div className="log-drawer">
           <div className="log-head">
-            <span>运行日志</span>
+            <span>{t('logsDrawer.title')}</span>
             <span className="spacer" />
             {/* 迭代 104（#225，决策 #161）：清空 = 销毁类操作——实心红 danger＋先弹确认（原灰色 ghost 直执行） */}
             <button className="btn sm danger" onClick={() => setConfirmingClearLogs(true)}>
               <Icon name="clear" size={13} />
-              清空
+              {t('logsDrawer.clear')}
             </button>
             <button className="btn sm ghost" style={{ color: '#8b96a3' }} onClick={() => app.setDrawerOpen(false)}>
-              收起
+              {t('logsDrawer.collapse')}
             </button>
           </div>
           <div className="log-body">
@@ -229,12 +244,12 @@ function Shell() {
       {/* 迭代 104（#225）：清空日志确认——文案含「不可恢复」，Esc / 遮罩默认取消（通用 Modal 既有语义） */}
       {confirmingClearLogs && (
         <Modal
-          title="清空运行日志"
+          title={t('clearLogsConfirm.title')}
           onClose={() => setConfirmingClearLogs(false)}
           footer={
             <>
               <button className="btn" onClick={() => setConfirmingClearLogs(false)}>
-                取消
+                {t('action.cancel')}
               </button>
               <button
                 className="btn danger"
@@ -244,12 +259,12 @@ function Shell() {
                 }}
               >
                 <Icon name="trash" size={13} />
-                确认清空
+                {t('clearLogsConfirm.confirm')}
               </button>
             </>
           }
         >
-          <p>确定清空全部运行日志吗？该操作不可恢复。</p>
+          <p>{t('clearLogsConfirm.body')}</p>
         </Modal>
       )}
     </div>
@@ -257,18 +272,19 @@ function Shell() {
 }
 
 function DesignerEmpty({ onNew }: { onNew: () => void }) {
+  const { t } = useTranslation('shell')
   return (
     <div className="page">
       <div className="page-head">
-        <div className="page-title">设计器</div>
+        <div className="page-title">{t('designerEmpty.title')}</div>
       </div>
       <div className="empty" style={{ flex: 1 }}>
         <Icon name="designer" />
-        <div className="empty-title">尚未打开模板</div>
-        <div className="hint">从工作台新建或编辑模板后进入设计器</div>
+        <div className="empty-title">{t('designerEmpty.untitled')}</div>
+        <div className="hint">{t('designerEmpty.hint')}</div>
         <button className="btn primary" onClick={onNew}>
           <Icon name="plus" size={13} />
-          新建模板
+          {t('designerEmpty.newTemplate')}
         </button>
       </div>
     </div>

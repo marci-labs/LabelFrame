@@ -1,0 +1,9 @@
+{
+  "language": {
+    "title": "Language",
+    "label": "Interface language",
+    "zhOption": "中文",
+    "enOption": "English",
+    "hint": "Switching takes effect immediately and is saved in this browser; the first launch follows the browser language."
+  }
+}
