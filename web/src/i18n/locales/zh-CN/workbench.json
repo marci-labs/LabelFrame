@@ -1,0 +1,57 @@
+{
+  "title": "工作台",
+  "subtitle": "模板管理",
+  "reloadListTitle": "重新加载模板列表",
+  "searchPlaceholder": "搜索模板名称",
+  "searchTitle": "按模板名称搜索（不分大小写）",
+  "filterByGroupTitle": "按分组过滤",
+  "allGroups": "全部分组",
+  "importTemplate": "导入模板",
+  "newTemplate": "新建模板",
+  "errors": {
+    "loadList": "加载模板列表失败。"
+  },
+  "empty": {
+    "title": "还没有模板",
+    "hint": "点击「新建模板」开始设计第一张标签，或导入之前导出的模板文件。"
+  },
+  "noMatch": {
+    "title": "没有匹配的模板",
+    "hint": "当前搜索词或分组下没有模板，请调整关键词或分组后重试。"
+  },
+  "card": {
+    "openDesignerTitle": "双击打开设计器",
+    "edit": "编辑",
+    "print": "打印",
+    "printTitle": "去「数据与打印」页填写数据并打印此模板",
+    "moreAria": "模板「{{name}}」更多操作",
+    "moreTitle": "更多操作（导出 / 删除）"
+  },
+  "menu": {
+    "export": "导出",
+    "delete": "删除"
+  },
+  "deleteConfirm": {
+    "title": "删除模板",
+    "confirm": "确认删除",
+    "body": "确定删除模板「<0>{{name}}</0>」吗？该操作不可恢复。"
+  },
+  "status": {
+    "deleted": "已删除模板「{{name}}」。",
+    "deleteFailed": "删除失败。",
+    "exported": "已导出模板「{{name}}」。",
+    "exportFailed": "导出失败。",
+    "imported": "已导入模板「{{name}}」。",
+    "importFailed": "导入失败：所选文件不是有效的模板文件。"
+  },
+  "preview": {
+    "generating": "正在生成预览…",
+    "unavailable": "预览不可用：{{message}}",
+    "thumbAlt": "模板「{{name}}」缩略图",
+    "enlargeHint": "点击放大预览",
+    "modalAria": "模板「{{name}}」预览",
+    "closeTitle": "关闭预览（Esc）",
+    "unavailableTitle": "预览不可用",
+    "sampleFoot": "按示例数据预览"
+  }
+}

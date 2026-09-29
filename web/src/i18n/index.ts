@@ -17,10 +17,16 @@ import zhCNCommon from './locales/zh-CN/common.json'
 import zhCNShell from './locales/zh-CN/shell.json'
 import zhCNSettings from './locales/zh-CN/settings.json'
 import zhCNErrorCodes from './locales/zh-CN/errorCodes.json'
+import zhCNWorkbench from './locales/zh-CN/workbench.json'
+import zhCNJobHistory from './locales/zh-CN/jobHistory.json'
+import zhCNDataPrint from './locales/zh-CN/dataPrint.json'
 import enCommon from './locales/en/common.json'
 import enShell from './locales/en/shell.json'
 import enSettings from './locales/en/settings.json'
 import enErrorCodes from './locales/en/errorCodes.json'
+import enWorkbench from './locales/en/workbench.json'
+import enJobHistory from './locales/en/jobHistory.json'
+import enDataPrint from './locales/en/dataPrint.json'
 
 /** 界面语言全集（zh-CN 为源语言；en 为第一翻译目标——决策 #164 ①）。 */
 export type AppLocale = 'zh-CN' | 'en'
@@ -79,13 +85,36 @@ function syncDocumentLang(lng: string): void {
   document.documentElement.lang = lng
 }
 
+// 迭代 111（#245）：`index.html` 静态 <title>（LabelFrame 标签打印）随语言切换同步——
+// 108 结项时暂留的壳层残余，用 shell 域 appTitle 词条（zh 值与原静态标题一致，中文态无变化）。
+function syncDocumentTitle(lng: string): void {
+  if (typeof document === 'undefined') return
+  document.title = i18next.t('appTitle', { lng, ns: 'shell' })
+}
+
 // 单例初始化：同步资源（静态 import 打包，无网络请求，client / server 双构建离线可用）；
 // 挂 React 绑定（react-i18next）；fallbackLng = 源语言 zh-CN（空缺词条回退中文不崩，AC-06 前提）；
 // useSuspense: false —— 组件树无 Suspense 边界，同步资源下禁用 Suspense 语义即可即时返回。
 void i18next.use(initReactI18next).init({
   resources: {
-    'zh-CN': { common: zhCNCommon, shell: zhCNShell, settings: zhCNSettings, errorCodes: zhCNErrorCodes },
-    en: { common: enCommon, shell: enShell, settings: enSettings, errorCodes: enErrorCodes },
+    'zh-CN': {
+      common: zhCNCommon,
+      shell: zhCNShell,
+      settings: zhCNSettings,
+      errorCodes: zhCNErrorCodes,
+      workbench: zhCNWorkbench,
+      jobHistory: zhCNJobHistory,
+      dataPrint: zhCNDataPrint,
+    },
+    en: {
+      common: enCommon,
+      shell: enShell,
+      settings: enSettings,
+      errorCodes: enErrorCodes,
+      workbench: enWorkbench,
+      jobHistory: enJobHistory,
+      dataPrint: enDataPrint,
+    },
   },
   lng: currentLocaleFromEnv(),
   fallbackLng: 'zh-CN',
@@ -95,9 +124,11 @@ void i18next.use(initReactI18next).init({
   interpolation: { escapeValue: false }, // React 已做 XSS 转义，插值不再 escape
 })
 
-// 语言切换（含首启后的每一次切换）同步 <html lang>；初始化后立即对齐一次
+// 语言切换（含首启后的每一次切换）同步 <html lang> 与 <title>；初始化后立即对齐一次
 i18next.on('languageChanged', syncDocumentLang)
+i18next.on('languageChanged', syncDocumentTitle)
 syncDocumentLang(i18next.language)
+syncDocumentTitle(i18next.language)
 
 /** 当前界面语言（读取 i18next 单例；React 组件内需要语言变化触发重渲染时用 useTranslation 订阅）。 */
 export function currentLocale(): AppLocale {

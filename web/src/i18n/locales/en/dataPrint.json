@@ -1,0 +1,138 @@
+{
+  "title": "Data & Print",
+  "subtitle": "Fill in data and print / batch print from Excel",
+  "tplNoneOption": "(no templates)",
+  "excelTpl": {
+    "title": "Generate an Excel file from the current template's fields (with a sample row); fill it in and import it for batch printing",
+    "noFieldsTitle": "The current template has no fields, so no Excel template can be generated",
+    "download": "Download Excel Template",
+    "generating": "Generating…"
+  },
+  "excelImport": "Import Excel",
+  "conn": {
+    "badgesTitle": "Local connection: the printer connection currently used by this machine; Server: whether this machine has joined the server's device list (the server address is configured in Settings)",
+    "local": "Local connection",
+    "server": "Server",
+    "detecting": "Checking…",
+    "joined": "Joined",
+    "notJoined": "Not joined"
+  },
+  "target": {
+    "label": "Target device",
+    "selectTitle": "The job will be delivered to the selected online device for printing (only online devices can be selected)",
+    "noneOption": "(no devices)",
+    "pickOption": "(select a device)",
+    "optionLabel": "{{name}} ({{status}})",
+    "offlineTitle": "Offline (last seen {{time}})",
+    "lastSeenSuffix": " · last seen {{time}}",
+    "noDevicesHint": "No devices yet. Install and start LabelFrame Client on the printing PC first",
+    "onlineOnlyHint": "Only online devices can be selected; the selected device's online status is checked again on submit.",
+    "noOnlineBadge": "No online devices; only online devices can be selected",
+    "localBadge": "Local ({{name}})",
+    "joinedServerHint": "This machine has joined the server, so print records are also synced to the server.",
+    "notJoinedBadge": "This machine has not joined the server: printing directly on this machine for now (records are kept only on this machine).",
+    "offlineBadge": "This machine is currently offline: printing directly on this machine for now (records are kept only on this machine)."
+  },
+  "testData": {
+    "title": "Test Data",
+    "fieldsFor": "Print fields of template “{{name}}”",
+    "fieldsPlain": "Print fields of the template",
+    "pickTemplateHint": "Select a template on the left first.",
+    "staticTemplateHint": "This template is a static label (no fields to fill in): its content prints as laid out, no data entry needed.",
+    "fieldKeyTitle": "Field name: {{key}}",
+    "fieldPlaceholder": "Value of field {{label}} (used when printing)",
+    "debugToggle": "Simulate output: generate label images only, no actual printing"
+  },
+  "printBtn": {
+    "working": "Working…",
+    "testSingle": "Test Print (1 label)",
+    "debugSingle": "Generate Image (1)",
+    "titleDebug": "Generate a label image of the current content and download it (nothing is actually printed)",
+    "titleServerUi": "Send 1 label to the selected online device (that device performs the printing)",
+    "titleServerRoute": "Print 1 label on this machine (forwarded via the server)",
+    "titleDirectRoute": "This machine has not joined the server: print 1 label directly on this machine",
+    "titleStandalone": "Print 1 label on this machine"
+  },
+  "previewBtn": {
+    "label": "Image Preview",
+    "title": "Generate a label image from the current values and preview it in an in-page overlay (nothing is actually printed and no file is downloaded automatically; you can download it inside the overlay)"
+  },
+  "remapBtn": "Remap ({{file}})",
+  "hint": {
+    "debugMode": "Simulated output: the generated images match the actual printout (same print resolution); nothing is actually printed and no print record is created.",
+    "static": "Static labels need no data entry; Test Print submits 1 label with empty data (content prints as laid out).",
+    "serverUi": "Values are pre-filled with sample data; edit them as needed before printing. Test Print sends 1 label to the selected online device.",
+    "serverRoute": "Values are pre-filled with sample data; edit them as needed before printing. Test Print prints 1 label (this machine has joined the server).",
+    "directRoute": "Values are pre-filled with sample data; edit them as needed before printing. This machine has not joined the server, so the label will be printed directly on this machine (records are kept only on this machine).",
+    "standalone": "Values are pre-filled with sample data; edit them as needed before printing. Not joined to a server; labels are printed directly on this machine."
+  },
+  "jobPanel": {
+    "title": "Job Progress",
+    "idleHint": "Progress and per-label results appear here after you submit a print.",
+    "debugDoneHint": "Label images were generated and downloaded (nothing was actually printed).",
+    "debugLastJobHint": "Label images were generated and downloaded (nothing was actually printed); below is the progress of the last job.",
+    "progress": "{{completed}} / {{total}} labels completed",
+    "failedPrefix": "{{count}} labels failed to print, ",
+    "retryBelow": "you can retry them one by one in the list below.",
+    "checkJobHistory": "Check the failure reason in <0>Job History</0>.",
+    "targetDevice": "Target device: {{name}}",
+    "targetDeviceStatus": "Target device: {{name}} ({{status}})",
+    "simPrintDir": "Images generated by simulated printing are saved in: {{dir}} ({{count}} images)",
+    "errorLabel": "Error: {{message}}",
+    "retried": "Retried label {{index}}.",
+    "noItemsNote": "(This job has no per-label details: see the progress bar above; expand the job in <0>Job History</0> to view the failure reason.)"
+  },
+  "mapping": {
+    "title": "Column Mapping ({{count}} rows of data)",
+    "hint": "Confirm the template field for each column (auto-matched by column name; adjust manually if needed); unmapped columns are not printed.",
+    "debugHint": " Simulated output: label images for all rows will be generated and downloaded as an archive; nothing is actually printed.",
+    "dupError": " One field is mapped by multiple columns: {{fields}}. Please adjust.",
+    "autoMatch": "Auto Match",
+    "autoMatchTitle": "Match automatically by column name (case / spaces ignored)",
+    "confirmTitle": "Submit the batch print job",
+    "confirmDebugTitle": "Generate label images for all rows and download them as an archive (nothing is actually printed)",
+    "downloadImages": "Download Images ({{count}})",
+    "batchPrint": "Batch Print {{count}}",
+    "colColumn": "#",
+    "excelColumn": "Excel column",
+    "templateField": "Template field",
+    "sampleColumn": "Sample value",
+    "emptyColumn": "(empty column {{index}})",
+    "noMap": "— no mapping —",
+    "fieldOption": "{{displayName}} ({{key}})"
+  },
+  "imagePreview": {
+    "title": "Label Image Preview",
+    "closeTitle": "Close preview (Esc)",
+    "closeAria": "Close preview",
+    "generating": "Generating preview…",
+    "unavailable": "Preview unavailable",
+    "imgAlt": "Label image rendered from the currently entered data",
+    "download": "Download Image",
+    "downloadTitle": "Download the currently previewed image file to this machine",
+    "footHint": "Rendered from the currently entered data; matches the actual printout"
+  },
+  "errors": {
+    "loadDevices": "Failed to load the device list.",
+    "loadTemplates": "Failed to load the template list.",
+    "loadTemplate": "Failed to load the template.",
+    "getJob": "Failed to query the job.",
+    "retryFailed": "Retry failed.",
+    "submitFailed": "Failed to submit the job.",
+    "renderFailed": "Failed to render the image.",
+    "excelTplFailed": "Failed to generate the Excel template.",
+    "excelParseFailed": "Failed to parse the Excel file.",
+    "deviceCheckFailed": "Failed to check the device's online status; cannot submit.",
+    "deviceOffline": "The selected device is offline or does not exist; cannot submit (the job will not be queued). Please select an online device again.",
+    "pickDeviceFirst": "Select a target device first (the label will be sent to that device for printing)."
+  },
+  "status": {
+    "submitted": "Job submitted ({{count}} labels, ID {{id}}).",
+    "imageDownloaded": "Label image downloaded: {{filename}}",
+    "excelDownloaded": "Excel template downloaded: {{filename}}",
+    "excelNoHeaders": "No header row was read from the Excel file (the first row is treated as the header).",
+    "dupMapped": "The following fields are mapped by multiple columns: {{fields}}. Please adjust so each field maps to exactly one column.",
+    "generatingImages": "Generating {{count}} label images; they will be downloaded automatically when done…",
+    "batchSubmitting": "Generated {{count}} labels from the mapping; submitting the batch print…"
+  }
+}

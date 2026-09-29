@@ -1,0 +1,138 @@
+{
+  "title": "数据与打印",
+  "subtitle": "填写数据并打印 / Excel 批量打印",
+  "tplNoneOption": "（暂无模板）",
+  "excelTpl": {
+    "title": "按当前模板的字段生成 Excel 文件（含示例行），填好后可导入批量打印",
+    "noFieldsTitle": "当前模板没有字段，无法生成 Excel 模板",
+    "download": "下载 Excel 模板",
+    "generating": "生成中…"
+  },
+  "excelImport": "Excel 导入",
+  "conn": {
+    "badgesTitle": "本机连接：本机当前使用的打印机连接方式；服务端：本机设备是否已加入服务端设备列表（服务端地址在设置页配置）",
+    "local": "本机连接",
+    "server": "服务端",
+    "detecting": "检测中…",
+    "joined": "已加入",
+    "notJoined": "未加入"
+  },
+  "target": {
+    "label": "目标设备",
+    "selectTitle": "作业将投递到所选在线设备执行打印（仅在线设备可选）",
+    "noneOption": "（暂无设备）",
+    "pickOption": "（请选择设备）",
+    "optionLabel": "{{name}}（{{status}}）",
+    "offlineTitle": "离线（上次连接 {{time}}）",
+    "lastSeenSuffix": " · 上次连接 {{time}}",
+    "noDevicesHint": "暂无设备，请先在打印电脑安装并启动 LabelFrame Client",
+    "onlineOnlyHint": "仅在线设备可选；提交时将再次校验所选设备在线状态。",
+    "noOnlineBadge": "暂无在线设备，仅在线设备可选",
+    "localBadge": "本机（{{name}}）",
+    "joinedServerHint": "本机已加入服务端，打印记录也会同步到服务端。",
+    "notJoinedBadge": "本机未加入服务端：暂用本机直接打印（记录仅保存在本机）。",
+    "offlineBadge": "本机当前离线：暂用本机直接打印（记录仅保存在本机）。"
+  },
+  "testData": {
+    "title": "测试数据",
+    "fieldsFor": "模板「{{name}}」的打印字段",
+    "fieldsPlain": "模板的打印字段",
+    "pickTemplateHint": "请先在左侧选择模板。",
+    "staticTemplateHint": "该模板为静态标签（无字段填充）：内容将按版式原样打印，无需填写数据。",
+    "fieldKeyTitle": "字段名：{{key}}",
+    "fieldPlaceholder": "字段 {{label}} 的值（打印时使用）",
+    "debugToggle": "模拟出图：只生成标签图片，不实际打印"
+  },
+  "printBtn": {
+    "working": "处理中…",
+    "testSingle": "打印测试（单张）",
+    "debugSingle": "生成图片（单张）",
+    "titleDebug": "生成当前内容的标签图片并下载（不会实际打印）",
+    "titleServerUi": "向所选在线设备发送 1 张标签（由该设备执行打印）",
+    "titleServerRoute": "打印 1 张标签到本机（经服务端转发）",
+    "titleDirectRoute": "本机未加入服务端：直接在本机打印 1 张标签",
+    "titleStandalone": "在本机打印 1 张标签"
+  },
+  "previewBtn": {
+    "label": "图片预览",
+    "title": "按当前填写内容生成标签图片并在页内弹层预览（不会实际打印，也不会自动下载文件；弹层内可下载）"
+  },
+  "remapBtn": "重新映射（{{file}}）",
+  "hint": {
+    "debugMode": "模拟出图：生成的图片与实际打印效果一致（相同打印精度），不会实际打印、也不产生打印记录。",
+    "static": "静态标签无需填写数据；打印测试提交 1 张空数据标签（内容按版式原样输出）。",
+    "serverUi": "已用示例值预填，可修改后打印；「打印测试」将向所选在线设备发送 1 张标签。",
+    "serverRoute": "已用示例值预填，可修改后打印；「打印测试」将打印 1 张标签（本机已加入服务端）。",
+    "directRoute": "已用示例值预填，可修改后打印；本机未加入服务端，将改为本机直接打印（记录仅保存在本机）。",
+    "standalone": "已用示例值预填，可修改后打印；未加入服务端，标签直接在本机打印。"
+  },
+  "jobPanel": {
+    "title": "作业进度",
+    "idleHint": "提交打印后显示进度与逐张结果。",
+    "debugDoneHint": "已生成标签图片并下载（未实际打印）。",
+    "debugLastJobHint": "已生成标签图片并下载（未实际打印）；下方为上一次作业的进度。",
+    "progress": "已完成 {{completed}} / {{total}} 张",
+    "failedPrefix": "有 {{count}} 张打印失败，",
+    "retryBelow": "可在下方列表中逐张重试。",
+    "checkJobHistory": "可在「<0>作业历史</0>」中查看失败原因。",
+    "targetDevice": "目标设备：{{name}}",
+    "targetDeviceStatus": "目标设备：{{name}}（{{status}}）",
+    "simPrintDir": "模拟打印生成的图片保存在：{{dir}}（共 {{count}} 张）",
+    "errorLabel": "错误：{{message}}",
+    "retried": "已重试第 {{index}} 张。",
+    "noItemsNote": "（该作业无逐张明细：进度见上方进度条，失败原因可在「<0>作业历史</0>」展开该作业查看。）"
+  },
+  "mapping": {
+    "title": "列映射（{{count}} 行数据）",
+    "hint": "请确认每列对应的模板字段（已按列名自动匹配，可手工调整）；未映射的列不会打印。",
+    "debugHint": " 模拟出图：将生成全部行的标签图片并打包下载，不会实际打印。",
+    "dupError": " 同一字段被多列映射：{{fields}}，请调整。",
+    "autoMatch": "自动匹配",
+    "autoMatchTitle": "按列名自动匹配（忽略大小写 / 空格）",
+    "confirmTitle": "提交批量打印作业",
+    "confirmDebugTitle": "生成全部行的标签图片并打包下载（不会实际打印）",
+    "downloadImages": "下载图片（{{count}} 张）",
+    "batchPrint": "批量打印 {{count}} 张",
+    "colColumn": "列",
+    "excelColumn": "Excel 列名",
+    "templateField": "模板字段",
+    "sampleColumn": "示例值",
+    "emptyColumn": "（空列 {{index}}）",
+    "noMap": "— 不映射 —",
+    "fieldOption": "{{displayName}}（{{key}}）"
+  },
+  "imagePreview": {
+    "title": "标签图片预览",
+    "closeTitle": "关闭预览（Esc）",
+    "closeAria": "关闭预览",
+    "generating": "正在生成预览…",
+    "unavailable": "预览不可用",
+    "imgAlt": "按当前填写数据渲染的标签图片",
+    "download": "下载图片",
+    "downloadTitle": "下载当前预览的图片文件到本机",
+    "footHint": "按当前填写数据渲染，与实际打印效果一致"
+  },
+  "errors": {
+    "loadDevices": "加载设备列表失败。",
+    "loadTemplates": "加载模板列表失败。",
+    "loadTemplate": "加载模板失败。",
+    "getJob": "查询作业失败。",
+    "retryFailed": "重试失败。",
+    "submitFailed": "提交作业失败。",
+    "renderFailed": "出图失败。",
+    "excelTplFailed": "生成 Excel 模板失败。",
+    "excelParseFailed": "Excel 解析失败。",
+    "deviceCheckFailed": "校验设备在线状态失败，无法提交。",
+    "deviceOffline": "所选设备已离线或不存在，无法提交（作业不会排队）。请重新选择在线设备。",
+    "pickDeviceFirst": "请先选择目标设备（标签将发送到该设备打印）。"
+  },
+  "status": {
+    "submitted": "作业已提交（{{count}} 张，ID {{id}}）。",
+    "imageDownloaded": "标签图片已下载：{{filename}}",
+    "excelDownloaded": "Excel 模板已下载：{{filename}}",
+    "excelNoHeaders": "Excel 未读取到表头（第一行作为表头）。",
+    "dupMapped": "以下字段被多列重复映射：{{fields}}，请调整为每个字段只对应一列。",
+    "generatingImages": "正在生成 {{count}} 张标签图片，完成后自动下载…",
+    "batchSubmitting": "已按映射生成 {{count}} 张标签，提交批量打印…"
+  }
+}

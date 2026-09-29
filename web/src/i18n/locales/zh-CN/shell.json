@@ -16,6 +16,7 @@
     "serverDisconnected": "服务端未连接"
   },
   "statusbar": {
+    "ready": "就绪",
     "localServiceUp": "本机打印服务：运行中",
     "localServiceDown": "本机打印服务：未运行",
     "serverAdminOrigin": "{{origin}} · 服务端管理界面",
@@ -38,5 +39,14 @@
     "untitled": "尚未打开模板",
     "hint": "从工作台新建或编辑模板后进入设计器",
     "newTemplate": "新建模板"
+  },
+  "errorBoundary": {
+    "title": "界面出现异常",
+    "hint": "页面渲染遇到了问题，重新加载通常可以恢复。",
+    "reload": "重新加载"
+  },
+  "startup": {
+    "hostConfigLoaded": "已读取本机配置：服务端 {{serverUrl}}。",
+    "hostConfigFallback": "本机配置接口不可用，使用浏览器本地保存的服务端地址。"
   }
 }

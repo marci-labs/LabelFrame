@@ -1,6 +1,64 @@
 {
   "action": {
     "cancel": "Cancel",
-    "close": "Close"
+    "close": "Close",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "retry": "Retry"
+  },
+  "state": {
+    "connectingServer": "Connecting to the server…",
+    "loading": "Loading…"
+  },
+  "jobStatus": {
+    "pending": "Pending",
+    "printing": "Printing",
+    "completed": "Completed",
+    "failed": "Failed",
+    "suspended": "Suspended",
+    "cancelled": "Cancelled",
+    "claimed": "Claimed",
+    "expired": "Expired"
+  },
+  "job": {
+    "failedReason": "Failure reason",
+    "unknownError": "Unknown error"
+  },
+  "column": {
+    "time": "Time",
+    "status": "Status"
+  },
+  "device": {
+    "local": "Local",
+    "online": "online",
+    "offline": "offline"
+  },
+  "value": {
+    "unknown": "Unknown"
+  },
+  "api": {
+    "targetServer": "the server",
+    "targetLocalClient": "the local client",
+    "timeout": "Request timed out ({{target}} did not respond within {{seconds}} seconds); the request was canceled. Check the service status and try again.",
+    "networkError": "Cannot connect to {{target}} ({{base}}). Check the server address and make sure the local client is running.",
+    "httpError": "Request failed (HTTP {{status}}).",
+    "blobHttpError": "{{message}} (HTTP {{status}}).",
+    "exportFailed": "Export failed",
+    "excelTemplateFailed": "Failed to generate the Excel template",
+    "renderFailed": "Failed to render the image",
+    "previewFailed": "Failed to generate the preview",
+    "debugImagesFailed": "Failed to download debug images"
+  },
+  "transport": {
+    "log": "Simulated printing",
+    "tcpPrinter": "Network printer {{addr}}",
+    "windowsPrinter": "Windows printer {{name}}",
+    "zebraUsb": "Zebra USB",
+    "zebraUsbName": "Zebra USB ({{name}})",
+    "zebraDriver": "Zebra {{name}}",
+    "driverFallback": "driver",
+    "zebraTcp": "Zebra network printer {{addr}}",
+    "nativeModeTitle": "In native command mode the printer renders with its own fonts and commands; the on-screen preview (image-based) no longer represents the actual printout",
+    "nativeModeHint": "No preview in native command mode; actual output depends on the printer"
   }
 }

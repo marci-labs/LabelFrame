@@ -1,0 +1,57 @@
+{
+  "title": "Workbench",
+  "subtitle": "Template Management",
+  "reloadListTitle": "Reload the template list",
+  "searchPlaceholder": "Search template name",
+  "searchTitle": "Search by template name (case-insensitive)",
+  "filterByGroupTitle": "Filter by group",
+  "allGroups": "All groups",
+  "importTemplate": "Import Template",
+  "newTemplate": "New Template",
+  "errors": {
+    "loadList": "Failed to load the template list."
+  },
+  "empty": {
+    "title": "No templates yet",
+    "hint": "Click “New Template” to design your first label, or import a previously exported template file."
+  },
+  "noMatch": {
+    "title": "No matching templates",
+    "hint": "No templates match the current search term or group. Adjust the keyword or group and try again."
+  },
+  "card": {
+    "openDesignerTitle": "Double-click to open the designer",
+    "edit": "Edit",
+    "print": "Print",
+    "printTitle": "Fill in data and print this template in Data & Print",
+    "moreAria": "More actions for template “{{name}}”",
+    "moreTitle": "More actions (export / delete)"
+  },
+  "menu": {
+    "export": "Export",
+    "delete": "Delete"
+  },
+  "deleteConfirm": {
+    "title": "Delete template",
+    "confirm": "Delete",
+    "body": "Delete template <0>{{name}}</0>? This action cannot be undone."
+  },
+  "status": {
+    "deleted": "Deleted template “{{name}}”.",
+    "deleteFailed": "Delete failed.",
+    "exported": "Exported template “{{name}}”.",
+    "exportFailed": "Export failed.",
+    "imported": "Imported template “{{name}}”.",
+    "importFailed": "Import failed: the selected file is not a valid template file."
+  },
+  "preview": {
+    "generating": "Generating preview…",
+    "unavailable": "Preview unavailable: {{message}}",
+    "thumbAlt": "Thumbnail of template “{{name}}”",
+    "enlargeHint": "Click to enlarge the preview",
+    "modalAria": "Preview of template “{{name}}”",
+    "closeTitle": "Close preview (Esc)",
+    "unavailableTitle": "Preview unavailable",
+    "sampleFoot": "Preview with sample data"
+  }
+}
