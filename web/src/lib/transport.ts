@@ -1,7 +1,10 @@
 // 连接方式（迭代 15 §6.2 恢复，迭代 18 F3）：模式标签 / 徽标格式化 / 参数默认值
 // 迭代 22：传输插件化——availablePlugins（spec 驱动表单）优先；旧后端（无 availablePlugins）回退内置 4 模式。
 // 徽标：新后端 displayText 优先，旧后端按 mode + params 本地格式化。
+// 迭代 111（#245）：formatTransport 的本地格式化跟随当前界面语言（common.transport.* 词条；
+// zh-CN 值与原硬编码逐字一致；调用点均在组件渲染期求值，语言切换后随重渲染更新）。
 
+import i18next from '../i18n'
 import type { PluginParams, PluginParamValue, TransportConfig, TransportMode, TransportParams, TransportParameterSpec, TransportPluginInfo, ZebraKind } from './api/types'
 
 export const ALL_TRANSPORT_MODES: TransportMode[] = ['Log', 'Tcp', 'WindowsDriver', 'Zebra']
@@ -56,15 +59,15 @@ export function formatTransport(cfg: TransportConfig | null | undefined): string
   const p = cfg.params
   switch (cfg.mode) {
     case 'Log':
-      return '模拟打印'
+      return i18next.t('transport.log')
     case 'Tcp':
-      return `网络打印机 ${p.tcpHost || '?'}${p.tcpPort ? `:${p.tcpPort}` : ''}`
+      return i18next.t('transport.tcpPrinter', { addr: `${p.tcpHost || '?'}${p.tcpPort ? `:${p.tcpPort}` : ''}` })
     case 'WindowsDriver':
-      return `Windows 打印机 ${p.printerName || '?'}`
+      return i18next.t('transport.windowsPrinter', { name: p.printerName || '?' })
     case 'Zebra':
-      if (p.zebraKind === 'Usb') return `Zebra USB${p.zebraUsbName ? `（${p.zebraUsbName}）` : ''}`
-      if (p.zebraKind === 'Driver') return `Zebra ${p.printerName || '驱动'}`
-      return `Zebra 网络打印机 ${p.tcpHost || '?'}${p.tcpPort ? `:${p.tcpPort}` : ''}`
+      if (p.zebraKind === 'Usb') return p.zebraUsbName ? i18next.t('transport.zebraUsbName', { name: p.zebraUsbName }) : i18next.t('transport.zebraUsb')
+      if (p.zebraKind === 'Driver') return i18next.t('transport.zebraDriver', { name: p.printerName || i18next.t('transport.driverFallback') })
+      return i18next.t('transport.zebraTcp', { addr: `${p.tcpHost || '?'}${p.tcpPort ? `:${p.tcpPort}` : ''}` })
   }
 }
 

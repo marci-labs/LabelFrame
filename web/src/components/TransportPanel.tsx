@@ -6,6 +6,7 @@
 // 迭代 93（#151 F-11）：删除全仓零引用的 DataPrint 顶部快速切换组件（git 历史可溯）。
 
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { localApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { PluginParams, PluginParamValue, TransportApplyRequest, TransportMode, TransportParams, TransportPluginInfo, ZebraKind } from '../lib/api/types'
@@ -24,11 +25,14 @@ import {
 import { useApp } from '../state/AppContext'
 import { Icon } from './Icon'
 
-/** 原生指令模式提示（迭代 78，DESIGN §5.4.2）：原生指令无指令级预览，界面以文案说明效果口径。 */
+/** 原生指令模式提示（迭代 78，DESIGN §5.4.2）：原生指令无指令级预览，界面以文案说明效果口径。
+ *  迭代 111（#245）：随数据与打印页迁移 key 化（common.transport.*——该徽标同时用于本面板表单，
+ *  面板其余文案的迁移归迭代 112）。 */
 export function NativePrintModeHint() {
+  const { t } = useTranslation()
   return (
-    <span className="badge warn" data-testid="native-print-mode-hint" title="原生指令模式由打印机按自身字体与指令渲染，界面预览（图片口径）不再代表实际出纸效果">
-      原生指令模式无预览，效果以真机为准
+    <span className="badge warn" data-testid="native-print-mode-hint" title={t('transport.nativeModeTitle')}>
+      {t('transport.nativeModeHint')}
     </span>
   )
 }

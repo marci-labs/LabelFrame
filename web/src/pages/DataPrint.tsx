@@ -11,14 +11,18 @@
 // 不再自称「测试数据」）；作业进度「目标设备」显示设备名（无可解析名称回退设备 ID），与在线设备页 / 目标设备下拉同源。
 // 迭代 85（#133 C-4 / C-5）：接收工作台「打印」直达的预选草稿（同手动选择）；作业进度区指向「作业历史」的
 // 纯文字指引改为可点击跳转（onOpenJobHistory → 切作业历史页，行可展开逐张 / 汇总明细）。
+// 迭代 111（#245）：页面文案 key 化（dataPrint 域；jobStatus / action 等 common 词条经 fallbackNS 兜底）。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
+import i18next from '../i18n'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { DeviceView, JobView, SubmitJobRequest, TemplatePackage, TemplateSummary } from '../lib/api/types'
 import { formatTransport, isNativePrintMode } from '../lib/transport'
 import { deviceDisplayName } from '../lib/deviceDisplay'
+import { useJobStatusLabel } from '../lib/jobStatus'
 import { downloadBlob } from '../lib/download'
 import { fromBackendElements } from '../lib/design/convert'
 import { deriveFieldInfos } from '../lib/design/fields'
@@ -31,8 +35,8 @@ import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { NativePrintModeHint } from '../components/TransportPanel'
 
-/** 设备在线状态中文标签。 */
-const deviceStatusLabel = (s: string) => (s === 'Online' ? '在线' : '离线')
+/** 设备在线状态标签（迭代 111：common.device.* 词条；调用点多为拼接，读 i18next 单例当前语言）。 */
+const deviceStatusLabel = (s: string) => i18next.t(s === 'Online' ? 'device.online' : 'device.offline')
 
 /** 离线原因（选择器置灰时显示上次心跳时间）。 */
 function formatLastSeen(iso?: string): string {
@@ -43,19 +47,10 @@ function formatLastSeen(iso?: string): string {
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
-const JOB_STATUS_LABEL: Record<string, string> = {
-  Pending: '排队中',
-  Printing: '打印中',
-  Completed: '已完成',
-  Failed: '失败',
-  Suspended: '已挂起',
-  Cancelled: '已取消',
-  Claimed: '已领取',
-  Expired: '已过期',
-}
-
-const jobLabel = (s: string) => JOB_STATUS_LABEL[s] ?? s
 const isTerminal = (s: string) => s === 'Completed' || s === 'Failed' || s === 'Cancelled' || s === 'Expired'
+
+/** 中文顿号 / 英文逗号分隔（重复映射字段列表拼接，随当前界面语言）。 */
+const localeSep = () => (i18next.language === 'en' ? ', ' : '、')
 
 /** 图片预览弹层状态（迭代 81 · #129）：ready 持有 blob 供弹层内「下载」按钮复用（下载不再重新请求）。 */
 type ImagePreview = { status: 'loading' } | { status: 'ready'; url: string; blob: Blob; filename: string } | { status: 'error'; message: string }
@@ -79,7 +74,7 @@ function useJobPolling(jobId: string | null, biz: Pick<typeof serverApi, 'getJob
         if (!isTerminal(j.status)) timer = setTimeout(() => void tick(), 1500)
       } catch (err) {
         if (stopped) return
-        setError(err instanceof ApiError ? err.message : '查询作业失败。')
+        setError(err instanceof ApiError ? err.message : i18next.t('dataPrint:errors.getJob'))
         timer = setTimeout(() => void tick(), 2000)
       }
     }
@@ -98,7 +93,7 @@ function useJobPolling(jobId: string | null, biz: Pick<typeof serverApi, 'getJob
         setJob(j)
         return true
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : '重试失败。')
+        setError(err instanceof ApiError ? err.message : i18next.t('dataPrint:errors.retryFailed'))
         return false
       }
     },
@@ -108,8 +103,9 @@ function useJobPolling(jobId: string | null, biz: Pick<typeof serverApi, 'getJob
   return { job, error, retry }
 }
 
-/** 行内链接式按钮（迭代 85 · #133 C-5）：提示文案中的页内跳转（如「作业历史」）——视觉为链接，语义 / 焦点行为为按钮。 */
-function InlineLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+/** 行内链接式按钮（迭代 85 · #133 C-5）：提示文案中的页内跳转（如「作业历史」）——视觉为链接，语义 / 焦点行为为按钮。
+ *  迭代 111（#245）：children 改可选——词条内 <0>…</0> 标签经 Trans 注入文本（组件数组形式不静态传 children）。 */
+function InlineLink({ onClick, children }: { onClick: () => void; children?: ReactNode }) {
   return (
     <button type="button" className="link-like" onClick={onClick}>
       {children}
@@ -138,16 +134,14 @@ function JobPanel({
   onOpenJobHistory: () => void
 }) {
   const app = useApp()
+  const { t } = useTranslation('dataPrint')
+  const jobLabel = useJobStatusLabel()
   if (!job) {
     return (
       <div className="panel">
-        <div className="panel-head">作业进度</div>
+        <div className="panel-head">{t('jobPanel.title')}</div>
         <div className="panel-body">
-          {debugMode ? (
-            <div className="hint">已生成标签图片并下载（未实际打印）。</div>
-          ) : (
-            <div className="hint">提交打印后显示进度与逐张结果。</div>
-          )}
+          {debugMode ? <div className="hint">{t('jobPanel.debugDoneHint')}</div> : <div className="hint">{t('jobPanel.idleHint')}</div>}
           {error && <div className="error-text" style={{ marginTop: 6 }}>{error}</div>}
         </div>
       </div>
@@ -158,7 +152,7 @@ function JobPanel({
   return (
     <div className="panel">
       <div className="panel-head">
-        作业进度
+        {t('jobPanel.title')}
         <span className={'badge ' + (job.status === 'Completed' ? 'ok' : job.status === 'Failed' ? 'err' : job.status === 'Cancelled' ? 'neutral' : 'info')}>
           {jobLabel(job.status)}
         </span>
@@ -166,12 +160,10 @@ function JobPanel({
         <span className="mono" style={{ color: 'var(--ink-3)', fontSize: 11 }}>ID {job.jobId.slice(0, 8)}</span>
       </div>
       <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {debugMode && <div className="hint">已生成标签图片并下载（未实际打印）；下方为上一次作业的进度。</div>}
+        {debugMode && <div className="hint">{t('jobPanel.debugLastJobHint')}</div>}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12, color: 'var(--ink-2)' }}>
-            <span>
-              已完成 {job.completedItems} / {job.totalItems} 张
-            </span>
+            <span>{t('jobPanel.progress', { completed: job.completedItems, total: job.totalItems })}</span>
             <span className="mono">{pct}%</span>
           </div>
           <div className="progress">
@@ -179,39 +171,36 @@ function JobPanel({
           </div>
           {failed > 0 && (
             <div className="hint" style={{ marginTop: 6, color: 'var(--danger)' }}>
-              有 {failed} 张打印失败，
+              {t('jobPanel.failedPrefix', { count: failed })}
               {job.items && canRetry ? (
-                '可在下方列表中逐张重试。'
+                t('jobPanel.retryBelow')
               ) : (
                 // 迭代 85（#133 C-5）：指引可点击跳转——作业历史行可展开查看状态与失败原因
-                <>
-                  可在「<InlineLink onClick={onOpenJobHistory}>作业历史</InlineLink>」中查看失败原因。
-                </>
+                <Trans t={t} i18nKey="jobPanel.checkJobHistory" components={[<InlineLink key={0} onClick={onOpenJobHistory} />]} />
               )}
             </div>
           )}
         </div>
         {job.targetDeviceId && (
           <div className="hint">
-            目标设备：{resolveDeviceName(job.targetDeviceId)}
-            {job.deviceStatus ? `（${deviceStatusLabel(job.deviceStatus)}）` : ''}
+            {job.deviceStatus
+              ? t('jobPanel.targetDeviceStatus', { name: resolveDeviceName(job.targetDeviceId), status: deviceStatusLabel(job.deviceStatus) })
+              : t('jobPanel.targetDevice', { name: resolveDeviceName(job.targetDeviceId) })}
           </div>
         )}
         {job.printImageDir && (
           <div className="hint" style={{ wordBreak: 'break-all' }}>
-            模拟打印生成的图片保存在：{job.printImageDir}（共 {job.printImageCount ?? 0} 张）
+            {t('jobPanel.simPrintDir', { dir: job.printImageDir, count: job.printImageCount ?? 0 })}
           </div>
         )}
-        {job.errorMessage && (
-          <div className="hint" style={{ color: 'var(--danger)' }}>错误：{job.errorMessage}</div>
-        )}
+        {job.errorMessage && <div className="hint" style={{ color: 'var(--danger)' }}>{t('jobPanel.errorLabel', { message: job.errorMessage })}</div>}
         {job.items && canRetry && (
           <table className="table">
             <thead>
               <tr>
                 <th style={{ width: 50 }}>#</th>
-                <th style={{ width: 90 }}>状态</th>
-                <th>失败原因</th>
+                <th style={{ width: 90 }}>{t('column.status')}</th>
+                <th>{t('job.failedReason')}</th>
                 <th style={{ width: 90 }}></th>
               </tr>
             </thead>
@@ -224,17 +213,17 @@ function JobPanel({
                       {jobLabel(it.status)}
                     </span>
                   </td>
-                  <td style={{ color: 'var(--danger)', fontSize: 12 }}>{it.status === 'Failed' ? it.errorMessage || it.errorCode || '未知错误' : ''}</td>
+                  <td style={{ color: 'var(--danger)', fontSize: 12 }}>{it.status === 'Failed' ? it.errorMessage || it.errorCode || t('job.unknownError') : ''}</td>
                   <td>
                     {it.status === 'Failed' && (
                       <button
                         className="btn sm"
                         onClick={() => {
-                          void retry(it.index).then((ok) => ok && app.setStatus(`已重试第 ${it.index + 1} 张。`))
+                          void retry(it.index).then((ok) => ok && app.setStatus(t('jobPanel.retried', { index: it.index + 1 })))
                         }}
                       >
                         <Icon name="retry" size={12} />
-                        重试
+                        {t('action.retry')}
                       </button>
                     )}
                   </td>
@@ -245,9 +234,7 @@ function JobPanel({
         )}
         {!job.items && (
           <div className="hint">
-            （该作业无逐张明细：进度见上方进度条，失败原因可在「
-            <InlineLink onClick={onOpenJobHistory}>作业历史</InlineLink>
-            」展开该作业查看。）
+            <Trans t={t} i18nKey="jobPanel.noItemsNote" components={[<InlineLink key={0} onClick={onOpenJobHistory} />]} />
           </div>
         )}
       </div>
@@ -258,6 +245,8 @@ function JobPanel({
 export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }) {
   const app = useApp()
   const { printDraft } = app
+  // 迭代 111（#245）：页面文案 key 化（dataPrint 域；jobStatus / action 等 common 词条经 fallbackNS 兜底）
+  const { t } = useTranslation('dataPrint')
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
   const [pkg, setPkg] = useState<TemplatePackage | null>(null)
   const [loading, setLoading] = useState(false)
@@ -336,7 +325,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
             setDeviceMode('server')
             setRouteMode('server')
             setHostInList(true)
-            if (!probedOnce) setError(err instanceof ApiError ? err.message : '加载设备列表失败。')
+            if (!probedOnce) setError(err instanceof ApiError ? err.message : i18next.t('dataPrint:errors.loadDevices'))
             probedOnce = true
           })
         return
@@ -395,7 +384,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
         setTemplates(list)
         if (list.length > 0 && !selectedName) app.setDraftSelected(list[0].name)
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : '加载模板列表失败。'))
+      .catch((err) => setError(err instanceof ApiError ? err.message : i18next.t('dataPrint:errors.loadTemplates')))
   }, [deviceMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 模板详情（迭代 91 F-12）：cancelled 守卫与同文件预览弹层 previewGenRef 同一竞态标准——
@@ -414,7 +403,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
       })
       .catch((err) => {
         if (cancelled) return
-        setError(err instanceof ApiError ? err.message : '加载模板失败。')
+        setError(err instanceof ApiError ? err.message : i18next.t('dataPrint:errors.loadTemplate'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -495,7 +484,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
 
   const submit = async (labels: { data: Record<string, string> }[]) => {
     if (isServerUi && !targetDeviceId) {
-      app.setStatus('请先选择目标设备（标签将发送到该设备打印）。')
+      app.setStatus(t('errors.pickDeviceFirst'))
       return
     }
     setSubmitting(true)
@@ -509,13 +498,13 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
           const dev = fresh.find((d) => d.deviceId === targetDeviceId)
           if (!dev || dev.status !== 'Online') {
             setDevices(fresh)
-            const msg = '所选设备已离线或不存在，无法提交（作业不会排队）。请重新选择在线设备。'
+            const msg = t('errors.deviceOffline')
             setError(msg)
             app.setStatus(msg)
             return
           }
         } catch (err) {
-          const msg = err instanceof ApiError ? err.message : '校验设备在线状态失败，无法提交。'
+          const msg = err instanceof ApiError ? err.message : t('errors.deviceCheckFailed')
           setError(msg)
           app.setStatus(msg)
           return
@@ -525,9 +514,9 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
       if (!req) return
       const j = await submitBiz.submitJob(req)
       app.setDraftJobId(j.jobId)
-      app.setStatus(`作业已提交（${labels.length} 张，ID ${j.jobId.slice(0, 8)}）。`)
+      app.setStatus(t('status.submitted', { count: labels.length, id: j.jobId.slice(0, 8) }))
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : '提交作业失败。'
+      const msg = err instanceof ApiError ? err.message : t('errors.submitFailed')
       setError(msg)
       app.setStatus(msg)
     } finally {
@@ -542,9 +531,9 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
     try {
       const { blob, filename } = batch ? await biz.renderImages(req) : await biz.renderImage(req)
       downloadBlob(blob, filename)
-      app.setStatus(`标签图片已下载：${filename}`)
+      app.setStatus(t('status.imageDownloaded', { filename }))
     } catch (err) {
-      app.setStatus(err instanceof ApiError ? err.message : '出图失败。')
+      app.setStatus(err instanceof ApiError ? err.message : t('errors.renderFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -583,7 +572,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
       })
       .catch((err: unknown) => {
         if (gen !== previewGenRef.current) return
-        setImagePreview({ status: 'error', message: err instanceof ApiError ? err.message : '出图失败。' })
+        setImagePreview({ status: 'error', message: err instanceof ApiError ? err.message : t('errors.renderFailed') })
       })
   }
 
@@ -600,7 +589,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
   const downloadImagePreview = () => {
     if (imagePreview?.status !== 'ready') return
     downloadBlob(imagePreview.blob, imagePreview.filename)
-    app.setStatus(`标签图片已下载：${imagePreview.filename}`)
+    app.setStatus(t('status.imageDownloaded', { filename: imagePreview.filename }))
   }
 
   const [excelTplBusy, setExcelTplBusy] = useState(false)
@@ -619,9 +608,9 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
       }
       const { blob, filename } = await biz.excelTemplate(columns, sampleRow)
       downloadBlob(blob, filename)
-      app.setStatus(`Excel 模板已下载：${filename}`)
+      app.setStatus(t('status.excelDownloaded', { filename }))
     } catch (err) {
-      app.setStatus(err instanceof ApiError ? err.message : '生成 Excel 模板失败。')
+      app.setStatus(err instanceof ApiError ? err.message : t('errors.excelTplFailed'))
     } finally {
       setExcelTplBusy(false)
     }
@@ -633,14 +622,14 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
     try {
       const r = await biz.importExcel(file)
       if (r.headers.length === 0) {
-        app.setStatus('Excel 未读取到表头（第一行作为表头）。')
+        app.setStatus(t('status.excelNoHeaders'))
         return
       }
       setExcel({ headers: r.headers, rows: r.rows, file: file.name })
       setMapping(suggestMapping(r.headers, mappingFields))
       setMappingOpen(true)
     } catch (err) {
-      app.setStatus(err instanceof ApiError ? err.message : 'Excel 解析失败。')
+      app.setStatus(err instanceof ApiError ? err.message : t('errors.excelParseFailed'))
     } finally {
       setImporting(false)
     }
@@ -650,16 +639,16 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
     if (!excel || !pkg) return
     const dup = findDuplicateKeys(mapping)
     if (dup.length > 0) {
-      app.setStatus(`以下字段被多列重复映射：${dup.join('、')}，请调整为每个字段只对应一列。`)
+      app.setStatus(t('status.dupMapped', { fields: dup.join(localeSep()) }))
       return
     }
     const labels = excel.rows.map((row) => ({ data: rowToData(excel.headers, row, mapping) }))
     setMappingOpen(false)
     if (debugMode) {
-      app.setStatus(`正在生成 ${labels.length} 张标签图片，完成后自动下载…`)
+      app.setStatus(t('status.generatingImages', { count: labels.length }))
       void downloadDebug(labels, true)
     } else {
-      app.setStatus(`已按映射生成 ${labels.length} 张标签，提交批量打印…`)
+      app.setStatus(t('status.batchSubmitting', { count: labels.length }))
       void submit(labels)
     }
   }
@@ -668,16 +657,16 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
     <div className="page">
       <div className="page-head">
         <div className="page-title">
-          数据与打印
-          <small>填写数据并打印 / Excel 批量打印</small>
+          {t('title')}
+          <small>{t('subtitle')}</small>
         </div>
         <div className="spacer" />
         <select className="input" value={selectedName} onChange={(ev) => app.setDraftSelected(ev.target.value)} style={{ minWidth: 180 }}>
-          {templates.length === 0 && <option value="">（暂无模板）</option>}
-          {selectedName && !templates.some((t) => t.name === selectedName) && <option value={selectedName}>{selectedName}</option>}
-          {templates.map((t) => (
-            <option key={t.name} value={t.name}>
-              {t.name}
+          {templates.length === 0 && <option value="">{t('tplNoneOption')}</option>}
+          {selectedName && !templates.some((tp) => tp.name === selectedName) && <option value={selectedName}>{selectedName}</option>}
+          {templates.map((tp) => (
+            <option key={tp.name} value={tp.name}>
+              {tp.name}
             </option>
           ))}
         </select>
@@ -685,14 +674,14 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
             className="btn"
             onClick={() => void downloadExcelTemplate()}
             disabled={!pkg || formFields.length === 0 || excelTplBusy}
-            title={!pkg || formFields.length === 0 ? '当前模板没有字段，无法生成 Excel 模板' : '按当前模板的字段生成 Excel 文件（含示例行），填好后可导入批量打印'}
+            title={!pkg || formFields.length === 0 ? t('excelTpl.noFieldsTitle') : t('excelTpl.title')}
           >
             <Icon name="download" size={13} />
-            {excelTplBusy ? '生成中…' : '下载 Excel 模板'}
+            {excelTplBusy ? t('excelTpl.generating') : t('excelTpl.download')}
           </button>
         <button className="btn" onClick={() => document.getElementById('excelFile')?.click()} disabled={!pkg || importing || submitting}>
           <Icon name="upload" size={13} />
-          Excel 导入
+          {t('excelImport')}
         </button>
         <input
           id="excelFile"
@@ -714,17 +703,17 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
       {!isServerUi && (
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}
-          title="本机连接：本机当前使用的打印机连接方式；服务端：本机设备是否已加入服务端设备列表（服务端地址在设置页配置）"
+          title={t('conn.badgesTitle')}
         >
           <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            本机连接
-            <span className="badge">{formatTransport(app.transportConfig) || app.transport || '未知'}</span>
+            {t('conn.local')}
+            <span className="badge">{formatTransport(app.transportConfig) || app.transport || t('value.unknown')}</span>
           </span>
           <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            服务端
+            {t('conn.server')}
             <span className={'conn' + (deviceMode === 'server' && hostInList ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               <span className={'status-dot' + (deviceMode === 'server' && hostInList ? ' on' : '')} />
-              {routeMode === 'loading' ? '检测中…' : deviceMode === 'server' && hostInList ? '已加入' : '未加入'}
+              {routeMode === 'loading' ? t('conn.detecting') : deviceMode === 'server' && hostInList ? t('conn.joined') : t('conn.notJoined')}
             </span>
           </span>
         </div>
@@ -732,32 +721,32 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
 
       {deviceMode === 'server' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
-          <span className="hint">目标设备</span>
+          <span className="hint">{t('target.label')}</span>
           {isServerUi ? (
             <>
               <select
                 className="input"
-                aria-label="目标设备"
+                aria-label={t('target.label')}
                 value={targetDeviceId}
                 onChange={(ev) => setTargetDeviceId(ev.target.value)}
                 style={{ minWidth: 240 }}
-                title="作业将投递到所选在线设备执行打印（仅在线设备可选）"
+                title={t('target.selectTitle')}
               >
-                {devices.length === 0 && <option value="">（暂无设备）</option>}
-                {devices.length > 0 && !targetDeviceId && <option value="">（请选择设备）</option>}
+                {devices.length === 0 && <option value="">{t('target.noneOption')}</option>}
+                {devices.length > 0 && !targetDeviceId && <option value="">{t('target.pickOption')}</option>}
                 {devices.map((d) => (
-                  <option key={d.deviceId} value={d.deviceId} disabled={d.status !== 'Online'} title={d.status !== 'Online' ? `离线（上次连接 ${formatLastSeen(d.lastSeenAt)}）` : undefined}>
-                    {d.name}（{deviceStatusLabel(d.status)}）
-                    {d.status !== 'Online' ? ` · 上次连接 ${formatLastSeen(d.lastSeenAt)}` : ''}
+                  <option key={d.deviceId} value={d.deviceId} disabled={d.status !== 'Online'} title={d.status !== 'Online' ? t('target.offlineTitle', { time: formatLastSeen(d.lastSeenAt) }) : undefined}>
+                    {t('target.optionLabel', { name: d.name, status: deviceStatusLabel(d.status) })}
+                    {d.status !== 'Online' ? t('target.lastSeenSuffix', { time: formatLastSeen(d.lastSeenAt) }) : ''}
                   </option>
                 ))}
               </select>
               {devices.length === 0 ? (
-                <span className="badge warn">暂无设备，请先在打印电脑安装并启动 LabelFrame Client</span>
+                <span className="badge warn">{t('target.noDevicesHint')}</span>
               ) : targetDeviceId ? (
-                <span className="hint">仅在线设备可选；提交时将再次校验所选设备在线状态。</span>
+                <span className="hint">{t('target.onlineOnlyHint')}</span>
               ) : (
-                <span className="badge warn">暂无在线设备，仅在线设备可选</span>
+                <span className="badge warn">{t('target.noOnlineBadge')}</span>
               )}
             </>
           ) : (
@@ -766,16 +755,12 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
             <>
               <span className="badge ok" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Icon name="printer" size={12} />
-                本机（{app.hostDeviceName || app.hostDeviceId || '未知'}）
+                {t('target.localBadge', { name: app.hostDeviceName || app.hostDeviceId || t('value.unknown') })}
               </span>
               {routeMode === 'server' ? (
-                <span className="hint">本机已加入服务端，打印记录也会同步到服务端。</span>
+                <span className="hint">{t('target.joinedServerHint')}</span>
               ) : (
-                <span className="badge warn">
-                  {!hostInList
-                    ? '本机未加入服务端：暂用本机直接打印（记录仅保存在本机）。'
-                    : '本机当前离线：暂用本机直接打印（记录仅保存在本机）。'}
-                </span>
+                <span className="badge warn">{!hostInList ? t('target.notJoinedBadge') : t('target.offlineBadge')}</span>
               )}
             </>
           )}
@@ -788,30 +773,32 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="panel">
             <div className="panel-head">
-              测试数据
-              <span className="hint" style={{ marginLeft: 6 }}>模板{pkg ? `「${pkg.name}」` : ''}的打印字段</span>
+              {t('testData.title')}
+              <span className="hint" style={{ marginLeft: 6 }}>
+                {pkg ? t('testData.fieldsFor', { name: pkg.name }) : t('testData.fieldsPlain')}
+              </span>
             </div>
             <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {loading ? (
-                <div className="hint">加载中…</div>
+                <div className="hint">{t('state.loading')}</div>
               ) : !pkg ? (
-                <div className="hint">请先在左侧选择模板。</div>
+                <div className="hint">{t('testData.pickTemplateHint')}</div>
               ) : (
                 <>
                   {formFields.length === 0 ? (
                     // 迭代 65（#62）：无字段模板 = 静态标签（合法模板），说明性提示替代旧「不允许」语义；
                     // 操作区（调试开关 / 打印测试 / 出图预览）照常渲染，行为与有字段模板一致
-                    <div className="hint">该模板为静态标签（无字段填充）：内容将按版式原样打印，无需填写数据。</div>
+                    <div className="hint">{t('testData.staticTemplateHint')}</div>
                   ) : (
                     formFields.map((f) => {
                       const label = f.displayName || f.key
                       return (
-                        <label className="field" key={f.key} title={f.displayName && f.displayName !== f.key ? `字段名：${f.key}` : undefined}>
+                        <label className="field" key={f.key} title={f.displayName && f.displayName !== f.key ? t('testData.fieldKeyTitle', { key: f.key }) : undefined}>
                           {label}
                           <input
                             className="input mono"
                             value={values[f.key] ?? ''}
-                            placeholder={`字段 ${label} 的值（打印时使用）`}
+                            placeholder={t('testData.fieldPlaceholder', { label })}
                             onChange={(ev) => setFieldValue(f.key, ev.target.value)}
                           />
                         </label>
@@ -820,7 +807,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
                   )}
                   <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     <input type="checkbox" checked={debugMode} onChange={(ev) => app.setDraftDebug(ev.target.checked)} />
-                    模拟出图：只生成标签图片，不实际打印
+                    {t('testData.debugToggle')}
                   </label>
                   <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                     <button
@@ -829,28 +816,28 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
                       disabled={submitting || !pkg || (isServerUi && !targetDeviceId)}
                       title={
                         debugMode
-                          ? '生成当前内容的标签图片并下载（不会实际打印）'
+                          ? t('printBtn.titleDebug')
                           : isServerUi
-                            ? '向所选在线设备发送 1 张标签（由该设备执行打印）'
+                            ? t('printBtn.titleServerUi')
                             : deviceMode === 'server'
                               ? routeMode === 'server'
-                                ? '打印 1 张标签到本机（经服务端转发）'
-                                : '本机未加入服务端：直接在本机打印 1 张标签'
-                              : '在本机打印 1 张标签'
+                                ? t('printBtn.titleServerRoute')
+                                : t('printBtn.titleDirectRoute')
+                              : t('printBtn.titleStandalone')
                       }
                     >
                       <Icon name="printer" size={13} />
-                      {submitting ? '处理中…' : debugMode ? '生成图片（单张）' : '打印测试（单张）'}
+                      {submitting ? t('printBtn.working') : debugMode ? t('printBtn.debugSingle') : t('printBtn.testSingle')}
                     </button>
                     {!debugMode && (
-                      <button className="btn" onClick={previewImage} disabled={submitting || !pkg} title="按当前填写内容生成标签图片并在页内弹层预览（不会实际打印，也不会自动下载文件；弹层内可下载）">
+                      <button className="btn" onClick={previewImage} disabled={submitting || !pkg} title={t('previewBtn.title')}>
                         <Icon name="preview" size={13} />
-                        图片预览
+                        {t('previewBtn.label')}
                       </button>
                     )}
                     {excel && (
                       <button className="btn" onClick={() => setMappingOpen(true)} disabled={!excel}>
-                        重新映射（{excel.file}）
+                        {t('remapBtn', { file: excel.file })}
                       </button>
                     )}
                   </div>
@@ -858,16 +845,16 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
                   {!isServerUi && isNativePrintMode(app.transportConfig) && <NativePrintModeHint />}
                   <div className="hint">
                     {debugMode
-                      ? '模拟出图：生成的图片与实际打印效果一致（相同打印精度），不会实际打印、也不产生打印记录。'
+                      ? t('hint.debugMode')
                       : formFields.length === 0
-                        ? '静态标签无需填写数据；打印测试提交 1 张空数据标签（内容按版式原样输出）。'
+                        ? t('hint.static')
                         : isServerUi
-                        ? '已用示例值预填，可修改后打印；「打印测试」将向所选在线设备发送 1 张标签。'
+                        ? t('hint.serverUi')
                         : deviceMode === 'server'
                           ? routeMode === 'server'
-                            ? '已用示例值预填，可修改后打印；「打印测试」将打印 1 张标签（本机已加入服务端）。'
-                            : '已用示例值预填，可修改后打印；本机未加入服务端，将改为本机直接打印（记录仅保存在本机）。'
-                          : '已用示例值预填，可修改后打印；未加入服务端，标签直接在本机打印。'}
+                            ? t('hint.serverRoute')
+                            : t('hint.directRoute')
+                          : t('hint.standalone')}
                   </div>
                 </>
               )}
@@ -923,6 +910,8 @@ function MappingModal({
   onConfirm: () => void
   debugMode: boolean
 }) {
+  // 迭代 111（#245）：弹窗文案 key 化（dataPrint 域 mapping.*；取消按钮经 common 兜底）
+  const { t } = useTranslation('dataPrint')
   const [suggested, setSuggested] = useState<string[]>([])
   useEffect(() => {
     setSuggested(suggestMapping(headers, keys))
@@ -932,56 +921,54 @@ function MappingModal({
 
   return (
     <Modal
-      title={`列映射（${rows.length} 行数据）`}
+      title={t('mapping.title', { count: rows.length })}
       onClose={onCancel}
       width={640}
       footer={
         <>
           <button className="btn" onClick={onCancel}>
-            取消
+            {t('action.cancel')}
           </button>
           <button
             className="btn sm"
             onClick={() => setMapping(suggested)}
             disabled={suggested.every((k) => !k)}
-            title="按列名自动匹配（忽略大小写 / 空格）"
+            title={t('mapping.autoMatchTitle')}
           >
-            自动匹配
+            {t('mapping.autoMatch')}
           </button>
-          <button className="btn primary" onClick={onConfirm} disabled={!complete || dup.length > 0} title={debugMode ? '生成全部行的标签图片并打包下载（不会实际打印）' : '提交批量打印作业'}>
+          <button className="btn primary" onClick={onConfirm} disabled={!complete || dup.length > 0} title={debugMode ? t('mapping.confirmDebugTitle') : t('mapping.confirmTitle')}>
             <Icon name={debugMode ? 'download' : 'printer'} size={13} />
-            {debugMode ? `下载图片（${rows.length} 张）` : `批量打印 ${rows.length} 张`}
+            {debugMode ? t('mapping.downloadImages', { count: rows.length }) : t('mapping.batchPrint', { count: rows.length })}
           </button>
         </>
       }
     >
       <div className="hint">
-        请确认每列对应的模板字段（已按列名自动匹配，可手工调整）；未映射的列不会打印。
-        {debugMode && <span className="hint"> 模拟出图：将生成全部行的标签图片并打包下载，不会实际打印。</span>}
-        {dup.length > 0 && (
-          <span className="error-text"> 同一字段被多列映射：{dup.join('、')}，请调整。</span>
-        )}
+        {t('mapping.hint')}
+        {debugMode && <span className="hint">{t('mapping.debugHint')}</span>}
+        {dup.length > 0 && <span className="error-text">{t('mapping.dupError', { fields: dup.join(i18next.language === 'en' ? ', ' : '、') })}</span>}
       </div>
       <table className="table">
         <thead>
           <tr>
-            <th style={{ width: 44 }}>列</th>
-            <th>Excel 列名</th>
-            <th style={{ width: 200 }}>模板字段</th>
-            <th>示例值</th>
+            <th style={{ width: 44 }}>{t('mapping.colColumn')}</th>
+            <th>{t('mapping.excelColumn')}</th>
+            <th style={{ width: 200 }}>{t('mapping.templateField')}</th>
+            <th>{t('mapping.sampleColumn')}</th>
           </tr>
         </thead>
         <tbody>
           {headers.map((h, i) => (
             <tr key={i} style={{ cursor: 'default' }}>
               <td className="mono" style={{ color: 'var(--ink-3)' }}>{i + 1}</td>
-              <td style={{ fontWeight: 600 }}>{h || `（空列 ${i + 1}）`}</td>
+              <td style={{ fontWeight: 600 }}>{h || t('mapping.emptyColumn', { index: i + 1 })}</td>
               <td>
                 <select className="input" style={{ width: '100%' }} value={mapping[i] ?? ''} onChange={(ev) => setMapping(mapping.map((m, j) => (j === i ? ev.target.value : m)))}>
-                  <option value="">— 不映射 —</option>
+                  <option value="">{t('mapping.noMap')}</option>
                   {keys.map((f) => {
                     const key = typeof f === 'string' ? f : f.key
-                    const label = typeof f === 'string' || !f.displayName ? key : `${f.displayName}（${key}）`
+                    const label = typeof f === 'string' || !f.displayName ? key : t('mapping.fieldOption', { displayName: f.displayName, key })
                     return (
                       <option key={key} value={key}>
                         {label}
@@ -1023,25 +1010,27 @@ function ImagePreviewModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  // 迭代 111（#245）：弹窗文案 key 化（dataPrint 域 imagePreview.*）
+  const { t } = useTranslation('dataPrint')
   return (
     <div className="preview-modal" onClick={onClose}>
-      <div className="preview-modal-card" role="dialog" aria-label="标签图片预览" onClick={(ev) => ev.stopPropagation()}>
+      <div className="preview-modal-card" role="dialog" aria-label={t('imagePreview.title')} onClick={(ev) => ev.stopPropagation()}>
         <div className="preview-modal-title">
-          标签图片预览
+          {t('imagePreview.title')}
           <span className="spacer" style={{ flex: 1 }} />
-          <button className="preview-modal-close" onClick={onClose} title="关闭预览（Esc）" aria-label="关闭预览">
+          <button className="preview-modal-close" onClick={onClose} title={t('imagePreview.closeTitle')} aria-label={t('imagePreview.closeAria')}>
             <Icon name="x" size={13} />
           </button>
         </div>
         {preview.status === 'loading' ? (
           <div className="preview-modal-state">
             <Icon name="refresh" size={13} />
-            正在生成预览…
+            {t('imagePreview.generating')}
           </div>
         ) : preview.status === 'error' ? (
           <div className="preview-modal-state err">
             <Icon name="alert" size={13} />
-            预览不可用
+            {t('imagePreview.unavailable')}
             <small>{preview.message}</small>
           </div>
         ) : (
@@ -1050,15 +1039,15 @@ function ImagePreviewModal({
               className="preview-modal-img"
               style={{ maxHeight: 'calc(84vh - 96px)' }}
               src={preview.url}
-              alt="按当前填写数据渲染的标签图片"
+              alt={t('imagePreview.imgAlt')}
             />
             <div className="preview-modal-actions">
-              <button className="btn sm" onClick={onDownload} title="下载当前预览的图片文件到本机">
+              <button className="btn sm" onClick={onDownload} title={t('imagePreview.downloadTitle')}>
                 <Icon name="download" size={12} />
-                下载图片
+                {t('imagePreview.download')}
               </button>
               <span className="hint" style={{ fontSize: 10 }}>
-                按当前填写数据渲染，与实际打印效果一致
+                {t('imagePreview.footHint')}
               </span>
             </div>
           </>
