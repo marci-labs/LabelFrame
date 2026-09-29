@@ -19,6 +19,9 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="xunit" Version="2.6.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <!-- 迭代 113（#243）：AC-01 假名 / 韩文样本测试需运行时跳过（存在性探测 + 缺失跳过，不假绿），
+         xunit v2 需官方 SkippableFact 扩展实现运行时 Skip（仅测试依赖，不进发布闭包）。 -->
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
   </ItemGroup>
 
   <ItemGroup>
