@@ -1,9 +1,152 @@
 {
+  "page": {
+    "title": "Settings",
+    "subtitle": "Server address / local connection and printers"
+  },
   "language": {
     "title": "Language",
     "label": "Interface language",
     "zhOption": "中文",
     "enOption": "English",
     "hint": "Switching takes effect immediately and is saved in this browser; the first launch follows the browser language."
+  },
+  "serverAddress": {
+    "title": "Server Address",
+    "label": "Server address",
+    "testing": "Testing…",
+    "test": "Test Connection",
+    "saving": "Saving…",
+    "save": "Save and Apply",
+    "connected": "Server connected",
+    "disconnected": "Server not connected (standalone mode available)",
+    "testOk": "Connection succeeded: the server is reachable at this address.",
+    "testFail": "Connection failed: make sure the server is running and the address format is correct (http://host:port).",
+    "saveOk": "Saved to this machine's configuration and applied immediately.",
+    "saveFallback": "The installed client is older: the address was saved in this browser (upgrading the client is recommended).",
+    "statusSaved": "Server address saved and applied: {{url}}.",
+    "statusFallback": "The local configuration endpoint is unavailable; saved in this browser instead.",
+    "hint": "The server stores all templates and print records; the address is usually configured automatically by the installer. To change it, confirm with your administrator first. Changes take effect immediately and persist across restarts; without a server you can still print directly on this machine (standalone mode)."
+  },
+  "transport": {
+    "title": "Connection",
+    "current": "current",
+    "collapseTitle": "Collapse the connection editor",
+    "expandTitle": "Expand to test or switch the printer connection",
+    "collapse": "Collapse",
+    "expand": "Expand"
+  },
+  "batch": {
+    "title": "Print Batching",
+    "oldClient": "The installed client does not support batch jobs.",
+    "loadFailed": "Failed to load batch settings.",
+    "loading": "Loading batch settings…",
+    "enable": "Enable batch jobs",
+    "batchSize": "Labels per batch",
+    "interval": "Batch interval (ms)",
+    "saving": "Saving…",
+    "saveOk": "Saved and applied immediately.",
+    "saveFailed": "Failed to save batch settings.",
+    "hint": "When enabled, large jobs are sent to the printer in batches of {{size}} labels with an interval of {{interval}} ms between batches."
+  },
+  "printer": {
+    "title": "Printer",
+    "paperOut": "Paper out",
+    "paused": "Paused",
+    "noExtraInfo": "(no additional information)",
+    "reading": "Reading…",
+    "none": "No printer status available: make sure the printer is powered on and connected to this machine.",
+    "statusFailed": "Failed to get the printer status.",
+    "sending": "Sending…",
+    "test": "Test Print",
+    "sent": "Test page sent; check whether the printer outputs paper.",
+    "sendFailed": "Failed to send the test page.",
+    "hint": "Test Print sends one test page (a test barcode) to the currently connected printer. Current connection: {{transport}} (simulated printing needs no printer)."
+  },
+  "updates": {
+    "title": "Updates & Packages",
+    "standalone": "Standalone mode",
+    "updateAvailable": "New version {{latest}} available (local {{local}})",
+    "updateHint": "Download the new installer from the list below and run it (the client does not upgrade itself), or ask your administrator for help.",
+    "upToDate": "Up to date (local {{version}})",
+    "offlineHint": "Not connected to a server (standalone mode). Packages are distributed by the server; connect to a server under \"Server Address\" above to see available packages.",
+    "loading": "Loading package list…",
+    "loadFailed": "Failed to load the package list.",
+    "loadFailedWith": "Failed to load the package list: {{reason}}",
+    "empty": "No client packages on the server. Upload them on the \"Download Center\" page of the server admin UI, then download them here.",
+    "columns": {
+      "fileName": "File Name",
+      "size": "Size",
+      "modifiedAt": "Modified"
+    },
+    "downloadTitle": "Download {{name}} from the server",
+    "sourceHint": "Run the installer after downloading to upgrade (the client does not upgrade itself). Packages come from the server: {{base}}."
+  },
+  "plugins": {
+    "title": "Plugin Management",
+    "availableTitle": "Server plugins",
+    "offlineHint": "Not connected to a server; running in standalone mode. Plugins are distributed by the server; connect to a server to see available plugins.",
+    "loading": "Loading available plugins…",
+    "loadFailed": "Failed to load the available plugin list.",
+    "loadFailedWith": "Failed to load the available plugin list: {{reason}}",
+    "oldServer": "The server version is older and does not support plugin management; upgrade the server first.",
+    "empty": "No plugins available on the server. Upload plugin packages on the \"Plugin Management\" page of the server admin UI, then install them here.",
+    "columns": {
+      "plugin": "Plugin",
+      "version": "Version",
+      "size": "Size",
+      "status": "Status"
+    },
+    "valid": "Valid",
+    "invalid": "Invalid",
+    "parseFailed": "Parse failed",
+    "invalidTitle": "Plugin package is invalid",
+    "install": "Install",
+    "installing": "Installing…",
+    "installTitle": "Download and install to the local client (effective after restart)",
+    "installFailed": "Install failed.",
+    "uninstallFailed": "Uninstall failed.",
+    "installedTitle": "Installed Plugins",
+    "installedOld": "The installed client does not support plugin management.",
+    "installedLoadFailed": "Failed to load the installed plugin list.",
+    "installedLoadFailedWith": "Failed to load the installed plugin list: {{reason}}",
+    "installedLoading": "Loading installed plugins…",
+    "installedEmpty": "No plugins installed yet. Pick one from the list above to install.",
+    "manual": "Manually placed",
+    "loaded": "Loaded",
+    "loadFailed": "Load failed",
+    "pendingRestart": "Pending restart",
+    "uninstall": "Uninstall",
+    "uninstalling": "Uninstalling…",
+    "uninstallTitle": "Uninstall this plugin (effective after client restart)",
+    "hint": "Restart the client after installing / uninstalling plugins for changes to take effect.",
+    "overwriteModal": {
+      "title": "Overwrite Plugin",
+      "confirm": "Overwrite Install",
+      "body": "\"{{existing}}\" is installed. It will be overwritten with \"{{target}}\", effective after the client restarts. Overwrite install?",
+      "sameIdPlugin": "a plugin with the same ID"
+    },
+    "uninstallModal": {
+      "title": "Uninstall Plugin",
+      "confirm": "Uninstall",
+      "body": "Uninstall plugin \"{{name}}\"? Effective after the client restarts."
+    }
+  },
+  "transportForm": {
+    "currentConnection": "Current connection",
+    "logHint": "No printer connection: labels are generated as images and saved on this machine, handy for checking the print result first.",
+    "noParams": "This plugin has no parameters.",
+    "host": "Printer IP / host name",
+    "port": "Port",
+    "printerName": "Printer name",
+    "zebraKind": "Zebra connection",
+    "usbName": "USB device name",
+    "usbPlaceholder": "Empty = auto-detect the first one",
+    "testing": "Testing…",
+    "test": "Test Connection",
+    "applying": "Applying…",
+    "save": "Save and Apply",
+    "switched": "Connection switched: {{message}}",
+    "saveFailed": "Failed to save the connection.",
+    "hint": "Switching happens only after \"Test Connection\" passes; on failure the reason is shown and the current connection is kept. After saving, the same connection is used after restart."
   }
 }

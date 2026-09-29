@@ -1,5 +1,6 @@
 import type { DesignElement } from './types'
 import { uid } from './types'
+import i18next from '../../i18n'
 
 /** labelframe-web-design 交换格式（与原型导出格式一致）。 */
 export interface DesignFile {
@@ -27,17 +28,18 @@ export function parseDesign(text: string): { paperW: number; paperH: number; ele
   try {
     data = JSON.parse(text)
   } catch {
-    throw new Error('JSON 解析失败，请确认复制了完整的设计代码。')
+    // 迭代 112（#246）：错误消息 key 化（抛出期即当时界面语言）
+    throw new Error(i18next.t('designer:importError.jsonParse'))
   }
   const d = data as Partial<DesignFile>
   if (d.format !== DESIGN_FORMAT || !Array.isArray(d.elements)) {
-    throw new Error('格式不正确：需要 labelframe-web-design 设计代码。')
+    throw new Error(i18next.t('designer:importError.badFormat'))
   }
   const paperW = typeof d.paperW === 'number' && d.paperW > 0 ? d.paperW : 100
   const paperH = typeof d.paperH === 'number' && d.paperH > 0 ? d.paperH : 60
   const elements = d.elements.map((e) => ({ ...e, id: uid() }))
   if (!elements.every(isDesignElement)) {
-    throw new Error('元素结构不完整，导入已中止。')
+    throw new Error(i18next.t('designer:importError.badElements'))
   }
   return { paperW, paperH, elements }
 }

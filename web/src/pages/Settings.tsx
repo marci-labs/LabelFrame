@@ -2,6 +2,7 @@
 // 迭代 22 §2.3：新增「更新与安装包」卡片——列出服务端可用客户端安装包（下载指向 {serverBaseUrl}/api/client-packages/{file}）；单机模式提示需先连接服务端。
 // 迭代 23 §5.6：新增「插件管理」卡片（置于「更新与安装包」之下）——服务端可用插件区（仅 valid 可安装，安装 = 下载 blob → 本机 WinHost multipart）+ 已安装插件区（始终渲染，徽标 + 卸载）。
 // 迭代 45：内容容器改多列自适应网格（决策 B）——宽窗多列、窄窗单列，替代原固定 640 左对齐窄列。
+// 迭代 112（#246）：全页文案 key 化（settings 域；zh-CN 值与原硬编码逐字一致）。
 
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,8 +22,8 @@ import { TransportPanel } from '../components/TransportPanel'
 
 export function Settings() {
   const app = useApp()
-  // 迭代 108（#241）：「语言」项（设置页唯一 key 化卡片，其余文案迁移归 111/112）——
-  // 绑定 settings 域；选项名固定各自语言原文（「中文」/「English」不随当前语言翻译）
+  // 迭代 108（#241）：「语言」项绑定 settings 域——选项名固定各自语言原文（「中文」/「English」不随当前语言翻译）；
+  // 迭代 112（#246）：其余卡片全部迁入 settings 域
   const { t, i18n } = useTranslation('settings')
   const [url, setUrl] = useState(app.baseUrl)
   // 迭代 73（#108 决议 1）：连接配置低频收纳——「连接方式」默认折叠为当前连接摘要一行，点击展开完整编辑区
@@ -34,7 +35,8 @@ export function Settings() {
   const [printer, setPrinter] = useState<PrinterStatus | null>(null)
   const [printerLoading, setPrinterLoading] = useState(false)
   const [testPrinting, setTestPrinting] = useState(false)
-  const [printResult, setPrintResult] = useState<string | null>(null)
+  // 测试打印结果（ok 标志替代原「文案 startsWith」判别——本地化后不再依赖前缀匹配）
+  const [printResult, setPrintResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
   // 迭代 22 §2.3：更新与安装包——服务端可达时拉取安装包列表；不可达提示需先连接服务端
   const [packages, setPackages] = useState<ClientPackageInfo[] | null>(null)
@@ -83,13 +85,13 @@ export function Settings() {
       .catch((err) => {
         if (on) {
           setPackages([])
-          setPackagesError(err instanceof ApiError ? err.message : '获取安装包列表失败。')
+          setPackagesError(err instanceof ApiError ? err.message : t('updates.loadFailed'))
         }
       })
     return () => {
       on = false
     }
-  }, [app.connected])
+  }, [app.connected, t])
 
   // 可用插件区：服务端可达时拉取（与「更新与安装包」同构；404 = 旧 Server 无此端点）
   useEffect(() => {
@@ -112,14 +114,14 @@ export function Settings() {
       .catch((err) => {
         if (on) {
           setPluginPackages([])
-          setPluginPackagesError(err instanceof ApiError ? err.message : '获取可用插件列表失败。')
+          setPluginPackagesError(err instanceof ApiError ? err.message : t('plugins.loadFailed'))
           setPluginPackagesOldServer(err instanceof ApiError && err.code === 'HTTP_404')
         }
       })
     return () => {
       on = false
     }
-  }, [app.connected])
+  }, [app.connected, t])
 
   // 已安装插件区：挂载即拉（单机模式下也可查看 / 卸载）；安装 / 卸载成功后刷新
   const refreshInstalledPlugins = useCallback(async () => {
@@ -130,12 +132,12 @@ export function Settings() {
       setInstalledOldWinHost(false)
     } catch (err) {
       setInstalledPlugins([])
-      setInstalledPluginsError(err instanceof ApiError ? err.message : '获取已安装插件列表失败。')
+      setInstalledPluginsError(err instanceof ApiError ? err.message : t('plugins.installedLoadFailed'))
       setInstalledOldWinHost(err instanceof ApiError && err.code === 'HTTP_404')
     } finally {
       setInstalledPluginsLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void refreshInstalledPlugins()
@@ -156,14 +158,14 @@ export function Settings() {
       .catch((err) => {
         if (on) {
           setPrintSettings(null)
-          setPrintSettingsError(err instanceof ApiError ? err.message : '获取批次设置失败。')
+          setPrintSettingsError(err instanceof ApiError ? err.message : t('batch.loadFailed'))
           setPrintSettingsOldWinHost(err instanceof ApiError && err.code === 'HTTP_404')
         }
       })
     return () => {
       on = false
     }
-  }, [])
+  }, [t])
 
   /** 安装：下载 blob → 保留原始文件名 multipart 提交本机 WinHost → 提示重启生效 + 刷新已安装列表。
    *  覆盖安装（已安装同 pluginId）先经自研 Modal 确认——确认后带 overwrite 直装。 */
@@ -186,7 +188,7 @@ export function Settings() {
       setPluginNotice(res.message) // 后端 message 已含「重启客户端后生效」
       void refreshInstalledPlugins()
     } catch (err) {
-      setPluginError(err instanceof ApiError ? err.message : '安装失败。')
+      setPluginError(err instanceof ApiError ? err.message : t('plugins.installFailed'))
     } finally {
       setInstalling(null)
     }
@@ -202,7 +204,7 @@ export function Settings() {
       setPluginNotice(res.message) // 后端 message 已含「重启客户端后生效」
       void refreshInstalledPlugins()
     } catch (err) {
-      setPluginError(err instanceof ApiError ? err.message : '卸载失败。')
+      setPluginError(err instanceof ApiError ? err.message : t('plugins.uninstallFailed'))
     } finally {
       setUninstalling(null)
     }
@@ -215,11 +217,11 @@ export function Settings() {
       setPrinter(s)
     } catch (err) {
       setPrinter(null)
-      setPrintResult(err instanceof ApiError ? err.message : '获取打印机状态失败。')
+      setPrintResult({ ok: false, msg: err instanceof ApiError ? err.message : t('printer.statusFailed') })
     } finally {
       setPrinterLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void refreshPrinter()
@@ -230,11 +232,7 @@ export function Settings() {
     setTesting(true)
     setTestResult(null)
     const ok = await app.checkUrl(url)
-    setTestResult(
-      ok
-        ? { ok: true, msg: '连接成功：该地址可访问服务端。' }
-        : { ok: false, msg: '连接失败：请确认服务端已启动，且地址格式正确（http://主机:端口）。' },
-    )
+    setTestResult(ok ? { ok: true, msg: t('serverAddress.testOk') } : { ok: false, msg: t('serverAddress.testFail') })
     setTesting(false)
   }
 
@@ -243,24 +241,20 @@ export function Settings() {
     setSaving(true)
     setSaveResult(null)
     const ok = await app.changeBaseUrl(url)
-    setSaveResult(
-      ok
-        ? { ok: true, msg: '已保存到本机配置并立即生效。' }
-        : { ok: false, msg: '当前客户端版本较旧：地址已保存在本浏览器中（建议升级客户端）。' },
-    )
+    setSaveResult(ok ? { ok: true, msg: t('serverAddress.saveOk') } : { ok: false, msg: t('serverAddress.saveFallback') })
     setSaving(false)
   }
 
-  /** 保存批次设置：POST /api/host/print-settings 持久化并立即生效（无需重启）；失败展示后端中文 message。 */
+  /** 保存批次设置：POST /api/host/print-settings 持久化并立即生效（无需重启）；失败展示后端 message。 */
   const savePrintSettings = async () => {
     if (!printSettings) return
     setBatchSaving(true)
     setBatchSaveResult(null)
     try {
       await localApi.setPrintSettings(printSettings)
-      setBatchSaveResult({ ok: true, msg: '已保存并立即生效。' })
+      setBatchSaveResult({ ok: true, msg: t('batch.saveOk') })
     } catch (err) {
-      setBatchSaveResult({ ok: false, msg: err instanceof ApiError ? err.message : '保存批次设置失败。' })
+      setBatchSaveResult({ ok: false, msg: err instanceof ApiError ? err.message : t('batch.saveFailed') })
     } finally {
       setBatchSaving(false)
     }
@@ -271,10 +265,10 @@ export function Settings() {
     setPrintResult(null)
     try {
       await localApi.testPrinter()
-      setPrintResult('测试页已发送，请确认打印机是否出纸。')
+      setPrintResult({ ok: true, msg: t('printer.sent') })
       void refreshPrinter()
     } catch (err) {
-      setPrintResult(err instanceof ApiError ? err.message : '发送测试页失败。')
+      setPrintResult({ ok: false, msg: err instanceof ApiError ? err.message : t('printer.sendFailed') })
     } finally {
       setTestPrinting(false)
     }
@@ -284,8 +278,8 @@ export function Settings() {
     <div className="page">
       <div className="page-head">
         <div className="page-title">
-          设置
-          <small>服务端地址 / 本机连接与打印机</small>
+          {t('page.title')}
+          <small>{t('page.subtitle')}</small>
         </div>
       </div>
 
@@ -316,24 +310,24 @@ export function Settings() {
         </section>
 
         <section className="panel">
-          <div className="panel-head">服务端地址</div>
+          <div className="panel-head">{t('serverAddress.title')}</div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <label className="field">
-              服务端地址
+              {t('serverAddress.label')}
               <input className="input mono" value={url} onChange={(ev) => setUrl(ev.target.value)} placeholder="http://127.0.0.1:53961" spellCheck={false} />
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <button className="btn" onClick={() => void testConnection()} disabled={testing}>
                 <Icon name="link" size={13} />
-                {testing ? '测试中…' : '测试连接'}
+                {testing ? t('serverAddress.testing') : t('serverAddress.test')}
               </button>
               <button className="btn primary" onClick={() => void saveAddress()} disabled={saving}>
                 <Icon name="save" size={13} />
-                {saving ? '保存中…' : '保存并生效'}
+                {saving ? t('serverAddress.saving') : t('serverAddress.save')}
               </button>
               <span className={'conn' + (app.connected ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <span className={'status-dot' + (app.connected ? ' on' : '')} />
-                {app.connected ? '服务端已连接' : '服务端未连接（单机模式可用）'}
+                {app.connected ? t('serverAddress.connected') : t('serverAddress.disconnected')}
               </span>
             </div>
             {testResult && (
@@ -346,10 +340,7 @@ export function Settings() {
                 {saveResult.msg}
               </div>
             )}
-            <div className="hint">
-              服务端保存全部模板与打印记录，地址通常由安装程序自动配置；如需更换，请与管理人员确认后再修改。
-              保存后立即生效、重启保持；未连接服务端时仍可在本机直接打印（单机模式）。
-            </div>
+            <div className="hint">{t('serverAddress.hint')}</div>
           </div>
         </section>
 
@@ -359,18 +350,18 @@ export function Settings() {
             className="panel-head"
             style={{ cursor: 'pointer' }}
             onClick={() => setTransportOpen((v) => !v)}
-            title={transportOpen ? '收起连接编辑区' : '展开以测试或切换打印机连接'}
+            title={transportOpen ? t('transport.collapseTitle') : t('transport.expandTitle')}
           >
-            连接方式
-            <span className="hint" style={{ marginLeft: 6 }}>当前</span>
+            {t('transport.title')}
+            <span className="hint" style={{ marginLeft: 6 }}>{t('transport.current')}</span>
             <span
               className={'badge ' + (app.connected ? 'ok' : '')}
               style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
-              {formatTransport(app.transportConfig) || app.transport || '未知'}
+              {formatTransport(app.transportConfig) || app.transport || t('value.unknown')}
             </span>
             <span className="spacer" style={{ flex: 1 }} />
-            <span className="hint">{transportOpen ? '收起' : '展开'}</span>
+            <span className="hint">{transportOpen ? t('transport.collapse') : t('transport.expand')}</span>
             <Icon
               name="back"
               size={13}
@@ -385,12 +376,12 @@ export function Settings() {
         </section>
 
         <section className="panel">
-          <div className="panel-head">打印批次</div>
+          <div className="panel-head">{t('batch.title')}</div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {printSettingsOldWinHost ? (
-              <div className="hint">当前客户端版本不支持批次作业。</div>
+              <div className="hint">{t('batch.oldClient')}</div>
             ) : printSettings === null ? (
-              <div className="hint">{printSettingsError ?? '加载批次设置…'}</div>
+              <div className="hint">{printSettingsError ?? t('batch.loading')}</div>
             ) : (
               <>
                 <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -399,11 +390,11 @@ export function Settings() {
                     checked={printSettings.batchEnabled}
                     onChange={(ev) => setPrintSettings({ ...printSettings, batchEnabled: ev.target.checked })}
                   />
-                  开启批次作业
+                  {t('batch.enable')}
                 </label>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <label className="field" style={{ maxWidth: 150 }}>
-                    每批次打印数量
+                    {t('batch.batchSize')}
                     <input
                       className="input mono"
                       type="number"
@@ -414,7 +405,7 @@ export function Settings() {
                     />
                   </label>
                   <label className="field" style={{ maxWidth: 190 }}>
-                    批次打印间隔（毫秒）
+                    {t('batch.interval')}
                     <input
                       className="input mono"
                       type="number"
@@ -428,15 +419,13 @@ export function Settings() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <button className="btn primary" onClick={() => void savePrintSettings()} disabled={batchSaving}>
                     <Icon name="save" size={13} />
-                    {batchSaving ? '保存中…' : '保存'}
+                    {batchSaving ? t('batch.saving') : t('action.save')}
                   </button>
                   {batchSaveResult && (
                     <span className={batchSaveResult.ok ? 'badge ok' : 'badge err'}>{batchSaveResult.msg}</span>
                   )}
                 </div>
-                <div className="hint">
-                  开启后，大批量作业将每 {printSettings.batchSize} 张一批发送到打印机，批与批之间间隔 {printSettings.batchIntervalMs} 毫秒。
-                </div>
+                <div className="hint">{t('batch.hint', { size: printSettings.batchSize, interval: printSettings.batchIntervalMs })}</div>
               </>
             )}
           </div>
@@ -444,11 +433,11 @@ export function Settings() {
 
         <section className="panel">
           <div className="panel-head">
-            打印机
+            {t('printer.title')}
             <span className="spacer" style={{ flex: 1 }} />
             <button className="btn sm" onClick={() => void refreshPrinter()} disabled={printerLoading}>
               <Icon name="refresh" size={12} />
-              刷新
+              {t('action.refresh')}
             </button>
           </div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -457,37 +446,36 @@ export function Settings() {
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span className={'badge ' + (printer.isOnline ? 'ok' : 'err')}>
                     <span className="status-dot" style={{ background: printer.isOnline ? 'var(--ok)' : 'var(--danger)' }} />
-                    {printer.isOnline ? '在线' : '离线'}
+                    {printer.isOnline ? t('device.online') : t('device.offline')}
                   </span>
-                  {printer.isPaperOut && <span className="badge warn">缺纸</span>}
-                  {printer.isPaused && <span className="badge warn">已暂停</span>}
+                  {printer.isPaperOut && <span className="badge warn">{t('printer.paperOut')}</span>}
+                  {printer.isPaused && <span className="badge warn">{t('printer.paused')}</span>}
                 </div>
-                <div className="hint">{printer.message || '（无附加信息）'}</div>
+                <div className="hint">{printer.message || t('printer.noExtraInfo')}</div>
               </div>
             ) : (
-              <div className="hint">{printerLoading ? '读取中…' : '未获取到打印机状态：请确认打印机已开机并连接本机。'}</div>
+              <div className="hint">{printerLoading ? t('printer.reading') : t('printer.none')}</div>
             )}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <button className="btn" onClick={() => void doTestPrint()} disabled={testPrinting}>
                 <Icon name="test" size={13} />
-                {testPrinting ? '发送中…' : '测试打印'}
+                {testPrinting ? t('printer.sending') : t('printer.test')}
               </button>
-              {printResult && <span className={printResult.startsWith('测试页已发送') ? 'badge ok' : 'badge err'}>{printResult}</span>}
+              {printResult && <span className={printResult.ok ? 'badge ok' : 'badge err'}>{printResult.msg}</span>}
             </div>
             <div className="hint">
-              测试打印会发送一张测试页（内容为测试条码）到当前连接的打印机。当前连接方式：
-              {formatTransport(app.transportConfig) || app.transport || '未知'}（模拟打印无需打印机）。
+              {t('printer.hint', { transport: formatTransport(app.transportConfig) || app.transport || t('value.unknown') })}
             </div>
           </div>
         </section>
 
         <section className="panel">
           <div className="panel-head">
-            更新与安装包
+            {t('updates.title')}
             <span className="spacer" style={{ flex: 1 }} />
             <span className={'conn' + (app.connected ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <span className={'status-dot' + (app.connected ? ' on' : '')} />
-              {app.connected ? '服务端已连接' : '单机模式'}
+              {app.connected ? t('serverAddress.connected') : t('updates.standalone')}
             </span>
           </div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -512,38 +500,34 @@ export function Settings() {
                     }}
                   >
                     <span style={{ fontWeight: 600 }}>
-                      <Icon name="alert" size={13} /> 发现新版本 {update.latestVersion}（本机 {update.localVersion}）
+                      <Icon name="alert" size={13} /> {t('updates.updateAvailable', { latest: update.latestVersion, local: update.localVersion })}
                     </span>
-                    <span className="hint">
-                      请在下方列表下载新版安装包并运行安装（客户端不会自动升级），或请管理人员协助升级。
-                    </span>
+                    <span className="hint">{t('updates.updateHint')}</span>
                   </div>
                 )
               }
               return (
                 <div data-testid="update-uptodate" className="badge ok" style={{ alignSelf: 'flex-start' }}>
-                  已是最新（本机 {update.localVersion}）
+                  {t('updates.upToDate', { version: update.localVersion })}
                 </div>
               )
             })()}
             {!app.connected ? (
-              <div className="hint">
-                当前未连接服务端（单机模式）。安装包由服务端统一分发，请先在上方「服务端地址」中连接服务端后查看可用安装包。
-              </div>
+              <div className="hint">{t('updates.offlineHint')}</div>
             ) : packages === null ? (
-              <div className="hint">加载安装包列表…</div>
+              <div className="hint">{t('updates.loading')}</div>
             ) : packages.length === 0 ? (
               <div className="hint">
-                {packagesError ? `获取安装包列表失败：${packagesError}` : '服务端暂无客户端安装包。可在服务端管理界面「下载中心」页上传后，从此处下载更新。'}
+                {packagesError ? t('updates.loadFailedWith', { reason: packagesError }) : t('updates.empty')}
               </div>
             ) : (
               <>
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>文件名</th>
-                      <th style={{ width: 110 }}>大小</th>
-                      <th style={{ width: 140 }}>修改时间</th>
+                      <th>{t('updates.columns.fileName')}</th>
+                      <th style={{ width: 110 }}>{t('updates.columns.size')}</th>
+                      <th style={{ width: 140 }}>{t('updates.columns.modifiedAt')}</th>
                       <th style={{ width: 90 }}></th>
                     </tr>
                   </thead>
@@ -560,16 +544,16 @@ export function Settings() {
                           {formatPackageTime(p.modifiedAt)}
                         </td>
                         <td>
-                          <a className="btn sm" href={clientPackageDownloadUrl(p.fileName)} title={`从服务端下载 ${p.fileName}`}>
+                          <a className="btn sm" href={clientPackageDownloadUrl(p.fileName)} title={t('updates.downloadTitle', { name: p.fileName })}>
                             <Icon name="download" size={12} />
-                            下载
+                            {t('action.download')}
                           </a>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                <div className="hint">下载后运行安装包完成升级（客户端不会自动升级）。安装包来自服务端：{app.baseUrl}。</div>
+                <div className="hint">{t('updates.sourceHint', { base: app.baseUrl })}</div>
               </>
             )}
           </div>
@@ -577,11 +561,11 @@ export function Settings() {
 
         <section className="panel">
           <div className="panel-head">
-            插件管理
+            {t('plugins.title')}
             <span className="spacer" style={{ flex: 1 }} />
             <button className="btn sm" onClick={() => void refreshInstalledPlugins()} disabled={installedPluginsLoading}>
               <Icon name="refresh" size={12} />
-              刷新
+              {t('action.refresh')}
             </button>
           </div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -596,27 +580,27 @@ export function Settings() {
               </div>
             )}
 
-            <div style={{ fontSize: 13, fontWeight: 600 }}>服务端可用插件</div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{t('plugins.availableTitle')}</div>
             {!app.connected ? (
-              <div className="hint">当前未连接服务端，处于单机模式。插件由服务端统一分发，请连接服务端后查看可用插件。</div>
+              <div className="hint">{t('plugins.offlineHint')}</div>
             ) : pluginPackages === null ? (
-              <div className="hint">加载可用插件列表…</div>
+              <div className="hint">{t('plugins.loading')}</div>
             ) : pluginPackages.length === 0 ? (
               <div className="hint">
                 {pluginPackagesOldServer
-                  ? '服务端版本较旧，暂不支持插件管理；请先将服务端升级到新版本。'
+                  ? t('plugins.oldServer')
                   : pluginPackagesError
-                    ? `获取可用插件列表失败：${pluginPackagesError}`
-                    : '服务端暂无可用插件。请先在服务端管理界面「插件管理」页上传插件包，再从此处安装。'}
+                    ? t('plugins.loadFailedWith', { reason: pluginPackagesError })
+                    : t('plugins.empty')}
               </div>
             ) : (
               <table className="table">
                 <thead>
                   <tr>
-                    <th>插件</th>
-                    <th style={{ width: 90 }}>版本</th>
-                    <th style={{ width: 90 }}>大小</th>
-                    <th style={{ width: 190 }}>状态</th>
+                    <th>{t('plugins.columns.plugin')}</th>
+                    <th style={{ width: 90 }}>{t('plugins.columns.version')}</th>
+                    <th style={{ width: 90 }}>{t('plugins.columns.size')}</th>
+                    <th style={{ width: 190 }}>{t('plugins.columns.status')}</th>
                     <th style={{ width: 100 }}></th>
                   </tr>
                 </thead>
@@ -637,11 +621,11 @@ export function Settings() {
                       </td>
                       <td>
                         {p.valid ? (
-                          <span className="badge ok">有效</span>
+                          <span className="badge ok">{t('plugins.valid')}</span>
                         ) : (
                           <>
-                            <span className="badge err">无效</span>{' '}
-                            <span style={{ fontSize: 12, color: 'var(--danger)' }}>{p.invalidReason ?? '解析失败'}</span>
+                            <span className="badge err">{t('plugins.invalid')}</span>{' '}
+                            <span style={{ fontSize: 12, color: 'var(--danger)' }}>{p.invalidReason ?? t('plugins.parseFailed')}</span>
                           </>
                         )}
                       </td>
@@ -654,11 +638,11 @@ export function Settings() {
                               onClick={() => void installPlugin(p)}
                               disabled={installing === p.fileName || !p.valid || tooLarge !== null}
                               title={
-                                tooLarge ?? (!p.valid ? (p.invalidReason ?? '插件包无效') : '下载并安装到本机客户端（重启后生效）')
+                                tooLarge ?? (!p.valid ? (p.invalidReason ?? t('plugins.invalidTitle')) : t('plugins.installTitle'))
                               }
                             >
                               <Icon name="download" size={12} />
-                              {installing === p.fileName ? '安装中…' : '安装'}
+                              {installing === p.fileName ? t('plugins.installing') : t('plugins.install')}
                             </button>
                           )
                         })()}
@@ -669,22 +653,22 @@ export function Settings() {
               </table>
             )}
 
-            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>已安装插件</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>{t('plugins.installedTitle')}</div>
             {installedPluginsError ? (
               <div className="hint">
-                {installedOldWinHost ? '当前客户端版本不支持插件管理。' : `获取已安装插件列表失败：${installedPluginsError}`}
+                {installedOldWinHost ? t('plugins.installedOld') : t('plugins.installedLoadFailedWith', { reason: installedPluginsError })}
               </div>
             ) : installedPlugins === null ? (
-              <div className="hint">加载已安装插件…</div>
+              <div className="hint">{t('plugins.installedLoading')}</div>
             ) : installedPlugins.length === 0 ? (
-              <div className="hint">尚未安装插件。可从上方列表选择插件安装。</div>
+              <div className="hint">{t('plugins.installedEmpty')}</div>
             ) : (
               <table className="table">
                 <thead>
                   <tr>
-                    <th>插件</th>
-                    <th style={{ width: 90 }}>版本</th>
-                    <th style={{ width: 190 }}>状态</th>
+                    <th>{t('plugins.columns.plugin')}</th>
+                    <th style={{ width: 90 }}>{t('plugins.columns.version')}</th>
+                    <th style={{ width: 190 }}>{t('plugins.columns.status')}</th>
                     <th style={{ width: 100 }}></th>
                   </tr>
                 </thead>
@@ -702,16 +686,16 @@ export function Settings() {
                       </td>
                       <td>
                         {pl.source === 'manual' ? (
-                          <span className="badge">手动放置</span>
+                          <span className="badge">{t('plugins.manual')}</span>
                         ) : pl.loaded ? (
-                          <span className="badge ok">已加载</span>
+                          <span className="badge ok">{t('plugins.loaded')}</span>
                         ) : pl.loadError ? (
                           <>
-                            <span className="badge err">加载失败</span>{' '}
+                            <span className="badge err">{t('plugins.loadFailed')}</span>{' '}
                             <span style={{ fontSize: 12, color: 'var(--danger)' }}>{pl.loadError}</span>
                           </>
                         ) : (
-                          <span className="badge warn">待重启生效</span>
+                          <span className="badge warn">{t('plugins.pendingRestart')}</span>
                         )}
                       </td>
                       <td>
@@ -720,10 +704,10 @@ export function Settings() {
                             className="btn sm danger"
                             onClick={() => setConfirmUninstall(pl)}
                             disabled={uninstalling === pl.pluginId}
-                            title="卸载该插件（重启客户端后生效）"
+                            title={t('plugins.uninstallTitle')}
                           >
                             <Icon name="trash" size={12} />
-                            {uninstalling === pl.pluginId ? '卸载中…' : '卸载'}
+                            {uninstalling === pl.pluginId ? t('plugins.uninstalling') : t('plugins.uninstall')}
                           </button>
                         )}
                       </td>
@@ -732,7 +716,7 @@ export function Settings() {
                 </tbody>
               </table>
             )}
-            <div className="hint">安装 / 卸载后需重启客户端生效。</div>
+            <div className="hint">{t('plugins.hint')}</div>
           </div>
         </section>
       </div>
@@ -741,12 +725,12 @@ export function Settings() {
         const existing = installedPlugins?.find((i) => i.pluginId === confirmOverwrite.pluginId)
         return (
           <Modal
-            title="覆盖安装插件"
+            title={t('plugins.overwriteModal.title')}
             onClose={() => setConfirmOverwrite(null)}
             footer={
               <>
                 <button className="btn" onClick={() => setConfirmOverwrite(null)}>
-                  取消
+                  {t('action.cancel')}
                 </button>
                 <button
                   className="btn primary"
@@ -757,13 +741,16 @@ export function Settings() {
                   }}
                 >
                   <Icon name="download" size={13} />
-                  确认覆盖安装
+                  {t('plugins.overwriteModal.confirm')}
                 </button>
               </>
             }
           >
             <p>
-              已安装「{existing ? `${existing.name} ${existing.version}` : '同 ID 插件'}」。将覆盖为「{confirmOverwrite.name ?? confirmOverwrite.fileName} {confirmOverwrite.version ?? '?'}」，重启客户端后生效。确认覆盖安装？
+              {t('plugins.overwriteModal.body', {
+                existing: existing ? `${existing.name} ${existing.version}` : t('plugins.overwriteModal.sameIdPlugin'),
+                target: `${confirmOverwrite.name ?? confirmOverwrite.fileName} ${confirmOverwrite.version ?? '?'}`,
+              })}
             </p>
           </Modal>
         )
@@ -771,12 +758,12 @@ export function Settings() {
 
       {confirmUninstall && (
         <Modal
-          title="卸载插件"
+          title={t('plugins.uninstallModal.title')}
           onClose={() => setConfirmUninstall(null)}
           footer={
             <>
               <button className="btn" onClick={() => setConfirmUninstall(null)}>
-                取消
+                {t('action.cancel')}
               </button>
               <button
                 className="btn danger"
@@ -787,13 +774,13 @@ export function Settings() {
                 }}
               >
                 <Icon name="trash" size={13} />
-                确认卸载
+                {t('plugins.uninstallModal.confirm')}
               </button>
             </>
           }
         >
           <p>
-            确认卸载插件「<b>{confirmUninstall.name} {confirmUninstall.version}</b>」？卸载后重启客户端生效。
+            {t('plugins.uninstallModal.body', { name: `${confirmUninstall.name} ${confirmUninstall.version}` })}
           </p>
         </Modal>
       )}

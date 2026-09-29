@@ -1,0 +1,29 @@
+{
+  "page": {
+    "title": "Online Devices",
+    "subtitle": "Click a device to set it as the default target for Data & Print"
+  },
+  "loadFailed": "Failed to load the device list.",
+  "pickOffline": "Device \"{{name}}\" is currently offline and cannot be set as the default target.",
+  "picked": "Set \"{{name}}\" as the default target for Data & Print.",
+  "pauseAuto": "Pause auto refresh",
+  "resumeAuto": "Resume auto refresh",
+  "autoRefresh": "Auto Refresh",
+  "paused": "Paused",
+  "refreshNowTitle": "Refresh now",
+  "loading": "Loading device list…",
+  "empty": "No devices",
+  "emptyHintInstalled": "Devices appear here after LabelFrame Client is installed and joined to the server.",
+  "emptyHintOffline": "Devices show as offline after 30 seconds without a connection; the list refreshes every 5 seconds.",
+  "columns": {
+    "deviceId": "Device ID",
+    "name": "Name",
+    "lastIp": "Last IP",
+    "status": "Status",
+    "lastSeen": "Last Seen"
+  },
+  "defaultTitle": "Current default target for Data & Print; click another device to switch",
+  "pickTitle": "Click to set as the default target for Data & Print",
+  "defaultBadge": "Default",
+  "setDefault": "Set Default"
+}

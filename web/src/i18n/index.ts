@@ -20,6 +20,10 @@ import zhCNErrorCodes from './locales/zh-CN/errorCodes.json'
 import zhCNWorkbench from './locales/zh-CN/workbench.json'
 import zhCNJobHistory from './locales/zh-CN/jobHistory.json'
 import zhCNDataPrint from './locales/zh-CN/dataPrint.json'
+import zhCNDesigner from './locales/zh-CN/designer.json'
+import zhCNDownloadCenter from './locales/zh-CN/downloadCenter.json'
+import zhCNDevices from './locales/zh-CN/devices.json'
+import zhCNPluginPackages from './locales/zh-CN/pluginPackages.json'
 import enCommon from './locales/en/common.json'
 import enShell from './locales/en/shell.json'
 import enSettings from './locales/en/settings.json'
@@ -27,6 +31,10 @@ import enErrorCodes from './locales/en/errorCodes.json'
 import enWorkbench from './locales/en/workbench.json'
 import enJobHistory from './locales/en/jobHistory.json'
 import enDataPrint from './locales/en/dataPrint.json'
+import enDesigner from './locales/en/designer.json'
+import enDownloadCenter from './locales/en/downloadCenter.json'
+import enDevices from './locales/en/devices.json'
+import enPluginPackages from './locales/en/pluginPackages.json'
 
 /** 界面语言全集（zh-CN 为源语言；en 为第一翻译目标——决策 #164 ①）。 */
 export type AppLocale = 'zh-CN' | 'en'
@@ -105,6 +113,10 @@ void i18next.use(initReactI18next).init({
       workbench: zhCNWorkbench,
       jobHistory: zhCNJobHistory,
       dataPrint: zhCNDataPrint,
+      designer: zhCNDesigner,
+      downloadCenter: zhCNDownloadCenter,
+      devices: zhCNDevices,
+      pluginPackages: zhCNPluginPackages,
     },
     en: {
       common: enCommon,
@@ -114,6 +126,10 @@ void i18next.use(initReactI18next).init({
       workbench: enWorkbench,
       jobHistory: enJobHistory,
       dataPrint: enDataPrint,
+      designer: enDesigner,
+      downloadCenter: enDownloadCenter,
+      devices: enDevices,
+      pluginPackages: enPluginPackages,
     },
   },
   lng: currentLocaleFromEnv(),

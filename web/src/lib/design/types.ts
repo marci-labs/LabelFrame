@@ -1,4 +1,9 @@
 // 设计器内部元素模型（labelframe-web-design 格式，与原型一致）
+// 迭代 112（#246）：文案 key 化（designer 域）——默认元素文本「文本」属 UI 层数据性默认值，
+// 跟随当前界面语言（待决议-1 建议项：en 态新建文本元素默认占位英文，存量模板存储值不受影响）；
+// typeLabel / layerLabel / elementContent 在调用点（组件渲染期）求值，语言切换后随重渲染更新。
+
+import i18next from '../../i18n'
 
 export type ElementType = 'Text' | 'Barcode' | 'QrCode' | 'Rect' | 'Image' | 'Line' | 'Region'
 
@@ -130,7 +135,7 @@ export function defaultElement(type: ElementType, id = uid()): DesignElement {
   const base = { id, x: 5, y: 5, w: 40, h: 10, border: 0 }
   switch (type) {
     case 'Text':
-      return { ...base, type, fontH: 5, fontW: 5, fontFamily: 'Microsoft YaHei', bold: false, wrap: false, lineHeight: 1.2, valign: 'middle', mode: 'literal', key: '', text: '文本', align: 'Left', paddingH: 1, paddingV: 1, fitMode: 'shrink' }
+      return { ...base, type, fontH: 5, fontW: 5, fontFamily: 'Microsoft YaHei', bold: false, wrap: false, lineHeight: 1.2, valign: 'middle', mode: 'literal', key: '', text: i18next.t('designer:elementDefaultText'), align: 'Left', paddingH: 1, paddingV: 1, fitMode: 'shrink' }
     case 'Barcode':
       return { ...base, y: 20, w: 50, h: 20, type, mode: 'literal', key: '', text: 'ABC-123', paddingH: 1, paddingV: 1, barcodeFormat: 'CODE128', displayValue: true, moduleWidth: 1 }
     case 'QrCode':
@@ -146,45 +151,64 @@ export function defaultElement(type: ElementType, id = uid()): DesignElement {
   }
 }
 
-/** 元素中文名。 */
+/** 元素类型显示名（随界面语言）。 */
 export function typeLabel(e: DesignElement): string {
   switch (e.type) {
-    case 'Text': return '文本'
-    case 'Barcode': return '条码'
-    case 'QrCode': return '二维码'
-    case 'Rect': return '矩形'
-    case 'Image': return '图片'
-    case 'Line': return '线'
-    case 'Region': return '容器'
+    case 'Text': return i18next.t('designer:type.text')
+    case 'Barcode': return i18next.t('designer:type.barcode')
+    case 'QrCode': return i18next.t('designer:type.qrcode')
+    case 'Rect': return i18next.t('designer:type.rect')
+    case 'Image': return i18next.t('designer:type.image')
+    case 'Line': return i18next.t('designer:type.line')
+    case 'Region': return i18next.t('designer:type.region')
   }
 }
 
-/** 图层显示名称：固定值显示内容；字段填充显示「(键名) 预览值」；条码 / 二维码带类型前缀。 */
+/** 图层显示名称：固定值显示内容；字段填充显示「(键名) 预览值」；条码 / 二维码带类型前缀（随界面语言）。 */
 export function layerLabel(e: DesignElement): string {
   switch (e.type) {
     case 'Text':
-      if (e.mode === 'literal') return e.text || '文本'
-      return '(' + (e.key || '未绑定') + ') ' + (e.text || '')
+      if (e.mode === 'literal') return e.text || i18next.t('designer:elementDefaultText')
+      return i18next.t('designer:layer.textField', { key: e.key || i18next.t('designer:layer.unbound'), text: e.text || '' })
     case 'Barcode':
     case 'QrCode': {
-      const t = e.type === 'Barcode' ? '条码' : '二维码'
-      if (e.mode === 'literal') return '(' + t + ') ' + (e.text || '固定值')
-      return '(' + t + ') (' + (e.key || '未绑定') + ') ' + (e.text || '')
+      const t = e.type === 'Barcode' ? i18next.t('designer:type.barcode') : i18next.t('designer:type.qrcode')
+      if (e.mode === 'literal') return i18next.t('designer:layer.typedLiteral', { type: t, text: e.text || i18next.t('designer:layer.literalFallback') })
+      return i18next.t('designer:layer.typedField', { type: t, key: e.key || i18next.t('designer:layer.unbound'), text: e.text || '' })
     }
-    case 'Rect': return '矩形'
-    case 'Image': return '图片' + (e.key ? ' (' + e.key + ')' : '')
-    case 'Line': return '线'
-    case 'Region': return '容器'
+    case 'Rect': return i18next.t('designer:type.rect')
+    case 'Image': return e.key ? i18next.t('designer:layer.imageWithKey', { type: i18next.t('designer:type.image'), key: e.key }) : i18next.t('designer:type.image')
+    case 'Line': return i18next.t('designer:type.line')
+    case 'Region': return i18next.t('designer:type.region')
   }
 }
 
-/** 画布显示内容：固定值原样；字段填充取预览值（仅画布显示，打印以外界数据为准）。 */
+/** 元素内容占位态（供渲染层判别「固定值空文本 / 字段未绑定」占位，不依赖本地化字符串比较）。 */
+export type ElementContentState = 'none' | 'literal-empty' | 'unbound-field' | 'content'
+
+/** 元素内容态判别：none = 非内容元素；literal-empty = 固定值模式无文本；unbound-field = 字段模式无预览值无字段名。 */
+export function elementContentState(e: DesignElement): ElementContentState {
+  if (e.type === 'Image' || e.type === 'Line' || e.type === 'Rect' || e.type === 'Region') return 'none'
+  if (e.mode === 'literal') return e.text ? 'content' : 'literal-empty'
+  if (e.text) return 'content'
+  return e.key ? 'content' : 'unbound-field'
+}
+
+/** 画布显示内容：固定值原样；字段填充取预览值（仅画布显示，打印以外界数据为准；占位文案随界面语言）。 */
 export function elementContent(e: DesignElement): string {
-  if (e.type === 'Image' || e.type === 'Line' || e.type === 'Rect' || e.type === 'Region') return ''
-  if (e.mode === 'literal') return e.text || '（固定值）'
-  if (e.text) return e.text
-  if (!e.key) return '（未绑定字段）'
-  return e.key
+  switch (elementContentState(e)) {
+    case 'none':
+      return ''
+    case 'literal-empty':
+      return i18next.t('designer:content.literalEmpty')
+    case 'unbound-field':
+      return i18next.t('designer:content.unboundField')
+    case 'content': {
+      // elementContentState 已过滤非内容元素；此处仅 Text / Barcode / QrCode 三型到达
+      const el = e as TextElement | BarcodeElement | QrCodeElement
+      return el.mode === 'literal' ? el.text : el.text || el.key
+    }
+  }
 }
 
 /** 是否可填充内容（文本 / 条码 / 二维码）。 */

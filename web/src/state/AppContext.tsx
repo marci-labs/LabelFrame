@@ -279,7 +279,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         baseUrlRef.current = cleaned
         setBaseUrlState(cleaned)
         persistBaseUrl(cleaned)
-        setStatus(`服务端地址已保存并生效：${cleaned}`)
+        setStatus(i18next.t('settings:serverAddress.statusSaved', { url: cleaned }))
         // 迭代 86（#142）：释放旧地址在途探测的去重占用，按新地址立即发起新探测（旧结果按序号作废）
         pendingRef.current = null
         void checkConnection()
@@ -290,7 +290,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         baseUrlRef.current = cleaned
         setBaseUrlState(cleaned)
         persistBaseUrl(cleaned)
-        setStatus('本机配置接口不可用，已使用浏览器本地保存。')
+        setStatus(i18next.t('settings:serverAddress.statusFallback'))
         pendingRef.current = null
         void checkConnection()
         return false

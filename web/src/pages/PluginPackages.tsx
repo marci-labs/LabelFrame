@@ -1,8 +1,13 @@
 // 插件管理页（迭代 23 §2.1 / §5.4，Server UI 专用）：服务端 plugin-packages 目录管理——
 // 插件包列表（名称 / 版本 / pluginId / 大小 / 时间 / valid 状态，invalid 红标 + 原因）+ 上传（multipart，64MB 预检）+ 下载 + 删除（确认）。
 // 与客户端设置页「插件管理」卡片共用 GET /api/plugin-packages 与下载 URL。
+// 迭代 112（#246）：文案 key 化（pluginPackages 域；zh-CN 值与原硬编码逐字一致）。
 
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+// i18n 初始化副作用导入：pluginLimits 在本页单测中被 mock（真实模块的 i18n 传递依赖被切断），
+// 显式引入保证 useTranslation 在任何入口下都有已注册的语言包资源。
+import '../i18n'
 import { pluginPackageDownloadUrl, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { PluginPackageInfo } from '../lib/api/types'
@@ -21,6 +26,7 @@ function formatTime(iso?: string): string {
 }
 
 export function PluginPackages() {
+  const { t } = useTranslation('pluginPackages')
   const [packages, setPackages] = useState<PluginPackageInfo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -34,9 +40,9 @@ export function PluginPackages() {
     try {
       setPackages(await serverApi.listPluginPackages())
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '获取插件包列表失败。')
+      setError(err instanceof ApiError ? err.message : t('loadFailed'))
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void load()
@@ -53,10 +59,10 @@ export function PluginPackages() {
     setError(null)
     try {
       await serverApi.uploadPluginPackage(file)
-      setNotice(`插件包「${file.name}」已上传，客户端可在「设置 → 插件管理」中安装。`)
+      setNotice(t('uploadOk', { name: file.name }))
       void load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '上传失败。')
+      setError(err instanceof ApiError ? err.message : t('uploadFailed'))
     } finally {
       setUploading(false)
     }
@@ -68,10 +74,10 @@ export function PluginPackages() {
     setNotice(null)
     try {
       await serverApi.deletePluginPackage(p.fileName)
-      setNotice(`插件包「${p.fileName}」已删除。`)
+      setNotice(t('deleteOk', { name: p.fileName }))
       void load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '删除失败。')
+      setError(err instanceof ApiError ? err.message : t('deleteFailed'))
     } finally {
       setDeleting(null)
     }
@@ -89,13 +95,13 @@ export function PluginPackages() {
     <div className="page">
       <div className="page-head">
         <div className="page-title">
-          插件管理
-          <small>插件包统一在此分发（上传 / 下载 / 删除）</small>
+          {t('page.title')}
+          <small>{t('page.subtitle')}</small>
         </div>
         <div className="spacer" />
         <button className="btn" onClick={() => document.getElementById('pluginPkgFile')?.click()} disabled={uploading}>
           <Icon name="upload" size={13} />
-          {uploading ? '上传中…' : '上传插件包'}
+          {uploading ? t('action.uploading') : t('upload')}
         </button>
         <input
           id="pluginPkgFile"
@@ -107,9 +113,9 @@ export function PluginPackages() {
             ev.target.value = ''
           }}
         />
-        <button className="btn" onClick={() => void load()} title="重新拉取插件包列表">
+        <button className="btn" onClick={() => void load()} title={t('refreshTitle')}>
           <Icon name="refresh" size={13} />
-          刷新
+          {t('action.refresh')}
         </button>
       </div>
 
@@ -120,26 +126,26 @@ export function PluginPackages() {
         {packages === null ? (
           <div className="empty">
             <Icon name="puzzle" />
-            <div className="empty-title">正在加载插件包列表…</div>
+            <div className="empty-title">{t('loading')}</div>
           </div>
         ) : packages.length === 0 ? (
           <div className="empty">
             <Icon name="puzzle" />
-            <div className="empty-title">暂无插件包</div>
+            <div className="empty-title">{t('empty')}</div>
             <div className="hint">
-              点击右上角「上传插件包」上传插件包；上传后客户端可在「设置 → 插件管理」中安装。
+              {t('emptyHint')}
             </div>
           </div>
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th>名称</th>
-                <th style={{ width: 90 }}>版本</th>
-                <th style={{ width: 140 }}>插件 ID</th>
-                <th style={{ width: 90 }}>大小</th>
-                <th style={{ width: 150 }}>修改时间</th>
-                <th style={{ width: 210 }}>状态</th>
+                <th>{t('columns.name')}</th>
+                <th style={{ width: 90 }}>{t('columns.version')}</th>
+                <th style={{ width: 140 }}>{t('columns.pluginId')}</th>
+                <th style={{ width: 90 }}>{t('columns.size')}</th>
+                <th style={{ width: 150 }}>{t('columns.modifiedAt')}</th>
+                <th style={{ width: 210 }}>{t('columns.status')}</th>
                 <th style={{ width: 150 }}></th>
               </tr>
             </thead>
@@ -166,28 +172,28 @@ export function PluginPackages() {
                   </td>
                   <td>
                     {p.valid ? (
-                      <span className="badge ok">有效</span>
+                      <span className="badge ok">{t('valid')}</span>
                     ) : (
                       <>
-                        <span className="badge err">无效</span>{' '}
-                        <span style={{ fontSize: 12, color: 'var(--danger)' }}>{p.invalidReason ?? '解析失败'}</span>
+                        <span className="badge err">{t('invalid')}</span>{' '}
+                        <span style={{ fontSize: 12, color: 'var(--danger)' }}>{p.invalidReason ?? t('parseFailed')}</span>
                       </>
                     )}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <a className="btn sm" href={pluginPackageDownloadUrl(p.fileName)} title={`下载 ${p.fileName}`}>
+                      <a className="btn sm" href={pluginPackageDownloadUrl(p.fileName)} title={t('downloadTitle', { name: p.fileName })}>
                         <Icon name="download" size={12} />
-                        下载
+                        {t('action.download')}
                       </a>
                       <button
                         className="btn sm danger"
                         onClick={() => setPendingRemove(p)}
                         disabled={deleting === p.fileName}
-                        title="删除该插件包（客户端将无法再安装）"
+                        title={t('deleteTitle')}
                       >
                         <Icon name="trash" size={12} />
-                        {deleting === p.fileName ? '删除中…' : '删除'}
+                        {deleting === p.fileName ? t('action.deleting') : t('action.delete')}
                       </button>
                     </div>
                   </td>
@@ -200,22 +206,22 @@ export function PluginPackages() {
 
       {pendingRemove && (
         <Modal
-          title="删除插件包"
+          title={t('deleteModal.title')}
           onClose={() => setPendingRemove(null)}
           footer={
             <>
               <button className="btn" onClick={() => setPendingRemove(null)}>
-                取消
+                {t('action.cancel')}
               </button>
               <button className="btn danger" onClick={confirmRemove} disabled={deleting !== null}>
                 <Icon name="trash" size={13} />
-                确认删除
+                {t('action.confirmDelete')}
               </button>
             </>
           }
         >
           <p>
-            确定删除插件包「<b>{pendingRemove.fileName}</b>」吗？删除后客户端将无法再从服务端下载该插件。
+            {t('deleteModal.body', { name: pendingRemove.fileName })}
           </p>
         </Modal>
       )}

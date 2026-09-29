@@ -4,21 +4,17 @@
   "jsPlugins": ["./oxlint-plugin-labelframe.cjs"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "labelframe/no-bare-cjk-jsx": "error"
   },
   "overrides": [
     {
       "files": [
-        "src/App.tsx",
-        "src/components/Modal.tsx",
-        "src/components/ErrorBoundary.tsx",
-        "src/pages/Workbench.tsx",
-        "src/pages/WorkbenchPreview.tsx",
-        "src/pages/JobHistory.tsx",
-        "src/pages/DataPrint.tsx"
+        "src/components/Popover.test.tsx",
+        "src/components/ErrorBoundary.test.tsx"
       ],
       "rules": {
-        "labelframe/no-bare-cjk-jsx": "error"
+        "labelframe/no-bare-cjk-jsx": "off"
       }
     }
   ]

@@ -4,7 +4,13 @@
     "close": "关闭",
     "refresh": "刷新",
     "refreshing": "刷新中…",
-    "retry": "重试"
+    "retry": "重试",
+    "save": "保存",
+    "download": "下载",
+    "delete": "删除",
+    "deleting": "删除中…",
+    "uploading": "上传中…",
+    "confirmDelete": "确认删除"
   },
   "state": {
     "connectingServer": "正在连接服务端…",
@@ -47,7 +53,8 @@
     "excelTemplateFailed": "生成 Excel 模板失败",
     "renderFailed": "出图失败",
     "previewFailed": "生成预览失败",
-    "debugImagesFailed": "下载调试图片失败"
+    "debugImagesFailed": "下载调试图片失败",
+    "pluginTooLarge": "插件包超过大小上限（最大约 64MB）。"
   },
   "transport": {
     "log": "模拟打印",
@@ -59,6 +66,17 @@
     "driverFallback": "驱动",
     "zebraTcp": "Zebra 网络打印机 {{addr}}",
     "nativeModeTitle": "原生指令模式由打印机按自身字体与指令渲染，界面预览（图片口径）不再代表实际出纸效果",
-    "nativeModeHint": "原生指令模式无预览，效果以真机为准"
+    "nativeModeHint": "原生指令模式无预览，效果以真机为准",
+    "mode": {
+      "log": "模拟打印",
+      "tcp": "网络打印机（TCP）",
+      "windowsDriver": "Windows 驱动",
+      "zebra": "Zebra 打印机"
+    },
+    "zebraKind": {
+      "tcp": "网络（TCP）",
+      "usb": "USB（自动识别）",
+      "driver": "Windows 驱动"
+    }
   }
 }

@@ -1,0 +1,33 @@
+{
+  "page": {
+    "title": "Plugin Management",
+    "subtitle": "Unified distribution of plugin packages (upload / download / delete)"
+  },
+  "upload": "Upload Plugin Package",
+  "refreshTitle": "Reload the plugin package list",
+  "loadFailed": "Failed to load the plugin package list.",
+  "uploadOk": "Plugin package \"{{name}}\" uploaded; clients can install it under Settings → Plugin Management.",
+  "uploadFailed": "Upload failed.",
+  "deleteFailed": "Delete failed.",
+  "deleteOk": "Plugin package \"{{name}}\" deleted.",
+  "loading": "Loading plugin packages…",
+  "empty": "No plugin packages",
+  "emptyHint": "Click \"Upload Plugin Package\" in the top-right corner to upload one; clients can install it under Settings → Plugin Management after upload.",
+  "columns": {
+    "name": "Name",
+    "version": "Version",
+    "pluginId": "Plugin ID",
+    "size": "Size",
+    "modifiedAt": "Modified",
+    "status": "Status"
+  },
+  "valid": "Valid",
+  "invalid": "Invalid",
+  "parseFailed": "Parse failed",
+  "downloadTitle": "Download {{name}}",
+  "deleteTitle": "Delete this plugin package (clients will no longer be able to install it)",
+  "deleteModal": {
+    "title": "Delete Plugin Package",
+    "body": "Delete plugin package \"{{name}}\"? Clients will no longer be able to download it from the server."
+  }
+}

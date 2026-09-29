@@ -2,6 +2,7 @@
 // 路线定稿（Issue #15）：复用既有 POST /api/templates/{name}/preview（按模板 TestData 渲染 PNG），零契约变更。
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
+import i18next from '../i18n'
 
 export type TemplatePreviewEntry =
   | { status: 'loading' }
@@ -46,7 +47,7 @@ export function useTemplatePreviewCache(
       })
       .catch((err: unknown) => {
         if (gen !== genRef.current) return
-        cache.set(name, { status: 'error', message: err instanceof Error ? err.message : '生成预览失败。' })
+        cache.set(name, { status: 'error', message: err instanceof Error ? err.message : i18next.t('api.previewFailed') })
       })
       .finally(() => {
         if (gen === genRef.current) bump()

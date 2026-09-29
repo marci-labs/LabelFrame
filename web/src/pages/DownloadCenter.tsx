@@ -3,9 +3,14 @@
 // 每条目旁展示二维码（内容 = 本页 origin + 该条目下载路径，即管理员正在访问的局域网地址）——PDA 与服务器
 // 同网扫码即得下载 URL；PDA 区常驻 Android「未知来源 / 安装未知应用」授权步骤提示。
 // client-packages 既有行为不动：客户端设置页「更新与安装包」卡片仍走 GET /api/client-packages 下载。
+// 迭代 112（#246）：文案 key 化（downloadCenter 域；zh-CN 值与原硬编码逐字一致）。
 
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import qrcode from 'qrcode-generator'
+// i18n 初始化副作用导入：本页组件树不传递依赖 i18n/index（api client 在测试中被 mock），
+// 显式引入保证 useTranslation 在任何入口（含单测）下都有已注册的语言包资源。
+import '../i18n'
 import { clientPackageDownloadUrl, pdaPackageDownloadUrl, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
 import type { ClientPackageInfo, PdaPackageInfo } from '../lib/api/types'
@@ -31,7 +36,7 @@ interface PackageRow {
 }
 
 /** 二维码图片（qrcode-generator 生成 GIF data URL，无需 canvas；生成失败不渲染，不阻塞页面）。 */
-function QrCodeImage({ text, size = 84 }: { text: string; size?: number }) {
+function QrCodeImage({ text, size = 84, alt }: { text: string; size?: number; alt: string }) {
   let src = ''
   try {
     const qr = qrcode(0, 'M')
@@ -46,7 +51,7 @@ function QrCodeImage({ text, size = 84 }: { text: string; size?: number }) {
       src={src}
       width={size}
       height={size}
-      alt="扫码下载二维码"
+      alt={alt}
       title={text}
       style={{ display: 'block', background: '#fff', border: '1px solid var(--border)', borderRadius: 4, imageRendering: 'pixelated' }}
     />
@@ -61,6 +66,7 @@ function SectionHead({
   uploadLabel,
   inputId,
   onPick,
+  uploadingLabel,
 }: {
   title: string
   hint: string
@@ -68,6 +74,7 @@ function SectionHead({
   uploadLabel: string
   inputId: string
   onPick: (file: File) => void
+  uploadingLabel: string
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px' }}>
@@ -77,7 +84,7 @@ function SectionHead({
       </div>
       <button className="btn sm" onClick={() => document.getElementById(inputId)?.click()} disabled={uploading}>
         <Icon name="upload" size={13} />
-        {uploading ? '上传中…' : uploadLabel}
+        {uploading ? uploadingLabel : uploadLabel}
       </button>
       <input
         id={inputId}
@@ -107,14 +114,15 @@ function PackageTable({
   deleting: string | null
   onRemove: (row: PackageRow) => void
 }) {
+  const { t } = useTranslation('downloadCenter')
   return (
     <table className="table">
       <thead>
         <tr>
-          <th>文件名</th>
-          <th style={{ width: 100 }}>大小</th>
-          <th style={{ width: 150 }}>修改时间</th>
-          <th style={{ width: 104 }}>二维码</th>
+          <th>{t('columns.fileName')}</th>
+          <th style={{ width: 100 }}>{t('columns.size')}</th>
+          <th style={{ width: 150 }}>{t('columns.modifiedAt')}</th>
+          <th style={{ width: 104 }}>{t('columns.qrCode')}</th>
           <th style={{ width: 170 }}></th>
         </tr>
       </thead>
@@ -131,22 +139,22 @@ function PackageTable({
               {formatTime(p.modifiedAt)}
             </td>
             <td>
-              <QrCodeImage text={`${qrOrigin}${p.downloadHref}`} />
+              <QrCodeImage text={`${qrOrigin}${p.downloadHref}`} alt={t('qrAlt')} />
             </td>
             <td>
               <div style={{ display: 'flex', gap: 6 }}>
-                <a className="btn sm" href={p.downloadHref} title={`下载 ${p.fileName}`}>
+                <a className="btn sm" href={p.downloadHref} title={t('downloadTitle', { name: p.fileName })}>
                   <Icon name="download" size={12} />
-                  下载
+                  {t('action.download')}
                 </a>
                 <button
                   className="btn sm danger"
                   onClick={() => onRemove(p)}
                   disabled={deleting === p.fileName}
-                  title="删除该安装包（扫码与链接下载将失效）"
+                  title={t('deleteTitle')}
                 >
                   <Icon name="trash" size={12} />
-                  {deleting === p.fileName ? '删除中…' : '删除'}
+                  {deleting === p.fileName ? t('action.deleting') : t('action.delete')}
                 </button>
               </div>
             </td>
@@ -158,6 +166,7 @@ function PackageTable({
 }
 
 export function DownloadCenter() {
+  const { t } = useTranslation('downloadCenter')
   const [clientPackages, setClientPackages] = useState<ClientPackageInfo[] | null>(null)
   const [pdaPackages, setPdaPackages] = useState<PdaPackageInfo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -175,9 +184,9 @@ export function DownloadCenter() {
       setClientPackages(clients)
       setPdaPackages(pdas)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '获取安装包列表失败。')
+      setError(err instanceof ApiError ? err.message : t('loadFailed'))
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void load()
@@ -189,10 +198,10 @@ export function DownloadCenter() {
     setError(null)
     try {
       await serverApi.uploadClientPackage(file)
-      setNotice(`安装包「${file.name}」已上传，客户端可在「设置 → 更新与安装包」中下载。`)
+      setNotice(t('client.uploadOk', { name: file.name }))
       void load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '上传失败。')
+      setError(err instanceof ApiError ? err.message : t('uploadFailed'))
     } finally {
       setUploadingClient(false)
     }
@@ -204,10 +213,10 @@ export function DownloadCenter() {
     setError(null)
     try {
       await serverApi.uploadPdaPackage(file)
-      setNotice(`APK「${file.name}」已上传，PDA 可在本页扫二维码下载安装。`)
+      setNotice(t('pda.uploadOk', { name: file.name }))
       void load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '上传失败。')
+      setError(err instanceof ApiError ? err.message : t('uploadFailed'))
     } finally {
       setUploadingPda(false)
     }
@@ -219,10 +228,10 @@ export function DownloadCenter() {
     setNotice(null)
     try {
       await serverApi.deleteClientPackage(p.fileName)
-      setNotice(`安装包「${p.fileName}」已删除。`)
+      setNotice(t('client.deleteOk', { name: p.fileName }))
       void load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '删除失败。')
+      setError(err instanceof ApiError ? err.message : t('deleteFailed'))
     } finally {
       setDeleting(null)
     }
@@ -234,10 +243,10 @@ export function DownloadCenter() {
     setNotice(null)
     try {
       await serverApi.deletePdaPackage(p.fileName)
-      setNotice(`APK「${p.fileName}」已删除。`)
+      setNotice(t('pda.deleteOk', { name: p.fileName }))
       void load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '删除失败。')
+      setError(err instanceof ApiError ? err.message : t('deleteFailed'))
     } finally {
       setDeleting(null)
     }
@@ -278,13 +287,13 @@ export function DownloadCenter() {
     <div className="page">
       <div className="page-head">
         <div className="page-title">
-          下载中心
-          <small>客户端与 PDA 安装包统一分发（上传 / 下载 / 删除 / 扫码）</small>
+          {t('page.title')}
+          <small>{t('page.subtitle')}</small>
         </div>
         <div className="spacer" />
-        <button className="btn" onClick={() => void load()} title="重新拉取安装包列表">
+        <button className="btn" onClick={() => void load()} title={t('refreshTitle')}>
           <Icon name="refresh" size={13} />
-          刷新
+          {t('action.refresh')}
         </button>
       </div>
 
@@ -294,24 +303,25 @@ export function DownloadCenter() {
       <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
         {/* ── 客户端下载（PC；client-packages 既有数据并入展示，行为不动）── */}
         <SectionHead
-          title="客户端下载（PC）"
-          hint="打印电脑（PC）的安装程序——客户端也可在「设置 → 更新与安装包」中下载"
+          title={t('client.title')}
+          hint={t('client.hint')}
           uploading={uploadingClient}
-          uploadLabel="上传客户端安装包"
+          uploadLabel={t('client.uploadLabel')}
           inputId="clientPkgFile"
           onPick={(f) => void uploadClient(f)}
+          uploadingLabel={t('action.uploading')}
         />
         {clientRows === null ? (
           <div className="empty">
             <Icon name="download" />
-            <div className="empty-title">正在加载客户端安装包…</div>
+            <div className="empty-title">{t('client.loading')}</div>
           </div>
         ) : clientRows.length === 0 ? (
           <div className="empty">
             <Icon name="download" />
-            <div className="empty-title">暂无客户端安装包</div>
+            <div className="empty-title">{t('client.empty')}</div>
             <div className="hint">
-              点击「上传客户端安装包」上传安装文件。
+              {t('client.emptyHint')}
             </div>
           </div>
         ) : (
@@ -321,12 +331,13 @@ export function DownloadCenter() {
         {/* ── PDA 下载（Android 宿主 APK；pda-packages 新目录，迭代 59 决策 #119）── */}
         <div style={{ height: 16 }} />
         <SectionHead
-          title="PDA 下载（Android）"
-          hint="PDA 安装包（APK）——扫条目旁二维码即可下载"
+          title={t('pda.title')}
+          hint={t('pda.hint')}
           uploading={uploadingPda}
-          uploadLabel="上传 APK"
+          uploadLabel={t('pda.uploadLabel')}
           inputId="pdaPkgFile"
           onPick={(f) => void uploadPda(f)}
+          uploadingLabel={t('action.uploading')}
         />
         <div
           style={{
@@ -340,19 +351,19 @@ export function DownloadCenter() {
           }}
         >
           <Icon name="alert" size={12} style={{ marginRight: 4, verticalAlign: '-2px' }} />
-          PDA 安装提示：PDA 与服务器连同一局域网，用相机 / 扫码工具扫条目旁二维码即可下载。首次安装若提示「未知来源」或「禁止安装」，需一次性授权：系统设置 → 应用 → 特殊权限（安装未知应用）→ 找到浏览器 → 允许安装未知应用；各品牌入口略有差异（也可长按浏览器图标 → 应用信息 → 安装未知应用）。升级请使用同一服务器分发的 APK（签名一致可直接覆盖安装，配置与设备号保留）。
+          {t('pda.installHint')}
         </div>
         {pdaRows === null ? (
           <div className="empty">
             <Icon name="download" />
-            <div className="empty-title">正在加载 PDA 安装包…</div>
+            <div className="empty-title">{t('pda.loading')}</div>
           </div>
         ) : pdaRows.length === 0 ? (
           <div className="empty">
             <Icon name="download" />
-            <div className="empty-title">暂无 PDA 安装包</div>
+            <div className="empty-title">{t('pda.empty')}</div>
             <div className="hint">
-              点击「上传 APK」上传 PDA 安装包（Android 安装文件）。
+              {t('pda.emptyHint')}
             </div>
           </div>
         ) : (
@@ -362,24 +373,24 @@ export function DownloadCenter() {
 
       {pendingRemove && (
         <Modal
-          title={pendingRemove.kind === 'client' ? '删除安装包' : '删除 APK'}
+          title={pendingRemove.kind === 'client' ? t('deleteModal.titleClient') : t('deleteModal.titlePda')}
           onClose={() => setPendingRemove(null)}
           footer={
             <>
               <button className="btn" onClick={() => setPendingRemove(null)}>
-                取消
+                {t('action.cancel')}
               </button>
               <button className="btn danger" onClick={confirmRemove} disabled={deleting !== null}>
                 <Icon name="trash" size={13} />
-                确认删除
+                {t('action.confirmDelete')}
               </button>
             </>
           }
         >
           <p>
             {pendingRemove.kind === 'client'
-              ? <>确定删除安装包「<b>{pendingRemove.row.fileName}</b>」吗？删除后客户端将无法再从服务端下载该文件。</>
-              : <>确定删除 APK「<b>{pendingRemove.row.fileName}</b>」吗？删除后 PDA 扫码将无法再下载该文件。</>}
+              ? t('deleteModal.bodyClient', { name: pendingRemove.row.fileName })
+              : t('deleteModal.bodyPda', { name: pendingRemove.row.fileName })}
           </p>
         </Modal>
       )}

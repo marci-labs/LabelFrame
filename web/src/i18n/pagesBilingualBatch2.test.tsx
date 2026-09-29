@@ -1,0 +1,234 @@
+// @vitest-environment jsdom
+// 迭代 112（#246）AC 双语冒烟（第二批迁移页面）：设计器 / 属性面板 / 设置 / 下载中心中英两语言渲染——
+// zh-CN（vitest.setup 钉住首启语言）断言中文文案；changeLocale('en') 切换后断言英文文案且页面文本不再含 CJK
+// （业务数据一律 ASCII，避免数据噪声）；再切回中文恢复（108 惯例：en 行为用 changeLocale 显式切换）。
+// 另锚定待决议-1 建议项：UI 层数据性默认值随 locale（defaultElement 文本「文本」/「Text」、
+// 新建模板分组「默认」/「Default」）——模板存储值不受语言影响的语义由 zh 态与现状等价保证。
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ClientPackageInfo, InstalledPluginInfo, PdaPackageInfo, PluginPackageInfo, PrintSettings, PrinterStatus, TemplatePackage } from '../lib/api/types'
+import { AppProvider } from '../state/AppContext'
+import { Designer } from '../pages/Designer'
+import { PropsPanel } from '../pages/designer/PropsPanel'
+import { Settings } from '../pages/Settings'
+import { DownloadCenter } from '../pages/DownloadCenter'
+import { defaultElement } from '../lib/design/types'
+import i18next, { changeLocale } from './index'
+
+configure({ asyncUtilTimeout: 8000 })
+
+const mocks = vi.hoisted(() => ({
+  server: {
+    healthz: vi.fn(),
+    listTemplates: vi.fn(),
+    getTemplate: vi.fn(),
+    saveTemplate: vi.fn(),
+    listClientPackages: vi.fn(),
+    listPluginPackages: vi.fn(),
+    listPdaPackages: vi.fn(),
+    uploadClientPackage: vi.fn(),
+    uploadPdaPackage: vi.fn(),
+    deleteClientPackage: vi.fn(),
+    deletePdaPackage: vi.fn(),
+  },
+  local: {
+    healthz: vi.fn(),
+    getTemplate: vi.fn(),
+    getHostConfig: vi.fn(),
+    getTransport: vi.fn(),
+    getPrinterStatus: vi.fn(),
+    getPrintSettings: vi.fn(),
+    setPrintSettings: vi.fn(),
+    listInstalledPlugins: vi.fn(),
+  },
+}))
+
+vi.mock('../lib/api/client', () => ({
+  serverApi: mocks.server,
+  localApi: mocks.local,
+  setServerBaseUrl: vi.fn(),
+  clientPackageDownloadUrl: (name: string) => `/api/client-packages/${name}`,
+  pdaPackageDownloadUrl: (name: string) => `/api/pda-packages/${name}`,
+}))
+vi.mock('../lib/uiMode', () => ({ UI_MODE: 'client', isServerUi: false }))
+// 画布桩：react-konva 重组件（jsdom 无 2d context），本文件只验文案不测画布交互（Designer.test 同口径）
+vi.mock('../pages/designer/CanvasViewport', () => ({
+  CanvasViewport: () => null,
+}))
+
+// 业务数据一律 ASCII（no-CJK 断言只针对界面文案）
+const PKG: TemplatePackage = {
+  name: 'Bin-Label',
+  group: 'Default',
+  contract: { name: 'contract-1', version: '1', fields: [] },
+  layout: { name: 'layout-1', contractName: 'contract-1', contractVersion: '1', widthMm: 70, heightMm: 50, elements: [] },
+  testData: {},
+}
+const CLIENT_PKG: ClientPackageInfo = { fileName: 'LabelFrameClient-1.2.0.msi', sizeBytes: 1048576, modifiedAt: '2026-09-01T10:00:00Z' }
+const PDA_PKG: PdaPackageInfo = { fileName: 'LabelFramePda-1.2.0.apk', sizeBytes: 2097152, modifiedAt: '2026-09-01T11:00:00Z' }
+const PLUGIN_PKG: PluginPackageInfo = { fileName: 'demo.lfpkg', pluginId: 'demo', name: 'Demo', version: '1.0', sizeBytes: 1024, modifiedAt: '2026-09-01T12:00:00Z', valid: true }
+const INSTALLED: InstalledPluginInfo[] = []
+const PRINTER: PrinterStatus = { isOnline: true, isPaperOut: false, isPaused: false, message: '' }
+const PRINT_SETTINGS: PrintSettings = { batchEnabled: false, batchSize: 10, batchIntervalMs: 500 }
+
+const CJK = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  window.localStorage.clear()
+  window.sessionStorage.clear()
+  mocks.server.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
+  mocks.local.healthz.mockResolvedValue({ service: 'LabelFrame.WinHost', status: 'ok' })
+  mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'device-1', deviceName: 'PC-1' })
+  mocks.local.getTransport.mockResolvedValue({ mode: 'Log', params: {} })
+  mocks.local.getPrinterStatus.mockResolvedValue(PRINTER)
+  mocks.local.getPrintSettings.mockResolvedValue(PRINT_SETTINGS)
+  mocks.local.listInstalledPlugins.mockResolvedValue(INSTALLED)
+  mocks.server.listTemplates.mockResolvedValue([PKG])
+  mocks.server.getTemplate.mockResolvedValue(PKG)
+  mocks.server.listClientPackages.mockResolvedValue([CLIENT_PKG])
+  mocks.server.listPluginPackages.mockResolvedValue([PLUGIN_PKG])
+  mocks.server.listPdaPackages.mockResolvedValue([PDA_PKG])
+})
+
+afterEach(() => {
+  cleanup()
+  window.localStorage.clear()
+  if (i18next.language !== 'zh-CN') changeLocale('zh-CN')
+})
+
+describe('第二批迁移页面双语渲染冒烟（迭代 112 · #246）', () => {
+  it('设计器（新建模板）：中文态工具栏 / 左栏 / 右栏 → 切 en 全英文且无 CJK；分组默认值随语言（待决议-1）', async () => {
+    const { container } = render(
+      <AppProvider>
+        <Designer request={{ kind: 'new' }} onClose={() => {}} />
+      </AppProvider>,
+    )
+    // zh 态：工具栏与左栏（画布已桩掉）
+    expect(await screen.findByDisplayValue('默认')).toBeTruthy() // 数据性默认值（待决议-1）
+    expect(screen.getByRole('button', { name: /保存模板/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /导出设计/ })).toBeTruthy()
+    expect(screen.getByText('控件栏')).toBeTruthy()
+    expect(screen.getByText('打印字段')).toBeTruthy()
+    expect(screen.getByText('图层')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '属性' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '测试默认值' })).toBeTruthy()
+
+    changeLocale('en')
+    await waitFor(() => expect(screen.getByRole('button', { name: /Save Template/ })).toBeTruthy())
+    expect(screen.getByRole('button', { name: /Export Design/ })).toBeTruthy()
+    expect(screen.getByText('Widgets')).toBeTruthy()
+    expect(screen.getByText('Print Fields')).toBeTruthy()
+    expect(screen.getByText('Layers')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Properties' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Test Defaults' })).toBeTruthy()
+    expect(CJK.test(container.textContent ?? '')).toBe(false)
+
+    changeLocale('zh-CN')
+    await waitFor(() => expect(screen.getByRole('button', { name: /保存模板/ })).toBeTruthy())
+  })
+
+  it('属性面板（文本元素）：中文态分组属性与字体显示名 → 切 en 全英文且无 CJK；字体内部值不变', async () => {
+    const textEl = { ...defaultElement('Text', 't1'), text: 'A-01' }
+    const onChange = vi.fn()
+    const { container } = render(<PropsPanel elements={[textEl]} selected={['t1']} viewMode="fit" onChange={onChange} onAlign={() => {}} onDelete={() => {}} />)
+    // zh 态：分组标题 + 字体显示名「微软雅黑」（内部值 Microsoft YaHei 不随语言变化）
+    expect(screen.getByText('文本')).toBeTruthy()
+    expect((screen.getByLabelText('字体') as HTMLSelectElement).value).toBe('Microsoft YaHei')
+    expect((screen.getByLabelText('字体') as HTMLSelectElement).textContent).toContain('微软雅黑')
+    expect(screen.getByLabelText('字高')).toBeTruthy()
+    expect(screen.getByLabelText('水平对齐') as HTMLSelectElement).toHaveProperty('value', 'Left')
+
+    changeLocale('en')
+    await waitFor(() => expect(screen.getByText('Text')).toBeTruthy())
+    const fontEn = screen.getByLabelText('Font') as HTMLSelectElement
+    expect(fontEn.value).toBe('Microsoft YaHei') // 内部名不变
+    expect(fontEn.textContent).toContain('Microsoft YaHei') // en 显示名 = 内部名
+    expect(screen.getByLabelText('Font height')).toBeTruthy()
+    expect(CJK.test(container.textContent ?? '')).toBe(false)
+
+    changeLocale('zh-CN')
+    await waitFor(() => expect(screen.getByText('文本')).toBeTruthy())
+  })
+
+  it('属性面板（空态 / 多选对齐）：中英两态', async () => {
+    render(<PropsPanel elements={[]} selected={[]} viewMode="fit" onChange={() => {}} onAlign={() => {}} onDelete={() => {}} />)
+    expect(screen.getByText('在画布上选中元素后显示属性。')).toBeTruthy()
+    changeLocale('en')
+    await waitFor(() => expect(screen.getByText('Select an element on the canvas to show its properties.')).toBeTruthy())
+  })
+
+  it('设置页：中文态各卡片 → 切 en 全英文且无 CJK（含连接方式面板展开）', async () => {
+    const { container } = render(
+      <AppProvider>
+        <Settings />
+      </AppProvider>,
+    )
+    // zh 态：标题 + 各卡片头 + 更新与插件表格表头
+    expect(await screen.findByText('服务端地址', { selector: '.panel-head' })).toBeTruthy()
+    expect(screen.getByText('连接方式')).toBeTruthy()
+    expect(screen.getByText('打印批次')).toBeTruthy()
+    expect(screen.getByText('打印机')).toBeTruthy()
+    expect(screen.getByText('更新与安装包')).toBeTruthy()
+    expect(screen.getByText('插件管理')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /测试连接/ })).toBeTruthy()
+    // 展开连接方式：模式单选项（modeLabel 随语言）
+    fireEvent.click(screen.getByText('连接方式'))
+    expect(await screen.findByRole('radio', { name: /模拟打印/ })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /网络打印机/ })).toBeTruthy()
+
+    changeLocale('en')
+    await waitFor(() => expect(screen.getByText('Server Address', { selector: '.panel-head' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('radio', { name: /Simulated printing/ })).toBeTruthy())
+    expect(screen.getByRole('radio', { name: /Network printer/ })).toBeTruthy()
+    await waitFor(() => expect(screen.getByRole('columnheader', { name: 'File Name' })).toBeTruthy())
+    expect(screen.getByRole('columnheader', { name: 'Status' })).toBeTruthy()
+    expect(screen.getByText('demo')).toBeTruthy() // 可用插件 pluginId（单元格内）
+    // no-CJK 查页面本体（.page）但排除语言卡片——「中文」选项名固定各自语言原文（108 惯例，不随当前语言翻译）
+    const langPanel = container.querySelector('[data-testid="language-panel"]')
+    const pageText = (container.querySelector('.page')!.textContent ?? '').replace(langPanel?.textContent ?? '', '')
+    expect(CJK.test(pageText)).toBe(false)
+
+    changeLocale('zh-CN')
+    await waitFor(() => expect(screen.getByText('服务端地址', { selector: '.panel-head' })).toBeTruthy())
+  })
+
+  it('下载中心：中文态双分区表格 → 切 en 全英文且无 CJK', async () => {
+    const { container } = render(
+      <AppProvider>
+        <DownloadCenter />
+      </AppProvider>,
+    )
+    expect(await screen.findByText('LabelFrameClient-1.2.0.msi')).toBeTruthy()
+    expect(screen.getByText('下载中心')).toBeTruthy()
+    expect(screen.getByText('客户端下载（PC）')).toBeTruthy()
+    expect(screen.getByText('PDA 下载（Android）')).toBeTruthy()
+    expect(screen.getAllByRole('columnheader', { name: '二维码' }).length).toBe(2)
+    expect(screen.getByRole('button', { name: '上传客户端安装包' })).toBeTruthy()
+
+    changeLocale('en')
+    await waitFor(() => expect(screen.getByText('Download Center')).toBeTruthy())
+    expect(screen.getByText('Client Download (PC)')).toBeTruthy()
+    expect(screen.getByText('PDA Download (Android)')).toBeTruthy()
+    expect(screen.getAllByRole('columnheader', { name: 'QR Code' }).length).toBe(2)
+    expect(screen.getByRole('button', { name: 'Upload Client Package' })).toBeTruthy()
+    expect(CJK.test(container.textContent ?? '')).toBe(false)
+
+    changeLocale('zh-CN')
+    await waitFor(() => expect(screen.getByText('下载中心')).toBeTruthy())
+  })
+
+  it('待决议-1 锚定：defaultElement 文本默认值随 locale（zh「文本」/ en「Text」），存量 Literal 不动', () => {
+    // UI 层数据性默认值跟随当前界面语言（Issue #246 待决议-1 建议项）
+    expect(defaultElement('Text', 'a1').text).toBe('文本')
+    changeLocale('en')
+    expect(defaultElement('Text', 'b2').text).toBe('Text')
+    // 存量 Literal 不动：语言切换不回写已存在元素的文本（存储值不受语言影响）
+    const existing = defaultElement('Text', 'a1x')
+    expect(existing.text).toBe('Text') // 构造期语言即 en
+    changeLocale('zh-CN')
+    expect(existing.text).toBe('Text') // 切回中文后不回译（存储值语义）
+    expect(defaultElement('Text', 'c3').text).toBe('文本')
+  })
+})

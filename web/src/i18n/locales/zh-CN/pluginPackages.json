@@ -1,0 +1,33 @@
+{
+  "page": {
+    "title": "插件管理",
+    "subtitle": "插件包统一在此分发（上传 / 下载 / 删除）"
+  },
+  "upload": "上传插件包",
+  "refreshTitle": "重新拉取插件包列表",
+  "loadFailed": "获取插件包列表失败。",
+  "uploadOk": "插件包「{{name}}」已上传，客户端可在「设置 → 插件管理」中安装。",
+  "uploadFailed": "上传失败。",
+  "deleteFailed": "删除失败。",
+  "deleteOk": "插件包「{{name}}」已删除。",
+  "loading": "正在加载插件包列表…",
+  "empty": "暂无插件包",
+  "emptyHint": "点击右上角「上传插件包」上传插件包；上传后客户端可在「设置 → 插件管理」中安装。",
+  "columns": {
+    "name": "名称",
+    "version": "版本",
+    "pluginId": "插件 ID",
+    "size": "大小",
+    "modifiedAt": "修改时间",
+    "status": "状态"
+  },
+  "valid": "有效",
+  "invalid": "无效",
+  "parseFailed": "解析失败",
+  "downloadTitle": "下载 {{name}}",
+  "deleteTitle": "删除该插件包（客户端将无法再安装）",
+  "deleteModal": {
+    "title": "删除插件包",
+    "body": "确定删除插件包「{{name}}」吗？删除后客户端将无法再从服务端下载该插件。"
+  }
+}
