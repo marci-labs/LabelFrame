@@ -111,7 +111,23 @@ body {
   border-radius: 0 2px 2px 0;
   background: var(--accent);
 }
-.nav-foot { padding: 8px 0; border-top: 1px solid var(--line-soft); display: flex; justify-content: center; }
+/* 迭代 114（#260）：nav-foot 并列连接状态点与语言切换器（居中一行，窄导航 60px 内不换行） */
+.nav-foot { padding: 8px 0; border-top: 1px solid var(--line-soft); display: flex; align-items: center; justify-content: center; gap: 7px; }
+
+/* 语言切换器（循环单按钮「中 / EN」）：极简文字按钮，与导航 tab 字号一致的弱化视觉 */
+.nav-lang {
+  border: none;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.nav-lang:hover { background: var(--bg); color: var(--ink); }
+.nav-lang:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* 连接状态灯（签名元素：全 App 的脉搏） */
 .status-dot {

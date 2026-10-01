@@ -2,6 +2,13 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 114：服务端构建语言切换入口——壳层导航尾部切换器（#260） · 2026-10-01
+- **壳层语言切换器（待决议-1 按建议项①）**：`App.tsx` nav-foot（连接状态点旁）新增循环单按钮「中 / EN」——当前语言短名可视（语言自名不随语言翻译，决策 #165 ③ 口径），点击互切即点即生效；client / server 两构建统一显示，server 构建无设置页也能一步切换（不再依赖 F12 改 localStorage，#246 陪验痛点）。
+- **双入口并存（AC-03）**：client 构建设置页语言卡保留不动，与壳层切换器同一 `changeLocale` 单点（localStorage 持久化 + changeLanguage + `<html lang>` 同步），显示同步、互切一致。
+- **词条（AC-04）**：`shell` 域新增 `langSwitch` 组 4 条（zhName / enName / switchToZh / switchToEn）zh-CN + en 镜像，en 覆盖断言自动纳管；`App.tsx` 已在全站圈禁内，无裸文案。
+- **测试**：新增 7 项 vitest——client 切换器在位 / 点击互切（词条 + html lang + localStorage）/ 全新模块图重载（等价刷新）保持 / 双入口一致（select 与按钮互相同步）；server 构建在位（无设置页断言重申）/ 点击切换 / 刷新保持（净增 → 478×双模式）。
+- **布局走查（AC-05）**：沙箱 stub API（独立端口，避开本机真实 WinHost 的 53960）+ 双 vite 实例（client / server 构建）+ playwright headless Chrome——35/35 程序化断言（切换器在位、不出 60px 导航边界、不遮连接状态点、无横向溢出、切换词条即时变化、reload 保持、0 未捕获异常）＋ 10 截图中英两态取证。
+
 ## 迭代 112：Web 文案迁移第二批与全站收尾——设置、设计器与下载中心（#246） · 2026-09-29
 - **页面 key 化（末批，108/111 惯例沿用）**：`Settings.tsx` / `TransportPanel.tsx` / `Designer.tsx` / `designer/SidePanel.tsx` / `designer/PropsPanel.tsx` / `designer/CanvasViewport.tsx` / `designer/ElementNode.tsx` / `DownloadCenter.tsx` / `PluginPackages.tsx` / `Devices.tsx` 用户可见文案全部 t() 化；按页新增域 `designer.json` / `downloadCenter.json` / `devices.json` / `pluginPackages.json`，`settings.json` 从语言卡片扩至全页，`common` 增补 action（save/download/delete/deleting/uploading/confirmDelete）、api.pluginTooLarge、transport.mode / zebraKind——zh-CN 值与原硬编码逐字一致（中文回归零变化）。
 - **lib 层兜底与显示名**：`design/types.ts`（typeLabel / layerLabel / elementContent / defaultElement）、`design/barcode.ts`（未绑定占位）、`design/format.ts`（导入错误）、`designer/shortcuts.ts`（快捷键清单改函数式）、`transport.ts`（MODE_LABELS / ZEBRA_KIND_LABELS 改 modeLabel / zebraKindLabel 函数）、`pluginLimits.ts`、`useTemplatePreview.ts`、`AppContext.tsx` 状态消息——调用期读 i18next 单例，消费组件订阅重渲染；条码占位判别从本地化字符串比较改为语义态 `elementContentState`（跨语言不再依赖文案比对）。

@@ -15,6 +15,12 @@
     "serverConnected": "服务端已连接",
     "serverDisconnected": "服务端未连接"
   },
+  "langSwitch": {
+    "zhName": "中",
+    "enName": "EN",
+    "switchToZh": "切换到中文",
+    "switchToEn": "切换到 English"
+  },
   "statusbar": {
     "ready": "就绪",
     "localServiceUp": "本机打印服务：运行中",
