@@ -9,7 +9,8 @@
 - **全站圈禁（AC-01/02）**：`labelframe/no-bare-cjk-jsx` 从「已迁文件清单」升级为全站顶层规则（语言包 JSON 不在 oxlint 范围；测试 fixtures 白名单仅 Popover / ErrorBoundary 两测试文件），新增页面自动受保护；en 覆盖 zh-CN 全 key 断言纳入 4 个新域（11 域逐文件，缺失即红）。
 - **机制文档（AC-05）**：`web/src/i18n/README.md`——key 惯例、新增文案流程、en 词条维护 + 覆盖断言、圈禁白名单口径、数据性默认值语义（待决议-1 结论）。
 - **测试与走查**：新增第二批双语冒烟 6 项（设计器 / 属性面板 / 设置 / 下载中心 zh→en→zh + 待决议-1 锚定；净增 → 471）；存量中文断言仅 shortcuts.test.ts 随函数式接口机械调整（zh 断言值不变）；AC-03 英文布局走查（沙箱 stub API + 双 vite 实例 + playwright headless）22/22 程序化断言＋20 截图：设置页（连接表单 / 卸载弹窗）、设计器（属性面板密集表单 16 行两档滚动位 / 快捷键弹窗 / 离开保护三选）、下载中心（双分区表格 / PDA 长提示 / 删除确认弹窗）中英两态无溢出无未插值、0 未捕获 JS 异常。
-- en 翻译口径沿用 #245 术语表；107 底账 web 侧逐文件销账（结果评论回写 #240）；AC-06 用户全站英文态终验转 `待验收`。
+- en 翻译口径沿用 #245 术语表；107 底账 web 侧逐文件销账（结果评论回写 #240）。
+- **验收（2026-10-01）**：AC-06 用户陪验全站英文态终验通过（设置 → 设计器 → 下载中心 → 工作台全流程；陪验中插件名称显示疑点定性为无效假包素材的按设计降级展示，非产品缺陷），证据回写 #246 后结项。
 
 ## 迭代 111：Web 文案迁移第一批——工作台、作业历史与数据打印（#245） · 2026-09-29
 - **页面 key 化（108 惯例沿用）**：`Workbench.tsx` / `WorkbenchPreview.tsx` / `JobHistory.tsx` / `DataPrint.tsx`（含 MappingModal / ImagePreviewModal / JobPanel）用户可见文案全部 t() 化；按页新增域文件 `workbench.json`（39 词条）/ `jobHistory.json`（25）/ `dataPrint.json`（112），跨页共用词条入 `common`（action / state / jobStatus / column / device / value / api / transport 组，+42）——共用作业状态口径抽 `useJobStatusLabel()` hook（未知状态回退原始值与迁移前一致）；zh-CN 值与原硬编码逐字一致（中文回归零变化）。
@@ -18,7 +19,8 @@
 - **富文案**：词条内嵌标签统一 react-i18next Trans 位置语法（`<0>…</0>` + components 数组）——删除确认弹窗加粗模板名、作业进度区「作业历史」内联跳转链接（链接语义按钮行为不变）。
 - **防线扩展**：圈禁清单 2 → 7 文件（+Workbench / WorkbenchPreview / JobHistory / DataPrint / ErrorBoundary）；en 覆盖 zh-CN 全 key 断言纳入 3 个新域（缺失即红）。
 - **测试**：新增三页面双语渲染冒烟 3 项（zh 断言 → 切 en 全英文且无 CJK → 切回恢复；含 document.title 与状态栏初值回归），存量中文断言零改动全绿（vitest.setup 钉 zh 首启；净增 3 项 → 441）；AC-03 英文布局走查（沙箱 stub + playwright）18/18 程序化断言＋9 截图：工作台卡片脚按钮组 1440/1100 两档无裁剪（#225 前科复核）、删除确认弹窗 / 表单 / 作业历史明细中英两态无溢出。
-- en 翻译口径（待决议-1 按建议项）：执行会话初翻＋术语表回写 #245（作业 = job、模板 = template、目标设备 = target device 等），AC-06 用户抽验转 `待验收`。Settings / Designer / PropsPanel / DownloadCenter（迭代 112）不在本轮。
+- en 翻译口径（待决议-1 按建议项）：执行会话初翻＋术语表回写 #245（作业 = job、模板 = template、目标设备 = target device 等）。Settings / Designer / PropsPanel / DownloadCenter（迭代 112）不在本轮。
+- **验收（2026-10-01）**：AC-06 用户陪验英文态抽验通过（工作台 / 数据与打印 / 作业历史三页面，术语对照术语表无异议），证据回写 #245 后结项。
 
 ## 迭代 109 返修：LF_* 错误码参数键统一与拆码——单码单参数键集（#242） · 2026-09-29
 - **根因修复（AC-04 走查失败项 1a）**：LF_SRV_006 同码两处后端调用点参数键不一致（`TemplateEndpoints.cs` GET/导出/预览键 `name` vs `ServerService.cs` 作业提交链键 `templateName`），en 码表词条 `{{templateName}}` 只适配后者 → 模板库全部共享端点（工作台编辑/打印打开、数据页模板加载、预览、导出）在 en 态回退中文。统一为 `templateName`（共享端点同时覆盖 WinHost 接线的 LF_TPL_001），中文渲染输出不变（占位名变化不改变替换后文案）。
@@ -27,7 +29,6 @@
 - **防复发断言**：① dotnet 源扫描测试（`ErrorParamKeyConsistencyTests`）——解析 `src` 全部携带 params 的错误构造调用点（Templated 助手 / Dictionary 惯用法，含共享端点 Server/WinHost 接线展开），按码分组断言键集一致，并与 zh / en 两份码表词条占位符逐键对齐；站点数下限 + 解析完整性断言防正则失配假绿。② web en 渲染变体矩阵（`errorParamVariants.test.ts`）——全部 19 个变体逐条断言英文词条、插值正确、无 `{{` 残留（含 LF_SRV_006 两变体与 LF_SRV_001/012 各变体）。③ 端点集成锚点：模板库 404 / 提交链 / by-ip / callbackUrl 的 code+params 断言。
 - 不在范围（维持验收侧）：渲染层多键兼容、接受变体回退、en 界面整轮复测（walk 脚本与证据链可复用）。
 - **验收（返修后 en 界面整轮复验，2026-09-29）**：沙箱走查 18/18 断言通过——原失败项 1a（模板库端点变体）en 渲染 `Template not found: <name>.` 英文词条＋插值在位；拆码 LF_SRV_012（`No device found for IP: <ip>.`）/ LF_SRV_013（`Invalid callbackUrl …: <url>.`）经「真实后端 ErrorView 捕获＋UI 提交链重放」复验通过；未知码回退后端中文、无码回退前端文案、zh-CN 直用后端 message、0 未捕获异常。证据回写 #242 后结项。
-## 迭代 110：PDA 宿主多语言——Android 资源体系与错误码翻译（#244） · 2026-09-29
 
 ## 迭代 110：PDA 宿主多语言——Android 资源体系与错误码翻译（#244） · 2026-09-29
 - **Android 资源体系（决策 #164 ⑤，待决议-1 按建议项）**：`Resources/values/strings.xml`（缺省＝中文，与现状文案逐条等价）＋`Resources/values-en/strings.xml`（135 键含语言哨兵 `current_language`），MainActivity 各页面 / 对话框 / 保存提示 / Toast、`[Activity(Label)]` 与 manifest 应用名（`@string/app_name`）、PrintHostService 常驻通知标题与状态内容、`LabelHostConfig.PrinterDisplay` 连接方式摘要全部改资源 id 引用——语言跟随系统（其余系统语言回退缺省中文），带参模板用 `{0}` 位置占位（string.Format + InvariantCulture）。**通知渠道名不改名**（Android 渠道创建后不可改名，维持中文现状——决策 #164 ⑤ 既有口径）；HostLog 诊断 / 崩溃摘要维持中文（#164 ②）。
