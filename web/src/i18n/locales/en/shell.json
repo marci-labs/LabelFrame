@@ -15,6 +15,12 @@
     "serverConnected": "Server connected",
     "serverDisconnected": "Server disconnected"
   },
+  "langSwitch": {
+    "zhName": "中",
+    "enName": "EN",
+    "switchToZh": "Switch to Chinese",
+    "switchToEn": "Switch to English"
+  },
   "statusbar": {
     "ready": "Ready",
     "localServiceUp": "Local print service: running",

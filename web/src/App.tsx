@@ -11,9 +11,12 @@
 // 迭代 108（#241）：壳层文案 key 化（样板迁移）——导航 / 状态栏 / 日志抽屉 / 清空确认弹窗全部走 t()
 // （`useTranslation('shell')`，common 词条经 fallbackNS 兜底），作为 111/112 页面迁移的 key 命名与用法样例；
 // 本文件已圈入 lint 防线（.oxlintrc.json overrides，裸中文 JSX 会被 oxlint 拦截——决策 #164 ⑦）。
+// 迭代 114（#260）：nav-foot 语言切换器——循环单按钮「中 / EN」（当前语言可视，点击互切即点即生效），
+// server 构建无设置页也能一步切换；与设置页语言卡同一 `changeLocale` 单点（双入口同状态源，互切一致）。
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { changeLocale, toAppLocale } from './i18n'
 import { AppProvider, useApp } from './state/AppContext'
 import { Icon, LabelLogo } from './components/Icon'
 import type { IconName } from './components/Icon'
@@ -59,7 +62,8 @@ function truncateIps(ips: string[], max = 28): string {
 
 function Shell() {
   // 迭代 108（#241）：壳层绑定 shell 域命名空间；common 词条（取消等）经 fallbackNS 免前缀兜底
-  const { t } = useTranslation('shell')
+  // 迭代 114（#260）：解构 i18n 实例取当前语言（useTranslation 订阅 languageChanged，切换即重渲染）
+  const { t, i18n } = useTranslation('shell')
   const [tab, setTab] = useState<TabId>('workbench')
   const [designerReq, setDesignerReq] = useState<DesignerRequest | null>(null)
   // 迭代 104（#225，决策 #161）：日志抽屉「清空」的确认弹窗开关——点击先确认，确认后才清空
@@ -122,6 +126,11 @@ function Shell() {
     icon,
   }))
 
+  // 迭代 114（#260）：壳层语言切换器状态——当前语言短名（「中」/「EN」，语言自名不随语言翻译，决策 #165 ③）
+  // 与切换提示词条；点击经 changeLocale 单点互切（localStorage 持久化 + changeLanguage + <html lang> 同步）。
+  const locale = toAppLocale(i18n.language)
+  const switchToEn = locale === 'zh-CN'
+
   return (
     <div className="app">
       <div className="app-body">
@@ -157,6 +166,17 @@ function Shell() {
             }
           >
             <span className={'status-dot' + ((isServerUi ? app.connected : app.localServiceUp) ? ' on' : '')} />
+            {/* 迭代 114（#260）：语言切换器（连接状态点旁）——server 构建无设置页的一步切换入口；
+                按钮自身 title 覆盖容器连接提示（悬浮按钮时显示切换语义），两构建统一显示 */}
+            <button
+              type="button"
+              className="nav-lang"
+              title={t(switchToEn ? 'langSwitch.switchToEn' : 'langSwitch.switchToZh')}
+              aria-label={t(switchToEn ? 'langSwitch.switchToEn' : 'langSwitch.switchToZh')}
+              onClick={() => changeLocale(switchToEn ? 'en' : 'zh-CN')}
+            >
+              {t(switchToEn ? 'langSwitch.zhName' : 'langSwitch.enName')}
+            </button>
           </div>
         </nav>
 
