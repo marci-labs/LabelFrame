@@ -2,6 +2,12 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 115：WinHost 托盘右键菜单标准前置模式补齐——点击外部自动关闭与反复弹出修复（#263） · 2026-10-02
+- **根因修复（三件套，KB135788）**：`TrayIconService.ShowMenu()` 原裸调 `TrackPopupMenu`，缺 Win32 通知图标上下文菜单标准前置模式——现 `TrackPopupMenu` 前 `SetForegroundWindow(owner)` 前置隐藏 owner 窗口（修复症状 1：右键弹菜单后点击其他位置菜单不收起）；菜单关闭后 `PostMessage(owner, WM_NULL)` 清除菜单模态状态（修复症状 2：「打开界面」抢前台后再次右键菜单弹不出）；`SetForegroundWindow` 从托盘线程直接调用（Win32 标准用法）。
+- **衍生隐患消除**：`TrackPopupMenu` 模态循环运行期间再次右键会重入 `ShowMenu` 嵌套调用（行为未定义）——以菜单运行标志早退消除。
+- **可测性（AC-01）**：弹出逻辑收敛到新类 `TrayMenuPresenter`（窗口前置 / 菜单弹出 / 消息投递三个 Win32 调用点可注入替身，沿用 `TrayQuitSignaler` 先例·缺陷 #58 修法）；净增 4 项单测断言三件套调用时序（前置先于弹出、WM_NULL 后于菜单关闭、owner 一致）、模态期间重入早退无嵌套、菜单关闭后可再次弹出。
+- **回归**：双击打开界面、菜单「打开界面 / 退出」分发逻辑不变（`TrayIconService` 仅改为委托 presenter 取命令 Id）；托盘桌面交互项（AC-02~04）转 `待验收`（恢复条件：用户桌面复验）。
+
 ## 迭代 114：服务端构建语言切换入口——壳层导航尾部切换器（#260） · 2026-10-01
 - **壳层语言切换器（待决议-1 按建议项①）**：`App.tsx` nav-foot（连接状态点旁）新增循环单按钮「中 / EN」——当前语言短名可视（语言自名不随语言翻译，决策 #165 ③ 口径），点击互切即点即生效；client / server 两构建统一显示，server 构建无设置页也能一步切换（不再依赖 F12 改 localStorage，#246 陪验痛点）。
 - **双入口并存（AC-03）**：client 构建设置页语言卡保留不动，与壳层切换器同一 `changeLocale` 单点（localStorage 持久化 + changeLanguage + `<html lang>` 同步），显示同步、互切一致。

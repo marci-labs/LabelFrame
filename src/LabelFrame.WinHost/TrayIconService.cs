@@ -19,14 +19,6 @@ public sealed class TrayIconService : IDisposable
     private const uint WM_RBUTTONUP = 0x0205;
     private const uint WM_QUIT = 0x0012;
 
-    private const uint MF_STRING = 0x0000;
-    private const uint MF_SEPARATOR = 0x0800;
-    private const uint TPM_RETURNCMD = 0x0100;
-    private const uint TPM_LEFTALIGN = 0x0000;
-    private const uint TPM_TOPALIGN = 0x0000;
-
-    private const int CmdOpen = 1;
-    private const int CmdExit = 2;
     private const string WindowClass = "LabelFrameTrayWindow";
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -109,35 +101,22 @@ public sealed class TrayIconService : IDisposable
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
-    [DllImport("user32.dll")]
-    private static extern bool GetCursorPos(out POINT lpPoint);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr CreatePopupMenu();
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern bool AppendMenu(IntPtr hMenu, uint uFlags, IntPtr uIDNewItem, string lpNewItem);
-
-    [DllImport("user32.dll")]
-    private static extern bool DestroyMenu(IntPtr hMenu);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr TrackPopupMenu(IntPtr hMenu, uint uFlags, int x, int y, int nReserved, IntPtr hWnd, IntPtr prcRect);
-
     [DllImport("kernel32.dll")]
     private static extern uint GetCurrentThreadId();
 
     private readonly Action<string>? _log;
     private readonly TrayQuitSignaler _quitSignaler;
+    private readonly TrayMenuPresenter _menuPresenter;
     private IntPtr _hwnd;
     private WndProcDelegate? _wndProc; // 防止委托被 GC
     private int _disposed;
 
-    /// <summary>创建托盘服务（可选日志回调；quitSignaler 可注入观测替身，默认自建）。</summary>
-    public TrayIconService(Action<string>? log = null, TrayQuitSignaler? quitSignaler = null)
+    /// <summary>创建托盘服务（可选日志回调；quitSignaler / menuPresenter 可注入观测替身，默认自建）。</summary>
+    public TrayIconService(Action<string>? log = null, TrayQuitSignaler? quitSignaler = null, TrayMenuPresenter? menuPresenter = null)
     {
         _log = log;
         _quitSignaler = quitSignaler ?? new TrayQuitSignaler(log);
+        _menuPresenter = menuPresenter ?? new TrayMenuPresenter();
     }
 
     /// <summary>启动托盘（独立消息循环线程）。</summary>
@@ -240,19 +219,15 @@ public sealed class TrayIconService : IDisposable
 
     private void ShowMenu(Action openUi, Func<Task> shutdown)
     {
-        GetCursorPos(out var pt);
-        var menu = CreatePopupMenu();
-        AppendMenu(menu, MF_STRING, new IntPtr(CmdOpen), "打开界面");
-        AppendMenu(menu, MF_SEPARATOR, IntPtr.Zero, string.Empty);
-        AppendMenu(menu, MF_STRING, new IntPtr(CmdExit), "退出");
-        var cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, 0, _hwnd, IntPtr.Zero);
-        DestroyMenu(menu);
+        // 弹出与标准前置模式（SetForegroundWindow → TrackPopupMenu → PostMessage WM_NULL）由
+        // TrayMenuPresenter 执行（迭代 115，#263），本方法只按返回命令分发动作。
+        var cmd = _menuPresenter.ShowMenu(_hwnd);
 
-        if (cmd == CmdOpen)
+        if (cmd == TrayMenuPresenter.CmdOpen)
         {
             openUi();
         }
-        else if (cmd == CmdExit)
+        else if (cmd == TrayMenuPresenter.CmdExit)
         {
             _ = Task.Run(async () =>
             {
