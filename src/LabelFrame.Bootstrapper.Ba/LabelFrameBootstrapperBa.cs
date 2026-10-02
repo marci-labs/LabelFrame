@@ -433,7 +433,7 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
                 : arguments.ManifestSource!;
             Log($"布局目录生成开始：目标 {layoutDirectory}，清单来源 {source}。");
 
-            var form = new Ui.LayoutProgressForm();
+            var form = new Ui.LayoutProgressForm(Log);
             // Progress 在 UI 线程构造：回调经同步上下文封送（LayoutProgressForm.Report 自带 InvokeRequired 防御）
             var progress = new Progress<OfflineLayoutProgress>(form.Report);
             var completion = new TaskCompletionSource<(int ExitCode, string Message)>(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -2,6 +2,7 @@ namespace LabelFrame.Bootstrapper.Ba.Ui;
 
 using System.Windows.Forms;
 using LabelFrame.Bootstrapper.OfflineLayout;
+using LabelFrame.Bootstrapper.Wizard;
 
 /// <summary>
 /// 离线布局目录生成进度窗（迭代 70 / #89，决策 #135）：<c>--layout</c> 模式的轻量单窗呈现——
@@ -19,8 +20,18 @@ internal sealed class LayoutProgressForm : Form
     private readonly Button _cancelButton = new();
     private readonly CancellationTokenSource _cancellation = new();
 
-    public LayoutProgressForm()
+    /// <summary>首显主动置前器（迭代 116 / #265）：与向导同一缺陷类——无前台权启动时进度窗静默不前置。</summary>
+    private readonly WizardForegroundActivator _foregroundActivator = new();
+
+    private readonly Action<string>? _log;
+
+    /// <summary>
+    /// 创建进度窗。
+    /// </summary>
+    /// <param name="log">Burn 日志写入（可选；首显置前结果留痕）。</param>
+    public LayoutProgressForm(Action<string>? log = null)
     {
+        _log = log;
         Text = "LabelFrame 离线布局目录生成";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterScreen;
@@ -57,6 +68,14 @@ internal sealed class LayoutProgressForm : Form
 
     /// <summary>取消令牌（取消按钮触发；窗体关闭同样触发——取消生成并非零退出）。</summary>
     public CancellationToken CancellationToken => _cancellation.Token;
+
+    /// <summary>首显主动置前（迭代 116 / #265）：与 <see cref="WizardForm"/> 同一组合拳（详见其 OnShown 注释）。</summary>
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        var outcome = _foregroundActivator.Activate(Handle);
+        _log?.Invoke($"布局进度窗首显置前：{WizardForegroundActivator.Describe(outcome)}。");
+    }
 
     /// <summary>报告生成进度（任意线程可调；封送 UI 线程呈现）。</summary>
     public void Report(OfflineLayoutProgress progress)

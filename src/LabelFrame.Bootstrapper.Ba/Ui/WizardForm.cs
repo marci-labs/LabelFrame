@@ -27,6 +27,9 @@ internal sealed class WizardForm : Form
 
     private readonly WizardNavigator<IWizardPage> _navigator;
 
+    /// <summary>首显主动置前器（迭代 116 / #265）：启动链无前台权时向导静默不前置——用户以为安装无响应。</summary>
+    private readonly WizardForegroundActivator _foregroundActivator = new();
+
     /// <summary>会话由 BA 创建注入（迭代 70 起）：布局目录隐式检测后 BA 已改写默认清单来源（决策 #132），本类不再自建会话。</summary>
     public WizardForm(LabelFrameBootstrapperBa ba, WizardSession session)
     {
@@ -101,6 +104,19 @@ internal sealed class WizardForm : Form
 
     /// <summary>是否处于安装执行中（进度页运行期）：禁用关闭与导航。</summary>
     internal bool InstallInProgress { get; private set; }
+
+    /// <summary>
+    /// 首显主动置前（迭代 116 / #265，AC-02）：向导此前完全依赖系统默认前台授予链，启动者无前台权
+    /// （计划任务 / 后台进程 / Explorer 未持前台 / 下载后立即切走）时静默不前置。已在前台则零调用零扰动
+    /// （正常双击链不回归，AC-04）；否则组合置前（挂接 + 最小化还原 + 切换 + 前置请求），被拒时任务栏强闪烁兜底。
+    /// 结果写 Burn 日志（无前台权场景的机器可读证据行）。
+    /// </summary>
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        var outcome = _foregroundActivator.Activate(Handle);
+        _ba.Log($"向导首显置前：{WizardForegroundActivator.Describe(outcome)}。");
+    }
 
     /// <summary>就绪页加载清单成功后自动进入下一页（避免连点两次）。</summary>
     private void RequestNext()

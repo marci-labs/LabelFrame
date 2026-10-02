@@ -2,6 +2,13 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 116：安装程序提权提示不前置——BA 向导主动置前组合拳（#265） · 2026-10-02
+- **根因修复（BA 窗口显示策略，WiX Burn 结构不动）**：`LabelFrame.Bootstrapper.Ba` 向导（`WizardForm`）与离线布局进度窗（`LayoutProgressForm`，等效首显路径）首显时完全依赖系统默认前台授予链——启动者无前台权（计划任务 / 后台进程触发、Explorer 未持前台、下载后立即切走）时窗口静默不前置，用户以为安装无响应（#265 复现 S1 / S3 / S3b；S2 实证 MSI 直装路径提权请求甚至完全静默挂起）。现首显主动置前（用户拍板选项①组合拳＋闪烁兜底）：已在前台则零调用零扰动（正常双击链不回归）；否则 `AttachThreadInput`（本 UI 线程挂接当前前台线程）→ `ShowWindow(SW_MINIMIZE→SW_RESTORE)`（还原动作的前台授予独立于置前配额，S3c 预试证明单靠挂接 + `SetForegroundWindow` 会被前台锁拒）→ `SwitchToThisWindow` → `SetForegroundWindow`，仍被拒时 `FlashWindowEx(FLASHW_ALL|FLASHW_TIMERNOFG)` 任务栏强闪烁兜底（闪至前置自停）；结果写 Burn 日志（「向导首显置前：」行，机器可读证据）。
+- **可测性（AC-02 单测部分）**：置前逻辑收敛到新类 `LabelFrame.Bootstrapper.Wizard.WizardForegroundActivator`（前台探测 / 线程查询 / 输入队列挂接 / 显示切换 / 会话切换 / 前置请求 / 闪烁共七个 Win32 调用点可注入替身，沿用 `TrayMenuPresenter` 先例·#263 修法，落共享库供 BA（net48）与测试（net10）双引用）；净增 7 项单测：已在前台零扰动、组合拳全序列（挂接→最小化→还原→切换→前置→解除，无闪烁）、被拒转强闪烁兜底（解除不缺席）、请求成功即短路、同线程跳挂接、挂接失败照常组合、无前台窗口防御。
+- **S1 采样断言脚本化（AC-02）**：新增 `scripts/test-bundle-wizard-foreground.ps1`——移植 #265 复现采样器（每 0.9s `GetForegroundWindow` 归属＋被观察 BA 进程主窗口 `fg_match` 比对，日志行格式与复现日志一致），由 Interactive 计划任务驱动即为「无前台权启动者」S1 形态，断言向导 5 秒内成为前台（PASS/FAIL 退出码）；闪烁兜底为视觉形态不参与自动断言（Burn 日志行佐证）。
+- **安装触发链全景（AC-01，结论回写 Issue）**：双击 / 下载运行 / WinHost 升级触发三类链逐条取证——WinHost 无安装程序启动点（仅两处 `Process.Start` 均为打开浏览器 URL），客户端设置页「检查更新」仅版本比对＋下载链接（决策 #71 / #72 维持不做应用内自动升级）→ WinHost 链无实际缺陷，登记观察项（若未来应用内触发升级，须从用户点击的 UI 上下文启动安装程序保持前台链）。
+- **回归**：提权路径归一口径维持——用户走 Bootstrapper 向导时由确认页显式点击「安装」触发提权（此时向导已前置，授予链成立）；S2 的 msiexec 直装链属 Windows Installer 系统行为不在范围（Issue 明示）。**AC-02 的 VM 重放未做转 `待验收`**（LF-Accept-Win10 基线快照还原阻塞超 30 分钟纪律止损；恢复条件：还原基线后以 Interactive 计划任务驱动 `scripts/test-bundle-wizard-foreground.ps1` 重放 S1，断言向导 5 秒内前置）；AC-03/04 人工桌面项同转 `待验收`（恢复条件：用户桌面复验——向导点「安装」UAC 正常出现、双击正例不回归）。
+
 ## 迭代 115：WinHost 托盘右键菜单标准前置模式补齐——点击外部自动关闭与反复弹出修复（#263） · 2026-10-02
 - **根因修复（三件套，KB135788）**：`TrayIconService.ShowMenu()` 原裸调 `TrackPopupMenu`，缺 Win32 通知图标上下文菜单标准前置模式——现 `TrackPopupMenu` 前 `SetForegroundWindow(owner)` 前置隐藏 owner 窗口（修复症状 1：右键弹菜单后点击其他位置菜单不收起）；菜单关闭后 `PostMessage(owner, WM_NULL)` 清除菜单模态状态（修复症状 2：「打开界面」抢前台后再次右键菜单弹不出）；`SetForegroundWindow` 从托盘线程直接调用（Win32 标准用法）。
 - **衍生隐患消除**：`TrackPopupMenu` 模态循环运行期间再次右键会重入 `ShowMenu` 嵌套调用（行为未定义）——以菜单运行标志早退消除。
