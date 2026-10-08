@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-// 分步引导测试（迭代 119 · #276）：
+// 分步引导测试（迭代 119 · #276；en 逐字比对补强与归位 components/ 见迭代 120 · #278）：
 // - AC-04：步骤定义的 i18n key 与「✅ 文案定稿 v1」五条一一对应；zh 标题 / 正文逐字一致（定稿比对锚点）、
-//   单步正文 ≤ 40 字；步骤引用 key 在 en 语言包真实存在（键集全量一致性归 locales.test.ts 统一防线）；
+//   单步正文 ≤ 40 字；en 标题 / 正文 / 步骤按钮与定稿逐字一致（#278 AC-02 双语对称防线）；
+//   键集全量一致性归 locales.test.ts 统一防线；
 // - AC-01/02：首见自动启动、逐步推进（经 switchTab 切页）、跳过 / 完成 / Esc 均写首见标记、刷新不再自动出现；
 // - AC-03：状态栏「使用引导」重看入口再放完整一轮，重放不改变已看状态。
 // server 构建分支不渲染断言在 Guide.server.test.tsx（App.server.test.tsx 同款双跑拆分）。
@@ -11,22 +12,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
-import App from './App'
-import { Guide } from './components/Guide'
-import { GUIDE_SEEN_KEY, GUIDE_STEPS, guideAnchorSelector, isGuideSeen, markGuideSeen } from './lib/guide'
-import type { TabId } from './state/types'
-import zhGuide from './i18n/locales/zh-CN/guide.json'
-import enGuide from './i18n/locales/en/guide.json'
+import App from '../App'
+import { Guide } from './Guide'
+import { GUIDE_SEEN_KEY, GUIDE_STEPS, guideAnchorSelector, isGuideSeen, markGuideSeen } from '../lib/guide'
+import type { TabId } from '../state/types'
+import zhGuide from '../i18n/locales/zh-CN/guide.json'
+import enGuide from '../i18n/locales/en/guide.json'
 
 configure({ asyncUtilTimeout: 8000 })
 
-// ---- 「✅ 文案定稿 v1」逐字底稿（#276 定稿 json；AC-04 定稿比对与 zh≤40 字断言依据） ----
-const FINALIZED_ZH: readonly { key: string; title: string; body: string }[] = [
-  { key: 'tour.workbench.new', title: '欢迎来到工作台', body: '点击「新建模板」设计第一张标签，或用「导入模板」导入之前导出的模板文件。' },
-  { key: 'tour.designer.new', title: '认识设计器', body: '从左侧控件栏拖入文本、条码、二维码，标签宽 / 高在顶部工具栏设定。' },
-  { key: 'tour.dataprint.select', title: '认识数据与打印', body: '选模板、填数据、打印标签；暂无模板时先回工作台新建。' },
-  { key: 'tour.dataprint.excel', title: 'Excel 批量打印', body: '「下载 Excel 模板」生成示例表格，一行填一条；导入时确认每列对应的字段。' },
-  { key: 'tour.workbench.nav', title: '随时回来', body: '左侧导航随时切换页面；要重看本引导，点击底部状态栏「使用引导」。' },
+// ---- 「✅ 文案定稿 v1」逐字底稿（#276 定稿 json 字段镜像；zh 定稿比对 + zh≤40 字 + #278 AC-02 en 对称断言依据） ----
+const FINALIZED: readonly {
+  key: string
+  titleZh: string
+  bodyZh: string
+  btnZh: string
+  titleEn: string
+  bodyEn: string
+  btnEn: string
+}[] = [
+  { key: 'tour.workbench.new', titleZh: '欢迎来到工作台', bodyZh: '点击「新建模板」设计第一张标签，或用「导入模板」导入之前导出的模板文件。', btnZh: '下一步', titleEn: 'Welcome to the Workbench', bodyEn: 'Click "New Template" to design your first label, or "Import Template" to import a file.', btnEn: 'Next' },
+  { key: 'tour.designer.new', titleZh: '认识设计器', bodyZh: '从左侧控件栏拖入文本、条码、二维码，标签宽 / 高在顶部工具栏设定。', btnZh: '下一步', titleEn: 'Meet the Designer', bodyEn: 'Drag text, barcode and QR code from the left widget bar; set W / H in the top toolbar.', btnEn: 'Next' },
+  { key: 'tour.dataprint.select', titleZh: '认识数据与打印', bodyZh: '选模板、填数据、打印标签；暂无模板时先回工作台新建。', btnZh: '下一步', titleEn: 'Meet Data & Print', bodyEn: 'Pick a template, fill in the data, then print; if none yet, create one in the Workbench.', btnEn: 'Next' },
+  { key: 'tour.dataprint.excel', titleZh: 'Excel 批量打印', bodyZh: '「下载 Excel 模板」生成示例表格，一行填一条；导入时确认每列对应的字段。', btnZh: '下一步', titleEn: 'Excel Batch Printing', bodyEn: "Download an Excel sample sheet, one row per label; confirm each column's field on import.", btnEn: 'Next' },
+  { key: 'tour.workbench.nav', titleZh: '随时回来', bodyZh: '左侧导航随时切换页面；要重看本引导，点击底部状态栏「使用引导」。', btnZh: '完成', titleEn: 'Come Back Anytime', bodyEn: 'Use the left navigation to switch pages; replay this tour from the bottom status bar.', btnEn: 'Done' },
 ]
 
 /** 按点路径取嵌套 JSON 词条（不存在返回 undefined）。 */
@@ -50,7 +59,7 @@ describe('步骤定义（lib/guide.ts 纯数据，#276 方案 v1 步骤清单）
   })
 
   it('步骤 i18n key 与「文案定稿 v1」五条一一对应（同序）', () => {
-    expect(GUIDE_STEPS.map((s) => s.key)).toEqual(FINALIZED_ZH.map((s) => s.key))
+    expect(GUIDE_STEPS.map((s) => s.key)).toEqual(FINALIZED.map((s) => s.key))
   })
 
   it('锚点选择器 = data-guide 语义属性查询', () => {
@@ -60,16 +69,27 @@ describe('步骤定义（lib/guide.ts 纯数据，#276 方案 v1 步骤清单）
 
 describe('文案资源（AC-04：定稿逐字 + zh≤40 字 + 双语真实存在）', () => {
   it('zh 标题 / 正文与「✅ 文案定稿 v1」逐字一致，单步正文 ≤ 40 字', () => {
-    for (const step of FINALIZED_ZH) {
-      expect(resolve(zhGuide, `${step.key}.title`)).toBe(step.title)
+    for (const step of FINALIZED) {
+      expect(resolve(zhGuide, `${step.key}.title`)).toBe(step.titleZh)
       const body = resolve(zhGuide, `${step.key}.body`)
-      expect(body).toBe(step.body)
+      expect(body).toBe(step.bodyZh)
       expect((body as string).length).toBeLessThanOrEqual(40)
     }
   })
 
+  it('en 标题 / 正文 / 步骤按钮与「✅ 文案定稿 v1」逐字一致（#278 AC-02：zh/en 对称防线）', () => {
+    FINALIZED.forEach((step, i) => {
+      expect(resolve(enGuide, `${step.key}.title`)).toBe(step.titleEn)
+      expect(resolve(enGuide, `${step.key}.body`)).toBe(step.bodyEn)
+      // 步骤主按钮为共享词条：前四步 btn.next（下一步 / Next）、末步 btn.done（完成 / Done）
+      const btnKey = i === FINALIZED.length - 1 ? 'btn.done' : 'btn.next'
+      expect(resolve(zhGuide, btnKey)).toBe(step.btnZh)
+      expect(resolve(enGuide, btnKey)).toBe(step.btnEn)
+    })
+  })
+
   it('步骤引用的 key 在 en 语言包真实存在（标题 / 正文非空字符串）', () => {
-    for (const step of FINALIZED_ZH) {
+    for (const step of FINALIZED) {
       for (const suffix of ['title', 'body']) {
         const value = resolve(enGuide, `${step.key}.${suffix}`)
         expect(typeof value).toBe('string')
@@ -241,14 +261,14 @@ const mocks = vi.hoisted(() => ({
   probeHealthz: vi.fn(),
 }))
 
-vi.mock('./lib/api/client', () => ({
+vi.mock('../lib/api/client', () => ({
   serverApi: mocks.server,
   localApi: mocks.local,
   setServerBaseUrl: vi.fn(),
   probeHealthz: mocks.probeHealthz,
 }))
 
-vi.mock('./lib/uiMode', () => ({ UI_MODE: 'client', isServerUi: false }))
+vi.mock('../lib/uiMode', () => ({ UI_MODE: 'client', isServerUi: false }))
 
 describe('client 构建：首见自动启动与退出路径（AC-01/02）', () => {
   beforeEach(() => {
