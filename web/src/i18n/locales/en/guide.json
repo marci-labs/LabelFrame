@@ -5,28 +5,28 @@
   "tour": {
     "workbench": {
       "new": {
-        "title": "Welcome to the Workbench",
-        "body": "Click \"New Template\" to design your first label, or \"Import Template\" to import a file."
+        "title": "It All Starts with a Template",
+        "body": "Create, import, search and group templates, all in the Workbench; click \"New Template\" to design your first label."
       },
       "nav": {
         "title": "Come Back Anytime",
-        "body": "Use the left navigation to switch pages; replay this tour from the bottom status bar."
+        "body": "Use the left navigation to switch pages and see \"Help\" for more; replay this tour from the bottom status bar."
       }
     },
     "designer": {
       "new": {
-        "title": "Meet the Designer",
-        "body": "Drag text, barcode and QR code from the left widget bar; set W / H in the top toolbar."
+        "title": "Shape Your Label Here",
+        "body": "Drag text, barcode, QR code and rectangle onto the canvas; set W / H in the top toolbar and preview before printing."
       }
     },
     "dataprint": {
       "select": {
-        "title": "Meet Data & Print",
-        "body": "Pick a template, fill in the data, then print; if none yet, create one in the Workbench."
+        "title": "Fill In, Print Out",
+        "body": "Data & Print turns template fields into a form: pick one, fill in the data, print a test; if none, create one in the Workbench."
       },
       "excel": {
-        "title": "Excel Batch Printing",
-        "body": "Download an Excel sample sheet, one row per label; confirm each column's field on import."
+        "title": "One Sheet, Many Labels",
+        "body": "Click \"Download Excel Template\" to get a sheet from template fields, one row per label; confirm each column's field on import."
       }
     }
   },

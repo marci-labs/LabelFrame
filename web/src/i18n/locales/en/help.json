@@ -1,0 +1,105 @@
+{
+  "entry": {
+    "start": "Demo"
+  },
+  "card": {
+    "workbench": {
+      "title": "Template Management",
+      "body": "Create and import templates; organize them with search and groups; open the designer or print right from a card.",
+      "action": "Try It Yourself"
+    },
+    "designer": {
+      "title": "The Label Design Canvas",
+      "body": "Drag in text, barcode and QR code elements to compose a label; bind print fields; preview at real print scale.",
+      "action": "Try It Yourself"
+    },
+    "data": {
+      "title": "Fill Data & Print",
+      "body": "Pick a template to get its fill-in form; preview the label image before a test print; batch print by importing Excel data.",
+      "action": "Open"
+    },
+    "jobs": {
+      "title": "Print Job Records",
+      "body": "Browse the last 100 print jobs; expand a job for per-label results; find failure reasons when a print goes wrong.",
+      "action": "Open"
+    },
+    "settings": {
+      "title": "Settings for This Machine",
+      "body": "Set the server address (shared templates) and printers; check status, send a test page; update language, client and plugins.",
+      "action": "Open"
+    }
+  },
+  "demo": {
+    "keepSample": "Keep sample",
+    "designer": {
+      "intro": {
+        "title": "Build One Yourself",
+        "body": "All steps are real: drag widgets, set properties, bind fields, name and save; the demo creates \"Sample · Basic Label\"."
+      },
+      "draw": {
+        "title": "Drag Widgets In",
+        "body": "Drag \"Text\", \"Barcode\" and \"QR code\" from the left widget bar onto the canvas; smart guides snap as you move, Ctrl+Z to undo."
+      },
+      "props": {
+        "title": "Tune the Properties",
+        "body": "Select an element on the canvas and tune its font, font height and barcode parameters on the right."
+      },
+      "fields": {
+        "title": "Make Content Follow Data",
+        "body": "Pick \"Field fill\" and name the field (e.g. product name); data fills it at print time. The left \"Print Fields\" list is automatic."
+      },
+      "name": {
+        "title": "Name It and Save",
+        "body": "Type a name in the top toolbar and click \"Save Template\"; it returns to the Workbench, where you can find it by name."
+      },
+      "outro": {
+        "title": "Demo Complete",
+        "body": "The sample is cleaned up by default; check \"Keep sample\" to keep practicing. Come back any time via \"Demo\" in the page header."
+      }
+    },
+    "workbench": {
+      "intro": {
+        "title": "Create, Export, Import",
+        "body": "A real walk-through: create a template, export it to a file, import it back, then find it by name."
+      },
+      "new": {
+        "title": "Create a New Template",
+        "body": "Click \"New Template\" to open the designer; the demo follows and builds the \"Sample · Basic Label\" template with sample elements."
+      },
+      "export": {
+        "title": "Export It to a File",
+        "body": "On the template card, open \"…\" and choose \"Export\" to download a .lfpkg package; you import it back in the next step."
+      },
+      "import": {
+        "title": "Import It Back",
+        "body": "Click \"Import Template\" and pick the .lfpkg you just downloaded; the same template reappears in the list with contents intact."
+      },
+      "identify": {
+        "title": "Know It by Name",
+        "body": "Templates are distinguished by name: the list sorts by name and group; type a name in the search box to locate one quickly."
+      },
+      "outro": {
+        "title": "Demo Complete",
+        "body": "The sample template is cleaned up by default; check \"Keep sample\" to keep practicing."
+      }
+    },
+    "data": {
+      "form": {
+        "title": "Fields Become a Form",
+        "body": "Pick the sample template; the \"Product Name\" and \"Code\" fields you just bound are filled in here."
+      },
+      "excel": {
+        "title": "Fields Are Excel Columns",
+        "body": "Click \"Download Excel Template\", one row per label; confirm each column's field on import to batch print (demo prints nothing)."
+      }
+    }
+  },
+  "residue": {
+    "title": "Sample Templates Found",
+    "body": "The last demo was interrupted and left sample templates behind.",
+    "bodyExtra": "Clean them up now, keep them to practice, or choose \"Not Now\" to decide next time.",
+    "clean": "Clean Up Now",
+    "keep": "Keep",
+    "later": "Not Now"
+  }
+}

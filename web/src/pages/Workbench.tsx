@@ -18,6 +18,9 @@ import type { TemplateSummary } from '../lib/api/types'
 import { useApp } from '../state/AppContext'
 import type { DesignerRequest } from '../state/types'
 import { formatDate, formatDateTime, toAppLocale } from '../i18n'
+import { isServerUi } from '../lib/uiMode'
+import { SAMPLE_TEMPLATE_NAME, TEMPLATES_CHANGED_EVENT } from '../lib/helpDemo'
+import { DemoResiduePrompt } from '../components/DemoRunner'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { MenuItem, Popover } from '../components/Popover'
@@ -61,16 +64,22 @@ function PreviewThumb({
 export function Workbench({
   onOpenDesigner,
   onOpenPrint,
+  onRequestDemo,
 }: {
   onOpenDesigner: (req: DesignerRequest) => void
   /** 迭代 85（#133 C-4）：卡片「打印」直达——跳「数据与打印」页并预选该模板（预选写草稿由 App 侧统一完成）。 */
   onOpenPrint: (name: string) => void
+  /** 迭代 121（#280，拍板 2/11）：页头「功能演示」入口（workbench 演示就地发起）——App 仅 client 构建下发，
+   * server 构建不传即不渲染（入口/挂载开关单点）。 */
+  onRequestDemo?: () => void
 }) {
   const app = useApp()
   const { serverMode } = app
   // 迭代 108（#241）：卡片日期格式化跟随当前界面语言（原硬编码 toLocaleString('zh-CN')）——
   // 迭代 111（#245）：页面文案全面 key 化（workbench 域），useTranslation 同时订阅语言变化触发重渲染
   const { t, i18n } = useTranslation('workbench')
+  // 迭代 121（#280）：页头演示入口词条属帮助体系，落 help 域（防帮助词条跨域分裂，方案阻断项修订）
+  const { t: tHelp } = useTranslation('help')
   const locale = toAppLocale(i18n.language)
   /** 业务 API 跟随模式（unknown 时不拉取，待探测完成）。 */
   const biz = serverMode === 'server' ? serverApi : localApi
@@ -121,6 +130,16 @@ export function Workbench({
     if (serverMode === 'unknown') return
     void load()
   }, [serverMode, load])
+
+  // 迭代 121（#280）：演示进程直接写模板库（创建 / 清理样例），广播事件驱动列表刷新——
+  // 否则样例卡在下次手动刷新前不可见，导出 / 按名识别步骤锚点落空
+  useEffect(() => {
+    const onTemplatesChanged = () => {
+      void load()
+    }
+    window.addEventListener(TEMPLATES_CHANGED_EVENT, onTemplatesChanged)
+    return () => window.removeEventListener(TEMPLATES_CHANGED_EVENT, onTemplatesChanged)
+  }, [load])
 
   // 名称搜索（子串、大小写不敏感）与分组过滤叠加：两者都为空时即完整列表
   const keyword = search.trim().toLowerCase()
@@ -194,6 +213,7 @@ export function Workbench({
           <Icon name="search" size={13} style={{ position: 'absolute', left: 7, color: 'var(--ink-3)', pointerEvents: 'none' }} />
           <input
             className="input"
+            data-demo="workbench-search"
             value={search}
             onChange={(ev) => setSearch(ev.target.value)}
             placeholder={t('searchPlaceholder')}
@@ -210,7 +230,8 @@ export function Workbench({
             </option>
           ))}
         </select>
-        <button className="btn" onClick={() => document.getElementById('importFile')?.click()} disabled={busy !== null}>
+        {/* data-demo：workbench 演示「导入」步骤锚点（#280 方案步骤 5） */}
+        <button className="btn" data-demo="workbench-import" onClick={() => document.getElementById('importFile')?.click()} disabled={busy !== null}>
           <Icon name="upload" size={13} />
           {t('importTemplate')}
         </button>
@@ -230,6 +251,14 @@ export function Workbench({
           <Icon name="plus" size={13} />
           {t('newTemplate')}
         </button>
+        {/* 迭代 121（#280，拍板 2/11）：页头「功能演示」入口（词条 help 域 entry.start「功能演示 / Demo」，
+            定稿组 1；title 悬浮补全同词条）。onRequestDemo 仅 client 构建下发，server 构建不渲染 */}
+        {onRequestDemo && (
+          <button className="btn" data-help="workbench-help" onClick={onRequestDemo}>
+            <Icon name="guide" size={13} />
+            {tHelp('entry.start')}
+          </button>
+        )}
       </div>
 
       {/* 迭代 93（#151 F-17）：页头刷新按钮（与作业历史同款）+ 失败横幅旁重试入口——此前列表加载失败只能切页重试 */}
@@ -297,6 +326,8 @@ export function Workbench({
                     aria-expanded={menu?.tpl.name === tpl.name}
                     aria-label={t('card.moreAria', { name: tpl.name })}
                     title={t('card.moreTitle')}
+                    data-demo="wb-card-more"
+                    data-demo-name={tpl.name === SAMPLE_TEMPLATE_NAME ? 'sample' : undefined}
                     onClick={(ev) => {
                       const anchor = ev.currentTarget
                       setMenu((cur) => (cur?.tpl.name === tpl.name ? null : { tpl, anchor }))
@@ -364,6 +395,17 @@ export function Workbench({
             <Trans t={t} i18nKey="deleteConfirm.body" values={{ name: deleting.name }} components={[<b key={0} />]} />
           </p>
         </Modal>
+      )}
+
+      {/* 迭代 121（#280，决议 1）：演示中断残留下次进入询问（Modal 三选：立即清理 danger / 保留 / 暂不）——
+          方案「计划改动文件」把残留询问挂载定在 Workbench（默认落地 tab 即覆盖两场演示的「下次进入」）；
+          server 构建整特性不渲染（AC-06 同口径） */}
+      {!isServerUi && (
+        <DemoResiduePrompt
+          ready={serverMode !== 'unknown'}
+          knownNames={templates.map((tpl) => tpl.name)}
+          onReload={() => void load()}
+        />
       )}
     </div>
   )
