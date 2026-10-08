@@ -208,7 +208,7 @@ describe('第二批迁移页面双语渲染冒烟（迭代 112 · #246）', () =
     expect(screen.getByText('下载中心')).toBeTruthy()
     expect(screen.getByText('LabelFrame 客户端各平台安装包')).toBeTruthy()
     expect(screen.getAllByText('最新上传')).toHaveLength(2)
-    expect(screen.getByText('连接信息')).toBeTruthy()
+    expect(screen.getByText('服务端信息')).toBeTruthy()
     expect(screen.getByRole('button', { name: '快速访问' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Windows 包管理' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Android 包管理' })).toBeTruthy()
@@ -217,7 +217,7 @@ describe('第二批迁移页面双语渲染冒烟（迭代 112 · #246）', () =
     await waitFor(() => expect(screen.getByText('Download Center')).toBeTruthy())
     expect(screen.getByText('LabelFrame client installers for every platform')).toBeTruthy()
     expect(screen.getAllByText('Latest upload')).toHaveLength(2)
-    expect(screen.getByText('Connection Info')).toBeTruthy()
+    expect(screen.getByText('Server Info')).toBeTruthy()
     expect(CJK.test(container.textContent ?? '')).toBe(false)
 
     changeLocale('zh-CN')
