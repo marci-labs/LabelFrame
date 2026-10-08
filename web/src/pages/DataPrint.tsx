@@ -12,10 +12,14 @@
 // 迭代 85（#133 C-4 / C-5）：接收工作台「打印」直达的预选草稿（同手动选择）；作业进度区指向「作业历史」的
 // 纯文字指引改为可点击跳转（onOpenJobHistory → 切作业历史页，行可展开逐张 / 汇总明细）。
 // 迭代 111（#245）：页面文案 key 化（dataPrint 域；jobStatus / action 等 common 词条经 fallbackNS 兜底）。
+// 迭代 117（#268）：requestId 改用 uuid 包 v4 生成——crypto.randomUUID 是安全上下文专属 API（仅 HTTPS /
+// localhost 暴露），HTTP + 局域网 IP 访问 server UI 时为 undefined 直接抛 TypeError；uuid 的 v4 在
+// randomUUID 不可用时回退 crypto.getRandomValues（不受安全上下文限制），两种上下文行为一致。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { v4 as uuidv4 } from 'uuid'
 import i18next from '../i18n'
 import { localApi, serverApi } from '../lib/api/client'
 import { ApiError } from '../lib/api/types'
@@ -451,6 +455,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
    *   - client 构建（迭代 22 决策 1A）：目标固定本机——本机在线走服务端路由，targetDeviceId = 本机 deviceId；
    * - job（降级直连 / 单机）：自包含 template（本机 WinHost 直接打印，旧 WinHost 无 templateName / targetDeviceId）；
    * - debug 出图：自包含 template（render-image 后端要求 contract + layout，不建作业）。
+   *  迭代 117（#268）：requestId 一律用 uuid v4（服务端契约仅要求唯一非空白字符串；见文件头注释）。
    */
   const buildRequest = useCallback(
     (labels: { data: Record<string, string> }[], kind: 'job' | 'debug'): SubmitJobRequest | null => {
@@ -458,7 +463,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
       if (kind === 'job') {
         if (isServerUi) {
           return {
-            requestId: crypto.randomUUID(),
+            requestId: uuidv4(),
             templateName: pkg.name,
             targetDeviceId,
             labels,
@@ -466,7 +471,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
         }
         if (deviceMode === 'server' && routeMode === 'server') {
           return {
-            requestId: crypto.randomUUID(),
+            requestId: uuidv4(),
             templateName: pkg.name,
             targetDeviceId: app.hostDeviceId ?? undefined,
             labels,
@@ -474,7 +479,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
         }
       }
       return {
-        requestId: crypto.randomUUID(),
+        requestId: uuidv4(),
         template: { name: pkg.name, contract: pkg.contract, layout: pkg.layout },
         labels,
       }

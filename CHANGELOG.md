@@ -2,6 +2,11 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 117：HTTP 部署非安全上下文 randomUUID 崩溃——uuid 包替换与回归测试（#268） · 2026-10-08
+- **根因修复（方案 A：引入 `uuid` 包）**：`crypto.randomUUID` 是浏览器安全上下文专属 API（仅 HTTPS / localhost 暴露），HTTP + 局域网 IP 访问服务端 Web UI（Linux Docker / 离线部署包场景）时为 undefined，「数据与打印」页所有走 `buildRequest` 的操作（图片预览 / 打印测试 / Excel 批量打印）同步抛 `TypeError: crypto.randomUUID is not a function`——预览弹层不打开、打印请求无法构造（自迭代 11 首版 Web 前端即存在，v0.30.0 起 Linux 离线部署铺开后暴露面变大）。`DataPrint.tsx` `buildRequest` 三处（job server 构建 / job client 服务端路由 / debug 出图）`crypto.randomUUID()` 替换为 `uuid` 包 `v4()`（import 单处收敛）；uuid 在 randomUUID 可用时仍走原生、不可用时回退 `crypto.getRandomValues`（不受安全上下文限制），安全 / 非安全上下文行为一致，`requestId` 服务端契约（string + 非空白幂等键）不变。
+- **回归测试**：新增 `DataPrint.randomUUID.test.tsx`（vitest，server 构建分支）——显式把 `crypto.randomUUID` 重定义为 undefined 模拟非安全上下文（jsdom 30 已提供该 API，需显式破坏；afterEach 精确还原不污染后续用例），断言 debug（图片预览：renderImage 请求构造 + 弹层出图）与 job（打印测试：submitJob 提交）两分支不抛 TypeError、`requestId` 为合法唯一 UUID v4 形态；净增 3 项 → 481×双模式。
+- **回归确认**：localhost / PC 客户端 / PDA 宿主（本地加载均为安全上下文）行为不变——randomUUID 可用时 uuid v4 直接用原生实现，生成口径与旧实现一致。
+
 ## 迭代 116：安装程序提权提示不前置——BA 向导主动置前组合拳（#265） · 2026-10-02
 - **根因修复（BA 窗口显示策略，WiX Burn 结构不动）**：`LabelFrame.Bootstrapper.Ba` 向导（`WizardForm`）与离线布局进度窗（`LayoutProgressForm`，等效首显路径）首显时完全依赖系统默认前台授予链——启动者无前台权（计划任务 / 后台进程触发、Explorer 未持前台、下载后立即切走）时窗口静默不前置，用户以为安装无响应（#265 复现 S1 / S3 / S3b；S2 实证 MSI 直装路径提权请求甚至完全静默挂起）。现首显主动置前（用户拍板选项①组合拳＋闪烁兜底）：已在前台则零调用零扰动（正常双击链不回归）；否则 `AttachThreadInput`（本 UI 线程挂接当前前台线程）→ `ShowWindow(SW_MINIMIZE→SW_RESTORE)`（还原动作的前台授予独立于置前配额，S3c 预试证明单靠挂接 + `SetForegroundWindow` 会被前台锁拒）→ `SwitchToThisWindow` → `SetForegroundWindow`，仍被拒时 `FlashWindowEx(FLASHW_ALL|FLASHW_TIMERNOFG)` 任务栏强闪烁兜底（闪至前置自停）；结果写 Burn 日志（「向导首显置前：」行，机器可读证据）。
 - **可测性（AC-02 单测部分）**：置前逻辑收敛到新类 `LabelFrame.Bootstrapper.Wizard.WizardForegroundActivator`（前台探测 / 线程查询 / 输入队列挂接 / 显示切换 / 会话切换 / 前置请求 / 闪烁共七个 Win32 调用点可注入替身，沿用 `TrayMenuPresenter` 先例·#263 修法，落共享库供 BA（net48）与测试（net10）双引用）；净增 7 项单测：已在前台零扰动、组合拳全序列（挂接→最小化→还原→切换→前置→解除，无闪烁）、被拒转强闪烁兜底（解除不缺席）、请求成功即短路、同线程跳挂接、挂接失败照常组合、无前台窗口防御。
