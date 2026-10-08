@@ -1,6 +1,5 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·设计段：读 Issue 与仓库现状，产出实施方案（含独立方案评审），落 Issue 评论「📐 方案
-  v1」。高档位运行（GLM-5.3）。
+description: LabelFrame 工作流管线·设计段：读 Issue 与仓库现状，产出实施方案（含独立方案评审），落 Issue 评论「📐 方案 v1」。高档位运行（GLM-5.3）。
 whenToUse: 工作流实验管线第 1 段：Issue 立项并带「工作流接管」标签后起跑，产出方案供用户确认。
 args:
   issue:

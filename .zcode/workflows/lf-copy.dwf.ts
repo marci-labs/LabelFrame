@@ -1,6 +1,5 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·文案草拟段：按已定稿方案与现有 i18n 文案风格，撰写引导文案表草稿（zh+en），落 Issue
-  评论「✍️ 文案草稿 v1」。低档位运行（GLM-5.3-Flash）。
+description: LabelFrame 工作流管线·文案草拟段：按已定稿方案与现有 i18n 文案风格，撰写引导文案表草稿（zh+en），落 Issue 评论「✍️ 文案草稿 v1」。低档位运行（GLM-5.3-Flash）。
 whenToUse: 工作流实验管线第 2 段：「📐 方案 v1」评论在场后起跑，产出文案草稿供评审段校对。
 args:
   issue:

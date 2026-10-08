@@ -1,6 +1,5 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·实施段：按方案与文案定稿在独立 worktree 实施（编码/测试/本地门禁/提
-  PR）；重入即修复模式（读评审段阻断清单修复再推）。低档位运行（GLM-5.3-Flash）。
+description: LabelFrame 工作流管线·实施段：按方案与文案定稿在独立 worktree 实施（编码/测试/本地门禁/提 PR）；重入即修复模式（读评审段阻断清单修复再推）。低档位运行（GLM-5.3-Flash）。
 whenToUse: 工作流实验管线第 4 段：「✅ 文案定稿 v1」评论在场后起跑建 PR；评审段产出「🔍 评审待修」后重入修复。
 args:
   issue:
