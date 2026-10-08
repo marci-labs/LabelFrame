@@ -3,7 +3,7 @@
 本文件记录每个迭代的变更。
 
 ## 迭代 120：工作流实验收尾——六标准件与评审基线入库＋引导测试防线补强（#278） · 2026-10-08
-- **工作流基建入库（防「基建衰变三断点」重蹈）**：`.zcode/workflows/` 六段管线标准件（lf-design / lf-copy / lf-copy-review / lf-implement / lf-review / lf-close，含 Windows `world.run("pnpm")` 须用 `pnpm.CMD` 的平台修复）与 `docs/CODE-REVIEW-BASELINE.md` 评审基线随仓库版本化——迭代 119 复盘实证三类基建均处本地未入库状态必然随会话消散；平台踩坑要点记入提交信息：**AmendWorkflow 不携带 args**（saved workflow 草稿须自带固定回退值）、**链式 amend 经零结算中间 run 缓存全丢**（修复须一次改全再 amend，勿增量多轮）。
+- **工作流基建入库（防「基建衰变三断点」重蹈）**：`.zcode/workflows/` 六段管线标准件（lf-design / lf-copy / lf-copy-review / lf-implement / lf-review / lf-close，含 Windows `world.run("pnpm")` 须用 `pnpm.CMD` 的平台修复）与 `docs/CODE-REVIEW-BASELINE.md` 评审基线随仓库版本化——迭代 119 复盘实证三类基建均处本地未入库状态必然随会话消散；平台踩坑要点记入提交信息：**AmendWorkflow 不携带 args**（saved workflow 草稿须自带固定回退值）、**链式 amend 经零结算中间 run 缓存全丢**（修复须一次改全再 amend，勿增量多轮）。入库后实证：六件 `description` 手工折行（YAML 多行纯量）会使 `CreateWorkflow` saved 元数据校验失败（`args.issue.required` 被读成字符串、起流被拒），合并为单行修复。
 - **引导测试防线补强（PR #277 评审 6 条建议中的代码项）**：`Guide.test.tsx` 增 en 五步标题 / 正文 / 步骤按钮（Next ×4 / Done）与「✅ 文案定稿 v1」逐字断言——此前仅 zh 逐字、en 只断言 key 非空，AC-04 双语防线不对称；测试文件归位 `web/src/components/`（Guide.test.tsx / Guide.server.test.tsx 与被测对象同目录，既有断言零丢失）。
 - **文档措辞收敛**：CHANGELOG 迭代 119 条目与 DESIGN 决策 #170 ⑤中「dist-server 产物不含引导」收敛为「server 构建不挂载 / 不渲染」——产物级裁剪未作断言，不再写未经产物验证的机制断言；DESIGN §7「帮助体系升级」条目更新为已转立项 #280（迭代 121，讨论已全部定案）。
 

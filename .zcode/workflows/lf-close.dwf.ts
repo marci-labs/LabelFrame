@@ -1,6 +1,5 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·收口段：等 CI 三项必需检查 → squash 合并 → 冲突残块抽查 → AC
-  自评回写与标签流转 → worktree/分支回收，落「📦 已合并」。低档位运行（GLM-5.3-Flash）。
+description: LabelFrame 工作流管线·收口段：等 CI 三项必需检查 → squash 合并 → 冲突残块抽查 → AC 自评回写与标签流转 → worktree/分支回收，落「📦 已合并」。低档位运行（GLM-5.3-Flash）。
 whenToUse: 工作流实验管线第 6 段：「🔍 评审通过」评论在场后起跑；合并后浏览器取证与结项 wrapup 由主会话接手。
 args:
   issue:
