@@ -666,7 +666,14 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
           <small>{t('subtitle')}</small>
         </div>
         <div className="spacer" />
-        <select className="input" value={selectedName} onChange={(ev) => app.setDraftSelected(ev.target.value)} style={{ minWidth: 180 }}>
+        {/* data-guide：首次引导第 3 步锚点（迭代 119 / #276） */}
+        <select
+          className="input"
+          data-guide="dataprint-template-select"
+          value={selectedName}
+          onChange={(ev) => app.setDraftSelected(ev.target.value)}
+          style={{ minWidth: 180 }}
+        >
           {templates.length === 0 && <option value="">{t('tplNoneOption')}</option>}
           {selectedName && !templates.some((tp) => tp.name === selectedName) && <option value={selectedName}>{selectedName}</option>}
           {templates.map((tp) => (
@@ -684,7 +691,13 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
             <Icon name="download" size={13} />
             {excelTplBusy ? t('excelTpl.generating') : t('excelTpl.download')}
           </button>
-        <button className="btn" onClick={() => document.getElementById('excelFile')?.click()} disabled={!pkg || importing || submitting}>
+        {/* data-guide：首次引导第 4 步锚点（迭代 119 / #276） */}
+        <button
+          className="btn"
+          data-guide="dataprint-excel-import"
+          onClick={() => document.getElementById('excelFile')?.click()}
+          disabled={!pkg || importing || submitting}
+        >
           <Icon name="upload" size={13} />
           {t('excelImport')}
         </button>

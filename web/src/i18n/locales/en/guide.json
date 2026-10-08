@@ -1,0 +1,39 @@
+{
+  "entry": {
+    "title": "Replay Tour"
+  },
+  "tour": {
+    "workbench": {
+      "new": {
+        "title": "Welcome to the Workbench",
+        "body": "Click \"New Template\" to design your first label, or \"Import Template\" to import a file."
+      },
+      "nav": {
+        "title": "Come Back Anytime",
+        "body": "Use the left navigation to switch pages; replay this tour from the bottom status bar."
+      }
+    },
+    "designer": {
+      "new": {
+        "title": "Meet the Designer",
+        "body": "Drag text, barcode and QR code from the left widget bar; set W / H in the top toolbar."
+      }
+    },
+    "dataprint": {
+      "select": {
+        "title": "Meet Data & Print",
+        "body": "Pick a template, fill in the data, then print; if none yet, create one in the Workbench."
+      },
+      "excel": {
+        "title": "Excel Batch Printing",
+        "body": "Download an Excel sample sheet, one row per label; confirm each column's field on import."
+      }
+    }
+  },
+  "btn": {
+    "next": "Next",
+    "prev": "Back",
+    "skip": "Skip",
+    "done": "Done"
+  }
+}

@@ -13,6 +13,9 @@
 // 本文件已圈入 lint 防线（.oxlintrc.json overrides，裸中文 JSX 会被 oxlint 拦截——决策 #164 ⑦）。
 // 迭代 114（#260）：nav-foot 语言切换器——循环单按钮「中 / EN」（当前语言可视，点击互切即点即生效），
 // server 构建无设置页也能一步切换；与设置页语言卡同一 `changeLocale` 单点（双入口同状态源，互切一致）。
+// 迭代 119（#276，决策 #170）：新用户首次使用引导（client 构建专属）——首见延迟 ~300ms 自动启动
+// （lib/guide.ts 首见标记），跳过 / Esc / 完成均写标记；状态栏「使用引导」重放入口无视标记再放完整一轮；
+// server 构建（dist-server）整特性不挂载（!isServerUi 条件渲染，V1 范围仅 client）。
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,8 +23,10 @@ import { changeLocale, toAppLocale } from './i18n'
 import { AppProvider, useApp } from './state/AppContext'
 import { Icon, LabelLogo } from './components/Icon'
 import type { IconName } from './components/Icon'
+import { Guide } from './components/Guide'
 import { Modal } from './components/Modal'
 import type { DesignerRequest, TabId } from './state/types'
+import { isGuideSeen, markGuideSeen } from './lib/guide'
 import { isServerUi } from './lib/uiMode'
 import { Workbench } from './pages/Workbench'
 import { Designer } from './pages/Designer'
@@ -68,6 +73,8 @@ function Shell() {
   const [designerReq, setDesignerReq] = useState<DesignerRequest | null>(null)
   // 迭代 104（#225，决策 #161）：日志抽屉「清空」的确认弹窗开关——点击先确认，确认后才清空
   const [confirmingClearLogs, setConfirmingClearLogs] = useState(false)
+  // 迭代 119（#276，决策 #170）：首次引导开关——首见延迟自动启动，完成 / 跳过写标记后关闭
+  const [guideOpen, setGuideOpen] = useState(false)
   // 迭代 92（#150 F-02）：设计器注册的离开守卫——设计器 tab 在编辑且有未保存更改时，
   // 导航切 tab 交由守卫挂起（弹三选 Modal：保存并离开 / 放弃更改 / 继续编辑），确认后再切换。
   const designerLeaveRef = useRef<((leave: () => void) => void) | null>(null)
@@ -96,6 +103,21 @@ function Shell() {
     setDesignerReq(req)
     setTab('designer')
   }
+
+  // 迭代 119（#276，决策 #170）：client 构建首见自动启动引导——延迟约 300ms 等壳层首个渲染帧稳定
+  //（避开 AppContext 启动链的首次重渲染闪烁）；已看过不启动（存储异常视为未看过，引导每次出现为可接受降级）
+  useEffect(() => {
+    if (isServerUi || isGuideSeen()) return
+    const timer = setTimeout(() => setGuideOpen(true), 300)
+    return () => clearTimeout(timer)
+    // 首见判定只在挂载时发生一次；isServerUi 为构建期常量、isGuideSeen 为模块级纯函数，均不入依赖
+  }, [])
+
+  // 引导退出（跳过 / Esc / 完成共用）：写入首见标记后关闭——重放路径重复写入幂等（决策 #170 ⑧⑨）
+  const finishGuide = useCallback(() => {
+    markGuideSeen()
+    setGuideOpen(false)
+  }, [])
 
   const closeDesigner = () => {
     setDesignerReq(null)
@@ -134,7 +156,7 @@ function Shell() {
   return (
     <div className="app">
       <div className="app-body">
-        <nav className="nav" aria-label={t('nav.region')}>
+        <nav className="nav" aria-label={t('nav.region')} data-guide="nav-main">
           <div className="nav-logo" title={t('appTitle')}>
             <LabelLogo size={24} />
           </div>
@@ -229,12 +251,27 @@ function Shell() {
               )}
             </>
           )}
+          {/* 迭代 119（#276，决策 #170 ⑤）：「使用引导」重看入口——「日志」旁常驻小图标 ghost 按钮，
+              点击无视首见标记再放完整一轮（重放完成 / 跳过不改变已看状态）；server 构建不渲染 */}
+          {!isServerUi && (
+            <button
+              className="btn sm ghost"
+              title={t('guide:entry.title')}
+              aria-label={t('guide:entry.title')}
+              onClick={() => setGuideOpen(true)}
+            >
+              <Icon name="guide" size={13} />
+            </button>
+          )}
           <button className="btn sm ghost" onClick={() => app.setDrawerOpen(!app.drawerOpen)}>
             <Icon name="logs" size={13} />
             {t('statusbar.logs')}
           </button>
         </span>
       </footer>
+
+      {/* 迭代 119（#276）：分步引导——server 构建整特性不挂载（V1 范围仅 client，决策 #63 双构建裁剪同口径） */}
+      {!isServerUi && <Guide open={guideOpen} tab={tab} onSwitchTab={switchTab} onFinish={finishGuide} />}
 
       {app.drawerOpen && (
         <div className="log-drawer">
@@ -302,7 +339,8 @@ function DesignerEmpty({ onNew }: { onNew: () => void }) {
         <Icon name="designer" />
         <div className="empty-title">{t('designerEmpty.untitled')}</div>
         <div className="hint">{t('designerEmpty.hint')}</div>
-        <button className="btn primary" onClick={onNew}>
+        {/* data-guide：首次引导第 2 步锚点（引导经 switchTab 切入 designer 时必为空态，#276 拍板⑥） */}
+        <button className="btn primary" data-guide="designer-empty-new" onClick={onNew}>
           <Icon name="plus" size={13} />
           {t('designerEmpty.newTemplate')}
         </button>

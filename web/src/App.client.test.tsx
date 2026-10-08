@@ -8,6 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from './App'
+import { GUIDE_SEEN_KEY } from './lib/guide'
 
 // 迭代 96（#183）：App 挂载链（AppContext 启动链）为多段 promise + React 真实宏任务调度，
 // CI 高负载 runner 上偶发超过 findBy 默认 1000ms；统一放宽到 8000ms（与其余页面测试同口径），
@@ -74,6 +75,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   window.localStorage.clear()
   window.sessionStorage.clear()
+  // 迭代 119（#276）：本文件测壳层既有功能，以「已看过引导」用户运行——首见自动启动 / 切页行为归 Guide.test.tsx
+  window.localStorage.setItem(GUIDE_SEEN_KEY, 'done')
   mocks.server.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
   // 迭代 80：本机打印服务探测（localApi.healthz = 页面来源 WinHost）默认运行中
   mocks.local.healthz.mockResolvedValue({ service: 'LabelFrame.WinHost', status: 'ok' })

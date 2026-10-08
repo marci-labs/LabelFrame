@@ -12,6 +12,7 @@ import { cleanup, configure, fireEvent, render, screen, waitFor } from '@testing
 import App from '../App'
 import i18n, { APP_LOCALES, LOCALE_STORAGE_KEY, detectInitialLocale, formatDate, formatDateTime, formatLogTime } from './index'
 import type { AppLocale } from './index'
+import { GUIDE_SEEN_KEY } from '../lib/guide'
 
 configure({ asyncUtilTimeout: 8000 })
 
@@ -92,6 +93,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   window.localStorage.clear()
   window.sessionStorage.clear()
+  // 迭代 119（#276）：App 级用例测语言切换，以「已看过引导」用户运行——首见自动启动行为归 Guide.test.tsx
+  window.localStorage.setItem(GUIDE_SEEN_KEY, 'done')
   mocks.server.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
   mocks.local.healthz.mockResolvedValue({ service: 'LabelFrame.WinHost', status: 'ok' })
   mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'PC-1', deviceName: 'PC-1', ips: [] })

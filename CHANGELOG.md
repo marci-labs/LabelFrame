@@ -2,6 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 119：新用户首次使用引导——Web UI 分步气泡引导（client 模式）（#276） · 2026-10-08
+- **首次自动分步引导（形态与实现路线以 #276 拍板评论记入决策表 #170：分步气泡 spotlight、自研实现）**：client 构建（`web/dist`）首次进入（首见标记 `labelframe.guide.client.v1` 无值）挂载后延迟约 300ms 自动启动 5 步引导，覆盖核心链「工作台（新建模板）→ 设计器（空态新建入口，介绍排版）→ 数据与打印（模板选择器）→ Excel 导入 → 收尾（左侧导航回顾 + 重看入口指引）」；步骤定义为纯数据（`web/src/lib/guide.ts` `GUIDE_STEPS`：tab + `data-guide` 语义锚点 + i18n key），切页经既有 `switchTab` 统一入口（继承 #150 设计器离开守卫语义），且仅在步骤变更时驱动切页（引导打开期间用户自行导航不被拽回）；自研组件 `web/src/components/Guide.tsx`：createPortal 到 body + fixed 锚定（决策 #152① 同法）、遮罩 = box-shadow 巨影法 spotlight + 主色描边（无 SVG mask）、气泡下方优先 / 放不下翻转 / 贴边（Popover 视口约束同口径）、锚点超时或零矩形降级全屏暗幕 + 居中气泡；跳过 / Esc / 完成均写首见标记（决策 #170 ⑧⑨），引导中途刷新不写（首见语义未成立），刷新 / 重启 / 新标签页不再自动出现（AC-01/02）。
+- **重新查看入口（决策 #170 ⑤）**：底部状态栏 meta 区「日志」旁常驻小图标 ghost 按钮「使用引导」（问号图标 + title/aria），点击无视首见标记再放完整一轮，重放完成 / 跳过不改变已看状态（写入幂等）（AC-03）。
+- **server 模式整特性不挂载**：引导组件与重看入口均以 `!isServerUi`（构建时常量）条件渲染，`dist-server` 产物不含引导（V1 范围仅 client，菜单结构差异留待后续迭代）；`Guide.server.test.tsx` 守门断言 server 分支不渲染。
+- **存储对照（决策 #170 ③④）**：首见标记为「每浏览器一次」偏好型数据走 localStorage（键带版本号，未来改版换键即可整体重放）——#51「禁 localStorage」适用范围是会话草稿（printDraft 需标签页隔离故 sessionStorage），本标记语义相反不适用；与 #164 ④语言偏好（`labelframe.locale`）、默认目标设备（`labelframe.defaultTargetDeviceId`）同类先例；不新增后端 API，不走 #57 机器级 settings.json；读写显式 `window.localStorage` + typeof/try-catch 容错（Node 26 全局遮蔽坑、隐私模式降级为每次出现）。
+- **i18n（AC-04）**：新 `guide` 域（zh-CN 源 + en 同步，语义 key），气泡文案与「使用引导」入口全部走 t()，步骤标题 / 正文以 #276「✅ 文案定稿 v1」逐字为准（单步正文 zh ≤ 40 字）；guide 域同步登记进 `locales.test.ts` 静态清单（静态 import + NAMESPACES，键集一致断言随既有 CI 防线覆盖新域）；`Guide.test.tsx` 另锚定步骤引用 key 在两语言包真实存在 + zh 定稿逐字比对。
+- **样式与层级**：引导层 z-index 110（styles.css 原最高 .modal-mask=100，另两处 .preview-modal=95 / .popover=90 均低于此）压过全部弹层；气泡 / 按钮复用既有 CSS 变量与 `btn` / `popIn` 视觉语言；窄窗口气泡 `max-width: calc(100vw - 16px)` + 贴边翻转（AC-05 观感项陪验）。
+- **测试**：新增 `Guide.test.tsx` 19 项（步骤定义顺序 / tab / 锚点 / 定稿 key 对应、zh 定稿逐字 + ≤40 字、双语词条存在、首见标记读写幂等、组件行为——首步渲染 / spotlight 矩形外扩 / 下一步切页推进 / 末步完成 / 跳过 / Esc、App 集成——首见自动启动 / 跳过与完成写标记 / 重挂载不再自动出现 / 5 步全链切页 / 重看入口重放）+ `Guide.server.test.tsx` 2 项（server 不自动启动、不渲染重看入口）；净增 21 项，`locales.test.ts` 12 域；既有壳层测试（App.client / App.langSwitch / i18n）以「已看过引导」用户运行（beforeEach 预置首见标记，首见行为归 Guide.test.tsx），App 壳层 / Workbench / DataPrint 存量用例全部通过。
+
 ## 迭代 118：下载中心改版——快速访问三 tab 与连接信息卡（#272） · 2026-10-08
 - **下载中心三 tab（消费 / 管理分离，决策 #169）**：`DownloadCenter.tsx` 重构为页内三 tab——「快速访问」（默认）｜「Windows 包管理」｜「Android 包管理」；tab 状态写入 URL hash（`#dc=quick|windows|android`，replaceState 不新增历史记录，不动主导航既有机制），刷新 / 直链打开均还原当前 tab；视觉沿用仓库页内 tab 先例（`btn` + `active` 分段风格，不新造设计语言）。
 - **快速访问首屏（拿包 + 连服务器一屏完成）**：上排 Windows / Android 各一张「最新上传」卡——货架语义按上架时间（修改时间倒序第一条）展示，管理员换货（含故意传旧版）即生效、删除后自动回退剩余最新一条；卡内含文件名 / 大小 / 上传时间 / 下载二维码（内容 = origin + 下载路径，放大约 150px）/ 下载按钮 /「全部版本 →」跳对应管理 tab，空态引导跳转上传；下区块「服务端信息」卡：大二维码居中（内容 = 选中的裸地址 URL，不做任何包装协议 / deep link）＋等宽地址文本 + 复制按钮（**陪验收口**：整区限宽 720px 居中防卡片随屏宽拉伸、双区块标题「客户端」/「服务端信息」替代原 ①② 步骤眉标、连接卡改与下载卡同款 panel 背景消除割裂感）。
