@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
     listPdaPackages: vi.fn(),
     uploadPdaPackage: vi.fn(),
     deletePdaPackage: vi.fn(),
+    listServerIpv4Candidates: vi.fn(),
     listPluginPackages: vi.fn(),
     uploadPluginPackage: vi.fn(),
     deletePluginPackage: vi.fn(),
@@ -92,6 +93,7 @@ beforeEach(() => {
   ])
   mocks.server.listClientPackages.mockResolvedValue([])
   mocks.server.listPdaPackages.mockResolvedValue([])
+  mocks.server.listServerIpv4Candidates.mockResolvedValue({ candidates: [] })
   mocks.server.listPluginPackages.mockResolvedValue([])
   mocks.local.listTemplates.mockResolvedValue([])
 })
@@ -146,8 +148,8 @@ describe('server 构建：在线设备页入口', () => {
   })
 })
 
-describe('server 构建：下载中心页入口（迭代 22 §2.3；迭代 59 升级为统一下载中心）', () => {
-  it('点击「下载中心」tab：客户端 + PDA 双分区列表 / 上传 / 刷新齐全（GET /api/client-packages + /api/pda-packages）', async () => {
+describe('server 构建：下载中心页入口（迭代 22 §2.3；迭代 59 统一下载中心；迭代 118 三 tab 改版）', () => {
+  it('点击「下载中心」导航：默认快速访问首屏（最新上传双卡 + 连接信息卡）；切 Windows / Android 管理 tab 列表 / 上传齐全', async () => {
     mocks.server.listClientPackages.mockResolvedValue([
       { fileName: 'LabelFrame.Client-0.18.0.msi', sizeBytes: 2 * 1024 * 1024, modifiedAt: '2026-08-17T10:00:00Z', url: '/api/client-packages/LabelFrame.Client-0.18.0.msi' },
     ])
@@ -156,19 +158,25 @@ describe('server 构建：下载中心页入口（迭代 22 §2.3；迭代 59 �
     ])
     render(<App />)
     fireEvent.click(await screen.findByRole('button', { name: '下载中心' }))
+    // 默认快速访问：两平台「最新上传」卡 + 连接信息卡（AC-01/02）
     expect(await screen.findByText('LabelFrame.Client-0.18.0.msi')).toBeTruthy()
     expect(screen.getByText('LabelFrame-AndroidHost-0.26.0.apk')).toBeTruthy()
-    expect(screen.getByText('2.0 MB')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /上传客户端安装包/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /上传 APK/ })).toBeTruthy()
-    // 下载链接（server 构建同源相对路径；链接可访问名取内容「下载」，故按 title 定位）
+    expect(screen.getByText('连接信息')).toBeTruthy()
+
+    // Windows 管理 tab：上传 / 列表 / 下载链接 / 二维码（title = origin + 下载路径）
+    fireEvent.click(screen.getByRole('button', { name: 'Windows 包管理' }))
+    expect(await screen.findByRole('button', { name: /上传 Windows 安装包/ })).toBeTruthy()
     const clientLink = screen.getByTitle('下载 LabelFrame.Client-0.18.0.msi')
     expect(clientLink.tagName).toBe('A')
     expect(clientLink.getAttribute('href')).toBe('/api/client-packages/LabelFrame.Client-0.18.0.msi')
+    expect(screen.getByTitle(`${window.location.origin}/api/client-packages/LabelFrame.Client-0.18.0.msi`)).toBeTruthy()
+
+    // Android 管理 tab：上传 / 下载链接 / 二维码与 Android 授权文案
+    fireEvent.click(screen.getByRole('button', { name: 'Android 包管理' }))
+    expect(await screen.findByRole('button', { name: /上传 APK/ })).toBeTruthy()
     const pdaLink = screen.getByTitle('下载 LabelFrame-AndroidHost-0.26.0.apk')
     expect(pdaLink.tagName).toBe('A')
     expect(pdaLink.getAttribute('href')).toBe('/api/pda-packages/LabelFrame-AndroidHost-0.26.0.apk')
-    // 二维码（title = origin + 下载路径）与 Android 授权文案
     expect(screen.getByTitle(`${window.location.origin}/api/pda-packages/LabelFrame-AndroidHost-0.26.0.apk`)).toBeTruthy()
     expect(screen.getByText(/未知来源/)).toBeTruthy()
   })

@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 118：下载中心改版——快速访问三 tab 与连接信息卡（#272） · 2026-10-08
+- **下载中心三 tab（消费 / 管理分离，决策 #169）**：`DownloadCenter.tsx` 重构为页内三 tab——「快速访问」（默认）｜「Windows 包管理」｜「Android 包管理」；tab 状态写入 URL hash（`#dc=quick|windows|android`，replaceState 不新增历史记录，不动主导航既有机制），刷新 / 直链打开均还原当前 tab；视觉沿用仓库页内 tab 先例（`btn` + `active` 分段风格，不新造设计语言）。
+- **快速访问首屏（拿包 + 连服务器一屏完成）**：上排 Windows / Android 各一张「最新上传」卡——货架语义按上架时间（修改时间倒序第一条）展示，管理员换货（含故意传旧版）即生效、删除后自动回退剩余最新一条；卡内含文件名 / 大小 / 上传时间 / 下载二维码（内容 = origin + 下载路径，放大约 150px）/ 下载按钮 /「全部版本 →」跳对应管理 tab，空态引导跳转上传；下排通栏「连接信息」卡（浅底与上排区分，「① 获取客户端 / ② 连接服务器」小号步骤眉标）：第一行大二维码居中（内容 = 选中的裸地址 URL，不做任何包装协议 / deep link）、第二行等宽地址文本 + 复制按钮。
+- **服务端新增只读接口 `GET /api/server/ipv4-candidates`**：枚举本机 IPv4 候选（仅启用网卡的非回环地址，去重；私网（RFC1918）优先排序——参照 WinHost `LocalIpAddresses.cs` 先例独立实现，Server 不引用 WinHost 工程）；前端默认取与当前 origin 匹配者，origin 为 localhost / 无匹配自动回退首个候选（不产生 localhost 废码），多网卡可切换候选，切换后二维码 / 地址文本 / 复制内容同步更新（选择规则收敛 `web/src/lib/connection.ts` 纯函数）。
+- **管理 tab 行为零变化（回归）**：Windows（client-packages）/ Android（pda-packages）上传 / 下载 / 删除（确认 Modal）、Android 授权提示与数据接口不动；客户端设置页「更新与安装包」仍走 `GET /api/client-packages`。
+- **措辞平台优先 + i18n**：页面副标题改「LabelFrame 客户端各平台安装包」语义，分区命名平台化（Windows / Android）；`downloadCenter` 域 zh-CN + en 全量 key 化（tabs / steps / quick / connection / windows / android 重组，无硬编码用户可见文案）。
+- **测试**：前端更新 / 净增 vitest（tab 切换与 URL 还原 / 直链 / hashchange、最新一条选取（含乱序输入）、空态引导、复制行为、地址候选回退与切换（`lib/connection.ts` 纯函数单测 + 组件级）、管理 tab 回归、双语冒烟改版断言）→ 502×双模式全绿；服务端新增 `LocalIpv4CandidatesTests`（RFC1918 判定 + 枚举有效 / 去重 / 私网优先）与 `ServerIpv4CandidatesEndpointsTests`（端点 HTTP 集成）。
+
 ## 迭代 117：HTTP 部署非安全上下文 randomUUID 崩溃——uuid 包替换与回归测试（#268） · 2026-10-08
 - **根因修复（方案 A：引入 `uuid` 包）**：`crypto.randomUUID` 是浏览器安全上下文专属 API（仅 HTTPS / localhost 暴露），HTTP + 局域网 IP 访问服务端 Web UI（Linux Docker / 离线部署包场景）时为 undefined，「数据与打印」页所有走 `buildRequest` 的操作（图片预览 / 打印测试 / Excel 批量打印）同步抛 `TypeError: crypto.randomUUID is not a function`——预览弹层不打开、打印请求无法构造（自迭代 11 首版 Web 前端即存在，v0.30.0 起 Linux 离线部署铺开后暴露面变大）。`DataPrint.tsx` `buildRequest` 三处（job server 构建 / job client 服务端路由 / debug 出图）`crypto.randomUUID()` 替换为 `uuid` 包 `v4()`（import 单处收敛）；uuid 在 randomUUID 可用时仍走原生、不可用时回退 `crypto.getRandomValues`（不受安全上下文限制），安全 / 非安全上下文行为一致，`requestId` 服务端契约（string + 非空白幂等键）不变。
 - **回归测试**：新增 `DataPrint.randomUUID.test.tsx`（vitest，server 构建分支）——显式把 `crypto.randomUUID` 重定义为 undefined 模拟非安全上下文（jsdom 30 已提供该 API，需显式破坏；afterEach 精确还原不污染后续用例），断言 debug（图片预览：renderImage 请求构造 + 弹层出图）与 job（打印测试：submitJob 提交）两分支不抛 TypeError、`requestId` 为合法唯一 UUID v4 形态；净增 3 项 → 481×双模式。

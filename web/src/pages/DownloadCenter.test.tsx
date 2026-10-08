@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-// 迭代 59（决策 #119）：Server UI「下载中心」页——客户端（client-packages）与 PDA（pda-packages）分区统一展示：
-// 列表（时间倒序最新在上）/ 上传（各分区独立 multipart）/ 下载链接 / 删除（确认）；
-// 每条目旁二维码（title = 页面 origin + 下载相对路径，即局域网完整 URL）；
-// PDA 区常驻 Android「未知来源 / 安装未知应用」授权步骤文案；空态提示目录直放与上传两种方式。
+// 下载中心页（迭代 118 改版 · #272）：页内三 tab（快速访问 / Windows 包管理 / Android 包管理，默认快速访问，
+// tab 状态进 URL hash 刷新 / 直链还原）；快速访问首屏 = 上排 Windows / Android「最新上传」卡（修改时间倒序
+// 第一条的货架语义：文件名 / 大小 / 上传时间 / 下载二维码（origin + 下载路径）/ 下载按钮 /「全部版本 →」跳
+// 管理卡、空态引导跳转上传）+ 下排通栏「连接信息」卡（大二维码 = 选中裸地址 URL + 地址文本与复制 +
+// 多网卡候选切换 / localhost 回退）；管理 tab（client-packages / pda-packages）上传 / 下载 / 删除（确认
+// Modal）行为回归——数据与接口不动（AC-06）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -16,13 +18,19 @@ const mocks = vi.hoisted(() => ({
     listPdaPackages: vi.fn(),
     uploadPdaPackage: vi.fn(),
     deletePdaPackage: vi.fn(),
+    listServerIpv4Candidates: vi.fn(),
   },
+  copyText: vi.fn(),
 }))
 
 vi.mock('../lib/api/client', () => ({
   serverApi: mocks.server,
   clientPackageDownloadUrl: (fileName: string) => `/api/client-packages/${encodeURIComponent(fileName)}`,
   pdaPackageDownloadUrl: (fileName: string) => `/api/pda-packages/${encodeURIComponent(fileName)}`,
+}))
+
+vi.mock('../lib/clipboard', () => ({
+  copyText: (...args: unknown[]) => mocks.copyText(...args),
 }))
 
 const CLIENT_PKGS = [
@@ -37,12 +45,15 @@ const PDA_PKGS = [
 
 beforeEach(() => {
   vi.clearAllMocks()
+  window.location.hash = ''
   mocks.server.listClientPackages.mockResolvedValue(CLIENT_PKGS)
   mocks.server.uploadClientPackage.mockResolvedValue([])
   mocks.server.deleteClientPackage.mockResolvedValue(undefined)
   mocks.server.listPdaPackages.mockResolvedValue(PDA_PKGS)
   mocks.server.uploadPdaPackage.mockResolvedValue([])
   mocks.server.deletePdaPackage.mockResolvedValue(undefined)
+  mocks.server.listServerIpv4Candidates.mockResolvedValue({ candidates: ['10.20.30.40', '192.168.1.9'] })
+  mocks.copyText.mockResolvedValue(true)
 })
 
 afterEach(() => {
@@ -55,64 +66,246 @@ function indexOfText(text: string): number {
   return rows.findIndex((tr) => tr.textContent?.includes(text))
 }
 
-describe('下载中心页（迭代 59 决策 #119）', () => {
-  it('双分区列表渲染：客户端（MSI / zip）与 PDA（APK）条目、大小、下载链接（同源相对路径）', async () => {
-    render(<DownloadCenter />)
-    expect(await screen.findByText('LabelFrame.Client-0.18.0.msi')).toBeTruthy()
-    expect(screen.getByText('LabelFrame.Client-linux.zip')).toBeTruthy()
-    expect(screen.getByText('LabelFrame-AndroidHost-0.26.0.apk')).toBeTruthy()
-    expect(screen.getByText('LabelFrame-AndroidHost-0.25.0.apk')).toBeTruthy()
-    expect(screen.getByText('42.0 MB')).toBeTruthy()
-    expect(screen.getByText('22.0 MB')).toBeTruthy()
+/** 切到平台管理 tab（快速访问默认 → 点击页内 tab 按钮）。 */
+function gotoManageTab(label: string): void {
+  fireEvent.click(screen.getByRole('button', { name: label }))
+}
 
-    const clientLink = screen.getByTitle('下载 LabelFrame.Client-0.18.0.msi')
-    expect(clientLink.tagName).toBe('A')
-    expect(clientLink.getAttribute('href')).toBe('/api/client-packages/LabelFrame.Client-0.18.0.msi')
-    const pdaLink = screen.getByTitle('下载 LabelFrame-AndroidHost-0.26.0.apk')
-    expect(pdaLink.tagName).toBe('A')
-    expect(pdaLink.getAttribute('href')).toBe('/api/pda-packages/LabelFrame-AndroidHost-0.26.0.apk')
+describe('下载中心页 · 三 tab 与 URL（AC-01，迭代 118 · #272）', () => {
+  it('默认快速访问：三 tab 按钮在位（快速访问 / Windows 包管理 / Android 包管理），默认选中快速访问', async () => {
+    render(<DownloadCenter />)
+    expect(screen.getByRole('button', { name: '快速访问' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Windows 包管理' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Android 包管理' })).toBeTruthy()
+    expect(await screen.findByText('① 获取客户端')).toBeTruthy()
+    // 默认 tab 不带 hash（quick 为缺省值，不写 URL）
+    expect(window.location.hash).not.toContain('#dc=')
   })
 
-  it('时间排序：各分区内最新在上（乱序输入按修改时间倒序）', async () => {
-    mocks.server.listClientPackages.mockResolvedValue([...CLIENT_PKGS].reverse())
-    mocks.server.listPdaPackages.mockResolvedValue([...PDA_PKGS].reverse())
+  it('切换 tab 写 URL hash：Windows / Android 管理切换后 #dc=windows / #dc=android', async () => {
     render(<DownloadCenter />)
     await screen.findByText('LabelFrame.Client-0.18.0.msi')
 
-    expect(indexOfText('LabelFrame.Client-0.18.0.msi')).toBeLessThan(indexOfText('LabelFrame.Client-linux.zip'))
-    expect(indexOfText('LabelFrame-AndroidHost-0.26.0.apk')).toBeLessThan(indexOfText('LabelFrame-AndroidHost-0.25.0.apk'))
+    gotoManageTab('Windows 包管理')
+    expect(window.location.hash).toBe('#dc=windows')
+    // 管理视图：列表 + 上传按钮在位
+    expect(await screen.findByText('LabelFrame.Client-linux.zip')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /上传 Windows 安装包/ })).toBeTruthy()
+
+    gotoManageTab('Android 包管理')
+    expect(window.location.hash).toBe('#dc=android')
+    expect(await screen.findByText('LabelFrame-AndroidHost-0.25.0.apk')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /上传 APK/ })).toBeTruthy()
   })
 
-  it('二维码：每条目渲染二维码（title = 页面 origin + 下载路径的局域网完整 URL）', async () => {
+  it('直链还原：挂载前 hash 已是 #dc=android → 直接呈现 Android 管理视图', async () => {
+    window.location.hash = '#dc=android'
+    render(<DownloadCenter />)
+    expect(await screen.findByText('LabelFrame-AndroidHost-0.25.0.apk')).toBeTruthy()
+    // 快速访问首屏不渲染
+    expect(screen.queryByText('① 获取客户端')).toBeNull()
+  })
+
+  it('非法 hash 回退默认快速访问', async () => {
+    window.location.hash = '#dc=whatever'
+    render(<DownloadCenter />)
+    expect(await screen.findByText('① 获取客户端')).toBeTruthy()
+  })
+
+  it('运行中 URL 变更（hashchange）同步 tab：手动改地址栏也能切到 Windows 管理', async () => {
+    render(<DownloadCenter />)
+    await screen.findByText('LabelFrame.Client-0.18.0.msi')
+    expect(screen.queryByText('LabelFrame.Client-linux.zip')).toBeNull()
+
+    window.location.hash = '#dc=windows'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    expect(await screen.findByText('LabelFrame.Client-linux.zip')).toBeTruthy()
+  })
+})
+
+describe('下载中心页 · 快速访问首屏「最新上传」卡（AC-02 / AC-03）', () => {
+  it('最新一条选取：两卡各展示修改时间倒序第一条（旧版本不出现在快速访问）', async () => {
+    render(<DownloadCenter />)
+    // 最新一条在位
+    expect(await screen.findByText('LabelFrame.Client-0.18.0.msi')).toBeTruthy()
+    expect(screen.getByText('LabelFrame-AndroidHost-0.26.0.apk')).toBeTruthy()
+    expect(screen.getAllByText('最新上传')).toHaveLength(2)
+    // 旧版本只在管理 tab，快速访问不出现
+    expect(screen.queryByText('LabelFrame.Client-linux.zip')).toBeNull()
+    expect(screen.queryByText('LabelFrame-AndroidHost-0.25.0.apk')).toBeNull()
+  })
+
+  it('乱序输入：按修改时间倒序取最新（服务端顺序不保证时页面自排）', async () => {
+    mocks.server.listClientPackages.mockResolvedValue([...CLIENT_PKGS].reverse())
+    mocks.server.listPdaPackages.mockResolvedValue([...PDA_PKGS].reverse())
+    render(<DownloadCenter />)
+    expect(await screen.findByText('LabelFrame.Client-0.18.0.msi')).toBeTruthy()
+    expect(screen.getByText('LabelFrame-AndroidHost-0.26.0.apk')).toBeTruthy()
+    expect(screen.queryByText('LabelFrame.Client-linux.zip')).toBeNull()
+  })
+
+  it('卡内容：大小 / 上传时间 / 下载二维码（origin + 下载路径完整 URL）/ 下载按钮 / 「全部版本 →」', async () => {
     render(<DownloadCenter />)
     await screen.findByText('LabelFrame.Client-0.18.0.msi')
 
     const origin = window.location.origin
+    // 大小 / 上传时间（与文件名同卡展示，组合文本按包含断言）
+    expect(screen.getByText(/42\.0 MB/)).toBeTruthy()
+    expect(screen.getByText(/22\.0 MB/)).toBeTruthy()
+    expect(screen.getAllByText(/上传于 /)).toHaveLength(2)
+
+    // 二维码（快速访问两卡各一张；title = 局域网完整 URL）
     const clientQr = screen.getByTitle(`${origin}/api/client-packages/LabelFrame.Client-0.18.0.msi`)
     expect(clientQr.tagName).toBe('IMG')
     expect(clientQr.getAttribute('src')).toMatch(/^data:image\/gif;base64,/)
     const pdaQr = screen.getByTitle(`${origin}/api/pda-packages/LabelFrame-AndroidHost-0.26.0.apk`)
     expect(pdaQr.tagName).toBe('IMG')
-    expect(pdaQr.getAttribute('src')).toMatch(/^data:image\/gif;base64,/)
-    // 两个分区共 4 条条目 = 4 张二维码
-    expect(screen.getAllByAltText('扫码下载二维码')).toHaveLength(4)
+
+    // 下载按钮（href = 下载相对路径，同源直达）
+    const clientLink = screen.getByTitle('下载 LabelFrame.Client-0.18.0.msi')
+    expect(clientLink.tagName).toBe('A')
+    expect(clientLink.getAttribute('href')).toBe('/api/client-packages/LabelFrame.Client-0.18.0.msi')
+    const pdaLink = screen.getByTitle('下载 LabelFrame-AndroidHost-0.26.0.apk')
+    expect(pdaLink.getAttribute('href')).toBe('/api/pda-packages/LabelFrame-AndroidHost-0.26.0.apk')
+
+    // 「全部版本 →」×2：分别跳对应管理 tab
+    const allButtons = screen.getAllByRole('button', { name: '全部版本 →' })
+    expect(allButtons).toHaveLength(2)
   })
 
-  it('Android 授权步骤文案：PDA 区展示「未知来源 / 安装未知应用」提示', async () => {
+  it('「全部版本 →」跳转：Windows 卡跳 Windows 管理、Android 卡跳 Android 管理', async () => {
     render(<DownloadCenter />)
-    await screen.findByText('LabelFrame-AndroidHost-0.26.0.apk')
+    await screen.findByText('LabelFrame.Client-0.18.0.msi')
+
+    const allButtons = screen.getAllByRole('button', { name: '全部版本 →' })
+    fireEvent.click(allButtons[0]) // Windows 卡
+    expect(window.location.hash).toBe('#dc=windows')
+    expect(await screen.findByText('LabelFrame.Client-linux.zip')).toBeTruthy()
+
+    gotoManageTab('快速访问')
+    await screen.findByText('LabelFrame.Client-0.18.0.msi')
+    fireEvent.click(screen.getAllByRole('button', { name: '全部版本 →' })[1]) // Android 卡
+    expect(window.location.hash).toBe('#dc=android')
+    expect(await screen.findByText('LabelFrame-AndroidHost-0.25.0.apk')).toBeTruthy()
+  })
+
+  it('空态（AC-03）：对应卡空态引导跳转管理 tab 上传，不报错', async () => {
+    mocks.server.listClientPackages.mockResolvedValue([])
+    render(<DownloadCenter />)
+    expect(await screen.findByText('暂无安装包')).toBeTruthy()
+    // Windows 卡空态（Android 卡正常展示最新一条）
+    expect(screen.getByText('LabelFrame-AndroidHost-0.26.0.apk')).toBeTruthy()
+    expect(screen.getAllByText('最新上传')).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: '去上传' }))
+    expect(window.location.hash).toBe('#dc=windows')
+    // 管理视图空态与上传入口
+    expect(await screen.findByText('暂无 Windows 安装包')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /上传 Windows 安装包/ })).toBeTruthy()
+  })
+})
+
+describe('下载中心页 · 连接信息卡（AC-04 / AC-05，迭代 118 · #272）', () => {
+  it('localhost 打开自动回退：默认选中首个候选（不产生 localhost 废码），二维码内容 = 同一裸地址 URL', async () => {
+    render(<DownloadCenter />)
+    await screen.findByText('连接信息')
+
+    const expected = `http://10.20.30.40:${window.location.port}`
+    // 等宽地址文本
+    await waitFor(() => expect(screen.getByText(expected)).toBeTruthy())
+    // 大二维码：title = 选中裸地址（无包装协议 / deep link）——候选 chip 同 title，按 IMG 元素过滤
+    const qr = screen.getAllByTitle(expected).find((el) => el.tagName === 'IMG')
+    expect(qr).toBeTruthy()
+    expect(qr!.getAttribute('src')).toMatch(/^data:image\/gif;base64,/)
+    // localhost 废码不出现
+    expect(screen.queryByTitle(window.location.origin)).toBeNull()
+  })
+
+  it('复制行为（AC-04）：点击复制 → copyText 收到当前选中地址，按钮变「已复制」', async () => {
+    render(<DownloadCenter />)
+    await screen.findByText('连接信息')
+    const expected = `http://10.20.30.40:${window.location.port}`
+    await waitFor(() => expect(screen.getByText(expected)).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: '复制' }))
+    await waitFor(() => expect(mocks.copyText).toHaveBeenCalledWith(expected))
+    expect(await screen.findByRole('button', { name: '已复制' })).toBeTruthy()
+  })
+
+  it('候选切换（AC-05）：多候选可切换，地址文本 / 二维码 / 复制内容同步更新', async () => {
+    render(<DownloadCenter />)
+    await screen.findByText('连接信息')
+    const first = `http://10.20.30.40:${window.location.port}`
+    await waitFor(() => expect(screen.getByText(first)).toBeTruthy())
+
+    // 切到第二个候选
+    fireEvent.click(screen.getByRole('button', { name: '192.168.1.9' }))
+    const second = `http://192.168.1.9:${window.location.port}`
+    expect(await screen.findByText(second)).toBeTruthy()
+    const qr = screen.getAllByTitle(second).find((el) => el.tagName === 'IMG')
+    expect(qr).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '复制' }))
+    await waitFor(() => expect(mocks.copyText).toHaveBeenCalledWith(second))
+  })
+
+  it('origin 匹配候选：默认原样使用当前 origin', async () => {
+    // jsdom origin 主机固定 localhost，无法直接构造「origin = 候选 IP」形态——
+    // 该规则由 lib/connection pickDefaultAddress 单测覆盖（connection.test.ts），此处覆盖接口形态断言。
+    mocks.server.listServerIpv4Candidates.mockResolvedValue({ candidates: [] })
+    render(<DownloadCenter />)
+    await screen.findByText('连接信息')
+    // 无候选（旧版服务端 / 枚举失败）：origin 兜底展示，不报错、不渲染候选行
+    await waitFor(() => expect(screen.getByText(window.location.origin)).toBeTruthy())
+    expect(screen.queryByText('地址候选')).toBeNull()
+  })
+
+  it('候选接口失败：静默回退 origin，不阻塞首屏', async () => {
+    mocks.server.listServerIpv4Candidates.mockRejectedValue(new Error('old server'))
+    render(<DownloadCenter />)
+    expect(await screen.findByText('LabelFrame.Client-0.18.0.msi')).toBeTruthy()
+    await waitFor(() => expect(screen.getByText(window.location.origin)).toBeTruthy())
+  })
+})
+
+describe('下载中心页 · 管理 tab 回归（AC-06：client-packages / pda-packages 行为不动）', () => {
+  it('Windows 管理列表：条目 / 大小 / 下载链接 / 二维码（时间倒序最新在上）', async () => {
+    mocks.server.listClientPackages.mockResolvedValue([...CLIENT_PKGS].reverse())
+    render(<DownloadCenter />)
+    gotoManageTab('Windows 包管理')
+    expect(await screen.findByText('LabelFrame.Client-0.18.0.msi')).toBeTruthy()
+    expect(screen.getByText('LabelFrame.Client-linux.zip')).toBeTruthy()
+    expect(screen.getByText('42.0 MB')).toBeTruthy()
+
+    const origin = window.location.origin
+    const clientQr = screen.getByTitle(`${origin}/api/client-packages/LabelFrame.Client-0.18.0.msi`)
+    expect(clientQr.tagName).toBe('IMG')
+    expect(indexOfText('LabelFrame.Client-0.18.0.msi')).toBeLessThan(indexOfText('LabelFrame.Client-linux.zip'))
+
+    const clientLink = screen.getByTitle('下载 LabelFrame.Client-0.18.0.msi')
+    expect(clientLink.getAttribute('href')).toBe('/api/client-packages/LabelFrame.Client-0.18.0.msi')
+  })
+
+  it('Android 管理：列表 + 「未知来源 / 安装未知应用」授权提示常驻', async () => {
+    render(<DownloadCenter />)
+    gotoManageTab('Android 包管理')
+    expect(await screen.findByText('LabelFrame-AndroidHost-0.26.0.apk')).toBeTruthy()
+    expect(indexOfText('LabelFrame-AndroidHost-0.26.0.apk')).toBeLessThan(indexOfText('LabelFrame-AndroidHost-0.25.0.apk'))
     expect(screen.getByText(/未知来源/)).toBeTruthy()
     expect(screen.getByText(/安装未知应用/)).toBeTruthy()
     expect(screen.getByText(/同一局域网/)).toBeTruthy()
   })
 
-  it('空列表：两分区各自空态提示（client-packages / pda-packages 目录直放说明）', async () => {
+  it('管理空态：两 tab 各自空态提示与上传按钮', async () => {
     mocks.server.listClientPackages.mockResolvedValue([])
     mocks.server.listPdaPackages.mockResolvedValue([])
     render(<DownloadCenter />)
-    expect(await screen.findByText('暂无客户端安装包')).toBeTruthy()
-    expect(screen.getByText('暂无 PDA 安装包')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /上传客户端安装包/ })).toBeTruthy()
+    gotoManageTab('Windows 包管理')
+    expect(await screen.findByText('暂无 Windows 安装包')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /上传 Windows 安装包/ })).toBeTruthy()
+
+    gotoManageTab('Android 包管理')
+    expect(await screen.findByText('暂无 Android 安装包')).toBeTruthy()
     expect(screen.getByRole('button', { name: /上传 APK/ })).toBeTruthy()
   })
 
@@ -122,14 +315,17 @@ describe('下载中心页（迭代 59 决策 #119）', () => {
     expect(await screen.findByText(/获取安装包列表失败/)).toBeTruthy()
   })
 
-  it('上传：客户端选 MSI → uploadClientPackage；PDA 选 APK → uploadPdaPackage；均刷新列表', async () => {
+  it('上传：Windows 选 MSI → uploadClientPackage；Android 选 APK → uploadPdaPackage；均刷新列表', async () => {
     render(<DownloadCenter />)
+    gotoManageTab('Windows 包管理')
     await screen.findByText('LabelFrame.Client-0.18.0.msi')
 
     const msi = new File(['x'], 'LabelFrame.Client-0.19.0.msi')
     fireEvent.change(document.getElementById('clientPkgFile')!, { target: { files: [msi] } })
     await waitFor(() => expect(mocks.server.uploadClientPackage).toHaveBeenCalledWith(msi))
 
+    gotoManageTab('Android 包管理')
+    await screen.findByText('LabelFrame-AndroidHost-0.26.0.apk')
     const apk = new File(['y'], 'LabelFrame-AndroidHost-0.26.0.apk')
     fireEvent.change(document.getElementById('pdaPkgFile')!, { target: { files: [apk] } })
     await waitFor(() => expect(mocks.server.uploadPdaPackage).toHaveBeenCalledWith(apk))
@@ -140,8 +336,9 @@ describe('下载中心页（迭代 59 决策 #119）', () => {
     expect(await screen.findByText(/APK「LabelFrame-AndroidHost-0\.26\.0\.apk」已上传/)).toBeTruthy()
   })
 
-  it('删除：PDA 条目确认 Modal 后调 deletePdaPackage + 刷新；取消不调用', async () => {
+  it('删除：Android 条目确认 Modal 后调 deletePdaPackage + 刷新；取消不调用', async () => {
     render(<DownloadCenter />)
+    gotoManageTab('Android 包管理')
     await screen.findByText('LabelFrame-AndroidHost-0.26.0.apk')
 
     const delButtons = screen.getAllByRole('button', { name: /删除/ })
@@ -162,14 +359,15 @@ describe('下载中心页（迭代 59 决策 #119）', () => {
     expect(mocks.server.deletePdaPackage).toHaveBeenCalledTimes(1)
   })
 
-  it('删除：客户端条目确认 Modal 后调 deleteClientPackage', async () => {
+  it('删除：Windows 条目确认 Modal 后调 deleteClientPackage', async () => {
     render(<DownloadCenter />)
+    gotoManageTab('Windows 包管理')
     await screen.findByText('LabelFrame.Client-0.18.0.msi')
 
     const delButtons = screen.getAllByRole('button', { name: /删除/ })
     const clientDelete = delButtons.find((b) => b.closest('tr')?.textContent?.includes('Client-linux'))
     fireEvent.click(clientDelete!)
-    expect(await screen.findByText('删除安装包')).toBeTruthy()
+    expect(await screen.findByText('删除 Windows 安装包')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '确认删除' }))
     await waitFor(() => expect(mocks.server.deleteClientPackage).toHaveBeenCalledWith('LabelFrame.Client-linux.zip'))
   })

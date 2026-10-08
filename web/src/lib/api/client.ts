@@ -14,6 +14,7 @@ import type {
   Healthz,
   HostConfig,
   InstalledPluginInfo,
+  Ipv4Candidates,
   JobView,
   LogEntry,
   PdaPackageInfo,
@@ -353,6 +354,9 @@ export const serverApi = {
     return serverRequest<PdaPackageInfo[]>('/api/pda-packages', { method: 'POST', body: form }, requestTimeouts.heavy)
   },
   deletePdaPackage: (fileName: string) => serverRequest<void>(`/api/pda-packages/${encodeURIComponent(fileName)}`, { method: 'DELETE' }),
+
+  // ── 本机 IPv4 候选（迭代 118 · #272：下载中心「连接信息」卡；只读枚举，协议与端口由前端按 origin 拼装）──
+  listServerIpv4Candidates: () => serverRequest<Ipv4Candidates>('/api/server/ipv4-candidates'),
 
   // ── 插件包分发（迭代 23 §2.1：仅 Server 实现；64MB 上限与校验在后端，前端按 sizeBytes 预检）──
   listPluginPackages: () => serverRequest<PluginPackageInfo[]>('/api/plugin-packages'),

@@ -219,6 +219,13 @@ export interface PdaPackageInfo {
   url?: string
 }
 
+// ── 本机 IPv4 候选（迭代 118 · #272：下载中心「连接信息」卡地址候选）──
+
+/** 服务端枚举的本机 IPv4 候选（GET /api/server/ipv4-candidates；私网（局域网）地址优先排序）。 */
+export interface Ipv4Candidates {
+  candidates: string[]
+}
+
 // ── 迭代 23：客户端插件分发（服务端 plugin-packages + 客户端 /api/plugins 安装 / 卸载）──
 
 /** 服务端插件包列表项（GET /api/plugin-packages；invalid 条目元数据字段缺失，仅文件信息有效）。 */
