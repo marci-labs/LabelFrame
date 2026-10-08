@@ -79,7 +79,7 @@ const CLOSE_RE = /(close|fix|resolve)(s|es|ed|d)?\s*:?\s*#\d+/i;
 const TEST_FILTER = "FullyQualifiedName!~Perf&FullyQualifiedName!~Soak";
 const GATE_RETRIES = 2;
 
-const issueNum = Number(args.issue);
+const issueNum = Number(args.issue ?? 280);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
 const rawSlug = typeof args.slug === "string" && args.slug !== "" ? args.slug : "guide";
 const slug = rawSlug.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 30);
@@ -162,8 +162,8 @@ if (fixMode) {
 } else {
   phase("恢复上下文并实施编码");
   implNote = await implementer.ask<ImplResult>(
-    ctxGuide + `\n\n按方案实施：引导组件与步骤定义、i18n 资源（zh+en，用定稿 json 的 key 与文案）、首次判定与「重新查看」入口、` +
-    `按 Issue AC 补测试（.test.tsx）、更新 CHANGELOG.md。完成后在 ${wt} 内 git add -A 并 git commit（Conventional Commits，中文说明；不要 push）。`);
+    ctxGuide + `\n\n按「📐 方案 v1」实施：以方案「计划改动文件」清单与步骤清单为准逐项落地（组件 / 步骤定义纯数据 / 状态与标记键 / i18n 资源 zh+en——文案一律取「✅ 文案定稿 v1」json 块的 key 与文案逐字使用；入口措辞采用用户过目拍板的候选组，` +
+    `若 Issue 评论未记录拍板组则用推荐组并在 summary 注明）、按 Issue AC 补测试（.test.tsx，含 server 分支不渲染守门）、更新 CHANGELOG.md。完成后在 ${wt} 内 git add -A 并 git commit（Conventional Commits，中文说明；不要 push）。`);
 }
 
 phase("本地门禁：dotnet 与前端全量");
@@ -231,8 +231,9 @@ if (!prPaths.some((p) => p.startsWith("web/"))) assertProblems.push("改动未�
 if (assertProblems.length > 0) throw new Error("PR 元数据断言未过：" + assertProblems.join("；"));
 
 await world.run("gh", ["issue", "edit", String(issueNum), "--add-label", "进行中"]);
+const prCommentTs = await tsIso();
 await world.run("gh", ["issue", "comment", String(issueNum), "--body",
-  "**🔧 PR 已建**（工作流·实施段 · " + tsIso() + "）\n分支 " + branch + " · PR #" + newPr + " · " + prUrl + "\n变更摘要：\n" +
+  "**🔧 PR 已建**（工作流·实施段 · " + prCommentTs + "）\n分支 " + branch + " · PR #" + newPr + " · " + prUrl + "\n变更摘要：\n" +
   implNote.summary.map((s) => "- " + s).join("\n") +
   "\n\n本地门禁（dotnet build/test + pnpm lint/test/build）全绿；PR 元数据断言通过。等待评审段 lf-review。"]);
 report({ stage: "PR 已建", issue: issueNum, pr: Number(newPr), title: change.prTitle });
