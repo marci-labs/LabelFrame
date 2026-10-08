@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 import i18n, { LOCALE_STORAGE_KEY } from './i18n'
+import { GUIDE_SEEN_KEY } from './lib/guide'
 
 // 挂载链（AppContext 启动链 → 模板列表加载）为多段 promise + 真实宏任务调度，统一放宽异步等待（同 App.server.test.tsx 口径）
 configure({ asyncUtilTimeout: 8000 })
@@ -90,6 +91,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   window.localStorage.clear()
   window.sessionStorage.clear()
+  // 迭代 119（#276）：本文件测壳层语言切换器，以「已看过引导」用户运行——首见自动启动行为归 Guide.test.tsx
+  window.localStorage.setItem(GUIDE_SEEN_KEY, 'done')
   mocks.server.healthz.mockResolvedValue({ service: 'LabelFrame.Server', status: 'ok' })
   mocks.local.healthz.mockResolvedValue({ service: 'LabelFrame.WinHost', status: 'ok' })
   mocks.local.getHostConfig.mockResolvedValue({ serverUrl: 'http://127.0.0.1:53961', deviceId: 'PC-1', deviceName: 'PC-1', ips: [] })

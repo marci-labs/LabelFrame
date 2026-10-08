@@ -16,6 +16,7 @@ import zhCNDesigner from './locales/zh-CN/designer.json'
 import zhCNDownloadCenter from './locales/zh-CN/downloadCenter.json'
 import zhCNDevices from './locales/zh-CN/devices.json'
 import zhCNPluginPackages from './locales/zh-CN/pluginPackages.json'
+import zhCNGuide from './locales/zh-CN/guide.json'
 import enCommon from './locales/en/common.json'
 import enShell from './locales/en/shell.json'
 import enSettings from './locales/en/settings.json'
@@ -27,6 +28,7 @@ import enDesigner from './locales/en/designer.json'
 import enDownloadCenter from './locales/en/downloadCenter.json'
 import enDevices from './locales/en/devices.json'
 import enPluginPackages from './locales/en/pluginPackages.json'
+import enGuide from './locales/en/guide.json'
 
 /** 展平嵌套 JSON 为 `a.b.c` 全量 key 路径集合。 */
 function flattenKeys(obj: unknown, prefix = ''): Set<string> {
@@ -59,6 +61,7 @@ const NAMESPACES: Record<string, { zh: unknown; en: unknown }> = {
   downloadCenter: { zh: zhCNDownloadCenter, en: enDownloadCenter },
   devices: { zh: zhCNDevices, en: enDevices },
   pluginPackages: { zh: zhCNPluginPackages, en: enPluginPackages },
+  guide: { zh: zhCNGuide, en: enGuide },
 }
 
 describe('语言包 en 覆盖 zh-CN 全部 key（AC-04）', () => {

@@ -225,7 +225,8 @@ export function Workbench({
             ev.target.value = ''
           }}
         />
-        <button className="btn primary" onClick={() => onOpenDesigner({ kind: 'new' })}>
+        {/* data-guide：首次引导第 1 步锚点（迭代 119 / #276） */}
+        <button className="btn primary" data-guide="workbench-new" onClick={() => onOpenDesigner({ kind: 'new' })}>
           <Icon name="plus" size={13} />
           {t('newTemplate')}
         </button>

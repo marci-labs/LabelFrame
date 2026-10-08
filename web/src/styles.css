@@ -386,6 +386,45 @@ label.field > .input, label.field > select.input { width: 100%; }
 .menu-item.danger { background: var(--danger); color: #fff; }
 .menu-item.danger:hover { background: var(--danger-strong); }
 
+/* ---------- 新用户分步引导（迭代 119 / #276，决策 #170：自研 spotlight 气泡引导 components/Guide.tsx） ---------- */
+/* portal 到 body；z-index 110 高于既有最高 modal-mask(100)，压过全部弹层（既有地图：.preview-modal=95 /
+   .popover=90，.modal 与 .log-drawer 无 z-index）；遮罩拦截其余区域交互，跳过 / Esc / 完成退出 */
+.guide-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+}
+/* spotlight 挖洞：锚点矩形外扩留白 + box-shadow 巨影法铺暗四周（无需 SVG mask），描边用主色呼应 */
+.guide-spot {
+  position: fixed;
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 0 0 200vmax rgba(23, 31, 41, 0.5);
+  pointer-events: none;
+}
+/* 无锚点降级（超时 / 零矩形）：全屏暗幕兜底，气泡居中 */
+.guide-veil {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 31, 41, 0.5);
+  pointer-events: none;
+}
+.guide-bubble {
+  position: fixed;
+  width: 340px;
+  max-width: calc(100vw - 16px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(23, 31, 41, 0.24);
+  padding: 13px 16px 12px;
+  animation: popIn 150ms ease-out;
+}
+.guide-bubble-title { font-size: 14px; font-weight: 600; }
+.guide-bubble-body { margin-top: 6px; font-size: 12.5px; line-height: 1.65; color: var(--ink-2); }
+.guide-bubble-foot { margin-top: 12px; display: flex; align-items: center; gap: 8px; }
+.guide-flex { flex: 1; }
+
 /* ---------- 工作台模板预览（迭代 46，修订：预览列内嵌缩略图 + 点击放大） ---------- */
 /* 缩略图（单元格内）：等比缩到 40px 高，点击放大 */
 .preview-thumb {
