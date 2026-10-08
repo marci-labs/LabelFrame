@@ -2,7 +2,7 @@
 // 下载中心页（迭代 118 改版 · #272）：页内三 tab（快速访问 / Windows 包管理 / Android 包管理，默认快速访问，
 // tab 状态进 URL hash 刷新 / 直链还原）；快速访问首屏 = 上排 Windows / Android「最新上传」卡（修改时间倒序
 // 第一条的货架语义：文件名 / 大小 / 上传时间 / 下载二维码（origin + 下载路径）/ 下载按钮 /「全部版本 →」跳
-// 管理卡、空态引导跳转上传）+ 下排通栏「连接信息」卡（大二维码 = 选中裸地址 URL + 地址文本与复制 +
+// 管理卡、空态引导跳转上传）+ 下区块「服务端信息」卡（大二维码 = 选中裸地址 URL + 地址文本与复制 +
 // 多网卡候选切换 / localhost 回退）；管理 tab（client-packages / pda-packages）上传 / 下载 / 删除（确认
 // Modal）行为回归——数据与接口不动（AC-06）。
 
@@ -77,7 +77,7 @@ describe('下载中心页 · 三 tab 与 URL（AC-01，迭代 118 · #272）', (
     expect(screen.getByRole('button', { name: '快速访问' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Windows 包管理' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Android 包管理' })).toBeTruthy()
-    expect(await screen.findByText('① 获取客户端')).toBeTruthy()
+    expect(await screen.findByText('客户端')).toBeTruthy()
     // 默认 tab 不带 hash（quick 为缺省值，不写 URL）
     expect(window.location.hash).not.toContain('#dc=')
   })
@@ -103,13 +103,13 @@ describe('下载中心页 · 三 tab 与 URL（AC-01，迭代 118 · #272）', (
     render(<DownloadCenter />)
     expect(await screen.findByText('LabelFrame-AndroidHost-0.25.0.apk')).toBeTruthy()
     // 快速访问首屏不渲染
-    expect(screen.queryByText('① 获取客户端')).toBeNull()
+    expect(screen.queryByText('客户端')).toBeNull()
   })
 
   it('非法 hash 回退默认快速访问', async () => {
     window.location.hash = '#dc=whatever'
     render(<DownloadCenter />)
-    expect(await screen.findByText('① 获取客户端')).toBeTruthy()
+    expect(await screen.findByText('客户端')).toBeTruthy()
   })
 
   it('运行中 URL 变更（hashchange）同步 tab：手动改地址栏也能切到 Windows 管理', async () => {
@@ -208,7 +208,7 @@ describe('下载中心页 · 快速访问首屏「最新上传」卡（AC-02 / A
 describe('下载中心页 · 连接信息卡（AC-04 / AC-05，迭代 118 · #272）', () => {
   it('localhost 打开自动回退：默认选中首个候选（不产生 localhost 废码），二维码内容 = 同一裸地址 URL', async () => {
     render(<DownloadCenter />)
-    await screen.findByText('连接信息')
+    await screen.findByText('服务端信息')
 
     const expected = `http://10.20.30.40:${window.location.port}`
     // 等宽地址文本
@@ -223,7 +223,7 @@ describe('下载中心页 · 连接信息卡（AC-04 / AC-05，迭代 118 · #27
 
   it('复制行为（AC-04）：点击复制 → copyText 收到当前选中地址，按钮变「已复制」', async () => {
     render(<DownloadCenter />)
-    await screen.findByText('连接信息')
+    await screen.findByText('服务端信息')
     const expected = `http://10.20.30.40:${window.location.port}`
     await waitFor(() => expect(screen.getByText(expected)).toBeTruthy())
 
@@ -234,7 +234,7 @@ describe('下载中心页 · 连接信息卡（AC-04 / AC-05，迭代 118 · #27
 
   it('候选切换（AC-05）：多候选可切换，地址文本 / 二维码 / 复制内容同步更新', async () => {
     render(<DownloadCenter />)
-    await screen.findByText('连接信息')
+    await screen.findByText('服务端信息')
     const first = `http://10.20.30.40:${window.location.port}`
     await waitFor(() => expect(screen.getByText(first)).toBeTruthy())
 
@@ -254,7 +254,7 @@ describe('下载中心页 · 连接信息卡（AC-04 / AC-05，迭代 118 · #27
     // 该规则由 lib/connection pickDefaultAddress 单测覆盖（connection.test.ts），此处覆盖接口形态断言。
     mocks.server.listServerIpv4Candidates.mockResolvedValue({ candidates: [] })
     render(<DownloadCenter />)
-    await screen.findByText('连接信息')
+    await screen.findByText('服务端信息')
     // 无候选（旧版服务端 / 枚举失败）：origin 兜底展示，不报错、不渲染候选行
     await waitFor(() => expect(screen.getByText(window.location.origin)).toBeTruthy())
     expect(screen.queryByText('地址候选')).toBeNull()

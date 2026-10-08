@@ -1,9 +1,9 @@
 // 下载中心页（迭代 118 改版 · #272，升级迭代 59 决策 #119 设立的下载中心）：页内三 tab——
 // 「快速访问」（默认）/「Windows 包管理」/「Android 包管理」；tab 状态写入 URL hash（#dc=quick|windows|android，
 // 不动主导航既有机制），刷新 / 直链打开均还原当前 tab；视觉沿用仓库页内 tab 先例（btn + active 分段风格）。
-// 快速访问 = 消费视图（拿包 + 连服务器）：上排 Windows / Android 各一张「最新上传」卡——货架语义按上架时间
-// （修改时间倒序）取第一条，删除后自动回退剩余最新一条，不做版本号解析 / 推荐标记；下排通栏「连接信息」卡：
-// 大二维码居中（内容 = 选中的裸地址 URL，无任何包装协议 / deep link）+ 等宽地址文本与复制按钮。
+// 快速访问 = 消费视图（拿包 + 连服务器），整区限宽居中：上区块标题「客户端」——Windows / Android 各一张
+// 「最新上传」卡（货架语义按上架时间/修改时间倒序取第一条，删除后自动回退剩余最新一条，不做版本号解析 / 推荐标记）；
+// 下区块「服务端信息」卡（与上排同款卡片视觉）：大二维码居中（内容 = 选中的裸地址 URL，无包装协议）+ 地址 + 复制。
 // 连接地址候选来自 GET /api/server/ipv4-candidates（只读枚举本机 IPv4，私网优先）：默认取与 origin 匹配者，
 // localhost / 无匹配回退首个候选（不产生 localhost 废码）；多网卡可切换候选，二维码 / 地址 / 复制同步更新。
 // 管理退居专职 tab：Windows（client-packages）/ Android（pda-packages）上传 / 下载 / 删除（确认 Modal）
@@ -231,8 +231,6 @@ function LatestCard({
   return (
     <div
       style={{
-        flex: '1 1 300px',
-        minWidth: 280,
         padding: 14,
         background: 'var(--panel)',
         border: '1px solid var(--line)',
@@ -345,17 +343,13 @@ function ConnectionCard() {
   return (
     <div
       style={{
-        marginTop: 16,
         padding: 14,
-        background: 'var(--bg)',
+        background: 'var(--panel)',
         border: '1px solid var(--line)',
         borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow-1)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
-        <span style={{ fontSize: 13, fontWeight: 600 }}>{t('connection.title')}</span>
-        <span className="hint">{t('steps.connect')}</span>
-      </div>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
         <QrCodeImage text={selected} size={176} alt={t('connQrAlt')} />
       </div>
@@ -547,9 +541,9 @@ export function DownloadCenter() {
         </div>
 
         {tab === 'quick' && (
-          <div>
-            <div className="hint" style={{ margin: '0 0 6px' }}>
-              {t('steps.download')}
+          <div style={{ maxWidth: 720, margin: '0 auto' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, margin: '0 0 8px' }}>
+              {t('section.client')}
             </div>
             <div className="grid-2" style={{ gap: 12 }}>
               <LatestCard
@@ -568,6 +562,9 @@ export function DownloadCenter() {
                 manageTabLabel={t('tabs.android')}
                 onGoManage={() => switchTo('android')}
               />
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, margin: '16px 0 8px' }}>
+              {t('connection.title')}
             </div>
             <ConnectionCard />
           </div>

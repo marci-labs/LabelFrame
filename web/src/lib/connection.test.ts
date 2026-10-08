@@ -13,8 +13,10 @@ describe('pickDefaultAddress（默认地址选择规则，迭代 118 · #272）'
     expect(pickDefaultAddress('http://127.0.0.1:53961', ['192.168.1.9'])).toBe('http://192.168.1.9:53961')
   })
 
-  it('无匹配（DNS 名等）：同样回退首个候选', () => {
-    expect(pickDefaultAddress('http://print-server.local:53961', ['10.0.0.5'])).toBe('http://10.0.0.5:53961')
+  it('无匹配且非回环（DNS 名 / Docker 端口映射——候选是容器内网 IP）：保持 origin，绝不替换为设备不可达地址', () => {
+    expect(pickDefaultAddress('http://print-server.local:53961', ['10.0.0.5'])).toBe('http://print-server.local:53961')
+    // Docker compose 部署实测形态：从宿主 IP 访问，服务端枚举到容器内网 IP（172.17.0.5）
+    expect(pickDefaultAddress('http://192.168.1.187:53961', ['172.17.0.5'])).toBe('http://192.168.1.187:53961')
   })
 
   it('候选为空 / 未加载 / 请求失败：origin 兜底（无更优信息时不猜测地址）', () => {
@@ -23,8 +25,8 @@ describe('pickDefaultAddress（默认地址选择规则，迭代 118 · #272）'
     expect(pickDefaultAddress('http://10.0.0.5:53961', undefined)).toBe('http://10.0.0.5:53961')
   })
 
-  it('端口沿用 origin：默认端口（空）时省略端口段', () => {
-    expect(pickDefaultAddress('https://example.com', ['10.0.0.5'])).toBe('https://10.0.0.5')
+  it('端口沿用 origin：localhost 无端口形态回退候选时同样省略端口段', () => {
+    expect(pickDefaultAddress('https://localhost', ['10.0.0.5'])).toBe('https://10.0.0.5')
   })
 
   it('origin 为空串：原样返回不构造', () => {

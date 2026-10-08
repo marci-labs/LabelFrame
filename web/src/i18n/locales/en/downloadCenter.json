@@ -8,9 +8,8 @@
     "windows": "Windows Packages",
     "android": "Android Packages"
   },
-  "steps": {
-    "download": "① Get the client",
-    "connect": "② Connect to the server"
+  "section": {
+    "client": "Client"
   },
   "refreshTitle": "Reload the package list",
   "qrAlt": "QR code for download",
@@ -38,7 +37,7 @@
     "goUpload": "Upload"
   },
   "connection": {
-    "title": "Connection Info",
+    "title": "Server Info",
     "address": "Server address",
     "copy": "Copy",
     "copied": "Copied",

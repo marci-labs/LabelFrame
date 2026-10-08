@@ -161,7 +161,7 @@ describe('server 构建：下载中心页入口（迭代 22 §2.3；迭代 59 �
     // 默认快速访问：两平台「最新上传」卡 + 连接信息卡（AC-01/02）
     expect(await screen.findByText('LabelFrame.Client-0.18.0.msi')).toBeTruthy()
     expect(screen.getByText('LabelFrame-AndroidHost-0.26.0.apk')).toBeTruthy()
-    expect(screen.getByText('连接信息')).toBeTruthy()
+    expect(screen.getByText('服务端信息')).toBeTruthy()
 
     // Windows 管理 tab：上传 / 列表 / 下载链接 / 二维码（title = origin + 下载路径）
     fireEvent.click(screen.getByRole('button', { name: 'Windows 包管理' }))

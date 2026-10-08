@@ -8,9 +8,8 @@
     "windows": "Windows 包管理",
     "android": "Android 包管理"
   },
-  "steps": {
-    "download": "① 获取客户端",
-    "connect": "② 连接服务器"
+  "section": {
+    "client": "客户端"
   },
   "refreshTitle": "重新拉取安装包列表",
   "qrAlt": "扫码下载二维码",
@@ -38,7 +37,7 @@
     "goUpload": "去上传"
   },
   "connection": {
-    "title": "连接信息",
+    "title": "服务端信息",
     "address": "服务端地址",
     "copy": "复制",
     "copied": "已复制",
