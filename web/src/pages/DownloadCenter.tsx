@@ -1,9 +1,14 @@
-// 下载中心页（迭代 59 决策 #119，Server UI 专用）：客户端安装包（client-packages）与 PDA 安装包（pda-packages）
-// 同页分区统一分发——列表（文件名 / 大小 / 修改时间，最新在上）+ 上传（multipart）+ 下载 + 删除（确认）；
-// 每条目旁展示二维码（内容 = 本页 origin + 该条目下载路径，即管理员正在访问的局域网地址）——PDA 与服务器
-// 同网扫码即得下载 URL；PDA 区常驻 Android「未知来源 / 安装未知应用」授权步骤提示。
-// client-packages 既有行为不动：客户端设置页「更新与安装包」卡片仍走 GET /api/client-packages 下载。
-// 迭代 112（#246）：文案 key 化（downloadCenter 域；zh-CN 值与原硬编码逐字一致）。
+// 下载中心页（迭代 118 改版 · #272，升级迭代 59 决策 #119 设立的下载中心）：页内三 tab——
+// 「快速访问」（默认）/「Windows 包管理」/「Android 包管理」；tab 状态写入 URL hash（#dc=quick|windows|android，
+// 不动主导航既有机制），刷新 / 直链打开均还原当前 tab；视觉沿用仓库页内 tab 先例（btn + active 分段风格）。
+// 快速访问 = 消费视图（拿包 + 连服务器）：上排 Windows / Android 各一张「最新上传」卡——货架语义按上架时间
+// （修改时间倒序）取第一条，删除后自动回退剩余最新一条，不做版本号解析 / 推荐标记；下排通栏「连接信息」卡：
+// 大二维码居中（内容 = 选中的裸地址 URL，无任何包装协议 / deep link）+ 等宽地址文本与复制按钮。
+// 连接地址候选来自 GET /api/server/ipv4-candidates（只读枚举本机 IPv4，私网优先）：默认取与 origin 匹配者，
+// localhost / 无匹配回退首个候选（不产生 localhost 废码）；多网卡可切换候选，二维码 / 地址 / 复制同步更新。
+// 管理退居专职 tab：Windows（client-packages）/ Android（pda-packages）上传 / 下载 / 删除（确认 Modal）
+// 行为与数据接口不动（AC-06 回归）；client-packages 既有行为不动：客户端设置页「更新与安装包」仍走
+// GET /api/client-packages 下载。措辞平台优先（Windows / Android），downloadCenter 域 zh-CN + en 全量 key 化（迭代 112 #246 起延续）。
 
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +22,8 @@ import type { ClientPackageInfo, PdaPackageInfo } from '../lib/api/types'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { formatSize } from '../lib/download'
+import { copyText } from '../lib/clipboard'
+import { joinAddress, pickDefaultAddress } from '../lib/connection'
 
 /** 修改时间：本地时间 MM-dd HH:mm:ss。 */
 function formatTime(iso?: string): string {
@@ -33,6 +40,21 @@ interface PackageRow {
   sizeBytes: number
   modifiedAt: string
   downloadHref: string
+}
+
+// ── 页内 tab（迭代 118 · #272）：hash 承载（#dc=<tab>），刷新 / 直链还原 ──
+
+/** 页内 tab 标识：quick = 快速访问（默认消费视图）；windows / android = 平台包管理。 */
+type DcTab = 'quick' | 'windows' | 'android'
+
+const DC_TABS: readonly DcTab[] = ['quick', 'windows', 'android']
+
+/** 从当前 URL hash 解析 tab（非法 / 缺省回退 quick）。 */
+function tabFromLocation(): DcTab {
+  if (typeof window === 'undefined') return 'quick'
+  const m = window.location.hash.match(/^#dc=(\w+)/)
+  const v = m?.[1]
+  return DC_TABS.includes(v as DcTab) ? (v as DcTab) : 'quick'
 }
 
 /** 二维码图片（qrcode-generator 生成 GIF data URL，无需 canvas；生成失败不渲染，不阻塞页面）。 */
@@ -165,8 +187,210 @@ function PackageTable({
   )
 }
 
+/** 「最新上传」货架徽标（accent 浅底小标签）。 */
+function LatestBadge({ label }: { label: string }) {
+  return (
+    <span
+      style={{
+        padding: '1px 8px',
+        fontSize: 11,
+        lineHeight: '18px',
+        color: 'var(--accent)',
+        background: 'var(--accent-soft)',
+        borderRadius: 999,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label}
+    </span>
+  )
+}
+
+/**
+ * 快速访问首屏「最新上传」卡（Windows / Android 各一，#272）：
+ * 货架语义——取修改时间倒序第一条（管理员换货即生效、删除自动回退剩余最新一条）；
+ * 卡内：文件名 / 大小 / 上传时间 / 下载二维码（origin + 下载路径）/ 下载按钮 /「全部版本 →」跳对应管理 tab；
+ * 空态引导跳转对应管理 tab 上传。
+ */
+function LatestCard({
+  platform,
+  loading,
+  row,
+  qrOrigin,
+  manageTabLabel,
+  onGoManage,
+}: {
+  platform: string
+  loading: boolean
+  row: PackageRow | null
+  qrOrigin: string
+  manageTabLabel: string
+  onGoManage: () => void
+}) {
+  const { t } = useTranslation('downloadCenter')
+  return (
+    <div
+      style={{
+        flex: '1 1 300px',
+        minWidth: 280,
+        padding: 14,
+        background: 'var(--panel)',
+        border: '1px solid var(--line)',
+        borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow-1)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>{platform}</span>
+        {row && <LatestBadge label={t('quick.latest')} />}
+      </div>
+      {loading ? (
+        <div className="hint" style={{ padding: '36px 0', textAlign: 'center' }}>
+          {t('quick.loading')}
+        </div>
+      ) : !row ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '22px 0' }}>
+          <Icon name="download" />
+          <div className="empty-title">{t('quick.emptyTitle')}</div>
+          <div className="hint">{t('quick.emptyHint', { tab: manageTabLabel })}</div>
+          <button className="btn" onClick={onGoManage}>
+            <Icon name="upload" size={13} />
+            {t('quick.goUpload')}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="mono" style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>
+            {row.fileName}
+          </div>
+          <div className="mono hint">
+            {formatSize(row.sizeBytes)} · {t('quick.uploadedAt', { time: formatTime(row.modifiedAt) })}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <QrCodeImage text={`${qrOrigin}${row.downloadHref}`} size={150} alt={t('qrAlt')} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+            <a className="btn primary" href={row.downloadHref} title={t('downloadTitle', { name: row.fileName })}>
+              <Icon name="download" size={13} />
+              {t('action.download')}
+            </a>
+            <button className="btn" onClick={onGoManage} title={manageTabLabel}>
+              {t('quick.allVersions')}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** 当前页面 origin（非浏览器环境回退空串）。 */
+function pageOrigin(): string {
+  return typeof window !== 'undefined' ? window.location.origin : ''
+}
+
+/** 候选 IP 按当前 origin 的协议与端口拼装完整地址（默认端口时省略端口段）。 */
+function candidateUrl(ip: string): string {
+  try {
+    const u = new URL(pageOrigin())
+    return joinAddress(u.protocol, ip, u.port)
+  } catch {
+    return ip
+  }
+}
+
+/**
+ * 连接信息卡（快速访问首屏下排通栏，浅底与上排区分，#272）：
+ * 第一行大二维码居中（内容 = 选中裸地址 URL，无包装协议——PDA 扫码枪键盘直填即得地址）；
+ * 第二行等宽地址文本 + 复制按钮（复制当前选中地址）；多网卡候选可切换，切换后二维码 / 地址 / 复制同步更新。
+ * 地址候选 = GET /api/server/ipv4-candidates（私网优先排序）；默认选择规则见 lib/connection.ts pickDefaultAddress。
+ */
+function ConnectionCard() {
+  const { t } = useTranslation('downloadCenter')
+  const [candidates, setCandidates] = useState<string[] | null>(null)
+  const [selected, setSelected] = useState<string>(pageOrigin())
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    serverApi
+      .listServerIpv4Candidates()
+      .then((res) => {
+        if (!cancelled) setCandidates(Array.isArray(res.candidates) ? res.candidates : [])
+      })
+      .catch(() => {
+        // 旧版服务端（无该端点）/ 请求失败：候选置空 → 展示回退当前 origin（不阻塞首屏）
+        if (!cancelled) setCandidates([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (candidates === null) return
+    setSelected(pickDefaultAddress(pageOrigin(), candidates))
+  }, [candidates])
+
+  const copy = async () => {
+    if (await copyText(selected)) {
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        padding: 14,
+        background: 'var(--bg)',
+        border: '1px solid var(--line)',
+        borderRadius: 'var(--radius)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>{t('connection.title')}</span>
+        <span className="hint">{t('steps.connect')}</span>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
+        <QrCodeImage text={selected} size={176} alt={t('connQrAlt')} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span className="hint">{t('connection.address')}</span>
+        <span className="mono" style={{ fontSize: 13, wordBreak: 'break-all' }}>
+          {selected}
+        </span>
+        <button className="btn sm" onClick={() => void copy()} title={t('connection.copyTitle')}>
+          <Icon name={copied ? 'check' : 'copy'} size={12} />
+          {copied ? t('connection.copied') : t('connection.copy')}
+        </button>
+      </div>
+      {candidates !== null && candidates.length > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+          <span className="hint">{t('connection.candidates')}</span>
+          {candidates.map((ip) => (
+            <button
+              key={ip}
+              className={'btn sm' + (selected === candidateUrl(ip) ? ' active' : '')}
+              onClick={() => setSelected(candidateUrl(ip))}
+              title={candidateUrl(ip)}
+            >
+              {ip}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function DownloadCenter() {
   const { t } = useTranslation('downloadCenter')
+  const [tab, setTab] = useState<DcTab>(tabFromLocation)
   const [clientPackages, setClientPackages] = useState<ClientPackageInfo[] | null>(null)
   const [pdaPackages, setPdaPackages] = useState<PdaPackageInfo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -176,6 +400,18 @@ export function DownloadCenter() {
   const [deleting, setDeleting] = useState<string | null>(null)
   // 迭代 93（#151 F-04）：删除确认改自研 Modal（复用工作台删除确认模式），替代原生 confirm 弹窗
   const [pendingRemove, setPendingRemove] = useState<{ kind: 'client' | 'pda'; row: PackageRow } | null>(null)
+
+  // tab 与 URL hash 双向同步：切 tab 写 hash（replaceState 不新增历史记录）；手动改 URL / 前进后退同步回 tab
+  useEffect(() => {
+    const onHashChange = () => setTab(tabFromLocation())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  const switchTo = useCallback((next: DcTab) => {
+    setTab(next)
+    window.history.replaceState(null, '', `#dc=${next}`)
+  }, [])
 
   const load = useCallback(async () => {
     setError(null)
@@ -198,7 +434,7 @@ export function DownloadCenter() {
     setError(null)
     try {
       await serverApi.uploadClientPackage(file)
-      setNotice(t('client.uploadOk', { name: file.name }))
+      setNotice(t('windows.uploadOk', { name: file.name }))
       void load()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('uploadFailed'))
@@ -213,7 +449,7 @@ export function DownloadCenter() {
     setError(null)
     try {
       await serverApi.uploadPdaPackage(file)
-      setNotice(t('pda.uploadOk', { name: file.name }))
+      setNotice(t('android.uploadOk', { name: file.name }))
       void load()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('uploadFailed'))
@@ -228,7 +464,7 @@ export function DownloadCenter() {
     setNotice(null)
     try {
       await serverApi.deleteClientPackage(p.fileName)
-      setNotice(t('client.deleteOk', { name: p.fileName }))
+      setNotice(t('windows.deleteOk', { name: p.fileName }))
       void load()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('deleteFailed'))
@@ -243,7 +479,7 @@ export function DownloadCenter() {
     setNotice(null)
     try {
       await serverApi.deletePdaPackage(p.fileName)
-      setNotice(t('pda.deleteOk', { name: p.fileName }))
+      setNotice(t('android.deleteOk', { name: p.fileName }))
       void load()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('deleteFailed'))
@@ -261,7 +497,7 @@ export function DownloadCenter() {
     else void removePda(row)
   }
 
-  // 时间排序（决议 3：最新在上；页面内排序先行，latest.json 落地后再对齐「推荐 / 最新」标记）
+  // 时间排序（迭代 59 决议 3 → 迭代 118 收口为「最新上传」货架语义：按上架时间展示，latest.json 对齐事项就此关闭）
   const byNewest = <T extends { modifiedAt?: string }>(list: T[] | null): T[] | null =>
     list === null ? null : [...list].sort((a, b) => (b.modifiedAt ?? '').localeCompare(a.modifiedAt ?? ''))
 
@@ -281,7 +517,7 @@ export function DownloadCenter() {
     })) ?? null
 
   // 二维码前缀 = 管理员浏览器正在访问的地址（PDA 与服务器同网即可直达）
-  const qrOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+  const qrOrigin = pageOrigin()
 
   return (
     <div className="page">
@@ -301,79 +537,118 @@ export function DownloadCenter() {
       {notice && <div className="banner notice">{notice}</div>}
 
       <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
-        {/* ── 客户端下载（PC；client-packages 既有数据并入展示，行为不动）── */}
-        <SectionHead
-          title={t('client.title')}
-          hint={t('client.hint')}
-          uploading={uploadingClient}
-          uploadLabel={t('client.uploadLabel')}
-          inputId="clientPkgFile"
-          onPick={(f) => void uploadClient(f)}
-          uploadingLabel={t('action.uploading')}
-        />
-        {clientRows === null ? (
-          <div className="empty">
-            <Icon name="download" />
-            <div className="empty-title">{t('client.loading')}</div>
-          </div>
-        ) : clientRows.length === 0 ? (
-          <div className="empty">
-            <Icon name="download" />
-            <div className="empty-title">{t('client.empty')}</div>
-            <div className="hint">
-              {t('client.emptyHint')}
+        {/* 页内三 tab（#272）：分段按钮（btn + active 既有样式，不新造设计语言） */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          {DC_TABS.map((id) => (
+            <button key={id} className={'btn' + (tab === id ? ' active' : '')} onClick={() => switchTo(id)}>
+              {t(`tabs.${id}`)}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'quick' && (
+          <div>
+            <div className="hint" style={{ margin: '0 0 6px' }}>
+              {t('steps.download')}
             </div>
+            <div className="grid-2" style={{ gap: 12 }}>
+              <LatestCard
+                platform={t('quick.windowsName')}
+                loading={clientRows === null}
+                row={clientRows?.[0] ?? null}
+                qrOrigin={qrOrigin}
+                manageTabLabel={t('tabs.windows')}
+                onGoManage={() => switchTo('windows')}
+              />
+              <LatestCard
+                platform={t('quick.androidName')}
+                loading={pdaRows === null}
+                row={pdaRows?.[0] ?? null}
+                qrOrigin={qrOrigin}
+                manageTabLabel={t('tabs.android')}
+                onGoManage={() => switchTo('android')}
+              />
+            </div>
+            <ConnectionCard />
           </div>
-        ) : (
-          <PackageTable rows={clientRows} qrOrigin={qrOrigin} deleting={deleting} onRemove={(row) => setPendingRemove({ kind: 'client', row })} />
         )}
 
-        {/* ── PDA 下载（Android 宿主 APK；pda-packages 新目录，迭代 59 决策 #119）── */}
-        <div style={{ height: 16 }} />
-        <SectionHead
-          title={t('pda.title')}
-          hint={t('pda.hint')}
-          uploading={uploadingPda}
-          uploadLabel={t('pda.uploadLabel')}
-          inputId="pdaPkgFile"
-          onPick={(f) => void uploadPda(f)}
-          uploadingLabel={t('action.uploading')}
-        />
-        <div
-          style={{
-            padding: '8px 12px',
-            marginBottom: 8,
-            background: 'var(--accent-soft)',
-            color: 'var(--accent)',
-            fontSize: 12,
-            lineHeight: 1.7,
-            borderRadius: 4,
-          }}
-        >
-          <Icon name="alert" size={12} style={{ marginRight: 4, verticalAlign: '-2px' }} />
-          {t('pda.installHint')}
-        </div>
-        {pdaRows === null ? (
-          <div className="empty">
-            <Icon name="download" />
-            <div className="empty-title">{t('pda.loading')}</div>
-          </div>
-        ) : pdaRows.length === 0 ? (
-          <div className="empty">
-            <Icon name="download" />
-            <div className="empty-title">{t('pda.empty')}</div>
-            <div className="hint">
-              {t('pda.emptyHint')}
+        {tab === 'windows' && (
+          <>
+            {/* ── Windows 包管理（client-packages 既有数据与接口并入展示，行为不动）── */}
+            <SectionHead
+              title={t('windows.title')}
+              hint={t('windows.hint')}
+              uploading={uploadingClient}
+              uploadLabel={t('windows.uploadLabel')}
+              inputId="clientPkgFile"
+              onPick={(f) => void uploadClient(f)}
+              uploadingLabel={t('action.uploading')}
+            />
+            {clientRows === null ? (
+              <div className="empty">
+                <Icon name="download" />
+                <div className="empty-title">{t('windows.loading')}</div>
+              </div>
+            ) : clientRows.length === 0 ? (
+              <div className="empty">
+                <Icon name="download" />
+                <div className="empty-title">{t('windows.empty')}</div>
+                <div className="hint">{t('windows.emptyHint')}</div>
+              </div>
+            ) : (
+              <PackageTable rows={clientRows} qrOrigin={qrOrigin} deleting={deleting} onRemove={(row) => setPendingRemove({ kind: 'client', row })} />
+            )}
+          </>
+        )}
+
+        {tab === 'android' && (
+          <>
+            {/* ── Android 包管理（pda-packages 目录，迭代 59 决策 #119；上传 / 下载 / 删除行为不动）── */}
+            <SectionHead
+              title={t('android.title')}
+              hint={t('android.hint')}
+              uploading={uploadingPda}
+              uploadLabel={t('android.uploadLabel')}
+              inputId="pdaPkgFile"
+              onPick={(f) => void uploadPda(f)}
+              uploadingLabel={t('action.uploading')}
+            />
+            <div
+              style={{
+                padding: '8px 12px',
+                marginBottom: 8,
+                background: 'var(--accent-soft)',
+                color: 'var(--accent)',
+                fontSize: 12,
+                lineHeight: 1.7,
+                borderRadius: 4,
+              }}
+            >
+              <Icon name="alert" size={12} style={{ marginRight: 4, verticalAlign: '-2px' }} />
+              {t('android.installHint')}
             </div>
-          </div>
-        ) : (
-          <PackageTable rows={pdaRows} qrOrigin={qrOrigin} deleting={deleting} onRemove={(row) => setPendingRemove({ kind: 'pda', row })} />
+            {pdaRows === null ? (
+              <div className="empty">
+                <Icon name="download" />
+                <div className="empty-title">{t('android.loading')}</div>
+              </div>
+            ) : pdaRows.length === 0 ? (
+              <div className="empty">
+                <Icon name="download" />
+                <div className="empty-title">{t('android.empty')}</div>
+                <div className="hint">{t('android.emptyHint')}</div>
+              </div>
+            ) : (
+              <PackageTable rows={pdaRows} qrOrigin={qrOrigin} deleting={deleting} onRemove={(row) => setPendingRemove({ kind: 'pda', row })} />
+            )}
+          </>
         )}
       </div>
 
       {pendingRemove && (
         <Modal
-          title={pendingRemove.kind === 'client' ? t('deleteModal.titleClient') : t('deleteModal.titlePda')}
+          title={pendingRemove.kind === 'client' ? t('deleteModal.titleWindows') : t('deleteModal.titleAndroid')}
           onClose={() => setPendingRemove(null)}
           footer={
             <>
@@ -389,8 +664,8 @@ export function DownloadCenter() {
         >
           <p>
             {pendingRemove.kind === 'client'
-              ? t('deleteModal.bodyClient', { name: pendingRemove.row.fileName })
-              : t('deleteModal.bodyPda', { name: pendingRemove.row.fileName })}
+              ? t('deleteModal.bodyWindows', { name: pendingRemove.row.fileName })
+              : t('deleteModal.bodyAndroid', { name: pendingRemove.row.fileName })}
           </p>
         </Modal>
       )}

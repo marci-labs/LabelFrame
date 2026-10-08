@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
     listClientPackages: vi.fn(),
     listPluginPackages: vi.fn(),
     listPdaPackages: vi.fn(),
+    listServerIpv4Candidates: vi.fn(),
     uploadClientPackage: vi.fn(),
     uploadPdaPackage: vi.fn(),
     deleteClientPackage: vi.fn(),
@@ -90,6 +91,7 @@ beforeEach(() => {
   mocks.server.listClientPackages.mockResolvedValue([CLIENT_PKG])
   mocks.server.listPluginPackages.mockResolvedValue([PLUGIN_PKG])
   mocks.server.listPdaPackages.mockResolvedValue([PDA_PKG])
+  mocks.server.listServerIpv4Candidates.mockResolvedValue({ candidates: ['192.168.1.30'] })
 })
 
 afterEach(() => {
@@ -194,25 +196,28 @@ describe('第二批迁移页面双语渲染冒烟（迭代 112 · #246）', () =
     await waitFor(() => expect(screen.getByText('服务端地址', { selector: '.panel-head' })).toBeTruthy())
   })
 
-  it('下载中心：中文态双分区表格 → 切 en 全英文且无 CJK', async () => {
+  it('下载中心：中文态快速访问首屏 → 切 en 全英文且无 CJK（迭代 118 · #272 三 tab + 平台优先措辞）', async () => {
     const { container } = render(
       <AppProvider>
         <DownloadCenter />
       </AppProvider>,
     )
+    // zh 态：默认快速访问——「最新上传」双卡（Windows / Android 平台优先措辞）+ 连接信息卡
     expect(await screen.findByText('LabelFrameClient-1.2.0.msi')).toBeTruthy()
+    expect(screen.getByText('LabelFramePda-1.2.0.apk')).toBeTruthy()
     expect(screen.getByText('下载中心')).toBeTruthy()
-    expect(screen.getByText('客户端下载（PC）')).toBeTruthy()
-    expect(screen.getByText('PDA 下载（Android）')).toBeTruthy()
-    expect(screen.getAllByRole('columnheader', { name: '二维码' }).length).toBe(2)
-    expect(screen.getByRole('button', { name: '上传客户端安装包' })).toBeTruthy()
+    expect(screen.getByText('LabelFrame 客户端各平台安装包')).toBeTruthy()
+    expect(screen.getAllByText('最新上传')).toHaveLength(2)
+    expect(screen.getByText('连接信息')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '快速访问' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Windows 包管理' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Android 包管理' })).toBeTruthy()
 
     changeLocale('en')
     await waitFor(() => expect(screen.getByText('Download Center')).toBeTruthy())
-    expect(screen.getByText('Client Download (PC)')).toBeTruthy()
-    expect(screen.getByText('PDA Download (Android)')).toBeTruthy()
-    expect(screen.getAllByRole('columnheader', { name: 'QR Code' }).length).toBe(2)
-    expect(screen.getByRole('button', { name: 'Upload Client Package' })).toBeTruthy()
+    expect(screen.getByText('LabelFrame client installers for every platform')).toBeTruthy()
+    expect(screen.getAllByText('Latest upload')).toHaveLength(2)
+    expect(screen.getByText('Connection Info')).toBeTruthy()
     expect(CJK.test(container.textContent ?? '')).toBe(false)
 
     changeLocale('zh-CN')

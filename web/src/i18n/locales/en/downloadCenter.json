@@ -1,10 +1,20 @@
 {
   "page": {
     "title": "Download Center",
-    "subtitle": "Unified distribution of client and PDA packages (upload / download / delete / QR scan)"
+    "subtitle": "LabelFrame client installers for every platform"
+  },
+  "tabs": {
+    "quick": "Quick Access",
+    "windows": "Windows Packages",
+    "android": "Android Packages"
+  },
+  "steps": {
+    "download": "① Get the client",
+    "connect": "② Connect to the server"
   },
   "refreshTitle": "Reload the package list",
   "qrAlt": "QR code for download",
+  "connQrAlt": "QR code of the server address",
   "columns": {
     "fileName": "File Name",
     "size": "Size",
@@ -16,31 +26,50 @@
   "loadFailed": "Failed to load the package list.",
   "uploadFailed": "Upload failed.",
   "deleteFailed": "Delete failed.",
-  "client": {
-    "title": "Client Download (PC)",
+  "quick": {
+    "windowsName": "Windows",
+    "androidName": "Android",
+    "latest": "Latest upload",
+    "uploadedAt": "Uploaded {{time}}",
+    "allVersions": "All versions →",
+    "loading": "Loading packages…",
+    "emptyTitle": "No packages yet",
+    "emptyHint": "Go to \"{{tab}}\" to upload an installer file.",
+    "goUpload": "Upload"
+  },
+  "connection": {
+    "title": "Connection Info",
+    "address": "Server address",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyTitle": "Copy the selected address",
+    "candidates": "Address candidates"
+  },
+  "windows": {
+    "title": "Windows Packages",
     "hint": "Installers for print PCs — clients can also download under Settings → Updates & Packages",
-    "uploadLabel": "Upload Client Package",
-    "loading": "Loading client packages…",
-    "empty": "No client packages",
-    "emptyHint": "Click \"Upload Client Package\" to upload an installer file.",
+    "uploadLabel": "Upload Windows Package",
+    "loading": "Loading Windows packages…",
+    "empty": "No Windows packages",
+    "emptyHint": "Click \"Upload Windows Package\" to upload an installer file.",
     "uploadOk": "Package \"{{name}}\" uploaded; clients can download it under Settings → Updates & Packages.",
     "deleteOk": "Package \"{{name}}\" deleted."
   },
-  "pda": {
-    "title": "PDA Download (Android)",
+  "android": {
+    "title": "Android Packages (APK)",
     "hint": "PDA packages (APK) — scan the QR code next to an entry to download",
     "uploadLabel": "Upload APK",
-    "loading": "Loading PDA packages…",
-    "empty": "No PDA packages",
+    "loading": "Loading Android packages…",
+    "empty": "No Android packages",
     "emptyHint": "Click \"Upload APK\" to upload a PDA package (Android install file).",
     "installHint": "PDA install note: with the PDA on the same LAN as the server, scan the QR code next to an entry with the camera / scanner app to download. If the first install prompts \"unknown sources\" or \"install blocked\", grant the one-time permission: System settings → Apps → Special access (Install unknown apps) → find the browser → allow installing unknown apps; the exact entry point varies by brand (you can also long-press the browser icon → App info → Install unknown apps). For upgrades, use the APK distributed by the same server (matching signature allows a direct overwrite install; configuration and device ID are kept).",
     "uploadOk": "APK \"{{name}}\" uploaded; PDAs can scan the QR code on this page to download and install.",
     "deleteOk": "APK \"{{name}}\" deleted."
   },
   "deleteModal": {
-    "titleClient": "Delete Package",
-    "titlePda": "Delete APK",
-    "bodyClient": "Delete package \"{{name}}\"? Clients will no longer be able to download it from the server.",
-    "bodyPda": "Delete APK \"{{name}}\"? PDA QR-code downloads will no longer work."
+    "titleWindows": "Delete Package",
+    "titleAndroid": "Delete APK",
+    "bodyWindows": "Delete package \"{{name}}\"? Clients will no longer be able to download it from the server.",
+    "bodyAndroid": "Delete APK \"{{name}}\"? PDA QR-code downloads will no longer work."
   }
 }
