@@ -2,10 +2,15 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 120：工作流实验收尾——六标准件与评审基线入库＋引导测试防线补强（#278） · 2026-10-08
+- **工作流基建入库（防「基建衰变三断点」重蹈）**：`.zcode/workflows/` 六段管线标准件（lf-design / lf-copy / lf-copy-review / lf-implement / lf-review / lf-close，含 Windows `world.run("pnpm")` 须用 `pnpm.CMD` 的平台修复）与 `docs/CODE-REVIEW-BASELINE.md` 评审基线随仓库版本化——迭代 119 复盘实证三类基建均处本地未入库状态必然随会话消散；平台踩坑要点记入提交信息：**AmendWorkflow 不携带 args**（saved workflow 草稿须自带固定回退值）、**链式 amend 经零结算中间 run 缓存全丢**（修复须一次改全再 amend，勿增量多轮）。
+- **引导测试防线补强（PR #277 评审 6 条建议中的代码项）**：`Guide.test.tsx` 增 en 五步标题 / 正文 / 步骤按钮（Next ×4 / Done）与「✅ 文案定稿 v1」逐字断言——此前仅 zh 逐字、en 只断言 key 非空，AC-04 双语防线不对称；测试文件归位 `web/src/components/`（Guide.test.tsx / Guide.server.test.tsx 与被测对象同目录，既有断言零丢失）。
+- **文档措辞收敛**：CHANGELOG 迭代 119 条目与 DESIGN 决策 #170 ⑤中「dist-server 产物不含引导」收敛为「server 构建不挂载 / 不渲染」——产物级裁剪未作断言，不再写未经产物验证的机制断言；DESIGN §7「帮助体系升级」条目更新为已转立项 #280（迭代 121，讨论已全部定案）。
+
 ## 迭代 119：新用户首次使用引导——Web UI 分步气泡引导（client 模式）（#276） · 2026-10-08
 - **首次自动分步引导（形态与实现路线以 #276 拍板评论记入决策表 #170：分步气泡 spotlight、自研实现）**：client 构建（`web/dist`）首次进入（首见标记 `labelframe.guide.client.v1` 无值）挂载后延迟约 300ms 自动启动 5 步引导，覆盖核心链「工作台（新建模板）→ 设计器（空态新建入口，介绍排版）→ 数据与打印（模板选择器）→ Excel 导入 → 收尾（左侧导航回顾 + 重看入口指引）」；步骤定义为纯数据（`web/src/lib/guide.ts` `GUIDE_STEPS`：tab + `data-guide` 语义锚点 + i18n key），切页经既有 `switchTab` 统一入口（继承 #150 设计器离开守卫语义），且仅在步骤变更时驱动切页（引导打开期间用户自行导航不被拽回）；自研组件 `web/src/components/Guide.tsx`：createPortal 到 body + fixed 锚定（决策 #152① 同法）、遮罩 = box-shadow 巨影法 spotlight + 主色描边（无 SVG mask）、气泡下方优先 / 放不下翻转 / 贴边（Popover 视口约束同口径）、锚点超时或零矩形降级全屏暗幕 + 居中气泡；跳过 / Esc / 完成均写首见标记（决策 #170 ⑧⑨），引导中途刷新不写（首见语义未成立），刷新 / 重启 / 新标签页不再自动出现（AC-01/02）。
 - **重新查看入口（决策 #170 ⑤）**：底部状态栏 meta 区「日志」旁常驻小图标 ghost 按钮「使用引导」（问号图标 + title/aria），点击无视首见标记再放完整一轮，重放完成 / 跳过不改变已看状态（写入幂等）（AC-03）。
-- **server 模式整特性不挂载**：引导组件与重看入口均以 `!isServerUi`（构建时常量）条件渲染，`dist-server` 产物不含引导（V1 范围仅 client，菜单结构差异留待后续迭代）；`Guide.server.test.tsx` 守门断言 server 分支不渲染。
+- **server 模式整特性不挂载 / 不渲染**：引导组件与重看入口均以 `!isServerUi`（构建时常量）条件渲染，server 构建不挂载、不渲染引导（产物级裁剪未作断言；V1 范围仅 client，菜单结构差异留待后续迭代）；`Guide.server.test.tsx` 守门断言 server 分支不渲染。
 - **存储对照（决策 #170 ③④）**：首见标记为「每浏览器一次」偏好型数据走 localStorage（键带版本号，未来改版换键即可整体重放）——#51「禁 localStorage」适用范围是会话草稿（printDraft 需标签页隔离故 sessionStorage），本标记语义相反不适用；与 #164 ④语言偏好（`labelframe.locale`）、默认目标设备（`labelframe.defaultTargetDeviceId`）同类先例；不新增后端 API，不走 #57 机器级 settings.json；读写显式 `window.localStorage` + typeof/try-catch 容错（Node 26 全局遮蔽坑、隐私模式降级为每次出现）。
 - **i18n（AC-04）**：新 `guide` 域（zh-CN 源 + en 同步，语义 key），气泡文案与「使用引导」入口全部走 t()，步骤标题 / 正文以 #276「✅ 文案定稿 v1」逐字为准（单步正文 zh ≤ 40 字）；guide 域同步登记进 `locales.test.ts` 静态清单（静态 import + NAMESPACES，键集一致断言随既有 CI 防线覆盖新域）；`Guide.test.tsx` 另锚定步骤引用 key 在两语言包真实存在 + zh 定稿逐字比对。
 - **样式与层级**：引导层 z-index 110（styles.css 原最高 .modal-mask=100，另两处 .preview-modal=95 / .popover=90 均低于此）压过全部弹层；气泡 / 按钮复用既有 CSS 变量与 `btn` / `popIn` 视觉语言；窄窗口气泡 `max-width: calc(100vw - 16px)` + 贴边翻转（AC-05 观感项陪验）。

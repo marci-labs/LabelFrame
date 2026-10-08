@@ -6,8 +6,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, configure, render, screen } from '@testing-library/react'
-import App from './App'
-import { GUIDE_SEEN_KEY } from './lib/guide'
+import App from '../App'
+import { GUIDE_SEEN_KEY } from '../lib/guide'
 
 configure({ asyncUtilTimeout: 8000 })
 
@@ -69,7 +69,7 @@ const mocks = vi.hoisted(() => ({
   probeHealthz: vi.fn(),
 }))
 
-vi.mock('./lib/api/client', () => ({
+vi.mock('../lib/api/client', () => ({
   serverApi: mocks.server,
   localApi: mocks.local,
   setServerBaseUrl: vi.fn(),
@@ -79,7 +79,7 @@ vi.mock('./lib/api/client', () => ({
   pluginPackageDownloadUrl: (fileName: string) => `/api/plugin-packages/${encodeURIComponent(fileName)}`,
 }))
 
-vi.mock('./lib/uiMode', () => ({ UI_MODE: 'server', isServerUi: true }))
+vi.mock('../lib/uiMode', () => ({ UI_MODE: 'server', isServerUi: true }))
 
 beforeEach(() => {
   vi.clearAllMocks()
