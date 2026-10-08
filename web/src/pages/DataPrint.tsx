@@ -666,10 +666,13 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
           <small>{t('subtitle')}</small>
         </div>
         <div className="spacer" />
-        {/* data-guide：首次引导第 3 步锚点（迭代 119 / #276） */}
+        {/* data-guide：首次引导第 3 步锚点（迭代 119 / #276）；
+            data-demo / data-demo-value：designer 演示「字段变成表单」步骤锚点与「样例已选中」观测钩子（迭代 121 / #280） */}
         <select
           className="input"
           data-guide="dataprint-template-select"
+          data-demo="dataprint-template-select"
+          data-demo-value={selectedName}
           value={selectedName}
           onChange={(ev) => app.setDraftSelected(ev.target.value)}
           style={{ minWidth: 180 }}
@@ -789,7 +792,7 @@ export function DataPrint({ onOpenJobHistory }: { onOpenJobHistory: () => void }
 
       <div className="grid-2" style={{ flex: 1, overflow: 'auto', padding: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="panel">
+          <div className="panel" data-demo="dataprint-fields">
             <div className="panel-head">
               {t('testData.title')}
               <span className="hint" style={{ marginLeft: 6 }}>

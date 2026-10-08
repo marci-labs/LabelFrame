@@ -96,13 +96,28 @@ afterEach(() => {
 })
 
 describe('client 构建：菜单（迭代 20 裁剪守门）', () => {
-  it('含 设置；不含 在线设备 / 设备日志 / PDA 日志（迭代 75 日志页下线）', async () => {
+  it('含 设置 / 帮助；不含 在线设备 / 设备日志 / PDA 日志（迭代 75 日志页下线）', async () => {
     render(<App />)
     expect(await screen.findByRole('button', { name: '设置' })).toBeTruthy()
+    // 迭代 121（#280，拍板：待决议-1）：主导航第 6 项「帮助」——功能索引总界面入口
+    expect(screen.getByRole('button', { name: '帮助' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: '在线设备' })).toBeNull()
     expect(screen.queryByRole('button', { name: '设备日志' })).toBeNull()
     // 迭代 75（#112）：「PDA 日志」导航入口移除（/api/logs 端点与 logs.db 后端保留）
     expect(screen.queryByRole('button', { name: 'PDA 日志' })).toBeNull()
+  })
+
+  it('点击「帮助」tab 打开功能索引页：五菜单卡片齐全，workbench / designer 卡带「上手试一遍」深链（迭代 121 · #280）', async () => {
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: '帮助' }))
+    expect(await screen.findByText('模板管理中心')).toBeTruthy()
+    expect(screen.getByText('设计标签的画布')).toBeTruthy()
+    expect(screen.getByText('填数据打印页')).toBeTruthy()
+    expect(screen.getByText('打印记录查询')).toBeTruthy()
+    expect(screen.getByText('本机设置中心')).toBeTruthy()
+    // 拍板 8：仅 designer / workbench 卡渲染演示深链按钮；data / jobs / settings 仅「进入」
+    expect(screen.getAllByRole('button', { name: '上手试一遍' }).length).toBe(2)
+    expect(screen.getAllByRole('button', { name: '进入' }).length).toBe(3)
   })
 })
 

@@ -425,6 +425,40 @@ label.field > .input, label.field > select.input { width: 100%; }
 .guide-bubble-foot { margin-top: 12px; display: flex; align-items: center; gap: 8px; }
 .guide-flex { flex: 1; }
 
+/* ---------- 帮助总界面（迭代 121 · #280）：功能索引卡片网格 ---------- */
+.help-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 12px;
+  overflow: auto;
+  align-content: start;
+}
+.help-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 16px 12px;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.help-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(23, 31, 41, 0.08); }
+.help-card-head { display: flex; align-items: center; gap: 8px; color: var(--accent); }
+.help-card-title { font-size: 14px; font-weight: 600; color: var(--ink-1); }
+.help-card-body { margin: 0; font-size: 12.5px; line-height: 1.65; color: var(--ink-2); flex: 1; }
+.help-card-foot { display: flex; justify-content: flex-end; }
+
+/* ---------- 分界面交互演示（迭代 121 · #280）：无阻断模式 ----------
+   demo 层整体 pointer-events:none（区别于 Guide 全屏遮罩拦截）——演示是真实操作，用户必须能点界面；
+   仅气泡自身恢复可点。视觉复用 .guide-spot / .guide-veil / .guide-bubble（含 box-shadow 巨影暗幕，
+   纯视觉不拦截）。z-index 与引导层同高（110，styles.css 层级地图最高档，压过 .modal-mask=100）。 */
+.demo-layer { pointer-events: none; }
+.demo-layer .demo-bubble { pointer-events: auto; }
+.demo-keep { margin-top: 10px; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+
 /* ---------- 工作台模板预览（迭代 46，修订：预览列内嵌缩略图 + 点击放大） ---------- */
 /* 缩略图（单元格内）：等比缩到 40px 高，点击放大 */
 .preview-thumb {

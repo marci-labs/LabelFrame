@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
-// server 构建分支（VITE_UI_MODE=server）引导不渲染守门（迭代 119 · #276）：
-// 引导组件与状态栏「使用引导」重看入口均以 !isServerUi 条件挂载——V1 范围仅 client 模式，
-// server 模式（web/dist-server）菜单结构不同，需单独裁剪（Issue「不在范围」显式化）。
-// 拆分独立文件与 App.server.test.tsx 同款双跑机制（vi.mock uiMode 注入分支，uiMode.ts:3 注释明示）。
+// server 构建分支（VITE_UI_MODE=server）帮助体系不挂载 / 不渲染守门（迭代 121 · #280，AC-06）：
+// 帮助 tab（SERVER_TABS 不含）、帮助索引页（main 渲染 !isServerUi 双保险）、页头「功能演示」入口
+// （onRequestDemo 单点不下发）、Shell 级 DemoRunner 均以构建期开关裁剪——server 构建（web/dist-server）
+// 不出现任何帮助体系内容。拆分独立文件与 Guide.server.test.tsx 同款双跑机制（vi.mock uiMode 注入分支）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, configure, render, screen } from '@testing-library/react'
 import App from '../App'
-import { GUIDE_SEEN_KEY } from '../lib/guide'
 
 configure({ asyncUtilTimeout: 8000 })
 
@@ -99,21 +98,30 @@ afterEach(() => {
   cleanup()
 })
 
-describe('server 构建：引导整特性不渲染（迭代 119 · #276）', () => {
-  it('无首见标记（首次用户）也不自动启动引导，不渲染引导层', async () => {
-    expect(window.localStorage.getItem(GUIDE_SEEN_KEY)).toBeNull()
+describe('server 构建：帮助体系整特性不挂载 / 不渲染（迭代 121 · #280，AC-06）', () => {
+  it('主导航无「帮助」tab（SERVER_TABS 单点裁剪），首屏无帮助卡片网格', async () => {
     render(<App />)
-    // 等壳层启动完成，再等过首见自动启动窗口（300ms）确认引导未出现——非异步时序假绿
     expect(await screen.findByText(`${window.location.origin} · 服务端管理界面`)).toBeTruthy()
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    expect(document.querySelector('.guide-layer')).toBeNull()
-    expect(screen.queryByText('一切从模板开始')).toBeNull()
+    expect(screen.queryByRole('button', { name: '帮助' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Help' })).toBeNull()
+    expect(document.querySelector('[data-help="cards"]')).toBeNull()
   })
 
-  it('状态栏不渲染「使用引导」重看入口', async () => {
+  it('全页无「去做演示」深链按钮与「功能演示」页头入口（深链 / 入口双措辞均不出现）', async () => {
     render(<App />)
     expect(await screen.findByText(`${window.location.origin} · 服务端管理界面`)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: '使用引导' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Replay Tour' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '上手试一遍' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Try It Yourself' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '功能演示' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Demo' })).toBeNull()
+  })
+
+  it('Shell 级演示引擎与中断残留询问不挂载（无 demo 层 DOM）', async () => {
+    render(<App />)
+    expect(await screen.findByText(`${window.location.origin} · 服务端管理界面`)).toBeTruthy()
+    // 等过首见自动启动窗口（300ms）——帮助体系与引导同窗口裁剪，一并守门
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    expect(document.querySelector('.demo-layer')).toBeNull()
+    expect(document.querySelector('.guide-layer')).toBeNull()
   })
 })
