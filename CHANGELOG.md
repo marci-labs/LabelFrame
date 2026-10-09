@@ -2,6 +2,16 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 122：品牌资产 v02 全端统一接入（#288） · 2026-10-09
+
+- **品牌 v02（方向 04「剥离 / Peel & Feed」、Poppins Bold 转曲字标、深青 #123B3C + 珊瑚 #D96C4F）替换三套旧视觉**（Web「标签纸」蓝 #1a5fd0 / 桌面安装链「L 标」蓝 #1668DC / `web/public` 紫色模板残留），全端品牌资产单源于新入库母版库 `assets/brand/`（SVG 精简集 + `Poppins-OFL.txt` + `BRAND-GUIDE.md` + bootstrapper-lockup 源 + tray 三件备用），落库 41 项资产**提交 blob** 逐项 SHA256 与交付包 manifest 一致（`.gitattributes` 对母版库与交付源文本资产钉 `-text` 禁 eol 归一——Windows autocrlf 会把 CRLF 源归一成 LF 破坏字节级一致性，实证两个 JSON 首提交被归一后修复）；旧品牌生成脚本四件退役删除（`generate-icon` / `generate-installer-branding` / `generate-android-icons` / `generate-social-preview.ps1`，防再生成旧标）+ 旧 L 标残留 `assets/labelframe.png`（主色 #1668DC、零引用）删除，`docs/DEPLOY.md` 辅助脚本清单同步。
+- **Windows 图标与安装链**：`assets/labelframe.ico`（147KB 多尺寸）原位覆盖——WinHost / Server csproj `ApplicationIcon`、窗口 `ExtractAssociatedIcon`、托盘（EXE 资源 32512 链路）、快捷方式与双 MSI ARP 一处替换全链生效；双 MSI 向导位图 `installer-dialog.bmp`（493×312）/ `installer-banner.bmp`（493×58）换新（wxs 按 `$(var.AssetsDir)` 路径引用，原位生效零改动）。
+- **Android 资源 18 件**：10 个 mipmap 位图 + `mipmap-anydpi-v26`×2 覆盖 + **新增 `mipmap-anydpi-v33`×2（Android 13+ 主题单色层 `ic_launcher_monochrome`）** + drawable×3（foreground / monochrome / ic_stat）+ `colors.xml`（色名 `labelframe_icon_background`=#F2F5F3 替换旧 `launcher_background`=#1668DC，旧色名全仓清零）。
+- **Web（AC-05）**：favicon 改**外链最小集**（拍板①）——`index.html` data URI → `favicon.svg`（主）+ `favicon.ico`（alternate）+ `apple-touch-icon.png` 三行外链，规避浏览器缓存旧 data URI；`web/public/icons.svg` 零引用模板残留下线（MSI 文件清单为构建期自动生成，public 增删自动反映）；导航 `LabelLogo` 以母版 `symbol-color-24.svg` 几何重写（24px 方形、深青标签体 + 珊瑚剥离角固定填充，不再走 currentColor/`--accent`——UI 主题色不随品牌色，决策 #172）；`.nav-logo` 样式适配。
+- **引导 Bundle 品牌（拍板② spike 未走降级）**：`Bundle.wxs` 增 `IconSourceFile`（WiX v7 原生支持，构建期嵌最终 EXE；v5 窗体图标回归 wixtoolset/issues#8104 已于 v7.0.0-rc.1 修复）+ `build-bundle.ps1` 补 `AssetsDir` 接线；BA csproj 增 `ApplicationIcon`；`WizardForm` 窗体显式 `Icon`（ExtractAssociatedIcon，WinHost 同口径）+ 顶部 44px 品牌条（lockup 以嵌入资源携带，缺失降级不阻断安装；窗体高 560→604 保持内容区不变）。
+- **README 头图 + 社交预览**：顶部品牌 v02 彩色 lockup（`assets/brand/lockup-color.svg`，alt="LabelFrame"）；`assets/social-preview.png` 换深底主版（拍板③；GitHub Settings 上传为用户手工动作，结项时提示）。
+- **记账与守门**：DESIGN 决策 #172（品牌 v02 定稿与旧标退役、UI accent 不随品牌色、spike 结论）；新增 `Icon.brand.test.tsx`（LabelLogo v02 几何 / 固定填充 / 尺寸等比 + index.html favicon 外链三件与 data URI 移除断言）+ `Icon.brand.server.test.tsx`（server 构建导航 logo 守门——品牌标非 UI 模式裁剪面，双构建同源出新标）；本迭代无 UI 文案面，i18n 零改动。
+
 ## 迭代 120：工作流实验收尾——六标准件与评审基线入库＋引导测试防线补强（#278） · 2026-10-08
 - **工作流基建入库（防「基建衰变三断点」重蹈）**：`.zcode/workflows/` 六段管线标准件（lf-design / lf-copy / lf-copy-review / lf-implement / lf-review / lf-close，含 Windows `world.run("pnpm")` 须用 `pnpm.CMD` 的平台修复）与 `docs/CODE-REVIEW-BASELINE.md` 评审基线随仓库版本化——迭代 119 复盘实证三类基建均处本地未入库状态必然随会话消散；平台踩坑要点记入提交信息：**AmendWorkflow 不携带 args**（saved workflow 草稿须自带固定回退值）、**链式 amend 经零结算中间 run 缓存全丢**（修复须一次改全再 amend，勿增量多轮）。入库后实证：六件 `description` 手工折行（YAML 多行纯量）会使 `CreateWorkflow` saved 元数据校验失败（`args.issue.required` 被读成字符串、起流被拒），合并为单行修复。
 - **引导测试防线补强（PR #277 评审 6 条建议中的代码项）**：`Guide.test.tsx` 增 en 五步标题 / 正文 / 步骤按钮（Next ×4 / Done）与「✅ 文案定稿 v1」逐字断言——此前仅 zh 逐字、en 只断言 key 非空，AC-04 双语防线不对称；测试文件归位 `web/src/components/`（Guide.test.tsx / Guide.server.test.tsx 与被测对象同目录，既有断言零丢失）。

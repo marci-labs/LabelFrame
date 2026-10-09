@@ -1,0 +1,70 @@
+{
+  "palette": {
+    "color": [
+      "#123B3C",
+      "#D96C4F"
+    ],
+    "dark": [
+      "#FFFFFF",
+      "#D96C4F"
+    ],
+    "black": [
+      "#000000",
+      "#000000"
+    ],
+    "white": [
+      "#FFFFFF",
+      "#FFFFFF"
+    ]
+  },
+  "k": 0.5522847498307936,
+  "master": {
+    "L": 8,
+    "T": 8,
+    "R": 56,
+    "B": 56,
+    "r": 7,
+    "notch": 18,
+    "gap": 4,
+    "inner": 14,
+    "body": "M15 8 H49 Q56 8 56 15 V38 C46.0589 38 38 46.0589 38 56 H15 Q8 56 8 49 V15 Q8 8 15 8 Z",
+    "flap": "M56 42 C48.268 42 42 48.268 42 56 H56 Z"
+  },
+  "micro16": {
+    "L": 2,
+    "T": 2,
+    "R": 14,
+    "B": 14,
+    "r": 2,
+    "notch": 5,
+    "gap": 1.5,
+    "inner": 3.5,
+    "body": "M4 2 H12 Q14 2 14 4 V9 C11.2386 9 9 11.2386 9 14 H4 Q2 14 2 12 V4 Q2 2 4 2 Z",
+    "flap": "M14 10.5 C12.067 10.5 10.5 12.067 10.5 14 H14 Z"
+  },
+  "micro24": {
+    "L": 3,
+    "T": 3,
+    "R": 21,
+    "B": 21,
+    "r": 3,
+    "notch": 7,
+    "gap": 1.75,
+    "inner": 5.25,
+    "body": "M6 3 H18 Q21 3 21 6 V14 C17.134 14 14 17.134 14 21 H6 Q3 21 3 18 V6 Q3 3 6 3 Z",
+    "flap": "M21 15.75 C18.1005 15.75 15.75 18.1005 15.75 21 H21 Z"
+  },
+  "wordmark": {
+    "font": "Poppins Bold",
+    "format": "fixed outlined LabelFrame paths",
+    "inkHeight": 72,
+    "inkWidth": 576.096256684492,
+    "letterSpacing": 0,
+    "ruleStroke": 4,
+    "turnRadius": 16,
+    "approved": "2026-10-09"
+  },
+  "lockup": {
+    "kind": "symbol plus plain wordmark"
+  }
+}

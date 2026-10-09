@@ -13,6 +13,8 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- 品牌 v02（#288）：BA EXE 图标（窗体 / 任务栏）——与 WinHost / Server 同一 ICO 源 -->
+    <ApplicationIcon>..\..\assets\labelframe.ico</ApplicationIcon>
   </PropertyGroup>
 
   <!-- WiX v7 OSMF EULA 接受（WIX7015，MSBuild 集成消费点要求）：与本仓既有 v7 接受口径一致
@@ -33,6 +35,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LabelFrame.Bootstrapper\LabelFrame.Bootstrapper.csproj" />
+  </ItemGroup>
+
+  <!-- 品牌 v02（#288）：向导头部 lockup 以嵌入资源随 BA EXE 携带（LogicalName 钉死清单名，
+       不依赖安装期外部文件路径；载荷约 21KB，随 Burn BA 载荷整体打包） -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\assets\brand\bootstrapper-lockup.png" LogicalName="bootstrapper-lockup.png" />
   </ItemGroup>
 
 </Project>

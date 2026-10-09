@@ -38,8 +38,21 @@ internal sealed class WizardForm : Form
 
         Text = "LabelFrame 安装引导";
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(760, 560);
-        Size = new Size(760, 560);
+        // 品牌 v02（#288）：顶部新增 44px 品牌条，高度 560 → 604 保持内容区不变（页面布局不回归）
+        MinimumSize = new Size(760, 604);
+        Size = new Size(760, 604);
+
+        // 品牌 v02（#288）：窗体图标取 BA EXE 内嵌 Win32 图标（csproj ApplicationIcon）——与 WinHost
+        // WindowShell 同口径（net48 无 Environment.ProcessPath，用 Application.ExecutablePath）；
+        // 提取失败降级默认图标，品牌缺失不阻断安装。
+        try
+        {
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+        }
+        catch (Exception ex) when (ex is ArgumentException or FileNotFoundException or OutOfMemoryException)
+        {
+            // 降级：保持 WinForms 默认图标（EXE 资源异常不可预期——磁盘映像 / 映像加壳等场景）
+        }
 
         _navigator = new WizardNavigator<IWizardPage>(
         [
@@ -52,6 +65,21 @@ internal sealed class WizardForm : Form
             () => new ProgressPage(_session, _ba, this),
             () => new CompletePage(_session, _ba),
         ]);
+
+        // 品牌 v02（#288）：顶部品牌条（lockup 母版 1480×280 等比缩至 169×32，左缘 16px 对齐步骤条）
+        var brandBand = new Panel { Dock = DockStyle.Top, Height = 44 };
+        var brandLockup = LoadBrandLockup();
+        if (brandLockup is not null)
+        {
+            var brandPictureBox = new PictureBox
+            {
+                Image = brandLockup,
+                Size = new Size(169, 32),
+                Location = new Point(16, 6),
+                SizeMode = PictureBoxSizeMode.Zoom,
+            };
+            brandBand.Controls.Add(brandPictureBox);
+        }
 
         // 顶部步骤指示
         _stepLabel.Dock = DockStyle.Top;
@@ -92,6 +120,8 @@ internal sealed class WizardForm : Form
         Controls.Add(_contentPanel);
         Controls.Add(_stepLabel);
         Controls.Add(navPanel);
+        // Dock 布局按 Controls 逆序停靠：品牌条最后加入 → 最先停靠，占据最顶部（步骤条随之下移）
+        Controls.Add(brandBand);
 
         NavigateTo(0);
 
@@ -104,6 +134,23 @@ internal sealed class WizardForm : Form
 
     /// <summary>是否处于安装执行中（进度页运行期）：禁用关闭与导航。</summary>
     internal bool InstallInProgress { get; private set; }
+
+    /// <summary>
+    /// 品牌 v02（#288）：头部 lockup 从嵌入资源装载（csproj LogicalName = bootstrapper-lockup.png）。
+    /// 资源缺失 / 解码失败一律降级返回 null（无品牌条，不影响安装功能）——安装器不因品牌资产异常而失败。
+    /// </summary>
+    private static Bitmap? LoadBrandLockup()
+    {
+        try
+        {
+            using var stream = typeof(WizardForm).Assembly.GetManifestResourceStream("bootstrapper-lockup.png");
+            return stream is null ? null : new Bitmap(stream);
+        }
+        catch (Exception ex) when (ex is ArgumentException or OutOfMemoryException)
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// 首显主动置前（迭代 116 / #265，AC-02）：向导此前完全依赖系统默认前台授予链，启动者无前台权

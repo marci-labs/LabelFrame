@@ -1,5 +1,8 @@
 # LabelFrame
 
+<!-- 品牌 v02（#288）：头图 = 品牌 v02 彩色 lockup 母版（assets/brand/），alt 取文案定稿 readme.bannerAlt -->
+<p align="left"><img src="assets/brand/lockup-color.svg" width="280" alt="LabelFrame" /></p>
+
 [![CI](https://github.com/marci-labs/LabelFrame/actions/workflows/ci.yml/badge.svg)](https://github.com/marci-labs/LabelFrame/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/marci-labs/LabelFrame?display_name=tag&sort=semver)](https://github.com/marci-labs/LabelFrame/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
