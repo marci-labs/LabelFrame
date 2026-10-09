@@ -1,1 +1,10 @@
 *.dwf.ts text eol=lf
+# 品牌 v02 落库资产（#288）：交付包 manifest SHA256 为完整性权威——逐字节存取，禁 eol 归一（含未来检出）
+assets/brand/** -text
+web/public/favicon.svg -text
+src/LabelFrame.AndroidHost/Resources/mipmap-anydpi-v26/*.xml -text
+src/LabelFrame.AndroidHost/Resources/mipmap-anydpi-v33/*.xml -text
+src/LabelFrame.AndroidHost/Resources/drawable/ic_launcher_foreground.xml -text
+src/LabelFrame.AndroidHost/Resources/drawable/ic_launcher_monochrome.xml -text
+src/LabelFrame.AndroidHost/Resources/drawable/ic_stat_labelframe.xml -text
+src/LabelFrame.AndroidHost/Resources/values/colors.xml -text

@@ -83,7 +83,7 @@ body {
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid var(--line-soft);
-  color: var(--accent);
+  /* 品牌 v02（#288）：LabelLogo 固定填充 #123B3C/#D96C4F，不再经 currentColor 取 --accent */
 }
 .nav-tabs { flex: 1; display: flex; flex-direction: column; padding: 6px 0; gap: 2px; }
 .nav-tab {

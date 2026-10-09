@@ -28,9 +28,14 @@
   - 构建：scripts/build-bundle.ps1（wix build；需真实包文件提取元数据，故不进 LabelFrame.slnx）。
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- 品牌 v02（#288）EXE 图标 spike 结论：WiX v7 原生支持 Bundle@IconSourceFile——构建期把 ICO 以
+       GroupIconResource("#1") 嵌入最终 Bundle EXE（wixtoolset/wix CreateBundleExeCommand.cs）；v5 的
+       「窗体/任务栏图标不显示」回归（wixtoolset/issues#8104，ARP 正常）已定版 v7.0.0-rc.1 修复（PR wix#678），
+       本仓 wix 7.0.0 在修复线内——无需构建后 Win32 资源替换，spike 未走降级路径。 -->
   <Bundle Name="LabelFrame 安装引导"
           Version="$(var.BundleVersion)"
           Manufacturer="LabelFrame"
+          IconSourceFile="$(var.AssetsDir)labelframe.ico"
           UpgradeCode="6F14EEB0-8B38-4EBC-A9E1-368E338E3FE6">
 
     <!-- BA 载荷：EXE 为主文件，发布目录其余文件（含 mbanative.dll / API 程序集 / System.Text.Json 依赖）整体打包 -->

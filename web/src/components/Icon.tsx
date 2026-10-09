@@ -163,13 +163,14 @@ export function Icon({ name, size = 16, ...rest }: IconProps) {
   )
 }
 
-/** 品牌图形：标签纸（虚线轮廓 + 条码线），呼应「标签打印」主题。 */
-export function LabelLogo({ size = 26 }: { size?: number }) {
+/** 品牌图形 v02（#288）：「剥离 / Peel & Feed」微型几何——深青标签纸 + 珊瑚剥离角。
+ *  几何逐字取自品牌母版 symbol-color-24.svg（assets/brand/），固定填充不随 --accent
+ *  （--accent 测量蓝是界面语言非品牌标识，Issue #288 不在范围）。 */
+export function LabelLogo({ size = 24 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 34 26" width={size} height={(size * 26) / 34} aria-hidden="true">
-      <rect x="1.5" y="1.5" width="31" height="23" rx="3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="3 2.4" />
-      <path d="M6 17.5h14M6 13.5h10M23.5 13.5h4.5M23.5 17.5h4.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M7 7.5h3.5M13 7.5h6M21.5 7.5h2.5M26.5 7.5h1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <path fill="#123B3C" d="M6 3 H18 Q21 3 21 6 V14 C17.134 14 14 17.134 14 21 H6 Q3 21 3 18 V6 Q3 3 6 3 Z" />
+      <path fill="#D96C4F" d="M21 15.75 C18.1005 15.75 15.75 18.1005 15.75 21 H21 Z" />
     </svg>
   )
 }

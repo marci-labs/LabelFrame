@@ -226,5 +226,5 @@ sudo bash install-server-linux.sh --manifest <清单 URL>               # 安装
 
 - `scripts\install-server-linux.sh`：Linux 服务端一键安装（manifest 校验 + systemd + 管理界面落位；在线 / 离线布局目录 / 指定版本，§5）。
 - `scripts\demo-winhost.ps1`：无打印机验证打印闭环（构建 → 启动 WinHost → 提交含中文作业 → 展示 ZPL）。
-- `scripts\generate-icon.ps1`：生成应用图标。
+- 品牌资产（图标 / 安装位图 / Android 资源 / 社交预览）不再本地生成——v0.33.0 起由品牌 v02 母版库（`assets/brand/`，#288）统一供给，旧生成脚本已退役。
 - `scripts\cleanup-residue.ps1`：清理历史安装残留（管理员运行）。

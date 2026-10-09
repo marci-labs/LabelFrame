@@ -115,6 +115,7 @@ $global:LASTEXITCODE = 0
 & $wix build (Join-Path $root 'packaging\bootstrapper\Bundle.wxs') `
     -d "BaDir=$baDir\" -d "MsiDir=$MsiDir\" `
     -d "ProductVersion=$Version" -d "BundleVersion=$Version" -d "DownloadBase=$DownloadBase" `
+    -d "AssetsDir=$(Join-Path $root 'assets')\" `
     -d "PayloadToolPath=$payloadToolDir\LabelFrame.Bootstrapper.PayloadTool.exe" -d "PayloadToolDir=$payloadToolDir\" `
     -d "WebUiZipPath=$webUiZip" -d "ZebraPluginPath=$zebraPlugin" `
     -d "RuntimeDesktopPath=$($desktopRuntime.Path)" -d "RuntimeDesktopUrl=$($desktopRuntime.Url)" -d "RuntimeDesktopVersion=$($desktopRuntime.Version)" `
