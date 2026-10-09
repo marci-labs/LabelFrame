@@ -4,8 +4,9 @@ using Microsoft.Extensions.Logging;
 namespace LabelFrame.Server.Tests;
 
 /// <summary>
-/// FileLoggerProvider 启动防护与轮转 / 保留测试（决策 #108，AC-01 / AC-02）：
-/// 路径无效不抛异常（宿主可正常启动）、按日文件写入、超期清理、通道停用后写入不抛异常。
+/// FileLoggerProvider 启动防护与轮转 / 保留测试（决策 #108；大小上限轮转与（日期,序号）序清理为决策 #173 / #291 AC-01）：
+/// 路径无效不抛异常（宿主可正常启动）、按日文件写入、单文件大小超限切序号文件、单日多次轮转总文件数受限、
+/// 清理按（日期,序号）元组序删最旧（写入中文件不被选中）、轮转失败回退旧文件、通道停用后写入不抛异常。
 /// </summary>
 public class FileLoggerProviderTests : IDisposable
 {
@@ -95,12 +96,130 @@ public class FileLoggerProviderTests : IDisposable
         Assert.False(provider.FileChannelEnabled);
     }
 
+    [Fact]
+    public void Size_rotation_should_switch_to_sequence_file_and_seal_old_file()
+    {
+        // AC-01（决策 #173）：单文件超上限切当日序号文件继续写（服务不中断）；已封存的旧文件不再增长
+        var basePath = Path.Combine(_directory, "server.log");
+        using var provider = new FileLoggerProvider(basePath, retainedFileCountLimit: 31, maxFileSizeBytes: 4 * 1024);
+        var logger = provider.CreateLogger("TestCategory");
+        var dated = Path.Combine(_directory, $"server-{DateTime.Now:yyyyMMdd}.log");
+        var first = Path.Combine(_directory, $"server-{DateTime.Now:yyyyMMdd}.1.log");
+        var second = Path.Combine(_directory, $"server-{DateTime.Now:yyyyMMdd}.2.log");
+
+        var i = 0;
+        while (!File.Exists(first) && i < 100)
+        {
+            logger.LogInformation("大小轮转压力行 {Index}：{Pad}", i, new string('x', 60));
+            i++;
+        }
+
+        Assert.True(File.Exists(first), $"超限未切序号文件：{first}");
+        var sealedLength = SharedLength(dated);
+
+        while (!File.Exists(second) && i < 200)
+        {
+            logger.LogInformation("大小轮转压力行 {Index}：{Pad}", i, new string('x', 60));
+            i++;
+        }
+
+        Assert.True(File.Exists(second), $"序号文件再次超限未继续切：{second}");
+        for (var tail = 0; tail < 5; tail++)
+        {
+            logger.LogInformation("尾批行 {Index}", tail);
+        }
+
+        Assert.True(provider.FileChannelEnabled);
+        Assert.Equal(sealedLength, SharedLength(dated)); // 旧文件封存不再增长
+        Assert.Contains("大小轮转压力行 0", ReadShared(dated)); // 首行落在基文件
+        Assert.Contains("尾批行 4", ReadShared(second)); // 最新写入落在最新序号文件
+    }
+
+    [Fact]
+    public void Multiple_size_rotations_within_one_day_should_stay_within_file_count_limit()
+    {
+        // 决策 #173（评审 B3）：大小轮转分支同样触发清理——单日内多次超限轮转后文件总数不超个数上限；
+        // 写入中文件按（日期,序号）元组序总在队尾，清理不会删到它（通道保持可用、末行可落盘）
+        var basePath = Path.Combine(_directory, "server.log");
+        using var provider = new FileLoggerProvider(basePath, retainedFileCountLimit: 3, maxFileSizeBytes: 512);
+        var logger = provider.CreateLogger("TestCategory");
+        for (var i = 0; i < 80; i++)
+        {
+            logger.LogInformation("连续轮转压力行 {Index}：{Pad}", i, new string('y', 60));
+        }
+
+        var matching = Directory.GetFiles(_directory, "server-*.log");
+        Assert.True(matching.Length <= 3, $"文件总数超出个数上限：{matching.Length} —— {string.Join(", ", matching)}");
+        Assert.True(provider.FileChannelEnabled, "清理误删了写入中文件（通道被自我禁用）");
+        Assert.Contains(matching, file => ReadShared(file).Contains("连续轮转压力行 79")); // 末行仍写入成功
+    }
+
+    [Fact]
+    public void Cleanup_should_delete_oldest_by_date_then_sequence_and_keep_current_file()
+    {
+        // 决策 #173（评审 B2）：清理按（日期, 序号〔基名=0〕）元组序删最旧，替代文件名 Ordinal 串序——
+        // Ordinal 序下 ".10" 排在 ".2" 之前、基名文件（当日最旧）排在全部序号文件之后；
+        // 6 个文件上限 3 → 删 (20200101,0)、(20200102,0)、(20200102,2)，保留 (20200102,10)、(20200103,0) 与写入中当日文件
+        var basePath = Path.Combine(_directory, "server.log");
+        foreach (var name in new[]
+        {
+            "server-20200101.log",
+            "server-20200102.log",
+            "server-20200102.2.log",
+            "server-20200102.10.log",
+            "server-20200103.log",
+        })
+        {
+            File.WriteAllText(Path.Combine(_directory, name), "旧文件");
+        }
+
+        using var provider = new FileLoggerProvider(basePath, retainedFileCountLimit: 3);
+        var logger = provider.CreateLogger("TestCategory");
+        logger.LogInformation("写入中文件行");
+
+        Assert.False(File.Exists(Path.Combine(_directory, "server-20200101.log")));
+        Assert.False(File.Exists(Path.Combine(_directory, "server-20200102.log")));
+        Assert.False(File.Exists(Path.Combine(_directory, "server-20200102.2.log")));
+        Assert.True(File.Exists(Path.Combine(_directory, "server-20200102.10.log"))); // 序号按数值序（2 < 10）而非串序
+        Assert.True(File.Exists(Path.Combine(_directory, "server-20200103.log")));
+        var today = Path.Combine(_directory, $"server-{DateTime.Now:yyyyMMdd}.log");
+        Assert.True(File.Exists(today), "写入中文件被清理选中");
+        Assert.Contains("写入中文件行", ReadShared(today));
+    }
+
+    [Fact]
+    public void Size_rotation_open_failure_should_fall_back_to_old_file_and_keep_channel()
+    {
+        // 决策 #173：大小轮转开新文件失败沿用「退回旧文件继续写、下次再试」防护——轮转失败 ≠ 写入失败，通道不自我禁用
+        var basePath = Path.Combine(_directory, "server.log");
+        // 预占当日序号文件路径（目录占位使开新文件必然失败）
+        Directory.CreateDirectory(Path.Combine(_directory, $"server-{DateTime.Now:yyyyMMdd}.1.log"));
+        using var provider = new FileLoggerProvider(basePath, retainedFileCountLimit: 31, maxFileSizeBytes: 512);
+        var logger = provider.CreateLogger("TestCategory");
+        for (var i = 0; i < 40; i++)
+        {
+            logger.LogInformation("轮转失败回退行 {Index}：{Pad}", i, new string('z', 60));
+        }
+
+        Assert.True(provider.FileChannelEnabled, "轮转失败不应自我禁用通道");
+        var dated = Path.Combine(_directory, $"server-{DateTime.Now:yyyyMMdd}.log");
+        Assert.Contains("轮转失败回退行 0", ReadShared(dated));
+        Assert.Contains("轮转失败回退行 39", ReadShared(dated)); // 超限后全部行退回基文件继续写
+    }
+
     /// <summary>以兼容写入句柄的共享方式读取（写入器仍持写句柄时 File.ReadAllText 会因共享冲突失败）。</summary>
     private static string ReadShared(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
+    }
+
+    /// <summary>以共享方式读取文件字节长度（写入器仍持写句柄时可用；封存断言用字节口径）。</summary>
+    private static long SharedLength(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        return stream.Length;
     }
 
     public void Dispose()

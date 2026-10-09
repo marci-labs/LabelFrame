@@ -19,11 +19,18 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 var serverOptions = new ServerOptions();
 builder.Configuration.GetSection("Server").Bind(serverOptions);
 serverOptions.ApplyEnvironmentOverrides();
-// 文本日志通道（决策 #108）：按日轮转 + 保留上限；路径无效（目录不可创建 / 磁盘不可用）不崩溃——
-// 跳过文件通道、控制台输出中文告警（含配置项名与降级事实），宿主正常启动。
+// 文本日志通道（决策 #108；大小上限决策 #173）：按日 + 单文件大小轮转 + 个数保留上限；
+// 路径无效（目录不可创建 / 磁盘不可用）不崩溃——跳过文件通道、控制台输出中文告警（含配置项名与降级事实），宿主正常启动。
 if (!string.IsNullOrWhiteSpace(serverOptions.LogFilePath))
 {
-    var fileLoggerProvider = new FileLoggerProvider(serverOptions.LogFilePath, serverOptions.LogFileRetentionDays);
+    // 大小上限接线唯一入口（MB → 字节；0 / 负 = 不限制）
+    var maxFileSizeBytes = serverOptions.LogFileMaxSizeMB > 0
+        ? (long)serverOptions.LogFileMaxSizeMB * 1024 * 1024
+        : 0;
+    var fileLoggerProvider = new FileLoggerProvider(
+        serverOptions.LogFilePath,
+        serverOptions.LogFileRetentionDays,
+        maxFileSizeBytes);
     if (fileLoggerProvider.FileChannelEnabled)
     {
         builder.Logging.AddProvider(fileLoggerProvider);

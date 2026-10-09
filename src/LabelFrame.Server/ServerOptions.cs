@@ -59,8 +59,19 @@ public sealed class ServerOptions
     /// <summary>文本日志文件路径（为空不写文件；Linux 部署挂载到宿主机查看）。按日轮转：实际写入 <名>-yyyyMMdd.log（决策 #108）。</summary>
     public string? LogFilePath { get; set; }
 
-    /// <summary>文本日志按日文件保留上限（默认 31；0 或负值 = 不清理）。LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS 可覆盖。</summary>
+    /// <summary>文本日志文件个数保留上限（默认 31；0 或负值 = 不清理）。LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS 可覆盖。
+    /// 语义微调（决策 #173）：按日单文件时代即「保留天数」；单文件大小上限（<see cref="LogFileMaxSizeMB"/>）启用后单日可产生
+    /// 多个序号文件（server-yyyyMMdd.N.log），本项实际语义为「文件个数上限」，文本层总占用上界 = 本项 × 单文件上限。</summary>
     public int LogFileRetentionDays { get; set; } = 31;
+
+    /// <summary>文本日志单文件大小上限（MB，默认 50；0 或负值 = 不限制）。LABELFRAME_SERVER_LOG_FILE_MAX_SIZE_MB 可覆盖。
+    /// 单文件超限轮转为当日序号文件（server-yyyyMMdd.1.log → .2.log …），总占用上界 ≈ 31 文件 × 本值（决策 #173）。</summary>
+    public int LogFileMaxSizeMB { get; set; } = 50;
+
+    /// <summary>logs.db 按量闸阈值（MB，默认 256；0 或负值 = 不限量闸、按期时间闸仍生效）。
+    /// 库文件（logs.db + logs.db-wal 合计）超过阈值时按大小删最旧日志直至回到阈值内——**不受 <see cref="LogRetentionDays"/> 保留下限约束（有意行为）**，
+    /// 删除后 VACUUM + wal_checkpoint(TRUNCATE) 真实回收磁盘。LABELFRAME_SERVER_LOGS_DB_MAX_SIZE_MB 可覆盖（决策 #173）。</summary>
+    public int LogsDbMaxSizeMB { get; set; } = 256;
 
     /// <summary>产品版本（与打包脚本 -Version 保持一致）。</summary>
     public const string ProductVersion = "0.32.0";
@@ -154,6 +165,18 @@ public sealed class ServerOptions
             && int.TryParse(logRetentionFiles, out var logFileRetention))
         {
             LogFileRetentionDays = logFileRetention;
+        }
+
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_LOG_FILE_MAX_SIZE_MB") is { } logFileMaxSize
+            && int.TryParse(logFileMaxSize, out var logFileMaxSizeValue))
+        {
+            LogFileMaxSizeMB = logFileMaxSizeValue;
+        }
+
+        if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_LOGS_DB_MAX_SIZE_MB") is { } logsDbMaxSize
+            && int.TryParse(logsDbMaxSize, out var logsDbMaxSizeValue))
+        {
+            LogsDbMaxSizeMB = logsDbMaxSizeValue;
         }
 
         if (Environment.GetEnvironmentVariable("LABELFRAME_SERVER_PLUGIN_PACKAGES") is { } pluginPackages)
