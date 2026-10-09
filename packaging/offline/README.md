@@ -1,7 +1,7 @@
 # LabelFrame Server 离线部署包（__LABELFRAME_VERSION__，linux-x64）
 
 本包用于**离线 / 内网环境**部署 LabelFrame 服务端：解压即用，部署全程零外网。
-（在线环境不必用本包：直接用 Release 的 `compose.yml` + `.env` 联网拉镜像即可，见仓库 `docs/DEPLOY.md` §4。）
+（在线环境不必用本包：直接用 Release 的 `compose.yml` + `.env` 联网拉镜像即可，见仓库 `docs/DEPLOY.md` 的「Docker（推荐的服务端部署方式）」一节。）
 
 ## 前置条件
 

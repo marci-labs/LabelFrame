@@ -2,6 +2,13 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 125：产品面信息精简——随包分发文件与用户文档去除内部过程标记（#301） · 2026-10-09
+
+- **产品面去过程标记**：随包分发文件与用户文档中的内部协作出处（迭代号 / Issue 号 / 决策号 / AC / § 节引 / PR salvage）全部隐去——`packaging/offline/install.sh`（头部说明与预建目录、自动分发两处注释去出处，行为理由保留）、`packaging/offline/README.md`、`packaging/ubuntu/Dockerfile`、`packaging/ubuntu/docker-compose.yml`（五处挂载注释收敛为纯用途说明）、`packaging/recheck-webview2.vbs`、`docs/DEPLOY.md`、`README.md`、`scripts/install-server-linux.sh`（注释与用户可见输出文案，按用户拍板纳入本轮）；`§N` 跨节引用改「节名」文字引用（引用与实际标题逐处核对一致；DEPLOY / README 两处含迭代括注的章节标题同步去括注，GitHub 自动锚点 ID 随之变化，旧外部链接可能失配）。保留注释逐条过 rubric（仅行为约束与非显然理由），纯过程叙述（契约出处、组包来路、「（迭代 NN，决策 #MM）」括注）删除。
+- **执行逻辑零变化**：`install.sh` 仅注释行改动（剥离注释后与 master 逐字节一致，echo 输出本无标记零改动）；compose / Dockerfile / vbs 非注释行零改动；`install-server-linux.sh` 非注释变更仅 usage / die 输出字符串内的节引文字（命令、顺序、判断、退出码零改动，bash -n 通过）。
+- **痕迹扫描与残留声明**：范围文件集（8 个改动文件 + 7 个零命中负对照：service / appsettings×2 / e2e×3 / linux-client Dockerfile）对固化命令（`grep -E "迭代 ?[0-9]+|[Ii]ssue ?#[0-9]+|决策 ?#[0-9]+|(^|[^A-Za-z0-9])AC-[0-9]+|§|PR ?#[0-9]+|salvage|#[0-9]+"`，AC 边界用 ASCII 显式形态以保证跨 grep 版本可复现）零命中，命令与输出见 PR；安装器构建模板按不在范围口径缓办（.wxs 的 XML 注释不编入 MSI 产物、不随包分发，与源码注释同逻辑），残留以同一固化命令本机实测声明：`Bundle.wxs` 38 行 / `main.wxs` 9 行 / `main-server.wxs` 6 行（共 53 行；设计段记录的 38/8/5 为其环境实测，行级计数随 grep 版本有 ±1 漂移，以各环境固化命令输出为准），随本 Issue 结项时开挂账 Issue 清理。
+- **纪律决策**：`docs/DESIGN.md` 决策表新增「产品面文件禁内部过程标记」纪律行（决策 #175，用户拍板采纳），防后续迭代再引入同类标记。
+
 ## 修复：日志清理首清时机与告警链路（#296） · 2026-10-09
 
 - **首清时机修复（#296 主体）**：`DataCleanupService.ExecuteAsync` 原「延迟 60 秒后等首个周期 tick 才清理」——默认周期 24h 下升级 / 重启后一天内不做任何清理（终态作业、日志按期删、logs.db 量闸全部延迟，注释与实现不符）；改为延迟 60 秒后**立即执行一次** `CleanupAsync` 再进周期循环（异常防护与周期执行同级）。

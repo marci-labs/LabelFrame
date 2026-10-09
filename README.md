@@ -1,6 +1,6 @@
 # LabelFrame
 
-<!-- 品牌 v02（#288）：头图 = 品牌 v02 彩色 lockup 母版（assets/brand/），alt 取文案定稿 readme.bannerAlt -->
+<!-- 头图 = 品牌 v02 彩色 lockup 母版（assets/brand/） -->
 <p align="left"><img src="assets/brand/lockup-color.svg" width="280" alt="LabelFrame" /></p>
 
 [![CI](https://github.com/marci-labs/LabelFrame/actions/workflows/ci.yml/badge.svg)](https://github.com/marci-labs/LabelFrame/actions/workflows/ci.yml)
@@ -31,7 +31,7 @@
 
 ### 文员：一台电脑一台打印机（单机模式）
 
-1. 从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 **`LabelFrame-Bootstrapper-x.x.x.exe`（安装引导程序，推荐）** 双击运行，选「单机一体」拓扑走完向导即可——运行时缺失会自动补装，无需手工准备 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) 与 [Microsoft Edge WebView2 运行时](https://go.microsoft.com/fwlink/p/?LinkId=2124703)。高级路径：分别安装 `LabelFrame-Server-x.x.x.msi` 与 `LabelFrame-Client-x.x.x.msi`（缺失运行时时安装包会给出官方下载链接，需手动补装；见[部署指南](docs/DEPLOY.md) §2 / §3）。
+1. 从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 **`LabelFrame-Bootstrapper-x.x.x.exe`（安装引导程序，推荐）** 双击运行，选「单机一体」拓扑走完向导即可——运行时缺失会自动补装，无需手工准备 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) 与 [Microsoft Edge WebView2 运行时](https://go.microsoft.com/fwlink/p/?LinkId=2124703)。高级路径：分别安装 `LabelFrame-Server-x.x.x.msi` 与 `LabelFrame-Client-x.x.x.msi`（缺失运行时时安装包会给出官方下载链接，需手动补装；见[部署指南](docs/DEPLOY.md) 的「安装引导程序（推荐安装入口）」与「安装包（MSI，高级路径）」两节）。
 2. Client 装完会自动打开 **LabelFrame 应用窗口**（自有窗口与任务栏图标，也可从桌面快捷方式打开）；窗口关闭后服务驻留系统托盘，打印不受影响。
 3. 「设计器」页新建模板：画布拖入文本 / 条码 / 二维码，毫米级排版，实时预览。
 4. 「数据与打印」页填数据（或「下载 Excel 模板」→ 填好 → 导入）。
@@ -69,7 +69,7 @@ curl -X POST http://<服务器>:53961/api/jobs \
 | Linux / Docker | `docker compose up -d` 或 systemd | 局域网多机 |
 | Docker E2E | 稳定版 Server + 当前 Linux Log Client | 无打印机集成回归 |
 
-安装入口与向导流程见[部署指南](docs/DEPLOY.md) §2（安装引导程序，推荐）；Docker / Ubuntu 步骤、签名与配置项见 **[docs/DEPLOY.md](docs/DEPLOY.md)**。
+安装入口与向导流程见[部署指南](docs/DEPLOY.md) 的「安装引导程序（推荐安装入口）」一节；Docker / Ubuntu 步骤、签名与配置项见 **[docs/DEPLOY.md](docs/DEPLOY.md)**。
 
 ## 仓库结构
 
@@ -95,14 +95,14 @@ cd web && pnpm install && pnpm dev  # 前端开发（连本机 WinHost）
 
 - 无打印机验证打印闭环：`powershell -ExecutionPolicy Bypass -File .\scripts\demo-winhost.ps1`。
 - Docker 验证 Server / Linux Client 路由闭环：源码候选运行 `powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1`；正式同版本镜像运行 `powershell -ExecutionPolicy Bypass -File .\scripts\test-linux-client-e2e.ps1 -ComposeFile packaging/e2e/compose.release.yaml -SkipBuild`，详见 [docs/LINUX-CLIENT-E2E.md](docs/LINUX-CLIENT-E2E.md)。
-- 提交即跑 CI（`.github/workflows/ci.yml`：dotnet 构建 / 测试 + 前端 lint / 双模式测试 / 构建 + Android 构建）；迭代 42 起 `master` 受门禁保护——变更走短分支 + PR，三项必需检查全绿后 squash 合并（流程见 [docs/WORKFLOW.md](docs/WORKFLOW.md)）。
-- 发版：更新 ROADMAP / CHANGELOG 后推送 `v*` tag，由 `release.yml` 自动构建发布（MSI / Linux 归档 / Android APK / ghcr 镜像，见 [docs/DEPLOY.md](docs/DEPLOY.md) §8）。Release 构建要求 Android 签名 Secrets 齐备（缺失即失败、不回退 debug 签名）；keystore 证书管理与换签名影响（卸载重装 + 设备号变化）见 DEPLOY §8 与 [AndroidHost README](src/LabelFrame.AndroidHost/README.md)。
+- 提交即跑 CI（`.github/workflows/ci.yml`：dotnet 构建 / 测试 + 前端 lint / 双模式测试 / 构建 + Android 构建）；`master` 受门禁保护——变更走短分支 + PR，三项必需检查全绿后 squash 合并（流程见 [docs/WORKFLOW.md](docs/WORKFLOW.md)）。
+- 发版：更新 ROADMAP / CHANGELOG 后推送 `v*` tag，由 `release.yml` 自动构建发布（MSI / Linux 归档 / Android APK / ghcr 镜像，见 [docs/DEPLOY.md](docs/DEPLOY.md) 的「自动化发布与签名」一节）。Release 构建要求 Android 签名 Secrets 齐备（缺失即失败、不回退 debug 签名）；keystore 证书管理与换签名影响（卸载重装 + 设备号变化）见 [docs/DEPLOY.md](docs/DEPLOY.md) 与 [AndroidHost README](src/LabelFrame.AndroidHost/README.md)。
 
 ## 文档
 
 - [docs/DESIGN.md](docs/DESIGN.md) —— 架构设计与决策记录
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) —— 需求：场景、底线、能力、边界、成功衡量
-- [docs/ROADMAP.md](docs/ROADMAP.md) —— 迭代状态总览（迭代 42 起迭代详情在 GitHub Issue）
+- [docs/ROADMAP.md](docs/ROADMAP.md) —— 迭代状态总览（迭代详情在 GitHub Issue）
 - [docs/WORKFLOW.md](docs/WORKFLOW.md) —— 工作流：Issue 立项、PR 门禁、事实源映射
 - [docs/DEPLOY.md](docs/DEPLOY.md) —— 部署指南（MSI / Docker / Ubuntu / 分发 / 签名）
 - [docs/TEST-MATRIX.md](docs/TEST-MATRIX.md) —— 功能清单、发布测试大纲与证据边界

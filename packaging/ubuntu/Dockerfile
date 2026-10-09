@@ -1,4 +1,4 @@
-# LabelFrame Server（Ubuntu 容器，framework-dependent；迭代 19）
+# LabelFrame Server（Ubuntu 容器，framework-dependent）
 # 构建：docker build -f packaging/ubuntu/Dockerfile -t labelframe-server artifacts/server-linux/linux-x64
 # 运行：docker run -d --name labelframe-server -p 53961:53961 -v labelframe-data:/var/lib/labelframe/server labelframe-server
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
