@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# LabelFrame Server 离线部署一键脚本（迭代 101，Issue #213；契约：docs/DESIGN.md 决策 #160）
-# 位于离线包内，随包分发（scripts/make-offline-bundle.sh 组包时复制；源文件 packaging/offline/install.sh）。
+# LabelFrame Server 离线部署一键脚本
 #
 # 用法（离线包解压目录内，无需 root；目标机需已装 Docker Engine 含 compose v2）：
 #   bash install.sh
 #
 # 行为：SHA256SUMS 全件校验（不符即拒，fail-closed）→ docker load 镜像（tag 为 ghcr 全名，load 后本地命中，
 #   compose 默认 pull=missing 不再联网拉取）→ 预建三个分发挂载宿主目录（部署者属主——防 Docker 守护进程以
-#   root 自动创建致非 root 部署者拷包被拒，#213 AC-06 返修）→ 自动把 packages/ 三件拷入挂载目录（下载中心
-#   开箱可用，#222）→ docker compose up -d → /healthz 轮询就绪 → 输出访问地址。
+#   root 自动创建致非 root 部署者拷包被拒）→ 自动把 packages/ 三件拷入挂载目录（下载中心开箱可用）→
+#   docker compose up -d → /healthz 轮询就绪 → 输出访问地址。
 # 幂等：重跑无害（重复 load / up 均合法）；升级 = 同一部署目录解压新版本包重跑（tar -xzf 新包 -C 本目录
 #   --strip-components=1 后重跑本脚本；数据卷实际名 = <部署目录名>_labelframe-data，固定目录即跨版本同一卷）。
 set -euo pipefail
@@ -104,7 +103,7 @@ docker image inspect "$IMAGE" >/dev/null 2>&1 || die "load 后仍未找到镜像
 info "镜像就位（本地命中，后续 compose 起容器不再联网拉取）。"
 
 # ---- 4) 预建分发挂载宿主目录（compose.yml bind-mount ./client-packages 等三个相对目录）----
-# 缺陷背景（#213 AC-06 走查）：目录若在 up 时才首次出现，Docker 守护进程（root）会自动创建为 root:root 0755，
+# 缺陷背景：目录若在 up 时才首次出现，Docker 守护进程（root）会自动创建为 root:root 0755，
 # 非 root 部署者随后把 packages/ 拷入即 Permission denied、下载中心三列表为空。先由部署者预建（属主=部署者），
 # 守护进程对已存在目录不再接管属主。幂等：已存在且可写则静默通过；不可写（历史 root 残留）仅输出警告与处置
 # 提示（不自动 sudo、不阻断服务部署），并在完成输出中标注受阻目录。
@@ -126,7 +125,7 @@ for d in client-packages pda-packages plugin-packages; do
   fi
 done
 
-# ---- 5) 自动分发 packages 三件入挂载目录（下载中心开箱可用，#222 缺陷②；实施自 PR #224 salvage）----
+# ---- 5) 自动分发 packages 三件入挂载目录（下载中心开箱可用）----
 # 离线闭环最后一公里：下载中心三列表实时读挂载目录，文件就位即分发。cp -f 幂等覆盖、包内 packages/ 原件
 # 保留（重跑第 1 步 sha256sum -c SHA256SUMS 依赖其在位，故不用 mv）；挂载目录不可写（上方 PKGDIR_BLOCKED——
 # 历史 root 残留）整类跳过并在完成输出标注，不阻断部署；包内单件缺失仅告警（完整性已由第 1 步 fail-closed 兜底）。

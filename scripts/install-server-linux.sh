@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# LabelFrame Server Linux 一键安装脚本（迭代 71，Issue #91；契约：docs/DESIGN.md §6.12 / 决策 #133）
+# LabelFrame Server Linux 一键安装脚本
 #
 # 用法（root / sudo）：
 #   在线安装（官方稳定通道，默认含管理界面）：  sudo bash install-server-linux.sh
 #   指定版本 / 清单：                          sudo bash install-server-linux.sh --manifest <install-manifest.json 的 URL>
-#   离线布局目录（衔接迭代 70，零外网请求）：    sudo bash install-server-linux.sh --manifest /path/to/布局目录
+#   离线布局目录（零外网请求）：                sudo bash install-server-linux.sh --manifest /path/to/布局目录
 #   离线清单文件（清单所在目录即布局目录）：      sudo bash install-server-linux.sh --manifest /path/to/install-manifest.json
 #   不装管理界面：                              sudo bash install-server-linux.sh --no-webui
 #
@@ -12,8 +12,8 @@
 #   解包部署 /opt/labelframe/server → 安装 / 启用 / 重启 systemd 服务 labelframe-server →
 #   管理界面 zip 解压到 /var/lib/labelframe/server/plugins/web-ui → 输出服务状态与管理界面地址。
 # 幂等：重跑 = 覆盖升级——appsettings.json 保留用户版本，/var/lib/labelframe 数据与日志目录不动。
-# 归档形态：Release 归档自迭代 71 起默认 self-contained（免 .NET 前置）；framework-dependent 归档
-#   需目标机已装 .NET 10 ASP.NET Core Runtime，缺失时明确报错并给出官方直链，不自动安装（决议 3a）。
+# 归档形态：Release 归档默认 self-contained（免 .NET 前置）；framework-dependent 归档
+#   需目标机已装 .NET 10 ASP.NET Core Runtime，缺失时明确报错并给出官方直链，不自动安装。
 set -euo pipefail
 
 MANIFEST_STABLE_URL="https://github.com/marci-labs/LabelFrame/releases/latest/download/install-manifest.json"
@@ -36,11 +36,11 @@ info() {
 }
 usage() {
   cat <<'USAGE'
-LabelFrame Server Linux 一键安装脚本（docs/DEPLOY.md §5 / DESIGN §6.12）
+LabelFrame Server Linux 一键安装脚本（docs/DEPLOY.md）
 用法（root / sudo）：
   sudo bash install-server-linux.sh                                        在线安装（官方稳定通道，默认含管理界面）
   sudo bash install-server-linux.sh --manifest <清单 URL>                  在线安装指定版本
-  sudo bash install-server-linux.sh --manifest <布局目录>                  离线安装（零外网请求，衔接迭代 70 布局目录）
+  sudo bash install-server-linux.sh --manifest <布局目录>                  离线安装（零外网请求，本地文件优先）
   sudo bash install-server-linux.sh --manifest <install-manifest.json>     离线安装（清单所在目录即布局目录）
   sudo bash install-server-linux.sh --no-webui                             不装管理界面
 USAGE
@@ -61,7 +61,7 @@ done
 [ "$(id -u)" -eq 0 ] || die "请用 root 或 sudo 运行。"
 
 command -v systemctl >/dev/null 2>&1 || die "未找到 systemctl——本脚本面向 systemd 主机（Ubuntu / Debian 系）。"
-[ -d /run/systemd/system ] || die "systemd 未运行（容器内需以 systemd 为 init 启动，或改用 Docker 形态部署，见 docs/DEPLOY.md §4）。"
+[ -d /run/systemd/system ] || die "systemd 未运行（容器内需以 systemd 为 init 启动，或改用 Docker 形态部署，见 docs/DEPLOY.md）。"
 
 DOWNLOADER=""
 if command -v curl >/dev/null 2>&1; then
@@ -156,7 +156,7 @@ load_component() {
       url) COMP_URLS+=("$value") ;;
     esac
   done < <(parse_component "$id")
-  [ -n "$COMP_SHA256" ] || die "清单缺少组件条目：$id（manifest 应收录当版全部产物，见 DESIGN §6.2）"
+  [ -n "$COMP_SHA256" ] || die "清单缺少组件条目：$id（manifest 应收录当版全部产物，见 DESIGN.md）"
   [ "${#COMP_URLS[@]}" -ge 1 ] || die "组件 $id 的 urls 为空——清单非法。"
   echo "$COMP_SHA256" | grep -Eq '^[0-9a-f]{64}$' || die "组件 $id 的 sha256 非小写 64 位 hex：$COMP_SHA256"
   COMP_NAME="$(basename "${COMP_URLS[0]}")"
@@ -240,7 +240,7 @@ else
   if [ "$RUNTIME_OK" -ne 1 ]; then
     die "目标机缺少 .NET 10 ASP.NET Core Runtime（Server 需要 Microsoft.AspNetCore.App >= 10）。
   官方下载页：$DOTNET_DOWNLOAD_URL
-  本脚本不自动安装运行时（发行版包管理器差异，DESIGN §6.12 决议）；装好后重跑本脚本即可。
+  本脚本不自动安装运行时（发行版包管理器差异）；装好后重跑本脚本即可。
   或改用 self-contained 归档（Release 默认形态，免运行时前置）。"
   fi
   info "运行时检测通过：Microsoft.AspNetCore.App >= 10 已在场。"

@@ -1,4 +1,4 @@
-' WebView2 运行时「重新检测」（迭代 44，决策 #99 D2）：
+' WebView2 运行时「重新检测」：
 ' 向导内重新读取 EdgeUpdate Clients 的 WebView2 产品键（per-machine / per-user 双视图），
 ' 注册表键随运行时安装即写入——装完点「重新检测」即可继续安装，无需重启安装程序。
 ' 函数名必须与 CustomAction Id（RecheckWebView2）一致；检测到时设置属性 WEBVIEW2_OK=1。
