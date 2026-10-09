@@ -14,6 +14,9 @@ public sealed partial class DataCleanupService : BackgroundService
     [LoggerMessage(Level = LogLevel.Information, Message = "日志库量闸执行：按大小删除日志 {LogCount} 条。")]
     private static partial void LogSizeGateCompleted(ILogger logger, int logCount);
 
+    [LoggerMessage(Level = LogLevel.Error, Message = "日志库空间回收异常：{Warning}")]
+    private static partial void LogVacuumFailed(ILogger logger, string warning);
+
     private readonly ServerDb _db;
     private readonly SqliteLogStore _logStore;
     private readonly ServerOptions _options;
@@ -29,15 +32,21 @@ public sealed partial class DataCleanupService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // 启动后延迟 60 秒执行一次，之后按 CleanupIntervalHours 周期执行
+        // 启动后延迟 60 秒执行一次，之后按 CleanupIntervalHours 周期执行（#296：首清在延迟后立即发生，
+        // 不等首个周期 tick——否则默认周期下升级 / 重启后最长 24h 不做任何清理，量闸同步失效）
         var interval = TimeSpan.FromHours(Math.Max(1, _options.CleanupIntervalHours));
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
+            await CleanupAsync(stoppingToken);
         }
         catch (OperationCanceledException)
         {
             return;
+        }
+        catch (Exception ex)
+        {
+            LogCleanupFailed(_logger, ex);
         }
 
         using var timer = new PeriodicTimer(interval);
@@ -71,11 +80,17 @@ public sealed partial class DataCleanupService : BackgroundService
 
         if (_options.LogsDbMaxSizeMB > 0)
         {
-            var sizeGateDeleted = await _logStore.EnforceSizeLimitAsync(
+            var sizeGate = await _logStore.EnforceSizeLimitAsync(
                 (long)_options.LogsDbMaxSizeMB * 1024 * 1024, cancellationToken);
-            if (sizeGateDeleted > 0)
+            if (sizeGate.DeletedRows > 0)
             {
-                LogSizeGateCompleted(_logger, sizeGateDeleted);
+                LogSizeGateCompleted(_logger, sizeGate.DeletedRows);
+            }
+
+            if (sizeGate.VacuumWarning is { } warning)
+            {
+                // VACUUM / 空库仍超阈等异常经 ILogger 记 Error（服务宿主可能无控制台，#296 留观项②）
+                LogVacuumFailed(_logger, warning);
             }
         }
     }
