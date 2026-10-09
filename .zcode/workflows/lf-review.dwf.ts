@@ -1,6 +1,6 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·评审段：双员扇出评审 PR（范围合规 + 契约规范，基线锚定）+ 阻断项独立复核，落「🔍 评审通过」或「🔍 评审待修」（含 json 阻断清单）。高档位运行（GLM-5.3）。
-whenToUse: 工作流实验管线第 5 段：「🔧 PR 已建」或「🔨 修复轮」评论在场后起跑；通过则进收口段，待修则重入实施段修复。
+description: LabelFrame 工作流管线·评审段：以 Issue 最新「📐 方案 vN」评论为对照基准，双员扇出评审 PR（范围合规 + 契约规范，基线锚定；无文案占位声明时无文案基准）+ 阻断项独立复核，落「🔍 评审通过」或「🔍 评审待修」（含 json 阻断清单）。高档位运行（GLM-5.3）。
+whenToUse: 工作流实验管线第 5 段：「🔧 PR 已建」或「🔨 修复轮」评论在场后起跑（对照基准 = 最新方案评论，fail-closed）；通过则进收口段，待修则重入实施段修复。
 args:
   issue:
     type: number
@@ -47,6 +47,15 @@ function commentLastIndex(prefix: string, comments: Comment[]): number {
   return -1;
 }
 
+/** 评论首行正则定位：最新一条首行匹配 re 的评论下标（无则 -1）。 */
+function commentHeadLastIndex(re: RegExp, comments: Comment[]): number {
+  for (let i = comments.length - 1; i >= 0; i--) {
+    const head = ((comments[i]?.body ?? "").split("\n")[0]) ?? "";
+    if (re.test(head)) return i;
+  }
+  return -1;
+}
+
 function extractSafety(protocolText: string): string {
   const secStart = protocolText.indexOf("## 协议全文");
   const secEnd = protocolText.indexOf("## 附注", secStart);
@@ -67,6 +76,8 @@ const CLOSE_RE = /(close|fix|resolve)(s|es|ed|d)?\s*:?\s*#\d+/i;
 
 const issueNum = Number(args.issue);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
+const PLAN_HEAD_RE = /^\*\*📐 方案 v(\d+)\*\*/;
+const FINAL_PREFIX = "**✅ 文案定稿 v1**";
 const PR_PREFIX = "**🔧 PR 已建**";
 const FIX_PREFIX = "**🔨 修复轮";
 const PASS_PREFIX = "**🔍 评审通过**";
@@ -96,18 +107,30 @@ const prStateRes = await world.run("gh", ["pr", "view", prNumber, "--json", "sta
 if (prStateRes.exitCode !== 0) throw new Error("PR 读取失败：" + prStateRes.stderr.slice(0, 300));
 const prState = JSON.parse(prStateRes.stdout) as { state: string; title: string };
 if (prState.state !== "OPEN") throw new Error(`PR #${prNumber} 状态为 ${prState.state}（非 OPEN）——已合并则跑 lf-close 收口，已关闭需人工排查`);
-log("PR #" + prNumber + "《" + prState.title + "》OPEN，开始双员评审");
+// 对照基准 fail-closed：最新「📐 方案 vN」评论取不到即中止（含最新评论为处置报告的场景）。
+const planIdx = commentHeadLastIndex(PLAN_HEAD_RE, comments);
+if (planIdx < 0) throw new Error(`Issue #${issueNum} 无「📐 方案 vN」评论——对照基准缺失，先跑设计段 lf-design`);
+const planHead = ((comments[planIdx]?.body ?? "").split("\n")[0]) ?? "";
+const planVersionMatch = PLAN_HEAD_RE.exec(planHead);
+if (planVersionMatch === null || planVersionMatch[1] === undefined) throw new Error("方案评论首行版本号解析失败（fail-closed）");
+const planVersion = Number(planVersionMatch[1]);
+const finalBody = latestCommentBody(FINAL_PREFIX, comments);
+const copyBasis = finalBody !== null && /```json/.test(finalBody)
+  ? "存在含 json 块的「✅ 文案定稿 v1」——定稿文案逐字一致是阻断口径"
+  : "「✅ 文案定稿 v1」为无文案占位声明——本轮无文案基准";
+log("PR #" + prNumber + "《" + prState.title + "》OPEN，对照方案 v" + planVersion + "，开始双员评审");
 
 phase("双员评审扇出：范围合规与契约规范");
 const protocol = await files.read(".zcode/automations/iteration-duty.md");
 const safety = extractSafety(protocol);
 const baseline = await files.read("docs/CODE-REVIEW-BASELINE.md");
 const reviewGuide =
-  `评审 PR #${prNumber}（${prState.title}，关联 Issue #${issueNum}）。取 diff：gh pr diff ${prNumber}；读 Issue：gh issue view ${issueNum} --json body,comments（「📐 方案 v1」与「✅ 文案定稿 v1」json 块是对照基准——定稿文案必须逐字一致）。` +
+  `评审 PR #${prNumber}（${prState.title}，关联 Issue #${issueNum}）。取 diff：gh pr diff ${prNumber}；读 Issue：gh issue view ${issueNum} --json body,comments——` +
+  `最新「📐 方案 v${planVersion}」评论是实施对照基准（逐文件核对实现与方案设计规格的偏离）；${copyBasis}。` +
   `评审基线（判断锚点——基线没有的条目不得给「阻断」，只能「建议」并注明「无基线可依」）：\n${baseline}\n安全边界：${safety}`;
 const reviewPair = await Promise.all([
   agent("范围合规员", {
-    system: "你只审不改、不问用户。专职视角：范围合规与 AC 覆盖——对照 Issue 的范围/不在范围/AC 表与定稿文案逐文件核对，找范围外改动、AC 无覆盖、文案与定稿不一致。findings 每条给 where/what/basis/severity。",
+    system: "你只审不改、不问用户。专职视角：范围合规与 AC 覆盖——对照 Issue 的范围/不在范围/AC 表与最新方案设计规格逐文件核对，找范围外改动、AC 无覆盖、实现与方案的偏离；存在文案定稿 json 块时文案与定稿逐字比对。findings 每条给 where/what/basis/severity。",
   }).ask<ReviewResult>(reviewGuide),
   agent("契约规范员", {
     system: "你只审不改、不问用户。专职视角：契约与规范——对照评审基线审 diff（放置路由、命名与品牌红线、注释 rubric、i18n 纪律、测试规范、流程红线）。findings 每条给 where/what/basis/severity。",

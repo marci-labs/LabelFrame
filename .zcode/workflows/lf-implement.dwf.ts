@@ -1,6 +1,6 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·实施段：按方案与文案定稿在独立 worktree 实施（编码/测试/本地门禁/提 PR）；重入即修复模式（读评审段阻断清单修复再推）。低档位运行（GLM-5.3-Flash）。
-whenToUse: 工作流实验管线第 4 段：「✅ 文案定稿 v1」评论在场后起跑建 PR；评审段产出「🔍 评审待修」后重入修复。
+description: LabelFrame 工作流管线·实施段：按最新方案评论与 Issue AC 在独立 worktree 实施（编码/测试/本地门禁/提 PR）；重入即修复模式（读评审段阻断清单修复再推）；改动面断言按 web/src/test/.zcode 并集。低档位运行（GLM-5.3-Flash）。
+whenToUse: 工作流实验管线第 4 段：「✅ 文案定稿 v1」评论在场后起跑建 PR——含界面文案迭代为 json 定稿块；无界面文案迭代由主控手贴占位声明（四段轻装固定仪式）；评审段产出「🔍 评审待修」后重入修复。
 args:
   issue:
     type: number
@@ -10,10 +10,10 @@ args:
     type: string
     description: 分支与 worktree 的短标识（英文），重入修复时须与首次一致
     required: false
-    default: guide
+    default: iter
 */
-// LabelFrame 工作流实验 · 实施段（lf-implement）
-// 两种模式：新建（无「🔧 PR 已建」评论，需文案定稿在场）/ 修复（「🔧 PR 已建」在场，读最新「🔍 评审待修」阻断清单）。
+// LabelFrame 工作流实验 · 实施段（lf-implement）· v2（迭代 124 泛化：任务按最新方案 + Issue AC 工作，不再写死迭代主题）
+// 两种模式：新建（无「🔧 PR 已建」评论，需文案定稿在场——json 定稿块或主控贴的无文案占位声明）/ 修复（「🔧 PR 已建」在场，读最新「🔍 评审待修」阻断清单）。
 // 完成标志：新建 → 「🔧 PR 已建」评论；修复 → 「🔨 修复轮 N」评论。合并由 lf-close 负责，本段不合并。
 
 interface Finding {
@@ -28,7 +28,7 @@ interface Finding {
 interface ImplResult {
   /** 变更摘要（3~5 条，中文）。 */
   summary: string[];
-  /** 是否触碰 web/（本管线恒真，保留字段便于泛化）。 */
+  /** 是否触碰 web/（前端迭代为 true，后端 / 治理迭代可为 false）。 */
   webTouched: boolean;
 }
 
@@ -48,6 +48,15 @@ function latestCommentBody(prefix: string, comments: Comment[]): string | null {
     if (b.startsWith(prefix)) return b;
   }
   return null;
+}
+
+/** 评论首行正则定位：最新一条首行匹配 re 的评论下标（无则 -1）。 */
+function commentHeadLastIndex(re: RegExp, comments: Comment[]): number {
+  for (let i = comments.length - 1; i >= 0; i--) {
+    const head = ((comments[i]?.body ?? "").split("\n")[0]) ?? "";
+    if (re.test(head)) return i;
+  }
+  return -1;
 }
 
 function extractSafety(protocolText: string): string {
@@ -79,10 +88,11 @@ const CLOSE_RE = /(close|fix|resolve)(s|es|ed|d)?\s*:?\s*#\d+/i;
 const TEST_FILTER = "FullyQualifiedName!~Perf&FullyQualifiedName!~Soak";
 const GATE_RETRIES = 2;
 
-const issueNum = Number(args.issue ?? 280);
+const issueNum = Number(args.issue);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
-const rawSlug = typeof args.slug === "string" && args.slug !== "" ? args.slug : "guide";
+const rawSlug = typeof args.slug === "string" && args.slug !== "" ? args.slug : "iter";
 const slug = rawSlug.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 30);
+const PLAN_HEAD_RE = /^\*\*📐 方案 v(\d+)\*\*/;
 const FINAL_PREFIX = "**✅ 文案定稿 v1**";
 const PR_PREFIX = "**🔧 PR 已建**";
 const REVIEW_TODO_PREFIX = "**🔍 评审待修**";
@@ -101,6 +111,8 @@ const protocol = await files.read(".zcode/automations/iteration-duty.md");
 const safety = extractSafety(protocol);
 let branch: string;
 let prNumber = "";
+let planVersion = 0;
+let copyRef = "";
 if (fixMode) {
   const b = /分支 (\S+)/.exec(prComment ?? "");
   const p = /PR #(\d+)/.exec(prComment ?? "");
@@ -110,10 +122,21 @@ if (fixMode) {
   prNumber = p[1];
   log("修复模式：分支 " + branch + " · PR #" + prNumber);
 } else {
-  if (latestCommentBody(FINAL_PREFIX, comments) === null) throw new Error(`Issue #${issueNum} 无「✅ 文案定稿 v1」评论——先跑文案评审段 lf-copy-review`);
+  // 方案读取 fail-closed：以首行正则取最新「📐 方案 vN」评论，取不到即中止（含最新评论为处置报告的场景），不静默降级。
+  const planIdx = commentHeadLastIndex(PLAN_HEAD_RE, comments);
+  if (planIdx < 0) throw new Error(`Issue #${issueNum} 无「📐 方案 vN」评论——先跑设计段 lf-design`);
+  const head = ((comments[planIdx]?.body ?? "").split("\n")[0]) ?? "";
+  const vm = PLAN_HEAD_RE.exec(head);
+  if (vm === null || vm[1] === undefined) throw new Error("方案评论首行版本号解析失败（fail-closed）");
+  planVersion = Number(vm[1]);
+  const finalBody = latestCommentBody(FINAL_PREFIX, comments);
+  if (finalBody === null) throw new Error(`Issue #${issueNum} 无「✅ 文案定稿 v1」评论——含界面文案迭代先跑文案评审段 lf-copy-review；无界面文案迭代由主控贴无文案占位声明`);
+  copyRef = /```json/.test(finalBody)
+    ? `「✅ 文案定稿 v1」的 json 块是文案唯一来源（逐字使用，不得改写）`
+    : `「✅ 文案定稿 v1」为无界面文案的占位声明（本轮无文案表，不适用逐字文案）`;
   const prefix = /迭代\s*\d+/.test(issue.title) ? "iter/" : "fix/";
   branch = prefix + issueNum + "-" + slug;
-  log("新建模式：分支 " + branch);
+  log("新建模式：分支 " + branch + " · 对照方案 v" + planVersion);
 }
 const wt = "../LabelFrame-wt" + issueNum + "-" + slug;
 
@@ -144,7 +167,10 @@ const implementer = agent("实现岗", {
 const ctxGuide =
   `仓库根 = 当前工作目录（master 主检出，只读）；你的工作目录是 worktree ${wt}，所有改动只发生在 worktree 内。` +
   `先读：worktree 内 AGENTS.md、docs/WORKFLOW.md（§2 流程 / §7 worktree 约定）、docs/CODE-REVIEW-BASELINE.md，` +
-  `再读 Issue #${issueNum} 全部正文与评论（gh issue view ${issueNum} --json body,comments）——「📐 方案 v1」是实施依据、「✅ 文案定稿 v1」的 json 块是文案唯一来源（逐字使用，不得改写）。` +
+  `再读 Issue #${issueNum} 全部正文与评论（gh issue view ${issueNum} --json body,comments）——` +
+  (fixMode
+    ? `最新「🔧 PR 已建」「🔍 评审待修」评论是修复依据。`
+    : `最新「📐 方案 v${planVersion}」评论（含独立评审修订）是实施唯一依据；${copyRef}。`) +
   `临时文件只写 worktree 内。web/ 首次使用先在 ${wt}/web 执行 pnpm install（pnpm store 共享，秒级）。` +
   `全套本地门禁（dotnet build/test、pnpm lint/test/build）由脚本执行，你只做最小自测，不要自己跑全量。` +
   `安全边界（必须遵守）：${safety}`;
@@ -162,8 +188,9 @@ if (fixMode) {
 } else {
   phase("恢复上下文并实施编码");
   implNote = await implementer.ask<ImplResult>(
-    ctxGuide + `\n\n按「📐 方案 v1」实施：以方案「计划改动文件」清单与步骤清单为准逐项落地（组件 / 步骤定义纯数据 / 状态与标记键 / i18n 资源 zh+en——文案一律取「✅ 文案定稿 v1」json 块的 key 与文案逐字使用；入口措辞采用用户过目拍板的候选组，` +
-    `若 Issue 评论未记录拍板组则用推荐组并在 summary 注明）、按 Issue AC 补测试（.test.tsx，含 server 分支不渲染守门）、更新 CHANGELOG.md。完成后在 ${wt} 内 git add -A 并 git commit（Conventional Commits，中文说明；不要 push）。`);
+    ctxGuide + `\n\n按最新「📐 方案 v${planVersion}」实施：以方案「计划改动文件」（或各节明确的改动点）为准逐项落地、「设计」为行为规格、按 Issue AC 补测试 / 验证产物、更新方案要求的记账文件（CHANGELOG 等）。` +
+    `文案口径：${copyRef}。` +
+    `完成后在 ${wt} 内 git add -A 并 git commit（Conventional Commits，中文说明；不要 push）。`);
 }
 
 phase("本地门禁：dotnet 与前端全量");
@@ -227,7 +254,8 @@ if (CLOSE_RE.test(change.prBody)) assertProblems.push("PR 正文含 Closes/Fixes
 const prFilesRes = await world.run("gh", ["pr", "view", newPr, "--json", "files"]);
 const prPaths = (JSON.parse(prFilesRes.stdout) as { files: { path: string }[] }).files.map((f) => f.path);
 if (!prPaths.includes("CHANGELOG.md")) assertProblems.push("代码改动未更新 CHANGELOG.md");
-if (!prPaths.some((p) => p.startsWith("web/"))) assertProblems.push("改动未落在 web/（与纯前端前提矛盾，请人工核查）");
+// 改动面并集断言（fail-closed 显式信号）：前端 / 后端 / 治理迭代分别落在 web/ / src/+test/ / .zcode/ 前缀；纯 docs 功能迭代罕见，命中失败即人工核查而非静默。
+if (!prPaths.some((p) => p.startsWith("web/") || p.startsWith("src/") || p.startsWith("test/") || p.startsWith(".zcode/"))) assertProblems.push("改动未落在 web/ / src/ / test/ / .zcode/ 任一前缀（纯文档或意外改动面，请人工核查）");
 if (assertProblems.length > 0) throw new Error("PR 元数据断言未过：" + assertProblems.join("；"));
 
 await world.run("gh", ["issue", "edit", String(issueNum), "--add-label", "进行中"]);

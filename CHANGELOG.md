@@ -2,6 +2,14 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 124：管线标准件泛化——lf-* 六段从引导专用改通用（#294） · 2026-10-09
+
+- **lf-design 泛化（六段结构 / 评论协议 / 双员评审 / 幂等守卫机制不变，只改任务口径与断言的「引导假设」）**：设计任务改「按 Issue 目标 / 范围 / AC 勘察仓库现状产出实施方案」，方案 schema 固定为目标回顾 / 现状锚点（文件:行号）/ 设计（逐 AC）/ 计划改动文件表 / 测试计划 / CHANGELOG 草稿 / 风险 / 待拍板项 +（仅含界面文案迭代必填）界面文案清单（供 lf-copy 消费的契约节）；产物编号 vN 递增——扫描评论首行 `/^\*\*📐 方案 v(\d+)\*\*/` 取在场最大 N 产 v{N+1}（只认首行：错位存档标题计入不撞号、正文前瞻提及不虚增）；勘察发现范围矛盾 / 前置缺失时改产「⚠️ 设计处置报告」（不匹配方案正则、不占 vN 槽）；幂等守卫从「存在精确 v1 前缀即退出」改 commentLastIndex 式新旧比较——最新方案评论晚于最新「🔧 PR 已建 / 🔨 修复轮」评论才退出，否则产 v{N+1}；独立方案评审员任务与 artifact 标题 / conclusion 同步通用化（conclusion 条件式：含界面文案起 lf-copy，无文案由主控贴占位声明后直接起 lf-implement）。
+- **lf-implement 泛化**：任务模板改「按最新方案的『计划改动文件』与设计规格逐项落地、按 Issue AC 补测试、更新方案要求的记账文件」；文案句条件式（「✅ 文案定稿 v1」含 json 块 → 逐字使用；无文案占位声明 → 零文案执行）；方案读取 fail-closed——首行正则取最新「📐 方案 vN」评论，取不到即 throw（含最新评论为处置报告的场景），不静默降级；PR 改动面断言从强制 `web/` 改并集 `web/ ∪ src/ ∪ test/ ∪ .zcode/`（纯 docs 改动面命中失败为 fail-closed 显式信号而非静默）；slug 默认 `guide`→`iter`（metadata 与运行时两处）；`?? 280` 硬编码回退删除；文案守卫与「主控贴占位声明」四段轻装仪式保留（whenToUse 注明）。
+- **lf-review / lf-close 适配**：review 对照基准改「最新『📐 方案 vN』评论（fail-closed：取不到即 throw）」+ 文案双形态口径（含 json 块 → 逐字一致为阻断口径；无文案占位声明 → 无文案基准），范围合规员 persona 改「对照方案设计规格逐文件核对、找实现与方案的偏离」；close 合并后校验 `git pull --ff-only`（动主仓工作区，多会话共用主仓时干扰占用会话）改 `git fetch origin master` + `git grep FETCH_HEAD`（不动主仓工作区，fetch 失败同级 fail-closed），本地分支回收后补远端分支删除 `gh api -X DELETE git/refs/heads/<branch>`（尽力而为不阻断——仓库开合并后自动删远端分支）；slug 默认两处 `iter`；needsHuman 语境改真机 / 长测 / 用户观感通用句式。
+- **lf-copy / lf-copy-review 收窄（评审 B4：收窄而非泛化）**：两件写死面远超任务模板（必产清单 A–H、group 枚举、checkRows 定量契约 rows 15~45 / 候选恰 3 组均为 119/121 导览形态专属）——whenToUse 与 description 收窄为「导览 / 帮助类文案迭代专用（119/121 形态）；通用文案能力待后续 Issue 泛化」；仅修 B3 硬伤（建场守卫精确 `**📐 方案 v1**` 前缀改最新方案 vN 首行正则 fail-closed，防 vN>1 含文案迭代起跳即炸）与 `?? 280` 回退删除；全面泛化显式登记为后续 Issue（本 Issue 结项时开）。
+- **测试与元数据**：六件 metadata（description 单行——saved 元数据折行坑）同步；tsc strict + 临时 facade 声明逐件类型检查六件全过；node 文本锚定直测 61 项断言全过（关键正则 / 断言字面量逐字在场——方案 vN 首行正则、`startsWith(".zcode/")` 并集、`FETCH_HEAD`、`git/refs/heads/` 等；四件无「新用户 / 引导」残留；六件 description 单行）+ 谓词行为样例（vN 递增含错位存档计入与正文提及不虚增、幂等新旧比较、改动面 web/src/test/.zcode 四形态与纯 docs 拒绝、CC_RE / CLOSE_RE——正则自源文本提取构造非副本）；DESIGN 决策 #174 记账。
+
 ## 迭代 123：日志保留量闸——文本日志单文件大小上限轮转＋logs.db 按量闸与空间回收（#291） · 2026-10-09
 - **文本日志单文件大小上限**（默认 50MB，`LABELFRAME_SERVER_LOG_FILE_MAX_SIZE_MB`，0=不限）：超限轮转序号文件（(日期,序号) 序清理、单日内亦受限），总占用上界 ≈ 31 文件 × 上限；「写入永不抛出」防护语义不变（DESIGN 决策 #173）。
 - **logs.db 按量闸与空间回收**（默认 256MB，`LABELFRAME_SERVER_LOGS_DB_MAX_SIZE_MB`，0=不限）：超阈值按大小删最旧（不受 90 天保留下限约束——有意行为），删后 `VACUUM` + `wal_checkpoint(TRUNCATE)` 真实回收磁盘；`auto_vacuum=INCREMENTAL` 因头删尾插 workload 无效被否决（依据入 #173）。

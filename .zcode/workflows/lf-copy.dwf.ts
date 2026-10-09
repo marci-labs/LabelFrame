@@ -1,15 +1,15 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·文案草拟段：按已定稿方案与用户拍板，撰写迭代全部新增界面文案草稿（zh+en 文案表＋入口措辞候选），落 Issue 评论「✍️ 文案草稿 v1」。低档位运行（GLM-5.3-Flash）。
-whenToUse: 工作流实验管线第 2 段：「📐 方案 v1」评论在场后起跑，产出文案草稿供评审段校对。
+description: LabelFrame 工作流管线·文案草拟段（导览/帮助类文案迭代专用，119/121 形态；通用文案能力待后续 Issue 泛化）：按已定稿方案与用户拍板撰写迭代全部新增界面文案草稿（zh+en 文案表＋入口措辞候选），落 Issue 评论「✍️ 文案草稿 v1」。低档位运行（GLM-5.3-Flash）。
+whenToUse: 工作流实验管线第 2 段（仅含界面文案的导览/帮助类迭代使用）：最新「📐 方案 vN」评论在场后起跑，产出文案草稿供评审段校对。
 args:
   issue:
     type: number
     description: 迭代 Issue 号
     required: true
 */
-// LabelFrame 工作流实验 · 文案草拟段（lf-copy）· v2（迭代 121 扩容：覆盖迭代全部文案面，非仅导览表）
-// 职责：按「📐 方案 v1」＋「🎯 用户拍板」撰写迭代全部新增文案草稿（zh+en），落 Issue 评论「✍️ 文案草稿 v1」。
-// 前置：方案评论在场；幂等：草稿评论已存在则直接退出。
+// LabelFrame 工作流实验 · 文案草拟段（lf-copy）· v2（迭代 121 扩容：覆盖迭代全部文案面，非仅导览表）· 迭代 124 收窄：仅导览/帮助类文案迭代（通用文案能力待后续 Issue 泛化）
+// 职责：按最新「📐 方案 vN」＋「🎯 用户拍板」撰写迭代全部新增文案草稿（zh+en），落 Issue 评论「✍️ 文案草稿 v1」。
+// 前置：最新方案评论在场（首行正则定位，fail-closed）；幂等：草稿评论已存在则直接退出。
 
 interface CopyRow {
   /** 分组：tour（首见导览气泡）/ help（帮助页卡片）/ demo（演示气泡）/ modal（弹窗文案）。 */
@@ -64,6 +64,15 @@ function latestCommentBody(prefix: string, comments: Comment[]): string | null {
   return null;
 }
 
+/** 评论首行正则定位：最新一条首行匹配 re 的评论下标（无则 -1）。 */
+function commentHeadLastIndex(re: RegExp, comments: Comment[]): number {
+  for (let i = comments.length - 1; i >= 0; i--) {
+    const head = ((comments[i]?.body ?? "").split("\n")[0]) ?? "";
+    if (re.test(head)) return i;
+  }
+  return -1;
+}
+
 interface CopyViolation { index: number; problem: string }
 
 /** 定量断言：字数 / 空值 / key 唯一性 / 候选组数（命令能判定的不花模型）。 */
@@ -90,9 +99,9 @@ function checkRows(rows: CopyRow[], candidates: EntryCandidate[]): CopyViolation
   return out;
 }
 
-const issueNum = Number(args.issue ?? 280);
+const issueNum = Number(args.issue);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
-const PLAN_PREFIX = "**📐 方案 v1**";
+const PLAN_HEAD_RE = /^\*\*📐 方案 v(\d+)\*\*/;
 const DRAFT_PREFIX = "**✍️ 文案草稿 v1**";
 const MAX_REWRITE = 2;
 
@@ -103,8 +112,10 @@ const issue = JSON.parse(viewRes.stdout) as IssueJson;
 if (issue.state !== "OPEN") throw new Error(`Issue #${issueNum} 不是 OPEN 状态`);
 if (!issue.labels.map((l) => l.name).includes("工作流接管")) throw new Error(`Issue #${issueNum} 未带「工作流接管」标签`);
 const comments = issue.comments ?? [];
-const planBody = latestCommentBody(PLAN_PREFIX, comments);
-if (planBody === null) throw new Error(`Issue #${issueNum} 无「📐 方案 v1」评论——先跑设计段 lf-design`);
+// 最新方案 vN 定位（fail-closed）：精确 v1 前缀会锁死版本，vN>1 的含文案迭代起跳即炸；取不到（含最新评论为处置报告）即中止。
+const planIdx = commentHeadLastIndex(PLAN_HEAD_RE, comments);
+if (planIdx < 0) throw new Error(`Issue #${issueNum} 无「📐 方案 vN」评论——先跑设计段 lf-design`);
+const planBody = comments[planIdx]?.body ?? "";
 if (latestCommentBody(DRAFT_PREFIX, comments) !== null) {
   log("草稿评论已存在，幂等退出");
   return { conclusion: `Issue #${issueNum} 已有「✍️ 文案草稿 v1」评论，本段幂等退出。`, findings: [], verified: ["建场守卫：草稿评论在场"], notCovered: [] };
