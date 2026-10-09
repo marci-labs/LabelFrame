@@ -101,16 +101,18 @@ jobs:
         shell: pwsh
         run: |
           # 防止 VITE_UI_MODE 未生效导致 dist-server 打成 client 模式
-          # （迭代 94 修复：client 特征「PDA 日志」随迭代 75 页面下线消失致断言恒失败；反标记「本机未注册到服务端」
-          #  自迭代 80 三名义改名后无出处、断言空转——两处同改用「本机打印服务」（App.tsx 状态栏 client 分支，
-          #  构建期折叠后 server 产物不含；本地双构建取证见 #166），server 特征「客户端下载」维持）
+          # （迭代 94 修复特征串过时（PDA 日志/本机未注册）；v0.32.0 首跑再修：多语言迁移（迭代 107～114）后
+          #  界面文案搬进 i18n 语言包随双构建整体打包——「本机打印服务」双产物命中、「客户端下载」双产物缺失，
+          #  文案型特征全部失效。改用「构建期折叠的代码级特征」：client＝guide 域 key 前缀 `tour.workbench`
+          #  （guide 语言包仅经 client-only 引用链进 client 产物，实证 2/0），server＝SERVER_TABS 专属 tab key
+          #  `nav.devices`（client 折叠为 0、server 命中 1，实证 0/1；v0.32.0 发版取证双构建 grep））
           $clientJs = (Get-ChildItem 'dist/assets/*.js' | Select-Object -First 1).FullName
           $client = Get-Content $clientJs -Raw
-          if ($client -notmatch '本机打印服务') { throw 'dist 缺少 client 页面特征（本机打印服务），client 构建异常' }
+          if ($client -notmatch 'tour.workbench') { throw 'dist 缺少 client 页面特征（tour.workbench），client 构建异常' }
           $serverJs = (Get-ChildItem 'dist-server/assets/*.js' | Select-Object -First 1).FullName
           $server = Get-Content $serverJs -Raw
-          if ($server -match '本机打印服务') { throw 'dist-server 为 client 模式产物：VITE_UI_MODE 未生效，请检查 build:server' }
-          if ($server -notmatch '客户端下载') { throw 'dist-server 缺少 server 页面特征（客户端下载），server 构建异常' }
+          if ($server -match 'tour.workbench') { throw 'dist-server 为 client 模式产物：VITE_UI_MODE 未生效，请检查 build:server' }
+          if ($server -notmatch 'nav.devices') { throw 'dist-server 缺少 server 页面特征（nav.devices），server 构建异常' }
           Write-Host "双模式产物自检通过：dist=client（$([IO.Path]::GetFileName($clientJs))）、dist-server=server（$([IO.Path]::GetFileName($serverJs))）"
 
       - uses: actions/upload-artifact@v4
