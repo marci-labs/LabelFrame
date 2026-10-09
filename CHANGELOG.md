@@ -2,6 +2,11 @@
 
 本文件记录每个迭代的变更。
 
+## 修复：lf-implement 标准件两处加固（#301 管线运行实证） · 2026-10-09
+
+- **PR 改动面断言并集扩产品面前缀**：`packaging/` `docs/` `scripts/` `README.md` 并入（`web/ ∪ src/ ∪ test/ ∪ .zcode/` 基础上）——#301（产品面精简迭代）实证纯产品面改动面会命中 fail-closed 拦截。
+- **PR 创建步幂等**：重放 / AmendWorkflow 续跑时分支已有 PR 则回查既有 PR 继续（`already exists` 不再中断），其余失败照旧抛出。
+
 ## 迭代 125：产品面信息精简——随包分发文件与用户文档去除内部过程标记（#301） · 2026-10-09
 
 - **产品面去过程标记**：随包分发文件与用户文档中的内部协作出处（迭代号 / Issue 号 / 决策号 / AC / § 节引 / PR salvage）全部隐去——`packaging/offline/install.sh`（头部说明与预建目录、自动分发两处注释去出处，行为理由保留）、`packaging/offline/README.md`、`packaging/ubuntu/Dockerfile`、`packaging/ubuntu/docker-compose.yml`（五处挂载注释收敛为纯用途说明）、`packaging/recheck-webview2.vbs`、`docs/DEPLOY.md`、`README.md`、`scripts/install-server-linux.sh`（注释与用户可见输出文案，按用户拍板纳入本轮）；`§N` 跨节引用改「节名」文字引用（引用与实际标题逐处核对一致；DEPLOY / README 两处含迭代括注的章节标题同步去括注，GitHub 自动锚点 ID 随之变化，旧外部链接可能失配）。保留注释逐条过 rubric（仅行为约束与非显然理由），纯过程叙述（契约出处、组包来路、「（迭代 NN，决策 #MM）」括注）删除。
