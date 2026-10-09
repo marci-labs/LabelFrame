@@ -8,7 +8,7 @@
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <!-- 安装向导 UI（欢迎 / 许可 / 目录 / 进度 / 完成）+ 品牌资产（assets/ 静态文件，源出 assets/brand/ 母版库，迭代 122 v02）+ 控制面板元数据 -->
+    <!-- 安装向导 UI（欢迎 / 许可 / 目录 / 进度 / 完成）+ 品牌资产（assets/ 静态文件，源出 assets/brand/ 母版库）+ 控制面板元数据 -->
     <ui:WixUI Id="WixUI_InstallDir" />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)/installer-dialog.bmp" />
@@ -26,9 +26,9 @@
 
 
     <!-- 检测 ASP.NET Core Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
-    <!-- RuntimeType = aspnet（迭代 62 二次返修，决策 #129）：WinHost 为 Microsoft.NET.Sdk.Web（隐式 FrameworkReference
+    <!-- RuntimeType = aspnet：WinHost 为 Microsoft.NET.Sdk.Web（隐式 FrameworkReference
          Microsoft.AspNetCore.App），实际框架需求是 AspNetCore 而非仅 Desktop——两者互不包含，只装 Desktop Runtime 的机器
-         必须在检测阶段拦截，而非装完客户端进程起不来（.NET Runtime 1023，AC-03 预设 B 干净 VM 实证）；与 #128 Server 侧修正同型。
+         必须在检测阶段拦截，而非装完客户端进程起不来（.NET Runtime 1023）。
          注：WinHost 双框架需求（WinForms 的 WindowsDesktop + Web 托管的 AspNetCore）中 Desktop 腿由引导链 runtime-desktop 补装承载，
          NetCoreCheck 单检测单 RuntimeType，静默直装场景以 AspNetCore 口径为拦截锚点。
          WiX netfx 扩展的 RuntimeType 合法枚举为 aspnet / desktop / core（构建实测 WIX0021），aspnet 对应 ASP.NET Core Runtime。 -->
@@ -42,7 +42,7 @@
     <Launch Condition="DOTNET10_PRESENT = &quot;0&quot; OR UILevel = 5 OR REMOVE"
       Message="本机未检测到 ASP.NET Core Runtime，请先安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
 
-    <!-- 检测 WebView2 Evergreen 运行时（迭代 44，决策 #99 D2=C）：界面窗口（WebView2 嵌入）依赖；
+    <!-- 检测 WebView2 Evergreen 运行时：界面窗口（WebView2 嵌入）依赖；
          注册表 EdgeUpdate Clients 的 WebView2 产品键（per-machine 走 WOW6432Node 视图 / per-user HKCU），
          键随运行时安装即写入 → 向导内「重新检测」装完即可继续（无需重启安装程序）。
          全 UI 缺失时由 WebView2MissingDlg 引导（下方）；静默 / 基础 UI 由 LaunchCondition 拦截。 -->
@@ -153,8 +153,8 @@
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="LABELFRAMEROOT" Name="LabelFrame">
       <Directory Id="INSTALLFOLDER" Name="Client">
-      <!-- 官方插件附带包（迭代 63，决策 #123）：随 MSI 携带 Zebra 外置插件包，供存量升级自动安装
-           （ZebraPluginMigration 启动检测已用 zebra 配置 → 从本目录自动装外置插件；DESIGN §6.8）。
+      <!-- 官方插件附带包：随 MSI 携带 Zebra 外置插件包，供存量升级自动安装
+           （ZebraPluginMigration 启动检测已用 zebra 配置 → 从本目录自动装外置插件）。
            build-msi.ps1 检测到 artifacts 下的 .lfplugin 时传入 -d ZebraPluginPackage 才编译本块（本地无产物可跳过）。 -->
       <?ifdef ZebraPluginPackage?>
       <Directory Id="PluginPackagesDir" Name="plugin-packages">
@@ -220,7 +220,7 @@
     </Feature>
 
     <!-- 覆盖安装前经旧版已有的 loopback API 请求宿主退出；拒绝响应（如正在打印）即中止安装。
-         ExeCommand 的 Target 属 MSI Formatted 语义（决策 #163）：空花括号对 {} 会被引擎剥除、[x] 序列按属性替换，
+         ExeCommand 的 Target 属 MSI Formatted 语义：空花括号对 {} 会被引擎剥除、[x] 序列按属性替换，
          故命令内 PowerShell 禁止空块（catch {} 等）与任何方括号形态——探测失败分支写作非空体 catch { $null }。
          verify-msi-ui.ps1 会以真实引擎 FormatRecord 转换后静态解析内层脚本防复发。 -->
     <CustomAction Id="ShutdownWinHost" Directory="SystemFolder" Execute="immediate" Return="check"
@@ -228,8 +228,8 @@
     <!-- 完成页「立即打开」：Finish 按钮在勾选时触发（见 Publish），异步启动不阻塞向导关闭 -->
     <CustomAction Id="LaunchClientOnExit" Directory="INSTALLFOLDER" Execute="immediate" Return="asyncNoWait"
                   ExeCommand="&quot;[#WinHostExe]&quot;" />
-    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；新增机器级配置 settings.json，迭代 18）。
-         host 日志迭代 52 起按日轮转（host-yyyyMMdd.log），清理一并覆盖单名历史文件与轮转文件 -->
+    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；新增机器级配置 settings.json）。
+         host 日志按日轮转（host-yyyyMMdd.log），清理一并覆盖单名历史文件与轮转文件 -->
     <CustomAction Id="ClearDataDelFiles" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%LOCALAPPDATA%\LabelFrame\jobs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\templates.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\logs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\host.log&quot; &quot;%LOCALAPPDATA%\LabelFrame\host-*.log&quot; &quot;%LOCALAPPDATA%\LabelFrame\connection.json&quot;" />
     <CustomAction Id="ClearDataDelPrintDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
