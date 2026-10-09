@@ -36,17 +36,12 @@ interface DesignerProps {
   onClose: () => void
   /** 迭代 92（#150 F-02）：向 Shell 注册离开守卫（导航 tab 切换拦截：dirty 时弹三选 Modal 挂起本次切换）；卸载自动注销。 */
   registerLeaveGuard?: (fn: ((leave: () => void) => void) | null) => void
-  /** 迭代 121（#280，拍板 2/11）：顶栏「功能演示」入口（designer 演示就地发起）——App 仅 client 构建下发，
-   * server 构建不传即不渲染（入口/挂载开关单点）。 */
-  onRequestDemo?: () => void
 }
 
-export function Designer({ request, onClose, registerLeaveGuard, onRequestDemo }: DesignerProps) {
+export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps) {
   const app = useApp()
   // 迭代 112（#246）：设计器文案 key 化（designer 域）；数据性默认值（分组「默认」）随界面语言（待决议-1）
   const { t } = useTranslation('designer')
-  // 迭代 121（#280）：顶栏演示入口词条属帮助体系，落 help 域（防帮助词条跨域分裂，方案阻断项修订）
-  const { t: tHelp } = useTranslation('help')
   const { serverMode } = app
   /** 业务 API 跟随模式（迭代 91 F-13 与 Workbench 对齐：unknown 时下方加载 effect 不发请求，待探测完成）。 */
   const biz = serverMode === 'server' ? serverApi : localApi
@@ -601,12 +596,11 @@ export function Designer({ request, onClose, registerLeaveGuard, onRequestDemo }
   // ---------- 渲染 ----------
   return (
     <div className="page designer-page">
-      <div className="designer-toolbar" data-demo="designer-toolbar">
+      <div className="designer-toolbar">
         <button className="btn ghost" onClick={requestClose} title={t('toolbar.backTitle')}>
           <Icon name="back" size={14} />
         </button>
-        {/* data-demo：designer 演示「命名并保存」步骤锚点（#280 方案步骤 4②） */}
-        <input className="input" style={{ width: 150 }} data-demo="designer-name" value={name} onChange={(ev) => setName(ev.target.value)} placeholder={t('toolbar.namePlaceholder')} title={t('toolbar.namePlaceholder')} />
+        <input className="input" style={{ width: 150 }} value={name} onChange={(ev) => setName(ev.target.value)} placeholder={t('toolbar.namePlaceholder')} title={t('toolbar.namePlaceholder')} />
         <input className="input" style={{ width: 100 }} value={group} onChange={(ev) => setGroup(ev.target.value)} placeholder={t('toolbar.groupPlaceholder')} title={t('toolbar.groupPlaceholder')} />
         <span className="toolbar-sep" />
         <label className="toolbar-label">
@@ -661,14 +655,6 @@ export function Designer({ request, onClose, registerLeaveGuard, onRequestDemo }
           {Math.round(zoom * 100)}%
         </span>
         <span className="spacer" style={{ flex: 1 }} />
-        {/* 迭代 121（#280，拍板 2/11）：顶栏「功能演示」入口（词条 help 域 entry.start「功能演示 / Demo」，
-            定稿组 1；title 悬浮补全同词条）。onRequestDemo 仅 client 构建下发，server 构建不渲染 */}
-        {onRequestDemo && (
-          <button className="btn" data-help="designer-help" onClick={onRequestDemo}>
-            <Icon name="guide" size={13} />
-            {tHelp('entry.start')}
-          </button>
-        )}
         <button className="btn ghost" onClick={() => setShortcutsOpen(true)} title={t('toolbar.shortcutsTitle')}>
           <Icon name="keyboard" size={13} />
           {t('toolbar.shortcuts')}
@@ -681,8 +667,7 @@ export function Designer({ request, onClose, registerLeaveGuard, onRequestDemo }
           <Icon name="upload" size={13} />
           {t('toolbar.importDesign')}
         </button>
-        {/* data-demo：designer 演示「命名并保存」收尾锚点（#280 方案步骤 4③） */}
-        <button className="btn primary" data-demo="designer-save" onClick={save} disabled={saving || !state}>
+        <button className="btn primary" onClick={save} disabled={saving || !state}>
           <Icon name="save" size={13} />
           {saving ? t('toolbar.saving') : t('toolbar.save')}
         </button>
@@ -726,7 +711,7 @@ export function Designer({ request, onClose, registerLeaveGuard, onRequestDemo }
             onCommit={commitNow}
             onZoomChange={setZoom}
           />
-          <aside className="designer-right" data-demo="designer-props">
+          <aside className="designer-right">
             <div className="right-tabs">
               <button className={'right-tab' + (rightTab === 'props' ? ' active' : '')} onClick={() => setRightTab('props')}>
                 {t('right.props')}

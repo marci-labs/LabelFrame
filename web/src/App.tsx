@@ -24,12 +24,9 @@ import { AppProvider, useApp } from './state/AppContext'
 import { Icon, LabelLogo } from './components/Icon'
 import type { IconName } from './components/Icon'
 import { Guide } from './components/Guide'
-import { DemoRunner } from './components/DemoRunner'
 import { Modal } from './components/Modal'
 import type { DesignerRequest, TabId } from './state/types'
 import { isGuideSeen, markGuideSeen } from './lib/guide'
-import type { DemoId } from './lib/helpDemo'
-import { DEMO_STEPS } from './lib/helpDemo'
 import { isServerUi } from './lib/uiMode'
 import { Workbench } from './pages/Workbench'
 import { Designer } from './pages/Designer'
@@ -39,7 +36,6 @@ import { JobHistory } from './pages/JobHistory'
 import { Settings } from './pages/Settings'
 import { DownloadCenter } from './pages/DownloadCenter'
 import { PluginPackages } from './pages/PluginPackages'
-import { Help } from './pages/Help'
 
 // 导航元数据（label 经 shell 域 key 在渲染期求值——t() 绑定当前语言，切换即时生效）
 const SERVER_TABS: { id: TabId; labelKey: string; icon: IconName }[] = [
@@ -61,9 +57,6 @@ const CLIENT_TABS: { id: TabId; labelKey: string; icon: IconName }[] = [
   { id: 'data', labelKey: 'nav.data', icon: 'data' },
   { id: 'jobs', labelKey: 'nav.jobs', icon: 'history' },
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings' },
-  // 迭代 121（#280，拍板：Issue 待决议-1）：主导航第 6 项「帮助」——功能索引总界面（client 构建专属，
-  // SERVER_TABS 不含即完成裁剪）；tab 词条按 nav.* 惯例落 shell 域
-  { id: 'help', labelKey: 'nav.help', icon: 'guide' },
 ]
 
 /** 状态栏多 IP 过长省略显示（title 给全量）。 */
@@ -82,10 +75,6 @@ function Shell() {
   const [confirmingClearLogs, setConfirmingClearLogs] = useState(false)
   // 迭代 119（#276，决策 #170）：首次引导开关——首见延迟自动启动，完成 / 跳过写标记后关闭
   const [guideOpen, setGuideOpen] = useState(false)
-  // 迭代 121（#280，决议 2）：分界面交互演示——pendingDemo = 帮助页「去做演示」深链登记（跳目标页后
-  // 自动开始）；activeDemo = 运行中的演示（DemoRunner 挂 Shell 级，演示本体在目标界面上下文运行）
-  const [pendingDemo, setPendingDemo] = useState<DemoId | null>(null)
-  const [activeDemo, setActiveDemo] = useState<DemoId | null>(null)
   // 迭代 92（#150 F-02）：设计器注册的离开守卫——设计器 tab 在编辑且有未保存更改时，
   // 导航切 tab 交由守卫挂起（弹三选 Modal：保存并离开 / 放弃更改 / 继续编辑），确认后再切换。
   const designerLeaveRef = useRef<((leave: () => void) => void) | null>(null)
@@ -114,46 +103,6 @@ function Shell() {
     setDesignerReq(req)
     setTab('designer')
   }
-
-  // 迭代 121（#280）：演示发起统一收口——目标页为设计器且设计器实例不在场时先经 openDesigner 建立
-  // 请求（Designer 仅在 designerReq 非空时挂载）；已在目标页则不重建实例（保护在编画布不被重挂清除）。
-  const beginDemoNavigation = useCallback(
-    (id: DemoId) => {
-      const firstTab = DEMO_STEPS[id][0].tab
-      if (firstTab === 'designer' && !(tab === 'designer' && designerReq)) openDesigner({ kind: 'new' })
-      else switchTab(firstTab)
-    },
-    // switchTab 为每次渲染重建的普通函数（现状口径），依赖语义等同 [tab, designerReq]
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tab, designerReq],
-  )
-
-  // 深链（帮助页「去做演示」）：登记 pendingDemo → 跳目标页 → 到达后自动开始（拍板口径：跳转后自动开始）
-  const requestDemo = useCallback(
-    (id: DemoId) => {
-      setPendingDemo(id)
-      beginDemoNavigation(id)
-    },
-    [beginDemoNavigation],
-  )
-
-  // 页头「功能演示」（就地发起，决议 2「演示分散在具体界面发起」）：不经 pendingDemo 直接开始
-  const startDemo = useCallback(
-    (id: DemoId) => {
-      setPendingDemo(null)
-      setActiveDemo(id)
-      beginDemoNavigation(id)
-    },
-    [beginDemoNavigation],
-  )
-
-  useEffect(() => {
-    if (!pendingDemo) return
-    if (tab === DEMO_STEPS[pendingDemo][0].tab) {
-      setActiveDemo(pendingDemo)
-      setPendingDemo(null)
-    }
-  }, [pendingDemo, tab])
 
   // 迭代 119（#276，决策 #170）：client 构建首见自动启动引导——延迟约 300ms 等壳层首个渲染帧稳定
   //（避开 AppContext 启动链的首次重渲染闪烁）；已看过不启动（存储异常视为未看过，引导每次出现为可接受降级）
@@ -218,7 +167,6 @@ function Shell() {
                 className={'nav-tab' + (tab === item.id ? ' active' : '')}
                 onClick={() => switchTab(item.id)}
                 title={item.label}
-                data-guide={item.id === 'help' ? 'nav-help' : undefined}
               >
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
@@ -255,23 +203,9 @@ function Shell() {
         </nav>
 
         <main className="main">
-          {/* 迭代 121（#280）：页头「功能演示」入口经 onRequestDemo 单点下发——server 构建不传即不渲染
-              （拍板 11：入口/挂载开关单点） */}
-          {tab === 'workbench' && (
-            <Workbench
-              onOpenDesigner={openDesigner}
-              onOpenPrint={openPrintFromTemplate}
-              onRequestDemo={isServerUi ? undefined : () => startDemo('workbench')}
-            />
-          )}
+          {tab === 'workbench' && <Workbench onOpenDesigner={openDesigner} onOpenPrint={openPrintFromTemplate} />}
           {tab === 'designer' && designerReq && (
-            <Designer
-              key={designerReq.name ?? 'new'}
-              request={designerReq}
-              onClose={closeDesigner}
-              registerLeaveGuard={registerDesignerLeave}
-              onRequestDemo={isServerUi ? undefined : () => startDemo('designer')}
-            />
+            <Designer key={designerReq.name ?? 'new'} request={designerReq} onClose={closeDesigner} registerLeaveGuard={registerDesignerLeave} />
           )}
           {tab === 'designer' && !designerReq && <DesignerEmpty onNew={() => openDesigner({ kind: 'new' })} />}
           {/* 迭代 85（#133 C-5）：数据与打印进度区的「作业历史」指引可点击跳转（经 switchTab 统一入口） */}
@@ -281,9 +215,6 @@ function Shell() {
           {tab === 'packages' && <DownloadCenter />}
           {tab === 'plugin-packages' && <PluginPackages />}
           {tab === 'settings' && <Settings />}
-          {/* 迭代 121（#280）：帮助功能索引页——client 构建专属（tab 只能经 CLIENT_TABS 的「帮助」进入，
-              !isServerUi 双保险满足 AC-06 守门） */}
-          {tab === 'help' && !isServerUi && <Help onOpenTab={switchTab} onStartDemo={requestDemo} />}
         </main>
       </div>
 
@@ -341,12 +272,6 @@ function Shell() {
 
       {/* 迭代 119（#276）：分步引导——server 构建整特性不挂载（V1 范围仅 client，决策 #63 双构建裁剪同口径） */}
       {!isServerUi && <Guide open={guideOpen} tab={tab} onSwitchTab={switchTab} onFinish={finishGuide} />}
-
-      {/* 迭代 121（#280）：分界面交互演示——Shell 级挂载，跨页步骤跟随（决议 2「演示本体在目标界面上下文
-          运行」）；server 构建整特性不挂载（AC-06，同上口径） */}
-      {!isServerUi && activeDemo && (
-        <DemoRunner demoId={activeDemo} tab={tab} onSwitchTab={switchTab} onFinish={() => setActiveDemo(null)} />
-      )}
 
       {app.drawerOpen && (
         <div className="log-drawer">

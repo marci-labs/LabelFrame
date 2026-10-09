@@ -9,8 +9,7 @@
     "jobs": "作业历史",
     "packages": "下载中心",
     "pluginPackages": "插件管理",
-    "settings": "设置",
-    "help": "帮助"
+    "settings": "设置"
   },
   "conn": {
     "serverConnected": "服务端已连接",

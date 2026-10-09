@@ -107,7 +107,7 @@ describe('server 构建：引导整特性不渲染（迭代 119 · #276）', () 
     expect(await screen.findByText(`${window.location.origin} · 服务端管理界面`)).toBeTruthy()
     await new Promise((resolve) => setTimeout(resolve, 500))
     expect(document.querySelector('.guide-layer')).toBeNull()
-    expect(screen.queryByText('一切从模板开始')).toBeNull()
+    expect(screen.queryByText('欢迎来到工作台')).toBeNull()
   })
 
   it('状态栏不渲染「使用引导」重看入口', async () => {

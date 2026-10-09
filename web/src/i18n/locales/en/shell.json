@@ -9,8 +9,7 @@
     "jobs": "Job History",
     "packages": "Downloads",
     "pluginPackages": "Plugins",
-    "settings": "Settings",
-    "help": "Help"
+    "settings": "Settings"
   },
   "conn": {
     "serverConnected": "Server connected",
