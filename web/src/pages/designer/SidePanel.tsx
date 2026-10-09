@@ -41,8 +41,7 @@ export function SidePanel(p: SidePanelProps) {
           {t('side.paletteTitle')}
           <small>{t('side.paletteHint')}</small>
         </h3>
-        {/* data-demo：designer 演示「拖控件」步骤锚点（#280 方案步骤 4①） */}
-        <div className="palette" data-demo="designer-palette">
+        <div className="palette">
           {PALETTE.map((it) => (
             <button
               key={it.type}
@@ -71,9 +70,7 @@ export function SidePanel(p: SidePanelProps) {
         )}
       </section>
 
-      {/* data-demo + data-demo-count：designer 演示「字段作用」步骤锚点与「打印字段 ≥1」观测钩子
-          （DemoRunner waitFor 纯数据轮询，#280 方案步骤 4；画布为 Konva 无 DOM 节点，观测走容器属性） */}
-      <section data-demo="designer-fields" data-demo-count={p.fields.length}>
+      <section>
         <h3>
           {t('side.fieldsTitle')}
           <small>{t('side.fieldsHint')}</small>

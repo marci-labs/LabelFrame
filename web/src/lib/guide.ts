@@ -9,13 +9,8 @@
 
 import type { TabId } from '../state/types'
 
-/** 首见标记 localStorage 键（值 'done'；带版本号——引导改版换键即整体重放，决策 #170 ④）。
- * 迭代 121（#280）：文案重写为「介绍功能＋什么场景用」口径，键升级 v2——只持有 v1 键的存量已看用户
- * 判定为未看过、自动重放一次（v1 键不迁移不删除，读判定只认 v2，完成写 v2 后不再自动出现）。 */
-export const GUIDE_SEEN_KEY = 'labelframe.guide.client.v2'
-
-/** v1 遗留键（迭代 119）：仅 Guide.test.tsx 重放断言使用——运行期不读不写不清理（遗留无害）。 */
-export const GUIDE_SEEN_V1_KEY = 'labelframe.guide.client.v1'
+/** 首见标记 localStorage 键（值 'done'；带版本号——未来引导改版换键即可整体重放，决策 #170 ④）。 */
+export const GUIDE_SEEN_KEY = 'labelframe.guide.client.v1'
 
 /** 引导步骤定义（顺序即播放顺序；V1 五步覆盖核心链，#276 方案 v1 步骤清单拍板）。 */
 export interface GuideStep {

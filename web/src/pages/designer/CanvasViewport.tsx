@@ -460,8 +460,6 @@ export function CanvasViewport(props: CanvasViewportProps) {
     <div
       ref={containerRef}
       className="canvas-viewport"
-      data-demo="designer-canvas"
-      data-demo-count={state.elements.length}
       style={{ flex: 1, overflow: 'hidden', background: 'var(--bg-deep)', position: 'relative', minHeight: 0 }}
       onDragOver={(ev) => {
         ev.preventDefault()

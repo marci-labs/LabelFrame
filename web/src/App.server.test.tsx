@@ -118,8 +118,6 @@ describe('server 构建：菜单裁剪（迭代 20 §2.2 / Y5）', () => {
     expect(screen.queryByRole('button', { name: '设置' })).toBeNull()
     expect(screen.queryByRole('button', { name: '设备日志' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'PDA 日志' })).toBeNull()
-    // 迭代 121（#280，AC-06）：「帮助」tab 为 client 构建专属（SERVER_TABS 不含，单点裁剪）
-    expect(screen.queryByRole('button', { name: '帮助' })).toBeNull()
   })
 })
 
