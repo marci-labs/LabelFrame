@@ -58,7 +58,7 @@ docker run -d --name labelframe-server -p 53961:53961 \
 curl http://127.0.0.1:53961/healthz   # {"service":"LabelFrame.Server","status":"ok"}
 ```
 
-- 数据（server.db / templates.db / logs.db）在数据卷 `/var/lib/labelframe/server`；文本日志按日轮转写入挂载目录 `./logs/server-<yyyyMMdd>.log`（`LABELFRAME_SERVER_LOG_FILE` 为基准路径，`tail -f ./logs/server-$(date +%Y%m%d).log` 即可；默认保留 31 天，超期自动清理，`LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS` 可调）。日志路径无效时服务不再启动失败——跳过文件通道、控制台输出中文告警，服务继续运行。
+- 数据（server.db / templates.db / logs.db）在数据卷 `/var/lib/labelframe/server`；文本日志按日轮转写入挂载目录 `./logs/server-<yyyyMMdd>.log`（`LABELFRAME_SERVER_LOG_FILE` 为基准路径，`tail -f ./logs/server-$(date +%Y%m%d).log` 即可；默认保留 31 个文件，超期自动清理，`LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS` 可调）。单文件超过大小上限（默认 50MB，`LABELFRAME_SERVER_LOG_FILE_MAX_SIZE_MB`，0 = 不限）时轮转为当日序号文件 `server-<yyyyMMdd>.N.log` 继续写——总占用上界 ≈ 31 文件 × 50MB ≈ 1.55GB（迭代 123 / 决策 #173）。`logs.db` 另有按量闸（默认 256MB，超阈删最旧并 `VACUUM` 真实回收磁盘，见 §9）。日志路径无效时服务不再启动失败——跳过文件通道、控制台输出中文告警，服务继续运行。
 - Server 镜像已内置 `fonts-wqy-microhei`，服务端管理界面的模板预览 / 出图预览默认使用 `WenQuanYi Micro Hei` 渲染中文文本。
 - compose 已默认挂载 `./plugins/web-ui`（管理界面插件）与 `./client-packages`（客户端安装包分发），见下文 §6 / §7。
 - 自行构建：`docker build -f packaging/ubuntu/Dockerfile -t labelframe-server artifacts/server-linux/linux-x64`。
@@ -191,7 +191,7 @@ sudo bash install-server-linux.sh --manifest <清单 URL>               # 安装
 
 ## 9. 配置与环境变量
 
-- 服务端监听 / 数据库路径 / 历史清理保留期（作业默认 30 天、日志默认 90 天）均可用 `LABELFRAME_SERVER_*` 环境变量覆盖（systemd 单元已设默认值）。
+- 服务端监听 / 数据库路径 / 历史清理保留期（作业默认 30 天、日志默认 90 天）/ 日志大小上限（文本单文件默认 50MB、logs.db 按量闸默认 256MB，迭代 123 / 决策 #173）均可用 `LABELFRAME_SERVER_*` 环境变量覆盖（systemd 单元已设默认值）。
 - 服务端暂存作业过期：设备离线期间暂存的 Pending 作业默认 **12 小时**未投递即放弃（终态 Expired，作业历史可见、不重新投递，业务系统重打需用新 requestId 重发）；TTL 只对 Pending 计龄，作业被设备领取后不再计龄。配置 `Server.PendingJobTtlHours`（`LABELFRAME_SERVER_PENDING_TTL_HOURS`），设为 0 或负值 = 关闭过期（行为与现状一致）；过期扫描周期 `Server.ExpirationScanIntervalMinutes`（默认 5 分钟，`LABELFRAME_SERVER_EXPIRATION_SCAN_MINUTES`）。例：
   ```bash
   LABELFRAME_SERVER_PENDING_TTL_HOURS=4      # 暂存 4 小时未投递即放弃
@@ -210,7 +210,8 @@ sudo bash install-server-linux.sh --manifest <清单 URL>               # 安装
   $env:LABELFRAME_PRINTER = "ZDesigner ZD421-203dpi ZPL"
   dotnet run --project src\LabelFrame.WinHost
   ```
-- 日志轮转与保留（迭代 52）：三处文件日志统一**按日轮转、默认保留 31 个（天）**——服务端 `server-<yyyyMMdd>.log`（`LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS`）、客户端宿主 `host-<yyyyMMdd>.log`（`LABELFRAME_HOST_LOG_RETENTION_DAYS`）、客户端 Serilog `app-*.log`（`LABELFRAME_APP_LOG_RETENTION_DAYS`）；均设 0 或负值 = 不清理（不设上限）。`LABELFRAME_SERVER_LOG_FILE` / `LABELFRAME_HOST_LOG` 给的是基准路径，实际文件名带日期后缀；历史单名 `server.log` / `host.log` 不迁移不删除。
+- 日志轮转与保留（迭代 52；服务端大小上限为迭代 123 / 决策 #173）：三处文件日志统一**按日轮转、默认保留 31 个（天）**——服务端 `server-<yyyyMMdd>.log`（`LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS`）、客户端宿主 `host-<yyyyMMdd>.log`（`LABELFRAME_HOST_LOG_RETENTION_DAYS`）、客户端 Serilog `app-*.log`（`LABELFRAME_APP_LOG_RETENTION_DAYS`）；均设 0 或负值 = 不清理（不设上限）。`LABELFRAME_SERVER_LOG_FILE` / `LABELFRAME_HOST_LOG` 给的是基准路径，实际文件名带日期后缀；历史单名 `server.log` / `host.log` 不迁移不删除。**服务端单文件大小上限（决策 #173）**：`LABELFRAME_SERVER_LOG_FILE_MAX_SIZE_MB`（默认 50，0 或负值 = 不限）——单文件超限轮转为当日序号文件 `server-<yyyyMMdd>.N.log`（跨天回新日期基名），清理按（日期, 序号）序删最旧；大小上限启用后 `LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS` 的实际语义为**文件个数上限**（按日单文件时代即保留天数，既有部署无感），总占用上界 ≈ 31 文件 × 单文件上限。
+- **logs.db 按量闸与空间回收（迭代 123 / 决策 #173）**：`LABELFRAME_SERVER_LOGS_DB_MAX_SIZE_MB`（默认 256，0 或负值 = 不限量闸、按期时间闸仍生效）——每 24h 清理周期内，库文件（logs.db + logs.db-wal 合计）超过阈值时按大小删最旧日志直至回到阈值内，删除后执行 `VACUUM` + `wal_checkpoint(TRUNCATE)` **真实回收磁盘**（主文件显著收缩，非仅空闲页复用）。⚠️ **量闸删除不受 90 天保留期下限约束——这是有意行为，不是缺陷**（AC-02：磁盘防护优先于保留期，避免被当作缺陷上报）；执行期代价：临时磁盘最多约 2× 库大小、期间日志写入短暂阻塞（低频后台窗口可接受，失败自动下个周期重试）。
 - 出图目录保留清理（迭代 72，决策 #136）：Log 模拟打印出图目录（`print\<jobId>`，默认 `%LOCALAPPDATA%\LabelFrame\print`，Windows 窗口与 Linux 无头客户端同路径）**按天保留、默认 31 天**——超期作业子目录（含内部 PNG）在客户端启动与每次模拟打印落盘后自动删除；判龄 = 作业目录 LastWriteTime（与 jobs.db 作业历史无关，删除只影响 Log 模式「查看出图」）；遇占用 / 权限失败降级留痕、不影响打印与出图。`LABELFRAME_PRINT_IMAGE_RETENTION_DAYS` 可调，0 或负值 = 不清理。例：
   ```bash
   LABELFRAME_PRINT_IMAGE_RETENTION_DAYS=31   # 默认：保留 31 天

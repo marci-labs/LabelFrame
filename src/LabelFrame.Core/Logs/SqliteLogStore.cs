@@ -9,6 +9,12 @@ public sealed record LogEntry(string DeviceId, DateTimeOffset Time, string Line)
 /// <summary>SQLite 日志存储：设备日志回传与查询（PDA 调试用）。</summary>
 public sealed class SqliteLogStore
 {
+    /// <summary>量闸循环轮数上限：防止 VACUUM 后仍不收敛（如阈值小于空库体积）时无限删库。</summary>
+    private const int SizeLimitMaxRounds = 10;
+
+    /// <summary>VACUUM 命令超时（秒）：默认 5s 与 /api/logs 并发写撞锁即失败，放大到 60s（决策 #173）。</summary>
+    private const int VacuumTimeoutSeconds = 60;
+
     private readonly string _connectionString;
 
     /// <summary>创建日志存储（默认 %LOCALAPPDATA%\LabelFrame\logs.db）。</summary>
@@ -18,8 +24,12 @@ public sealed class SqliteLogStore
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "LabelFrame",
             "logs.db");
+        DatabasePath = Path.GetFullPath(path);
         _connectionString = SqliteSupport.BuildConnectionString(path);
     }
+
+    /// <summary>日志库文件路径（绝对路径；量闸度量口径 = 本文件 + 同名 -wal 合计，见 <see cref="EnforceSizeLimitAsync"/>）。</summary>
+    public string DatabasePath { get; }
 
     /// <summary>建表。</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -128,6 +138,93 @@ public sealed class SqliteLogStore
         command.CommandText = "DELETE FROM logs WHERE time < $cutoff;";
         command.Parameters.AddWithValue("$cutoff", SqliteSupport.Format(cutoff));
         return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// logs.db 按量闸（决策 #173）：库文件（logs.db + logs.db-wal 合计）超过 <paramref name="maxBytes"/> 时，
+    /// 循环「删一批最旧 → VACUUM → wal_checkpoint(TRUNCATE)」直至合计回到阈值内 / 表已空 / 轮数上限。
+    /// 按大小删最旧不受保留期下限约束（AC-02 有意行为）；返回累计删除行数。
+    /// 收敛判据只取 VACUUM + checkpoint 之后的合计大小——DELETE 之后主文件不会缩小（空闲页仅库内复用），
+    /// 以删除间歇的文件大小判断收敛会在首次超阈即删空全表。
+    /// </summary>
+    /// <param name="maxBytes">阈值（字节；0 或负值 = 不执行）。</param>
+    public async Task<int> EnforceSizeLimitAsync(long maxBytes, CancellationToken cancellationToken = default)
+    {
+        if (maxBytes <= 0)
+        {
+            return 0;
+        }
+
+        var totalDeleted = 0;
+        for (var round = 0; round < SizeLimitMaxRounds; round++)
+        {
+            if (MeasureTotalSize() <= maxBytes)
+            {
+                return totalDeleted;
+            }
+
+            var deleted = await DeleteOldestBatchAsync(cancellationToken);
+            totalDeleted += deleted;
+            if (deleted == 0)
+            {
+                // 表已空仍超阈（阈值小于空库体积 / 空间回收失败）——本轮放弃，不无限重试
+                return totalDeleted;
+            }
+
+            if (!await TryVacuumAsync(cancellationToken))
+            {
+                // VACUUM 失败后度量不再可信（主文件未收缩），继续删只会按过期量纲误删——本轮终止、下个清理周期重试
+                return totalDeleted;
+            }
+        }
+
+        return totalDeleted;
+    }
+
+    /// <summary>量纲 = 主库文件 + 同名 -wal 合计大小（字节）。被动 checkpoint 不截断 -wal，
+    /// VACUUM 大事务可把 -wal 涨至库大小——合计口径才反映真实磁盘占用。</summary>
+    private long MeasureTotalSize()
+    {
+        long GetLength(string path) => File.Exists(path) ? new FileInfo(path).Length : 0;
+        return GetLength(DatabasePath) + GetLength(DatabasePath + "-wal");
+    }
+
+    /// <summary>删一批最旧：批大小 max(1000, 行数/10)——既保证小库快速收敛，也避免大库一次 10% 太慢。</summary>
+    private async Task<int> DeleteOldestBatchAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            DELETE FROM logs WHERE id IN (
+                SELECT id FROM logs ORDER BY id LIMIT max(1000, (SELECT COUNT(*) FROM logs) / 10));
+            """;
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <summary>独立连接执行 VACUUM + 尽力截断 -wal。失败仅记日志、不抛出（量闸属后台自愈，失败留给下个清理周期）。</summary>
+    private async Task<bool> TryVacuumAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandTimeout = VacuumTimeoutSeconds;
+            command.CommandText = "VACUUM; PRAGMA wal_checkpoint(TRUNCATE);";
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // 停机取消不是 VACUUM 失败——上抛给清理服务按停机路径退出
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(
+                $"[LabelFrame] 警告：日志库空间回收（VACUUM）失败（{DatabasePath}）：{ex.Message}。本轮量闸终止，下个清理周期重试。");
+            return false;
+        }
     }
 
     private Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)

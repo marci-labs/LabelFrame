@@ -2,6 +2,11 @@
 
 本文件记录每个迭代的变更。
 
+## 迭代 123：日志保留量闸——文本日志单文件大小上限轮转＋logs.db 按量闸与空间回收（#291） · 2026-10-09
+- **文本日志单文件大小上限**（默认 50MB，`LABELFRAME_SERVER_LOG_FILE_MAX_SIZE_MB`，0=不限）：超限轮转序号文件（(日期,序号) 序清理、单日内亦受限），总占用上界 ≈ 31 文件 × 上限；「写入永不抛出」防护语义不变（DESIGN 决策 #173）。
+- **logs.db 按量闸与空间回收**（默认 256MB，`LABELFRAME_SERVER_LOGS_DB_MAX_SIZE_MB`，0=不限）：超阈值按大小删最旧（不受 90 天保留下限约束——有意行为），删后 `VACUUM` + `wal_checkpoint(TRUNCATE)` 真实回收磁盘；`auto_vacuum=INCREMENTAL` 因头删尾插 workload 无效被否决（依据入 #173）。
+- **测试**：`FileLoggerProviderTests` 增补 4 项（超限切序号文件且旧文件封存、单日多次轮转总文件数 ≤ 上限、(日期,序号) 元组序清理且写入中文件不被选中〔含 `.10`/`.2` 构造〕、轮转失败回退旧文件通道不自禁用）；`DataCleanupServiceTests` 增补 4 项（KB 级阈值直测量闸——最旧前缀删除 + 合计口径空间回收 + 不受保留期下限、MB 级阈值经 `ServerOptions` 走 `CleanupAsync` 编排、量闸关闭时按期行为回归、两个新环境变量解析三态）。
+
 ## 迭代 122：品牌资产 v02 全端统一接入（#288） · 2026-10-09
 
 - **品牌 v02（方向 04「剥离 / Peel & Feed」、Poppins Bold 转曲字标、深青 #123B3C + 珊瑚 #D96C4F）替换三套旧视觉**（Web「标签纸」蓝 #1a5fd0 / 桌面安装链「L 标」蓝 #1668DC / `web/public` 紫色模板残留），全端品牌资产单源于新入库母版库 `assets/brand/`（SVG 精简集 + `Poppins-OFL.txt` + `BRAND-GUIDE.md` + bootstrapper-lockup 源 + tray 三件备用），落库 41 项资产**提交 blob** 逐项 SHA256 与交付包 manifest 一致（`.gitattributes` 对母版库与交付源文本资产钉 `-text` 禁 eol 归一——Windows autocrlf 会把 CRLF 源归一成 LF 破坏字节级一致性，实证两个 JSON 首提交被归一后修复）；旧品牌生成脚本四件退役删除（`generate-icon` / `generate-installer-branding` / `generate-android-icons` / `generate-social-preview.ps1`，防再生成旧标）+ 旧 L 标残留 `assets/labelframe.png`（主色 #1668DC、零引用）删除，`docs/DEPLOY.md` 辅助脚本清单同步。
