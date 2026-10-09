@@ -8,7 +8,7 @@
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <!-- 安装向导 UI（欢迎 / 许可 / 目录 / 进度 / 完成）+ 品牌资产（assets/ 静态文件，源出 assets/brand/ 母版库，迭代 122 v02）+ 控制面板元数据 -->
+    <!-- 安装向导 UI（欢迎 / 许可 / 目录 / 进度 / 完成）+ 品牌资产（assets/ 静态文件，源出 assets/brand/ 母版库）+ 控制面板元数据 -->
     <ui:WixUI Id="WixUI_InstallDir" />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)/installer-dialog.bmp" />
@@ -21,9 +21,9 @@
 
 
     <!-- 检测 ASP.NET Core Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
-    <!-- RuntimeType = aspnet（迭代 62 返修，决策 #128）：Server 为 Microsoft.NET.Sdk.Web（隐式 FrameworkReference
+    <!-- RuntimeType = aspnet：Server 为 Microsoft.NET.Sdk.Web（隐式 FrameworkReference
          Microsoft.AspNetCore.App），实际框架需求是 AspNetCore 而非 Desktop——两者互不包含，只装 Desktop Runtime 的机器
-         必须在检测阶段拦截，而非装完服务起不来（MSI 1920，AC-01 干净 VM 实证）。
+         必须在检测阶段拦截，而非装完服务起不来（MSI 1920）。
          注：WiX netfx 扩展的 RuntimeType 合法枚举为 aspnet / desktop / core（构建实测 WIX0021），aspnet 对应 ASP.NET Core Runtime。 -->
     <!-- 之前的注册表搜索读不到运行时，因为版本号是命名值而非默认值，这里不再依赖注册表结构 -->
     <netfx:DotNetCompatibilityCheck Id="DotNet10RuntimeCheck"
@@ -84,7 +84,7 @@
       <Component Id="AppSettingsFile" Guid="D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80" NeverOverwrite="yes" Permanent="yes">
         <File Id="AppSettingsFile" Source="$(var.PublishDir)/appsettings.json" KeyPath="yes" />
       </Component>
-      <!-- Windows 服务注册（迭代 18）：ServiceInstall 由 generate-files.ps1 放入 LabelFrame.Server.exe 所在组件（服务二进制须为组件 KeyPath）；自启由安装完成弹窗决定 -->
+      <!-- Windows 服务注册：ServiceInstall 由 generate-files.ps1 放入 LabelFrame.Server.exe 所在组件（服务二进制须为组件 KeyPath）；自启由安装完成弹窗决定 -->
     </Directory>
     </Directory>
     </StandardDirectory>
@@ -94,10 +94,10 @@
       <ComponentRef Id="AppSettingsFile" />
     </Feature>
 
-    <!-- 卸载 / 覆盖安装前停止服务（迭代 19 反馈：先停再删，避免服务残留运行态导致卸载后仍显示运行） -->
+    <!-- 卸载 / 覆盖安装前停止服务（先停再删，避免服务残留运行态导致卸载后仍显示运行） -->
     <CustomAction Id="StopServerService" Directory="SystemFolder" Execute="deferred" Impersonate="no" Return="ignore"
       ExeCommand="sc.exe stop LabelFrameServer" />
-    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；路径为 ProgramData，迭代 18） -->
+    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；路径为 ProgramData） -->
     <CustomAction Id="ClearDataDelServerDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c rmdir /s /q &quot;%ProgramData%\LabelFrame\server&quot;" />
     <CustomAction Id="ClearDataDelServerDb" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
