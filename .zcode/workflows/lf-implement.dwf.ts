@@ -240,10 +240,15 @@ const change = await implementer.ask<ChangeReport>(
   `生成 PR 标题与正文：标题 Conventional Commits（中文说明）；正文按 worktree 内 .github/PULL_REQUEST_TEMPLATE.md 结构如实填写（若该文件不存在则用「问题与变化 / 验证 / 合并与后续 / 自查」四节）；` +
   `关联 #${issueNum} 用普通引用，严禁 Closes/Fixes 等关闭关键词。只返回结构化结果；不要 push、不要创建 PR（由脚本执行）。`);
 const push = await world.run("git", ["-C", wt, "push", "-u", "origin", branch]);
-if (push.exitCode !== 0) throw new Error("分支推送失败：" + push.stderr.slice(0, 300));
+if (push.exitCode !== 0 && !/Everything up-to-date|already exists/i.test(push.stderr)) throw new Error("分支推送失败：" + push.stderr.slice(0, 300));
 const prCreate = await world.run("gh", ["pr", "create", "--base", "master", "--head", branch, "--title", change.prTitle, "--body", change.prBody]);
-if (prCreate.exitCode !== 0) throw new Error("PR 创建失败：" + prCreate.stderr.slice(0, 300));
-const prUrl = prCreate.stdout.trim();
+let prUrl = prCreate.stdout.trim();
+if (prCreate.exitCode !== 0) {
+  // 幂等：run 重放 / AmendWorkflow 续跑时 PR 可能已存在（#301 实证）——回查该分支既有 PR 继续，其余失败照旧抛出
+  if (!/already exists/i.test(prCreate.stderr)) throw new Error("PR 创建失败：" + prCreate.stderr.slice(0, 300));
+  const existing = await world.run("gh", ["pr", "list", "--head", branch, "--state", "open", "--json", "url", "--jq", ".[0].url"]);
+  if (existing.exitCode === 0) prUrl = existing.stdout.trim();
+}
 const parsed = /\/pull\/(\d+)/.exec(prUrl);
 if (parsed === null || parsed[1] === undefined) throw new Error("无法解析 PR 号：" + prUrl);
 const newPr = parsed[1];
@@ -254,8 +259,9 @@ if (CLOSE_RE.test(change.prBody)) assertProblems.push("PR 正文含 Closes/Fixes
 const prFilesRes = await world.run("gh", ["pr", "view", newPr, "--json", "files"]);
 const prPaths = (JSON.parse(prFilesRes.stdout) as { files: { path: string }[] }).files.map((f) => f.path);
 if (!prPaths.includes("CHANGELOG.md")) assertProblems.push("代码改动未更新 CHANGELOG.md");
-// 改动面并集断言（fail-closed 显式信号）：前端 / 后端 / 治理迭代分别落在 web/ / src/+test/ / .zcode/ 前缀；纯 docs 功能迭代罕见，命中失败即人工核查而非静默。
-if (!prPaths.some((p) => p.startsWith("web/") || p.startsWith("src/") || p.startsWith("test/") || p.startsWith(".zcode/"))) assertProblems.push("改动未落在 web/ / src/ / test/ / .zcode/ 任一前缀（纯文档或意外改动面，请人工核查）");
+// 改动面并集断言（fail-closed 显式信号）：前端 / 后端 / 治理 / 产品面（packaging 分发 + 用户文档）迭代
+// 分别落在 web/ / src/+test/ / .zcode/ / packaging+docs+scripts+README 前缀（#301 实证：产品面迭代会全落后者）。
+if (!prPaths.some((p) => p.startsWith("web/") || p.startsWith("src/") || p.startsWith("test/") || p.startsWith(".zcode/") || p.startsWith("packaging/") || p.startsWith("docs/") || p.startsWith("scripts/") || p === "README.md")) assertProblems.push("改动未落在 web/ / src/ / test/ / .zcode/ / packaging/ / docs/ / scripts/ 任一前缀（意外改动面，请人工核查）");
 if (assertProblems.length > 0) throw new Error("PR 元数据断言未过：" + assertProblems.join("；"));
 
 await world.run("gh", ["issue", "edit", String(issueNum), "--add-label", "进行中"]);
