@@ -155,7 +155,7 @@ if (outcome.kind === "处置报告" || outcome.plan === undefined) {
     "主会话请核对后修 Issue 范围或补前置，再重新起跑设计段（届时产出 v" + reRunVersion + "，与既有方案评论不撞号）。",
   ].join("\n");
   await world.run("gh", ["issue", "comment", String(issueNum), "--body", disposalMd]);
-  await artifact.markdown("design-disposal", disposalMd, { title: "设计处置报告（Issue #" + issueNum + "）", description: "勘察不成立的处置报告，待主会话核对范围或前置。", primary: true });
+  await artifact.markdown("design-disposal", disposalMd, { title: "设计处置报告（Issue #" + issueNum + "）", description: "勘察不成立的处置报告，待主会话核对范围或前置。" });
   return {
     conclusion: `Issue #${issueNum} 设计段产出处置报告：勘察发现 ${outcome.disposal.problems.length} 项范围矛盾 / 前置缺失，未产出方案。主会话核对后修范围或补前置再重跑。`,
     findings: [], verified: ["建场守卫确认 Issue OPEN 且带「工作流接管」标签"], notCovered: ["方案未产出（勘察不成立）"],
