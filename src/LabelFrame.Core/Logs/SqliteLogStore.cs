@@ -140,19 +140,23 @@ public sealed class SqliteLogStore
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    /// <summary>量闸执行结果：累计删除行数 + 异常态警告（null = 无异常；VACUUM 失败 / 表空仍超阈等，
+    /// 由调用方经 ILogger 记录——Core 库无日志抽象，服务宿主可能无控制台，#296 留观项②）。</summary>
+    public sealed record SizeLimitResult(int DeletedRows, string? VacuumWarning);
+
     /// <summary>
     /// logs.db 按量闸（决策 #173）：库文件（logs.db + logs.db-wal 合计）超过 <paramref name="maxBytes"/> 时，
     /// 循环「删一批最旧 → VACUUM → wal_checkpoint(TRUNCATE)」直至合计回到阈值内 / 表已空 / 轮数上限。
-    /// 按大小删最旧不受保留期下限约束（AC-02 有意行为）；返回累计删除行数。
+    /// 按大小删最旧不受保留期下限约束（AC-02 有意行为）；返回累计删除行数与异常态警告。
     /// 收敛判据只取 VACUUM + checkpoint 之后的合计大小——DELETE 之后主文件不会缩小（空闲页仅库内复用），
     /// 以删除间歇的文件大小判断收敛会在首次超阈即删空全表。
     /// </summary>
     /// <param name="maxBytes">阈值（字节；0 或负值 = 不执行）。</param>
-    public async Task<int> EnforceSizeLimitAsync(long maxBytes, CancellationToken cancellationToken = default)
+    public async Task<SizeLimitResult> EnforceSizeLimitAsync(long maxBytes, CancellationToken cancellationToken = default)
     {
         if (maxBytes <= 0)
         {
-            return 0;
+            return new SizeLimitResult(0, null);
         }
 
         var totalDeleted = 0;
@@ -160,7 +164,7 @@ public sealed class SqliteLogStore
         {
             if (MeasureTotalSize() <= maxBytes)
             {
-                return totalDeleted;
+                return new SizeLimitResult(totalDeleted, null);
             }
 
             var deleted = await DeleteOldestBatchAsync(cancellationToken);
@@ -168,17 +172,19 @@ public sealed class SqliteLogStore
             if (deleted == 0)
             {
                 // 表已空仍超阈（阈值小于空库体积 / 空间回收失败）——本轮放弃，不无限重试
-                return totalDeleted;
+                return new SizeLimitResult(totalDeleted,
+                    $"日志库已清空仍超阈值（{DatabasePath}，阈值 {maxBytes} 字节）——阈值可能小于空库体积，请复核 LABELFRAME_SERVER_LOGS_DB_MAX_SIZE_MB。");
             }
 
-            if (!await TryVacuumAsync(cancellationToken))
+            var vacuumWarning = await TryVacuumAsync(cancellationToken);
+            if (vacuumWarning is not null)
             {
                 // VACUUM 失败后度量不再可信（主文件未收缩），继续删只会按过期量纲误删——本轮终止、下个清理周期重试
-                return totalDeleted;
+                return new SizeLimitResult(totalDeleted, vacuumWarning);
             }
         }
 
-        return totalDeleted;
+        return new SizeLimitResult(totalDeleted, null);
     }
 
     /// <summary>量纲 = 主库文件 + 同名 -wal 合计大小（字节）。被动 checkpoint 不截断 -wal，
@@ -201,8 +207,9 @@ public sealed class SqliteLogStore
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    /// <summary>独立连接执行 VACUUM + 尽力截断 -wal。失败仅记日志、不抛出（量闸属后台自愈，失败留给下个清理周期）。</summary>
-    private async Task<bool> TryVacuumAsync(CancellationToken cancellationToken)
+    /// <summary>独立连接执行 VACUUM + 尽力截断 -wal。失败不抛出（量闸属后台自愈，失败留给下个清理周期），
+    /// 返回警告消息（null = 成功）交调用方记录——服务宿主可能无控制台，Console.Error 不可依赖。</summary>
+    private async Task<string?> TryVacuumAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -212,7 +219,7 @@ public sealed class SqliteLogStore
             command.CommandTimeout = VacuumTimeoutSeconds;
             command.CommandText = "VACUUM; PRAGMA wal_checkpoint(TRUNCATE);";
             await command.ExecuteNonQueryAsync(cancellationToken);
-            return true;
+            return null;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -221,9 +228,7 @@ public sealed class SqliteLogStore
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine(
-                $"[LabelFrame] 警告：日志库空间回收（VACUUM）失败（{DatabasePath}）：{ex.Message}。本轮量闸终止，下个清理周期重试。");
-            return false;
+            return $"日志库空间回收（VACUUM）失败（{DatabasePath}）：{ex.Message}。本轮量闸终止，下个清理周期重试。";
         }
     }
 

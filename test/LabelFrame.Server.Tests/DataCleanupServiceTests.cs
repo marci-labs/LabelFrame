@@ -113,18 +113,33 @@ public class DataCleanupServiceTests
 
         var deleted = await logDb.Store.EnforceSizeLimitAsync(threshold, CancellationToken.None);
 
-        Assert.True(deleted > 0, "超阈值未触发量闸删除");
+        Assert.True(deleted.DeletedRows > 0, "超阈值未触发量闸删除");
+        Assert.Null(deleted.VacuumWarning); // 正常路径无异常态警告
         Assert.True(logDb.TotalSize <= threshold, $"合计未回到阈值内：{logDb.TotalSize} > {threshold}");
         Assert.True(logDb.TotalSize < peak / 2, $"空间未真实回收：{logDb.TotalSize}（回收后）应 < {peak / 2}（峰值一半）");
 
         var (count, minId, maxId) = await RowStatsAsync(logDb.Store.DatabasePath);
-        Assert.Equal(rowCount - deleted, count);
+        Assert.Equal(rowCount - deleted.DeletedRows, count);
         // 删除取走的是最旧连续前缀（id 升序 = 时间最旧，AUTOINCREMENT 严格递增不回用）：留存 id 恰为 [minId, maxId] 连续段且含最新行
         Assert.Equal(rowCount, maxId);
         Assert.Equal(rowCount - count + 1, minId);
 
         var entries = await logDb.Store.QueryAsync("pda-1", null, CancellationToken.None);
         Assert.Contains(entries, entry => entry.Line.Contains($"size-gate-{rowCount:000000}")); // 最新行留存
+    }
+
+    [Fact]
+    public async Task Enforce_size_limit_on_empty_db_smaller_than_threshold_should_return_warning()
+    {
+        // #296 留观项②锚定：表已空 / 无行可删而库文件仍超阈值（阈值小于空库体积）——返回异常态警告交调用方记录，
+        // 不抛出、不无限重试；正常收敛路径警告为 null（见上测断言）
+        using var logDb = new TempLogDb();
+
+        var result = await logDb.Store.EnforceSizeLimitAsync(100, CancellationToken.None); // 阈值 100 字节 < 空库体积
+
+        Assert.Equal(0, result.DeletedRows);
+        Assert.NotNull(result.VacuumWarning);
+        Assert.Contains("仍超阈值", result.VacuumWarning);
     }
 
     [Fact]
