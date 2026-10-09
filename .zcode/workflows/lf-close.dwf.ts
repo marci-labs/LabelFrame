@@ -1,6 +1,6 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·收口段：等 CI 三项必需检查 → squash 合并 → 冲突残块抽查 → AC 自评回写与标签流转 → worktree/分支回收，落「📦 已合并」。低档位运行（GLM-5.3-Flash）。
-whenToUse: 工作流实验管线第 6 段：「🔍 评审通过」评论在场后起跑；合并后浏览器取证与结项 wrapup 由主会话接手。
+description: LabelFrame 工作流管线·收口段：等 CI 三项必需检查 → squash 合并 → 冲突残块抽查（fetch+FETCH_HEAD，不动主仓工作区）→ AC 自评回写与标签流转 → worktree/本地与远端分支回收，落「📦 已合并」。低档位运行（GLM-5.3-Flash）。
+whenToUse: 工作流实验管线第 6 段：「🔍 评审通过」评论在场后起跑（无界面文案迭代走四段轻装：主控贴「✅ 文案定稿 v1」占位声明跳过文案双段）；合并后浏览器取证 / 真机长测与结项 wrapup 由主会话接手。
 args:
   issue:
     type: number
@@ -10,11 +10,11 @@ args:
     type: string
     description: worktree 短标识，须与实施段一致
     required: false
-    default: guide
+    default: iter
 */
-// LabelFrame 工作流实验 · 收口段（lf-close）
+// LabelFrame 工作流实验 · 收口段（lf-close）· v2（迭代 124 适配：合并后校验改 git fetch + FETCH_HEAD 不动主仓工作区；分支回收补远端删除）
 // 职责：等 CI 三检查（含失败修复一次机会与 BEHIND 处理）→ squash 合并 → 残块 grep → AC 自评回写 →
-//       标签流转（needsHuman → 待验收）→ worktree 与本地分支回收 → 「📦 已合并」评论。
+//       标签流转（needsHuman → 待验收）→ worktree 与本地 / 远端分支回收 → 「📦 已合并」评论。
 // 前置：「🔍 评审通过」评论晚于最新 🔧/🔨；幂等：已合并则直接退出。
 
 interface AcSelfAssessment {
@@ -63,7 +63,7 @@ function parseChecks(stdout: string): ChecksSnapshot {
 
 const issueNum = Number(args.issue);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
-const rawSlug = typeof args.slug === "string" && args.slug !== "" ? args.slug : "guide";
+const rawSlug = typeof args.slug === "string" && args.slug !== "" ? args.slug : "iter";
 const slug = rawSlug.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 30);
 const PR_PREFIX = "**🔧 PR 已建**";
 const FIX_PREFIX = "**🔨 修复轮";
@@ -143,17 +143,17 @@ if (!merged) {
 }
 report({ stage: "已合并", issue: issueNum, pr: Number(prNumber) });
 
-phase("合并后校验：同步 master 与冲突残块抽查");
-const pull = await world.run("git", ["pull", "--ff-only", "origin", "master"]);
-if (pull.exitCode !== 0) throw new Error("master 同步失败：" + pull.stderr.slice(0, 200));
-const residue = await world.run("git", ["grep", "-l", "-E", "^(<{7}|>{7})", "--", "CHANGELOG.md", "docs/"]);
+phase("合并后校验：fetch 远端 master 与冲突残块抽查（不动主仓工作区——多会话共用主仓时避免干扰占用会话）");
+const fetchRes = await world.run("git", ["fetch", "origin", "master"]);
+if (fetchRes.exitCode !== 0) throw new Error("git fetch origin master 失败：" + fetchRes.stderr.slice(0, 200));
+const residue = await world.run("git", ["grep", "-l", "-E", "^(<{7}|>{7})", "FETCH_HEAD", "--", "CHANGELOG.md", "docs/"]);
 if (residue.exitCode === 0) throw new Error("合并后发现冲突残块标记，需人工检查：" + residue.stdout.slice(0, 300));
 
 phase("AC 自评并回写 Issue");
 const selfAssess = await steward.ask<AcSelfAssessment>(
   `对照 Issue #${issueNum} 正文 AC 表逐条自评（gh issue view ${issueNum} --json body），PR #${prNumber} 已 squash 合并入 master。` +
   `可自证项给证据（本地门禁已过：dotnet build/test + pnpm lint/test/build；PR 检查全绿；测试全限定名；代码位置）。` +
-  `需要浏览器自动化走查（UI 步骤行为 / 跳过 / 重启不再现）或用户观感判断的，一律写进 needsHuman（每条注明是「浏览器取证」还是「用户观感」），不要自证。`);
+  `需要浏览器走查（界面行为 / 交互细节）、真机 / 长测或用户观感判断的，一律写进 needsHuman（每条注明是「浏览器取证」「真机 / 长测」还是「用户观感」），不要自证。`);
 const acBody = `**AC 自评（收口段值守，工作流自动回写）**\n${selfAssess.items.map((i) => "- " + i.ac + "：" + i.verdict + " —— " + i.evidence).join("\n")}` +
   (selfAssess.needsHuman.length > 0 ? `\n\n**待真人/浏览器验收项**：${selfAssess.needsHuman.join("；")}` : "");
 await world.run("gh", ["issue", "comment", String(issueNum), "--body", acBody]);
@@ -163,7 +163,7 @@ if (selfAssess.needsHuman.length > 0) {
   await world.run("gh", ["issue", "edit", String(issueNum), "--add-label", "待验收"]);
 }
 
-phase("回收 worktree 与本地分支");
+phase("回收 worktree 与本地 / 远端分支");
 const wtExistsRes = await world.run("node", ["-e", "console.log(require('fs').existsSync(process.argv[1]))", wt]);
 if (wtExistsRes.stdout.trim() === "true") {
   await world.run("git", ["worktree", "remove", "--force", wt]);
@@ -173,6 +173,9 @@ if (wtExistsRes.stdout.trim() === "true") {
   }
 }
 await world.run("git", ["branch", "-D", branch]);
+// 远端分支回收（尽力而为不阻断）：仓库开启合并后自动删远端分支，此 DELETE 常见 422/404——非零仅 log。
+const remoteDelete = await world.run("gh", ["api", "-X", "DELETE", "repos/marci-labs/LabelFrame/git/refs/heads/" + branch]);
+if (remoteDelete.exitCode !== 0) log("远端分支删除非零（可能已被自动删除，不阻断）：" + remoteDelete.stderr.slice(0, 200));
 
 phase("落「已合并」评论与交付汇报");
 const tsRes = await world.run("node", ["-e", "console.log(new Date().toISOString())"]);
@@ -180,9 +183,9 @@ const ts = tsRes.stdout.trim();
 const mergedMd = [
   MERGED_PREFIX + "（工作流·收口段 · " + ts + "）",
   "",
-  `PR #${prNumber} 经 CI 三项必需检查全绿后 squash 合并入 master；残块抽查无冲突标记；AC 自评已回写（${selfAssess.items.length} 条，needsHuman ${selfAssess.needsHuman.length} 项）；worktree 与本地分支已回收。`,
+  `PR #${prNumber} 经 CI 三项必需检查全绿后 squash 合并入 master；残块抽查无冲突标记；AC 自评已回写（${selfAssess.items.length} 条，needsHuman ${selfAssess.needsHuman.length} 项）；worktree 与本地 / 远端分支已回收。`,
   selfAssess.needsHuman.length > 0
-    ? "后续：主会话做浏览器取证（沙箱起前端，走引导步骤 / 跳过 / 重启不再现，截图回 Issue）+ 用户观感陪验；全过后走结项 wrapup（ROADMAP 一行 + 关 Issue + 摘「工作流接管」标签）。"
+    ? "后续：主会话做浏览器取证（沙箱起前端走查界面行为，截图回 Issue）+ 真机 / 长测 / 用户观感陪验；全过后走结项 wrapup（ROADMAP 一行 + 关 Issue + 摘「工作流接管」标签）。"
     : "后续：主会话走结项 wrapup（ROADMAP 一行 + 关 Issue + 摘「工作流接管」标签）。",
 ].join("\n");
 await world.run("gh", ["issue", "comment", String(issueNum), "--body", mergedMd]);
@@ -190,8 +193,8 @@ await artifact.markdown("close-report",
   `# 收口汇报（Issue #${issueNum}）\n\nPR #${prNumber} 已 squash 合并入 master。\n\n## AC 自评\n${selfAssess.items.map((i) => "- " + i.ac + "：" + i.verdict + " —— " + i.evidence).join("\n")}\n\n## 待浏览器/真人验收\n${selfAssess.needsHuman.length > 0 ? selfAssess.needsHuman.map((h) => "- " + h).join("\n") : "无"}`,
   { title: "收口汇报（Issue #" + issueNum + "）", description: "CI 全绿合并、AC 自评回写、worktree 已回收。", primary: true });
 return {
-  conclusion: `Issue #${issueNum} 收口完成：PR #${prNumber} 合并入 master，AC 自评 ${selfAssess.items.length} 条回写${selfAssess.needsHuman.length > 0 ? "，" + selfAssess.needsHuman.length + " 项转待浏览器/真人验收（Issue 已打「待验收」）" : "，全部可自证"}。worktree 已回收。`,
+  conclusion: `Issue #${issueNum} 收口完成：PR #${prNumber} 合并入 master，AC 自评 ${selfAssess.items.length} 条回写${selfAssess.needsHuman.length > 0 ? "，" + selfAssess.needsHuman.length + " 项转待浏览器/真机/用户验收（Issue 已打「待验收」）" : "，全部可自证"}。worktree 与本地 / 远端分支已回收。`,
   findings: [],
-  verified: ["CI 三项必需检查针对最新提交全绿", "squash 合并后 master 同步 + 冲突残块 grep 无标记", "worktree 回收并确认目录消失"],
+  verified: ["CI 三项必需检查针对最新提交全绿", "squash 合并后 git fetch origin master + FETCH_HEAD 冲突残块 grep 无标记（不动主仓工作区）", "worktree 与本地 / 远端分支回收"],
   notCovered: selfAssess.needsHuman.length > 0 ? ["浏览器 UI 行为取证与用户观感（主会话职责）"] : [],
 };

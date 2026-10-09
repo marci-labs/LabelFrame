@@ -1,13 +1,13 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·文案评审段：提炼产品文案风格基准，主编校对草稿（重复/啰嗦/术语/中英对齐，含入口措辞候选），再经独立「新用户视角」评审，产出定稿落 Issue 评论「✅ 文案定稿 v1」。高档位运行（GLM-5.3）。
-whenToUse: 工作流实验管线第 3 段：「✍️ 文案草稿 v1」评论在场后起跑，产出文案定稿供用户过目与实施段使用。
+description: LabelFrame 工作流管线·文案评审段（导览/帮助类文案迭代专用，119/121 形态；通用文案能力待后续 Issue 泛化）：提炼产品文案风格基准，主编校对草稿（重复/啰嗦/术语/中英对齐，含入口措辞候选），再经独立「新用户视角」评审，产出定稿落 Issue 评论「✅ 文案定稿 v1」。高档位运行（GLM-5.3）。
+whenToUse: 工作流实验管线第 3 段（仅含界面文案的导览/帮助类迭代使用）：「✍️ 文案草稿 v1」评论在场后起跑，产出文案定稿供用户过目与实施段使用；无界面文案迭代由主控手贴「✅ 文案定稿 v1」占位声明跳过本段（四段轻装固定仪式）。
 args:
   issue:
     type: number
     description: 迭代 Issue 号
     required: true
 */
-// LabelFrame 工作流实验 · 文案评审段（lf-copy-review）· v2（迭代 121 扩容：校对全部文案行＋入口措辞候选）
+// LabelFrame 工作流实验 · 文案评审段（lf-copy-review）· v2（迭代 121 扩容：校对全部文案行＋入口措辞候选）· 迭代 124 收窄：仅导览/帮助类文案迭代（通用文案能力待后续 Issue 泛化）
 // 职责：提炼风格基准 → 主编逐条校对草稿（含候选） → 独立「新用户视角」评审 → 终稿定量断言 → 落「✅ 文案定稿 v1」。
 // 前置：草稿评论在场；幂等：定稿评论已存在则直接退出。
 
@@ -130,7 +130,7 @@ function candidatesTable(candidates: EntryCandidate[]): string[] {
   ];
 }
 
-const issueNum = Number(args.issue ?? 280);
+const issueNum = Number(args.issue);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
 const DRAFT_PREFIX = "**✍️ 文案草稿 v1**";
 const FINAL_PREFIX = "**✅ 文案定稿 v1**";
