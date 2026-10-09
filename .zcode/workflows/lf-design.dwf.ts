@@ -8,7 +8,7 @@ args:
     required: true
 */
 // LabelFrame 工作流实验 · 设计段（lf-design）· v2（迭代 124 泛化：任务按 Issue 目标 / 范围 / AC 产出，不再写死主题）
-// 职责：读 Issue 与仓库现状，产出实施方案（含独立方案评审），落 Issue 评论「📐 方案 v{在场最大 N+1}」；
+// 职责：读 Issue 与仓库现状，产出实施方案（含独立方案评审），落 Issue 评论「📐 方案 v{在场最大 N+1}」（取号宽松扫描，错位存档标题计入防撞号）；
 //       勘察发现范围矛盾 / 前置缺失时改落「⚠️ 设计处置报告」（不匹配方案正则、不占 vN 槽，不得产出占位方案）。
 // 前置：Issue 带「工作流接管」标签；幂等：最新方案评论晚于最新「🔧 PR 已建 / 🔨 修复轮」评论才退出，否则产出 v{N+1}。
 
@@ -82,7 +82,7 @@ function commentHeadLastIndex(re: RegExp, comments: Comment[]): number {
   return -1;
 }
 
-/** 扫描各评论首行「**📐 方案 vN**」取在场最大 N（无则 0）。只认首行：错位存档标题同样计入（不撞号），正文前瞻提及不虚增。 */
+/** 取号扫描：各评论首行以宽松正则（数字后不要求紧跟 **）取在场最大 N（无则 0）。宽松是刻意的——#291 式错位存档标题「方案 v1（错位产出·仅存档）」也计入，防重跑撞号；只认首行，正文前瞻提及不虚增。方案定位/守卫仍用严格 PLAN_HEAD_RE（存档评论不算有效方案）。 */
 function maxPlanVersion(comments: Comment[], re: RegExp): number {
   let max = 0;
   for (const c of comments) {
@@ -95,7 +95,11 @@ function maxPlanVersion(comments: Comment[], re: RegExp): number {
 
 const issueNum = Number(args.issue);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
+// 两个方案正则刻意不同：PLAN_HEAD_RE（严格，数字后紧跟 **）用于方案定位与幂等守卫——错位存档标题不算有效方案；
+// PLAN_VERSION_SCAN_RE（宽松）仅用于取号——#291 式存档标题「**📐 方案 v1（错位产出·仅存档）**（…）」数字后是「（」，
+// 严格版不匹配，若取号也用严格版会得 max=0、重跑再产 v1 撞号（PR #295 评审阻断项）。
 const PLAN_HEAD_RE = /^\*\*📐 方案 v(\d+)\*\*/;
+const PLAN_VERSION_SCAN_RE = /^\*\*📐 方案 v(\d+)/;
 const DISPOSAL_PREFIX = "**⚠️ 设计处置报告**";
 const PR_PREFIX = "**🔧 PR 已建**";
 const FIX_PREFIX = "**🔨 修复轮";
@@ -139,6 +143,7 @@ if (outcome.kind === "处置报告" || outcome.plan === undefined) {
   phase("落处置报告评论（不占方案 vN 槽）");
   const tsRes = await world.run("node", ["-e", "console.log(new Date().toISOString())"]);
   const ts = tsRes.stdout.trim();
+  const reRunVersion = maxPlanVersion(comments, PLAN_VERSION_SCAN_RE) + 1;
   const disposalMd = [
     DISPOSAL_PREFIX + "（工作流·设计段 · " + ts + "）",
     "",
@@ -147,7 +152,7 @@ if (outcome.kind === "处置报告" || outcome.plan === undefined) {
     "",
     "建议处置：" + outcome.disposal.suggestion,
     "",
-    "主会话请核对后修 Issue 范围或补前置，再重新起跑设计段（届时产出 v{N+1}，与既有方案评论不撞号）。",
+    "主会话请核对后修 Issue 范围或补前置，再重新起跑设计段（届时产出 v" + reRunVersion + "，与既有方案评论不撞号）。",
   ].join("\n");
   await world.run("gh", ["issue", "comment", String(issueNum), "--body", disposalMd]);
   await artifact.markdown("design-disposal", disposalMd, { title: "设计处置报告（Issue #" + issueNum + "）", description: "勘察不成立的处置报告，待主会话核对范围或前置。", primary: true });
@@ -175,7 +180,7 @@ report({ stage: "方案定稿", issue: issueNum, acCovered: finalPlan.design.len
 phase("落稿 Issue 并交付方案");
 const tsRes = await world.run("node", ["-e", "console.log(new Date().toISOString())"]);
 const ts = tsRes.stdout.trim();
-const nextVersion = maxPlanVersion(comments, PLAN_HEAD_RE) + 1;
+const nextVersion = maxPlanVersion(comments, PLAN_VERSION_SCAN_RE) + 1;
 const hasCopy = finalPlan.copyList.length > 0;
 const planMd = [
   "**📐 方案 v" + nextVersion + "**（工作流·设计段 · " + ts + "）",
