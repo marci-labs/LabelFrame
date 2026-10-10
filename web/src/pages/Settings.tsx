@@ -18,13 +18,34 @@ import type { AppLocale } from '../i18n'
 import { useApp } from '../state/AppContext'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
+import { HelpDot } from '../components/HelpDot'
 import { TransportPanel } from '../components/TransportPanel'
+import { isServerUi } from '../lib/uiMode'
 
-export function Settings() {
+export function Settings({ helpAnchor, onHelpAnchorDone }: { helpAnchor?: string | null; onHelpAnchorDone?: () => void }) {
   const app = useApp()
   // 迭代 108（#241）：「语言」项绑定 settings 域——选项名固定各自语言原文（「中文」/「English」不随当前语言翻译）；
   // 迭代 112（#246）：其余卡片全部迁入 settings 域
   const { t, i18n } = useTranslation('settings')
+  // 迭代 126（#308）：7 张卡片标题挂「?」文档点（拍板③：server 可达路径不渲染——同加 !isServerUi，
+  // 断言面与 PropsPanel 一致）；帮助文章深链信号自动弹出对应卡片气泡（锚点常在，Shell 轮询即刻命中）。
+  const [openDot, setOpenDot] = useState<string | null>(null)
+  useEffect(() => {
+    if (!helpAnchor) return
+    setOpenDot(helpAnchor)
+    onHelpAnchorDone?.()
+  }, [helpAnchor, onHelpAnchorDone])
+  const toggleDot = (anchor: string) => setOpenDot((prev) => (prev === anchor ? null : anchor))
+  const dot = (anchor: string) =>
+    isServerUi ? null : (
+      <HelpDot
+        anchor={anchor}
+        topicKey={`topic.${anchor}`}
+        open={openDot === anchor}
+        onToggle={() => toggleDot(anchor)}
+        onClose={() => setOpenDot(null)}
+      />
+    )
   const [url, setUrl] = useState(app.baseUrl)
   // 迭代 73（#108 决议 1）：连接配置低频收纳——「连接方式」默认折叠为当前连接摘要一行，点击展开完整编辑区
   const [transportOpen, setTransportOpen] = useState(false)
@@ -289,7 +310,10 @@ export function Settings() {
         {/* 迭代 108（#241）：界面语言——切换即时生效（i18next changeLanguage，订阅组件重渲染）、
             localStorage 持久化、首启默认跟随浏览器语言（zh* → zh-CN，其他 → en，AC-01/02） */}
         <section className="panel" data-testid="language-panel">
-          <div className="panel-head">{t('language.title')}</div>
+          <div className="panel-head">
+            {t('language.title')}
+            {dot('settings.language')}
+          </div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <label className="field" style={{ maxWidth: 260 }}>
               {t('language.label')}
@@ -305,12 +329,14 @@ export function Settings() {
                 ))}
               </select>
             </label>
-            <div className="hint">{t('language.hint')}</div>
           </div>
         </section>
 
         <section className="panel">
-          <div className="panel-head">{t('serverAddress.title')}</div>
+          <div className="panel-head">
+            {t('serverAddress.title')}
+            {dot('settings.serverAddress')}
+          </div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <label className="field">
               {t('serverAddress.label')}
@@ -340,7 +366,6 @@ export function Settings() {
                 {saveResult.msg}
               </div>
             )}
-            <div className="hint">{t('serverAddress.hint')}</div>
           </div>
         </section>
 
@@ -353,6 +378,8 @@ export function Settings() {
             title={transportOpen ? t('transport.collapseTitle') : t('transport.expandTitle')}
           >
             {t('transport.title')}
+            {/* 「?」点击 stopPropagation（评审建议②）：防冒泡连带触发展开 / 收起 */}
+            {dot('settings.transport')}
             <span className="hint" style={{ marginLeft: 6 }}>{t('transport.current')}</span>
             <span
               className={'badge ' + (app.connected ? 'ok' : '')}
@@ -376,7 +403,10 @@ export function Settings() {
         </section>
 
         <section className="panel">
-          <div className="panel-head">{t('batch.title')}</div>
+          <div className="panel-head">
+            {t('batch.title')}
+            {dot('settings.batch')}
+          </div>
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {printSettingsOldWinHost ? (
               <div className="hint">{t('batch.oldClient')}</div>
@@ -434,6 +464,7 @@ export function Settings() {
         <section className="panel">
           <div className="panel-head">
             {t('printer.title')}
+            {dot('settings.printer')}
             <span className="spacer" style={{ flex: 1 }} />
             <button className="btn sm" onClick={() => void refreshPrinter()} disabled={printerLoading}>
               <Icon name="refresh" size={12} />
@@ -472,6 +503,7 @@ export function Settings() {
         <section className="panel">
           <div className="panel-head">
             {t('updates.title')}
+            {dot('settings.updates')}
             <span className="spacer" style={{ flex: 1 }} />
             <span className={'conn' + (app.connected ? ' on' : ' off')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <span className={'status-dot' + (app.connected ? ' on' : '')} />
@@ -562,6 +594,7 @@ export function Settings() {
         <section className="panel">
           <div className="panel-head">
             {t('plugins.title')}
+            {dot('settings.plugins')}
             <span className="spacer" style={{ flex: 1 }} />
             <button className="btn sm" onClick={() => void refreshInstalledPlugins()} disabled={installedPluginsLoading}>
               <Icon name="refresh" size={12} />
@@ -716,7 +749,6 @@ export function Settings() {
                 </tbody>
               </table>
             )}
-            <div className="hint">{t('plugins.hint')}</div>
           </div>
         </section>
       </div>

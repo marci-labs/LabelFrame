@@ -31,6 +31,9 @@ interface CanvasViewportProps {
   zoom: number
   gridOn: boolean
   pendingType: string | null
+  /** 画布只读锁（迭代 126 · #308 AC-05）：「看实时效果」演示期间 true——容器 pointer-events:none，
+   *  选中 / 拖拽 / 缩放 / 滚轮 / 拖入全不响应，画布仍可见；不拦 Konva 事件本身，规避拖拽状态清理被破坏。 */
+  locked?: boolean
   onSelect: (ids: string[], toggle?: boolean) => void
   onAddElement: (type: string, xMm: number, yMm: number) => void
   /** dragend / transformend 提交（元素坐标 / 尺寸 / 锚定）。 */
@@ -42,7 +45,7 @@ interface CanvasViewportProps {
 export function CanvasViewport(props: CanvasViewportProps) {
   // 迭代 112（#246）：常驻提示条与打印预览提示随界面语言（订阅重渲染）
   const { t } = useTranslation('designer')
-  const { state, selected, viewMode, dpi, zoom, gridOn } = props
+  const { state, selected, viewMode, dpi, zoom, gridOn, locked } = props
   const { paperW, paperH, elements } = state
   const preview = viewMode === 'preview'
 
@@ -459,7 +462,7 @@ export function CanvasViewport(props: CanvasViewportProps) {
   return (
     <div
       ref={containerRef}
-      className="canvas-viewport"
+      className={'canvas-viewport' + (locked ? ' canvas-locked' : '')}
       style={{ flex: 1, overflow: 'hidden', background: 'var(--bg-deep)', position: 'relative', minHeight: 0 }}
       onDragOver={(ev) => {
         ev.preventDefault()

@@ -1,6 +1,11 @@
 // 属性面板：选中元素才显示；多选显示对齐操作；文本 / 条码 / 二维码 / 矩形等分组属性
 // 迭代 112（#246）：文案 key 化（designer 域 props.*）；字体下拉显示名随界面语言
 // （字体内部名 / 模板存储值不变——白名单 6 项维持现状不动）。
+// 迭代 126（#308）：全部分组标题挂「?」就地文档点（data-help 锚点，HelpDot 气泡与帮助文章
+// 同源词条）；「!isServerUi」条件渲染——设计器 tab 在 SERVER_TABS 可达，漏条件即 server 管理界面
+// 渲染出「?」（AC-07 红线）。演示（填充组「看实时效果」）期间输入与操作禁用（拍板 4 方案 A：
+// 禁用是界面信号，写入侧由 Designer 传 no-op 回调结构性兜底）；开启状态 openDot 由本组件持有，
+// 帮助文章深链经 autoOpenAnchor 信号自动弹出对应文档点气泡（锚点就位由 Shell 轮询先行确认）。
 
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +13,8 @@ import type { DesignElement } from '../../lib/design/types'
 import { typeLabel } from '../../lib/design/types'
 import { elementsByIds } from '../../lib/design/model'
 import { Icon } from '../../components/Icon'
+import { HelpDot } from '../../components/HelpDot'
+import { isServerUi } from '../../lib/uiMode'
 
 export interface PropsPanelProps {
   elements: DesignElement[]
@@ -16,10 +23,50 @@ export interface PropsPanelProps {
   onChange: (id: string, patch: Partial<DesignElement>) => void
   onAlign: (align: 'left' | 'centerH' | 'right' | 'top' | 'centerV' | 'bottom') => void
   onDelete: (ids: string[]) => void
+  /** 演示进行中（填充组「看实时效果」）：输入与操作禁用（AC-05，拍板 4 方案 A）。 */
+  demoActive?: boolean
+  onDemoStart?: (anchor: string) => void
+  onDemoExit?: () => void
+  /** 帮助文章深链信号（Shell 已确认锚点在 DOM）：自动弹出对应文档点气泡后回调清信号。 */
+  autoOpenAnchor?: string | null
+  onAutoOpenHandled?: () => void
 }
 
-export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, onDelete }: PropsPanelProps) {
+export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, onDelete, demoActive, onDemoStart, onDemoExit, autoOpenAnchor, onAutoOpenHandled }: PropsPanelProps) {
   const { t } = useTranslation('designer')
+  // 开启的文档点锚点（单开；hook 必须先于下方条件返回声明）
+  const [openDot, setOpenDot] = useState<string | null>(null)
+
+  // 深链：Shell 轮询确认锚点在 DOM 后下发信号——开启即见效，处理后清信号防重复触发
+  useEffect(() => {
+    if (!autoOpenAnchor) return
+    setOpenDot(autoOpenAnchor)
+    onAutoOpenHandled?.()
+  }, [autoOpenAnchor, onAutoOpenHandled])
+
+  // 演示与气泡同生命周期：开启点变化（切换 / 关闭）即退出演示——显示层 override 自动还原
+  const changeDot = (next: string | null) => {
+    if (demoActive && next !== openDot) onDemoExit?.()
+    setOpenDot(next)
+  }
+  const toggleDot = (anchor: string) => changeDot(openDot === anchor ? null : anchor)
+
+  /** 分组标题「?」文档点（server 构建不渲染——AC-07 守门在调用点显式）。 */
+  const dot = (anchor: string) =>
+    isServerUi ? null : (
+      <HelpDot
+        anchor={anchor}
+        topicKey={`topic.${anchor}`}
+        open={openDot === anchor}
+        onToggle={() => toggleDot(anchor)}
+        onClose={() => changeDot(null)}
+        hasDemo={anchor === 'designer.fill'}
+        demoActive={demoActive}
+        onDemoStart={anchor === 'designer.fill' ? () => onDemoStart?.(anchor) : undefined}
+        onDemoExit={anchor === 'designer.fill' ? () => onDemoExit?.() : undefined}
+      />
+    )
+
   if (viewMode === 'preview') {
     return <div className="props-empty">{t('props.previewLocked')}</div>
   }
@@ -32,7 +79,10 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ fontWeight: 600 }}>{t('props.selectedCount', { count: sel.length })}</div>
         <div className="group">
-          <div className="group-title">{t('props.alignTitle')}</div>
+          <div className="group-title">
+            {t('props.alignTitle')}
+            {dot('designer.align')}
+          </div>
           <div className="align-grid">
             {(
               [
@@ -44,13 +94,13 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
                 [t('props.alignBottom'), 'bottom'],
               ] as const
             ).map(([label, key]) => (
-              <button key={key} className="btn sm" onClick={() => onAlign(key)}>
+              <button key={key} className="btn sm" disabled={demoActive} onClick={() => onAlign(key)}>
                 {label}
               </button>
             ))}
           </div>
         </div>
-        <button className="btn danger" onClick={() => onDelete(selected)}>
+        <button className="btn danger" disabled={demoActive} onClick={() => onDelete(selected)}>
           <Icon name="trash" size={13} />
           {t('props.deleteSelected')}
         </button>
@@ -67,19 +117,24 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
       </div>
 
       <div className="group">
-        <div className="group-title">{t('props.positionTitle')}</div>
-        <NumField label="X" value={e.x} onSet={(v) => onChange(e.id, { x: v })} />
-        <NumField label="Y" value={e.y} onSet={(v) => onChange(e.id, { y: v })} />
+        <div className="group-title">
+          {t('props.positionTitle')}
+          {dot('designer.position')}
+        </div>
+        <NumField label="X" value={e.x} disabled={demoActive} onSet={(v) => onChange(e.id, { x: v })} />
+        <NumField label="Y" value={e.y} disabled={demoActive} onSet={(v) => onChange(e.id, { y: v })} />
         {e.type !== 'Line' && (
           <>
             <NumField
               label={t('props.width')}
               value={e.w}
+              disabled={demoActive}
               onSet={(v) => onChange(e.id, e.type === 'QrCode' ? { w: Math.max(1, v), h: Math.max(1, v) } : { w: Math.max(1, v) })}
             />
             <NumField
               label={t('props.height')}
               value={e.h}
+              disabled={demoActive}
               onSet={(v) => onChange(e.id, e.type === 'QrCode' ? { h: Math.max(1, v), w: Math.max(1, v) } : { h: Math.max(1, v) })}
             />
           </>
@@ -88,22 +143,40 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
 
       {(e.type === 'Text' || e.type === 'Barcode' || e.type === 'QrCode') && (
         <>
-          <ContentGroup e={e} onChange={onChange} />
+          <ContentGroup
+            e={e}
+            onChange={onChange}
+            disabled={demoActive}
+            helpOpen={openDot === 'designer.fill'}
+            onHelpToggle={() => toggleDot('designer.fill')}
+            onHelpClose={() => changeDot(null)}
+            onDemoStart={() => onDemoStart?.('designer.fill')}
+            onDemoExit={() => onDemoExit?.()}
+            demoActive={demoActive}
+            serverHidden={isServerUi}
+          />
           <div className="group">
-            <div className="group-title">{t('props.boxTitle')}</div>
-            <NumField label={t('props.paddingH')} value={e.paddingH ?? 0} onSet={(v) => onChange(e.id, { paddingH: Math.max(0, v) })} />
-            <NumField label={t('props.paddingV')} value={e.paddingV ?? 0} onSet={(v) => onChange(e.id, { paddingV: Math.max(0, v) })} />
-            <NumField label={t('props.border')} value={e.border ?? 0} onSet={(v) => onChange(e.id, { border: Math.max(0, v) })} />
+            <div className="group-title">
+              {t('props.boxTitle')}
+              {dot('designer.box')}
+            </div>
+            <NumField label={t('props.paddingH')} value={e.paddingH ?? 0} disabled={demoActive} onSet={(v) => onChange(e.id, { paddingH: Math.max(0, v) })} />
+            <NumField label={t('props.paddingV')} value={e.paddingV ?? 0} disabled={demoActive} onSet={(v) => onChange(e.id, { paddingV: Math.max(0, v) })} />
+            <NumField label={t('props.border')} value={e.border ?? 0} disabled={demoActive} onSet={(v) => onChange(e.id, { border: Math.max(0, v) })} />
           </div>
         </>
       )}
 
       {e.type === 'Text' && (
         <div className="group">
-          <div className="group-title">{t('props.textTitle')}</div>
+          <div className="group-title">
+            {t('props.textTitle')}
+            {dot('designer.text')}
+          </div>
           <SelectField
             label={t('props.font')}
             value={e.fontFamily || 'Microsoft YaHei'}
+            disabled={demoActive}
             options={[
               [t('props.fontYaHei'), 'Microsoft YaHei'],
               [t('props.fontSimSun'), 'SimSun'],
@@ -117,17 +190,19 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
           <NumField
             label={t('props.fontHeight')}
             value={e.fontH}
+            disabled={demoActive}
             onSet={(v) => {
               const fontH = Math.max(1, v)
               onChange(e.id, fontH > e.h ? { fontH, h: fontH } : { fontH })
             }}
           />
-          <CheckField label={t('props.wrap')} value={e.wrap === true} onSet={(v) => onChange(e.id, { wrap: v })} />
-          <CheckField label={t('props.bold')} value={e.bold === true} onSet={(v) => onChange(e.id, { bold: v })} />
-          <NumField label={t('props.lineHeight')} value={e.lineHeight ?? 1.2} onSet={(v) => onChange(e.id, { lineHeight: Math.max(1, v) })} />
+          <CheckField label={t('props.wrap')} value={e.wrap === true} disabled={demoActive} onSet={(v) => onChange(e.id, { wrap: v })} />
+          <CheckField label={t('props.bold')} value={e.bold === true} disabled={demoActive} onSet={(v) => onChange(e.id, { bold: v })} />
+          <NumField label={t('props.lineHeight')} value={e.lineHeight ?? 1.2} disabled={demoActive} onSet={(v) => onChange(e.id, { lineHeight: Math.max(1, v) })} />
           <SelectField
             label={t('props.alignH')}
             value={e.align}
+            disabled={demoActive}
             options={[
               [t('props.alignOptionLeft'), 'Left'],
               [t('props.alignOptionCenter'), 'Center'],
@@ -138,6 +213,7 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
           <SelectField
             label={t('props.alignV')}
             value={e.valign ?? 'middle'}
+            disabled={demoActive}
             options={[
               [t('props.valignOptionTop'), 'top'],
               [t('props.valignOptionMiddle'), 'middle'],
@@ -148,22 +224,26 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
           <SelectField
             label={t('props.fitMode')}
             value={e.fitMode ?? 'shrink'}
+            disabled={demoActive}
             options={[
               [t('props.fitOptionShrink'), 'shrink'],
               [t('props.fitOptionOverflow'), 'overflow'],
             ]}
             onSet={(v) => onChange(e.id, { fitMode: v as 'shrink' | 'overflow' })}
           />
-          <div className="hint">{t('props.fitHint')}</div>
         </div>
       )}
 
       {e.type === 'Barcode' && (
         <div className="group">
-          <div className="group-title">{t('props.barcodeTitle')}</div>
+          <div className="group-title">
+            {t('props.barcodeTitle')}
+            {dot('designer.barcode')}
+          </div>
           <SelectField
             label={t('props.barcodeFormat')}
             value={e.barcodeFormat || 'CODE128'}
+            disabled={demoActive}
             options={[
               ['Code128', 'CODE128'],
               ['EAN13', 'EAN13'],
@@ -172,17 +252,21 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
             ]}
             onSet={(v) => onChange(e.id, { barcodeFormat: v })}
           />
-          <CheckField label={t('props.displayValue')} value={e.displayValue !== false} onSet={(v) => onChange(e.id, { displayValue: v })} />
-          <NumField label={t('props.moduleWidth')} value={e.moduleWidth ?? 1} onSet={(v) => onChange(e.id, { moduleWidth: Math.max(0.5, v) })} />
+          <CheckField label={t('props.displayValue')} value={e.displayValue !== false} disabled={demoActive} onSet={(v) => onChange(e.id, { displayValue: v })} />
+          <NumField label={t('props.moduleWidth')} value={e.moduleWidth ?? 1} disabled={demoActive} onSet={(v) => onChange(e.id, { moduleWidth: Math.max(0.5, v) })} />
         </div>
       )}
 
       {e.type === 'QrCode' && (
         <div className="group">
-          <div className="group-title">{t('props.qrTitle')}</div>
+          <div className="group-title">
+            {t('props.qrTitle')}
+            {dot('designer.qrcode')}
+          </div>
           <SelectField
             label={t('props.qrEcc')}
             value={e.qrEcc ?? 'M'}
+            disabled={demoActive}
             options={[
               [t('props.qrEccL'), 'L'],
               [t('props.qrEccM'), 'M'],
@@ -191,36 +275,44 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
             ]}
             onSet={(v) => onChange(e.id, { qrEcc: v as 'L' | 'M' | 'Q' | 'H' })}
           />
-          <NumField label={t('props.qrMargin')} value={e.qrMargin ?? 2} onSet={(v) => onChange(e.id, { qrMargin: Math.max(0, v) })} />
+          <NumField label={t('props.qrMargin')} value={e.qrMargin ?? 2} disabled={demoActive} onSet={(v) => onChange(e.id, { qrMargin: Math.max(0, v) })} />
         </div>
       )}
 
       {e.type === 'Rect' && (
         <div className="group">
-          <div className="group-title">{t('props.rectTitle')}</div>
-          <NumField label={t('props.border')} value={e.border ?? 0} onSet={(v) => onChange(e.id, { border: Math.max(0, v) })} />
+          <div className="group-title">
+            {t('props.rectTitle')}
+            {dot('designer.rect')}
+          </div>
+          <NumField label={t('props.border')} value={e.border ?? 0} disabled={demoActive} onSet={(v) => onChange(e.id, { border: Math.max(0, v) })} />
         </div>
       )}
 
       {e.type === 'Line' && (
         <div className="group">
-          <div className="group-title">{t('props.lineTitle')}</div>
-          <NumField label={t('props.lengthX')} value={e.w} onSet={(v) => onChange(e.id, { w: v })} />
-          <NumField label={t('props.lengthY')} value={e.h} onSet={(v) => onChange(e.id, { h: v })} />
-          <NumField label={t('props.thickness')} value={e.thickness ?? 0.5} onSet={(v) => onChange(e.id, { thickness: Math.max(0.1, v) })} />
+          <div className="group-title">
+            {t('props.lineTitle')}
+            {dot('designer.line')}
+          </div>
+          <NumField label={t('props.lengthX')} value={e.w} disabled={demoActive} onSet={(v) => onChange(e.id, { w: v })} />
+          <NumField label={t('props.lengthY')} value={e.h} disabled={demoActive} onSet={(v) => onChange(e.id, { h: v })} />
+          <NumField label={t('props.thickness')} value={e.thickness ?? 0.5} disabled={demoActive} onSet={(v) => onChange(e.id, { thickness: Math.max(0.1, v) })} />
         </div>
       )}
 
       {(e.type === 'Image' || e.type === 'Region') && (
         <div className="group">
-          <div className="group-title">{t('props.compatTitle', { type: e.type === 'Region' ? t('type.region') : t('type.image') })}</div>
+          <div className="group-title">
+            {t('props.compatTitle', { type: e.type === 'Region' ? t('type.region') : t('type.image') })}
+            {dot('designer.compat')}
+          </div>
           {e.type === 'Region' && <div className="hint">{t('props.regionId', { id: e.containerId })}</div>}
-          {e.type === 'Image' && <div className="hint">{t('props.imageHint')}</div>}
-          <NumField label={t('props.border')} value={e.border ?? 0} onSet={(v) => onChange(e.id, { border: Math.max(0, v) })} />
+          <NumField label={t('props.border')} value={e.border ?? 0} disabled={demoActive} onSet={(v) => onChange(e.id, { border: Math.max(0, v) })} />
         </div>
       )}
 
-      <button className="btn danger" onClick={() => onDelete([e.id])}>
+      <button className="btn danger" disabled={demoActive} onClick={() => onDelete([e.id])}>
         <Icon name="trash" size={13} />
         {t('props.deleteElement')}
       </button>
@@ -228,17 +320,56 @@ export function PropsPanel({ elements, selected, viewMode, onChange, onAlign, on
   )
 }
 
-/** 填充：固定值 / 字段填充（字段名 + 显示名 + 预览值）。 */
-function ContentGroup({ e, onChange }: { e: DesignElement; onChange: (id: string, patch: Partial<DesignElement>) => void }) {
+/** 填充：固定值 / 字段填充（字段名 + 显示名 + 预览值）；标题挂「?」文档点（首波唯一内嵌实时演示）。 */
+function ContentGroup({
+  e,
+  onChange,
+  disabled,
+  helpOpen,
+  onHelpToggle,
+  onHelpClose,
+  onDemoStart,
+  onDemoExit,
+  demoActive,
+  serverHidden,
+}: {
+  e: DesignElement
+  onChange: (id: string, patch: Partial<DesignElement>) => void
+  disabled?: boolean
+  helpOpen: boolean
+  onHelpToggle: () => void
+  onHelpClose: () => void
+  onDemoStart: () => void
+  onDemoExit: () => void
+  demoActive?: boolean
+  /** server 构建守门（与 dot() 同口径）：不渲染「?」。 */
+  serverHidden: boolean
+}) {
   const { t } = useTranslation('designer')
   if (e.type !== 'Text' && e.type !== 'Barcode' && e.type !== 'QrCode') return null
   const set = (patch: Partial<typeof e>) => onChange(e.id, patch)
   return (
     <div className="group">
-      <div className="group-title">{t('props.fillTitle')}</div>
+      <div className="group-title">
+        {t('props.fillTitle')}
+        {!serverHidden && (
+          <HelpDot
+            anchor="designer.fill"
+            topicKey="topic.designer.fill"
+            open={helpOpen}
+            onToggle={onHelpToggle}
+            onClose={onHelpClose}
+            hasDemo
+            demoActive={demoActive}
+            onDemoStart={onDemoStart}
+            onDemoExit={onDemoExit}
+          />
+        )}
+      </div>
       <SelectField
         label={t('props.source')}
         value={e.mode}
+        disabled={disabled}
         options={[
           [t('props.sourceLiteral'), 'literal'],
           [t('props.sourceField'), 'field'],
@@ -248,30 +379,29 @@ function ContentGroup({ e, onChange }: { e: DesignElement; onChange: (id: string
       {e.mode === 'literal' ? (
         <label className="field">
           {t('props.literalLabel')}
-          <input className="input" value={e.text} onChange={(ev) => set({ text: ev.target.value })} placeholder={t('props.literalPlaceholder')} />
+          <input className="input" value={e.text} disabled={disabled} onChange={(ev) => set({ text: ev.target.value })} placeholder={t('props.literalPlaceholder')} />
         </label>
       ) : (
         <>
           <label className="field">
             {t('props.fieldKeyLabel')}
-            <input className="input mono" value={e.key} onChange={(ev) => set({ key: ev.target.value })} placeholder={t('props.fieldKeyPlaceholder')} />
+            <input className="input mono" value={e.key} disabled={disabled} onChange={(ev) => set({ key: ev.target.value })} placeholder={t('props.fieldKeyPlaceholder')} />
           </label>
           <label className="field">
             {t('props.displayNameLabel')}
-            <input className="input" value={e.displayName ?? ''} onChange={(ev) => set({ displayName: ev.target.value })} placeholder={t('props.displayNamePlaceholder')} />
+            <input className="input" value={e.displayName ?? ''} disabled={disabled} onChange={(ev) => set({ displayName: ev.target.value })} placeholder={t('props.displayNamePlaceholder')} />
           </label>
           <label className="field">
             {t('props.previewValueLabel')}
-            <input className="input" value={e.text} onChange={(ev) => set({ text: ev.target.value })} placeholder={t('props.previewValuePlaceholder')} />
+            <input className="input" value={e.text} disabled={disabled} onChange={(ev) => set({ text: ev.target.value })} placeholder={t('props.previewValuePlaceholder')} />
           </label>
-          <div className="hint">{t('props.fillHint')}</div>
         </>
       )}
     </div>
   )
 }
 
-function NumField({ label, value, onSet }: { label: string; value: number; onSet: (v: number) => void }) {
+function NumField({ label, value, disabled, onSet }: { label: string; value: number; disabled?: boolean; onSet: (v: number) => void }) {
   // 受控 + 同步：切换选中元素（value 变化）时输入框跟随刷新（此前 defaultValue 只在挂载时生效，切换后残留旧元素的值）
   const [text, setText] = useState(Number(value || 0).toFixed(1))
   useEffect(() => setText(Number(value || 0).toFixed(1)), [value])
@@ -283,6 +413,7 @@ function NumField({ label, value, onSet }: { label: string; value: number; onSet
         type="number"
         step="0.5"
         value={text}
+        disabled={disabled}
         onChange={(ev) => setText(ev.target.value)}
         onBlur={(ev) => {
           const v = parseFloat(ev.target.value)
@@ -297,11 +428,11 @@ function NumField({ label, value, onSet }: { label: string; value: number; onSet
   )
 }
 
-function SelectField({ label, value, options, onSet }: { label: string; value: string; options: [string, string][]; onSet: (v: string) => void }) {
+function SelectField({ label, value, disabled, options, onSet }: { label: string; value: string; disabled?: boolean; options: [string, string][]; onSet: (v: string) => void }) {
   return (
     <label className="num-row">
       <span>{label}</span>
-      <select className="input" value={value} onChange={(ev) => onSet(ev.target.value)}>
+      <select className="input" value={value} disabled={disabled} onChange={(ev) => onSet(ev.target.value)}>
         {options.map(([text, val]) => (
           <option key={val} value={val}>
             {text}
@@ -312,11 +443,11 @@ function SelectField({ label, value, options, onSet }: { label: string; value: s
   )
 }
 
-function CheckField({ label, value, onSet }: { label: string; value: boolean; onSet: (v: boolean) => void }) {
+function CheckField({ label, value, disabled, onSet }: { label: string; value: boolean; disabled?: boolean; onSet: (v: boolean) => void }) {
   return (
     <label className="num-row">
       <span>{label}</span>
-      <input type="checkbox" checked={value} onChange={(ev) => onSet(ev.target.checked)} style={{ width: 'auto' }} />
+      <input type="checkbox" checked={value} disabled={disabled} onChange={(ev) => onSet(ev.target.checked)} style={{ width: 'auto' }} />
     </label>
   )
 }

@@ -7,8 +7,7 @@
     "title": "语言",
     "label": "界面语言",
     "zhOption": "中文",
-    "enOption": "English",
-    "hint": "切换立即生效并保存在本浏览器；首次启动默认跟随浏览器语言。"
+    "enOption": "English"
   },
   "serverAddress": {
     "title": "服务端地址",
@@ -24,8 +23,7 @@
     "saveOk": "已保存到本机配置并立即生效。",
     "saveFallback": "当前客户端版本较旧：地址已保存在本浏览器中（建议升级客户端）。",
     "statusSaved": "服务端地址已保存并生效：{{url}}。",
-    "statusFallback": "本机配置接口不可用，已使用浏览器本地保存。",
-    "hint": "服务端保存全部模板与打印记录，地址通常由安装程序自动配置；如需更换，请与管理人员确认后再修改。 保存后立即生效、重启保持；未连接服务端时仍可在本机直接打印（单机模式）。"
+    "statusFallback": "本机配置接口不可用，已使用浏览器本地保存。"
   },
   "transport": {
     "title": "连接方式",
@@ -118,7 +116,6 @@
     "uninstall": "卸载",
     "uninstalling": "卸载中…",
     "uninstallTitle": "卸载该插件（重启客户端后生效）",
-    "hint": "安装 / 卸载后需重启客户端生效。",
     "overwriteModal": {
       "title": "覆盖安装插件",
       "confirm": "确认覆盖安装",
@@ -146,7 +143,6 @@
     "applying": "应用中…",
     "save": "保存并应用",
     "switched": "连接已切换：{{message}}",
-    "saveFailed": "保存连接失败。",
-    "hint": "「测试连接」通过后才会切换，失败会提示原因且当前连接保持不变；保存后重启仍使用该连接。"
+    "saveFailed": "保存连接失败。"
   }
 }
