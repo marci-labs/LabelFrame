@@ -117,6 +117,19 @@ function maxPlanVersion(comments: Comment[], re: RegExp): number {
   return max;
 }
 
+/** 长正文评论经真实临时文件走 --body-file：Windows spawn 命令行 32K 上限，长正文直传 --body 会 ENAMETOOLONG（#308 实证）——分块追加写入（每块 12K，写到仓库外）后以文件提交。 */
+async function postIssueCommentByFile(num: number, body: string): Promise<void> {
+  const tmpPath = "../.lf-comment-" + num + ".md";
+  const CHUNK = 12000;
+  for (let i = 0; i < body.length; i += CHUNK) {
+    const w = await world.run("node", ["-e", "const fs=require('fs');fs.writeFileSync(process.argv[1],process.argv[2],{flag:process.argv[3]});", tmpPath, body.slice(i, i + CHUNK), i === 0 ? "w" : "a"]);
+    if (w.exitCode !== 0) throw new Error("评论临时文件写入失败：" + w.stderr.slice(0, 200));
+  }
+  const post = await world.run("gh", ["issue", "comment", String(num), "--body-file", tmpPath]);
+  if (post.exitCode !== 0) throw new Error("Issue 评论失败：" + post.stderr.slice(0, 300));
+  await world.run("node", ["-e", "const fs=require('fs');try{fs.unlinkSync(process.argv[1]);}catch{}", tmpPath]);
+}
+
 const issueNum = Number(args.issue);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
 // 两个方案正则刻意不同：PLAN_HEAD_RE（严格，数字后紧跟 **）用于方案定位与幂等守卫——错位存档标题不算有效方案；
@@ -179,7 +192,7 @@ if (outcome.kind === "处置报告" || outcome.plan === undefined) {
     "",
     "主会话请核对后修 Issue 范围或补前置，再重新起跑设计段（届时产出 v" + reRunVersion + "，与既有方案评论不撞号）。",
   ].join("\n");
-  await world.run("gh", ["issue", "comment", String(issueNum), "--body", disposalMd]);
+  await postIssueCommentByFile(issueNum, disposalMd);
   await artifact.markdown("design-disposal", disposalMd, { title: "设计处置报告（Issue #" + issueNum + "）", description: "勘察不成立的处置报告，待主会话核对范围或前置。" });
   return {
     conclusion: `Issue #${issueNum} 设计段产出处置报告：勘察发现 ${outcome.disposal.problems.length} 项范围矛盾 / 前置缺失，未产出方案。主会话核对后修范围或补前置再重跑。`,
@@ -247,7 +260,7 @@ const planMd = [
   planReview.suggestions.length > 0 ? "## 评审建议项（不阻断）\n" + planReview.suggestions.map((s) => "- " + s).join("\n") : "",
   "（方案评审阻断项 " + planReview.mustFix.length + " 条已吸收修订。）",
 ].join("\n");
-await world.run("gh", ["issue", "comment", String(issueNum), "--body", planMd]);
+await postIssueCommentByFile(issueNum, planMd);
 
 await artifact.markdown("design-report", planMd, { title: "方案 v" + nextVersion + "（Issue #" + issueNum + "）", description: "设计段产出的实施方案全文，含待用户拍板项。", primary: true });
 log("方案 v" + nextVersion + " 已落 Issue #" + issueNum + "，等待主会话交用户确认");

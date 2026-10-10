@@ -8,6 +8,12 @@
 - **本版可感知变化（品牌）**：LabelFrame v02 视觉全端统一——Web favicon 与导航 logo、Windows exe/窗口/托盘/快捷方式与双 MSI 向导位图及 ARP 图标、Android 启动图标 18 件（含 Android 13+ 主题单色层）、README 头图；UI 主题色不随品牌色变化。
 - **本版可感知变化（日志治理）**：文本日志单文件默认 50MB 上限（超限自动轮转序号文件，总占用上界 ≈31 文件×50MB）；logs.db 默认 256MB 按量阈值（超阈自动删最旧并 VACUUM 真实回收磁盘，不受保留期下限约束）；服务启动后 60 秒即执行首次清理（升级/重启后立即生效）；均可经 LABELFRAME_SERVER_LOG_FILE_MAX_SIZE_MB / LABELFRAME_SERVER_LOGS_DB_MAX_SIZE_MB 环境变量调整（0=不限）。
 - **本版可感知变化（文档与部署包）**：离线部署包脚本、Docker compose、DEPLOY/README 等产品面文件全面去除内部过程标记（迭代号/Issue 号引用），仅保留部署、升级、排障必需信息；文档内部节引全部改节名文字引用。
+## 修复：lf-* 长正文评论落稿 ENAMETOOLONG——改真实临时文件 --body-file（#308 运行实证） · 2026-10-10
+
+- **根因**：#298 泛化后方案 / 草稿 / 定稿评论携带「界面文案清单」json 契约，正文超 Windows spawn 命令行 32K 上限，`gh issue comment --body <全文>` spawn `ENAMETOOLONG`（lf-design 落稿步实证——设计方案本体已完成、仅落稿失败，经 AmendWorkflow 缓存复放续跑恢复）。
+- **修复**：lf-design / lf-copy / lf-copy-review / lf-close 四件的大正文评论统一改走 `postIssueCommentByFile`——node 分块追加写入（每块 12K，临时文件在仓库外 `../.lf-comment-<N>.md`）后 `gh --body-file` 提交并清理；lf-implement / lf-review 的评论为摘要级（历史几 KB 上限）维持直传。
+- 管线内部修复（工程内部，不随包出库），产品代码零改动。
+
 ## 工程：lf-copy / lf-copy-review 文案段泛化——「界面文案清单」契约驱动（#298） · 2026-10-10
 
 - **lf-design**：「界面文案清单」契约节升级——每条文案项声明槽位（name＋zh/en 字数上限，0=不限），需用户挑选的措辞另列候选组声明（name/desc/slots/count）；清单节新增 json 契约块（items＋candidates）供下游机器解析，prose 行保留可读性。
