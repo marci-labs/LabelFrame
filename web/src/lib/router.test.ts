@@ -66,12 +66,19 @@ describe('parseHash · 纯函数全分支', () => {
     expect(parseHash('#/data/extra/more', CLIENT_ALLOWED)).toEqual({ page: 'data', sub: '' })
   })
 
-  it('旧 #dc= 链接（迭代 118 分享形态）兼容映射 → packages 页 sub 段', () => {
+  it('旧 #dc= 链接（迭代 118 分享形态）server 构建兼容映射 → packages 页 sub 段', () => {
     expect(parseHash('#dc=quick', SERVER_ALLOWED)).toEqual({ page: 'packages', sub: 'quick' })
     expect(parseHash('#dc=windows', SERVER_ALLOWED)).toEqual({ page: 'packages', sub: 'windows' })
     expect(parseHash('#dc=android', SERVER_ALLOWED)).toEqual({ page: 'packages', sub: 'android' })
     // 值词法外（旧机制本就回退默认）也归 packages 页——消费侧 tabFromSub 未知 sub 回退 quick
     expect(parseHash('#dc=whatever', SERVER_ALLOWED)).toEqual({ page: 'packages', sub: 'whatever' })
+  })
+
+  it('旧 #dc= 与正典形同一白名单裁剪：client 构建（packages 越权）→ 回退 workbench（PR #313 修复轮回归）', () => {
+    // 与 #/packages/windows 在 client 下回退 workbench 完全同口径——旧形态不得成为越权旁路
+    expect(parseHash('#dc=windows', CLIENT_ALLOWED)).toEqual({ page: 'workbench', sub: '' })
+    expect(parseHash('#dc=quick', CLIENT_ALLOWED)).toEqual({ page: 'workbench', sub: '' })
+    expect(parseHash('#dc=android', CLIENT_ALLOWED)).toEqual({ page: 'workbench', sub: '' })
   })
 })
 
@@ -170,6 +177,51 @@ describe('useHashRoute · hook 行为（jsdom history）', () => {
     expect(page).toBe('designer')
   })
 
+  it('守卫取消 pre-revert（back 截断序列回归）：back 放行后再切页截断前向历史，dirty 守卫 back 仍精确回退', async () => {
+    // PR #313 评审阻断项 2 复现序列：wb→data→jobs→back 放行回 data→切 designer（pushState 截断 jobs，
+    // 栈 [戳1,2,4] 戳位错位）→ dirty 守卫 back → 落 data(戳2) → 旧实现 go(4−2) 超栈尾不动、
+    // hash 停 '#/data' 而页面仍是设计器。修复后戳位对齐（栈 [戳1,2,3]），go(1) 精确回 designer。
+    let page: TabId = 'workbench'
+    const requestPage = vi.fn((id: TabId) => {
+      if (page === 'designer') return false // dirty 设计器守卫挂起
+      page = id
+      return true
+    })
+    const { rerender } = renderHook(({ p }) => useHashRoute({ allowed: CLIENT_ALLOWED, page: p, requestPage }), {
+      initialProps: { p: 'workbench' as TabId },
+    })
+    await waitFor(() => expect(window.location.hash).toBe(''))
+
+    // wb(戳1) → data(戳2) → jobs(戳3) 线性入栈
+    page = 'data'
+    rerender({ p: 'data' })
+    await waitFor(() => expect(window.location.hash).toBe('#/data'))
+    page = 'jobs'
+    rerender({ p: 'jobs' })
+    await waitFor(() => expect(window.location.hash).toBe('#/jobs'))
+    const lenLinear = window.history.length
+
+    // back 放行回 data（模拟 App：requestPage 放行后 setTab → page prop 更新，不重复入栈）
+    window.history.back()
+    await waitFor(() => expect(requestPage).toHaveBeenCalledWith('data'))
+    rerender({ p: 'data' })
+    await waitFor(() => expect(page).toBe('data'))
+    expect(window.history.length).toBe(lenLinear)
+
+    // 切 designer：pushState 截断 jobs 前向条目（此后相邻条目戳差必须仍为 1）
+    page = 'designer'
+    rerender({ p: 'designer' })
+    await waitFor(() => expect(window.location.hash).toBe('#/designer'))
+    const lenTruncated = window.history.length
+
+    // dirty 守卫下 back → 落 data 条目 → 挂起 → pre-revert 精确回 designer：hash / 栈 / page 三不动
+    window.history.back()
+    await waitFor(() => expect(requestPage).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(window.location.hash).toBe('#/designer'))
+    expect(window.history.length).toBe(lenTruncated)
+    expect(page).toBe('designer')
+  })
+
   it('守卫挂起无戳落点降级：手动改 hash（新条目无戳）→ URL 重写回当前页（多一条目，已知边缘）', async () => {
     let page: TabId = 'designer'
     const requestPage = vi.fn((id: TabId) => {
@@ -204,6 +256,12 @@ describe('useHashRoute · hook 行为（jsdom history）', () => {
     window.location.hash = '#dc=windows'
     renderHook(() => useHashRoute({ allowed: SERVER_ALLOWED, page: 'packages', requestPage: () => true }))
     await waitFor(() => expect(window.location.hash).toBe('#/packages/windows'))
+    cleanup()
+
+    // 旧 #dc=windows 在 client 构建（packages 越权）→ 与正典形同口径回退并规范化为 #/workbench
+    window.location.hash = '#dc=windows'
+    renderHook(() => useHashRoute({ allowed: CLIENT_ALLOWED, page: 'workbench', requestPage: () => true }))
+    await waitFor(() => expect(window.location.hash).toBe('#/workbench'))
     cleanup()
 
     // 空 hash 不动（保持 URL 干净）

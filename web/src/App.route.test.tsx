@@ -154,6 +154,14 @@ describe('client 构建 · AC-01：hash 与当前页双向同步', () => {
     expect(screen.queryByText(PAGE_MARKER.workbench)).toBeNull()
   })
 
+  it('旧 #dc= 分享链接（client 构建 packages 越权）→ 回退 workbench 并规范化 URL（PR #313 修复轮回归）', async () => {
+    window.location.hash = '#dc=windows'
+    render(<App />)
+    expect(await screen.findByText(PAGE_MARKER.workbench)).toBeTruthy()
+    // 与 #/packages/windows 在 client 下回退 workbench 同口径——旧形态不得成为越权旁路
+    await waitFor(() => expect(window.location.hash).toBe('#/workbench'))
+  })
+
   it('hashchange 页面跟随：运行中改 hash 到 #/data → 经切页入口落到数据与打印页', async () => {
     render(<App />)
     await screen.findByText(PAGE_MARKER.workbench)
@@ -233,6 +241,33 @@ describe('client 构建 · AC-02：历史栈导航与设计器离开守卫', () 
     expect(await screen.findByText(PAGE_MARKER.workbench)).toBeTruthy()
     // 三选确认后才恰新增一条（决策 #177：守卫放行 → setTab → pushState）
     expect(window.history.length).toBe(len0 + 1)
+  })
+
+  it('dirty 设计器按后退（back 截断序列回归）：back 放行后再切设计器截断前向历史，守卫取消仍回 #/designer（PR #313 修复轮回归）', async () => {
+    // 评审阻断项 2 高频序列：wb→data→jobs→back 回 data→切设计器（pushState 截断 jobs）→ dirty 守卫 back
+    render(<App />)
+    await screen.findByText(PAGE_MARKER.workbench)
+
+    fireEvent.click(screen.getByRole('button', { name: '数据与打印' }))
+    await screen.findByText(PAGE_MARKER.data)
+    fireEvent.click(screen.getByRole('button', { name: '作业历史' }))
+    await screen.findByText(PAGE_MARKER.jobs)
+    // back 放行回 data（经 hashchange 切页入口，不重复入栈）
+    window.history.back()
+    await waitFor(() => expect(window.location.hash).toBe('#/data'))
+    expect(await screen.findByText(PAGE_MARKER.data)).toBeTruthy()
+
+    // 在 data 上切设计器并弄脏（pushState 截断 jobs——此后相邻条目戳差必须仍为 1）
+    await openDirtyDesigner()
+    await waitFor(() => expect(window.location.hash).toBe('#/designer'))
+    const len0 = window.history.length
+
+    // back → 落 data 条目 → 守卫挂起 → pre-revert 按戳差精确回 designer：hash / 栈 / 页面均不动
+    window.history.back()
+    expect(await screen.findByText('未保存的更改')).toBeTruthy()
+    await waitFor(() => expect(window.location.hash).toBe('#/designer'))
+    expect(window.history.length).toBe(len0)
+    expect(screen.getByDisplayValue('80')).toBeTruthy()
   })
 
   it('无未保存更改（非 dirty）后退不拦截：直接放行回 workbench', async () => {

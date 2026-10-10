@@ -1,7 +1,8 @@
 // 自研 hash 路由（迭代 127 · #312，决策 #177）：URL hash（#/<page>/<sub> 两级形态）成为页面位置的
-// 权威载体——page 段取既有 TabId 按构建白名单裁剪，sub 段为页内次级不透明短串（V3.1 帮助深链
-// designer.fill 形锚点串预留，本轮由下载中心页内 tab 首用，旧 #dc= 链接经 parseHash 兼容映射）。
-// 历史栈语义：切页 pushState 入栈（state 写自增序号戳，供守卫取消 pre-revert 按戳差精确回退）；
+// 权威载体——page 段取既有 TabId 按构建白名单裁剪（旧 #dc= 链接先折算为正典形走同一裁剪，无旁路），
+// sub 段为页内次级不透明短串（V3.1 帮助深链 designer.fill 形锚点串预留，本轮由下载中心页内 tab 首用）。
+// 历史栈语义：切页 pushState 入栈（state 写序号戳且戳与栈位置严格对齐——入栈戳＝来点条目戳＋1，
+// back 截断前向历史后重推不跳号，戳差恒等于步数差，供守卫取消 pre-revert 按戳差精确回退）；
 // sub 变更 replaceState 不入栈；守卫挂起（requestPage 返回 false）时页面与 hash 均不前进、不入栈；
 // 无戳条目（手动改地址栏等外部来源）算不出步数差，降级为 URL 重写回当前页（多一条历史记录，已知边缘）。
 
@@ -20,17 +21,27 @@ const SUB_PATTERN = /^[A-Za-z0-9._-]+$/
 /** history.state 内的路由序号戳键名（pre-revert 按戳差算步数）。 */
 const ROUTE_SEQ_KEY = 'rseq'
 
+/** 读条目 state 内的路由序号戳（无 state / 无戳 / 非数 → null）。 */
+function readStamp(state: unknown): number | null {
+  if (state && typeof state === 'object' && ROUTE_SEQ_KEY in state) {
+    const v = (state as Record<string, unknown>)[ROUTE_SEQ_KEY]
+    if (typeof v === 'number') return v
+  }
+  return null
+}
+
 /**
  * 解析 hash → 路由位置（纯函数，双构建共用）：
- * 空 hash（'' / '#' / '#/'）→ 默认 workbench；旧 #dc=<v>（迭代 118 分享链接）→ packages 页 sub 段；
- * #/<page> 或 #/<page>/<sub>——page 不在白名单（构建裁剪）或词法不符 → 回退 workbench（sub 一并丢弃）；
- * sub 词法不符 → 丢弃 sub 保留 page。
+ * 空 hash（'' / '#' / '#/'）→ 默认 workbench；旧 #dc=<v>（迭代 118 分享链接）先折算为正典两级形
+ * #/packages/<v> 再解析——与正典形同一构建白名单裁剪口径（决策 #177：client 构建 #dc= 回退
+ * workbench，server 保持兼容直达）；#/<page> 或 #/<page>/<sub>——page 不在白名单（构建裁剪）或
+ * 词法不符 → 回退 workbench（sub 一并丢弃）；sub 词法不符 → 丢弃 sub 保留 page。
  */
 export function parseHash(hash: string, allowed: readonly TabId[]): RouteLocation {
   if (hash === '' || hash === '#' || hash === '#/') return { page: 'workbench', sub: '' }
   const legacy = hash.match(/^#dc=([A-Za-z0-9._-]+)/)
-  if (legacy) return { page: 'packages', sub: legacy[1] }
-  const m = hash.match(/^#\/([A-Za-z0-9_-]+)(?:\/(.*))?$/)
+  const canonical = legacy ? `#/packages/${legacy[1]}` : hash
+  const m = canonical.match(/^#\/([A-Za-z0-9_-]+)(?:\/(.*))?$/)
   if (m) {
     const inAllowed = (allowed as readonly string[]).includes(m[1])
     if (!inAllowed) return { page: 'workbench', sub: '' }
@@ -89,36 +100,45 @@ export function useHashRoute({ allowed, page, requestPage }: HashRouteOptions): 
     allowedRef.current = allowed
   }, [allowed])
 
-  // 挂载规范化 + 给当前条目补戳（挂载前条目无戳，补戳使首次守卫取消即可算步数）
+  // 挂载规范化 + 给当前条目补戳（挂载前条目无戳，补戳使首次守卫取消即可算步数）；
+  // 刷新场景 state 跨刷新保留——已有戳则沿用（栈下方旧链不重排，戳差仍等于栈位置差）
   useEffect(() => {
     const parsed = parseHash(window.location.hash, allowedRef.current)
-    seqRef.current += 1
-    const stamp = { [ROUTE_SEQ_KEY]: seqRef.current }
+    const seq = readStamp(window.history.state) ?? seqRef.current + 1
+    seqRef.current = Math.max(seqRef.current, seq)
+    const stamp = { [ROUTE_SEQ_KEY]: seq }
     if (window.location.hash === '') {
       // 空 hash 不动 URL（保持干净），只补戳
       window.history.replaceState(stamp, '', '')
     } else {
       window.history.replaceState(stamp, '', formatHash(parsed.page, parsed.sub))
     }
-    homeSeqRef.current = seqRef.current
+    homeSeqRef.current = seq
   }, [])
 
-  // tab → hash 同步：仅守卫放行后的真实切页入栈（switchTab 挂起时不 setTab，本 effect 不跑）
+  // tab → hash 同步：仅守卫放行后的真实切页入栈（switchTab 挂起时不 setTab，本 effect 不跑）。
+  // 入栈戳＝来点（当前条目）戳＋1——与栈位置严格对齐（back 截断前向历史后重推不跳号，戳差恒等于
+  // 步数差）；来点无戳（手动改地址栏等外部来源）先就地补戳再入栈，守卫取消回退到它也能算步数
   useEffect(() => {
     const parsed = parseHash(window.location.hash, allowedRef.current)
     if (parsed.page === page) return
-    seqRef.current += 1
-    window.history.pushState({ [ROUTE_SEQ_KEY]: seqRef.current }, '', formatHash(page))
-    homeSeqRef.current = seqRef.current
+    let base = readStamp(window.history.state)
+    if (base === null) {
+      seqRef.current += 1
+      window.history.replaceState({ [ROUTE_SEQ_KEY]: seqRef.current }, '')
+      base = seqRef.current
+    }
+    const next = base + 1
+    seqRef.current = Math.max(seqRef.current, next)
+    window.history.pushState({ [ROUTE_SEQ_KEY]: next }, '', formatHash(page))
+    homeSeqRef.current = next
     setSubState('')
   }, [page])
 
   // hashchange：外部变化（后退 / 前进 / 手动改 URL）——pushState / replaceState 不触发本事件
   useEffect(() => {
     const onHashChange = () => {
-      const landing = window.history.state as Record<string, unknown> | null
-      const landingSeq =
-        landing && typeof landing[ROUTE_SEQ_KEY] === 'number' ? (landing[ROUTE_SEQ_KEY] as number) : null
+      const landingSeq = readStamp(window.history.state)
       const parsed = parseHash(window.location.hash, allowedRef.current)
       if (parsed.page !== pageRef.current) {
         if (!requestPageRef.current(parsed.page)) {
