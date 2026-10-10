@@ -1,34 +1,63 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·文案评审段（导览/帮助类文案迭代专用，119/121 形态；通用文案能力待后续 Issue 泛化）：提炼产品文案风格基准，主编校对草稿（重复/啰嗦/术语/中英对齐，含入口措辞候选），再经独立「新用户视角」评审，产出定稿落 Issue 评论「✅ 文案定稿 v1」。高档位运行（GLM-5.3）。
-whenToUse: 工作流实验管线第 3 段（仅含界面文案的导览/帮助类迭代使用）：「✍️ 文案草稿 v1」评论在场后起跑，产出文案定稿供用户过目与实施段使用；无界面文案迭代由主控手贴「✅ 文案定稿 v1」占位声明跳过本段（四段轻装固定仪式）。
+description: LabelFrame 工作流管线·文案评审段（清单驱动）：提炼产品文案风格基准，主编按方案「界面文案清单」契约校对草稿（重复/啰嗦/术语/中英对齐，含候选组），再经独立「新用户视角」评审，产出定稿落 Issue 评论「✅ 文案定稿 v1」。高档位运行（GLM-5.3）。
+whenToUse: 工作流实验管线第 3 段（方案「界面文案清单」节含 json 契约的迭代使用）：「✍️ 文案草稿 v1」评论在场后起跑，产出文案定稿供用户过目与实施段使用；无界面文案迭代由主控手贴「✅ 文案定稿 v1」占位声明跳过本段（四段轻装固定仪式）。
 args:
   issue:
     type: number
     description: 迭代 Issue 号
     required: true
 */
-// LabelFrame 工作流实验 · 文案评审段（lf-copy-review）· v2（迭代 121 扩容：校对全部文案行＋入口措辞候选）· 迭代 124 收窄：仅导览/帮助类文案迭代（通用文案能力待后续 Issue 泛化）
-// 职责：提炼风格基准 → 主编逐条校对草稿（含候选） → 独立「新用户视角」评审 → 终稿定量断言 → 落「✅ 文案定稿 v1」。
+// LabelFrame 工作流实验 · 文案评审段（lf-copy-review）· v3（#298 泛化：契约与断言改方案「界面文案清单」驱动，不再写死导览形态与 15~45 行/候选恰 3 组）
+// 职责：解析方案契约 → 提炼风格基准 → 主编逐条校对草稿（含候选组） → 独立「新用户视角」评审 → 终稿契约断言 → 落「✅ 文案定稿 v1」。
 // 前置：草稿评论在场；幂等：定稿评论已存在则直接退出。
 
-interface CopyRow {
-  group: "tour" | "help" | "demo" | "modal";
-  key: string;
-  page: string;
-  titleZh: string;
-  bodyZh: string;
-  btnZh: string;
-  titleEn: string;
-  bodyEn: string;
-  btnEn: string;
+interface CopySlotSpec {
+  /** 槽位名（英文 camelCase），zh 与 en 成对产出。 */
+  name: string;
+  /** 中文上限（字符数；0 = 不限）。 */
+  capZh: number;
+  /** 英文上限（字符数；0 = 不限）。 */
+  capEn: number;
 }
 
-interface EntryCandidate {
-  entryZh: string;
-  entryEn: string;
-  startZh: string;
-  startEn: string;
-  noteZh: string;
+interface CopyItemSpec {
+  key: string;
+  page: string;
+  scenario: string;
+  slots: CopySlotSpec[];
+}
+
+interface CopyCandidateSpec {
+  name: string;
+  desc: string;
+  slots: CopySlotSpec[];
+  count: number;
+}
+
+interface CopyContract {
+  items: CopyItemSpec[];
+  candidates: CopyCandidateSpec[];
+}
+
+interface CopySlotText {
+  zh: string;
+  en: string;
+}
+
+interface CopyRow {
+  key: string;
+  page: string;
+  slots: Record<string, CopySlotText>;
+}
+
+interface CandidateGroupText {
+  values: Record<string, CopySlotText>;
+  note: string;
+}
+
+interface CandidateSetText {
+  name: string;
+  groups: CandidateGroupText[];
 }
 
 interface StyleBaseline {
@@ -37,17 +66,17 @@ interface StyleBaseline {
 }
 
 interface CopyEdit {
-  /** 行下标（对应草稿 rows；候选组问题用 index = -1 并在 problem 注明）。 */
+  /** 行下标（对应草稿 rows；候选组问题用 index = -1 并在 problem 注明组名）。 */
   index: number;
   /** 问题一句话（重复/啰嗦/术语不一致/中英不对齐/与基准冲突）。 */
   problem: string;
 }
 
 interface CopyRevision {
-  /** 修订后的完整行数组（未改的行原样保留，key 不变）。 */
+  /** 修订后的完整行数组（未改的行原样保留，key 与行集不变）。 */
   revisedRows: CopyRow[];
-  /** 修订后的候选组（第 1 组仍为推荐组）。 */
-  revisedCandidates: EntryCandidate[];
+  /** 修订后的候选组（与契约声明一致，第 1 组仍为推荐组）。 */
+  revisedCandidateSets: CandidateSetText[];
   /** 每处修订的记录（index + problem 一句话）。 */
   edits: CopyEdit[];
 }
@@ -56,7 +85,7 @@ interface RowsResult {
   /** 完整行数组。 */
   rows: CopyRow[];
   /** 候选组（可仅在候选被修订时变化）。 */
-  candidates: EntryCandidate[];
+  candidateSets: CandidateSetText[];
 }
 
 interface ReaderFeedback {
@@ -79,6 +108,14 @@ function latestCommentBody(prefix: string, comments: Comment[]): string | null {
   return null;
 }
 
+function commentHeadLastIndex(re: RegExp, comments: Comment[]): number {
+  for (let i = comments.length - 1; i >= 0; i--) {
+    const head = ((comments[i]?.body ?? "").split("\n")[0]) ?? "";
+    if (re.test(head)) return i;
+  }
+  return -1;
+}
+
 /** 从草稿/定稿评论里抽机器可读的 ```json 行块（第 1 块 = rows，第 2 块 = 候选组）。 */
 function extractJsonBlocks(commentBody: string): string[] {
   const out: string[] = [];
@@ -89,51 +126,168 @@ function extractJsonBlocks(commentBody: string): string[] {
   return out;
 }
 
+function asSlotSpecs(v: unknown, owner: string): CopySlotSpec[] {
+  if (!Array.isArray(v) || v.length === 0) throw new Error(owner + " 未声明 slots（fail-closed）");
+  return v.map((s, i) => {
+    const o = s as Partial<CopySlotSpec>;
+    if (typeof o.name !== "string" || o.name === "") throw new Error(owner + " 第 " + (i + 1) + " 个槽位缺 name（fail-closed）");
+    if (typeof o.capZh !== "number" || !Number.isFinite(o.capZh) || o.capZh < 0) throw new Error(owner + " 槽位 " + o.name + " 缺 capZh 数值上限（0=不限；fail-closed）");
+    if (typeof o.capEn !== "number" || !Number.isFinite(o.capEn) || o.capEn < 0) throw new Error(owner + " 槽位 " + o.name + " 缺 capEn 数值上限（0=不限；fail-closed）");
+    return { name: o.name, capZh: o.capZh, capEn: o.capEn };
+  });
+}
+
+/** 从方案评论解析「界面文案清单」json 契约（fail-closed）。 */
+function parseCopyContract(planBody: string): CopyContract {
+  const head = planBody.indexOf("## 界面文案清单");
+  if (head < 0) throw new Error("方案评论不含「## 界面文案清单」节——含界面文案迭代的方案必须声明该契约节（fail-closed）");
+  const next = planBody.indexOf("\n## ", head);
+  const section = next < 0 ? planBody.slice(head) : planBody.slice(head, next);
+  const m = /```json\r?\n([\s\S]*?)```/.exec(section);
+  if (m === null || m[1] === undefined) throw new Error("「界面文案清单」节缺少 json 契约块（fail-closed）");
+  const raw = JSON.parse(m[1]) as { items?: unknown; candidates?: unknown };
+  if (!Array.isArray(raw.items) || raw.items.length === 0) throw new Error("界面文案清单 items 为空（fail-closed）");
+  const items = raw.items.map((it, i) => {
+    const o = it as Partial<CopyItemSpec>;
+    if (typeof o.key !== "string" || o.key === "") throw new Error("清单第 " + (i + 1) + " 条缺 key（fail-closed）");
+    return {
+      key: o.key,
+      page: typeof o.page === "string" ? o.page : "",
+      scenario: typeof o.scenario === "string" ? o.scenario : "",
+      slots: asSlotSpecs(o.slots, "清单 " + o.key),
+    };
+  });
+  const candidates = Array.isArray(raw.candidates)
+    ? raw.candidates.map((c) => {
+        const o = c as Partial<CopyCandidateSpec>;
+        if (typeof o.name !== "string" || o.name === "") throw new Error("候选组缺 name（fail-closed）");
+        if (typeof o.count !== "number" || !Number.isFinite(o.count) || o.count < 2) throw new Error("候选组 " + o.name + " count 须为 ≥2 的数字（fail-closed）");
+        return { name: o.name, desc: typeof o.desc === "string" ? o.desc : "", slots: asSlotSpecs(o.slots, "候选组 " + o.name), count: Math.floor(o.count) };
+      })
+    : [];
+  return { items, candidates };
+}
+
 interface CopyViolation { index: number; problem: string }
 
-function checkRows(rows: CopyRow[], candidates: EntryCandidate[]): CopyViolation[] {
+/** 定量断言（清单驱动）：行集与清单恰好一致、槽位声明齐全且逐槽非空与上限、候选组数按声明。 */
+function checkContract(rows: CopyRow[], sets: CandidateSetText[], contract: CopyContract): CopyViolation[] {
   const out: CopyViolation[] = [];
+  const rowKeys = rows.map((r) => r.key);
+  contract.items.forEach((spec) => {
+    if (!rowKeys.includes(spec.key)) out.push({ index: -1, problem: "清单项缺行：" + spec.key });
+  });
   const seen = new Set<string>();
   rows.forEach((r, i) => {
-    if (r.key === "" || r.titleZh === "" || r.bodyZh === "" || r.btnZh === "" || r.titleEn === "" || r.bodyEn === "" || r.btnEn === "") out.push({ index: i, problem: "存在空字段" });
     if (seen.has(r.key)) out.push({ index: i, problem: "key 重复：" + r.key });
     seen.add(r.key);
-    if (r.titleZh.length > 12) out.push({ index: i, problem: "中文标题超 12 字" });
-    if (r.bodyZh.length > 60) out.push({ index: i, problem: "中文正文超 60 字" });
-    const btnZhCap = r.group === "modal" ? 20 : 6;
-    if (r.btnZh.length > btnZhCap) out.push({ index: i, problem: "中文按钮超 " + btnZhCap + " 字" });
-    if (r.titleEn.length > 45) out.push({ index: i, problem: "英文标题超 45 字符" });
-    if (r.bodyEn.length > 130) out.push({ index: i, problem: "英文正文超 130 字符" });
-    const btnEnCap = r.group === "modal" ? 40 : 20;
-    if (r.btnEn.length > btnEnCap) out.push({ index: i, problem: "英文按钮超 " + btnEnCap + " 字符" });
+    const spec = contract.items.find((s) => s.key === r.key);
+    if (spec === undefined) {
+      out.push({ index: i, problem: "行不在清单内：" + r.key });
+      return;
+    }
+    const names = spec.slots.map((s) => s.name);
+    Object.keys(r.slots).forEach((n) => {
+      if (!names.includes(n)) out.push({ index: i, problem: "未声明槽位：" + r.key + "/" + n });
+    });
+    spec.slots.forEach((sl) => {
+      const t = r.slots[sl.name];
+      if (t === undefined || typeof t.zh !== "string" || typeof t.en !== "string") {
+        out.push({ index: i, problem: "槽位缺失：" + r.key + "/" + sl.name });
+        return;
+      }
+      if (t.zh === "" || t.en === "") out.push({ index: i, problem: "槽位空值：" + r.key + "/" + sl.name });
+      if (sl.capZh > 0 && t.zh.length > sl.capZh) out.push({ index: i, problem: "zh 超上限：" + r.key + "/" + sl.name + "（" + t.zh.length + ">" + sl.capZh + "）" });
+      if (sl.capEn > 0 && t.en.length > sl.capEn) out.push({ index: i, problem: "en 超上限：" + r.key + "/" + sl.name + "（" + t.en.length + ">" + sl.capEn + "）" });
+    });
   });
-  if (candidates.length !== 3) out.push({ index: -1, problem: "入口措辞候选须恰好 3 组" });
-  candidates.forEach((c, i) => {
-    if (c.entryZh === "" || c.entryEn === "" || c.startZh === "" || c.startEn === "" || c.noteZh === "") out.push({ index: -1, problem: "候选第 " + (i + 1) + " 组存在空字段" });
+  contract.candidates.forEach((spec) => {
+    const set = sets.find((s) => s.name === spec.name);
+    if (set === undefined) {
+      out.push({ index: -1, problem: "候选组缺失：" + spec.name });
+      return;
+    }
+    if (set.groups.length !== spec.count) out.push({ index: -1, problem: "候选组 " + spec.name + " 组数须 " + spec.count + "（当前 " + set.groups.length + "）" });
+    set.groups.forEach((g, gi) => {
+      if (typeof g.note !== "string" || g.note === "") out.push({ index: -1, problem: "候选组 " + spec.name + " 第 " + (gi + 1) + " 组缺说明" });
+      spec.slots.forEach((sl) => {
+        const t = g.values[sl.name];
+        if (t === undefined || typeof t.zh !== "string" || typeof t.en !== "string") {
+          out.push({ index: -1, problem: "候选组 " + spec.name + " 第 " + (gi + 1) + " 组槽位缺失：" + sl.name });
+          return;
+        }
+        if (t.zh === "" || t.en === "") out.push({ index: -1, problem: "候选组 " + spec.name + " 第 " + (gi + 1) + " 组槽位空值：" + sl.name });
+        if (sl.capZh > 0 && t.zh.length > sl.capZh) out.push({ index: -1, problem: "候选组 " + spec.name + " 第 " + (gi + 1) + " 组 zh 超上限：" + sl.name + "（" + t.zh.length + "）" });
+        if (sl.capEn > 0 && t.en.length > sl.capEn) out.push({ index: -1, problem: "候选组 " + spec.name + " 第 " + (gi + 1) + " 组 en 超上限：" + sl.name + "（" + t.en.length + "）" });
+      });
+    });
+  });
+  sets.forEach((s) => {
+    if (!contract.candidates.some((c) => c.name === s.name)) out.push({ index: -1, problem: "未声明的候选组：" + s.name });
   });
   return out;
 }
 
-function rowsTable(rows: CopyRow[]): string[] {
-  return [
-    "| # | 组 | key | 页面 | 标题 zh | 正文 zh | 按钮 zh | 标题 en | 正文 en | 按钮 en |",
-    "|---|---|---|---|---|---|---|---|---|---|",
-    ...rows.map((r, i) => "| " + (i + 1) + " | " + r.group + " | " + r.key + " | " + r.page + " | " + r.titleZh + " | " + r.bodyZh + " | " + r.btnZh + " | " + r.titleEn + " | " + r.bodyEn + " | " + r.btnEn + " |"),
-  ];
+/** 表格列 = 契约槽位并集（清单与候选组按首次出现序）。 */
+function slotColumns(contract: CopyContract): string[] {
+  const names: string[] = [];
+  contract.items.forEach((it) => it.slots.forEach((s) => { if (!names.includes(s.name)) names.push(s.name); }));
+  contract.candidates.forEach((c) => c.slots.forEach((s) => { if (!names.includes(s.name)) names.push(s.name); }));
+  return names;
 }
 
-function candidatesTable(candidates: EntryCandidate[]): string[] {
-  return [
-    "| 组 | 深链按钮 zh | 深链按钮 en | 开始按钮 zh | 开始按钮 en | 说明 |",
-    "|---|---|---|---|---|---|",
-    ...candidates.map((c, i) => "| " + (i + 1) + " | " + c.entryZh + " | " + c.entryEn + " | " + c.startZh + " | " + c.startEn + " | " + c.noteZh + " |"),
-  ];
+function mdEscape(s: string): string {
+  return s.replace(/\|/g, "\\|");
+}
+
+function rowsTable(rows: CopyRow[], cols: string[]): string[] {
+  const head = ["#", "key", "页面"];
+  cols.forEach((c) => { head.push(c + " zh"); head.push(c + " en"); });
+  const lines = ["|" + head.map((h) => " " + h + " ").join("|") + "|", "|" + head.map(() => "---|").join("")];
+  rows.forEach((r, i) => {
+    const cells = [String(i + 1), r.key, r.page];
+    cols.forEach((c) => {
+      const t = r.slots[c];
+      cells.push(t === undefined ? "—" : mdEscape(t.zh));
+      cells.push(t === undefined ? "—" : mdEscape(t.en));
+    });
+    lines.push("|" + cells.map((x) => " " + x + " ").join("|") + "|");
+  });
+  return lines;
+}
+
+function candidatesTables(sets: CandidateSetText[], contract: CopyContract): string[] {
+  const out: string[] = [];
+  contract.candidates.forEach((spec) => {
+    const set = sets.find((s) => s.name === spec.name);
+    if (set === undefined) return;
+    const head = ["组"];
+    spec.slots.forEach((s) => { head.push(s.name + " zh"); head.push(s.name + " en"); });
+    head.push("说明");
+    out.push("### 候选组：" + spec.name + "（" + spec.desc + "；第 1 组为推荐组——待用户过目拍板后实施段采用）");
+    out.push("");
+    out.push("|" + head.map((h) => " " + h + " ").join("|") + "|");
+    out.push("|" + head.map(() => "---|").join(""));
+    set.groups.forEach((g, gi) => {
+      const cells = [String(gi + 1)];
+      spec.slots.forEach((s) => {
+        const t = g.values[s.name];
+        cells.push(t === undefined ? "—" : mdEscape(t.zh));
+        cells.push(t === undefined ? "—" : mdEscape(t.en));
+      });
+      cells.push(mdEscape(g.note));
+      out.push("|" + cells.map((x) => " " + x + " ").join("|") + "|");
+    });
+    out.push("");
+  });
+  return out;
 }
 
 const issueNum = Number(args.issue);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
 const DRAFT_PREFIX = "**✍️ 文案草稿 v1**";
 const FINAL_PREFIX = "**✅ 文案定稿 v1**";
+const PLAN_HEAD_RE = /^\*\*📐 方案 v(\d+)\*\*/;
 
 phase("建场守卫：核对草稿在场与定稿缺席");
 const viewRes = await world.run("gh", ["issue", "view", String(issueNum), "--json", "number,title,state,url,body,labels,comments"]);
@@ -148,11 +302,14 @@ if (latestCommentBody(FINAL_PREFIX, comments) !== null) {
   log("定稿评论已存在，幂等退出");
   return { conclusion: `Issue #${issueNum} 已有「✅ 文案定稿 v1」评论，本段幂等退出。`, findings: [], verified: ["建场守卫：定稿评论在场"], notCovered: [] };
 }
+const planIdx = commentHeadLastIndex(PLAN_HEAD_RE, comments);
+if (planIdx < 0) throw new Error(`Issue #${issueNum} 无「📐 方案 vN」评论——契约来源缺失（fail-closed）`);
+const contract = parseCopyContract(comments[planIdx]?.body ?? "");
 const draftBlocks = extractJsonBlocks(draftBody);
 const draftRows = JSON.parse(draftBlocks[0] ?? "[]") as CopyRow[];
 if (!Array.isArray(draftRows) || draftRows.length === 0) throw new Error("草稿 rows json 块解析结果为空");
-const draftCandidates = draftBlocks[1] !== undefined ? JSON.parse(draftBlocks[1]) as EntryCandidate[] : [];
-log("草稿 " + draftRows.length + " 行＋候选 " + draftCandidates.length + " 组已解析，开始提炼风格基准");
+const draftSets = draftBlocks[1] !== undefined ? JSON.parse(draftBlocks[1]) as CandidateSetText[] : [];
+log("契约 " + contract.items.length + " 条＋草稿 " + draftRows.length + " 行＋候选 " + draftSets.length + " 组已解析，开始提炼风格基准");
 
 phase("提炼本产品文案风格基准");
 const editor = agent("主编", {
@@ -162,51 +319,54 @@ const editor = agent("主编", {
 });
 const baseline = await editor.ask<StyleBaseline>(
   "提炼「本产品文案风格基准」：用你的文件工具读 web/src/i18n/ 下 zh 与 en 资源各至少三个文件，" +
-  "提炼 5~10 条可操作的规则（语气、称谓、标点、按钮动词习惯、句长节奏），每条一句，供校对引导文案时对照。");
+  "提炼 5~10 条可操作的规则（语气、称谓、标点、按钮动词习惯、句长节奏），每条一句，供校对本轮文案时对照。");
 
-phase("主编逐条校对草稿（含入口措辞候选）");
+phase("主编按契约逐条校对草稿（含候选组）");
 const copyRevision = await editor.ask<CopyRevision>(
   `【风格基准】\n${baseline.rules.map((r, i) => (i + 1) + ". " + r).join("\n")}\n\n` +
+  `【文案清单契约（行集/槽位/上限/候选组数以此为准，修订不得破坏）】\n${JSON.stringify(contract, null, 2)}\n\n` +
   `【草稿 rows（Issue #${issueNum}）】\n${JSON.stringify(draftRows, null, 2)}\n\n` +
-  `【入口措辞候选】\n${JSON.stringify(draftCandidates, null, 2)}\n\n` +
+  `【候选组】\n${JSON.stringify(draftSets, null, 2)}\n\n` +
   `逐条校对并直接产出修订结果：① 相邻或全局重复表达同一意思的，合并或删；② 啰嗦句砍到一句动作导向；` +
   `③ 术语与既有资源不一致的（读资源核对）改为一致；④ 中英文语义不对齐的改 en（候选组 en 措辞重点核：忌直译感、按英文 UI 习惯）；⑤ 与基准冲突的改。` +
-  `edits 记录每处修订（index + problem 一句话；候选组问题 index 用 -1 并注明「候选」），revisedRows / revisedCandidates 给修订后的完整结果（未改的原样保留，key 不变，候选保持 3 组且第 1 组为推荐组）。`);
-const readerRows = copyRevision.revisedRows;
-const readerCandidates = copyRevision.revisedCandidates;
+  `edits 记录每处修订（index + problem 一句话；候选组问题 index 用 -1 并注明组名），revisedRows / revisedCandidateSets 给修订后的完整结果` +
+  `（未改的原样保留，key 与行集不变；候选组保持契约声明的组数且第 1 组为推荐组）。`);
+let currentRows = copyRevision.revisedRows;
+let currentSets = copyRevision.revisedCandidateSets;
 
 phase("请第一次使用的人读一遍");
 const readerFeedback = await agent("新用户视角", {
   system: "你扮演一个第一次使用标签打印软件的仓库员工，中文母语。你只根据拿到的文字判断，不查任何文件、不看代码。",
 }).ask<ReaderFeedback>(
-  `下面是一款标签打印软件的界面文案表（JSON，字段：group 分组/key/page 页面/titleZh 标题/bodyZh 正文/btnZh 按钮）。` +
-  `以第一次使用的人的身份读一遍，只回答三件事：哪些行看不懂或术语陌生（unclear）；哪些行和别的行说的是同一件事（redundant，注明与第几行重复）；` +
-  `哪些正文是删掉也不影响理解的废话（waste，原样引用该句）。没有就给空数组，不要硬凑。\n${JSON.stringify(readerRows)}`);
+  `下面是一款标签打印软件的界面文案表（JSON，每行：key / page / slots——槽位名→{zh,en} 中文与英文文案）。` +
+  `以第一次使用的人的身份读一遍，只回答三件事：哪些行看不懂或术语陌生（unclear，注明行内 key）；哪些行和别的行说的是同一件事（redundant，注明与哪个 key 重复）；` +
+  `哪些中文正文是删掉也不影响理解的废话（waste，原样引用该句）。没有就给空数组，不要硬凑。\n${JSON.stringify(currentRows)}`);
 const readerIssueCount = readerFeedback.unclear.length + readerFeedback.redundant.length + readerFeedback.waste.length;
 
-phase("吸收反馈出终稿");
-let finalRows = readerRows;
-let finalCandidates = readerCandidates;
+phase("吸收反馈并出终稿");
+let finalRows = currentRows;
+let finalSets = currentSets;
 if (readerIssueCount > 0) {
   const absorbed = await editor.ask<RowsResult>(
-    `新用户视角反馈如下，吸收可取项修订（不合理的可忽略但在结果里附一句理由），重新给出完整行数组与候选组（key 不变，候选保持 3 组）：\n${JSON.stringify(readerFeedback)}`);
+    `新用户视角反馈如下，吸收可取项修订（不合理的可忽略但在结果里附一句理由），重新给出完整行数组与候选组（key 与行集不变，候选保持契约组数）：\n${JSON.stringify(readerFeedback)}`);
   finalRows = absorbed.rows;
-  finalCandidates = absorbed.candidates;
+  finalSets = absorbed.candidateSets;
 }
-const violations = checkRows(finalRows, finalCandidates);
+const violations = checkContract(finalRows, finalSets, contract);
 if (violations.length > 0) {
   const fixed = await editor.ask<RowsResult>(
-    `终稿定量断言未通过，修订后重新给完整行数组与候选组：\n${JSON.stringify(violations)}`);
+    `终稿清单契约断言未通过，修订后重新给完整行数组与候选组（契约：行集恰好一致、槽位齐全、逐槽上限、候选组数按声明）：\n${JSON.stringify(violations)}`);
   finalRows = fixed.rows;
-  finalCandidates = fixed.candidates;
-  const still = checkRows(finalRows, finalCandidates);
-  if (still.length > 0) throw new Error("终稿仍有定量违规：" + JSON.stringify(still));
+  finalSets = fixed.candidateSets;
+  const still = checkContract(finalRows, finalSets, contract);
+  if (still.length > 0) throw new Error("终稿仍有契约违规：" + JSON.stringify(still));
 }
-report({ stage: "文案定稿", issue: issueNum, rows: finalRows.length, edits: copyRevision.edits.length, readerIssues: readerIssueCount });
+report({ stage: "文案定稿", issue: issueNum, rows: finalRows.length, candidateSets: finalSets.length, edits: copyRevision.edits.length, readerIssues: readerIssueCount });
 
 phase("落定稿评论与交付");
 const tsRes = await world.run("node", ["-e", "console.log(new Date().toISOString())"]);
 const ts = tsRes.stdout.trim();
+const cols = slotColumns(contract);
 const finalMd = [
   FINAL_PREFIX + "（工作流·文案评审段 · " + ts + "）",
   "",
@@ -221,28 +381,25 @@ const finalMd = [
   ...readerFeedback.redundant.map((r) => "- 重复：" + r),
   ...readerFeedback.waste.map((w) => "- 废话：" + w),
   "",
-  "## 定稿文案表（实施段以此为准）",
+  "## 定稿文案表（实施段以此为准 · 槽位列按清单声明）",
   "",
-  ...rowsTable(finalRows),
-  "",
-  "## 入口措辞候选（3 组，第 1 组为推荐组——待用户过目拍板后实施段采用）",
-  "",
-  ...candidatesTable(finalCandidates),
+  ...rowsTable(finalRows, cols),
+  ...(finalSets.length > 0 ? ["", ...candidatesTables(finalSets, contract)] : []),
   "",
   "```json",
   JSON.stringify(finalRows, null, 2),
   "```",
   "",
   "```json",
-  JSON.stringify(finalCandidates, null, 2),
+  JSON.stringify(finalSets, null, 2),
   "```",
 ].join("\n");
 await world.run("gh", ["issue", "comment", String(issueNum), "--body", finalMd]);
-await artifact.markdown("copy-final", finalMd, { title: "文案定稿 v1（Issue #" + issueNum + "）", description: "主编校对 + 新用户视角评审后的定稿（全文案行＋入口措辞候选），含修订记录。", primary: true });
+await artifact.markdown("copy-final", finalMd, { title: "文案定稿 v1（Issue #" + issueNum + "）", description: "主编校对 + 新用户视角评审后的定稿（文案表＋候选组，契约断言通过），含修订记录。", primary: true });
 log("定稿已落 Issue #" + issueNum);
 return {
-  conclusion: `Issue #${issueNum} 文案定稿完成：${finalRows.length} 行＋入口措辞候选 3 组，主编修订 ${copyRevision.edits.length} 处，新用户视角反馈 ${readerIssueCount} 条已吸收，定量断言通过。下一步：主会话交用户过目（含候选组选择，可改可跳过）后起实施段 lf-implement。`,
+  conclusion: `Issue #${issueNum} 文案定稿完成：${finalRows.length} 行（契约 ${contract.items.length} 条全覆盖）＋候选组 ${finalSets.length} 组，主编修订 ${copyRevision.edits.length} 处，新用户视角反馈 ${readerIssueCount} 条已吸收，清单契约断言通过。下一步：主会话交用户过目（含候选组选择，可改可跳过）后起实施段 lf-implement。`,
   findings: [],
-  verified: ["风格基准从现有 i18n 资源实读提炼", "主编与撰写者不同上下文（独立复审）", "新用户视角只拿文案不看代码", "定量断言：分组字数/空值/key 唯一/候选 3 组"],
-  notCovered: ["文案最终观感属用户主观判断（B 类），待用户过目或陪验", "入口措辞候选最终取舍待用户拍板"],
+  verified: ["风格基准从现有 i18n 资源实读提炼", "主编与撰写者不同上下文（独立复审）", "新用户视角只拿文案不看代码", "契约断言：行集与清单恰好一致、槽位齐全、逐槽上限、候选组数按声明"],
+  notCovered: ["文案最终观感属用户主观判断（B 类），待用户过目或陪验", "候选组最终取舍待用户拍板"],
 };
