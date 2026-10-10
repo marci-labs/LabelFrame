@@ -1,55 +1,82 @@
 /* zcode-workflow
-description: LabelFrame 工作流管线·文案草拟段（导览/帮助类文案迭代专用，119/121 形态；通用文案能力待后续 Issue 泛化）：按已定稿方案与用户拍板撰写迭代全部新增界面文案草稿（zh+en 文案表＋入口措辞候选），落 Issue 评论「✍️ 文案草稿 v1」。低档位运行（GLM-5.3-Flash）。
-whenToUse: 工作流实验管线第 2 段（仅含界面文案的导览/帮助类迭代使用）：最新「📐 方案 vN」评论在场后起跑，产出文案草稿供评审段校对。
+description: LabelFrame 工作流管线·文案草拟段（清单驱动）：按最新方案「界面文案清单」json 契约（槽位×zh/en 上限由方案声明）撰写迭代全部界面文案草稿（文案表＋候选组），落 Issue 评论「✍️ 文案草稿 v1」。低档位运行（GLM-5.3-Flash）。
+whenToUse: 工作流实验管线第 2 段（方案「界面文案清单」节含 json 契约的迭代使用）：最新「📐 方案 vN」评论在场后起跑，产出文案草稿供评审段校对。
 args:
   issue:
     type: number
     description: 迭代 Issue 号
     required: true
 */
-// LabelFrame 工作流实验 · 文案草拟段（lf-copy）· v2（迭代 121 扩容：覆盖迭代全部文案面，非仅导览表）· 迭代 124 收窄：仅导览/帮助类文案迭代（通用文案能力待后续 Issue 泛化）
-// 职责：按最新「📐 方案 vN」＋「🎯 用户拍板」撰写迭代全部新增文案草稿（zh+en），落 Issue 评论「✍️ 文案草稿 v1」。
-// 前置：最新方案评论在场（首行正则定位，fail-closed）；幂等：草稿评论已存在则直接退出。
+// LabelFrame 工作流实验 · 文案草拟段（lf-copy）· v3（#298 泛化：从导览/帮助专用改「界面文案清单」契约驱动——任务面、槽位集、字数上限、候选组数全部来自方案，不再写死任务清单 A–H 与 15~45 行等硬编码）
+// 职责：按最新「📐 方案 vN」的「界面文案清单」json 契约撰写迭代全部界面文案草稿（zh+en），落 Issue 评论「✍️ 文案草稿 v1」。
+// 前置：最新方案评论在场且其清单节含 json 契约块（fail-closed）；幂等：草稿评论已存在则直接退出。
 
-interface CopyRow {
-  /** 分组：tour（首见导览气泡）/ help（帮助页卡片）/ demo（演示气泡）/ modal（弹窗文案）。 */
-  group: "tour" | "help" | "demo" | "modal";
-  /** i18n 资源 key 建议（语义 key，如 tour.workbench.new / help.card.designer / demo.designer.draw）。 */
-  key: string;
-  /** 所属页面（Workbench / Designer / DataPrint / Help / Shell）。 */
-  page: string;
-  /** 中文标题（不超过 12 字；卡片行 =「是什么」一句话定性）。 */
-  titleZh: string;
-  /** 中文正文（不超过 60 字；卡片行 =「能干什么」2~3 条用「；」串接）。 */
-  bodyZh: string;
-  /** 中文按钮文案（≤6 字；modal 多按钮用「/」串接 ≤20 字）。 */
-  btnZh: string;
-  /** 英文标题（不超过 45 字符）。 */
-  titleEn: string;
-  /** 英文正文（不超过 130 字符）。 */
-  bodyEn: string;
-  /** 英文按钮文案（≤20 字符；modal 多按钮 ≤40 字符）。 */
-  btnEn: string;
+interface CopySlotSpec {
+  /** 槽位名（英文 camelCase：title / body / btn / label / placeholder …），zh 与 en 成对产出。 */
+  name: string;
+  /** 中文上限（字符数；0 = 不限）。 */
+  capZh: number;
+  /** 英文上限（字符数；0 = 不限）。 */
+  capEn: number;
 }
 
-interface EntryCandidate {
-  /** 帮助页「去做演示」深链按钮词 zh。 */
-  entryZh: string;
-  /** 帮助页深链按钮词 en（忌直译感）。 */
-  entryEn: string;
-  /** 页头帮助入口/演示开始按钮词 zh。 */
-  startZh: string;
-  /** 演示开始按钮词 en。 */
-  startEn: string;
+interface CopyItemSpec {
+  /** i18n 语义 key 建议（如 help.article.designer.intro），供实施段落资源。 */
+  key: string;
+  /** 所属页面或组件位置（如 Help / Designer / Settings）。 */
+  page: string;
+  /** 文案场景：出现在哪、何时出现、干什么用（措辞由本段撰写，场景由方案定）。 */
+  scenario: string;
+  /** 文案槽位声明（至少一个；上限 0 = 不限）。 */
+  slots: CopySlotSpec[];
+}
+
+interface CopyCandidateSpec {
+  /** 候选组名（英文 camelCase，如 demoEntry）。 */
+  name: string;
+  /** 这组候选在选什么（一句话）。 */
+  desc: string;
+  /** 每组的槽位声明。 */
+  slots: CopySlotSpec[];
+  /** 组数（第 1 组为推荐组）。 */
+  count: number;
+}
+
+interface CopyContract {
+  items: CopyItemSpec[];
+  candidates: CopyCandidateSpec[];
+}
+
+interface CopySlotText {
+  zh: string;
+  en: string;
+}
+
+interface CopyRow {
+  /** 与清单 item.key 一一对应，不得增删。 */
+  key: string;
+  page: string;
+  /** 槽位名 → zh/en 文案（与该条声明的槽位集恰好一致）。 */
+  slots: Record<string, CopySlotText>;
+}
+
+interface CandidateGroupText {
+  /** 各槽位 zh/en 文案。 */
+  values: Record<string, CopySlotText>;
   /** 一句话说明该组的语感与适用性。 */
-  noteZh: string;
+  note: string;
+}
+
+interface CandidateSetText {
+  name: string;
+  groups: CandidateGroupText[];
 }
 
 interface CopyDraft {
   rows: CopyRow[];
-  /** 入口措辞候选（恰好 3 组，第 1 组为推荐组）。 */
-  entryCandidates: EntryCandidate[];
-  /** 从现有资源观察到的风格要点（语气/称谓/标点/动词习惯），每条一句；末条登记 nav.help 词条（帮助 / Help）。 */
+  /** 候选组（与契约 candidates 一一对应；无声明给空数组）。 */
+  candidateSets: CandidateSetText[];
+  /** 从现有资源观察到的风格要点（语气/称谓/标点/动词习惯），每条一句。 */
   styleNotes: string[];
 }
 
@@ -73,28 +100,159 @@ function commentHeadLastIndex(re: RegExp, comments: Comment[]): number {
   return -1;
 }
 
+function asSlotSpecs(v: unknown, owner: string): CopySlotSpec[] {
+  if (!Array.isArray(v) || v.length === 0) throw new Error(owner + " 未声明 slots（fail-closed）");
+  return v.map((s, i) => {
+    const o = s as Partial<CopySlotSpec>;
+    if (typeof o.name !== "string" || o.name === "") throw new Error(owner + " 第 " + (i + 1) + " 个槽位缺 name（fail-closed）");
+    if (typeof o.capZh !== "number" || !Number.isFinite(o.capZh) || o.capZh < 0) throw new Error(owner + " 槽位 " + o.name + " 缺 capZh 数值上限（0=不限；fail-closed）");
+    if (typeof o.capEn !== "number" || !Number.isFinite(o.capEn) || o.capEn < 0) throw new Error(owner + " 槽位 " + o.name + " 缺 capEn 数值上限（0=不限；fail-closed）");
+    return { name: o.name, capZh: o.capZh, capEn: o.capEn };
+  });
+}
+
+/** 从方案评论解析「界面文案清单」json 契约（fail-closed：节缺失 / json 缺失 / items 为空即中止）。 */
+function parseCopyContract(planBody: string): CopyContract {
+  const head = planBody.indexOf("## 界面文案清单");
+  if (head < 0) throw new Error("方案评论不含「## 界面文案清单」节——含界面文案迭代的方案必须声明该契约节（fail-closed）");
+  const next = planBody.indexOf("\n## ", head);
+  const section = next < 0 ? planBody.slice(head) : planBody.slice(head, next);
+  const m = /```json\r?\n([\s\S]*?)```/.exec(section);
+  if (m === null || m[1] === undefined) throw new Error("「界面文案清单」节缺少 json 契约块（fail-closed）——设计段 lf-design 产出异常");
+  const raw = JSON.parse(m[1]) as { items?: unknown; candidates?: unknown };
+  if (!Array.isArray(raw.items) || raw.items.length === 0) throw new Error("界面文案清单 items 为空（fail-closed）");
+  const items = raw.items.map((it, i) => {
+    const o = it as Partial<CopyItemSpec>;
+    if (typeof o.key !== "string" || o.key === "") throw new Error("清单第 " + (i + 1) + " 条缺 key（fail-closed）");
+    return {
+      key: o.key,
+      page: typeof o.page === "string" ? o.page : "",
+      scenario: typeof o.scenario === "string" ? o.scenario : "",
+      slots: asSlotSpecs(o.slots, "清单 " + o.key),
+    };
+  });
+  const candidates = Array.isArray(raw.candidates)
+    ? raw.candidates.map((c) => {
+        const o = c as Partial<CopyCandidateSpec>;
+        if (typeof o.name !== "string" || o.name === "") throw new Error("候选组缺 name（fail-closed）");
+        if (typeof o.count !== "number" || !Number.isFinite(o.count) || o.count < 2) throw new Error("候选组 " + o.name + " count 须为 ≥2 的数字（fail-closed）");
+        return { name: o.name, desc: typeof o.desc === "string" ? o.desc : "", slots: asSlotSpecs(o.slots, "候选组 " + o.name), count: Math.floor(o.count) };
+      })
+    : [];
+  return { items, candidates };
+}
+
 interface CopyViolation { index: number; problem: string }
 
-/** 定量断言：字数 / 空值 / key 唯一性 / 候选组数（命令能判定的不花模型）。 */
-function checkRows(rows: CopyRow[], candidates: EntryCandidate[]): CopyViolation[] {
+/** 定量断言（清单驱动）：行集与清单恰好一致、槽位声明齐全且逐槽非空与上限、候选组数按声明（命令能判定的不花模型）。 */
+function checkContract(rows: CopyRow[], sets: CandidateSetText[], contract: CopyContract): CopyViolation[] {
   const out: CopyViolation[] = [];
+  const rowKeys = rows.map((r) => r.key);
+  contract.items.forEach((spec) => {
+    if (!rowKeys.includes(spec.key)) out.push({ index: -1, problem: "清单项缺行：" + spec.key });
+  });
   const seen = new Set<string>();
   rows.forEach((r, i) => {
-    if (r.key === "" || r.titleZh === "" || r.bodyZh === "" || r.btnZh === "" || r.titleEn === "" || r.bodyEn === "" || r.btnEn === "") out.push({ index: i, problem: "存在空字段" });
     if (seen.has(r.key)) out.push({ index: i, problem: "key 重复：" + r.key });
     seen.add(r.key);
-    if (r.titleZh.length > 12) out.push({ index: i, problem: "中文标题超 12 字（" + r.titleZh.length + "）" });
-    if (r.bodyZh.length > 60) out.push({ index: i, problem: "中文正文超 60 字（" + r.bodyZh.length + "）" });
-    const btnZhCap = r.group === "modal" ? 20 : 6;
-    if (r.btnZh.length > btnZhCap) out.push({ index: i, problem: "中文按钮超 " + btnZhCap + " 字" });
-    if (r.titleEn.length > 45) out.push({ index: i, problem: "英文标题超 45 字符" });
-    if (r.bodyEn.length > 130) out.push({ index: i, problem: "英文正文超 130 字符（" + r.bodyEn.length + "）" });
-    const btnEnCap = r.group === "modal" ? 40 : 20;
-    if (r.btnEn.length > btnEnCap) out.push({ index: i, problem: "英文按钮超 " + btnEnCap + " 字符" });
+    const spec = contract.items.find((s) => s.key === r.key);
+    if (spec === undefined) {
+      out.push({ index: i, problem: "行不在清单内：" + r.key });
+      return;
+    }
+    const names = spec.slots.map((s) => s.name);
+    Object.keys(r.slots).forEach((n) => {
+      if (!names.includes(n)) out.push({ index: i, problem: "未声明槽位：" + r.key + "/" + n });
+    });
+    spec.slots.forEach((sl) => {
+      const t = r.slots[sl.name];
+      if (t === undefined || typeof t.zh !== "string" || typeof t.en !== "string") {
+        out.push({ index: i, problem: "槽位缺失：" + r.key + "/" + sl.name });
+        return;
+      }
+      if (t.zh === "" || t.en === "") out.push({ index: i, problem: "槽位空值：" + r.key + "/" + sl.name });
+      if (sl.capZh > 0 && t.zh.length > sl.capZh) out.push({ index: i, problem: "zh 超上限：" + r.key + "/" + sl.name + "（" + t.zh.length + ">" + sl.capZh + "）" });
+      if (sl.capEn > 0 && t.en.length > sl.capEn) out.push({ index: i, problem: "en 超上限：" + r.key + "/" + sl.name + "（" + t.en.length + ">" + sl.capEn + "）" });
+    });
   });
-  if (candidates.length !== 3) out.push({ index: -1, problem: "入口措辞候选须恰好 3 组（当前 " + candidates.length + "）" });
-  candidates.forEach((c, i) => {
-    if (c.entryZh === "" || c.entryEn === "" || c.startZh === "" || c.startEn === "" || c.noteZh === "") out.push({ index: -1, problem: "候选第 " + (i + 1) + " 组存在空字段" });
+  contract.candidates.forEach((spec) => {
+    const set = sets.find((s) => s.name === spec.name);
+    if (set === undefined) {
+      out.push({ index: -1, problem: "候选组缺失：" + spec.name });
+      return;
+    }
+    if (set.groups.length !== spec.count) out.push({ index: -1, problem: "候选组 " + spec.name + " 组数须 " + spec.count + "（当前 " + set.groups.length + "）" });
+    set.groups.forEach((g, gi) => {
+      if (typeof g.note !== "string" || g.note === "") out.push({ index: -1, problem: "候选组 " + spec.name + " 第 " + (gi + 1) + " 组缺说明" });
+      spec.slots.forEach((sl) => {
+        const t = g.values[sl.name];
+        if (t === undefined || typeof t.zh !== "string" || typeof t.en !== "string") {
+          out.push({ index: -1, problem: "候选组 " + spec.name + " 第 " + (gi + 1) + " 组槽位缺失：" + sl.name });
+          return;
+        }
+        if (t.zh === "" || t.en === "") out.push({ index: -1, problem: "候选组 " + spec.name + " 第 " + (gi + 1) + " 组槽位空值：" + sl.name });
+        if (sl.capZh > 0 && t.zh.length > sl.capZh) out.push({ index: -1, problem: "候选组 " + spec.name + " 第 " + (gi + 1) + " 组 zh 超上限：" + sl.name + "（" + t.zh.length + "）" });
+        if (sl.capEn > 0 && t.en.length > sl.capEn) out.push({ index: -1, problem: "候选组 " + spec.name + " 第 " + (gi + 1) + " 组 en 超上限：" + sl.name + "（" + t.en.length + "）" });
+      });
+    });
+  });
+  sets.forEach((s) => {
+    if (!contract.candidates.some((c) => c.name === s.name)) out.push({ index: -1, problem: "未声明的候选组：" + s.name });
+  });
+  return out;
+}
+
+/** 表格列 = 契约槽位并集（清单与候选组按首次出现序）。 */
+function slotColumns(contract: CopyContract): string[] {
+  const names: string[] = [];
+  contract.items.forEach((it) => it.slots.forEach((s) => { if (!names.includes(s.name)) names.push(s.name); }));
+  contract.candidates.forEach((c) => c.slots.forEach((s) => { if (!names.includes(s.name)) names.push(s.name); }));
+  return names;
+}
+
+function mdEscape(s: string): string {
+  return s.replace(/\|/g, "\\|");
+}
+
+function rowsTable(rows: CopyRow[], cols: string[]): string[] {
+  const head = ["#", "key", "页面"];
+  cols.forEach((c) => { head.push(c + " zh"); head.push(c + " en"); });
+  const lines = ["|" + head.map((h) => " " + h + " ").join("|") + "|", "|" + head.map(() => "---|").join("")];
+  rows.forEach((r, i) => {
+    const cells = [String(i + 1), r.key, r.page];
+    cols.forEach((c) => {
+      const t = r.slots[c];
+      cells.push(t === undefined ? "—" : mdEscape(t.zh));
+      cells.push(t === undefined ? "—" : mdEscape(t.en));
+    });
+    lines.push("|" + cells.map((x) => " " + x + " ").join("|") + "|");
+  });
+  return lines;
+}
+
+function candidatesTables(sets: CandidateSetText[], contract: CopyContract): string[] {
+  const out: string[] = [];
+  contract.candidates.forEach((spec) => {
+    const set = sets.find((s) => s.name === spec.name);
+    if (set === undefined) return;
+    const head = ["组"];
+    spec.slots.forEach((s) => { head.push(s.name + " zh"); head.push(s.name + " en"); });
+    head.push("说明");
+    out.push("### 候选组：" + spec.name + "（" + spec.desc + "；第 1 组为推荐组——随定稿交用户过目拍板）");
+    out.push("");
+    out.push("|" + head.map((h) => " " + h + " ").join("|") + "|");
+    out.push("|" + head.map(() => "---|").join(""));
+    set.groups.forEach((g, gi) => {
+      const cells = [String(gi + 1)];
+      spec.slots.forEach((s) => {
+        const t = g.values[s.name];
+        cells.push(t === undefined ? "—" : mdEscape(t.zh));
+        cells.push(t === undefined ? "—" : mdEscape(t.en));
+      });
+      cells.push(mdEscape(g.note));
+      out.push("|" + cells.map((x) => " " + x + " ").join("|") + "|");
+    });
+    out.push("");
   });
   return out;
 }
@@ -112,7 +270,7 @@ const issue = JSON.parse(viewRes.stdout) as IssueJson;
 if (issue.state !== "OPEN") throw new Error(`Issue #${issueNum} 不是 OPEN 状态`);
 if (!issue.labels.map((l) => l.name).includes("工作流接管")) throw new Error(`Issue #${issueNum} 未带「工作流接管」标签`);
 const comments = issue.comments ?? [];
-// 最新方案 vN 定位（fail-closed）：精确 v1 前缀会锁死版本，vN>1 的含文案迭代起跳即炸；取不到（含最新评论为处置报告）即中止。
+// 最新方案 vN 定位（fail-closed）：首行正则取不到（含最新评论为处置报告）即中止。
 const planIdx = commentHeadLastIndex(PLAN_HEAD_RE, comments);
 if (planIdx < 0) throw new Error(`Issue #${issueNum} 无「📐 方案 vN」评论——先跑设计段 lf-design`);
 const planBody = comments[planIdx]?.body ?? "";
@@ -120,79 +278,70 @@ if (latestCommentBody(DRAFT_PREFIX, comments) !== null) {
   log("草稿评论已存在，幂等退出");
   return { conclusion: `Issue #${issueNum} 已有「✍️ 文案草稿 v1」评论，本段幂等退出。`, findings: [], verified: ["建场守卫：草稿评论在场"], notCovered: [] };
 }
-log("方案在场，开始撰写");
+const contract = parseCopyContract(planBody);
+log("清单契约解析：" + contract.items.length + " 条文案项＋" + contract.candidates.length + " 组候选，开始撰写");
 
-phase("依方案、拍板与现有文案风格撰写草稿");
+phase("依清单契约与现有文案风格撰写草稿");
 const copywriter = agent("文案员", {
   system:
     "你是 LabelFrame 的界面文案撰写者。你的产出是给人看的 UI 文案：简洁、动作导向、不重复、与产品既有文案风格一致。" +
     "只读文件不修改。宁可留白也不要编造产品没有的功能。",
 });
 let draft = await copywriter.ask<CopyDraft>(
-  `任务：为本迭代（Issue #${issueNum}）撰写全部新增界面文案（zh + en）。产出 CopyDraft：rows 文案表 + entryCandidates 入口措辞候选 + styleNotes 风格勘察笔记。\n\n` +
+  `任务：为本迭代（Issue #${issueNum}）按「界面文案清单」契约撰写全部界面文案（zh + en）。产出 CopyDraft：rows 文案表 + candidateSets 候选组 + styleNotes 风格勘察笔记。\n\n` +
   `【已定稿方案（Issue 评论原文）】\n${planBody}\n\n` +
-  `【必产清单——按方案与「🎯 用户拍板」逐项覆盖，缺一即废稿】\n` +
-  `A. 首见 v2 五步导览（group="tour"，key tour.<页面>.<slug>，5 行）：重写既有五步（工作台 / 设计器 / 数据与打印·模板选择 / Excel 批量打印 / 收尾），口径＝「介绍功能＋什么场景用」，逻辑通顺、能吸引用户体验对应操作，忌「跟我做」式口令；收尾步加一句指路「更多功能说明见左侧导航·帮助」；单步正文 ≤60 字。\n` +
-  `B. 帮助页五卡（group="help"，key help.card.<workbench|designer|data|jobs|settings>，5 行）：title＝「是什么」一句话定性（≤12 字）；body＝「能干什么」2~3 条用「；」串接（≤60 字）；designer / workbench 卡 btnZh 暂写「去做演示」（最终措辞随候选组定），其余卡 btnZh 写「进入」。\n` +
-  `C. designer 演示（group="demo"，key demo.designer.<slug>，≥6 行）：开场、拖控件绘制（顺带讲自动对齐 / 智能参考线与快捷键要点）、控件属性设置（含一条「哪些设置打印时可能不生效」的提示——先用文件工具实读 web/src/pages/designer/ 与 docs/DESIGN.md 相关节（如字体回退）核实事实，宁可不写也不编造）、字段作用、命名与保存、演示收尾。\n` +
-  `D. workbench 演示（group="demo"，key demo.workbench.<slug>，≥5 行）：开场、新建（点「新建模板」后演示跨页跟到设计器，一句话衔接）、导出→导入闭环（先引导导出示例 .lfpkg、再引导亲手导入，两行）、命名后回工作台按名识别、结束气泡（样例默认自动清理、可勾选保留）。\n` +
-  `E. DataPrint 承接（group="demo"，key demo.data.<slug>，≥2 行）：字段变成填写表单、字段对应「下载 Excel 模板」的列。\n` +
-  `F. 残留询问 Modal（group="modal"，key help.residue.<slug>，2 行：标题 + 正文）：演示中断的「示例·」样例残留下次进入界面时询问；btnZh 写「立即清理/保留/暂不」（多按钮「/」串接）。\n` +
-  `G. entryCandidates：恰好 3 组入口措辞候选（entryZh/entryEn/startZh/startEn/noteZh）——帮助页深链按钮词与演示开始按钮词配对成组，en 忌 'Do the demo' 式直译感；第 1 组为推荐组。\n` +
-  `H. nav.help 导航词条固定「帮助 / Help」，只写进 styleNotes 末条，不入 rows。\n\n` +
-  `【风格要求】先用你的文件工具读 web/src/i18n/ 下的现有资源（zh 与 en 各至少三四个文件），观察并模仿其语气、称谓、标点、按钮动词习惯（观察写进 styleNotes，每条一句）；` +
-  `文案必须与既有界面文案是同一个「口音」。正文动作导向（「点这里做 X」而非「本页提供 X 功能」）；相邻行不重复说同一件事；按钮 2~4 字动词或动宾（modal 多按钮行除外）。\n\n` +
-  `【长度硬限】titleZh≤12；bodyZh≤60；btnZh≤6（modal 行 ≤20）；titleEn≤45 字符；bodyEn≤130 字符；btnEn≤20 字符（modal 行 ≤40）；rows 总数 15~45。`);
+  `【文案清单契约——唯一任务面，行集与 items 键集须恰好一致，不得增删】\n${JSON.stringify(contract, null, 2)}\n\n` +
+  `逐条产出：key / page 照抄清单；该条声明的每个槽位给 zh 与 en（语义对齐、en 按英文 UI 习惯，忌逐字直译感）。` +
+  `scenario 描述场景与用途——措辞以此为准；涉及产品行为的事实（如打印生效边界）先用文件工具实读相关源码与 docs/DESIGN.md 核实，宁可不写也不编造。\n` +
+  (contract.candidates.length > 0
+    ? `候选组按 candidates 声明逐组产出：恰好 count 组、每组全部槽位 zh/en＋一句话说明 note（语感与适用性），第 1 组为推荐组。\n`
+    : ``) +
+  `【风格要求】先用你的文件工具读 web/src/i18n/ 下的现有资源（zh 与 en 各至少三个文件），观察并模仿其语气、称谓、标点、按钮动词习惯（观察写进 styleNotes，每条一句）；` +
+  `文案必须与既有界面文案是同一个「口音」。正文动作导向（「点这里做 X」而非「本页提供 X 功能」）；相邻行不重复说同一件事。\n\n` +
+  `【硬限】每槽位字数以契约 capZh / capEn 为准（0 = 不限）；行集与清单 items 键集恰好一致。`);
 
-phase("定量自查并退回重写超限文案");
+phase("定量自查并退回重写违约文案");
 for (let round = 1; round <= MAX_REWRITE; round++) {
-  const violations = checkRows(draft.rows, draft.entryCandidates);
-  if (draft.rows.length < 15 || draft.rows.length > 45) violations.push({ index: -1, problem: "行数须在 15~45（当前 " + draft.rows.length + "）" });
+  const violations = checkContract(draft.rows, draft.candidateSets, contract);
   if (violations.length === 0) break;
-  log("第 " + round + " 轮定量自查发现 " + violations.length + " 处超限，退回重写");
-  draft = await copywriter.ask(`以下定量断言未通过，请修订并重新给出完整草稿（只改有问题的行，其余保持）：\n${JSON.stringify(violations)}`);
+  log("第 " + round + " 轮定量自查发现 " + violations.length + " 处违约，退回重写");
+  draft = await copywriter.ask(`以下清单契约定量断言未通过，请修订并重新给出完整草稿（只改有问题的行/组，其余保持）：\n${JSON.stringify(violations)}`);
   if (round === MAX_REWRITE) {
-    const still = checkRows(draft.rows, draft.entryCandidates);
-    if (still.length > 0) throw new Error("文案草稿 " + MAX_REWRITE + " 轮后仍有定量违规：" + JSON.stringify(still));
+    const still = checkContract(draft.rows, draft.candidateSets, contract);
+    if (still.length > 0) throw new Error("文案草稿 " + MAX_REWRITE + " 轮后仍有清单契约违规：" + JSON.stringify(still));
   }
 }
-report({ stage: "草稿完成", issue: issueNum, rows: draft.rows.length, candidates: draft.entryCandidates.length, styleNotes: draft.styleNotes.length });
+report({ stage: "草稿完成", issue: issueNum, rows: draft.rows.length, candidateSets: draft.candidateSets.length, styleNotes: draft.styleNotes.length });
 
 phase("落稿 Issue 供评审段校对");
 const tsRes = await world.run("node", ["-e", "console.log(new Date().toISOString())"]);
 const ts = tsRes.stdout.trim();
+const cols = slotColumns(contract);
 const draftMd = [
   DRAFT_PREFIX + "（工作流·文案段 · " + ts + "）",
   "",
   "## 风格勘察笔记",
   ...draft.styleNotes.map((s) => "- " + s),
   "",
-  "## 文案表（" + draft.rows.length + " 行）",
+  "## 文案表（" + draft.rows.length + " 行 · 槽位列按清单声明）",
   "",
-  "| # | 组 | key | 页面 | 标题 zh | 正文 zh | 按钮 zh | 标题 en | 正文 en | 按钮 en |",
-  "|---|---|---|---|---|---|---|---|---|---|",
-  ...draft.rows.map((r, i) => "| " + (i + 1) + " | " + r.group + " | " + r.key + " | " + r.page + " | " + r.titleZh + " | " + r.bodyZh + " | " + r.btnZh + " | " + r.titleEn + " | " + r.bodyEn + " | " + r.btnEn + " |"),
-  "",
-  "## 入口措辞候选（3 组，第 1 组为推荐组；随定稿交用户过目拍板）",
-  "",
-  "| 组 | 深链按钮 zh | 深链按钮 en | 开始按钮 zh | 开始按钮 en | 说明 |",
-  "|---|---|---|---|---|---|",
-  ...draft.entryCandidates.map((c, i) => "| " + (i + 1) + " | " + c.entryZh + " | " + c.entryEn + " | " + c.startZh + " | " + c.startEn + " | " + c.noteZh + " |"),
+  ...rowsTable(draft.rows, cols),
+  ...(draft.candidateSets.length > 0 ? ["", "## 候选组", "", ...candidatesTables(draft.candidateSets, contract)] : []),
   "",
   "```json",
   JSON.stringify(draft.rows, null, 2),
   "```",
   "",
   "```json",
-  JSON.stringify(draft.entryCandidates, null, 2),
+  JSON.stringify(draft.candidateSets, null, 2),
   "```",
 ].join("\n");
 await world.run("gh", ["issue", "comment", String(issueNum), "--body", draftMd]);
-await artifact.markdown("copy-draft", draftMd, { title: "文案草稿 v1（Issue #" + issueNum + "）", description: "覆盖迭代全部文案面的草稿（导览/卡片/演示/弹窗＋入口措辞候选），待评审段校对。", primary: true });
+await artifact.markdown("copy-draft", draftMd, { title: "文案草稿 v1（Issue #" + issueNum + "）", description: "按方案「界面文案清单」契约产出的文案草稿（文案表＋候选组），待评审段校对。", primary: true });
 log("草稿已落 Issue #" + issueNum);
 return {
-  conclusion: `Issue #${issueNum} 文案草稿完成：${draft.rows.length} 行 zh+en（tour/help/demo/modal 四组）＋入口措辞候选 ${draft.entryCandidates.length} 组，风格模仿自现有 i18n 资源，定量断言全部通过。下一步：起文案评审段 lf-copy-review。`,
+  conclusion: `Issue #${issueNum} 文案草稿完成：${draft.rows.length} 行 zh+en（按清单 ${contract.items.length} 条）＋候选组 ${draft.candidateSets.length} 组，风格模仿自现有 i18n 资源，清单契约定量断言全部通过。下一步：起文案评审段 lf-copy-review。`,
   findings: [],
-  verified: ["定量断言：分组字数上限、字段非空、key 唯一、行数 15~45、候选恰好 3 组", "文案员实读了 web/src/i18n 现有资源（styleNotes 留痕）"],
-  notCovered: ["文案未经主编校对与新用户视角评审（评审段职责）", "入口措辞候选最终取舍待用户过目（推荐组仅标注）"],
+  verified: ["清单契约断言：行集与清单恰好一致、槽位齐全、逐槽非空与上限、候选组数按声明", "文案员实读了 web/src/i18n 现有资源（styleNotes 留痕）"],
+  notCovered: ["文案未经主编校对与新用户视角评审（评审段职责）", "候选组最终取舍待用户过目（推荐组仅标注）"],
 };

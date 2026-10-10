@@ -12,13 +12,35 @@ args:
 //       勘察发现范围矛盾 / 前置缺失时改落「⚠️ 设计处置报告」（不匹配方案正则、不占 vN 槽，不得产出占位方案）。
 // 前置：Issue 带「工作流接管」标签；幂等：最新方案评论晚于最新「🔧 PR 已建 / 🔨 修复轮」评论才退出，否则产出 v{N+1}。
 
+interface CopySlotSpec {
+  /** 槽位名（英文 camelCase：title / body / btn / label / placeholder …），zh 与 en 成对产出。 */
+  name: string;
+  /** 中文上限（字符数；0 = 不限）。 */
+  capZh: number;
+  /** 英文上限（字符数；0 = 不限）。 */
+  capEn: number;
+}
+
 interface CopyListedItem {
-  /** i18n 语义 key 建议（如 tour.workbench.new / help.card.designer），供文案段 lf-copy 消费。 */
+  /** i18n 语义 key 建议（如 help.article.designer.intro），供文案段 lf-copy 消费。 */
   key: string;
-  /** 所属页面或组件位置（如 Workbench / Designer / Shell）。 */
+  /** 所属页面或组件位置（如 Help / Designer / Settings）。 */
   page: string;
   /** 文案场景：出现在哪、何时出现、干什么用（措辞由文案段撰写，此处只定场景）。 */
   scenario: string;
+  /** 文案槽位声明（至少一个；上限 0 = 不限）——文案表结构由方案声明，下游按此校验。 */
+  slots: CopySlotSpec[];
+}
+
+interface CopyCandidateSpec {
+  /** 候选组名（英文 camelCase，如 demoEntry）。 */
+  name: string;
+  /** 这组候选在选什么（一句话）。 */
+  desc: string;
+  /** 每组的槽位声明。 */
+  slots: CopySlotSpec[];
+  /** 组数（一般 3，第 1 组为推荐组，随定稿交用户过目拍板）。 */
+  count: number;
 }
 
 interface DesignPlan {
@@ -40,6 +62,8 @@ interface DesignPlan {
   openQuestions: string[];
   /** 界面文案清单：仅含界面文案的迭代必填（供文案段 lf-copy 消费的契约节）；无界面文案迭代给空数组。 */
   copyList: CopyListedItem[];
+  /** 措辞候选组声明（需用户在若干措辞间挑选的，如入口/按钮词；无则空数组）。 */
+  copyCandidates: CopyCandidateSpec[];
 }
 
 interface DesignDisposal {
@@ -135,7 +159,8 @@ const outcome = await designer.ask<DesignOutcome>(
   ctx + "\n\n产出实施方案（纯设计）。硬要求：anchors 必须是实读所得的现状（文件:行号，禁止臆造）；" +
   "design 逐 AC 对应且覆盖 Issue 全部 AC；files 只列范围内文件；testPlan 逐 AC 说明验证方式；risks 宁多勿漏；" +
   "所有产品取舍进 openQuestions（每项给选项与建议，纯技术迭代可为空数组）。" +
-  "本迭代含界面文案时 copyList 必填（逐条 key / page / scenario——供文案段 lf-copy 消费的契约节）；无界面文案时给空数组。" +
+  "本迭代含界面文案时 copyList 必填（逐条 key / page / scenario / slots——slots 声明该条文案的槽位名与 zh/en 字数上限（0=不限），如 title 12/45、body 60/130、长文 0/0；供文案段 lf-copy 消费的契约节）；" +
+  "需用户在若干措辞间挑选的（入口/按钮词等）另列 copyCandidates（name / desc / slots / count，一般 3 组第 1 组推荐）；无界面文案时两者均给空数组。" +
   "勘察发现范围矛盾或前置缺失（方案无法成立）时改产 kind=处置报告：problems 逐条给证据，suggestion 给化解建议，不得产出占位方案。");
 
 if (outcome.kind === "处置报告" || outcome.plan === undefined) {
@@ -205,7 +230,16 @@ const planMd = [
   "",
   "## 七、风险",
   ...finalPlan.risks.map((r) => "- " + r),
-  ...(hasCopy ? ["", "## 界面文案清单（供文案段 lf-copy 消费）", ...finalPlan.copyList.map((c) => "- `" + c.key + "`（" + c.page + "）：" + c.scenario)] : []),
+  ...(hasCopy ? [
+    "",
+    "## 界面文案清单（供文案段 lf-copy 消费）",
+    ...finalPlan.copyList.map((c) => "- `" + c.key + "`（" + c.page + "）：" + c.scenario + "（槽位：" + c.slots.map((s) => s.name + " ≤" + s.capZh + "/" + s.capEn).join("、") + "）"),
+    ...finalPlan.copyCandidates.map((c) => "- 候选组 `" + c.name + "`（" + c.count + " 组）：" + c.desc + "（槽位：" + c.slots.map((s) => s.name + " ≤" + s.capZh + "/" + s.capEn).join("、") + "）"),
+    "",
+    "```json",
+    JSON.stringify({ items: finalPlan.copyList, candidates: finalPlan.copyCandidates }, null, 2),
+    "```",
+  ] : []),
   "",
   "## ⚠️ 待用户拍板项",
   ...(finalPlan.openQuestions.length > 0 ? finalPlan.openQuestions.map((q, i) => "- " + (i + 1) + ". " + q) : ["- 无（纯技术迭代，技术选择按本稿执行）"]),
