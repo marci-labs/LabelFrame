@@ -61,6 +61,19 @@ function parseChecks(stdout: string): ChecksSnapshot {
   return { complete, allSuccess, anyFailure, summary: relevant.map((c) => `${c.name}:${c.status}/${c.conclusion}`).join(" | ") };
 }
 
+/** 长正文评论经真实临时文件走 --body-file：Windows spawn 命令行 32K 上限，长正文直传 --body 会 ENAMETOOLONG（#308 实证）——分块追加写入（每块 12K，写到仓库外）后以文件提交。 */
+async function postIssueCommentByFile(num: number, body: string): Promise<void> {
+  const tmpPath = "../.lf-comment-" + num + ".md";
+  const CHUNK = 12000;
+  for (let i = 0; i < body.length; i += CHUNK) {
+    const w = await world.run("node", ["-e", "const fs=require('fs');fs.writeFileSync(process.argv[1],process.argv[2],{flag:process.argv[3]});", tmpPath, body.slice(i, i + CHUNK), i === 0 ? "w" : "a"]);
+    if (w.exitCode !== 0) throw new Error("评论临时文件写入失败：" + w.stderr.slice(0, 200));
+  }
+  const post = await world.run("gh", ["issue", "comment", String(num), "--body-file", tmpPath]);
+  if (post.exitCode !== 0) throw new Error("Issue 评论失败：" + post.stderr.slice(0, 300));
+  await world.run("node", ["-e", "const fs=require('fs');try{fs.unlinkSync(process.argv[1]);}catch{}", tmpPath]);
+}
+
 const issueNum = Number(args.issue);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
 const rawSlug = typeof args.slug === "string" && args.slug !== "" ? args.slug : "iter";
@@ -156,7 +169,7 @@ const selfAssess = await steward.ask<AcSelfAssessment>(
   `需要浏览器走查（界面行为 / 交互细节）、真机 / 长测或用户观感判断的，一律写进 needsHuman（每条注明是「浏览器取证」「真机 / 长测」还是「用户观感」），不要自证。`);
 const acBody = `**AC 自评（收口段值守，工作流自动回写）**\n${selfAssess.items.map((i) => "- " + i.ac + "：" + i.verdict + " —— " + i.evidence).join("\n")}` +
   (selfAssess.needsHuman.length > 0 ? `\n\n**待真人/浏览器验收项**：${selfAssess.needsHuman.join("；")}` : "");
-await world.run("gh", ["issue", "comment", String(issueNum), "--body", acBody]);
+await postIssueCommentByFile(issueNum, acBody);
 
 if (selfAssess.needsHuman.length > 0) {
   await world.run("gh", ["issue", "edit", String(issueNum), "--remove-label", "进行中"]);
@@ -188,7 +201,7 @@ const mergedMd = [
     ? "后续：主会话做浏览器取证（沙箱起前端走查界面行为，截图回 Issue）+ 真机 / 长测 / 用户观感陪验；全过后走结项 wrapup（ROADMAP 一行 + 关 Issue + 摘「工作流接管」标签）。"
     : "后续：主会话走结项 wrapup（ROADMAP 一行 + 关 Issue + 摘「工作流接管」标签）。",
 ].join("\n");
-await world.run("gh", ["issue", "comment", String(issueNum), "--body", mergedMd]);
+await postIssueCommentByFile(issueNum, mergedMd);
 await artifact.markdown("close-report",
   `# 收口汇报（Issue #${issueNum}）\n\nPR #${prNumber} 已 squash 合并入 master。\n\n## AC 自评\n${selfAssess.items.map((i) => "- " + i.ac + "：" + i.verdict + " —— " + i.evidence).join("\n")}\n\n## 待浏览器/真人验收\n${selfAssess.needsHuman.length > 0 ? selfAssess.needsHuman.map((h) => "- " + h).join("\n") : "无"}`,
   { title: "收口汇报（Issue #" + issueNum + "）", description: "CI 全绿合并、AC 自评回写、worktree 已回收。", primary: true });

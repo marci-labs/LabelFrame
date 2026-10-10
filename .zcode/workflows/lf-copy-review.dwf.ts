@@ -283,6 +283,19 @@ function candidatesTables(sets: CandidateSetText[], contract: CopyContract): str
   return out;
 }
 
+/** 长正文评论经真实临时文件走 --body-file：Windows spawn 命令行 32K 上限，长正文直传 --body 会 ENAMETOOLONG（#308 实证）——分块追加写入（每块 12K，写到仓库外）后以文件提交。 */
+async function postIssueCommentByFile(num: number, body: string): Promise<void> {
+  const tmpPath = "../.lf-comment-" + num + ".md";
+  const CHUNK = 12000;
+  for (let i = 0; i < body.length; i += CHUNK) {
+    const w = await world.run("node", ["-e", "const fs=require('fs');fs.writeFileSync(process.argv[1],process.argv[2],{flag:process.argv[3]});", tmpPath, body.slice(i, i + CHUNK), i === 0 ? "w" : "a"]);
+    if (w.exitCode !== 0) throw new Error("评论临时文件写入失败：" + w.stderr.slice(0, 200));
+  }
+  const post = await world.run("gh", ["issue", "comment", String(num), "--body-file", tmpPath]);
+  if (post.exitCode !== 0) throw new Error("Issue 评论失败：" + post.stderr.slice(0, 300));
+  await world.run("node", ["-e", "const fs=require('fs');try{fs.unlinkSync(process.argv[1]);}catch{}", tmpPath]);
+}
+
 const issueNum = Number(args.issue);
 if (!Number.isFinite(issueNum) || issueNum <= 0) throw new Error("参数 issue 缺失或非法");
 const DRAFT_PREFIX = "**✍️ 文案草稿 v1**";
@@ -394,7 +407,7 @@ const finalMd = [
   JSON.stringify(finalSets, null, 2),
   "```",
 ].join("\n");
-await world.run("gh", ["issue", "comment", String(issueNum), "--body", finalMd]);
+await postIssueCommentByFile(issueNum, finalMd);
 await artifact.markdown("copy-final", finalMd, { title: "文案定稿 v1（Issue #" + issueNum + "）", description: "主编校对 + 新用户视角评审后的定稿（文案表＋候选组，契约断言通过），含修订记录。", primary: true });
 log("定稿已落 Issue #" + issueNum);
 return {
