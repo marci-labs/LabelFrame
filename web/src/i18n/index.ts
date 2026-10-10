@@ -25,6 +25,7 @@ import zhCNDownloadCenter from './locales/zh-CN/downloadCenter.json'
 import zhCNDevices from './locales/zh-CN/devices.json'
 import zhCNPluginPackages from './locales/zh-CN/pluginPackages.json'
 import zhCNGuide from './locales/zh-CN/guide.json'
+import zhCNHelp from './locales/zh-CN/help.json'
 import enCommon from './locales/en/common.json'
 import enShell from './locales/en/shell.json'
 import enSettings from './locales/en/settings.json'
@@ -37,6 +38,7 @@ import enDownloadCenter from './locales/en/downloadCenter.json'
 import enDevices from './locales/en/devices.json'
 import enPluginPackages from './locales/en/pluginPackages.json'
 import enGuide from './locales/en/guide.json'
+import enHelp from './locales/en/help.json'
 
 /** 界面语言全集（zh-CN 为源语言；en 为第一翻译目标——决策 #164 ①）。 */
 export type AppLocale = 'zh-CN' | 'en'
@@ -120,6 +122,7 @@ void i18next.use(initReactI18next).init({
       devices: zhCNDevices,
       pluginPackages: zhCNPluginPackages,
       guide: zhCNGuide,
+      help: zhCNHelp,
     },
     en: {
       common: enCommon,
@@ -134,6 +137,7 @@ void i18next.use(initReactI18next).init({
       devices: enDevices,
       pluginPackages: enPluginPackages,
       guide: enGuide,
+      help: enHelp,
     },
   },
   lng: currentLocaleFromEnv(),

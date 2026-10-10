@@ -27,6 +27,7 @@ import { Guide } from './components/Guide'
 import { Modal } from './components/Modal'
 import type { DesignerRequest, TabId } from './state/types'
 import { isGuideSeen, markGuideSeen } from './lib/guide'
+import { HELP_ANCHOR_POLL_MAX_MS, HELP_ANCHOR_POLL_MS, helpAnchorSelector } from './lib/help'
 import { isServerUi } from './lib/uiMode'
 import { Workbench } from './pages/Workbench'
 import { Designer } from './pages/Designer'
@@ -34,6 +35,7 @@ import { DataPrint } from './pages/DataPrint'
 import { Devices } from './pages/Devices'
 import { JobHistory } from './pages/JobHistory'
 import { Settings } from './pages/Settings'
+import { Help } from './pages/Help'
 import { DownloadCenter } from './pages/DownloadCenter'
 import { PluginPackages } from './pages/PluginPackages'
 
@@ -57,6 +59,8 @@ const CLIENT_TABS: { id: TabId; labelKey: string; icon: IconName }[] = [
   { id: 'data', labelKey: 'nav.data', icon: 'data' },
   { id: 'jobs', labelKey: 'nav.jobs', icon: 'history' },
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings' },
+  // 迭代 126（#308）：主导航第 6 项「帮助」（帮助页文档底座，client-only——server 纳入须后续迭代单独裁剪）
+  { id: 'help', labelKey: 'nav.help', icon: 'help' },
 ]
 
 /** 状态栏多 IP 过长省略显示（title 给全量）。 */
@@ -71,6 +75,11 @@ function Shell() {
   const { t, i18n } = useTranslation('shell')
   const [tab, setTab] = useState<TabId>('workbench')
   const [designerReq, setDesignerReq] = useState<DesignerRequest | null>(null)
+  // 迭代 126（#308）：帮助深链两段信号——pending = 轮询 [data-help] 锚点就位中（状态栏提示）；
+  // ready = 锚点已在 DOM 确认，交给目标页自动弹出文档点气泡（页面开启后回调清信号）。
+  // 两段拆分防「信号先于锚点渲染到达」：page 拿到 ready 时锚点必已渲染，开启即见效。
+  const [helpAnchorPending, setHelpAnchorPending] = useState<string | null>(null)
+  const [helpAnchorReady, setHelpAnchorReady] = useState<string | null>(null)
   // 迭代 104（#225，决策 #161）：日志抽屉「清空」的确认弹窗开关——点击先确认，确认后才清空
   const [confirmingClearLogs, setConfirmingClearLogs] = useState(false)
   // 迭代 119（#276，决策 #170）：首次引导开关——首见延迟自动启动，完成 / 跳过写标记后关闭
@@ -84,7 +93,8 @@ function Shell() {
   const app = useApp()
   // 迭代 93（#151 F-06）：解构出三个成员再入依赖——exhaustive-deps 按 `app` 聚合对象报缺依赖，
   // 而三者均为 AppContext 的 useCallback 稳定引用（baseUrl 用于地址变更后重排周期探测），语义与原写法一致。
-  const { checkConnection, checkLocalService, baseUrl } = app
+  // 迭代 126（#308）：setStatus 同为稳定引用，深链轮询 effect 只认它不认 app 聚合对象（防每渲染重跑）。
+  const { checkConnection, checkLocalService, baseUrl, setStatus } = app
 
   useEffect(() => {
     void checkConnection()
@@ -141,6 +151,43 @@ function Shell() {
     app.setDraftSelected(name)
     switchTab('data')
   }
+
+  // 迭代 126（#308）：帮助文章「去界面查看」深链入口——切页（经 switchTab 统一入口，继承设计器
+  // 离开守卫）＋轮询等待锚点就位；帮助页入口仅 client 构建存在，server 构建无生产者（AC-07）。
+  const openHelpInUi = (target: TabId, anchor: string) => {
+    setHelpAnchorPending(anchor)
+    setStatus(t('help:deepLink.pending'))
+    switchTab(target)
+  }
+
+  // 深链锚点轮询（Guide.tsx 同款 80ms/4s 口径）：锚点出现 → 转 ready 交目标页自动弹出；
+  // 超时 → 通用降级提示（不指认单一原因：未打开模板 / 未选中元素 / 类型不含目标分组 / 对齐组需
+  // 多选 / 预览锁定等一切条件渲染分支同此提示——help.deepLink.timeout 词条口径）。
+  useEffect(() => {
+    if (!helpAnchorPending) return
+    const anchor = helpAnchorPending
+    const selector = helpAnchorSelector(anchor)
+    const startedAt = Date.now()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const poll = () => {
+      if (document.querySelector(selector)) {
+        setHelpAnchorPending(null)
+        setHelpAnchorReady(anchor)
+        setStatus('')
+        return
+      }
+      if (Date.now() - startedAt < HELP_ANCHOR_POLL_MAX_MS) timer = setTimeout(poll, HELP_ANCHOR_POLL_MS)
+      else {
+        setHelpAnchorPending(null)
+        setStatus(t('help:deepLink.timeout'))
+      }
+    }
+    poll()
+    return () => clearTimeout(timer)
+    // setStatus 为 AppContext 稳定 useCallback，不随渲染换引用；t 仅语言切换时变化（重启轮询无害）
+  }, [helpAnchorPending, setStatus, t])
+
+  const handleHelpAnchorDone = () => setHelpAnchorReady(null)
 
   const tabs = (isServerUi ? SERVER_TABS : CLIENT_TABS).map(({ id, labelKey, icon }) => ({
     id,
@@ -205,7 +252,14 @@ function Shell() {
         <main className="main">
           {tab === 'workbench' && <Workbench onOpenDesigner={openDesigner} onOpenPrint={openPrintFromTemplate} />}
           {tab === 'designer' && designerReq && (
-            <Designer key={designerReq.name ?? 'new'} request={designerReq} onClose={closeDesigner} registerLeaveGuard={registerDesignerLeave} />
+            <Designer
+              key={designerReq.name ?? 'new'}
+              request={designerReq}
+              onClose={closeDesigner}
+              registerLeaveGuard={registerDesignerLeave}
+              helpAnchor={helpAnchorReady}
+              onHelpAnchorDone={handleHelpAnchorDone}
+            />
           )}
           {tab === 'designer' && !designerReq && <DesignerEmpty onNew={() => openDesigner({ kind: 'new' })} />}
           {/* 迭代 85（#133 C-5）：数据与打印进度区的「作业历史」指引可点击跳转（经 switchTab 统一入口） */}
@@ -214,7 +268,9 @@ function Shell() {
           {tab === 'jobs' && <JobHistory />}
           {tab === 'packages' && <DownloadCenter />}
           {tab === 'plugin-packages' && <PluginPackages />}
-          {tab === 'settings' && <Settings />}
+          {tab === 'settings' && <Settings helpAnchor={helpAnchorReady} onHelpAnchorDone={handleHelpAnchorDone} />}
+          {/* 迭代 126（#308）：帮助页（文档底座）——help tab 仅 CLIENT_TABS，server 构建不可达 */}
+          {tab === 'help' && <Help onOpenInUi={openHelpInUi} />}
         </main>
       </div>
 

@@ -435,8 +435,6 @@ export function TransportPanel() {
         </button>
         {result && <span className={result.ok ? 'badge ok' : 'badge err'}>{result.msg}</span>}
       </div>
-
-      <div className="hint">{t('transportForm.hint')}</div>
     </div>
   )
 }

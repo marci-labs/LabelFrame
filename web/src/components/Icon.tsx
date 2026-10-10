@@ -8,7 +8,7 @@ export type IconName =
   | 'retry' | 'test' | 'link' | 'printer' | 'clear' | 'layers'
   | 'check' | 'x' | 'search' | 'file' | 'grid' | 'zoom' | 'save'
   | 'back' | 'preview' | 'copy' | 'clipboard' | 'alert' | 'keyboard'
-  | 'puzzle' | 'chevron' | 'more' | 'guide'
+  | 'puzzle' | 'chevron' | 'more' | 'guide' | 'help'
 
 const PATHS: Record<IconName, React.ReactNode> = {
   workbench: (
@@ -135,6 +135,16 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <circle cx="12" cy="12" r="9" />
       <path d="M9.4 9.3a2.7 2.7 0 0 1 5.2.9c0 1.8-2.6 2.2-2.6 3.8" />
       <path d="M12 17.2h.01" strokeWidth={2.6} />
+    </>
+  ),
+  // 迭代 126（#308）：书本底问号（帮助页导航与「?」文档点；书本底与「使用引导」的圆圈问号区分，
+  // 防两个不同入口同形混淆——拍板评审①）
+  help: (
+    <>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <path d="M10.1 8.6a2.4 2.4 0 0 1 4.7.8c0 1.6-2.4 2-2.4 3.4" />
+      <path d="M12.4 15.6h.01" strokeWidth={2.6} />
     </>
   ),
 }

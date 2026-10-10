@@ -425,6 +425,85 @@ label.field > .input, label.field > select.input { width: 100%; }
 .guide-bubble-foot { margin-top: 12px; display: flex; align-items: center; gap: 8px; }
 .guide-flex { flex: 1; }
 
+/* ---------- 帮助体系（迭代 126 / #308，决策 #176）：「?」文档点＋就地文档气泡＋帮助页 ---------- */
+/* 文档点：分组 / 卡片标题行尾 ghost 圆形小按钮（data-help 语义锚点在按钮上）；
+   气泡：portal 到 body、fixed 由组件内联注入；z-index 90 与 .popover 同层
+   （低于 modal-mask 100、低于 guide-layer 110——帮助气泡之上可再弹确认框）；
+   宽 ~380px＋max-height 40vh 滚动兜底 en 词条 1.5~2 倍长度（#164⑦/#225 前科） */
+.help-dot {
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.help-dot:hover { color: var(--accent); background: var(--bg); }
+.help-dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.help-bubble {
+  width: 380px;
+  max-width: calc(100vw - 16px);
+  max-height: 40vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(23, 31, 41, 0.24);
+  padding: 13px 16px 12px;
+  animation: popIn 150ms ease-out;
+  z-index: 90;
+}
+.help-bubble-title { font-size: 14px; font-weight: 600; }
+.help-bubble-body { margin-top: 6px; font-size: 12.5px; line-height: 1.65; color: var(--ink-2); }
+.help-bubble-foot { margin-top: 12px; display: flex; align-items: center; gap: 8px; }
+.help-bubble-hint { font-size: 12px; line-height: 1.5; color: var(--ink-3); }
+/* 演示期间画布只读（拍板 4 方案 A）：pointer-events 收敛——选中 / 拖拽 / 缩放 / 滚轮 / 拖入全不响应，
+   画布与气泡仍可见；不拦 Konva 事件本身，规避拖拽状态清理被破坏（#308 方案风险条目） */
+.canvas-locked { pointer-events: none; }
+/* 帮助页（拍板 1：顶部功能索引卡＋文章单栏 ~760px） */
+.help-index {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  align-content: start;
+  padding: 16px;
+}
+.help-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.help-card:hover { border-color: var(--accent); box-shadow: var(--shadow-1); }
+.help-card-title { font-size: 14px; font-weight: 600; }
+.help-card-desc { font-size: 12.5px; color: var(--ink-2); line-height: 1.6; }
+.help-article {
+  flex: 1;
+  overflow-y: auto;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 4px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.help-article-intro { font-size: 13px; line-height: 1.8; color: var(--ink-2); }
+.help-topic h3 { margin: 0 0 6px; font-size: 13.5px; font-weight: 600; }
+.help-topic p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.8; color: var(--ink-2); }
+
 /* ---------- 工作台模板预览（迭代 46，修订：预览列内嵌缩略图 + 点击放大） ---------- */
 /* 缩略图（单元格内）：等比缩到 40px 高，点击放大 */
 .preview-thumb {

@@ -7,8 +7,7 @@
     "title": "Language",
     "label": "Interface language",
     "zhOption": "中文",
-    "enOption": "English",
-    "hint": "Switching takes effect immediately and is saved in this browser; the first launch follows the browser language."
+    "enOption": "English"
   },
   "serverAddress": {
     "title": "Server Address",
@@ -24,8 +23,7 @@
     "saveOk": "Saved to this machine's configuration and applied immediately.",
     "saveFallback": "The installed client is older: the address was saved in this browser (upgrading the client is recommended).",
     "statusSaved": "Server address saved and applied: {{url}}.",
-    "statusFallback": "The local configuration endpoint is unavailable; saved in this browser instead.",
-    "hint": "The server stores all templates and print records; the address is usually configured automatically by the installer. To change it, confirm with your administrator first. Changes take effect immediately and persist across restarts; without a server you can still print directly on this machine (standalone mode)."
+    "statusFallback": "The local configuration endpoint is unavailable; saved in this browser instead."
   },
   "transport": {
     "title": "Connection",
@@ -118,7 +116,6 @@
     "uninstall": "Uninstall",
     "uninstalling": "Uninstalling…",
     "uninstallTitle": "Uninstall this plugin (effective after client restart)",
-    "hint": "Restart the client after installing / uninstalling plugins for changes to take effect.",
     "overwriteModal": {
       "title": "Overwrite Plugin",
       "confirm": "Overwrite Install",
@@ -146,7 +143,6 @@
     "applying": "Applying…",
     "save": "Save and Apply",
     "switched": "Connection switched: {{message}}",
-    "saveFailed": "Failed to save the connection.",
-    "hint": "Switching happens only after \"Test Connection\" passes; on failure the reason is shown and the current connection is kept. After saving, the same connection is used after restart."
+    "saveFailed": "Failed to save the connection."
   }
 }

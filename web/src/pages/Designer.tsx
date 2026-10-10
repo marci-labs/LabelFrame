@@ -23,6 +23,7 @@ import { deriveFieldInfos } from '../lib/design/fields'
 import { createHistory } from '../lib/design/history'
 import { r2 } from '../lib/design/geometry'
 import { exportDesign, parseDesign } from '../lib/design/format'
+import { HELP_DEMO_PRESETS } from '../lib/help'
 import i18next from '../i18n'
 import { capturePasteOnce, copyText, readClipboardText } from '../lib/clipboard'
 import { applyContractDisplayNames, fromBackendElements, toContract, toLayout } from '../lib/design/convert'
@@ -36,9 +37,12 @@ interface DesignerProps {
   onClose: () => void
   /** 迭代 92（#150 F-02）：向 Shell 注册离开守卫（导航 tab 切换拦截：dirty 时弹三选 Modal 挂起本次切换）；卸载自动注销。 */
   registerLeaveGuard?: (fn: ((leave: () => void) => void) | null) => void
+  /** 帮助文章深链信号（Shell 已轮询确认锚点在 DOM）——经 PropsPanel 自动弹出对应文档点气泡。 */
+  helpAnchor?: string | null
+  onHelpAnchorDone?: () => void
 }
 
-export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps) {
+export function Designer({ request, onClose, registerLeaveGuard, helpAnchor, onHelpAnchorDone }: DesignerProps) {
   const app = useApp()
   // 迭代 112（#246）：设计器文案 key 化（designer 域）；数据性默认值（分组「默认」）随界面语言（待决议-1）
   const { t } = useTranslation('designer')
@@ -61,6 +65,12 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
   const [loadError, setLoadError] = useState<string | null>(null)
   // 迭代 92（#150 F-02）：未保存离开保护——三选 Modal（保存并离开 / 放弃更改 / 继续编辑）
   const [leaveGuardOpen, setLeaveGuardOpen] = useState(false)
+  // 迭代 126（#308 AC-05）：「看实时效果」演示——显示层 override（记录演示文档点锚点），
+  // 仅合并进 viewElements 喂画布与属性面板；不写 stateRef / historyRef → 不进历史栈、不置
+  // dirty、doSave 读 stateRef 不含注入值（零落库零写请求的结构性保证）；退出 = 清锚点即还原。
+  const [demoAnchor, setDemoAnchor] = useState<string | null>(null)
+  const demoPatch = demoAnchor ? HELP_DEMO_PRESETS[demoAnchor] : undefined
+  const demoActive = demoPatch !== undefined
 
   const stateRef = useRef<DesignState | null>(null)
   const historyRef = useRef<ReturnType<typeof createHistory<DesignState>> | null>(null)
@@ -394,6 +404,8 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     const onKey = (ev: KeyboardEvent) => {
       const s = stateRef.current
       if (!s) return
+      // 演示期间快捷键全停（拍板 4 方案 A）：撤销 / 删除 / 粘贴等都会写 stateRef，绕过锁输入
+      if (demoActive) return
       const tag = ev.target instanceof HTMLElement ? ev.target.tagName : ''
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
       const ctrl = ev.ctrlKey || ev.metaKey
@@ -443,7 +455,7 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [viewMode, pendingType, app, doExportDesign, doImportDesign, undo, redo, copySelected, pasteClipboard, deleteElements, t])
+  }, [viewMode, pendingType, demoActive, app, doExportDesign, doImportDesign, undo, redo, copySelected, pasteClipboard, deleteElements, t])
 
   // ---------- 预览 ----------
   const togglePreview = useCallback(() => {
@@ -573,6 +585,18 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
 
   const fields = useMemo(() => (state ? deriveFieldInfos(state.elements) : []), [state])
 
+  // 演示视图（AC-05）：override 只合并进「渲染视图」state——画布（预览值本就画布渲染）与属性面板
+  // 实时反映示例值；SidePanel 图层列表与「测试默认值」页签保持原始 state（有意边界：演示不影响
+  // 派生链路，防注入值写入 previewDefaults 相关链路破坏零落库论断——#308 方案评审明示）。
+  const viewState = useMemo<DesignState | null>(() => {
+    if (!state || !demoPatch) return state
+    const targetId = selectedRef.current[0]
+    return {
+      ...state,
+      elements: state.elements.map((el) => (el.id === targetId ? ({ ...el, ...demoPatch } as DesignElement) : el)),
+    }
+  }, [state, demoPatch])
+
   // 测试默认值只读预览：与后端 SaveAsync 派生语义一致（遍历元素，后出现覆盖先出现）
   const previewDefaults = useMemo(() => {
     if (!state) return null
@@ -682,33 +706,36 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
         </div>
       )}
 
-      {state && (
+      {state && viewState && (
         <div className="designer-body">
+          {/* 演示期间（demoActive）左栏与画布编辑全禁用：回调整体换 no-op（写入侧结构性兜底，
+              拍板 4 方案 A）；图层列表仍显示原始 elements（演示有意边界，见 viewState 注释） */}
           <SidePanel
             elements={state.elements}
             selected={selected}
             viewMode={viewMode}
             pendingType={pendingType}
             fields={fields}
-            onPickType={(t) => setPendingType(t)}
-            onSelect={(id, toggle) => handleSelect([id], toggle)}
-            onMoveLayer={moveLayer}
-            onLayerTop={layerToTop}
-            onLayerBottom={layerToBottom}
-            onDelete={deleteElements}
+            onPickType={demoActive ? () => {} : (t) => setPendingType(t)}
+            onSelect={demoActive ? () => {} : (id, toggle) => handleSelect([id], toggle)}
+            onMoveLayer={demoActive ? () => {} : moveLayer}
+            onLayerTop={demoActive ? () => {} : layerToTop}
+            onLayerBottom={demoActive ? () => {} : layerToBottom}
+            onDelete={demoActive ? () => {} : deleteElements}
           />
           <CanvasViewport
-            state={state}
+            state={viewState}
             selected={selected}
             viewMode={viewMode}
             dpi={dpi}
             zoom={zoom}
             gridOn={gridOn}
             pendingType={pendingType}
-            onSelect={handleSelect}
-            onAddElement={addElementAt}
-            onUpdateElements={applyElements}
-            onCommit={commitNow}
+            locked={demoActive}
+            onSelect={demoActive ? () => {} : handleSelect}
+            onAddElement={demoActive ? () => {} : addElementAt}
+            onUpdateElements={demoActive ? () => {} : applyElements}
+            onCommit={demoActive ? () => {} : commitNow}
             onZoomChange={setZoom}
           />
           <aside className="designer-right">
@@ -723,12 +750,17 @@ export function Designer({ request, onClose, registerLeaveGuard }: DesignerProps
             {rightTab === 'props' ? (
               <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 <PropsPanel
-                  elements={state.elements}
+                  elements={viewState.elements}
                   selected={selected}
                   viewMode={viewMode}
-                  onChange={changeElement}
-                  onAlign={alignSelected}
-                  onDelete={deleteElements}
+                  onChange={demoActive ? () => {} : changeElement}
+                  onAlign={demoActive ? () => {} : alignSelected}
+                  onDelete={demoActive ? () => {} : deleteElements}
+                  demoActive={demoActive}
+                  onDemoStart={setDemoAnchor}
+                  onDemoExit={() => setDemoAnchor(null)}
+                  autoOpenAnchor={helpAnchor}
+                  onAutoOpenHandled={onHelpAnchorDone}
                 />
               </div>
             ) : (

@@ -768,3 +768,27 @@ describe('打印批次（迭代 24 §4.4）', () => {
     expect(screen.queryByLabelText('开启批次作业')).toBeNull()
   })
 })
+
+describe('组件级「?」文档点（迭代 126 · #308 AC-03）', () => {
+  it('7 张卡片标题挂「?」（data-help 语义锚点）', async () => {
+    renderSettings()
+    await screen.findByLabelText('服务端地址')
+    for (const a of ['settings.language', 'settings.serverAddress', 'settings.transport', 'settings.batch', 'settings.printer', 'settings.updates', 'settings.plugins']) {
+      expect(document.querySelector('[data-help="' + a + '"]')).toBeTruthy()
+    }
+  })
+
+  it('点「?」弹出对应卡片文档气泡，Esc 关闭；连接方式卡「?」不触发折叠连带（stopPropagation）', async () => {
+    renderSettings()
+    await screen.findByLabelText('服务端地址')
+    const transportDot = document.querySelector('[data-help="settings.transport"]') as HTMLButtonElement
+    expect(transportDot).toBeTruthy()
+    fireEvent.click(transportDot)
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('连接方式')).toBeTruthy()
+    // 折叠面板未连带展开（面板头 onClick 被冒泡拦截）
+    expect(screen.queryByRole('button', { name: /保存并应用/ })).toBeNull()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})

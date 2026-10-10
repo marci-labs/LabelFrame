@@ -5,12 +5,16 @@
 
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import type { BarcodeElement, DesignElement, QrCodeElement, TextElement } from '../../lib/design/types'
 import { defaultElement } from '../../lib/design/types'
 import { deriveFieldInfos } from '../../lib/design/fields'
 import { PropsPanel } from './PropsPanel'
 import { SidePanel } from './SidePanel'
+
+// 迭代 126（#308）：「?」文档点用例为 client 构建语义断言（[data-help] 在场），显式注入 client 分支
+// （VITE_UI_MODE=server 整仓测试时保持稳定）；server 分支 dot() 为 null 由 HelpDot.server.test.tsx 专项守门
+vi.mock('../../lib/uiMode', () => ({ UI_MODE: 'client', isServerUi: false }))
 
 // ---------- 测试夹具（defaultElement 与控件栏新增元素的默认值一致） ----------
 
@@ -61,10 +65,10 @@ describe('文本元素属性', () => {
     expect((screen.getByLabelText('水平对齐') as HTMLSelectElement).value).toBe('Left')
     expect((screen.getByLabelText('垂直对齐') as HTMLSelectElement).value).toBe('middle')
     expect(screen.getByLabelText('自动换行')).toBeTruthy()
-    expect(screen.getByLabelText('加粗（打印更清晰）')).toBeTruthy()
+    expect(screen.getByLabelText('加粗')).toBeTruthy()
     // 通用组（位置 / 填充）也在
     expect(screen.getByLabelText('X')).toBeTruthy()
-    expect(screen.getByLabelText('固定值（立即渲染）')).toBeTruthy()
+    expect(screen.getByLabelText('固定值')).toBeTruthy()
     // 不出现条码 / 二维码参数组
     expect(screen.queryByLabelText('码制')).toBeNull()
     expect(screen.queryByLabelText('纠错级别')).toBeNull()
@@ -72,7 +76,7 @@ describe('文本元素属性', () => {
 
   it('固定值输入改值触发 onChange（属性变更驱动画布重绘）', () => {
     const { onChange } = renderProps([textEl], ['t1'])
-    fireEvent.change(screen.getByLabelText('固定值（立即渲染）'), { target: { value: '库位 B-02' } })
+    fireEvent.change(screen.getByLabelText('固定值'), { target: { value: '库位 B-02' } })
     expect(onChange).toHaveBeenCalledWith('t1', { text: '库位 B-02' })
   })
 
@@ -154,50 +158,98 @@ describe('字段填充（打印字段）', () => {
   it('字段模式：标题显示字段名徽标，字段名 / 预览值改值触发 onChange', () => {
     const { onChange } = renderProps([fieldTextEl], ['t2'])
     expect(screen.getByText('location')).toBeTruthy()
-    const key = screen.getByLabelText('字段名（打印时用数据填充）') as HTMLInputElement
+    const key = screen.getByLabelText('字段名') as HTMLInputElement
     expect(key.value).toBe('location')
     fireEvent.change(key, { target: { value: 'sku' } })
     expect(onChange).toHaveBeenCalledWith('t2', { key: 'sku' })
-    fireEvent.change(screen.getByLabelText('预览值（仅画布显示）'), { target: { value: 'B-02' } })
+    fireEvent.change(screen.getByLabelText('预览值'), { target: { value: 'B-02' } })
     expect(onChange).toHaveBeenCalledWith('t2', { text: 'B-02' })
   })
 
   it('显示名输入（迭代 83 · #131 决议 1）：字段模式渲染可选显示名，改值触发 onChange；未填时输入框为空', () => {
     const named: TextElement = { ...defaultElement('Text', 't3'), mode: 'field', key: 'location', displayName: '库位', text: 'A-01' }
     const { onChange } = renderProps([named], ['t3'])
-    const input = screen.getByLabelText('显示名（打印页显示，可选）') as HTMLInputElement
+    const input = screen.getByLabelText('显示名') as HTMLInputElement
     expect(input.value).toBe('库位')
     fireEvent.change(input, { target: { value: '货架位置' } })
     expect(onChange).toHaveBeenCalledWith('t3', { displayName: '货架位置' })
 
     cleanup()
     renderProps([fieldTextEl], ['t2'])
-    expect((screen.getByLabelText('显示名（打印页显示，可选）') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('显示名') as HTMLInputElement).value).toBe('')
   })
 
   it('固定值模式：不渲染字段名 / 显示名 / 预览值输入，也不显示字段填充提示（AC-03）', () => {
     renderProps([textEl], ['t1'])
-    expect(screen.queryByLabelText('字段名（打印时用数据填充）')).toBeNull()
-    expect(screen.queryByLabelText('显示名（打印页显示，可选）')).toBeNull()
-    expect(screen.queryByLabelText('预览值（仅画布显示）')).toBeNull()
+    expect(screen.queryByLabelText('字段名')).toBeNull()
+    expect(screen.queryByLabelText('显示名')).toBeNull()
+    expect(screen.queryByLabelText('预览值')).toBeNull()
     expect(screen.queryByText(/打印时从外界数据取/)).toBeNull()
   })
 
-  it('字段填充模式：显示字段填充提示（AC-03）', () => {
+  it('教学提示已迁文档点（迭代 126 · #308 AC-06）：字段填充模式不再渲染界面内 fillHint 行', () => {
     renderProps([fieldTextEl], ['t2'])
-    expect(screen.getByText(/打印时从外界数据取「字段名」对应字段填充/)).toBeTruthy()
+    expect(screen.queryByText(/打印时从外界数据取「字段名」对应字段填充/)).toBeNull()
+  })
+
+  it('A 档迁移负断言（AC-06）：旧括号教学提示串不再出现在面板任何位置', () => {
+    renderProps([fieldTextEl], ['t2'])
+    for (const legacy of ['（打印时用数据填充）', '（打印页显示，可选）', '（仅画布显示）', '（立即渲染）', '（打印更清晰）', '（mm，相对标签内容区）', '（通用）', '（以包围框为基准）']) {
+      expect(document.body.textContent).not.toContain(legacy)
+    }
   })
 
   it('措辞用户化（AC-02）：属性面板无「契约」字样直出，字段绑定控件为「字段名」措辞', () => {
     renderProps([fieldTextEl], ['t2'])
     expect(document.body.textContent).not.toContain('契约')
-    expect(screen.getByLabelText('字段名（打印时用数据填充）')).toBeTruthy()
+    expect(screen.getByLabelText('字段名')).toBeTruthy()
   })
 
   it('切回固定值：清空字段名与显示名（key: ""、displayName: undefined）', () => {
     const { onChange } = renderProps([fieldTextEl], ['t2'])
     fireEvent.change(screen.getByLabelText('来源'), { target: { value: 'literal' } })
     expect(onChange).toHaveBeenCalledWith('t2', { mode: 'literal', key: '', displayName: undefined })
+  })
+})
+
+describe('组件级「?」文档点（迭代 126 · #308 AC-03）', () => {
+  it('文本元素：位置 / 填充 / 边框内边距 / 文本字体四组标题挂「?」（data-help 语义锚点）', () => {
+    renderProps([fieldTextEl], ['t2'])
+    expect(document.querySelector('[data-help="designer.position"]')).toBeTruthy()
+    expect(document.querySelector('[data-help="designer.fill"]')).toBeTruthy()
+    expect(document.querySelector('[data-help="designer.box"]')).toBeTruthy()
+    expect(document.querySelector('[data-help="designer.text"]')).toBeTruthy()
+  })
+
+  it('条码 / 二维码 / 矩形 / 线 / 图片：各自类型分组挂对应「?」', () => {
+    renderProps([barcodeEl], ['b1'])
+    expect(document.querySelector('[data-help="designer.barcode"]')).toBeTruthy()
+    cleanup()
+    renderProps([qrEl], ['q1'])
+    expect(document.querySelector('[data-help="designer.qrcode"]')).toBeTruthy()
+    cleanup()
+    renderProps([{ ...defaultElement('Rect', 'r1') }], ['r1'])
+    expect(document.querySelector('[data-help="designer.rect"]')).toBeTruthy()
+    cleanup()
+    renderProps([{ ...defaultElement('Line', 'l1') }], ['l1'])
+    expect(document.querySelector('[data-help="designer.line"]')).toBeTruthy()
+    cleanup()
+    renderProps([{ ...defaultElement('Image', 'i1') }], ['i1'])
+    expect(document.querySelector('[data-help="designer.compat"]')).toBeTruthy()
+  })
+
+  it('多选：对齐组挂「?」；点「?」弹出就地文档气泡（词条与帮助文章同源）', () => {
+    renderProps([textEl, barcodeEl], ['t1', 'b1'])
+    const alignDot = document.querySelector('[data-help="designer.align"]') as HTMLButtonElement
+    expect(alignDot).toBeTruthy()
+    fireEvent.click(alignDot)
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toBeTruthy()
+    expect(within(dialog).getByText('对齐')).toBeTruthy()
+    expect(within(dialog).getByText(/多选至少 2 个元素时出现/)).toBeTruthy()
+    // Esc 关闭（与 Popover 同法）
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
 
