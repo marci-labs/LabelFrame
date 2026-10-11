@@ -13,6 +13,12 @@ import type { TabId } from '../state/types'
 // 组件级单测不经 App 引用链，显式 import 初始化 i18next 单例（语言包资源就位，词条断言可用）
 import '../i18n'
 
+// 迭代 129（#320）：本文件为 client 构建语义用例（五页集 / client 副标题 / settings 卡片），
+// 显式注入 client 分支——VITE_UI_MODE=server 整仓批次下 BUILD_HELP_PAGES 与副标题词条保持
+// client 折叠（循 Guide.test.tsx / JobHistory.test.tsx 先例）；server 页集纯函数面由本文件
+// 「构建页集过滤」用例覆盖，server 构建挂点守门见 HelpDot.server.test.tsx。
+vi.mock('../lib/uiMode', () => ({ UI_MODE: 'client', isServerUi: false }))
+
 afterEach(() => {
   cleanup()
   // hash 断言用例残留清理（jsdom location 跨用例共享）
