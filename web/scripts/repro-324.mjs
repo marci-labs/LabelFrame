@@ -3,15 +3,14 @@
 // 与 Konva 的 window mousemove 监听对接——jsdom 复刻两轮未覆盖的链路）→ 构造用户场景
 // （A 右下角与 B 左上角对齐 → shift 多选 → 拖动 → 松手）。
 // 用法：
-//   node scripts/repro-324.mjs probe     —— 定位模式：贴线松手场景，打印 window.__lf324 插桩日志
-//   node scripts/repro-324.mjs regress   —— 回归模式（默认）：三场景断言（贴线松手 / 空旷松手 / 连拖两段）
+//   node scripts/repro-324.mjs            —— 回归模式（默认）：三场景断言（贴线松手 / 空旷松手 / 连拖两段）
 // 依赖：web devDependencies 的 playwright-core（无浏览器下载），系统已装 Edge 或 Chrome。
 
 import { chromium } from 'playwright-core'
 import { spawn, execSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { dirname } from 'node:path'
 
 const WEB_ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const PORT = Number(process.env.LF_REPRO_PORT || 5199)
@@ -194,27 +193,7 @@ async function clearSelection(page, map) {
 
 const approxEq = (a, b, tol = 0.06) => Math.abs(a - b) <= tol
 
-// ---------- 模式一：probe（定位） ----------
-
-async function runProbe(browser) {
-  const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
-  await context.addInitScript(() => localStorage.setItem('labelframe.guide.client.v1', 'done')) // 跳过首见引导遮罩
-  const page = await context.newPage()
-  const map = await setupScenario(page)
-  await multiSelect(page)
-  await page.evaluate(() => {
-    window.__lf324 = { log: [] }
-  })
-  // 用户场景：贴线松手（联合盒中心线 x 30→51.3，落 50 参考线，吸附 −1.3mm）
-  await dragLeader(page, map, 21.3, 0)
-  const log = await page.evaluate(() => window.__lf324?.log ?? [])
-  console.log('[probe] 插桩日志条数:', log.length)
-  console.log(JSON.stringify(log, null, 1))
-  console.log('[probe] 插桩日志条数:', log.length)
-  console.log(JSON.stringify(log, null, 1))
-}
-
-// ---------- 模式二：regress（三场景回归） ----------
+// ---------- 回归（三场景） ----------
 
 function assert(cond, msg, failures) {
   if (!cond) failures.push(msg)
@@ -287,15 +266,13 @@ async function runRegress(browser) {
 
 // ---------- 入口 ----------
 
-const mode = process.argv[2] ?? 'regress'
 await startServer()
-console.log(`dev server 就绪：${BASE}（模式：${mode}）`)
+console.log(`dev server 就绪：${BASE}`)
 let browser
 let code = 0
 try {
   browser = await launchBrowser()
-  if (mode === 'probe') await runProbe(browser)
-  else code = await runRegress(browser)
+  code = await runRegress(browser)
 } finally {
   await browser?.close().catch(() => {})
   stopServer()

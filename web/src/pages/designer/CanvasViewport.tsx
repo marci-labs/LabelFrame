@@ -358,6 +358,7 @@ export function CanvasViewport(props: CanvasViewportProps) {
       }
     } else {
       multiDragRef.current = null
+      fakeDragRef.current.clear()
     }
   }
 
@@ -406,6 +407,7 @@ export function CanvasViewport(props: CanvasViewportProps) {
     const e = el ? elementById(p.state.elements, el.id()) : undefined
     if (!el || !e) {
       multiDragRef.current = null
+      fakeDragRef.current.clear()
       clearGuides()
       return
     }
