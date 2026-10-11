@@ -335,6 +335,15 @@ async function deepLinkFromHelp(sectionTopicId: string) {
 }
 
 describe('client 构建 · 帮助深链 sub 段（#316 · 决策 #178）', () => {
+  it('原型链属性名 sub 段不崩溃不误触发：#/designer/toString 挂载 → 设计器空态、不自动开草稿（Object.hasOwn 回归，评审实证缺陷）', async () => {
+    window.location.hash = '#/designer/toString'
+    render(<App />)
+    // 'toString'/'constructor' 等经 in 判定为真会取到原型链函数 → .map 抛 TypeError 渲染崩溃；
+    // Object.hasOwn 后：非自有键不触发自动开草稿——初始解析 page=designer 落空态（不被示例草稿取代）
+    expect(await screen.findByText('尚未打开模板')).toBeTruthy()
+    expect(screen.queryByDisplayValue('100')).toBeNull()
+  })
+
   it('「去界面查看」→ #/designer/designer.fill：自动开示例草稿＋示例元素选中＋气泡弹出＋draftOpened 终态；未编辑退出静默弃（AC-03）', async () => {
     render(<App />)
     await screen.findByText(PAGE_MARKER.workbench)

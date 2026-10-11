@@ -187,7 +187,7 @@ export function Designer({ request, onClose, registerLeaveGuard, helpAnchor }: D
       // 未编辑退出静默弃、用户编辑后三选守卫照常）；「不落库零业务数据」重解释＝自动机制零写请求
       // ＋用户显式命名保存属正常草稿行为（#178 记录，偏离 Issue 约束句「不写 stateRef 保存链」的
       // 理由：纯显示层注入 ⇒ undoCount=0 ⇒ 「退出即弃带未保存守卫」永不触发的内在矛盾）。
-      const linkAnchor = helpAnchor && helpAnchor in HELP_LINK_ELEMENTS ? helpAnchor : null
+      const linkAnchor = helpAnchor && Object.hasOwn(HELP_LINK_ELEMENTS, helpAnchor) ? helpAnchor : null
       const samples = linkAnchor ? buildHelpLinkElements(linkAnchor) : []
       init({ paperW: 100, paperH: 60, elements: samples })
       if (linkAnchor) {

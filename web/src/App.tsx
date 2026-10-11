@@ -182,7 +182,8 @@ function Shell() {
   useEffect(() => {
     if (isServerUi) return
     if (tab !== 'designer' || designerReq) return
-    if (!route.sub || !(route.sub in HELP_LINK_ELEMENTS)) return
+    // Object.hasOwn 防 'toString' 等原型链属性名经 sub 段合法进入后 in 判定为真、取值非数组致渲染崩溃（评审实证）
+    if (!route.sub || !Object.hasOwn(HELP_LINK_ELEMENTS, route.sub)) return
     openDesigner({ kind: 'new' })
     // openDesigner 为本组件内闭包（setDesignerReq + setTab 稳定引用）；触发后 designerReq 置位即自停
     // eslint-disable-next-line react-hooks/exhaustive-deps
