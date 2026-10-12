@@ -28,6 +28,12 @@ public sealed class TrayIconService : IDisposable
     /// <summary>程序集内嵌托盘图标资源名（csproj LogicalName 固定，勿随默认命名空间漂移）。</summary>
     internal const string TrayIconResourceName = "LabelFrame.brand.tray-white.ico";
 
+    /// <summary>
+    /// explorer 重启后系统广播的消息号（重启会销毁全部托盘图标，收到即须重新 NIM_ADD，
+    /// 否则图标永久消失——窗口隐藏型应用将彻底失联）。
+    /// </summary>
+    private static readonly uint TaskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct NOTIFYICONDATA
     {
@@ -108,6 +114,9 @@ public sealed class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     private static extern int GetSystemMetrics(int nIndex);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern uint RegisterWindowMessage(string lpString);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
@@ -119,6 +128,7 @@ public sealed class TrayIconService : IDisposable
     private readonly TrayMenuPresenter _menuPresenter;
     private IntPtr _hwnd;
     private WndProcDelegate? _wndProc; // 防止委托被 GC
+    private NOTIFYICONDATA _activeNid; // 托盘线程内：NIM_ADD 后登记、NIM_DELETE 后清空（cbSize=0），TaskbarCreated 据此重注册
     private int _disposed;
 
     /// <summary>创建托盘服务（可选日志回调；quitSignaler / menuPresenter 可注入观测替身，默认自建）。</summary>
@@ -181,6 +191,8 @@ public sealed class TrayIconService : IDisposable
                 szTip = "LabelFrame 标签打印",
             };
             Shell_NotifyIcon(NIM_ADD, ref nid);
+            _activeNid = nid;
+            _log?.Invoke($"托盘就绪（TaskbarCreated 消息号 = {TaskbarCreatedMessage}）。");
 
             // 登记托盘线程（缺陷 #58）：Dispose 据此投递 WM_QUIT——消息循环退出后在托盘线程内执行 NIM_DELETE
             _quitSignaler.RegisterLoopThread(GetCurrentThreadId(), Thread.CurrentThread);
@@ -192,6 +204,7 @@ public sealed class TrayIconService : IDisposable
             }
 
             Shell_NotifyIcon(NIM_DELETE, ref nid);
+            _activeNid = default;
             if (_hwnd != IntPtr.Zero)
             {
                 DestroyWindow(_hwnd);
@@ -250,6 +263,22 @@ public sealed class TrayIconService : IDisposable
             else if (mouseMsg == WM_LBUTTONDBLCLK)
             {
                 openUi();
+            }
+
+            return IntPtr.Zero;
+        }
+
+        if (msg == TaskbarCreatedMessage)
+        {
+            if (_activeNid.cbSize != 0)
+            {
+                _log?.Invoke("收到 TaskbarCreated（explorer 重启），重新注册托盘图标。");
+                var nid = _activeNid;
+                Shell_NotifyIcon(NIM_ADD, ref nid);
+            }
+            else
+            {
+                _log?.Invoke($"收到 TaskbarCreated（消息号 {TaskbarCreatedMessage}）但无活动托盘项，忽略。");
             }
 
             return IntPtr.Zero;
