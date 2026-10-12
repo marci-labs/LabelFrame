@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Runtime.InteropServices;
 
 namespace LabelFrame.WinHost;
@@ -5,6 +6,7 @@ namespace LabelFrame.WinHost;
 /// <summary>
 /// 系统托盘图标（原生 P/Invoke 实现，无 WinForms 依赖）。
 /// 隐藏窗口接收 Shell_NotifyIcon 回调：右键菜单（打开界面 / 退出）、双击打开界面。
+/// 图标用程序集内嵌的白色托盘变体（深色任务栏可辨；加载失败回退 exe 应用图标）。
 /// </summary>
 public sealed class TrayIconService : IDisposable
 {
@@ -19,7 +21,12 @@ public sealed class TrayIconService : IDisposable
     private const uint WM_RBUTTONUP = 0x0205;
     private const uint WM_QUIT = 0x0012;
 
+    private const int SM_CXSMICON = 49;
+
     private const string WindowClass = "LabelFrameTrayWindow";
+
+    /// <summary>程序集内嵌托盘图标资源名（csproj LogicalName 固定，勿随默认命名空间漂移）。</summary>
+    internal const string TrayIconResourceName = "LabelFrame.brand.tray-white.ico";
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct NOTIFYICONDATA
@@ -98,6 +105,9 @@ public sealed class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     private static extern IntPtr LoadIcon(IntPtr hInstance, IntPtr lpIconName);
 
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
@@ -156,7 +166,10 @@ public sealed class TrayIconService : IDisposable
                 return;
             }
 
-            var icon = LoadIcon(instance, new IntPtr(0x7F00)); // IDI_APPLICATION
+            // 白色托盘变体持有至 NIM_DELETE（Icon 释放即销毁 HICON，图标期间句柄必须存活）；
+            // 加载失败回退 exe 应用图标（彩色版），托盘功能不受资源问题影响
+            using var trayIcon = TryLoadTrayIcon(_log);
+            var icon = trayIcon?.Handle ?? LoadIcon(instance, new IntPtr(0x7F00)); // IDI_APPLICATION
             var nid = new NOTIFYICONDATA
             {
                 cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
@@ -189,6 +202,39 @@ public sealed class TrayIconService : IDisposable
         {
             // 托盘异常只记录日志，不让宿主进程崩溃（WinExe 无窗口，用户看不到错误弹窗）
             _log?.Invoke($"托盘服务异常：{ex}");
+        }
+    }
+
+    /// <summary>
+    /// 加载内嵌托盘变体图标：按系统托盘槽尺寸（SM_CXSMICON，随 DPI）让 GDI+ 选最接近帧。
+    /// 资源缺失 / 解析失败返回 null（调用方回退应用图标），任何异常不外抛。
+    /// </summary>
+    internal static Icon? TryLoadTrayIcon(Action<string>? log = null)
+    {
+        try
+        {
+            var stream = typeof(TrayIconService).Assembly.GetManifestResourceStream(TrayIconResourceName);
+            if (stream is null)
+            {
+                log?.Invoke($"托盘图标资源缺失（{TrayIconResourceName}），回退应用图标。");
+                return null;
+            }
+
+            using (stream)
+            {
+                var size = GetSystemMetrics(SM_CXSMICON);
+                if (size <= 0)
+                {
+                    size = 16;
+                }
+
+                return new Icon(stream, new Size(size, size));
+            }
+        }
+        catch (Exception ex)
+        {
+            log?.Invoke($"托盘图标加载失败，回退应用图标：{ex.Message}");
+            return null;
         }
     }
 
