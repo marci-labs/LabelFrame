@@ -195,7 +195,7 @@
 - net48 版 WinHost（Win7 / Win8 老电脑，尽量兼容）。
 - `ci.yml` / `release.yml` 的 actions 升级（checkout@v7 / setup-dotnet@v6，同款 Node 20 弃用警告清理——迭代 99 只动了 nightly-perf.yml，门禁 / 发版链路敏感，另行小迭代）。
 - WMS 模板下发（复用模板包格式）。
-- 其他打印机指令集（TSPL / CPCL）。
+- 其他打印机指令集（TSPL 已随迭代 143～144 交付 Windows 端；CPCL 等出现真实需求再议）。
 - PDA 蓝牙传输（原 P1；2026-09-07 Niimbot 专用插件迭代已放弃而降级——PDA 宿主走 IP 打印、不依赖蓝牙，出现真实蓝牙打印机需求时按传输插件接入）。
 - 打印历史统计。
 - 多打印机并行。
