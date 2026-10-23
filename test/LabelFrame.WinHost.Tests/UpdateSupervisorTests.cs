@@ -9,6 +9,7 @@ using Xunit;
 namespace LabelFrame.WinHost.Tests;
 
 /// <summary>独立监督进程的提交门与原用户恢复验证。</summary>
+[Collection(nameof(NativeUpdateTestGroup))]
 public sealed class UpdateSupervisorTests
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -49,7 +50,7 @@ public sealed class UpdateSupervisorTests
             await File.WriteAllTextAsync(result, "{}");
             var output = Path.Combine(root, "child.json");
             var escapedOutput = output.Replace("'", "''", StringComparison.Ordinal);
-            var script = $"$j = @{{ parentAlive = [bool](Get-Process -Id {parent.Id} -ErrorAction SilentlyContinue); user = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value }} | ConvertTo-Json; [IO.File]::WriteAllText('{escapedOutput}.tmp', $j); [IO.File]::Move('{escapedOutput}.tmp', '{escapedOutput}')";
+            var script = $"$j = @{{ parentAlive = [bool](Get-Process -Id {parent.Id} -ErrorAction SilentlyContinue); user = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value; childProcessId = $PID }} | ConvertTo-Json; [IO.File]::WriteAllText('{escapedOutput}.tmp', $j); [IO.File]::Move('{escapedOutput}.tmp', '{escapedOutput}')";
             var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
             var ready = Path.Combine(root, "ready");
             await UpdateSupervisor.LaunchAsync(UpdateSupervisor.RelaunchScript, new { pid = parent.Id,
@@ -65,6 +66,13 @@ public sealed class UpdateSupervisorTests
             using var identity = WindowsIdentity.GetCurrent();
             Assert.Equal(identity.User?.Value, child.RootElement.GetProperty("user").GetString());
             Assert.False(File.Exists(Path.Combine(root, "failure.txt")));
+            try
+            {
+                using var launched = Process.GetProcessById(child.RootElement.GetProperty("childProcessId").GetInt32());
+                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                await launched.WaitForExitAsync(deadline.Token);
+            }
+            catch (ArgumentException) { }
         }
         finally { Directory.Delete(root, true); }
     }
@@ -91,3 +99,7 @@ public sealed class UpdateSupervisorTests
         }
     }
 }
+
+/// <summary>串行运行原生更新验证，避免进程冷启动干扰打印时序回归。</summary>
+[CollectionDefinition(nameof(NativeUpdateTestGroup), DisableParallelization = true)]
+public sealed class NativeUpdateTestGroup { }

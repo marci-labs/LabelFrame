@@ -5,6 +5,7 @@ using Xunit;
 namespace LabelFrame.WinHost.Tests;
 
 /// <summary>真实 MSI 的完整签名、产品读取与篡改拒绝验证。</summary>
+[Collection(nameof(NativeUpdateTestGroup))]
 public sealed class WindowsPackageInspectorTests
 {
     [Fact]

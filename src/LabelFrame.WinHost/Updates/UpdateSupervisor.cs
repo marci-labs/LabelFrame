@@ -49,7 +49,7 @@ internal static class UpdateSupervisor
           [IO.File]::WriteAllText($d.ready, 'ready')
           $p = Get-Process -Id $d.pid -ErrorAction SilentlyContinue
           if ($p -and $p.StartTime.ToUniversalTime().Ticks -eq $d.start) {
-            if (!$p.WaitForExit(30000)) { exit }
+            if (!$p.WaitForExit(180000)) { exit }
           }
           $deadline = [DateTime]::UtcNow.AddMinutes(20)
           while (!(Test-Path -LiteralPath $d.result)) {
@@ -108,6 +108,7 @@ internal static class UpdateSupervisor
             if (DateTime.UtcNow >= deadline) throw new IOException("更新监督进程 60 秒内未就绪，客户端继续运行。");
             await Task.Delay(50, ct);
         }
+        if (child.HasExited) throw new IOException("更新监督进程在就绪确认前已退出，客户端继续运行。");
     }
 
     internal static string QuoteArgument(string value)

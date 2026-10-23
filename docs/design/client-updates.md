@@ -31,6 +31,8 @@ Client MSI 安装 `LabelFrameClientUpdater` Windows 服务，入口只运行更�
 
 每个安装请求最长 3 分钟准备，包最大 64 MiB；监督进程首次冷启动最多等待 60 秒取得真实就绪文件，提前退出或到期未就绪均失败，不以进程创建成功代替就绪。未保留的失败上传立即删除，完成事务保留最近四个，加上当前事务最多五组包和日志。安装结果原子落盘，原用户等待器最长等待 20 分钟，超时显示错误并留文件，不强杀仍在运行的 Windows Installer。安装失败版本标识持久化，重启后仍需人工明确重试。
 
+原用户等待器取得就绪文件后仍须存活，最多等待旧父进程 3 分钟，覆盖冷启动与提交准备耗时；旧客户端没有退出则等待器自行结束，不强制退出客户端。
+
 ## 恢复与真实健康
 
 安装前保存版本、连接方式、已加载插件及服务端的健康快照。重启后先保持业务门闩，再验证实际宿主版本、本地 API、插件 loaded/loadError、原连接未变成 Log、路由重新注册；通过后解除维护并回报成功。检测到旧版完整恢复时报告安装失败并恢复原业务；版本/插件/连接异常则保持业务保护并显示需管理员修复，不能以模拟打印作为更新成功。
@@ -70,3 +72,4 @@ Client MSI 安装 `LabelFrameClientUpdater` Windows 服务，入口只运行更�
 - [Microsoft：CryptSIPGetSignedDataMsg](https://learn.microsoft.com/en-us/windows/win32/api/mssip/nf-mssip-cryptsipgetsigneddatamsg)、[CryptSIPVerifyIndirectData](https://learn.microsoft.com/en-us/windows/win32/api/mssip/nf-mssip-cryptsipverifyindirectdata)：取签名与验证包摘要分开执行。
 - [osslsigncode 官方源码](https://github.com/mtrojnar/osslsigncode)、[msiinfo 手册](https://manpages.debian.org/testing/msitools/msiinfo.1.en.html)：Linux MSI 验签与元数据读取，不依赖文件名。
 - 测试覆盖发布权限/暂停范围/不可覆盖、损坏和重放、策略窗口/忙态延期、保护目录/协议边界、安装结果与健康失败；真实浏览器取证。完整标准用户静默 MSI 与真实插件恢复在隔离 Windows 验收，权限不足时明确欠账，不在现有工作客户端试装。
+- 真实 MSI/监督子进程回归在测试程序集中串行运行，避免原生冷启动与打印时序用例争抢调度；仍执行真实签名、父进程退出和用户身份断言。
