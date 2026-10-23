@@ -109,7 +109,7 @@ curl -X POST http://<服务器>:53961/api/jobs \
 ```bash
 dotnet build LabelFrame.slnx        # 构建
 dotnet test LabelFrame.slnx --filter "FullyQualifiedName!~Perf&FullyQualifiedName!~Soak"  # 日常测试
-cd web && pnpm install && pnpm dev  # 前端开发（连本机 WinHost）
+cd web && pnpm install --frozen-lockfile && pnpm dev  # 前端开发（连本机 WinHost）
 ```
 
 - 无打印机验证打印闭环：`powershell -ExecutionPolicy Bypass -File .\scripts\demo-winhost.ps1`。
