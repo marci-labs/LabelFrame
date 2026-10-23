@@ -164,5 +164,5 @@
 15. **多源回退只作用远程载荷**：`PayloadContainerId` 非空的伴生内嵌载荷经容器解压获取，与下载源无关——不得纳入失败计数与换源（否则缓存命中 / 容器获取会误触发换源播报）。
 16. **两类离线入口不可混同**：BA 邻接 `install-manifest.json` / `--layout` 是 Burn PC 拓扑安装；Windows 服务端 Builder 包由 `install-server.ps1` 执行。后者不得调用 BA 问卷来替代「包内 `managed-files.json` 允许清单＋`%ProgramData%\LabelFrame\installer\managed-files.json` 上次成功状态账本」的安全清理、Web UI 目录回滚、Machine 环境变量路径解析与服务健康检查。
 17. **WebView2 双来源刻意并存**：在线 / Burn layout 使用 LinkId `2124703` 小型 Bootstrapper；服务端离线 Full 使用 LinkId `2124701` x64 Standalone。Standalone 不进 `InstallManifest`、不改 `EvergreenRuntime` 兜底 URL，也不改变已装 WebView2 时 Burn 零获取的既有语义。
-18. **Windows Full 的三 runtime 不等于三项自动安装**：离线介质携带 Desktop、ASP.NET Core、WebView2 Standalone；服务端 Installer 只自动补 ASP.NET Core。Desktop / WebView2 的在包可用性与 Server 前置安装职责必须分开。
+18. **Windows Full 的三 runtime 不等于三项自动安装**：离线介质携带 Desktop、ASP.NET Core、WebView2 Standalone；服务端 Installer 在缺失时依次补 Desktop（基础 `dotnet` host / `Microsoft.NETCore.App`）与 ASP.NET Core，WebView2 不自动安装。三个载荷的在包可用性与 Server 前置职责必须逐项区分。
 19. **Release 大附件移除受真机门禁**：Builder 结构断言、哈希验证或 CI 成功均不能代替断网 Windows Full / Upgrade 与无预置镜像 Docker `install.sh` 的目标机证据；证据完成前旧附件上传必须保留。
