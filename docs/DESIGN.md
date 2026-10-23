@@ -289,6 +289,8 @@ flowchart LR
 | 206 | Windows 离线部署包双附件——全量（首装）＋升级（减运行时）（迭代 160，2026-10-22，[#439](https://github.com/marci-labs/LabelFrame/issues/439)；**经决策 #207 部分替代**） | 保留的产品语义：仍生成 `labelframe-offline-<版本>-win-x64.zip` 与 `labelframe-upgrade-<版本>-win-x64.zip`；Full 面向净机且含运行时，Upgrade 不含运行时、缺前置时明确改用 Full；整包仍是自足分发单元，不进入 `install-manifest.json`。被替代部分：Release 不再为每版预组装并长期保存这两个大附件，旧包内以 Burn 引导 EXE 为目标机入口的布局路线改为 Builder 按需组包＋`install-server.cmd` / `install-server.ps1` 一键部署；WebView2 Full 载荷改为 Standalone。 | 双包选择语义与运行时裁剪不变；组包时机、目标机安装载体、WebView2 离线载荷与发布存储模型以 #207 / §6.13 为准；#439 的旧包真机 AC 由 #445 的 Builder 真机验收替代 |
 | 207 | 离线部署 Builder 两层模型——Release 原子资源＋小型 Builder，有网组包与离线安装分层（迭代 161，2026-10-23，[#445](https://github.com/marci-labs/LabelFrame/issues/445)；用户已决议） | ① **发布模型**：Release 保留原子资源、Server 镜像、`install-manifest.json`、compose 附件与小型 `labelframe-offline-builder-<版本>.zip`；Builder 自带 `offline-source-manifest.json`，默认只构建自身 Release 版本。② **两层职责**：Builder 只在有网准备机下载、校验 / 验签、缓存并组包；Installer 只在离线目标机安装或升级 Server、原子落位 Web UI、分发资源、健康检查与账本清理。③ **Windows 双包保留**：Full / Upgrade 名称与选择语义沿 #206；Full 携带 Desktop、ASP.NET Core、WebView2 三类 runtime，目标机脚本按 Server 完整前置链补装 Desktop（提供基础 `dotnet` host / `Microsoft.NETCore.App`）与 ASP.NET Core，WebView2 不自动安装；Upgrade 零 runtime，任一 Server 前置缺失即拒绝并提示 Full。在线 Burn 的 WebView2 Bootstrapper（LinkId 2124703）不变，离线 Full 改用 LinkId 2124701 x64 Standalone。④ **安全边界**：本仓产物与固定版 .NET runtime 按 SHA256；WebView2 Standalone 按 Microsoft Authenticode＋固定文件名＋>100 MB；Docker 镜像按 release-time digest；Windows 官方资源清理由 `managed-files` 账本限定，Web UI 替换失败回滚。⑤ **兼容与迁移**：Docker Builder 复用既有底层组包逻辑，包结构与 `install.sh` 的校验 / 分发 / 健康检查 / 固定目录升级语义逐字不变；本决策替代 #160 / #206 的 Release 预组装大包与上传部分，不替代其 Docker `install.sh` 或 Windows Full / Upgrade 双包语义。三类旧大附件仅在 Windows 净机首装、Windows 升级、Docker 无预置镜像真机验收通过后移除。 | 发布存储从「每版重复大附件」转为「原子资源＋可审计组包配方」；离线包按需生成而仍可 fail-closed；WebView2 真离线缺口闭合；Release 迁移设真机门槛，避免先删旧路径再发现 Builder 不可用 |
 
+| 208 | 前端开发链稳定版升级与安全基线统一（迭代 162，2026-10-24，[#447](https://github.com/marci-labs/LabelFrame/issues/447)） | Node 26.12.1 / pnpm 12.15.0 在开发声明、CI、Release 与 E2E 构建阶段对齐；Vite 8.3.5 / TypeScript 7.0.2 / Vitest 5.0.5 等开发依赖升级并提交锁文件。Node 当前为 Current，不提前宣称 LTS；React/Konva 等生产依赖保持原版本，React 类型声明保留 19.2 配套线。 | 清除已知工具链漏洞并减少环境漂移；Vitest mock 清理、DOM 垫片与原生 TypeScript 编译器须经双模式回归，自定义 lint 规则做负向验证；既有静态产物与 Builder 安装契约不变，不引入实验性编译能力 |
+
 ## 5. API 概览
 
 错误响应统一为 `{ code, message, fieldKey?, params? }`（问题码约定：`LF_API_xxx` 通用请求 / `LF_JOB_xxx` 作业 / `LF_ENC_xxx` 编码 / `LF_IO_xxx` 传输 / `LF_TPL_xxx` 模板 / `LF_SRV_xxx` 服务端 / `LF_VAL_xxx` 校验 / `LF_TRANSPORT_xxx`、`LF_PLUGIN_xxx` 连接与插件）；未捕获异常统一 500 + `LF_INTERNAL_001`（常量定义于 `ApiErrorCodes.InternalError`，全仓仅此一处字面量）。分类修正（决策 #107）：请求体反序列化失败（非法 JSON / 非 UTF-8 / 类型不匹配）→ 400 + `LF_API_BAD_BODY`（中文消息，原始解析异常详情只进服务端日志）；`POST /api/printer/test` 发送失败 → 400 + `LF_TRANSPORT_TEST_FAILED`（消息含目标地址与原因）；403（非归属设备回报 / 进度）同样返回 ErrorView——错误响应不存在空 body 形态。
@@ -1132,6 +1134,9 @@ Docker Builder 按 `serverImage.digest` 拉取并校验实际 RepoDigest 后 `do
 任一证据未完成时，旧预组装附件上传保持不变；不得以结构断言或 CI 组包成功替代真机门槛。
 
 ## 7. 风险与未决问题
+
+- 前端 lint 新诊断（迭代 162，#447）：oxlint 1.89.0 在既有业务代码额外报告 27 条 React refs / effect / immutability 警告，原 24 条 Hooks / Fast Refresh 警告仍在；本轮零错误且不禁用规则。此轮仅升级工具链，业务行为重构留待触及相关模块时逐项处理，不能用 lint 退出码 0 宣称无警告。
+
 
 **真机 / 联调待确认**（欠账由打 `待验收` 标签的 Issue 追踪——PDA 蓝牙 / USB 真机 [#407](https://github.com/marci-labs/LabelFrame/issues/407)、安装链人工面 [#408](https://github.com/marci-labs/LabelFrame/issues/408)；历史清欠清单存档于 [archive/ACCEPTANCE-BACKLOG.md](archive/ACCEPTANCE-BACKLOG.md)）：
 
