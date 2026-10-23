@@ -44,7 +44,7 @@ public sealed class UpdateSupervisorTests
             var powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
             var release = Path.Combine(root, "parent-release");
             var escapedRelease = release.Replace("'", "''", StringComparison.Ordinal);
-            using var parent = StartPowerShell(powershell, $"$end = [DateTime]::UtcNow.AddSeconds(30); while (!(Test-Path -LiteralPath '{escapedRelease}')) {{ if ([DateTime]::UtcNow -gt $end) {{ exit }}; Start-Sleep -Milliseconds 50 }}");
+            using var parent = StartPowerShell(powershell, $"$end = [DateTime]::UtcNow.AddSeconds(120); while (!(Test-Path -LiteralPath '{escapedRelease}')) {{ if ([DateTime]::UtcNow -gt $end) {{ exit }}; Start-Sleep -Milliseconds 50 }}");
             var result = Path.Combine(root, "result.json");
             await File.WriteAllTextAsync(result, "{}");
             var output = Path.Combine(root, "child.json");

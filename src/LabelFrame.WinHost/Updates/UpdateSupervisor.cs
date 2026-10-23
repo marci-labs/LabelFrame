@@ -100,11 +100,12 @@ internal static class UpdateSupervisor
         foreach (var arg in new[] { "-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", Convert.ToBase64String(Encoding.Unicode.GetBytes(script)) })
             info.ArgumentList.Add(arg);
         using var child = Process.Start(info) ?? throw new IOException("无法启动更新监督进程。");
-        var deadline = DateTime.UtcNow.AddSeconds(8);
+        var deadline = DateTime.UtcNow.AddSeconds(60);
         while (!File.Exists(ready))
         {
             ct.ThrowIfCancellationRequested();
-            if (child.HasExited || DateTime.UtcNow >= deadline) throw new IOException("更新监督进程未就绪，客户端继续运行。");
+            if (child.HasExited) throw new IOException($"更新监督进程未就绪即退出（{child.ExitCode}），客户端继续运行。");
+            if (DateTime.UtcNow >= deadline) throw new IOException("更新监督进程 60 秒内未就绪，客户端继续运行。");
             await Task.Delay(50, ct);
         }
     }
