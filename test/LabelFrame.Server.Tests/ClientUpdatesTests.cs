@@ -14,6 +14,21 @@ public sealed class ClientUpdatesTests : IDisposable
     public void Dispose() => Directory.Delete(_root, true);
 
     [Fact]
+    public async Task Storage_failure_does_not_block_later_publication_after_repair()
+    {
+        var source = Path.Combine(_root, "draft.msi");
+        var destination = Path.Combine(_root, "published");
+        await File.WriteAllBytesAsync(source, [1, 2, 3]);
+        await File.WriteAllTextAsync(destination, "blocked directory");
+        using var service = new ClientUpdatesService(destination, new Inspector(Package));
+        await Assert.ThrowsAnyAsync<IOException>(() => service.PublishAsync(source, "LabelFrame-Client-1.5.0.msi", [], TestContextToken));
+        File.Delete(destination);
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var release = await service.PublishAsync(source, "LabelFrame-Client-1.5.0.msi", [], deadline.Token);
+        Assert.Equal(release.Id, service.Select("device-a", "1.4.0")?.Id);
+    }
+
+    [Fact]
     public async Task Published_snapshot_survives_draft_overwrite_and_cannot_be_republished()
     {
         var source = Path.Combine(_root, "draft.msi");

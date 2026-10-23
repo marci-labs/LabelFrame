@@ -27,11 +27,11 @@ public sealed class ClientUpdatesService(string directory, IClientUpdatePackageI
             throw new InvalidDataException("推广设备标识无效，最多指定 1000 台设备。");
         await _gate.WaitAsync(ct);
         var id = Guid.NewGuid().ToString("N");
-        Directory.CreateDirectory(directory);
         var destination = Path.Combine(directory, id + ".msi");
         var committed = false;
         try
         {
+            Directory.CreateDirectory(directory);
             await using (var input = File.OpenRead(source))
             await using (var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
@@ -48,7 +48,11 @@ public sealed class ClientUpdatesService(string directory, IClientUpdatePackageI
             committed = true;
             return release;
         }
-        finally { if (!committed) File.Delete(destination); _gate.Release(); }
+        finally
+        {
+            try { if (!committed) File.Delete(destination); }
+            finally { _gate.Release(); }
+        }
     }
 
     public async Task<ClientUpdateRelease?> PauseAsync(string id, bool paused, CancellationToken ct)
