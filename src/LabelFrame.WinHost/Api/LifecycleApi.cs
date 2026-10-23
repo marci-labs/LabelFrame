@@ -33,6 +33,9 @@ internal static class LifecycleApi
     internal static bool IsLocalRequest(HttpContext context)
     {
         if (context.Connection.RemoteIpAddress is not { } remote || !IPAddress.IsLoopback(remote)) return false;
+        var host = context.Request.Host.Host.Trim('[', ']');
+        if (!host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            && !(IPAddress.TryParse(host, out var address) && IPAddress.IsLoopback(address))) return false;
         var origin = context.Request.Headers.Origin.ToString();
         return origin.Length == 0 || (Uri.TryCreate(origin, UriKind.Absolute, out var uri)
             && string.Equals(uri.GetLeftPart(UriPartial.Authority), $"{context.Request.Scheme}://{context.Request.Host}", StringComparison.OrdinalIgnoreCase));

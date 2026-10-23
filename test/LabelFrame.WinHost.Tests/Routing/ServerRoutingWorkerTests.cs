@@ -430,24 +430,29 @@ public class ServerRoutingWorkerTests
                 new TemplateDto(SampleContract, SampleLayout),
                 [new LabelDto(new Dictionary<string, string> { ["zone"] = "A", ["locationCode"] = "BAD" })]));
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
             var activity = new HostActivityState();
+            var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
             var worker = new ServerRoutingWorker(poller, submission, queue, TimeSpan.FromMilliseconds(100),
-                NullLogger<ServerRoutingWorker>.Instance, TimeProvider.System, activity: activity);
+                NullLogger<ServerRoutingWorker>.Instance, time, activity: activity);
+            async Task AdvanceUntilAsync(Func<bool> condition)
+            {
+                while (!condition())
+                {
+                    time.Advance(TimeSpan.FromSeconds(1));
+                    await Task.Delay(10, cts.Token);
+                }
+            }
             await worker.StartAsync(cts.Token);
             if (disconnected)
             {
-                for (var i = 0; i < 100 && Volatile.Read(ref poller.ResultAttempts) == 0; i++) await Task.Delay(50, cts.Token);
+                await AdvanceUntilAsync(() => Volatile.Read(ref poller.ResultAttempts) > 0);
                 Assert.True(Volatile.Read(ref poller.ResultAttempts) > 0);
                 Assert.False(activity.TryPrepare(out _));
                 poller.FailResults = false;
             }
 
-            // 等待失败回报（独立回报循环，1s 周期）
-            for (var i = 0; i < 100 && poller.Reported.Count == 0; i++)
-            {
-                await Task.Delay(50, cts.Token);
-            }
+            await AdvanceUntilAsync(() => poller.Reported.Count > 0);
 
             var report = Assert.Single(poller.Reported);
             Assert.Equal("server-job-native-fail", report.JobId);

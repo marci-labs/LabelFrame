@@ -21,6 +21,12 @@ public sealed class LifecycleApiTests : WinHostIntegrationTestBase
         using var denied = await Client.SendAsync(request);
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
 
+        using var rebound = new HttpRequestMessage(HttpMethod.Post, "/api/host/restart");
+        rebound.Headers.Host = "rebind.invalid";
+        rebound.Headers.Add("Origin", "http://rebind.invalid");
+        using var reboundDenied = await Client.SendAsync(rebound);
+        Assert.Equal(HttpStatusCode.Forbidden, reboundDenied.StatusCode);
+
         using var close = await Client.PostAsJsonAsync("/api/host/ui-activity", new UiActivityReport(session, false, false, Closed: true));
         Assert.True(activity.TryPrepare(out _));
         activity.CancelPreparation();
