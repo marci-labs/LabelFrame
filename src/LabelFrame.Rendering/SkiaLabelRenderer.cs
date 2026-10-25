@@ -97,7 +97,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         ArgumentNullException.ThrowIfNull(document);
         var width = Math.Max(1, ToDots(document.Layout.WidthMm, dpi));
         var height = Math.Max(1, ToDots(document.Layout.HeightMm, dpi));
-        var (bitmap, _) = RentSurface(width, height);
+        var (bitmap, staging) = RentSurface(width, height);
         try
         {
             using var canvas = new SKCanvas(bitmap);
@@ -114,7 +114,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         }
         finally
         {
-            ReturnSurface(bitmap, []);
+            ReturnSurface(bitmap, staging);
         }
     }
 
