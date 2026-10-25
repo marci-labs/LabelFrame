@@ -322,6 +322,70 @@ public sealed class SqliteLabelJobStore : ILabelJobStore
         };
     }
 
+    /// <summary>领取最旧活动作业的下一张标签，仅加载所选指令并持久化领取状态。</summary>
+    internal async Task<(string JobId, LabelJobItem Item)?> ClaimNextItemAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        var candidates = new List<(string Id, DateTimeOffset CreatedAt)>();
+        await using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = """
+                SELECT id, created_at FROM jobs
+                WHERE status IN ('Pending', 'Printing')
+                  AND EXISTS (SELECT 1 FROM job_items WHERE job_id = jobs.id AND status = 'Pending');
+                """;
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                candidates.Add((reader.GetString(0), SqliteSupport.Parse(reader.GetString(1))));
+            }
+        }
+
+        var jobId = candidates.OrderBy(j => j.CreatedAt).ThenBy(j => j.Id).Select(j => j.Id).FirstOrDefault();
+        if (jobId is null) return null;
+
+        LabelJobItem item;
+        await using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = """
+                SELECT id, item_index, zpl, command_bytes FROM job_items
+                WHERE job_id = $jobId AND status = 'Pending' ORDER BY item_index LIMIT 1;
+                """;
+            command.Parameters.AddWithValue("$jobId", jobId);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken)) return null;
+            item = new LabelJobItem
+            {
+                Id = reader.GetString(0),
+                JobId = jobId,
+                Index = reader.GetInt32(1),
+                Zpl = reader.GetString(2),
+                CommandBytes = reader.IsDBNull(3) ? null : (byte[])reader[3],
+                Status = LabelJobItemStatus.Printing,
+            };
+        }
+
+        await using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = """
+                UPDATE job_items SET status = 'Printing', error_code = NULL, error_message = NULL,
+                    updated_at = $updatedAt WHERE id = $itemId AND job_id = $jobId;
+                UPDATE jobs SET status = 'Printing', updated_at = $updatedAt WHERE id = $jobId;
+                """;
+            command.Parameters.AddWithValue("$updatedAt", SqliteSupport.Format(DateTimeOffset.UtcNow));
+            command.Parameters.AddWithValue("$itemId", item.Id);
+            command.Parameters.AddWithValue("$jobId", jobId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return (jobId, item);
+    }
+
     private Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken)
         => SqliteSupport.OpenAsync(_connectionString, cancellationToken);
 }

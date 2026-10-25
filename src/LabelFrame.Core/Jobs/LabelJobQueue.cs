@@ -136,6 +136,11 @@ public sealed class LabelJobQueue : IDisposable
                 return null;
             }
 
+            if (_store is SqliteLabelJobStore sqliteStore)
+            {
+                return await sqliteStore.ClaimNextItemAsync(cancellationToken);
+            }
+
             var activeJobs = new List<LabelJob>();
             activeJobs.AddRange(await _store.ListJobsByStatusAsync(LabelJobStatus.Pending, cancellationToken));
             activeJobs.AddRange(await _store.ListJobsByStatusAsync(LabelJobStatus.Printing, cancellationToken));

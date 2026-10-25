@@ -62,6 +62,8 @@
 5. **重启恢复**（`MarkInterruptedJobsSuspendedAsync`）：宿主启动时把 in-flight（Printing）作业置 Suspended、在途 Item 重置 Pending——恢复后续打优先保证不漏打（决策 #16）；
 6. **安全退出**（`TryPrepareForShutdownAsync` / `TryBeginPrintSendAsync`）：锁内确认无在途发送（`_activeSends` 计数）且无 Printing Item 才置 `_shutdownPrepared`，此后拒绝提交与领取；真实传输区间以 lease 登记。
 
+SQLite 领取路径在队列锁内调用存储内部专用方法：仅列出有 Pending 项的活动作业标识和创建时间，仍由 .NET 按 CreatedAt / Id 排序，再读取所选作业序号最小的一张完整指令。选择、Item Printing 与 Job Printing 更新在同一数据库事务内，提交成功才返回；异常或取消在提交前回滚，不留下半次领取。每张仍独立提交，不降低 SQLite 同步级别、不缓存或共享可变二进制载荷。`ILabelJobStore` 与队列公开签名、完整查询内容均不变；其他存储实现沿用原领取路径。完成/失败回读与状态轮询仍加载全量载荷，本优化不覆盖这些开销。
+
 ### 3.2 传输插件装配（启动扫描 → 注册表 → 按需创建）
 
 加载生命周期口径＝决策 #127（`PluginDirectoryLoader` 两条路径）：
