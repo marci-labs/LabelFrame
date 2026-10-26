@@ -62,7 +62,11 @@
 5. **重启恢复**（`MarkInterruptedJobsSuspendedAsync`）：宿主启动时把 in-flight（Printing）作业置 Suspended、在途 Item 重置 Pending——恢复后续打优先保证不漏打（决策 #16）；
 6. **安全退出**（`TryPrepareForShutdownAsync` / `TryBeginPrintSendAsync`）：锁内确认无在途发送（`_activeSends` 计数）且无 Printing Item 才置 `_shutdownPrepared`，此后拒绝提交与领取；真实传输区间以 lease 登记。
 
-SQLite 领取路径在队列锁内调用存储内部专用方法：仅列出有 Pending 项的活动作业标识和创建时间，仍由 .NET 按 CreatedAt / Id 排序，再读取所选作业序号最小的一张完整指令。选择、Item Printing 与 Job Printing 更新在同一数据库事务内，提交成功才返回；异常或取消在提交前回滚，不留下半次领取。每张仍独立提交，不降低 SQLite 同步级别、不缓存或共享可变二进制载荷。`ILabelJobStore` 与队列公开签名、完整查询内容均不变；其他存储实现沿用原领取路径。完成/失败回读与状态轮询仍加载全量载荷，本优化不覆盖这些开销。
+SQLite 领取路径在队列锁内调用存储内部专用方法：仅列出有 Pending 项的活动作业标识和创建时间，仍由 .NET 按 CreatedAt / Id 排序，再读取所选作业序号最小的一张完整指令。选择、Item Printing 与 Job Printing 更新在同一数据库事务内，提交成功才返回；异常或取消在提交前回滚，不留下半次领取。每张仍独立提交，不降低 SQLite 同步级别、不缓存或共享可变二进制载荷。`ILabelJobStore` 与队列公开签名、完整查询内容均不变；其他存储实现沿用原领取路径。
+
+内部状态读取使用独立的 `LabelJobState` / `LabelJobItemState`，类型不包含载荷字段，不把空载荷的 `LabelJob` 伪装为完整作业。SQLite 单条 LEFT JOIN 查询获取作业与逐张状态（包括空作业），不选择 zpl / command_bytes，保持同一语句快照与原排序。`GetAsync` / `GetJobAsync` 等公开入口仍完整读取。Core 仅向两种 Client Host 程序集及对应测试程序集开放内部可见性；不增加公共模型或 `ILabelJobStore` 成员。
+
+宿主内部 `CompleteItemWithoutResultAsync` 在原队列锁内调用 SQLite 事务：更新单张为 Completed、清除该项错误、读取状态快照、按与公开完成方法共用的状态规则决定 Job 更新，提交后返回，不回读载荷。不合并多张持久化，不在传输成功前预写完成；异常或提交前取消回滚两级状态。已取消/完成的 Job 保持原状态，但迟到 Item 完成仍按原语义记录；挂起、失败与剩余 Pending 的判定不变。非 SQLite 实现回退原公开完成及完整查询路径。失败回读、历史列表、路由回报轮询和其他公开查询仍带完整载荷，不属于此内部优化范围。
 
 ### 3.2 传输插件装配（启动扫描 → 注册表 → 按需创建）
 

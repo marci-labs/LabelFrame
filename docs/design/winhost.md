@@ -74,6 +74,8 @@
 4. Log 连接＝模拟打印：渲染 PNG 落盘 `print\{jobId}\label-N.png`＋`JobDataLogFormatter` 留痕作业数据＋顺带 `PrintImageRetentionCleaner.CleanupExpired()`（native 路径无位图，仅留痕）；
 5. `JobPrintWorker`（BackgroundService）：启动恢复中断作业 → 循环「EXISTS 轻量探测→`ClaimNextItemAsync`→批间计数按作业重置→`BatchPrintPolicy.ShouldPauseBeforeSend` 则 `Task.Delay(batchIntervalMs)`→`TryBeginPrintSendAsync` 领发送租约→`CurrentTransport.SendAsync`（`CommandBytes` 二进制优先，否则 `Zpl` 文本）→完成 / 失败（失败记结构化日志：作业 / 索引 / 插件 / 目标 / 错误码，决策 #102 ③）」；空转等待信号唤醒（5s 超时兜底），领取落空回退 200ms 周期。
 
+打印 Worker 成功发送后使用 Core 的内部轻量完成入口，仅等待单张状态持久化，不请求完整作业返回。`GET /api/jobs/{jobId}` 使用内部状态快照映射到原 `JobView`，字段、顺序、错误明细、404 与模拟 PNG 目录增强均不变；状态快照和完整作业的视图映射有逐字段/序列化与 HTTP 详情对照历史列表回归。历史列表、提交、状态变更端点与 Server 路由回报仍沿用完整作业路径。内部优化不改请求校验、渲染/编码、传输顺序或退出租约。
+
 ### 3.3 连接管理与传输装配（`TransportManager`）
 
 - 启动初始化：`BuildBaseConfig`（appsettings / 环境变量→pluginId+params）→ `LoadPersisted`（connection.json 存在即最高优先；旧格式自动迁移；插件缺失 / 损坏 / 读取失败回退默认连接并留痕）→ `CreateTransportOrDefault`（生效配置引用的插件不可用时回退默认连接，再回退 Log——「未装外置包则该品牌不可用」的可控行为）；

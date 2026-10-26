@@ -6,6 +6,26 @@ namespace LabelFrame.WinHost.Tests.Jobs;
 public class JobViewListTests
 {
     [Fact]
+    public void State_snapshot_should_serialize_to_identical_job_view()
+    {
+        foreach (var status in Enum.GetValues<LabelJobStatus>())
+        {
+            var job = new LabelJob
+            {
+                Id = "job", RequestId = "request", Status = status, CreatedAt = DateTimeOffset.UtcNow,
+                Items = Enum.GetValues<LabelJobItemStatus>().Select((s, index) => new LabelJobItem
+                {
+                    Id = $"i{index}", JobId = "job", Index = index, Status = s, Zpl = "payload",
+                    ErrorCode = s == LabelJobItemStatus.Failed ? "error" : null,
+                    ErrorMessage = s == LabelJobItemStatus.Failed ? "错误" : null,
+                }).ToArray(),
+            };
+            Assert.Equal(System.Text.Json.JsonSerializer.Serialize(JobViews.From(job)),
+                System.Text.Json.JsonSerializer.Serialize(JobViews.From(LabelJobState.From(job))));
+        }
+    }
+
+    [Fact]
     public void JobViews_From_should_include_history_columns()
     {
         var created = new DateTimeOffset(2026, 8, 11, 8, 0, 0, TimeSpan.Zero);

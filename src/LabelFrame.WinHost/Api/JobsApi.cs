@@ -47,7 +47,7 @@ internal static class JobsApi
 
     app.MapGet("/api/jobs/{jobId}", async (string jobId, LabelJobQueue queue, ITransportManager transportManager, HostOptions options, CancellationToken ct) =>
     {
-        var job = await queue.GetAsync(jobId, ct);
+        var job = await queue.GetStateAsync(jobId, ct);
         if (job is not null)
         {
             return Results.Ok(EnrichPrintInfo(JobViews.From(job), job.Id, transportManager, options.PrintOutputPath));
