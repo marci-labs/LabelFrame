@@ -212,6 +212,7 @@
 | 166 | 客户端安装预检隐藏运行，保留同步退出码、失败阻断与日志 | ✅ 实现交付；Windows验证与用户复测见 [#458](https://github.com/marci-labs/LabelFrame/issues/458) |
 | 167 | 连接状态灯静态化：消除空闲持续重绘，保留颜色与状态更新 | ✅ 实现交付；无窗口隔离对照、回归与合并证据见 [#460](https://github.com/marci-labs/LabelFrame/issues/460) |
 | 168 | v1.5.0 性能成果集成与升级优先发布；只支持升级，暂不发行降级工具或新增 PDA 维护入口 | 🟡 发版前核查进行中；平台升级风险、回归与发布证据见 [#462](https://github.com/marci-labs/LabelFrame/issues/462) |
+| 169 | 模拟打印 PNG 配置开关、归属保护、定时清理与容量治理 | 🟡 本地实现及专项验证已落地；全量回归仍有旧库并发初始化与历史列表测试清理占用失败，待解决并经 #462 集成；不清理真实资源，未发布；见 [#463](https://github.com/marci-labs/LabelFrame/issues/463) |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）

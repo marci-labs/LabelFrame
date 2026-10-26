@@ -18,19 +18,22 @@ public class LogSimulationIsolationTests
     [Theory]
     [InlineData("log", true)]
     [InlineData("LOG", true)]
+    [InlineData("log", true, "image", false)]
     [InlineData("tcp9100", false)]
     [InlineData("labelframe-transport-tspl", false)]
     [InlineData("custom-printer", false)]
     [InlineData("labelframe-transport-tspl", false, "native")]
-    public async Task Only_log_plugin_should_save_images_log_data_and_clean_history(string pluginId, bool simulated, string printMode = "image")
+    public async Task Only_log_plugin_should_save_images_log_data_and_clean_history(string pluginId, bool simulated, string printMode = "image", bool saveImages = true)
     {
         var root = Path.Combine(Path.GetTempPath(), $"lf-log-isolation-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
         try
         {
             var print = Path.Combine(root, "print");
-            var expired = Path.Combine(print, "expired");
+            var expiredId = Guid.NewGuid().ToString("N");
+            var expired = Path.Combine(print, expiredId);
             Directory.CreateDirectory(expired);
+            File.WriteAllText(Path.Combine(expired, PrintImageRetentionCleaner.MarkerName), expiredId);
             Directory.SetLastWriteTime(expired, DateTime.Now.AddDays(-10));
             using var log = new StringWriter();
             var registry = new TransportPluginRegistry();
@@ -47,7 +50,7 @@ public class LogSimulationIsolationTests
             var service = new JobSubmissionService(queue, new ZplImageEncoder(), () => 203,
                 new SkiaLabelRenderer(), templates, manager, registry,
                 new TransportPluginContext(log, root), log, print,
-                new PrintImageRetentionCleaner(print, 1, log));
+                new PrintImageRetentionCleaner(print, 1, log), saveImages);
             var request = new SubmitJobRequest("isolation", new TemplateDto(LocationLabelSamples.Contract, LocationLabelSamples.Layout),
                 [new LabelDto(new Dictionary<string, string> { ["zone"] = "A", ["locationCode"] = "A-01" })]);
             var result = await service.SubmitAsync(request);
@@ -62,23 +65,53 @@ public class LogSimulationIsolationTests
                 Assert.NotEmpty(job.Items[0].CommandBytes!);
             else
                 Assert.Contains("^GF", job.Items[0].Zpl);
-            Assert.Equal(simulated, Directory.Exists(Path.Combine(print, job.Id)));
+            Assert.Equal(simulated && saveImages, Directory.Exists(Path.Combine(print, job.Id)));
             Assert.Equal(!simulated, Directory.Exists(expired));
             Assert.Equal(simulated, log.ToString().Contains(job.Id, StringComparison.Ordinal));
             var view = JobsApi.EnrichPrintInfo(JobViews.From(job), job.Id, manager, print);
             Assert.Equal(simulated ? Path.Combine(print, job.Id) : null, view.PrintImageDir);
-            if (simulated) Assert.Equal(1, view.PrintImageCount);
+            if (simulated) Assert.Equal(saveImages ? 1 : 0, view.PrintImageCount);
             else Assert.Null(view.PrintImageCount);
             var beforeReplay = log.ToString();
             var replay = await service.SubmitAsync(request);
             Assert.False(replay.Created);
             Assert.Equal(job.Id, replay.Job!.Id);
+            Assert.Equal(job.Items[0].Zpl, replay.Job.Items[0].Zpl);
+            Assert.Equal(job.Items[0].CommandBytes, replay.Job.Items[0].CommandBytes);
             Assert.Equal(beforeReplay, log.ToString());
+            if (simulated && !saveImages)
+            {
+                var enabled = new JobSubmissionService(queue, new ZplImageEncoder(), () => 203,
+                    new SkiaLabelRenderer(), templates, manager, registry,
+                    new TransportPluginContext(log, root), log, print,
+                    new PrintImageRetentionCleaner(print, 1, log), saveLogPrintImages: true);
+                var comparison = await enabled.SubmitAsync(request with { RequestId = "save-enabled" });
+                Assert.True(comparison.Created);
+                Assert.Equal(job.Items[0].Zpl, comparison.Job!.Items[0].Zpl);
+                Assert.True(File.Exists(Path.Combine(print, comparison.Job.Id, "label-1.png")));
+            }
         }
         finally
         {
-            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-            Directory.Delete(root, true);
+            foreach (var name in new[] { "jobs.db", "templates.db" })
+            {
+                using var connection = new Microsoft.Data.Sqlite.SqliteConnection(
+                    LabelFrame.Core.Data.SqliteSupport.BuildConnectionString(Path.Combine(root, name)));
+                Microsoft.Data.Sqlite.SqliteConnection.ClearPool(connection);
+            }
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    Directory.Delete(root, true);
+                    break;
+                }
+                catch (IOException) when (attempt < 4)
+                {
+                    // 测试目录的原生句柄可能延迟释放；重试耗尽仍使测试失败。
+                    await Task.Delay(100);
+                }
+            }
         }
     }
 

@@ -400,11 +400,14 @@ Windows/Linux 可在停机后的原数据路径维护，须具备目录写权限
   ```
 - 日志轮转与保留（含服务端单文件大小上限）：三处文件日志统一**按日轮转、默认保留 31 个（天）**——服务端 `server-<yyyyMMdd>.log`（`LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS`）、客户端宿主 `host-<yyyyMMdd>.log`（`LABELFRAME_HOST_LOG_RETENTION_DAYS`）、客户端 Serilog `app-*.log`（`LABELFRAME_APP_LOG_RETENTION_DAYS`）；均设 0 或负值 = 不清理（不设上限）。`LABELFRAME_SERVER_LOG_FILE` / `LABELFRAME_HOST_LOG` 给的是基准路径，实际文件名带日期后缀；历史单名 `server.log` / `host.log` 不迁移不删除。**服务端单文件大小上限**：`LABELFRAME_SERVER_LOG_FILE_MAX_SIZE_MB`（默认 50，0 或负值 = 不限）——单文件超限轮转为当日序号文件 `server-<yyyyMMdd>.N.log`（跨天回新日期基名），清理按（日期, 序号）序删最旧；大小上限启用后 `LABELFRAME_SERVER_LOG_FILE_RETENTION_DAYS` 的实际语义为**文件个数上限**（按日单文件时代即保留天数，既有部署无感），总占用上界 ≈ 31 文件 × 单文件上限。
 - **logs.db 按量闸与空间回收**：`LABELFRAME_SERVER_LOGS_DB_MAX_SIZE_MB`（默认 256，0 或负值 = 不限量闸、按期时间闸仍生效）——每 24h 清理周期内，库文件（logs.db + logs.db-wal 合计）超过阈值时按大小删最旧日志直至回到阈值内，删除后执行 `VACUUM` + `wal_checkpoint(TRUNCATE)` **真实回收磁盘**（主文件显著收缩，非仅空闲页复用）。⚠️ **量闸删除不受 90 天保留期下限约束——这是有意行为，不是缺陷**（磁盘防护优先于保留期，避免被当作缺陷上报）；执行期代价：临时磁盘最多约 2× 库大小、期间日志写入短暂阻塞（低频后台窗口可接受，失败自动下个周期重试）。
-- 出图目录保留清理：Log 模拟打印出图目录（`print\<jobId>`，默认 `%LOCALAPPDATA%\LabelFrame\print`，Windows 窗口与 Linux 无头客户端同路径）**按天保留、默认 31 天**——超期作业子目录（含内部 PNG）在客户端启动与每次模拟打印落盘后自动删除；判龄 = 作业目录 LastWriteTime（与 jobs.db 作业历史无关，删除只影响 Log 模式「查看出图」）；遇占用 / 权限失败降级留痕、不影响打印与出图。`LABELFRAME_PRINT_IMAGE_RETENTION_DAYS` 可调，0 或负值 = 不清理。例：
+- 模拟 PNG 保存与清理：Windows 默认 `%LOCALAPPDATA%\LabelFrame\print`，Linux 官方容器默认 `/var/lib/labelframe/client/print`，可由 `LABELFRAME_PRINT_OUTPUT` 指定专用目录。保存默认开启，管理员可在程序配置文件 `appsettings.json` 的 `WinHost` 节设 `SaveLogPrintImages=false`，或用环境变量覆盖；重启生效，不提供 UI 开关。关闭只停止新 PNG，Log 作业、数据日志及已有受管图片清理继续；不影响正式打印、预览、主动调试下载。
+- 新出图作业目录带 `.labelframe-print-v1` 归属标记；**旧无标记目录、混合内容、子目录及链接不自动清理或接管**，需要另行确认后维护。默认31天＋512MiB容量目标，启动及每小时后台扫描，不依赖继续打印；提交后顺带扫描至少间隔5分钟。判龄为目录 UTC LastWriteTime，容量超限最旧优先，可早于31天淘汰。**容量是周期清理目标而非硬配额**，批次写入、扫描节流或删除失败期间可能超限，不包含数据库、旧无标记目录、浏览器缓存及用户下载。遇占用/权限失败留痕重试。删除不影响作业恢复和历史，只使模拟 PNG 不再可查看，历史出图数量变为0。时间与容量规则独立禁用，兼容配置中原 `RETENTION_DAYS=0` 现在只禁用时间规则；需要完全关闭清理时须同时把容量设为0。例：
   ```bash
-  LABELFRAME_PRINT_IMAGE_RETENTION_DAYS=31   # 默认：保留 31 天
-  LABELFRAME_PRINT_IMAGE_RETENTION_DAYS=0    # 关闭清理（出图目录无限累积，恢复旧现状）
+  LABELFRAME_SAVE_LOG_PRINT_IMAGES=false   # 默认true；仅关闭新模拟PNG
+  LABELFRAME_PRINT_IMAGE_RETENTION_DAYS=31 # <=0仅关闭时间清理
+  LABELFRAME_PRINT_IMAGE_MAX_SIZE_MB=512   # MiB；<=0仅关闭容量清理
   ```
+  对应配置文件示例：`{"WinHost":{"SaveLogPrintImages":false,"PrintImageRetentionDays":31,"PrintImageMaxSizeMB":512}}`。布尔环境变量接受 true/false（不区分大小写），非法值保持配置文件值；整数非法值同样保持原配置。进程内单例串行协调保存与清理，不支持多宿主共享出图目录；不要指向模板、下载或混合用途目录。失败写入的部分 PNG 后续仍可按规则清理，相同 requestId 重放不会补图。
 - 模拟打印作业数据留痕（排障说明）：Log 模拟打印提交时，客户端宿主日志（`host-<yyyyMMdd>.log`）同时记录**作业原始数据**——作业 ID / 模板名 / 标签张数 / 数据集合（字段键值紧凑形式，如 `locationCode=A-01-02-03; zone=A-01`）；多张标签按数据集合**去重**（相同记一条 + 重复张数），单条约 2KB 上限、超限截断并标注完整长度。排障时在当日 host 日志按「作业数据」检索即可对照「这个作业带了什么数据进来」（PNG 出图只含渲染结果，看不到作业输入）；真实传输（tcp9100 / winspool / zebra）不产生该记录。
 - 服务端业务事件日志（作业创建 / 设备认领 / 回报终态，作业粒度）默认 **INFO**；高流量需要降噪时按标准 Logging 配置降级，例如环境变量：
   ```bash

@@ -47,7 +47,7 @@
 | | `ServerRoutingWorker` | Routing/ServerRoutingWorker.cs | 主循环（注册心跳→长轮询 notify→领取→投入本地队列）＋独立回报循环（终态回报＋进度节流上报）（决策 #60 / #101） |
 | | `ServerJobPoller` / `IServerJobPoller` / `ProgressThrottle` | Routing/ServerJobPoller.cs、IServerJobPoller.cs、ProgressThrottle.cs | Server HTTP 客户端（注册 / pending / notify / result / progress 五端点）；单作业进度节流（计数有变化才发＋最小间隔，失败不 Mark 可重试） |
 | API 端点（Api/） | `JobsApi` / `TransportApi` / `PrinterApi` / `PluginApi` / `HostApi` / `PrintSettingsApi` / `Contracts` | Api/ 目录 | 宿主专属端点（分组实现）；`Contracts.cs` 只留宿主专属 DTO（通用契约在 LabelFrame.Api，决策 #75） |
-| 持久化小件 | `HostConfigStore` / `PrintSettings` / `PrintSettingsStore` / `PrintImageRetentionCleaner` / `LocalIpAddresses` | 根目录 | 机器级 serverUrl 存取（决策 #57）；打印设置：批次节流（决策 #74）＋打印 DPI（203/300/600 白名单，未设置继承宿主配置，GET 回生效值、保存即生效）；出图目录保留清理（决策 #136）；本机 IPv4 枚举（决策 #61） |
+| 持久化小件 | `HostConfigStore` / `PrintSettings` / `PrintSettingsStore` / `PrintImageRetentionCleaner` / `PrintImageCleanupService` / `LocalIpAddresses` | 根目录 | 机器级 serverUrl 存取（决策 #57）；打印设置：批次节流（决策 #74）＋打印 DPI（203/300/600 白名单，未设置继承宿主配置，GET 回生效值、保存即生效）；受管模拟图片写入与周期清理（决策 #136 / #229）；本机 IPv4 枚举（决策 #61） |
 
 **多目标条件编译**（csproj）：Windows 目标＝WinExe＋`UseWindowsForms`＋WebView2 包＋内嵌托盘白色图标资源；Linux 目标＝`Compile Remove` 托盘 / 界面壳 / winspool / 官方插件迁移六文件，`Program` / `WinHostApp` 内 `#if WINDOWS` 分支裁剪（Linux 强制 `Transport=Log`、无浏览器无托盘）。源码内 `#if WINDOWS` 与 csproj Remove 两侧共同圈定 Windows 专属面。
 
@@ -104,6 +104,16 @@
 `GET /api/host/lifecycle` 暴露进程标识与插件待重启标记。仅回环同源的 `POST /api/host/ui-activity`、`POST /api/host/restart` 支持界面协作和重启。活动报告有单调序号，关闭报告保留序号墓碑，迟到请求不能复活旧 dirty 状态；失联不自动过期为安全。
 
 `RestartProcess` 先启动同用户等待器并通过命名事件确认就绪；等待旧 PID 与启动时间匹配的进程退出（最多 30 秒），再启动同一可执行文件。保持配置、环境和原参数，页面请求仅追加固定插件设置位置；托盘请求保持窗口可见性。等待器准备失败保留旧进程；启动失败写 `%LocalAppData%/LabelFrame/restart.log` 并提示手工恢复。普通客户端不提权，不重启操作系统。
+
+### 模拟 PNG 生命周期
+
+模拟出图仅对实际 `PluginId=log` 的新作业生效。`WinHost.SaveLogPrintImages` 默认 true，环境变量 `LABELFRAME_SAVE_LOG_PRINT_IMAGES` 覆盖；关闭后仍模拟执行、持久化作业与记录数据日志，不生成 PNG，不删除旧图，也不影响主动调试下载。配置均重启生效，不增加 UI 或公共打印契约。
+
+`PrintImageRetentionCleaner` 同时协调写图与清理，两端宿主共享单例。新建作业目录先写 `.labelframe-print-v1`（内容为32位作业ID），再写 `label-N.png`；旧无标记目录不自动接管。清理要求直属目录名为32位 GUID、标记匹配、内容仅标记与正整数编号 PNG，拒绝子目录、混合文件和路径链中的符号链接/重解析点；只逐文件删除后删除空目录，不递归删除。该保护针对误配置及普通混放，不构成对同权限恶意并发篡改文件系统的安全隔离；不支持多进程共享同一出图根目录。
+
+宿主后台服务启动扫描一次，之后每小时扫描，不依赖继续打印；提交后的扫描最短间隔5分钟。默认保留31天（UTC目录LastWriteTime判龄），受管目录总文件长度的容量清理目标512MiB，容量超限时最旧优先且可早于保留天数淘汰。`PrintImageRetentionDays<=0`仅禁用时间规则，`PrintImageMaxSizeMB<=0`仅禁用容量规则，两者均关闭才完全不清理。容量是周期清理目标而非硬配额：批次落盘、扫描节流、删除失败期间可超限；不计无标记目录、数据库、下载和浏览器缓存。保存开关关闭不影响已有受管图片的清理。
+
+写图与扫描使用同一进程内锁；后台扫描遇在途写入跳过本次，下一周期重试。写入异常保留已写内容及归属标记供后续清理，不回滚已入队作业；幂等重放、重试与恢复均不补图。删除失败只留痕，下次重试；若已删部分 PNG 且目录仍符合归属规则，恢复原目录时间，避免被部分删除刷新判龄后再等待整个保留周期。容量淘汰/到期后历史作业仍在，出图数量为0；PNG不是恢复依赖。旧无标记图片需要另行确认路径及清单后维护，本轮不提供自动删除路径。
 
 ## 4. 对外契约与依赖
 
