@@ -3,7 +3,21 @@ using LabelFrame.Core.Jobs;
 using Microsoft.Data.Sqlite;
 
 SqliteSupport.EnsureInitialized();
-if (args[0] == "hold-read")
+if (args[0] == "initialize")
+{
+    Pause("ready");
+    try
+    {
+        await new SqliteLabelJobStore(args[1]).InitializeAsync();
+        Console.WriteLine("initialized");
+    }
+    catch (SqliteException error) when (error.SqliteErrorCode == 5)
+    {
+        Console.Error.WriteLine(error);
+        Environment.ExitCode = 5;
+    }
+}
+else if (args[0] == "hold-read")
 {
     using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
     {

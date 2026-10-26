@@ -89,15 +89,7 @@ internal static class JobStorageMigration
             ForeignKeys = false,
             DefaultTimeout = 1,
         };
-        await using var connection = new SqliteConnection(builder.ToString());
-        await connection.OpenAsync(cancellationToken);
-        await ExecuteAsync(connection, null, "PRAGMA locking_mode=EXCLUSIVE;", cancellationToken);
-        // WAL 的独占模式须先实际取得锁；提交后仍由本连接持有，直至关闭。
-        await using (var gate = connection.BeginTransaction(deferred: false))
-        {
-            await ExecuteAsync(connection, gate, "SELECT count(*) FROM sqlite_schema;", cancellationToken);
-            await gate.CommitAsync(cancellationToken);
-        }
+        await using var connection = await OpenExclusiveAsync(builder.ToString(), checkpoint, cancellationToken);
 
         checkpoint?.Invoke("locked", connection);
         var version = await ScalarAsync(connection, null, "PRAGMA user_version;", cancellationToken);
@@ -201,6 +193,42 @@ internal static class JobStorageMigration
             exception.Data["JobStorageBackupPath"] = backupPath;
             exception.Data["JobStorageBackupVerified"] = backupVerified;
             throw;
+        }
+    }
+
+    /// <summary>有界申请独占维护连接并释放失败连接。</summary>
+    private static async Task<SqliteConnection> OpenExclusiveAsync(string connectionString,
+        Action<string, SqliteConnection>? checkpoint, CancellationToken token)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            token.ThrowIfCancellationRequested();
+            var connection = new SqliteConnection(connectionString);
+            try
+            {
+                await connection.OpenAsync(token);
+                await ExecuteAsync(connection, null, "PRAGMA locking_mode=EXCLUSIVE;", token);
+                checkpoint?.Invoke("locking", connection);
+                // WAL 的独占锁在事务提交后仍由本连接持有，直至关闭。
+                await using var gate = connection.BeginTransaction(deferred: false);
+                await ExecuteAsync(connection, gate, "SELECT count(*) FROM sqlite_schema;", token);
+                await gate.CommitAsync(token);
+                return connection;
+            }
+            catch (SqliteException error) when (error.SqliteErrorCode == 5 && attempt < 2)
+            {
+                // 失败连接可能仍持有底层读锁，必须关闭后才能退避重开。
+                await connection.DisposeAsync();
+                token.ThrowIfCancellationRequested();
+                checkpoint?.Invoke("lock-retry", connection);
+                await Task.Delay(Random.Shared.Next(50, 151), token);
+            }
+            catch
+            {
+                await connection.DisposeAsync();
+                token.ThrowIfCancellationRequested();
+                throw;
+            }
         }
     }
 

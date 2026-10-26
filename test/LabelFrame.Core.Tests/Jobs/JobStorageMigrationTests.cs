@@ -6,7 +6,7 @@ using Microsoft.Data.Sqlite;
 namespace LabelFrame.Core.Tests.Jobs;
 
 /// <summary>验证独立作业库迁移的字段保真、回滚、备份与互斥。</summary>
-public sealed class JobStorageMigrationTests
+public sealed class JobStorageMigrationTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     [Theory]
     [InlineData(false)]
@@ -66,6 +66,7 @@ public sealed class JobStorageMigrationTests
             }
             catch (SqliteException error) when (error.SqliteErrorCode == 5)
             {
+                output.WriteLine(error.ToString());
                 return false;
             }
         })).ToArray();
@@ -88,6 +89,174 @@ public sealed class JobStorageMigrationTests
         }
         else
             Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+    }
+
+    [Fact]
+    public async Task Competing_maintenance_connections_release_locks_and_create_one_backup()
+    {
+        using var db = new MigrationDb(true);
+        var before = db.Snapshot(false, true);
+        using var start = new Barrier(4);
+        var attempts = Enumerable.Range(0, 4).Select(_ => Task.Run(async () =>
+        {
+            var first = true;
+            try
+            {
+                await JobStorageMigration.ConvertAsync(db.Path, true, checkpoint: (stage, connection) =>
+                {
+                    if (stage != "locking" || !first) return;
+                    first = false;
+                    Assert.True(start.SignalAndWait(TimeSpan.FromSeconds(10)));
+                });
+                return true;
+            }
+            catch (SqliteException error) when (error.SqliteErrorCode == 5)
+            {
+                output.WriteLine(error.ToString());
+                return false;
+            }
+        })).ToArray();
+        Assert.Contains(true, await Task.WhenAll(attempts).WaitAsync(TimeSpan.FromSeconds(20)));
+        Assert.Equal(before, db.Snapshot(true, true));
+        Assert.Single(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+    }
+
+    [Fact]
+    public void Failed_exclusive_attempt_keeps_wal_lock_until_connection_is_closed()
+    {
+        using var db = new MigrationDb(true);
+        using var first = db.Open();
+        using var second = db.Open();
+        foreach (var connection in new[] { first, second })
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT count(*) FROM sqlite_schema; PRAGMA locking_mode=EXCLUSIVE;";
+            command.ExecuteNonQuery();
+        }
+        foreach (var connection in new[] { first, second })
+        {
+            var error = Assert.Throws<SqliteException>(() => connection.BeginTransaction(deferred: false));
+            Assert.Equal(5, error.SqliteErrorCode);
+        }
+        first.Close();
+        using var transaction = second.BeginTransaction(deferred: false);
+        transaction.Commit();
+    }
+
+    [Fact]
+    public async Task Busy_acquisition_closes_connection_before_retry_and_preserves_backup()
+    {
+        using var db = new MigrationDb(true);
+        var before = db.Snapshot(false, true);
+        using var reader = db.Open();
+        using (var command = reader.CreateCommand())
+        {
+            command.CommandText = "SELECT count(*) FROM jobs;";
+            command.ExecuteScalar();
+        }
+        var retries = 0;
+        await JobStorageMigration.ConvertAsync(db.Path, true, checkpoint: (stage, connection) =>
+        {
+            if (stage != "lock-retry") return;
+            Assert.Equal(System.Data.ConnectionState.Closed, connection.State);
+            Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+            retries++;
+            reader.Close();
+        });
+        Assert.Equal(1, retries);
+        Assert.Equal(before, db.Snapshot(true, true));
+        Assert.Single(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+    }
+
+    [Fact]
+    public async Task Busy_acquisition_is_bounded_and_cancellation_stops_retry()
+    {
+        using var db = new MigrationDb(true);
+        var before = db.Snapshot(false, true);
+        using (var reader = db.Open())
+        {
+            using var command = reader.CreateCommand();
+            command.CommandText = "SELECT count(*) FROM jobs;";
+            command.ExecuteScalar();
+            var attempts = 0;
+            var retries = 0;
+            var error = await Assert.ThrowsAsync<SqliteException>(() => JobStorageMigration.ConvertAsync(db.Path, true,
+                checkpoint: (stage, _) =>
+                {
+                    if (stage == "locking") attempts++;
+                    if (stage == "lock-retry") retries++;
+                }));
+            Assert.Equal(5, error.SqliteErrorCode);
+            Assert.Equal(3, attempts);
+            Assert.Equal(2, retries);
+            using var cancellation = new CancellationTokenSource();
+            retries = 0;
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => JobStorageMigration.ConvertAsync(db.Path, true,
+                checkpoint: (stage, connection) =>
+                {
+                    if (stage != "lock-retry") return;
+                    Assert.Equal(System.Data.ConnectionState.Closed, connection.State);
+                    retries++;
+                    cancellation.Cancel();
+                }, cancellationToken: cancellation.Token));
+            Assert.Equal(1, retries);
+            Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+        }
+        Assert.Equal(before, db.Snapshot(false, true));
+        await new SqliteLabelJobStore(db.Path).InitializeAsync();
+        Assert.Equal(before, db.Snapshot(true, true));
+    }
+
+    [Fact]
+    public async Task Busy_after_backup_is_not_retried_and_keeps_verified_backup()
+    {
+        using var db = new MigrationDb(true);
+        var before = db.Snapshot(false, true);
+        var attempts = 0;
+        var injected = new SqliteException("测试占用", 5);
+        var error = await Assert.ThrowsAsync<SqliteException>(() => JobStorageMigration.ConvertAsync(db.Path, true,
+            checkpoint: (stage, _) =>
+            {
+                if (stage == "locking") attempts++;
+                if (stage == "copied") throw injected;
+            }));
+        Assert.Same(injected, error);
+        Assert.Equal(1, attempts);
+        Assert.Equal(true, error.Data["JobStorageBackupVerified"]);
+        Assert.Single(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+        Assert.Equal(before, db.Snapshot(false, true));
+        await new SqliteLabelJobStore(db.Path).InitializeAsync();
+        Assert.Equal(before, db.Snapshot(true, true));
+    }
+
+    [Fact]
+    public async Task Concurrent_process_initializers_preserve_fields_and_one_backup()
+    {
+        using var db = new MigrationDb(true);
+        var before = db.Snapshot(false, true);
+        var processes = Enumerable.Range(0, 4)
+            .Select(_ => new ChildProcess("test", "LabelFrame.JobStorageProbe", "initialize", db.Path)).ToArray();
+        try
+        {
+            foreach (var child in processes)
+                Assert.Equal("ready", await child.Process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(20)));
+            foreach (var child in processes)
+                await child.Process.StandardInput.WriteLineAsync();
+            foreach (var child in processes)
+            {
+                await child.Process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20));
+                Assert.Contains(child.Process.ExitCode, new[] { 0, 5 });
+                output.WriteLine(await child.Process.StandardError.ReadToEndAsync());
+            }
+            Assert.Contains(processes, child => child.Process.ExitCode == 0);
+            await new SqliteLabelJobStore(db.Path).InitializeAsync();
+            Assert.Equal(before, db.Snapshot(true, true));
+            Assert.Single(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+        }
+        finally
+        {
+            foreach (var child in processes) child.Dispose();
+        }
     }
 
     [Theory]
