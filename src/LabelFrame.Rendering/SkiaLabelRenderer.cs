@@ -666,16 +666,18 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
         var result = new LabelBitmap(width, height);
         for (var y = 0; y < height; y++)
         {
+            var sourceRow = y * rowBytes;
+            var targetRow = y * result.RowBytes;
             for (var x = 0; x < width; x++)
             {
-                var offset = y * rowBytes + x * 4;
+                var offset = sourceRow + x * 4;
                 var b = bytes[offset];
                 var g = bytes[offset + 1];
                 var r = bytes[offset + 2];
-                var luma = (r * 299 + g * 587 + b * 114) / 1000;
-                if (luma < 128)
+                var weightedLuma = r * 299 + g * 587 + b * 114;
+                if (weightedLuma < 128000)
                 {
-                    result.Pixels[y * result.RowBytes + (x >> 3)] |= (byte)(0x80 >> (x & 7));
+                    result.Pixels[targetRow + (x >> 3)] |= (byte)(0x80 >> (x & 7));
                 }
             }
         }
