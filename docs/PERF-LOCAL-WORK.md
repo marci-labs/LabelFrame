@@ -262,3 +262,17 @@ ServerDb 实例内运行期写调用改为异步排队，读查询和跨实例�
 下一会话：沿用 `codex/local-perf` 与既有工作树，不创建新 worktree、不在默认 checkout 修改。先完整阅读分表方案和 Core 模块相关篇，检查旧文本库/二进制列迁移、事务/取消/多实例互斥、一致性备份/空间边界、缺失/孤立载荷 fail-closed 与反向迁移。测试原型仅位于 `ClaimStagesPerfTests`，不是可部署工具；产品仍为原大行 schema。所有公开完整查询与新建要同步调整，内部 State 查询/完成大部分可复用但须验证缺失载荷语义，不能简单 INNER JOIN 丢项。生产化维护工具应保留新作业与终态，不恢复旧备份重打。不新增公共作业模型/API、不降同步等级、不合并逐张提交、不缓存变化指令、不改顺序或字节。
 
 本次仅评估/决策文档变更，不重复全量测试；最近产品/测试验证为 bfc3e63 的 0 警告/0 错误 build 与 1347 全过，不能当后续实现的验证。当前上下文已长，按用户要求提前创建全新接续会话（不声称可精确读取百分比），不 fork、不派子代理，交接后原会话停止修改，确保单写。后续仍持续执行到需新决策，不等用户再说继续。
+
+## 分表迁移内核先行（2026-10-26）
+
+从 `f4272a0` 接续。新增 Core 内部 `JobStorageMigration` 与常规 `JobStorageMigrationTests`，**尚未接入 SqliteLabelJobStore.InitializeAsync 或维护命令**，产品仍为大行结构。没有在测试夹具之外调用迁移器、没有修改真实数据库。先行实现不代表分表功能已交付，README/DEPLOY/CHANGELOG 的用户承诺需在实际接线时同步，ROADMAP 不虚记。
+
+内核：不使用连接池、ReadWrite（不存在的路径不创建），SQLite EXCLUSIVE 锁跨备份与事务保持；user_version 0/1 白名单，已知列集合与表/索引名称检查，未知对象拒绝；完整性/外键/双向对应检查；按逻辑页大小四倍加 64MiB 余量检查可用空间（不是容量保证）；同目录唯一 CreateNew 备份、SQLite BackupDatabase 包含 WAL；正向拆分或反向合成当前数据，双向 EXCEPT 核对全部 Item 存储字段后换表、建索引、写版本、提交。Job 表不改，保留原日期文本、NULL/空 BLOB 与终态。仅维护连接显式 ForeignKeys=false 支持重建，提交前 foreign_key_check；不改同步等级、不 VACUUM、不合批、不缓存指令。
+
+22 项专项通过：旧库有/无 command_bytes；五种 Item 状态、Suspended Job、错误/中文/二进制/原日期；新格式新增作业并完成历史项后逆迁移及再次正迁移，字段逐项一致；重复方向为 no-op；正反向 copied/before-commit 异常和提交前取消回滚；空间预检不足；SQLite max_page_count 真实 SQLITE_FULL（两方向）回滚后可重试；未知版本/额外列/自定义触发器/索引/视图/孤立 Item 拒绝；缺失/孤立 payload 拒绝；现有读取事务阻止迁移，以及迁移持锁期间其他连接拒绝读取。WAL 专项用测试连接 SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE 关闭自动末连接 checkpoint，确认 WAL 有内容，备份读到仅在 WAL 中更新的载荷；不修改产品连接配置。
+
+首轮 `migration-kernel.trx` 13 失败/6 通过，发现原生 SQLite 默认外键启用导致 DROP 原表失败，已显式限定维护连接并增加检查；`migration-kernel-fixed.trx` 19 全过。追加 FULL 测试首轮 `migration-kernel-faults.trx` 21 过/1 失败，逆向库有空闲页未触发 FULL；仅测试夹具先 VACUUM 消除空闲页后，`migration-kernel-faults-fixed.trx` 22 全过。原失败证据保留，不声称首次全过。空间预检注入不等于实际磁盘配额/硬件故障覆盖，SQLite FULL 测试不等于断电测试。
+
+完整 Release build 0 警告/0 错误；非 Perf/Soak **1369 项全部通过、零跳过**，证据 `artifacts/split-product-20261026/kernel-regression/` 七份 TRX。用户 PID 23360/8940 创建时间核对为 2026-10-24 12:51:59/12:51:46，主 checkout 干净；不操作 UI/真实打印/用户客户端，不启动宿主端口，不推送/Issue/PR/部署/发版，无前端改动。注释卫生提交后对 `f4272a0..HEAD` 执行。
+
+下一步继续（不等新授权）：先审查迁移内核是否需强化 schema 约束识别、备份失败路径可诊断性、取消粒度与跨进程/强制退出恢复测试；现有互斥测试仅同进程多连接，不冒充跨进程实证。再完成初始化新库/旧库自动迁移、所有读取/创建接线、运行时缺失载荷 fail-closed、内部状态/完成正确性及离线降级 CLI。注意当前 SqliteLabelJobStore.OpenConnectionAsync 使用池，旧连接可能阻止 EXCLUSIVE；初始化应先无池识别格式，已经 split 的正常重复初始化不能每次独占迁移；不要 ClearAllPools 影响其他数据库，不在线降级，所有宿主须停机。补维护工具、README/DEPLOY/CHANGELOG/core 说明与全链路/性能证据后才称接入完成。原有 Perf 原型直接操作旧 job_items.zpl，产品切换后需明确基线/候选格式并调整诊断，不把旧 SQL 误用新库。不重复已否决优化、不降持久性、不改公共契约。
