@@ -1163,6 +1163,8 @@ Docker Builder 按 `serverImage.digest` 拉取并校验实际 RepoDigest 后 `do
 
 ## 7. 风险与未决问题
 
+- 本地性能诊断（2026-10-26）：TSPL 插件经 `TransportConfig.SyncLegacyFields` 映射为旧 `Mode=Log`，提交服务据此额外保存 PNG；隔离测试使用真实插件/管理器提交 3 张二进制作业且不启动 Worker，复现 3 个 PNG。正常图片打印载荷为打印机位图指令，并不需要 PNG。此兼容分类问题尚未修复，待用户确认后检查依赖旧 Mode 的调用点；不要先通过改变 PNG 压缩策略掩盖额外工作。证据与测量边界见 [本地性能记录](PERF-LOCAL-WORK.md#不保存-png-的模拟打印链路2026-10-26)。
+
 - 前端 lint 新诊断（迭代 162，#447）：oxlint 1.89.0 在既有业务代码额外报告 27 条 React refs / effect / immutability 警告，原 24 条 Hooks / Fast Refresh 警告仍在；本轮零错误且不禁用规则。此轮仅升级工具链，业务行为重构留待触及相关模块时逐项处理，不能用 lint 退出码 0 宣称无警告。
 
 
