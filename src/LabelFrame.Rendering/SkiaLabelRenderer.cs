@@ -421,7 +421,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
             Options = new EncodingOptions { Height = barcodeHeight, Width = contentW, Margin = 2, PureBarcode = true },
             Renderer = new ZXing.Rendering.PixelDataRenderer(),
         };
-        using var barcodeBitmap = ToSkBitmap(writer.Write(value));
+        using var barcodeBitmap = ToSkBitmap(writer.Encode(value));
         canvas.DrawBitmap(barcodeBitmap, contentX, contentY);
 
         if (barcode.DisplayValue)
@@ -495,7 +495,7 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
             },
             Renderer = new ZXing.Rendering.PixelDataRenderer(),
         };
-        using var qrBitmap = ToSkBitmap(writer.Write(value));
+        using var qrBitmap = ToSkBitmap(writer.Encode(value));
         canvas.DrawBitmap(qrBitmap, contentX, contentY);
     }
 
@@ -631,11 +631,26 @@ public sealed class SkiaLabelRenderer : ILabelBitmapRenderer
     }
 
     /// <summary>ZXing PixelData（BGRA 字节）→ SKBitmap。</summary>
-    private static SKBitmap ToSkBitmap(ZXing.Rendering.PixelData pixelData)
+    private static SKBitmap ToSkBitmap(BitMatrix matrix)
     {
-        var bitmap = new SKBitmap(new SKImageInfo(pixelData.Width, pixelData.Height, SKColorType.Bgra8888, SKAlphaType.Opaque));
-        Marshal.Copy(pixelData.Pixels, 0, bitmap.GetPixels(), pixelData.Pixels.Length);
-        return bitmap;
+        var bitmap = new SKBitmap(new SKImageInfo(matrix.Width, matrix.Height, SKColorType.Bgra8888, SKAlphaType.Opaque));
+        try
+        {
+            var pixels = bitmap.GetPixelSpan();
+            var black = BitConverter.IsLittleEndian ? 0xff000000u : 0x000000ffu;
+            for (var y = 0; y < matrix.Height; y++)
+            {
+                var row = MemoryMarshal.Cast<byte, uint>(pixels.Slice(y * bitmap.RowBytes, matrix.Width * 4));
+                for (var x = 0; x < matrix.Width; x++)
+                    row[x] = matrix[x, y] ? black : uint.MaxValue;
+            }
+            return bitmap;
+        }
+        catch
+        {
+            bitmap.Dispose();
+            throw;
+        }
     }
 
     /// <summary>LabelBitmap（1bpp）→ SKBitmap（白底黑字）。</summary>

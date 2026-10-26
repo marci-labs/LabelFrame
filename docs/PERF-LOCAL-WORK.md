@@ -174,3 +174,15 @@ ServerDb 实例内运行期写调用改为异步排队，读查询和跨实例�
 证据：`artifacts/insert-perf-20261026/{focused-before.trx,focused-candidate.trx,insert-before.trx,insert-candidate.trx,barcode-stages.trx}`。下一步值得验证直接把 ZXing BitMatrix 写入 SKBitmap，省去 PixelData 中间 BGRA 数组及复制；应先用测试候选测量并与现有 PixelDataRenderer 逐字节比较，覆盖尺寸/边距/内容/二维码纠错等级，不能假定 Code128 的行结构也适用于 QR，更不能改模块尺寸或静区。无需重复命令复用试验。
 
 撤回候选后的完整 Release build 0 警告/0 错误，非 Perf/Soak 回归仍为 1337 项全部通过、零跳过（同目录 `regression/`）；新测试均为 Perf，仅专项运行。没有产品/前端/Android 改动，不新增发布说明或架构决策，不虚记 ROADMAP、远端验收或 CI。主 checkout 干净，用户客户端未操作；本会话未启动宿主或测试监听端口。继续沿用本工作树及本地流程例外；保守提前创建全新接续会话，不分叉，也不并行实现。
+
+## 条码矩阵直写原生像素（2026-10-26）
+
+从 `dbfbe5e` 接续。先在 `BarcodeDirectPixelsTests` 中对测试候选验证 Code128 / QR、1/17/201/650 请求尺寸、0/2/7 静区、四档 ECC、长短内容和中文 QR，与现有 PixelDataRenderer 输出逐行逐字节一致后，再接入产品。原 writer.Encode、编码选项、布局和 DrawBitmap 保持；只将矩阵直接写入 BGRA/Opaque SKBitmap，按 RowBytes 与本机字节序处理，逐行逐像素读取，不假设行重复、不新增缓存/并行或公共接口。异常释放原生位图，正常由调用方 using 释放。决策 #222、模块说明和 CHANGELOG 已同步。
+
+测试候选同进程交替顺序四轮，200 个 650×260 Code128，仅像素生成＋位图分配/复制：原路径 273/259/234/243ms，候选 59/53/56/48ms；托管分配 135227200 → 16000 bytes。接入产品后复测原路径 214/206/202/158ms、直写 56/49/52/42ms，暖轮直写分配仍约 16KB。不是完整条码绘制或物理打印耗时，原生位图内存仍保留，不能外推总内存同比下降。分阶段完整绘制 200 张条码 202/202/104ms，二维码 107/88/62ms，转换 278/310/293ms，复制 93/100/87ms；相邻轮次波动，不以独立轮次宣称固定收益。
+
+新增四项非 Perf 回归：编码像素逐字节等价（含实际矩阵超出请求宽度）、输入矩阵不变、任意非重复行与并发隔离、输出原生内存不别名、托管分配预算。完整模拟链路 12 作业/1004 张数量、顺序、幂等、跨轮指令哈希、PNG 数量通过。不保存 PNG 的 200 张 Completed 为 3.132/3.388 秒，保存为 8.404/7.959 秒；与此前范围重叠，不宣称整批稳定提速。TSPL 不启动 Worker 的隔离提交 200 张 792ms、额外 PNG 为零，3/200 张全部指令 SHA256 与 `tspl-log-fix-20261026/tspl-before.trx` 逐项一致。
+
+证据：`artifacts/barcode-direct-20261026/{direct-candidate.trx,product-pixels.trx,pipeline-candidate.trx,stages-candidate.trx}`。完整 Release build 0 警告/0 错误；非 Perf/Soak 回归 1341 项全过、零跳过，TRX 在 `regression/`。注释卫生对 `dbfbe5e` 检查通过。用户 23360/8940 创建时间不变；无真实打印、UI/客户端操作、推送/PR/Issue/部署、前端修改或 ROADMAP 虚记。
+
+下一方向：整版绘制后的 Marshal.Copy 仍累计约 90ms/200 张，考虑先测直接从原生 span 转 1bpp 的候选，保持当前整数阈值与位序；表面池行为和混合 PNG/位图调用须回归，不要重做入库 command 复用或改同步持久性。

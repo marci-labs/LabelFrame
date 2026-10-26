@@ -86,6 +86,8 @@
 
 ### 3.5 条码与二维码（`DrawBarcode` / `DrawQrCode`）
 
+ZXing writer 的格式、编码选项与 Encode 路径不变；取得最终 BitMatrix 后直接写入新建 BGRA/Opaque SKBitmap，不再调用 PixelDataRenderer 生成整幅托管数组及 Marshal.Copy。按 RowBytes 切分行，以本机字节序写不透明黑/白，逐行逐像素读取矩阵，不假设 Code128 行重复或 QR 行结构。原生像素 span 不逃逸位图生命周期，转换异常释放位图，正常由绘制调用方释放；无新增缓存/并行或公共接口。旧 PixelDataRenderer 逐字节对照覆盖最小尺寸、编码后宽度大于请求宽度、不同静区、QR 四档纠错和中文内容；任意非重复矩阵行及并发独立性另有回归保护。此处仅服务默认黑白纯码绘制，不扩展为自定义颜色或 ZXing 内建文字渲染器。
+
 - 条码固定 **Code128**（ZXing `BarcodeWriter`，`Margin = 2` 模块静区）；`displayValue = true` 时底部数值文字带由渲染器自绘（ZXing 侧 `PureBarcode = true` 屏蔽其内建文字，字体走默认字体族）——字号取 `max(1.5mm, 内容高 × 15%)`、超宽等比缩小、基线贴内容区底（`contentY + contentH − Descent`），条码占剩余高度；
 - 二维码保持**正方形**（内容区取 `min(宽, 高)`）并居中；ECC 档 L / Q / H、默认 M，边距 `qrMargin`（默认 2，决策 #47）；
 - 条码 / 二维码值为空白时**整体跳过（含边框）**——与图片空 key 同语义；文本元素相反：空值先画边框再返回（边框仍在）。
