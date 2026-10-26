@@ -162,3 +162,15 @@ ServerDb 实例内运行期写调用改为异步排队，读查询和跨实例�
 证据：`artifacts/bitmap-stages-20261026/stages-before.trx`、`conversion-candidate.trx`、`stages-candidate.trx`、`pipeline-candidate.trx`。下一候选是条码绘制内部成本（ZXing 像素生成/复制/绘制分开测）或 SQLite 入库语句准备成本；需先量化，不贸然缓存变化数据、并行绘制或降低持久性。
 
 最终 Release build 0 警告/0 错误，非 Perf/Soak 回归 1337 项全过、零跳过，原始结果在 `regression/`。本轮仍仅本地提交，未推送/PR/Issue/发版/部署、未操作用户客户端或物理打印机；用户 PID 23360 / 8940 创建时间不变。无前端/Android 源码变更，未做 VM 或长测；ROADMAP 不虚记完成。
+
+## 入库命令复用试验与条码细分（2026-10-26）
+
+从 `006dbba` 接续。本轮保留两项诊断测试，**没有保留任何产品代码变更**。`JobInsertPerfTests` 对 200 项交替文本/二进制作业，分别使用小载荷（64 字符/32 bytes）及正常图片量级（210000 字符/105000 bytes），四轮独立临时 SQLite 库；计时仅围绕真实 `CreateJobAsync`，准备输入及完整回读验证不计时，要求调用同步完成以保证线程分配计数有效。
+
+候选只在单次 CreateJob 事务内复用 Item INSERT command/参数，每项刷新全部值，原事务/提交/幂等入口不变。小载荷暖轮基线 5.54 / 4.20 / 6.17ms，候选 5.93 / 5.74 / 5.15ms，分配 430320 → 205848 bytes；大载荷四轮基线 382 / 370 / 370 / 297ms，候选 862 / 448 / 316 / 310ms，分配约 21.43MB → 21.20MB（仅约 1%）。正常 200 张阶段测试 ZPL 入库基线 1026 / 491 / 467ms，候选 592 / 761 / 746ms；TSPL 基线 272 / 313 / 293ms，候选 313 / 249 / 344ms。各轮完整回读内容一致，但耗时无稳定改善，不能把独立轮次波动归因于候选或宣称回退。收益不足以为当前图片批量路径保留改动，已用精确补丁撤回试验，`SqliteLabelJobStore.cs` 与接续 HEAD 无差异。不降低同步级别、不合并完成状态提交。
+
+`BarcodeStagesTests` 继续拆 Code128：200 个 LF-0001～LF-0200，650×260 像素，Margin=2、PureBarcode=true，分开调用当前 ZXing writer.Encode、PixelDataRenderer、SKBitmap 分配及 Marshal.Copy、DrawBitmap；首项与原 writer.Write 像素对照。四轮矩阵生成 61 / 22 / 19 / 16ms，BGRA 生成 164 / 149 / 123 / 107ms，原生位图分配与复制 66 / 62 / 58 / 55ms，绘制 95 / 86 / 88 / 78ms；被测区间托管分配约 140MB/轮。不是实际完整 DrawBarcode（不含布局/数值文字/边框等），也不是整批出纸耗时；本轮不改 ZXing、图像质量或绘制行为。
+
+证据：`artifacts/insert-perf-20261026/{focused-before.trx,focused-candidate.trx,insert-before.trx,insert-candidate.trx,barcode-stages.trx}`。下一步值得验证直接把 ZXing BitMatrix 写入 SKBitmap，省去 PixelData 中间 BGRA 数组及复制；应先用测试候选测量并与现有 PixelDataRenderer 逐字节比较，覆盖尺寸/边距/内容/二维码纠错等级，不能假定 Code128 的行结构也适用于 QR，更不能改模块尺寸或静区。无需重复命令复用试验。
+
+撤回候选后的完整 Release build 0 警告/0 错误，非 Perf/Soak 回归仍为 1337 项全部通过、零跳过（同目录 `regression/`）；新测试均为 Perf，仅专项运行。没有产品/前端/Android 改动，不新增发布说明或架构决策，不虚记 ROADMAP、远端验收或 CI。主 checkout 干净，用户客户端未操作；本会话未启动宿主或测试监听端口。继续沿用本工作树及本地流程例外；保守提前创建全新接续会话，不分叉，也不并行实现。
