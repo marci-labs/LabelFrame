@@ -36,8 +36,9 @@ internal static class JobStorageMigration
                 "SELECT count(*) FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*';", token);
             if (version == 0 && objects == 0)
             {
-                await ExecuteAsync(connection, transaction, createSql + "PRAGMA user_version=1;", token);
-                await transaction.CommitAsync(token);
+                await transaction.RollbackAsync(token);
+                await transaction.DisposeAsync();
+                await InitializeEmptyAsync(connection, createSql, token);
                 return;
             }
             if (version == SplitVersion)
@@ -49,6 +50,25 @@ internal static class JobStorageMigration
             }
         }
         await ConvertAsync(databasePath, true, cancellationToken: token);
+    }
+
+    private static async Task InitializeEmptyAsync(SqliteConnection connection, string createSql, CancellationToken token)
+    {
+        // 空库并发首启须先获取写锁再识别，避免多个读事务相互阻塞锁升级。
+        await using var transaction = connection.BeginTransaction(deferred: false);
+        var version = await ScalarAsync(connection, transaction, "PRAGMA user_version;", token);
+        var objects = await ScalarAsync(connection, transaction,
+            "SELECT count(*) FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*';", token);
+        if (version == 0 && objects == 0)
+            await ExecuteAsync(connection, transaction, createSql + "PRAGMA user_version=1;", token);
+        else if (version == SplitVersion)
+        {
+            await ValidateSchemaAsync(connection, true, token, transaction);
+            await ValidateRelationsAsync(connection, transaction, true, token);
+        }
+        else
+            throw new InvalidDataException("作业库结构在初始化期间改变，请停止所有宿主后重试。");
+        await transaction.CommitAsync(token);
     }
 
     internal static async Task<string?> ConvertAsync(

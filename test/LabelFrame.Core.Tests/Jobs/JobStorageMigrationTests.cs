@@ -9,6 +9,88 @@ namespace LabelFrame.Core.Tests.Jobs;
 public sealed class JobStorageMigrationTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Idle_runtime_pool_requires_explicit_release_only_for_legacy_migration(bool split)
+    {
+        using var db = new MigrationDb(true);
+        if (split) await JobStorageMigration.ConvertAsync(db.Path, true);
+        var before = db.Snapshot(split, true);
+        using var pooled = new SqliteConnection(SqliteSupport.BuildConnectionString(db.Path));
+        try
+        {
+            pooled.Open();
+            using (var command = pooled.CreateCommand())
+            {
+                command.CommandText = "SELECT count(*) FROM job_items;";
+                Assert.Equal(5L, command.ExecuteScalar());
+            }
+            pooled.Close();
+            var store = new SqliteLabelJobStore(db.Path);
+            if (split)
+                await store.InitializeAsync();
+            else
+            {
+                var error = await Assert.ThrowsAsync<SqliteException>(() => store.InitializeAsync());
+                Assert.Equal(5, error.SqliteErrorCode);
+                Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+            }
+            Assert.Equal(before, db.Snapshot(split, true));
+            SqliteConnection.ClearPool(pooled);
+            await store.InitializeAsync();
+            Assert.Equal(before, db.Snapshot(true, true));
+            Assert.Single(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+        }
+        finally
+        {
+            SqliteConnection.ClearPool(pooled);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Concurrent_initializers_leave_one_atomic_schema_and_allow_retry(bool legacy)
+    {
+        using var db = new MigrationDb(true);
+        var path = legacy ? db.Path : System.IO.Path.Combine(db.DirectoryPath, "new.db");
+        var before = db.Snapshot(false, true);
+        using var start = new ManualResetEventSlim();
+        var attempts = Enumerable.Range(0, 4).Select(_ => Task.Run(async () =>
+        {
+            start.Wait();
+            try
+            {
+                await new SqliteLabelJobStore(path).InitializeAsync();
+                return true;
+            }
+            catch (SqliteException error) when (error.SqliteErrorCode == 5)
+            {
+                return false;
+            }
+        })).ToArray();
+        start.Set();
+        var results = await Task.WhenAll(attempts).WaitAsync(TimeSpan.FromSeconds(20));
+        Assert.Contains(true, results);
+        await new SqliteLabelJobStore(path).InitializeAsync();
+        using var connection = db.Open(path);
+        using var check = connection.CreateCommand();
+        check.CommandText = "PRAGMA user_version;";
+        Assert.Equal(1L, check.ExecuteScalar());
+        check.CommandText = "PRAGMA integrity_check;";
+        Assert.Equal("ok", check.ExecuteScalar());
+        check.CommandText = "SELECT count(*) FROM job_items i LEFT JOIN job_payloads p ON p.item_id=i.id WHERE p.item_id IS NULL;";
+        Assert.Equal(0L, check.ExecuteScalar());
+        if (legacy)
+        {
+            Assert.Equal(before, db.Snapshot(true, true));
+            Assert.Single(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+        }
+        else
+            Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+    }
+
+    [Theory]
     [InlineData("missing-confirmation", 2)]
     [InlineData("missing-file", 1)]
     [InlineData("unknown-version", 1)]
