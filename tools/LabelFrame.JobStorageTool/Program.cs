@@ -1,4 +1,7 @@
 using LabelFrame.Core.Jobs;
+using System.Text;
+
+Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
 if (args.Length != 3 || args[0] is not ("to-split" or "to-legacy") || args[2] != "--hosts-stopped")
 {

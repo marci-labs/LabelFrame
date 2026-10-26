@@ -360,6 +360,7 @@ public sealed class JobStorageMigrationTests(Xunit.Abstractions.ITestOutputHelpe
             {
                 UseShellExecute = false, CreateNoWindow = true,
                 RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8, StandardErrorEncoding = System.Text.Encoding.UTF8,
                 WorkingDirectory = directory.FullName,
             };
             start.ArgumentList.Add(System.IO.Path.Combine(directory.FullName, folder, name, "bin", configuration, "net10.0", name + ".dll"));

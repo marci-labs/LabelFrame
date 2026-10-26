@@ -192,13 +192,21 @@ public sealed class PrintImageLifecycleTests : IDisposable
         var link = Path.Combine(_root, Guid.NewGuid().ToString("N"));
         if (OperatingSystem.IsWindows())
         {
-            var start = new System.Diagnostics.ProcessStartInfo("powershell.exe") { CreateNoWindow = true, UseShellExecute = false };
-            start.ArgumentList.Add("-NoProfile");
-            start.ArgumentList.Add("-Command");
-            start.ArgumentList.Add($"$ErrorActionPreference='Stop'; New-Item -ItemType Junction -Path '{link.Replace("'", "''")}' -Target '{target.Replace("'", "''")}' | Out-Null");
+            var start = new System.Diagnostics.ProcessStartInfo("cmd.exe")
+            {
+                CreateNoWindow = true, UseShellExecute = false,
+                RedirectStandardOutput = true, RedirectStandardError = true,
+                Arguments = $"/d /c mklink /J \"{link}\" \"{target}\"",
+            };
             using var process = System.Diagnostics.Process.Start(start)!;
-            Assert.True(process.WaitForExit(10000));
-            Assert.Equal(0, process.ExitCode);
+            if (!process.WaitForExit(10000))
+            {
+                process.Kill();
+                Assert.True(process.WaitForExit(10000), "测试目录联接子进程未退出。");
+                throw new TimeoutException("测试目录联接创建超时。");
+            }
+            Assert.True(process.ExitCode == 0, process.StandardError.ReadToEnd() + process.StandardOutput.ReadToEnd());
+            Assert.True((File.GetAttributes(link) & FileAttributes.ReparsePoint) != 0);
         }
         else Directory.CreateSymbolicLink(link, target);
         try
