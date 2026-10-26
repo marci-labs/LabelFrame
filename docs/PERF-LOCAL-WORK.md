@@ -94,3 +94,17 @@ ServerDb 实例内运行期写调用改为异步排队，读查询和跨实例�
 收尾 `verification.json`：测试进程与 54970 监听为零，原客户端 PID 23360 和辅助 PID 8940 的创建时间均未变；主 checkout 仍干净 master cf11383。仅本地提交，不推送/PR/Issue/发版/部署；无前端改动，未做 VM、Android APK/真机、物理打印或 Soak，不虚记 ROADMAP 或 CI 通过。原 Server 20 设备 p50 门槛未过结论不变。
 
 后续：先测提交阶段各部分（当前整批已基本受提交耗时约束）；失败回读、历史列表及路由回报仍读取完整载荷，可在相应负载证实后继续裁剪。图片模式重放短路继续保留原错误校验语义，不能直接前移。无需重新初始化工作流或新建工作树。
+
+## 提交阶段与 PNG 暂存（2026-10-26）
+
+从 `0649ee6` 接续，测试 `BatchSubmissionStagesTests` 对相同 100×60mm/300dpi 中文条码二维码模板分阶段串行测量。200 张基线渲染 826ms、ZPL 编码 48ms、入库 780ms、PNG 4964ms、写文件 253ms；PNG/写文件托管分配 671327768 bytes。测试无 HTTP/Worker/请求校验/日志清理，不将各阶段之和冒充宿主实测总耗时。
+
+`LabelBitmapPng.ToPng` 从「整幅托管 BGRA → Marshal.Copy」改为直接写新建 SKBitmap 的原生像素 span，按 RowBytes 定位；不改 PNG 参数/色彩类型/公共接口、不增加共享缓存或并行。该工具用于模拟打印和调试出图，不是原预览缓存归还路径，也不代表实体打印提速。设计见决策 #219 与 `docs/design/rendering.md`。
+
+回归先红后绿：1181×709 样本三次暖 PNG 分配从 10061928 bytes → 专项 13896 bytes（全量轮次 112248 bytes），宽预算 800000。新增 10 项常规测试覆盖小尺寸/非字节对齐/多 DPI/黑白交替随机内容、输入保留、并发隔离、null 和旧实现 PNG 逐字节等价。分阶段复测 200 张 PNG/写文件分配降至 1457400 bytes，约少 99.8%，但 PNG 耗时仍 4963ms，不能把分配下降说成耗时或进程总内存同比下降。
+
+实际无界面 ClientHost、独立 54970、本机同负载 A-B-B-A：200 张基线 7.030 / 7.413 秒，候选 7.412 / 6.789 秒，范围重叠，无稳定整批提速证据；50 张基线 1.984 / 1.969 秒，候选 1.804 / 1.811 秒，样本不足以推广固定收益。12 作业/1004 张全部 Completed，计数/PNG 张数/幂等正确，跨版本 PNG 与预览 SHA256 一致。测试期间无并行构建/测试/采样。
+
+最终 Release build 0 警告/0 错误，非 Perf/Soak 回归 1322 项全部通过、零跳过；证据在 `artifacts/submission-perf-20261026/REPORT.md`、`stages-before.trx` / `stages-after.trx`、`png-before.trx` / `png-after.trx`、`build.log` / `tests.log` / `regression/`、`results.json` / `verification.json`。收尾测试进程与 54970 监听为零，用户原 23360 与辅助 8940 创建时间未变，主 checkout 仍干净 master cf11383。
+
+本轮仅本地提交；无推送/PR/Issue/发布/部署，无前端修改，无物理打印/VM/Android APK/长测。下一步若继续追求速度，先拆 PNG 展开和原生编码，不擅改压缩策略导致字节变化、不直接并行落图改变资源/失败顺序；渲染和持久化成本可继续量化，但不能降低持久性。没有证据承诺还能获得前两轮同量级加速。

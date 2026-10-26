@@ -31,6 +31,8 @@
 
 ## 3. 关键流程
 
+`LabelBitmapPng.ToPng` 将 1bpp 像素直接展开到新建 SKBitmap 的原生像素 span，按 SKBitmap.RowBytes 定位行，不再分配整幅托管 BGRA 暂存或执行 Marshal.Copy。span 仅在本次位图存活期间同步使用，没有共享缓冲/新增池；位图和编码对象仍逐次释放。颜色类型、透明度、黑白规则、PNG 编码参数与返回字节保持不变；这一路主要服务模拟打印和调试出图，不是实体打印的传输提速。按位模式、非字节对齐宽度、多 DPI 尺寸、并发与旧实现逐字节对照保护兼容性。
+
 ### 3.1 整版渲染主链（`RenderLabelBitmap` / `RenderLabelBitmapPng`）
 
 1. 尺寸：版式毫米 → 点（`mm / 25.4 × dpi`，四舍五入远离零，下限 0；调用侧再 `Math.Max(1, …)` 保证正尺寸）；
