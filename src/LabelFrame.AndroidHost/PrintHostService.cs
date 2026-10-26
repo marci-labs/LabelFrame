@@ -45,15 +45,13 @@ public sealed class PrintHostService : Service
 
         StartForegroundCompat();
 
-        _lifetime.Start(InitializeAsync, Activate, DrainAsync, InitializationFailed);
+        // 原生库预加载须保留 Android 生命周期调用上下文，不能移入托管线程池。
+        _lifetime.Start(InitializeAsync, Activate, DrainAsync, InitializationFailed,
+            () => Java.Lang.JavaSystem.LoadLibrary("e_sqlite3"));
     }
 
     private async Task InitializeAsync(CancellationToken token)
     {
-        // SQLitePCLRaw 的 e_sqlite3 原生库需先经 System.loadLibrary 装载进 Android 链接器命名空间，
-        // 否则 raw.SetProvider 的 DllImport("e_sqlite3") 抛 DllNotFoundException（APK 内已含 libe_sqlite3.so 也不行）。
-        Java.Lang.JavaSystem.LoadLibrary("e_sqlite3");
-
         var config = LabelHostConfig.Load(this);
         var pluginHost = PluginHost.Load(this);
         _config = config;

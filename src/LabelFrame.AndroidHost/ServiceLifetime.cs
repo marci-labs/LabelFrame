@@ -11,11 +11,23 @@ internal sealed class ServiceLifetime(SemaphoreSlim generations) : IDisposable
     private Task? _cancellation;
 
     internal Task Start(Func<CancellationToken, Task> initialize, Action<CancellationToken> activate,
-        Func<Task> drain, Action<Exception> failed)
+        Func<Task> drain, Action<Exception> failed, Action? prepare = null)
     {
         lock (_sync)
         {
             if (_completion is null) ObjectDisposedException.ThrowIf(_stopped || _finished, this);
+            if (_completion is null)
+            {
+                try { prepare?.Invoke(); }
+                catch (Exception error)
+                {
+                    _completion = Task.CompletedTask;
+                    _finished = true;
+                    _stop.Dispose();
+                    failed(error);
+                    return _completion;
+                }
+            }
             return _completion ??= Task.Run(() => RunAsync(initialize, activate, drain, failed));
         }
     }

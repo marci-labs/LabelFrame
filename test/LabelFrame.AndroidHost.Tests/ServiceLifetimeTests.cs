@@ -8,6 +8,60 @@ public sealed class ServiceLifetimeTests
     private static Task Wait(Task task) => task.WaitAsync(TimeSpan.FromSeconds(10));
 
     [Fact]
+    public async Task Prepare_runs_once_on_caller_before_background_initialization()
+    {
+        using var generations = new SemaphoreSlim(1, 1);
+        using var lifetime = new ServiceLifetime(generations);
+        var entered = Signal();
+        var caller = Environment.CurrentManagedThreadId;
+        var prepareThread = 0;
+        var prepared = 0;
+        var initializeThread = 0;
+        Task Initialize(CancellationToken _)
+        {
+            initializeThread = Environment.CurrentManagedThreadId;
+            Assert.Equal(1, prepared);
+            entered.SetResult();
+            return Task.CompletedTask;
+        }
+        void Prepare() { prepareThread = Environment.CurrentManagedThreadId; prepared++; }
+        var completion = lifetime.Start(Initialize, _ => { }, () => Task.CompletedTask, _ => { }, Prepare);
+        Assert.Equal(caller, prepareThread);
+        Assert.Same(completion, lifetime.Start(Initialize, _ => { }, () => Task.CompletedTask, _ => { }, Prepare));
+        await Wait(entered.Task);
+        Assert.NotEqual(caller, initializeThread);
+        Assert.Equal(1, prepared);
+        lifetime.Stop();
+        await Wait(completion);
+    }
+
+    [Fact]
+    public async Task Prepare_failure_prevents_background_work_and_preserves_failure_callback_guard()
+    {
+        using var generations = new SemaphoreSlim(1, 1);
+        using var lifetime = new ServiceLifetime(generations);
+        var expected = new DllNotFoundException("隔离原生加载失败");
+        Exception? observed = null;
+        var initialized = false;
+        var activated = false;
+        var drained = false;
+        var completion = lifetime.Start(_ => { initialized = true; return Task.CompletedTask; },
+            _ => activated = true, () => { drained = true; return Task.CompletedTask; },
+            error => observed = error, () => throw expected);
+        await Wait(completion);
+        Assert.Same(expected, observed);
+        Assert.False(initialized);
+        Assert.False(activated);
+        Assert.False(drained);
+        Assert.Equal(1, generations.CurrentCount);
+        var active = false;
+        lifetime.IfActive(() => active = true);
+        Assert.True(active);
+        lifetime.Stop();
+        lifetime.IfActive(() => Assert.Fail("销毁后的失败回调不应执行"));
+    }
+
+    [Fact]
     public async Task Slow_synchronous_initialization_runs_off_caller_and_never_activates_after_destroy()
     {
         using var generations = new SemaphoreSlim(1, 1);
