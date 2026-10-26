@@ -5,6 +5,7 @@ using LabelFrame.Core.Encoding;
 
 namespace LabelFrame.Core.Tests.Encoding;
 
+[Collection("Zpl allocation isolation")]
 public class ZplImageEncoderTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     [Theory]
@@ -33,18 +34,60 @@ public class ZplImageEncoderTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     [Fact]
+    public void Allocation_measurement_detects_real_extra_allocations()
+    {
+        var bitmap = new LabelBitmap(2362, 1417);
+        var encoder = new ZplImageEncoder();
+        for (var i = 0; i < 5; i++) encoder.EncodeImage(bitmap, 100, 60, 600);
+        var empty = MeasureWithoutCollection(() => string.Empty);
+        Assert.Equal(0, empty.Allocated);
+        var extra = MeasureWithoutCollection(() =>
+        {
+            var extraBuffer = new byte[8192];
+            var result = encoder.EncodeImage(bitmap, 100, 60, 600);
+            GC.KeepAlive(extraBuffer);
+            return result;
+        });
+        Assert.True(extra.Allocated >= extra.Result.Length * 2L + 4096);
+        Assert.Equal(OriginalEncode(bitmap, 100, 60, 600), extra.Result);
+        output.WriteLine($"空窗口 {empty.Allocated}；故意多分配样本 {extra.Allocated}");
+    }
+
+    private static (string Result, long Allocated) MeasureWithoutCollection(Func<string> encode)
+    {
+        // 后台 GC 可能把未使用分配上下文计入当前线程；预算窗口禁止 GC，不能放宽字节阈值。
+        Assert.True(GC.TryStartNoGCRegion(16 * 1024 * 1024), "无法建立隔离的分配测量窗口。");
+        try
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var result = encode();
+            return (result, GC.GetAllocatedBytesForCurrentThread() - before);
+        }
+        finally
+        {
+            GC.EndNoGCRegion();
+        }
+    }
+
+    [Fact]
     public void Encoding_should_allocate_only_output_and_small_header()
     {
         var bitmap = new LabelBitmap(2362, 1417);
         var encoder = new ZplImageEncoder();
         for (var i = 0; i < 5; i++) encoder.EncodeImage(bitmap, 100, 60, 600);
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var result = encoder.EncodeImage(bitmap, 100, 60, 600);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        var limit = result.Length * 2L + 4096;
-        output.WriteLine($"分配 {allocated} bytes，输出 {result.Length} chars");
-        Assert.True(allocated < limit, $"分配 {allocated} bytes，输出 {result.Length} chars，预算 {limit} bytes");
-        Assert.Equal(OriginalEncode(bitmap, 100, 60, 600), result);
+        for (var sample = 0; sample < 16; sample++)
+        {
+            if (sample % 4 == 0)
+            {
+                GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+                GC.WaitForPendingFinalizers();
+            }
+            var (result, allocated) = MeasureWithoutCollection(() => encoder.EncodeImage(bitmap, 100, 60, 600));
+            var limit = result.Length * 2L + 4096;
+            output.WriteLine($"分配 {allocated} bytes，输出 {result.Length} chars");
+            Assert.True(allocated < limit, $"分配 {allocated} bytes，输出 {result.Length} chars，预算 {limit} bytes");
+            Assert.Equal(OriginalEncode(bitmap, 100, 60, 600), result);
+        }
     }
 
     private static string OriginalEncode(LabelBitmap bitmap, double width, double height, int dpi)
@@ -85,3 +128,6 @@ public class ZplImageEncoderTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.Throws<ArgumentOutOfRangeException>(() => encoder.EncodeImage(new LabelBitmap(1, 1), 70, 50, dpi: 0));
     }
 }
+
+[CollectionDefinition("Zpl allocation isolation", DisableParallelization = true)]
+public sealed class ZplAllocationTestGroup;

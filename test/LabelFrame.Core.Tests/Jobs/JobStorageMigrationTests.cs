@@ -484,6 +484,19 @@ public sealed class JobStorageMigrationTests(Xunit.Abstractions.ITestOutputHelpe
         Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
     }
 
+    [Fact]
+    public async Task Space_query_failure_preserves_source_without_creating_backup()
+    {
+        using var db = new MigrationDb(true);
+        var before = db.Snapshot(false, true);
+        var expected = new IOException("模拟实际文件系统空间查询失败");
+        var actual = await Assert.ThrowsAsync<IOException>(() => JobStorageMigration.ConvertAsync(db.Path, true,
+            availableSpace: path => JobStorageSpace.AvailableForDatabase(path, _ => throw expected)));
+        Assert.Same(expected, actual);
+        Assert.Equal(before, db.Snapshot(false, true));
+        Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+    }
+
     [Theory]
     [InlineData("PRAGMA user_version=2;")]
     [InlineData("ALTER TABLE job_items ADD COLUMN unknown TEXT;")]

@@ -26,6 +26,10 @@
 
 ## 正向迁移方案
 
+空间预检不能使用 `Path.GetPathRoot`：Unix 的 `/data`、容器卷或绑定挂载可能与 `/` 不同。按实际库路径及同目录备份目录分别查询；Unix .NET DriveInfo 按传入路径执行 statfs/statvfs，Windows 使用接受目录路径的 GetDiskFreeSpaceExW（DriveInfo 在 Windows 会归一到卷根）。文件链接指向其他目录时检查最终目标父目录及原备份父目录，目录链接由操作系统解析。两处都要求原保守余量，查询异常/不足均在创建备份前失败，不回退到根分区、不吞异常。配额、并发占用和挂载变化仍由现有 SQLite 原子事务兜底，不承诺容量预留。
+
+依据：[.NET Unix 空间实现](https://github.com/dotnet/runtime/blob/v10.0.13/src/native/libs/System.Native/pal_mount.c)、[Windows 路径空间 API](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getdiskfreespaceexw)。
+
 1. 宿主停止消费/提交后、Worker 启动前独占维护；同库多实例必须有可靠互斥，不能仅依赖某个对象的内存锁。
 2. 识别明确 schema 版本，未知未来版本拒绝打开；兼容有/无 command_bytes 的旧库。不能沿用吞掉迁移异常后继续启动的方式。
 3. 创建一致性备份并做空间预检，禁止生拷正在写入的 db 而遗漏 WAL。备份是迁移失败兜底，不是带新作业运行后的降级方案。

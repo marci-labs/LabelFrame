@@ -104,7 +104,7 @@ internal static class JobStorageMigration
         var pageSize = await ScalarAsync(connection, null, "PRAGMA page_size;", cancellationToken);
         var required = checked(pageCount * pageSize * 4 + 64L * 1024 * 1024);
         var free = availableSpace?.Invoke(fullPath)
-            ?? new DriveInfo(Path.GetPathRoot(fullPath)!).AvailableFreeSpace;
+            ?? JobStorageSpace.AvailableForDatabase(fullPath);
         if (free < required)
             throw new IOException($"作业库迁移空间不足：至少需要 {required} 字节可用空间。");
 

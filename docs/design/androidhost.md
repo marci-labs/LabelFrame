@@ -37,7 +37,11 @@
 
 ### 3.1 服务启动与打印主链（`PrintHostService.OnCreate` → `PrintLoopAsync`）
 
-本地作业库在应用私有目录 `{FilesDir}/labelframe/jobs.db`，共享 Core 的分表初始化和正向迁移；本轮仅承诺升级，不新增维护或降级入口。发版核查发现当前 `OnCreate` 同步等待初始化，旧库备份和迁移会占用服务主线程；原生 SQLite 同步操作不会因方法名为 Async 自动移出主线程。大历史库存在启动无响应风险，空间预检也须针对实际数据分区而非根分区验证。这两项平台风险及 PDA 升级证据在 [#462](https://github.com/marci-labs/LabelFrame/issues/462) 跟踪，尚未修复或真机复现，不能用桌面内核回归宣称通过。
+本地作业库在应用私有目录 `{FilesDir}/labelframe/jobs.db`，共享 Core 的分表初始化和正向迁移；本轮仅承诺升级，不新增维护或降级入口。`OnCreate` 先调用 `StartForeground`，再启动受管理后台生命周期。配置、插件和同步 SQLite 初始化均在后台；初始化完成前不开放 HTTP、打印或路由。`ServiceLifetime` 的进程级异步门覆盖初始化、运行及清理：下一实例等待上一实例完整退出，防止快速重启时重复 Worker 或旧迁移与新实例交叉。
+
+销毁只标记取消、不在主线程等待 SQLite；取消与发布入口互斥，初始化即使忽略取消而迟到成功，也不能启动入口。后台 finally 先停止并排空 HTTP，在取消后等待全部 Worker（含路由回报）退出，再释放 poller/transport/CTS 与代际门。不能以超时放行尚未结束的旧任务；卡住时新实例保持未就绪。失败捕获完整异常及备份路径/校验状态，保留库和备份，不自动重试整个迁移；主线程失败回调再次核查实例有效性后停止自身服务，避免迟到回调停掉新代。托管屏障测试覆盖这些时序，但不代替 Android 调度、前台通知或真实升级证据，见 [#462](https://github.com/marci-labs/LabelFrame/issues/462)。
+
+取消使用 CancelAsync，主线程立即标记而不执行可能阻塞的取消回调；后台等待这些回调完成后才排空和释放资源。HTTP 停止同时等待接受循环与已接受请求；已接受连接不把调度本身绑定取消令牌，以保证请求处理器 finally 总会释放连接。失败启动不进入 Sticky 自重试环，显式 StopSelf；用户排除原因后重新启动仍走完整初始化。
 
 1. `CrashGuard.Register()` 兜底注册（进程首行 `HostApplication` 已注册，幂等）→ `NotePreviousRunCrash()` 检测上次崩溃摘要；
 2. `Java.Lang.JavaSystem.LoadLibrary("e_sqlite3")`（**必须先装载**，见 §6 坑 1）→ `LabelHostConfig.Load` → `PluginHost.Load` 装配插件通道 → `AndroidTransportFactory.Create` 按品牌建传输；
