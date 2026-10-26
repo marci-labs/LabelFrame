@@ -9,6 +9,45 @@ namespace LabelFrame.Core.Tests.Jobs;
 public sealed class JobStorageMigrationTests
 {
     [Theory]
+    [InlineData("missing-confirmation", 2)]
+    [InlineData("missing-file", 1)]
+    [InlineData("unknown-version", 1)]
+    [InlineData("already-legacy", 0)]
+    public async Task Tool_rejects_invalid_input_without_creating_backup(string scenario, int expectedExit)
+    {
+        using var db = new MigrationDb(true);
+        if (scenario == "unknown-version") db.Execute("PRAGMA user_version=123;");
+        var path = scenario == "missing-file" ? System.IO.Path.Combine(db.DirectoryPath, "absent.db") : db.Path;
+        var args = scenario == "missing-confirmation" ? new[] { "to-legacy", path }
+            : new[] { "to-legacy", path, "--hosts-stopped" };
+        using var tool = new ChildProcess("tools", "LabelFrame.JobStorageTool", args);
+        await tool.Process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20));
+        Assert.Equal(expectedExit, tool.Process.ExitCode);
+        Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+        if (scenario == "missing-file") Assert.False(File.Exists(path));
+        if (scenario == "already-legacy")
+            Assert.Contains("未转换", await tool.Process.StandardOutput.ReadToEndAsync());
+    }
+
+    [Fact]
+    public async Task New_database_creation_failure_rolls_back_schema_and_version()
+    {
+        using var db = new MigrationDb(true);
+        var path = System.IO.Path.Combine(db.DirectoryPath, "new.db");
+        await Assert.ThrowsAsync<SqliteException>(() => JobStorageMigration.InitializeAsync(path,
+            "CREATE TABLE partial(id TEXT); INSERT INTO missing VALUES(1);", default));
+        using (var connection = db.Open(path))
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT count(*) FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*';";
+            Assert.Equal(0L, command.ExecuteScalar());
+            command.CommandText = "PRAGMA user_version;";
+            Assert.Equal(0L, command.ExecuteScalar());
+        }
+        await new SqliteLabelJobStore(path).InitializeAsync();
+    }
+
+    [Theory]
     [InlineData(true, "copied")]
     [InlineData(true, "before-commit")]
     [InlineData(true, "committed")]
