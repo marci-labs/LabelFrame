@@ -135,7 +135,7 @@ public sealed class JobSubmissionService
         var (job, created) = await _queue.SubmitAsync(request.RequestId!, payloads, cancellationToken);
 
         // Log 连接 = 模拟打印：保存渲染 PNG 到 print\{jobId}\（不发真机）；原生指令路径无渲染位图
-        if (created && _transportManager.CurrentConfig.Mode == TransportMode.Log)
+        if (created && string.Equals(_transportManager.CurrentConfig.PluginId, "log", StringComparison.OrdinalIgnoreCase))
         {
             if (renderedItems is not null)
             {

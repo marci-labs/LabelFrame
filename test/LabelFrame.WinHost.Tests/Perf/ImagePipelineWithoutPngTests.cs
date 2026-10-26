@@ -95,8 +95,10 @@ public class ImagePipelineWithoutPngTests(ITestOutputHelper output)
         }
     }
 
-    [Fact]
-    public async Task Characterize_tspl_legacy_mode_and_extra_png_without_sending()
+    [Theory]
+    [InlineData(3)]
+    [InlineData(200)]
+    public async Task Tspl_submission_without_sending(int count)
     {
         var root = Path.Combine(Path.GetTempPath(), $"lf-tspl-png-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
@@ -115,14 +117,18 @@ public class ImagePipelineWithoutPngTests(ITestOutputHelper output)
             await templates.InitializeAsync();
             var service = new JobSubmissionService(queue, new ZplImageEncoder(), () => 300,
                 new SkiaLabelRenderer(), templates, manager, registry, context, TextWriter.Null, Path.Combine(root, "print"));
-            var result = await service.SubmitAsync(Request("tspl-characterization", 3));
+            var watch = Stopwatch.StartNew();
+            var result = await service.SubmitAsync(Request("tspl-characterization", count));
+            var elapsed = watch.Elapsed.TotalMilliseconds;
             Assert.NotNull(result.Job);
             Assert.Equal(TransportPluginIdPolicy.TsplPluginId, manager.CurrentConfig.PluginId);
             Assert.All(result.Job.Items, item => Assert.NotEmpty(item.CommandBytes!));
-            var files = Directory.GetFiles(Path.Combine(root, "print", result.Job.Id), "*.png");
-            Assert.Equal(3, files.Length);
+            var directory = Path.Combine(root, "print", result.Job.Id);
+            var files = Directory.Exists(directory) ? Directory.GetFiles(directory, "*.png") : [];
+            Assert.Empty(files);
             Assert.Equal(TransportMode.Log, manager.CurrentConfig.Mode);
-            output.WriteLine($"plugin={manager.CurrentConfig.PluginId}; legacyMode={manager.CurrentConfig.Mode}; binaryItems={result.Job.Items.Count}; pngCount={files.Length}; transportSends=0 (Worker 未启动)");
+            var hashes = result.Job.Items.Select(i => Convert.ToHexString(SHA256.HashData(i.CommandBytes!)));
+            output.WriteLine($"plugin={manager.CurrentConfig.PluginId}; legacyMode={manager.CurrentConfig.Mode}; binaryItems={result.Job.Items.Count}; submitMs={elapsed:F2}; pngCount={files.Length}; transportSends=0 (Worker 未启动); hashes={string.Join(',', hashes)}");
         }
         finally
         {

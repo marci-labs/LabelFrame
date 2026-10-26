@@ -93,7 +93,7 @@ internal static class JobsApi
     /// <summary>Log 模拟打印：把 PNG 目录与张数附到作业视图，便于前端展示「打印图片在哪」。</summary>
     internal static JobView EnrichPrintInfo(JobView view, string jobId, ITransportManager transportManager, string printOutputPath)
     {
-        if (transportManager.CurrentConfig.Mode != TransportMode.Log)
+        if (!string.Equals(transportManager.CurrentConfig.PluginId, "log", StringComparison.OrdinalIgnoreCase))
         {
             return view;
         }

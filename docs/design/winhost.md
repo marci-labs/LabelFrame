@@ -71,7 +71,7 @@
    - **native**：先幂等短路（重放不重新编译）→ 无编译能力插件显式失败 `LF_ENC_003` → 逐张 `compiler.CompileAsync`（契约校验先行；任一失败整体拒绝，产物写 `LabelJobItem.Zpl`）；
    - **image**（默认 / 缺失 / 非法回退）：逐张 `LabelValidator.Validate` → `RenderLabelBitmap`（图片资源：base64 附带优先、按名回退本地模板库，与共享出图端点同源）→ 图片指令编码按连接插件分派（`GetImageEncoder` 命中→插件 `ILabelImageEncoder` 产二进制流（如 TSPL BITMAP）；未实现（Zebra / 内置通道）→ `ZplImageEncoder` `^GF` 文本，输出逐字节不变，决策 #195）；测试页端点 `POST /api/printer/test` 随同一分派；
 3. `queue.SubmitAsync(requestId, payloads)` 入队（requestId 幂等；`LabelJobPayload` 文本 / 二进制双形态）；
-4. Log 连接＝模拟打印：渲染 PNG 落盘 `print\{jobId}\label-N.png`＋`JobDataLogFormatter` 留痕作业数据＋顺带 `PrintImageRetentionCleaner.CleanupExpired()`（native 路径无位图，仅留痕）；
+4. Log 连接＝模拟打印：渲染 PNG 落盘 `print\{jobId}\label-N.png`＋`JobDataLogFormatter` 留痕作业数据＋顺带 `PrintImageRetentionCleaner.CleanupExpired()`（native 路径无位图，仅留痕）。模拟身份仅按当前 `PluginId` 与 `log` 忽略大小写比较，作业视图出图信息使用相同判定；旧 `Mode` 对 TSPL/自定义插件回退 Log 只是兼容字段，不代表启用模拟副作用（决策 #220）。不改旧配置迁移、打印载荷或 Worker 传输，历史视图仍按当前连接判断；
 5. `JobPrintWorker`（BackgroundService）：启动恢复中断作业 → 循环「EXISTS 轻量探测→`ClaimNextItemAsync`→批间计数按作业重置→`BatchPrintPolicy.ShouldPauseBeforeSend` 则 `Task.Delay(batchIntervalMs)`→`TryBeginPrintSendAsync` 领发送租约→`CurrentTransport.SendAsync`（`CommandBytes` 二进制优先，否则 `Zpl` 文本）→完成 / 失败（失败记结构化日志：作业 / 索引 / 插件 / 目标 / 错误码，决策 #102 ③）」；空转等待信号唤醒（5s 超时兜底），领取落空回退 200ms 周期。
 
 打印 Worker 成功发送后使用 Core 的内部轻量完成入口，仅等待单张状态持久化，不请求完整作业返回。`GET /api/jobs/{jobId}` 使用内部状态快照映射到原 `JobView`，字段、顺序、错误明细、404 与模拟 PNG 目录增强均不变；状态快照和完整作业的视图映射有逐字段/序列化与 HTTP 详情对照历史列表回归。历史列表、提交、状态变更端点与 Server 路由回报仍沿用完整作业路径。内部优化不改请求校验、渲染/编码、传输顺序或退出租约。
