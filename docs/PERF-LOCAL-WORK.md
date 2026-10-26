@@ -200,3 +200,23 @@ ServerDb 实例内运行期写调用改为异步排队，读查询和跨实例�
 证据目录 `artifacts/native-monochrome-20261026/`：`native-candidate.trx`、`allocation-before.trx`（预期失败）、`rendering-after.trx`（62 项通过）、`native-product.trx`、`pipeline-product.trx`、`stages-product.trx`、`regression/`。最终 Release build 0 警告/0 错误，非 Perf/Soak 1343 项全部通过、零跳过；注释卫生对 `1b64c80` 通过。用户 PID 23360/8940 创建时间仍为 2026-10-24 12:51:59/12:51:46，主 checkout 干净 master cf11383。没有真实打印、用户客户端/UI 操作、远端/部署/前端变更或 ROADMAP 虚记。
 
 后续可先量化正常不存 PNG 链路的 Worker 段：最新 200 张提交 0.95～1.06 秒，观察 Completed 2.19～2.29 秒；差值包含 Worker、状态轮询/锁竞争、哈希模拟发送及逐张持久化，不能直接认定是某条 SQL。现有 `JobPrintWorker` 没有每张固定延迟：默认批次设置无节流，只有无待办/领取落空才等待；不得随意裁剪这些恢复/空闲逻辑。宜先新增无物理传输的分阶段诊断或查询频率对照，保持逐张提交与顺序。新进度不要重新初始化流程，不重复已经否定的 INSERT command 复用、不要改同步等级。
+
+## Worker 细分与完成状态投影（2026-10-26）
+
+从 `c31de40` 接续。先增加真实提交后串行模拟 Worker 各调用的诊断（无 Worker 调度/并发轮询，发送仅计算指令 SHA256），200 张四轮领取累计 941/1131/773/796ms、完成 605/660/443/481ms、待办探测 35/36/20/22ms、哈希发送约 60～64ms、发送租约不足 2ms。没有删除 Worker 的探测、空闲/恢复逻辑或逐张事务。证据 `artifacts/worker-stages-20261026/serial-stages.trx`。
+
+真实 Worker 的 5/100/100/5ms 查询间隔对照：提交后观察完成差值 1694/1507/1313/1471ms，累计查询耗时 276/27/22/188ms；总完成 3667/2666/2260/2910ms，提交与渲染本身也波动，不能把全部差异归因于查询频率，更不能外推成调整产品轮询的授权。仅诊断间隔不同，产品保持原行为。证据 `poll-comparison.trx`。
+
+`CompletionStagesPerfTests` 复制正常成功完成事务的 SQL 编排，反射绑定真实私有状态读取函数，细分 200 次操作：原完整状态读取 151/78/73/70ms，COMMIT 431/357/341/330ms，打开连接 54/34/30/29ms，Item UPDATE 58/41/36/33ms；因此存储提交是该段最大成本，不通过合批或降低同步等级消除。诊断不等于完整 Worker，占比不能推广到真实打印机。证据 `completion-detail.trx`。
+
+候选只把内部完成判定回读改为 DISTINCT Job/Item 状态，仍调用共享 `GetCompletionStatus`，不构造 Item ID、错误文本、日期和列表明细。状态规则只用 All/Any，重复次数与顺序无关；LEFT JOIN 保留空/不存在语义，每种状态仍 Enum.Parse。事务、队列锁、提交时点、Job/Item 更新、公开状态查询、载荷和 schema 不变。设计决策 #224、`docs/design/core.md` 与 CHANGELOG 同步。
+
+同一完成事务内交替读取原明细/候选并逐项验证下一状态相同：候选四轮原分配约 8.25MB、候选约 0.25MB，原读 190/76/108/87ms、候选 57/44/33/52ms。接入产品私有方法后复测原 123/74/80/85ms、产品 29/39/21/50ms，分配约 8.25MB → 0.26MB。第四轮 COMMIT 波动到约 1 秒，不掩盖宿主噪声或宣称稳定整批同比提速。证据 `compact-candidate.trx`、`compact-product.trx`。
+
+新增分配回归先红后绿：256 项且兄弟项带长错误文本，原单次完成分配 591624 bytes，产品 5344 bytes（预算 64000）；检查只清除目标错误、兄弟状态/错误/载荷不变。另补 Pending/Completed/Cancelled 作业遇到非法兄弟状态均抛错并回滚，防止终态提前短路改变原行为；原全状态组合、取消/迟到完成、重启恢复、并发快照、非 SQLite 回退、失败回滚继续覆盖。证据 `allocation-before.trx`、`state-after.trx`，新增三项非法状态测试随后随完整回归执行。
+
+产品模拟链路 12 作业/1004 张完成，顺序/数量/幂等/跨轮指令哈希/PNG 数量通过；200 张不存 PNG 完成 2475/2186ms，保存 7793/7117ms。TSPL 独立不启动 Worker 的 3/200 张指令哈希与原 `tspl-before.trx` 全部一致，额外 PNG 为零。独立轮次不作严格 A-B 提速结论。串行 Worker 分段复测领取 1026/1062/676/747ms、完成 574/616/375/407ms；查询频率复测依旧波动。证据 `pipeline-after.trx`，共 5 个专项测试通过。
+
+后续优先继续细分领取事务（读取候选/单张载荷、UPDATE、COMMIT），观察 SQLite 查询计划，先量化再决定是否值得改内部查询；没有证据允许牺牲持久性、顺序、恢复或打印字节。不要重复 INSERT 语句复用试验，不随意删除 Worker 空闲逻辑，不改产品查询频率。沿用单会话本地分支，禁止子代理/并行实现、fork、远端/部署及用户客户端操作。
+
+完整 Release build 成功（0 警告/0 错误）。首轮非 Perf/Soak 回归 1346 通过、1 失败：`TemplateStoreTests.Save_preview_values_should_override_explicit_test_data` 的 finally 删除临时库报文件占用，业务断言通过；未修改该模板代码或清理策略，原失败 TRX 留在 `regression/`。同样命令完整复测 **1347 项全部通过、零跳过**，证据 `final-regression/`；不把首轮记为通过，也不凭一次复测断言已根治文件占用。用户 PID 23360/8940 创建时间仍为 2026-10-24 12:51:59/12:51:46，主 checkout 干净 master cf11383。本轮没有启动宿主/监听端口或操作用户客户端、UI、真实打印机；无远端、安装部署、前端/Android 产品修改或 ROADMAP 虚记。注释卫生需针对本地提交后 `c31de40..HEAD` 检查（该脚本不扫描未提交 diff）。

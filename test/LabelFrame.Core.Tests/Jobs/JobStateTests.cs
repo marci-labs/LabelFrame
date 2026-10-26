@@ -7,6 +7,70 @@ namespace LabelFrame.Core.Tests.Jobs;
 
 public class JobStateTests(ITestOutputHelper output)
 {
+    [Theory]
+    [InlineData(LabelJobStatus.Pending)]
+    [InlineData(LabelJobStatus.Completed)]
+    [InlineData(LabelJobStatus.Cancelled)]
+    public async Task Completion_should_rollback_when_sibling_status_is_invalid(LabelJobStatus status)
+    {
+        using var db = new TempJobDb();
+        var (job, _) = await db.Queue.SubmitAsync("invalid-status", ["first", "second"]);
+        await db.Store.SetJobStatusAsync(job.Id, status);
+        await using var connection = new SqliteConnection($"Data Source={db.Path}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE job_items SET status = 'unknown' WHERE id = $id;";
+        command.Parameters.AddWithValue("$id", job.Items[1].Id);
+        await command.ExecuteNonQueryAsync();
+        await Assert.ThrowsAsync<ArgumentException>(() => db.Queue.CompleteItemWithoutResultAsync(job.Id, job.Items[0].Id));
+        command.CommandText = "SELECT status FROM job_items WHERE id = $id;";
+        command.Parameters["$id"].Value = job.Items[0].Id;
+        Assert.Equal("Pending", await command.ExecuteScalarAsync());
+        command.CommandText = "SELECT status FROM jobs WHERE id = $id;";
+        command.Parameters["$id"].Value = job.Id;
+        Assert.Equal(status.ToString(), await command.ExecuteScalarAsync());
+    }
+
+    [Fact]
+    public async Task Completion_should_not_materialize_sibling_metadata()
+    {
+        using var db = new TempJobDb();
+        var (job, _) = await db.Queue.SubmitAsync("compact-completion", Enumerable.Repeat("payload", 256).ToArray());
+        var message = new string('错', 1024);
+        await using (var connection = new SqliteConnection($"Data Source={db.Path}"))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE job_items SET error_code = 'existing', error_message = $message WHERE job_id = $jobId;";
+            command.Parameters.AddWithValue("$message", message);
+            command.Parameters.AddWithValue("$jobId", job.Id);
+            await command.ExecuteNonQueryAsync();
+        }
+        await db.Queue.CompleteItemWithoutResultAsync(job.Id, job.Items[0].Id);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var task = db.Queue.CompleteItemWithoutResultAsync(job.Id, job.Items[1].Id);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.True(task.IsCompletedSuccessfully);
+        await task;
+        output.WriteLine($"completionBytes={allocated}");
+        Assert.True(allocated < 64000, $"完成操作不应构造其他标签的明细与错误文本，实际分配 {allocated} bytes");
+        var actual = (await db.Queue.GetAsync(job.Id))!;
+        Assert.Equal(LabelJobStatus.Pending, actual.Status);
+        Assert.All(actual.Items.Take(2), item =>
+        {
+            Assert.Equal(LabelJobItemStatus.Completed, item.Status);
+            Assert.Null(item.ErrorCode);
+            Assert.Null(item.ErrorMessage);
+        });
+        Assert.All(actual.Items.Skip(2), item =>
+        {
+            Assert.Equal(LabelJobItemStatus.Pending, item.Status);
+            Assert.Equal("existing", item.ErrorCode);
+            Assert.Equal(message, item.ErrorMessage);
+            Assert.Equal("payload", item.Zpl);
+        });
+    }
+
     [Fact]
     public async Task Other_store_implementations_should_use_compatible_full_read_fallback()
     {

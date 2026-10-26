@@ -28,9 +28,8 @@ public sealed partial class SqliteLabelJobStore
             if (await command.ExecuteNonQueryAsync(cancellationToken) == 0) return false;
         }
 
-        var state = await LoadStateAsync(connection, transaction, jobId, cancellationToken);
-        if (state is null) return false;
-        var nextStatus = LabelJobQueue.GetCompletionStatus(state.Status, state.Items.Select(i => i.Status));
+        var (exists, nextStatus) = await ReadCompletionStatusAsync(connection, transaction, jobId, cancellationToken);
+        if (!exists) return false;
         if (nextStatus is not null)
         {
             await using var command = connection.CreateCommand();
@@ -44,6 +43,28 @@ public sealed partial class SqliteLabelJobStore
 
         await transaction.CommitAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>读取作业与去重后的标签状态，计算单张完成后的作业状态。</summary>
+    private static async Task<(bool Exists, LabelJobStatus? NextStatus)> ReadCompletionStatusAsync(
+        SqliteConnection connection, SqliteTransaction transaction, string jobId, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT DISTINCT j.status, i.status FROM jobs j
+            LEFT JOIN job_items i ON i.job_id = j.id WHERE j.id = $jobId;
+            """;
+        command.Parameters.AddWithValue("$jobId", jobId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken)) return (false, null);
+        var status = Enum.Parse<LabelJobStatus>(reader.GetString(0));
+        var items = new List<LabelJobItemStatus>();
+        do
+        {
+            if (!reader.IsDBNull(1)) items.Add(Enum.Parse<LabelJobItemStatus>(reader.GetString(1)));
+        } while (await reader.ReadAsync(cancellationToken));
+        return (true, LabelJobQueue.GetCompletionStatus(status, items));
     }
 
     private static async Task<LabelJobState?> LoadStateAsync(
