@@ -39,7 +39,7 @@
 
 原生预加载是后台初始化的前置阶段：前台通知建立之后，`ServiceLifetime.Start` 在调用线程执行仅包含 `JavaSystem.LoadLibrary("e_sqlite3")` 的 prepare 回调，成功才 Task.Run。该回调必须保持短小，不放配置、插件、数据库打开、备份或迁移。prepare 异常记录原异常并走既有 StopSelf 回调，记住完成任务以拒绝重复启动；无后台资源不执行 drain。销毁仍可以阻止迟到的失败回调。
 
-依据：DT50/API30 的旧版主线程加载成功，后台候选在库字节一致时两次报找不到库，见 [真机报告](https://github.com/marci-labs/LabelFrame/issues/462#issuecomment-6414007759)。[Android JNI 文档](https://developer.android.com/ndk/guides/jni-tips)说明 Java 调用栈与附加原生线程的类加载器上下文不同；此为修复方向依据，不把 FindClass 规则直接当作本次 LoadLibrary 根因证明。恢复已验证的生命周期加载位置，实际效果仍等独立会话验证；Debug 构建和 Release/AOT 构建都不替代真机。
+依据：DT50/API30 的旧版主线程加载成功，后台候选在库字节一致时两次报找不到库，见 [真机报告](https://github.com/marci-labs/LabelFrame/issues/462#issuecomment-6414007759)。[Android JNI 文档](https://developer.android.com/ndk/guides/jni-tips)说明 Java 调用栈与附加原生线程的类加载器上下文不同；此为修复方向依据，不把 FindClass 规则直接当作本次 LoadLibrary 根因证明。固定提交 a0f6bbe 已在同台 DT50 完成 Debug 与 Release/AOT 同隔离签名覆盖升级、冷启动、旧库迁移与幂等复验；约 211 MB 历史库、受控慢初始化的前台通知/销毁快重启及未知版本失败恢复也已实测。完整证据与边界见 [验收任务](https://github.com/marci-labs/LabelFrame/issues/462)。测试签名不等同正式发行签名，Android 15/16KB 页与真实断电仍未覆盖。
 
 本地作业库在应用私有目录 `{FilesDir}/labelframe/jobs.db`，共享 Core 的分表初始化和正向迁移；本轮仅承诺升级，不新增维护或降级入口。`OnCreate` 先调用 `StartForeground`，再启动受管理后台生命周期。配置、插件和同步 SQLite 初始化均在后台；初始化完成前不开放 HTTP、打印或路由。`ServiceLifetime` 的进程级异步门覆盖初始化、运行及清理：下一实例等待上一实例完整退出，防止快速重启时重复 Worker 或旧迁移与新实例交叉。
 
