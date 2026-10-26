@@ -62,7 +62,7 @@ public class BitmapRenderStagesTests(ITestOutputHelper output)
         var flags = BindingFlags.NonPublic | BindingFlags.Static;
         var draw = typeof(SkiaLabelRenderer).GetMethod("DrawElement", flags)!.CreateDelegate<Draw>();
         var convert = typeof(SkiaLabelRenderer).GetMethod("ToLabelBitmap", flags)!
-            .CreateDelegate<Func<int, int, int, byte[], LabelBitmap>>();
+            .CreateDelegate<SkiaMonochromeConversionTests.PixelConverter>();
         using var bitmap = new SKBitmap(new SKImageInfo(1181, 709, SKColorType.Bgra8888, SKAlphaType.Opaque));
         using var canvas = new SKCanvas(bitmap);
         var staging = new byte[bitmap.RowBytes * bitmap.Height];
@@ -82,8 +82,11 @@ public class BitmapRenderStagesTests(ITestOutputHelper output)
                     Measure("regions", () => regions = LabelLayoutResolver.IndexRegions(layout));
                     foreach (var element in layout.Elements)
                         Measure(element.GetType().Name, () => draw(canvas, element, document, null, regions, 300));
-                    Measure("copy", () => Marshal.Copy(bitmap.GetPixels(), staging, 0, staging.Length));
-                    Measure("convert", () => bitmaps.Add(convert(bitmap.Width, bitmap.Height, bitmap.RowBytes, staging)));
+                    Measure("copy-diagnostic", () => Marshal.Copy(bitmap.GetPixels(), staging, 0, staging.Length));
+                    LabelBitmap copied = null!;
+                    Measure("convert-copied-diagnostic", () => copied = convert(bitmap.Width, bitmap.Height, bitmap.RowBytes, staging));
+                    Measure("convert-native", () => bitmaps.Add(convert(bitmap.Width, bitmap.Height, bitmap.RowBytes, bitmap.GetPixelSpan())));
+                    Assert.Equal(copied.Pixels, bitmaps[^1].Pixels);
                 }
                 for (var i = 0; i < count; i++) Assert.Equal(expected[i].Pixels, bitmaps[i].Pixels);
                 var zpl = new ZplImageEncoder();

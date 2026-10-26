@@ -23,11 +23,11 @@
 | `SkiaTextWidthMeasurer` | SkiaTextWidthMeasurer.cs | `ITextWidthMeasurer`（Core 接口）的 Skia 实现——锚定度量的默认实现（决策 #110） |
 | `LabelBitmapPng` | LabelBitmapPng.cs | `LabelBitmap`（1bpp）→ PNG 静态工具 |
 
-**表面池**（决策 #92 性能批次引入）：整版渲染中间态（`SKBitmap` 像素内存 + 托管像素暂存数组）按尺寸池化复用，避免大批量打印时每张 1~5MB 的分配与 GC 压力；输出（`LabelBitmap` / PNG 字节）始终新分配。
+**表面池**（决策 #92 引入，#223 裁剪托管暂存）：整版渲染中间态 `SKBitmap` 原生像素内存按尺寸池化复用；黑白转换直接同步读取该位图的只读像素 span，不再分配/保留整幅托管暂存；输出（`LabelBitmap` / PNG 字节）始终新分配。
 
 - 池上限 `MaxPooledSurfaces = 4`（留出并发渲染——多请求提交 + 出图 / 预览的余量），满则 Dispose；
-- 租用条件＝宽、高、暂存长度三项全匹配，任一不匹配的池内项即被弹出释放；
-- 位图与 PNG 路径均在 `finally` 成对归还 bitmap + staging；PNG 编码虽不读取暂存数组，仍保留数组以满足下次租用的完整性校验。两种路径交替调用时继续复用同尺寸中间态，输出保持独立。
+- 租用条件＝宽、高全匹配，任一不匹配的池内项即被弹出释放；位图统一为 BGRA/Opaque，不再有可失配的托管暂存；
+- 位图与 PNG 路径均在 `finally` 归还 bitmap；两种路径交替调用时继续复用同尺寸中间态，输出保持独立。像素 span 只在本次租用期间同步读取，不逃逸、不在归还后使用；转换得到的新 1bpp 数组不借用池化像素。
 
 ## 3. 关键流程
 
@@ -37,7 +37,7 @@
 
 1. 尺寸：版式毫米 → 点（`mm / 25.4 × dpi`，四舍五入远离零，下限 0；调用侧再 `Math.Max(1, …)` 保证正尺寸）；
 2. `RentSurface` 租中间态 → `SKCanvas` 清白底 → `LabelLayoutResolver.IndexRegions` 建区域索引 → 按 `Elements` 顺序逐元素 `DrawElement` 分发；
-3. 位图路径：像素 `Marshal.Copy` 到暂存数组 → `ToLabelBitmap` 逐像素 luma 阈值二值化（加权 `R×299 + G×587 + B×114 / 1000 < 128` 置黑）→ `finally ReturnSurface`；
+3. 位图路径：`GetPixelSpan` → `ToLabelBitmap(ReadOnlySpan<byte>)` 按原生 RowBytes 逐像素 luma 阈值二值化（等价于加权 `R×299 + G×587 + B×114 / 1000 < 128` 置黑）→ `finally ReturnSurface`；
    PNG 路径：`SKImage.Encode(Png, 100)` 直接编码；
 4. 文本取值：`LabelElementContent.TryGet`（`Literal ?? data[SourceKey]`，决策 #35）。
 

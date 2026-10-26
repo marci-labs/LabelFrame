@@ -6,9 +6,14 @@ namespace LabelFrame.WinHost.Tests.Rendering;
 
 public class SkiaMonochromeConversionTests
 {
-    internal static readonly Func<int, int, int, byte[], LabelBitmap> ConvertPixels = typeof(SkiaLabelRenderer)
+    internal delegate LabelBitmap PixelConverter(int width, int height, int rowBytes, ReadOnlySpan<byte> bytes);
+
+    internal static readonly PixelConverter ConvertSpan = typeof(SkiaLabelRenderer)
         .GetMethod("ToLabelBitmap", BindingFlags.NonPublic | BindingFlags.Static)!
-        .CreateDelegate<Func<int, int, int, byte[], LabelBitmap>>();
+        .CreateDelegate<PixelConverter>();
+
+    internal static LabelBitmap ConvertPixels(int width, int height, int rowBytes, byte[] bytes)
+        => ConvertSpan(width, height, rowBytes, bytes);
 
     [Theory]
     [InlineData(1, 1, 0)]

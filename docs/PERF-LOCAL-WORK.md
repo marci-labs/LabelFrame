@@ -186,3 +186,17 @@ ServerDb 实例内运行期写调用改为异步排队，读查询和跨实例�
 证据：`artifacts/barcode-direct-20261026/{direct-candidate.trx,product-pixels.trx,pipeline-candidate.trx,stages-candidate.trx}`。完整 Release build 0 警告/0 错误；非 Perf/Soak 回归 1341 项全过、零跳过，TRX 在 `regression/`。注释卫生对 `dbfbe5e` 检查通过。用户 23360/8940 创建时间不变；无真实打印、UI/客户端操作、推送/PR/Issue/部署、前端修改或 ROADMAP 虚记。
 
 下一方向：整版绘制后的 Marshal.Copy 仍累计约 90ms/200 张，考虑先测直接从原生 span 转 1bpp 的候选，保持当前整数阈值与位序；表面池行为和混合 PNG/位图调用须回归，不要重做入库 command 复用或改同步持久性。
+
+## 整版黑白转换直接读取原生像素（2026-10-26）
+
+在 `1b64c80` 基础继续。先以测试候选对照当前数组转换算法，1181×709、每轮 200 次、条纹白底与随机 BGRA 两种输入，四轮交替先后顺序。候选输出与旧路径一致；产品改动仅把私有 ToLabelBitmap 的输入改为 ReadOnlySpan，从仍在租用期的 SKBitmap 同步读取，删除整幅 Marshal.Copy 与池内托管数组。池仍最多四个，尺寸匹配/失配释放、锁、清白、finally 归还不变；1bpp 独立数组、算法、RowBytes 和输出契约不变。设计决策 #223、模块说明与 CHANGELOG 同步。
+
+候选测试条纹四轮复制＋转换 375/357/524/364ms，直读 357/309/254/260ms；随机内容 1499/1636/1350/1534ms 对 1489/1405/1316/1374ms。接入产品后再次交替复测，条纹原路径 295/289/306/282ms，直读 248/222/221/252ms；随机原路径 1413/1392/1330/1327ms，直读 1454/1303/1337/1364ms，范围重叠，**随机内容没有稳定提速**。两条路径被测区间分配均约 21MB（输出 1bpp 数组），因为旧暂存预先分配；不能用此区间声称暖转换分配下降。
+
+新增冷打印分配回归在原实现失败：100×60mm/300dpi 首次打印分配 3455752 bytes，优化后完整回归实测 106152 bytes，预算 1MB；此处冷是新 renderer，字体等静态部分已暖。再加混合尺寸并发 PNG/打印，与独立 renderer 逐字节一致。现有 RGB 全组合、行填充、尾位、输入保留、混合缓存回归继续覆盖。阶段诊断测试显式标为 copy-diagnostic / convert-copied-diagnostic，另测实际 convert-native，避免把已经移除的复制计入产品耗时；三轮原生转换 279/237/240ms，对照复制 92/65/65ms＋数组转换 283/247/241ms，所有标签完整渲染逐字节一致。
+
+完整模拟链路 12 作业/1004 张通过，顺序/数量/幂等/跨轮指令哈希/PNG 数量均正确。不保存 PNG 的 200 张 Completed 2.292/2.186 秒，保存 7.982/6.997 秒；与上一批不是同进程 A-B 对照，不把独立轮次差异全部归因本改动。TSPL 隔离提交 200 张 859ms，额外 PNG=0，3/200 张指令 SHA256 与原 `tspl-before.trx` 一致；未启动真实传输。
+
+证据目录 `artifacts/native-monochrome-20261026/`：`native-candidate.trx`、`allocation-before.trx`（预期失败）、`rendering-after.trx`（62 项通过）、`native-product.trx`、`pipeline-product.trx`、`stages-product.trx`、`regression/`。最终 Release build 0 警告/0 错误，非 Perf/Soak 1343 项全部通过、零跳过；注释卫生对 `1b64c80` 通过。用户 PID 23360/8940 创建时间仍为 2026-10-24 12:51:59/12:51:46，主 checkout 干净 master cf11383。没有真实打印、用户客户端/UI 操作、远端/部署/前端变更或 ROADMAP 虚记。
+
+后续可先量化正常不存 PNG 链路的 Worker 段：最新 200 张提交 0.95～1.06 秒，观察 Completed 2.19～2.29 秒；差值包含 Worker、状态轮询/锁竞争、哈希模拟发送及逐张持久化，不能直接认定是某条 SQL。现有 `JobPrintWorker` 没有每张固定延迟：默认批次设置无节流，只有无待办/领取落空才等待；不得随意裁剪这些恢复/空闲逻辑。宜先新增无物理传输的分阶段诊断或查询频率对照，保持逐张提交与顺序。新进度不要重新初始化流程，不重复已经否定的 INSERT command 复用、不要改同步等级。
