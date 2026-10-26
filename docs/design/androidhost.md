@@ -37,6 +37,8 @@
 
 ### 3.1 服务启动与打印主链（`PrintHostService.OnCreate` → `PrintLoopAsync`）
 
+本地作业库在应用私有目录 `{FilesDir}/labelframe/jobs.db`，共享 Core 的分表初始化和正向迁移；本轮仅承诺升级，不新增维护或降级入口。发版核查发现当前 `OnCreate` 同步等待初始化，旧库备份和迁移会占用服务主线程；原生 SQLite 同步操作不会因方法名为 Async 自动移出主线程。大历史库存在启动无响应风险，空间预检也须针对实际数据分区而非根分区验证。这两项平台风险及 PDA 升级证据在 [#462](https://github.com/marci-labs/LabelFrame/issues/462) 跟踪，尚未修复或真机复现，不能用桌面内核回归宣称通过。
+
 1. `CrashGuard.Register()` 兜底注册（进程首行 `HostApplication` 已注册，幂等）→ `NotePreviousRunCrash()` 检测上次崩溃摘要；
 2. `Java.Lang.JavaSystem.LoadLibrary("e_sqlite3")`（**必须先装载**，见 §6 坑 1）→ `LabelHostConfig.Load` → `PluginHost.Load` 装配插件通道 → `AndroidTransportFactory.Create` 按品牌建传输；
 3. `SqliteLabelJobStore.InitializeAsync` → `LabelJobQueue` → `SubmissionService(dpi=203)` → `EmbeddedHttpServer` 启动（127.0.0.1:53970）；
