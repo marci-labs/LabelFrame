@@ -7,7 +7,7 @@ using Xunit.Abstractions;
 
 namespace LabelFrame.Core.Tests.Jobs;
 
-public class ClaimStagesPerfTests(ITestOutputHelper output)
+public class LegacyClaimStagesPerfTests(ITestOutputHelper output)
 {
     private const string CandidatesSql = """
         SELECT id, created_at FROM jobs
@@ -53,7 +53,7 @@ public class ClaimStagesPerfTests(ITestOutputHelper output)
     [Fact]
     public async Task Split_prototype_roundtrip_preserves_data_and_failed_migration_rolls_back()
     {
-        using var db = new TempJobDb();
+        using var db = new LegacyJobDb();
         var (job, _) = await db.Queue.SubmitAsync("roundtrip", new[]
         {
             LabelJobPayload.OfText("^XA中文^XZ"), LabelJobPayload.OfBytes([0, 1, 128, 255]),
@@ -101,7 +101,7 @@ public class ClaimStagesPerfTests(ITestOutputHelper output)
     [Fact]
     public async Task Compatibility_view_does_not_preserve_existing_update_result()
     {
-        using var db = new TempJobDb();
+        using var db = new LegacyJobDb();
         var (job, _) = await db.Queue.SubmitAsync("view-compatibility", new[] { "payload" });
         await SplitPayloads(db.Path);
         await using (var connection = await SqliteSupport.OpenAsync(SqliteSupport.BuildConnectionString(db.Path)))
@@ -131,7 +131,7 @@ public class ClaimStagesPerfTests(ITestOutputHelper output)
 
     private async Task Measure(int round, int payloadLength, bool split = false, bool binary = false)
     {
-        using var db = new TempJobDb();
+        using var db = new LegacyJobDb();
         var payload = binary ? string.Empty : new string('A', payloadLength);
         var bytes = binary ? Enumerable.Range(0, payloadLength).Select(i => (byte)i).ToArray() : null;
         var (job, _) = await db.Queue.SubmitAsync("claim-stages", Enumerable.Repeat(new LabelJobPayload(payload, bytes), 200).ToArray());
@@ -213,7 +213,7 @@ public class ClaimStagesPerfTests(ITestOutputHelper output)
                 Add("commit", start);
             }
             start = Stopwatch.GetTimestamp();
-            await db.Queue.CompleteItemWithoutResultAsync(job.Id, job.Items[index].Id);
+            await db.Store.CompleteItemWithoutResultAsync(job.Id, job.Items[index].Id, default);
             Add("complete", start);
         }
         Assert.Null(await db.Queue.ClaimNextItemAsync());
@@ -239,7 +239,7 @@ public class ClaimStagesPerfTests(ITestOutputHelper output)
             }
             Assert.Equal(200, count);
         }
-        output.WriteLine($"round={round}; count=200; split={split}; binary={binary}; payloadLength={payloadLength}; " + string.Join("; ", stages.Select(s => $"{s.Key}Ms={s.Value * 1000d / Stopwatch.Frequency:F2}")));
+        output.WriteLine($"schema=legacy-or-historical-prototype; round={round}; count=200; split={split}; binary={binary}; payloadLength={payloadLength}; " + string.Join("; ", stages.Select(s => $"{s.Key}Ms={s.Value * 1000d / Stopwatch.Frequency:F2}")));
         if (split)
         {
             await RestorePayloads(db.Path);

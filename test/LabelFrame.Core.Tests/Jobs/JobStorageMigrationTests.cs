@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LabelFrame.Core.Data;
 using LabelFrame.Core.Jobs;
 using Microsoft.Data.Sqlite;
@@ -7,6 +8,115 @@ namespace LabelFrame.Core.Tests.Jobs;
 /// <summary>验证独立作业库迁移的字段保真、回滚、备份与互斥。</summary>
 public sealed class JobStorageMigrationTests
 {
+    [Theory]
+    [InlineData(true, "copied")]
+    [InlineData(true, "before-commit")]
+    [InlineData(true, "committed")]
+    [InlineData(false, "copied")]
+    [InlineData(false, "before-commit")]
+    [InlineData(false, "committed")]
+    public async Task Terminated_migration_process_recovers_atomic_format(bool toSplit, string stage)
+    {
+        using var db = new MigrationDb(true);
+        if (!toSplit) await JobStorageMigration.ConvertAsync(db.Path, true);
+        var before = db.Snapshot(!toSplit, true);
+        using (var probe = new ChildProcess("test", "LabelFrame.JobStorageProbe",
+            toSplit ? "to-split" : "to-legacy", db.Path, stage))
+        {
+            Assert.Equal(stage, await probe.Process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(20)));
+            probe.Kill();
+        }
+        var split = stage == "committed" ? toSplit : !toSplit;
+        Assert.Equal(before, db.Snapshot(split, true));
+        Assert.Equal(split ? 1L : 0L, db.Scalar("PRAGMA user_version;"));
+        Assert.Equal("ok", db.Scalar("PRAGMA integrity_check;"));
+        await JobStorageMigration.ConvertAsync(db.Path, toSplit);
+        Assert.Equal(before, db.Snapshot(toSplit, true));
+    }
+
+    [Fact]
+    public async Task Tool_rejects_other_process_lock_then_converts_current_data()
+    {
+        using var db = new MigrationDb(true);
+        var before = db.Snapshot(false, true);
+        using (var reader = new ChildProcess("test", "LabelFrame.JobStorageProbe", "hold-read", db.Path))
+        {
+            Assert.Equal("ready", await reader.Process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(20)));
+            using var blocked = new ChildProcess("tools", "LabelFrame.JobStorageTool", "to-split", db.Path, "--hosts-stopped");
+            await blocked.Process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20));
+            Assert.Equal(1, blocked.Process.ExitCode);
+            Assert.Contains("转换失败", await blocked.Process.StandardError.ReadToEndAsync());
+            Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+        }
+        foreach (var direction in new[] { "to-split", "to-legacy" })
+        {
+            using var tool = new ChildProcess("tools", "LabelFrame.JobStorageTool", direction, db.Path, "--hosts-stopped");
+            await tool.Process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20));
+            Assert.Equal(0, tool.Process.ExitCode);
+            Assert.Contains("已验证", await tool.Process.StandardOutput.ReadToEndAsync());
+            Assert.Equal(before, db.Snapshot(direction == "to-split", true));
+        }
+    }
+
+    private sealed class ChildProcess : IDisposable
+    {
+        public ChildProcess(string folder, string name, params string[] args)
+        {
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            var configuration = directory.Parent!.Name;
+            while (!File.Exists(System.IO.Path.Combine(directory.FullName, "LabelFrame.slnx")))
+                directory = directory.Parent ?? throw new InvalidOperationException("找不到测试仓库。");
+            var start = new ProcessStartInfo("dotnet")
+            {
+                UseShellExecute = false, CreateNoWindow = true,
+                RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
+                WorkingDirectory = directory.FullName,
+            };
+            start.ArgumentList.Add(System.IO.Path.Combine(directory.FullName, folder, name, "bin", configuration, "net10.0", name + ".dll"));
+            foreach (var argument in args) start.ArgumentList.Add(argument);
+            Process = Process.Start(start) ?? throw new InvalidOperationException("测试子进程未启动。");
+        }
+
+        public Process Process { get; }
+
+        public void Kill()
+        {
+            if (!Process.HasExited) Process.Kill();
+            if (!Process.WaitForExit(10000)) throw new TimeoutException("测试子进程未退出。");
+        }
+
+        public void Dispose()
+        {
+            Kill();
+            Process.Dispose();
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Product_initialization_migrates_and_preserves_all_fields(bool withBytes)
+    {
+        using var db = new MigrationDb(withBytes);
+        var before = db.Snapshot(false, withBytes);
+        var store = new SqliteLabelJobStore(db.Path);
+        await store.InitializeAsync();
+        Assert.Equal(before, db.Snapshot(true, true));
+        await store.InitializeAsync();
+        Assert.Single(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+    }
+
+    [Theory]
+    [InlineData("PRAGMA user_version=99;")]
+    [InlineData("ALTER TABLE job_items ADD COLUMN extra TEXT;")]
+    public async Task Product_initialization_rejects_unknown_database(string sql)
+    {
+        using var db = new MigrationDb(true);
+        db.Execute(sql);
+        await Assert.ThrowsAsync<InvalidDataException>(() => new SqliteLabelJobStore(db.Path).InitializeAsync());
+        Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

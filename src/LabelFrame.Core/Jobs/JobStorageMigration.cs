@@ -15,6 +15,42 @@ internal static class JobStorageMigration
         CREATE INDEX ix_job_items_job_id ON job_items(job_id);
         """;
 
+    internal static async Task InitializeAsync(string databasePath, string createSql, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        SqliteSupport.EnsureInitialized();
+        var builder = new SqliteConnectionStringBuilder
+        {
+            DataSource = databasePath,
+            Pooling = false,
+            DefaultTimeout = 1,
+        };
+        await using (var connection = new SqliteConnection(builder.ToString()))
+        {
+            await connection.OpenAsync(token);
+            await using var transaction = connection.BeginTransaction(deferred: true);
+            var version = await ScalarAsync(connection, transaction, "PRAGMA user_version;", token);
+            if (version is not (0 or SplitVersion))
+                throw new InvalidDataException($"不支持的作业库版本：{version}。");
+            var objects = await ScalarAsync(connection, transaction,
+                "SELECT count(*) FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*';", token);
+            if (version == 0 && objects == 0)
+            {
+                await ExecuteAsync(connection, transaction, createSql + "PRAGMA user_version=1;", token);
+                await transaction.CommitAsync(token);
+                return;
+            }
+            if (version == SplitVersion)
+            {
+                await ValidateSchemaAsync(connection, true, token, transaction);
+                await ValidateRelationsAsync(connection, transaction, true, token);
+                await transaction.CommitAsync(token);
+                return;
+            }
+        }
+        await ConvertAsync(databasePath, true, cancellationToken: token);
+    }
+
     internal static async Task<string?> ConvertAsync(
         string databasePath,
         bool toSplit,
@@ -148,7 +184,8 @@ internal static class JobStorageMigration
         }
     }
 
-    private static async Task<bool> ValidateSchemaAsync(SqliteConnection connection, bool split, CancellationToken token)
+    private static async Task<bool> ValidateSchemaAsync(SqliteConnection connection, bool split, CancellationToken token,
+        SqliteTransaction? transaction = null)
     {
         var expected = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
@@ -161,6 +198,7 @@ internal static class JobStorageMigration
         var requiredObjects = expected.Keys.Concat(["ux_job_items_job_index", "ix_job_items_job_id"]).ToHashSet(StringComparer.Ordinal);
         await using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
             command.CommandText = "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*';";
             await using var reader = await command.ExecuteReaderAsync(token);
             while (await reader.ReadAsync(token))
@@ -186,6 +224,7 @@ internal static class JobStorageMigration
         {
             var actual = new HashSet<string>(StringComparer.Ordinal);
             await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
             command.CommandText = $"PRAGMA table_info({table});";
             await using var reader = await command.ExecuteReaderAsync(token);
             while (await reader.ReadAsync(token)) actual.Add(reader.GetString(1));
@@ -232,6 +271,11 @@ internal static class JobStorageMigration
         command.CommandText = "PRAGMA foreign_key_check;";
         if (await command.ExecuteScalarAsync(token) is not null)
             throw new InvalidDataException("作业库外键检查失败。");
+        await ValidateRelationsAsync(connection, transaction, split, token);
+    }
+
+    private static async Task ValidateRelationsAsync(SqliteConnection connection, SqliteTransaction? transaction, bool split, CancellationToken token)
+    {
         var invalid = """
             SELECT EXISTS(SELECT 1 FROM job_items i LEFT JOIN jobs j ON i.job_id=j.id
                 WHERE j.id IS NULL OR i.id IS NULL)
@@ -244,7 +288,7 @@ internal static class JobStorageMigration
             OR EXISTS(SELECT 1 FROM job_payloads p LEFT JOIN job_items i ON p.item_id=i.id WHERE i.id IS NULL)
             """;
         if (await ScalarAsync(connection, transaction, invalid, token) != 0)
-            throw new InvalidDataException("作业库状态、作业或载荷对应关系不完整，拒绝迁移。");
+            throw new InvalidDataException("作业库状态、作业或载荷对应关系不完整。");
     }
 
     private static async Task AssertSameAsync(SqliteConnection connection, SqliteTransaction transaction, string before, string after, CancellationToken token)

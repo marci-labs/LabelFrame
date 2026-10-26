@@ -95,7 +95,7 @@ public class CompletionStagesPerfTests(ITestOutputHelper output)
                 Assert.Equal(LabelJobItemStatus.Completed, item.Status);
                 Assert.Equal(new string('A', 210000), item.Zpl);
             });
-            output.WriteLine($"round={round}; count=200; originalBytes={originalBytes}; candidateBytes={candidateBytes}; " + string.Join("; ", stages.Select(s => $"{s.Key}Ms={s.Value * 1000d / Stopwatch.Frequency:F2}")));
+            output.WriteLine($"schema=product-split; round={round}; count=200; detailBytes={originalBytes}; compactBytes={candidateBytes}; " + string.Join("; ", stages.Select(s => $"{s.Key}Ms={s.Value * 1000d / Stopwatch.Frequency:F2}")));
 
             void Add(string name, long start)
                 => stages[name] = stages.GetValueOrDefault(name) + Stopwatch.GetTimestamp() - start;

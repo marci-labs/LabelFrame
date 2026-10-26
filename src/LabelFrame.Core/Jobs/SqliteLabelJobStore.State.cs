@@ -52,8 +52,9 @@ public sealed partial class SqliteLabelJobStore
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            SELECT DISTINCT j.status, i.status FROM jobs j
-            LEFT JOIN job_items i ON i.job_id = j.id WHERE j.id = $jobId;
+            SELECT DISTINCT j.status, i.status, i.id IS NOT NULL AND p.item_id IS NULL FROM jobs j
+            LEFT JOIN job_items i ON i.job_id = j.id
+            LEFT JOIN job_payloads p ON p.item_id = i.id WHERE j.id = $jobId;
             """;
         command.Parameters.AddWithValue("$jobId", jobId);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -62,6 +63,7 @@ public sealed partial class SqliteLabelJobStore
         var items = new List<LabelJobItemStatus>();
         do
         {
+            if (reader.GetBoolean(2)) throw new InvalidDataException("作业项缺少指令载荷。");
             if (!reader.IsDBNull(1)) items.Add(Enum.Parse<LabelJobItemStatus>(reader.GetString(1)));
         } while (await reader.ReadAsync(cancellationToken));
         return (true, LabelJobQueue.GetCompletionStatus(status, items));
@@ -74,8 +76,9 @@ public sealed partial class SqliteLabelJobStore
         command.Transaction = transaction;
         command.CommandText = """
             SELECT j.id, j.request_id, j.status, j.created_at, j.updated_at,
-                i.id, i.item_index, i.status, i.error_code, i.error_message
+                i.id, i.item_index, i.status, i.error_code, i.error_message, p.item_id
             FROM jobs j LEFT JOIN job_items i ON i.job_id = j.id
+            LEFT JOIN job_payloads p ON p.item_id = i.id
             WHERE j.id = $jobId ORDER BY i.item_index;
             """;
         command.Parameters.AddWithValue("$jobId", jobId);
@@ -89,6 +92,7 @@ public sealed partial class SqliteLabelJobStore
         {
             if (!reader.IsDBNull(5))
             {
+                if (reader.IsDBNull(10)) throw new InvalidDataException("作业项缺少指令载荷。");
                 items.Add(new LabelJobItemState(reader.GetString(5), reader.GetInt32(6),
                     Enum.Parse<LabelJobItemStatus>(reader.GetString(7)),
                     reader.IsDBNull(8) ? null : reader.GetString(8),

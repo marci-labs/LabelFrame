@@ -21,11 +21,15 @@ public sealed partial class SqliteLabelJobStore : ILabelJobStore
             job_id        TEXT NOT NULL REFERENCES jobs(id),
             item_index    INTEGER NOT NULL,
             status        TEXT NOT NULL,
-            zpl           TEXT NOT NULL,
-            command_bytes BLOB NULL,
             error_code    TEXT NULL,
             error_message TEXT NULL,
             updated_at    TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS job_payloads (
+            item_id TEXT PRIMARY KEY NOT NULL REFERENCES job_items(id),
+            zpl TEXT NOT NULL,
+            command_bytes BLOB NULL
         );
 
         CREATE UNIQUE INDEX IF NOT EXISTS ux_job_items_job_index ON job_items(job_id, item_index);
@@ -33,58 +37,19 @@ public sealed partial class SqliteLabelJobStore : ILabelJobStore
         """;
 
     private readonly string _connectionString;
+    private readonly string _databasePath;
 
     /// <summary>创建 SQLite 作业存储。</summary>
     /// <param name="databasePath">数据库文件路径（父目录不存在时自动创建）。</param>
     public SqliteLabelJobStore(string databasePath)
     {
         _connectionString = SqliteSupport.BuildConnectionString(databasePath);
+        _databasePath = new SqliteConnectionStringBuilder(_connectionString).DataSource;
     }
 
     /// <inheritdoc />
-    public async Task InitializeAsync(CancellationToken cancellationToken = default)
-    {
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = CreateTablesSql;
-        await command.ExecuteNonQueryAsync(cancellationToken);
-        await MigrateCommandBytesAsync(connection, cancellationToken);
-    }
-
-    /// <summary>旧库兼容迁移：job_items 表缺少 command_bytes 列时补列（已存在则跳过；失败静默忽略，不影响启动）。</summary>
-    private static async Task MigrateCommandBytesAsync(SqliteConnection connection, CancellationToken cancellationToken)
-    {
-        var hasCommandBytes = false;
-        await using (var probe = connection.CreateCommand())
-        {
-            probe.CommandText = "PRAGMA table_info(job_items);";
-            await using var reader = await probe.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                if (string.Equals(reader.GetString(1), "command_bytes", StringComparison.OrdinalIgnoreCase))
-                {
-                    hasCommandBytes = true;
-                    break;
-                }
-            }
-        }
-
-        if (hasCommandBytes)
-        {
-            return;
-        }
-
-        try
-        {
-            await using var alter = connection.CreateCommand();
-            alter.CommandText = "ALTER TABLE job_items ADD COLUMN command_bytes BLOB NULL;";
-            await alter.ExecuteNonQueryAsync(cancellationToken);
-        }
-        catch
-        {
-            // 已存在列等竞态：静默忽略，保持旧库可启动
-        }
-    }
+    public Task InitializeAsync(CancellationToken cancellationToken = default)
+        => JobStorageMigration.InitializeAsync(_databasePath, CreateTablesSql, cancellationToken);
 
     /// <inheritdoc />
     public async Task<LabelJob> CreateJobAsync(LabelJob job, CancellationToken cancellationToken = default)
@@ -122,8 +87,9 @@ public sealed partial class SqliteLabelJobStore : ILabelJobStore
             await using var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = """
-                INSERT INTO job_items (id, job_id, item_index, status, zpl, command_bytes, error_code, error_message, updated_at)
-                VALUES ($id, $jobId, $index, $status, $zpl, $commandBytes, NULL, NULL, $updatedAt);
+                INSERT INTO job_items (id, job_id, item_index, status, error_code, error_message, updated_at)
+                VALUES ($id, $jobId, $index, $status, NULL, NULL, $updatedAt);
+                INSERT INTO job_payloads (item_id, zpl, command_bytes) VALUES ($id, $zpl, $commandBytes);
                 """;
             command.Parameters.AddWithValue("$id", item.Id);
             command.Parameters.AddWithValue("$jobId", item.JobId);
@@ -290,13 +256,15 @@ public sealed partial class SqliteLabelJobStore : ILabelJobStore
         await using (var itemCommand = connection.CreateCommand())
         {
             itemCommand.CommandText = """
-                SELECT id, job_id, item_index, status, zpl, command_bytes, error_code, error_message
-                FROM job_items WHERE job_id = $jobId ORDER BY item_index;
+                SELECT i.id, i.job_id, i.item_index, i.status, p.zpl, p.command_bytes, i.error_code, i.error_message
+                FROM job_items i LEFT JOIN job_payloads p ON p.item_id = i.id
+                WHERE i.job_id = $jobId ORDER BY i.item_index;
                 """;
             itemCommand.Parameters.AddWithValue("$jobId", jobId);
             await using var itemReader = await itemCommand.ExecuteReaderAsync(cancellationToken);
             while (await itemReader.ReadAsync(cancellationToken))
             {
+                if (itemReader.IsDBNull(4)) throw new InvalidDataException("作业项缺少指令载荷。");
                 items.Add(new LabelJobItem
                 {
                     Id = itemReader.GetString(0),
@@ -351,12 +319,14 @@ public sealed partial class SqliteLabelJobStore : ILabelJobStore
         {
             command.Transaction = transaction;
             command.CommandText = """
-                SELECT id, item_index, zpl, command_bytes FROM job_items
-                WHERE job_id = $jobId AND status = 'Pending' ORDER BY item_index LIMIT 1;
+                SELECT i.id, i.item_index, p.zpl, p.command_bytes FROM job_items i
+                LEFT JOIN job_payloads p ON p.item_id = i.id
+                WHERE i.job_id = $jobId AND i.status = 'Pending' ORDER BY i.item_index LIMIT 1;
                 """;
             command.Parameters.AddWithValue("$jobId", jobId);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             if (!await reader.ReadAsync(cancellationToken)) return null;
+            if (reader.IsDBNull(2)) throw new InvalidDataException("作业项缺少指令载荷。");
             item = new LabelJobItem
             {
                 Id = reader.GetString(0),
