@@ -38,9 +38,13 @@ internal static class JobsApi
             : Results.Ok(jobView);
     });
 
-    // 作业列表（作业历史页；单机降级用，形状与 Server 兼容）
     app.MapGet("/api/jobs", async (int? limit, ILabelJobStore store, ITransportManager transportManager, HostOptions options, CancellationToken ct) =>
     {
+        if (store is SqliteLabelJobStore sqlite)
+        {
+            var states = await sqlite.ListRecentStatesAsync(Math.Clamp(limit ?? 100, 1, 500), ct);
+            return Results.Ok(states.Select(j => EnrichPrintInfo(JobViews.From(j), j.Id, transportManager, options.PrintOutputPath)));
+        }
         var jobs = await store.ListRecentAsync(Math.Clamp(limit ?? 100, 1, 500), ct);
         return Results.Ok(jobs.Select(j => EnrichPrintInfo(JobViews.From(j), j.Id, transportManager, options.PrintOutputPath)));
     });

@@ -66,6 +66,8 @@ SQLite 领取路径在队列锁内调用存储内部专用方法：仅列出有 
 
 内部状态读取使用独立的 `LabelJobState` / `LabelJobItemState`，类型不包含载荷字段，不把空载荷的 `LabelJob` 伪装为完整作业。SQLite 单条 LEFT JOIN 查询获取作业与逐张状态（包括空作业），不选择 zpl / command_bytes，保持同一语句快照与原排序。`GetAsync` / `GetJobAsync` 等公开入口仍完整读取。Core 仅向两种 Client Host 程序集及对应测试程序集开放内部可见性；不增加公共模型或 `ILabelJobStore` 成员。宿主路由回报也复用此快照；其他存储实现继续通过完整查询转换，不扩大公共契约。
 
+宿主历史列表使用内部 `ListRecentStatesAsync`：沿用公开列表的 `created_at DESC, id` SQL 排序和 1～500 作业数限制、连接及外层 reader 生命周期，再逐作业复用 `LoadStateAsync`。limit 作用于作业，不限制标签项；空作业保留，所选作业内缺载荷报错，范围外作业不额外扫描。不改为 .NET 日期排序，不新增缓存或写事务，不承诺新的跨作业原子快照。公开 `ListRecentAsync` 继续返回完整载荷，非 SQLite 的 HTTP 列表保留原完整查询分支；视图所有逐项字段及 Log 出图增强不变。
+
 宿主内部 `CompleteItemWithoutResultAsync` 在原队列锁内调用 SQLite 事务：更新单张为 Completed、清除该项错误、读取 Job 状态及去重后的 Item 状态、按与公开完成方法共用的状态规则决定 Job 更新，提交后返回，不回读载荷或整批状态明细。完成规则只使用 All/Any，状态重复次数和顺序不影响结果；SQL 的 DISTINCT 只去重状态，不在数据库重写状态机。LEFT JOIN 保留不存在/空作业的区分；仍解析每种 Item 状态，不因 Job 已取消/完成而跳过非法状态检查。公开状态查询仍返回完整逐张明细。不合并多张持久化，不在传输成功前预写完成；异常或提交前取消回滚两级状态。已取消/完成的 Job 保持原状态，但迟到 Item 完成仍按原语义记录；挂起、失败与剩余 Pending 的判定不变。非 SQLite 实现回退原公开完成及完整查询路径。失败回读、历史列表和其他公开查询仍带完整载荷，不属于此内部优化范围。
 
 作业分表迁移内核 `JobStorageMigration` 已接入 `SqliteLabelJobStore.InitializeAsync` 与独立离线工具 `LabelFrame.JobStorageTool`。新库同事务建分表并写版本；旧库无池识别后独占迁移；已有分表库使用读事务校验结构和关系，不申请独占维护锁，不清全局池。创建作业同事务写状态和载荷；完整查询及领取通过 LEFT JOIN 读载荷并检测缺失，轻量状态与 DISTINCT 完成只读载荷主键判断关系，不分配指令。内部转换器在不使用连接池的 SQLite 独占连接中识别 user_version 0/1、核查表结构/双向关系、预检空间、通过 BackupDatabase 保存一致性备份，再以单事务复制、EXCEPT 核对、交换表并更新版本。重建期间仅维护连接关闭外键执行，提交前显式 foreign_key_check 和完整性/双向对应检查；不影响运行时连接或 synchronous。逆向转换合成当前状态和当前载荷，不恢复旧备份。独占失败直接报错，不停止其他进程；当前测试覆盖跨进程读锁争用、正反向复制后/提交前/提交后强制结束测试进程及重开恢复；不代表真实断电。维护工具仅源码构建提供，尚未纳入发行包；Android 私有库无通用导出/回灌入口，不能承诺普通 PDA 直接降级。详细方案与容量边界见 [分表方案](job-storage-split-proposal.md)。
