@@ -61,22 +61,29 @@ internal static class JobStorageMigration
             throw new IOException($"作业库迁移空间不足：至少需要 {required} 字节可用空间。");
 
         var backupPath = fullPath + ".before-" + (toSplit ? "split-" : "legacy-") + Guid.NewGuid().ToString("N") + ".db";
-        // CreateNew 防止覆盖已存在的恢复证据；失败备份保留，不当作可恢复成功结果。
-        using (new FileStream(backupPath, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
-        var backupBuilder = new SqliteConnectionStringBuilder { DataSource = backupPath, Pooling = false };
-        await using (var backup = new SqliteConnection(backupBuilder.ToString()))
+        var backupVerified = false;
+        try
         {
-            await backup.OpenAsync(cancellationToken);
-            connection.BackupDatabase(backup);
-            await ValidateIntegrityAsync(backup, null, split, cancellationToken);
-        }
+            cancellationToken.ThrowIfCancellationRequested();
+            // CreateNew 防止覆盖已存在的恢复证据；失败备份保留，不当作可恢复成功结果。
+            using (new FileStream(backupPath, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
+            checkpoint?.Invoke("backup-created", connection);
+            cancellationToken.ThrowIfCancellationRequested();
+            var backupBuilder = new SqliteConnectionStringBuilder { DataSource = backupPath, Pooling = false };
+            await using (var backup = new SqliteConnection(backupBuilder.ToString()))
+            {
+                await backup.OpenAsync(cancellationToken);
+                connection.BackupDatabase(backup);
+                await ValidateIntegrityAsync(backup, null, split, cancellationToken);
+            }
+            backupVerified = true;
 
-        checkpoint?.Invoke("backed-up", connection);
-        cancellationToken.ThrowIfCancellationRequested();
-        await using var transaction = connection.BeginTransaction(deferred: false);
-        if (toSplit)
-        {
-            await ExecuteAsync(connection, transaction, """
+            checkpoint?.Invoke("backed-up", connection);
+            cancellationToken.ThrowIfCancellationRequested();
+            await using var transaction = connection.BeginTransaction(deferred: false);
+            if (toSplit)
+            {
+                await ExecuteAsync(connection, transaction, """
                 CREATE TABLE job_payloads (
                     item_id TEXT PRIMARY KEY NOT NULL REFERENCES job_items(id),
                     zpl TEXT NOT NULL,
@@ -92,17 +99,17 @@ internal static class JobStorageMigration
                     updated_at TEXT NOT NULL
                 );
                 """, cancellationToken);
-            var bytes = hasBytes ? "command_bytes" : "NULL";
-            await ExecuteAsync(connection, transaction,
-                $"INSERT INTO job_payloads SELECT id, zpl, {bytes} FROM job_items; INSERT INTO job_items_next SELECT {ItemColumns} FROM job_items;", cancellationToken);
-            checkpoint?.Invoke("copied", connection);
-            await AssertSameAsync(connection, transaction,
-                $"SELECT {ItemColumns}, zpl, {bytes} FROM job_items",
-                $"SELECT {JoinedColumns} FROM job_items_next i LEFT JOIN job_payloads p ON p.item_id=i.id", cancellationToken);
-        }
-        else
-        {
-            await ExecuteAsync(connection, transaction, """
+                var bytes = hasBytes ? "command_bytes" : "NULL";
+                await ExecuteAsync(connection, transaction,
+                    $"INSERT INTO job_payloads SELECT id, zpl, {bytes} FROM job_items; INSERT INTO job_items_next SELECT {ItemColumns} FROM job_items;", cancellationToken);
+                checkpoint?.Invoke("copied", connection);
+                await AssertSameAsync(connection, transaction,
+                    $"SELECT {ItemColumns}, zpl, {bytes} FROM job_items",
+                    $"SELECT {JoinedColumns} FROM job_items_next i LEFT JOIN job_payloads p ON p.item_id=i.id", cancellationToken);
+            }
+            else
+            {
+                await ExecuteAsync(connection, transaction, """
                 CREATE TABLE job_items_next (
                     id TEXT PRIMARY KEY,
                     job_id TEXT NOT NULL REFERENCES jobs(id),
@@ -115,23 +122,30 @@ internal static class JobStorageMigration
                     updated_at TEXT NOT NULL
                 );
                 """, cancellationToken);
-            await ExecuteAsync(connection, transaction,
-                $"INSERT INTO job_items_next ({ItemColumns}, zpl, command_bytes) SELECT {JoinedColumns} FROM job_items i LEFT JOIN job_payloads p ON p.item_id=i.id;", cancellationToken);
-            checkpoint?.Invoke("copied", connection);
-            await AssertSameAsync(connection, transaction,
-                $"SELECT {JoinedColumns} FROM job_items i LEFT JOIN job_payloads p ON p.item_id=i.id",
-                $"SELECT {ItemColumns}, zpl, command_bytes FROM job_items_next", cancellationToken);
-            await ExecuteAsync(connection, transaction, "DROP TABLE job_payloads;", cancellationToken);
-        }
+                await ExecuteAsync(connection, transaction,
+                    $"INSERT INTO job_items_next ({ItemColumns}, zpl, command_bytes) SELECT {JoinedColumns} FROM job_items i LEFT JOIN job_payloads p ON p.item_id=i.id;", cancellationToken);
+                checkpoint?.Invoke("copied", connection);
+                await AssertSameAsync(connection, transaction,
+                    $"SELECT {JoinedColumns} FROM job_items i LEFT JOIN job_payloads p ON p.item_id=i.id",
+                    $"SELECT {ItemColumns}, zpl, command_bytes FROM job_items_next", cancellationToken);
+                await ExecuteAsync(connection, transaction, "DROP TABLE job_payloads;", cancellationToken);
+            }
 
-        await ExecuteAsync(connection, transaction,
-            "DROP TABLE job_items; ALTER TABLE job_items_next RENAME TO job_items;" + IndexSql
-            + (toSplit ? "PRAGMA user_version=1;" : "PRAGMA user_version=0;"), cancellationToken);
-        await ValidateIntegrityAsync(connection, transaction, toSplit, cancellationToken);
-        checkpoint?.Invoke("before-commit", connection);
-        cancellationToken.ThrowIfCancellationRequested();
-        await transaction.CommitAsync(cancellationToken);
-        return backupPath;
+            await ExecuteAsync(connection, transaction,
+                "DROP TABLE job_items; ALTER TABLE job_items_next RENAME TO job_items;" + IndexSql
+                + (toSplit ? "PRAGMA user_version=1;" : "PRAGMA user_version=0;"), cancellationToken);
+            await ValidateIntegrityAsync(connection, transaction, toSplit, cancellationToken);
+            checkpoint?.Invoke("before-commit", connection);
+            cancellationToken.ThrowIfCancellationRequested();
+            await transaction.CommitAsync(cancellationToken);
+            return backupPath;
+        }
+        catch (Exception exception)
+        {
+            exception.Data["JobStorageBackupPath"] = backupPath;
+            exception.Data["JobStorageBackupVerified"] = backupVerified;
+            throw;
+        }
     }
 
     private static async Task<bool> ValidateSchemaAsync(SqliteConnection connection, bool split, CancellationToken token)
@@ -144,9 +158,10 @@ internal static class JobStorageMigration
                 : ["id", "job_id", "item_index", "status", "zpl", "error_code", "error_message", "updated_at"],
         };
         if (split) expected.Add("job_payloads", ["item_id", "zpl", "command_bytes"]);
+        var requiredObjects = expected.Keys.Concat(["ux_job_items_job_index", "ix_job_items_job_id"]).ToHashSet(StringComparer.Ordinal);
         await using (var command = connection.CreateCommand())
         {
-            command.CommandText = "SELECT type, name, tbl_name FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%';";
+            command.CommandText = "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*';";
             await using var reader = await command.ExecuteReaderAsync(token);
             while (await reader.ReadAsync(token))
             {
@@ -154,10 +169,17 @@ internal static class JobStorageMigration
                 var name = reader.GetString(1);
                 if ((type == "table" && expected.ContainsKey(name))
                     || (type == "index" && reader.GetString(2) == "job_items"
-                        && name is "ux_job_items_job_index" or "ix_job_items_job_id")) continue;
+                        && name is "ux_job_items_job_index" or "ix_job_items_job_id"))
+                {
+                    ValidateDefinition(name, reader.GetString(3), split);
+                    requiredObjects.Remove(name);
+                    continue;
+                }
                 throw new InvalidDataException($"作业库包含未识别结构：{type} {name}，拒绝迁移。");
             }
         }
+        if (requiredObjects.Count != 0)
+            throw new InvalidDataException("作业库缺少必需的表或索引，拒绝迁移。");
 
         var hasBytes = false;
         foreach (var (table, columns) in expected)
@@ -171,6 +193,33 @@ internal static class JobStorageMigration
             if (!actual.SetEquals(columns)) throw new InvalidDataException($"作业库表结构不匹配：{table}。");
         }
         return hasBytes;
+    }
+
+    private static void ValidateDefinition(string name, string sql, bool split)
+    {
+        var definitions = name switch
+        {
+            "jobs" => new[] { "CREATE TABLE jobs (id TEXT PRIMARY KEY, request_id TEXT NOT NULL UNIQUE, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)" },
+            "job_items" when split => ["CREATE TABLE job_items (id TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id), item_index INTEGER NOT NULL, status TEXT NOT NULL, error_code TEXT NULL, error_message TEXT NULL, updated_at TEXT NOT NULL)"],
+            "job_items" => [
+                "CREATE TABLE job_items (id TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id), item_index INTEGER NOT NULL, status TEXT NOT NULL, zpl TEXT NOT NULL, error_code TEXT NULL, error_message TEXT NULL, updated_at TEXT NOT NULL)",
+                "CREATE TABLE job_items (id TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id), item_index INTEGER NOT NULL, status TEXT NOT NULL, zpl TEXT NOT NULL, command_bytes BLOB NULL, error_code TEXT NULL, error_message TEXT NULL, updated_at TEXT NOT NULL)",
+                "CREATE TABLE job_items (id TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id), item_index INTEGER NOT NULL, status TEXT NOT NULL, zpl TEXT NOT NULL, error_code TEXT NULL, error_message TEXT NULL, updated_at TEXT NOT NULL, command_bytes BLOB NULL)"],
+            "job_payloads" => ["CREATE TABLE job_payloads (item_id TEXT PRIMARY KEY NOT NULL REFERENCES job_items(id), zpl TEXT NOT NULL, command_bytes BLOB NULL)"],
+            "ux_job_items_job_index" => ["CREATE UNIQUE INDEX ux_job_items_job_index ON job_items(job_id, item_index)"],
+            "ix_job_items_job_id" => ["CREATE INDEX ix_job_items_job_id ON job_items(job_id)"],
+            _ => [],
+        };
+        var actual = NormalizeDefinition(sql);
+        if (!definitions.Any(definition => NormalizeDefinition(definition) == actual))
+            throw new InvalidDataException($"作业库定义不匹配：{name}，拒绝迁移。");
+    }
+
+    private static string NormalizeDefinition(string sql)
+    {
+        // SQLite 重命名表后会给表名加双引号；不泛化剥离表达式或列名引号。
+        return string.Concat(sql.Replace("\"job_items\"", "job_items", StringComparison.Ordinal)
+            .Where(character => !char.IsWhiteSpace(character))).ToUpperInvariant();
     }
 
     private static async Task ValidateIntegrityAsync(SqliteConnection connection, SqliteTransaction? transaction, bool split, CancellationToken token)
@@ -207,6 +256,7 @@ internal static class JobStorageMigration
 
     private static async Task<long> ScalarAsync(SqliteConnection connection, SqliteTransaction? transaction, string sql, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = sql;
@@ -215,6 +265,7 @@ internal static class JobStorageMigration
 
     private static async Task ExecuteAsync(SqliteConnection connection, SqliteTransaction? transaction, string sql, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = sql;

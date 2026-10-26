@@ -90,6 +90,10 @@ public sealed class JobStorageMigrationTests
     [InlineData("CREATE TRIGGER custom_trigger AFTER UPDATE ON job_items BEGIN SELECT 1; END;")]
     [InlineData("CREATE INDEX custom_index ON job_items(status);")]
     [InlineData("CREATE VIEW custom_view AS SELECT * FROM job_items;")]
+    [InlineData("CREATE TABLE sqliteXextra (id TEXT);")]
+    [InlineData("DROP INDEX ux_job_items_job_index;")]
+    [InlineData("DROP INDEX ix_job_items_job_id; CREATE INDEX ix_job_items_job_id ON job_items(status);")]
+    [InlineData("DROP INDEX ux_job_items_job_index; CREATE INDEX ux_job_items_job_index ON job_items(job_id,item_index);")]
     [InlineData("UPDATE job_items SET job_id='missing' WHERE id='i0';")]
     public async Task Unrecognized_or_inconsistent_legacy_database_is_rejected(string sql)
     {
@@ -109,6 +113,73 @@ public sealed class JobStorageMigrationTests
         db.Execute(sql);
         await Assert.ThrowsAsync<InvalidDataException>(() => JobStorageMigration.ConvertAsync(db.Path, false));
         Assert.Equal(1L, db.Scalar("PRAGMA user_version;"));
+    }
+
+    [Theory]
+    [InlineData("request_id TEXT NOT NULL UNIQUE", "request_id TEXT NOT NULL")]
+    [InlineData("status TEXT NOT NULL", "status TEXT NOT NULL CHECK(length(status)>0)")]
+    [InlineData("REFERENCES jobs(id)", "REFERENCES jobs(id) ON DELETE CASCADE")]
+    [InlineData("error_code TEXT NULL", "error_code TEXT NULL DEFAULT 'unknown'")]
+    [InlineData("zpl TEXT NOT NULL", "zpl TEXT NOT NULL COLLATE NOCASE")]
+    public async Task Unknown_constraints_are_rejected_before_backup(string original, string replacement)
+    {
+        using var db = new MigrationDb(true, sql => sql.Replace(original, replacement, StringComparison.Ordinal));
+        var before = db.Snapshot(false, true);
+        await Assert.ThrowsAsync<InvalidDataException>(() => JobStorageMigration.ConvertAsync(db.Path, true));
+        Assert.Equal(before, db.Snapshot(false, true));
+        Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
+    }
+
+    [Theory]
+    [InlineData("backed-up")]
+    [InlineData("copied")]
+    [InlineData("before-commit")]
+    public async Task Failure_identifies_verified_backup_without_wrapping_exception(string stage)
+    {
+        using var db = new MigrationDb(true);
+        var failure = new IOException("注入失败");
+        var caught = await Assert.ThrowsAsync<IOException>(() => JobStorageMigration.ConvertAsync(db.Path, true,
+            checkpoint: (point, _) => { if (point == stage) throw failure; }));
+        Assert.Same(failure, caught);
+        Assert.Equal(true, caught.Data["JobStorageBackupVerified"]);
+        var path = Assert.IsType<string>(caught.Data["JobStorageBackupPath"]);
+        Assert.True(File.Exists(path));
+        using var backup = db.Open(path);
+        using var command = backup.CreateCommand();
+        command.CommandText = "SELECT count(*) FROM job_items;";
+        Assert.Equal(5L, command.ExecuteScalar());
+    }
+
+    [Fact]
+    public async Task Backup_failure_identifies_unverified_file_and_preserves_source()
+    {
+        using var db = new MigrationDb(true);
+        var before = db.Snapshot(false, true);
+        var error = await Assert.ThrowsAsync<IOException>(() => JobStorageMigration.ConvertAsync(db.Path, true,
+            checkpoint: (point, _) => { if (point == "backup-created") throw new IOException("备份写入前故障"); }));
+        Assert.Equal(false, error.Data["JobStorageBackupVerified"]);
+        var path = Assert.IsType<string>(error.Data["JobStorageBackupPath"]);
+        Assert.Equal(0, new FileInfo(path).Length);
+        Assert.Equal(before, db.Snapshot(false, true));
+        Assert.NotNull(await JobStorageMigration.ConvertAsync(db.Path, true));
+        Assert.Equal(2, Directory.GetFiles(db.DirectoryPath, "*.before-*.db").Length);
+    }
+
+    [Theory]
+    [InlineData("locked")]
+    [InlineData("backup-created")]
+    [InlineData("backed-up")]
+    [InlineData("copied")]
+    public async Task Cancellation_at_maintenance_boundaries_keeps_source(string stage)
+    {
+        using var db = new MigrationDb(true);
+        var before = db.Snapshot(false, true);
+        using var cancellation = new CancellationTokenSource();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => JobStorageMigration.ConvertAsync(db.Path, true,
+            checkpoint: (point, _) => { if (point == stage) cancellation.Cancel(); }, cancellationToken: cancellation.Token));
+        Assert.Equal(before, db.Snapshot(false, true));
+        Assert.Equal(0L, db.Scalar("PRAGMA user_version;"));
+        if (stage == "locked") Assert.Empty(Directory.GetFiles(db.DirectoryPath, "*.before-*.db"));
     }
 
     [Fact]
@@ -186,13 +257,13 @@ public sealed class JobStorageMigrationTests
 
     private sealed class MigrationDb : IDisposable
     {
-        public MigrationDb(bool withBytes)
+        public MigrationDb(bool withBytes, Func<string, string>? transform = null)
         {
             SqliteSupport.EnsureInitialized();
             DirectoryPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "labelframe-migration-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(DirectoryPath);
             Path = System.IO.Path.Combine(DirectoryPath, "jobs.db");
-            Execute("""
+            var setup = """
                 PRAGMA journal_mode=WAL;
                 CREATE TABLE jobs (id TEXT PRIMARY KEY, request_id TEXT NOT NULL UNIQUE, status TEXT NOT NULL,
                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
@@ -208,7 +279,8 @@ public sealed class JobStorageMigrationTests
                     ('i2','job',2,'Completed','done','code','错误','original-2'),
                     ('i3','job',3,'Failed','failed',NULL,NULL,'original-3'),
                     ('i4','job',4,'Cancelled','cancelled',NULL,NULL,'original-4');
-                """);
+                """;
+            Execute(transform?.Invoke(setup) ?? setup);
             if (withBytes) Execute("ALTER TABLE job_items ADD COLUMN command_bytes BLOB NULL; UPDATE job_items SET command_bytes=x'0080FF' WHERE id='i1'; UPDATE job_items SET command_bytes=x'' WHERE id='i4';");
         }
 

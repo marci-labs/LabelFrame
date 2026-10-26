@@ -276,3 +276,13 @@ ServerDb 实例内运行期写调用改为异步排队，读查询和跨实例�
 完整 Release build 0 警告/0 错误；非 Perf/Soak **1369 项全部通过、零跳过**，证据 `artifacts/split-product-20261026/kernel-regression/` 七份 TRX。用户 PID 23360/8940 创建时间核对为 2026-10-24 12:51:59/12:51:46，主 checkout 干净；不操作 UI/真实打印/用户客户端，不启动宿主端口，不推送/Issue/PR/部署/发版，无前端改动。注释卫生提交后对 `f4272a0..HEAD` 执行。
 
 下一步继续（不等新授权）：先审查迁移内核是否需强化 schema 约束识别、备份失败路径可诊断性、取消粒度与跨进程/强制退出恢复测试；现有互斥测试仅同进程多连接，不冒充跨进程实证。再完成初始化新库/旧库自动迁移、所有读取/创建接线、运行时缺失载荷 fail-closed、内部状态/完成正确性及离线降级 CLI。注意当前 SqliteLabelJobStore.OpenConnectionAsync 使用池，旧连接可能阻止 EXCLUSIVE；初始化应先无池识别格式，已经 split 的正常重复初始化不能每次独占迁移；不要 ClearAllPools 影响其他数据库，不在线降级，所有宿主须停机。补维护工具、README/DEPLOY/CHANGELOG/core 说明与全链路/性能证据后才称接入完成。原有 Perf 原型直接操作旧 job_items.zpl，产品切换后需明确基线/候选格式并调整诊断，不把旧 SQL 误用新库。不重复已否决优化、不降持久性、不改公共契约。
+
+## 迁移内核结构白名单与故障诊断补强（2026-10-26）
+
+从 `e45e8cb` 接续，仅修改内部迁移器、测试与方案，产品初始化仍未接入分表。新增完整 CREATE TABLE / INDEX 定义白名单（兼容旧文本、有 binary 列原位/末尾两种形式及迁移重建的引号），拒绝额外 CHECK / DEFAULT / COLLATE / 外键级联、缺失 UNIQUE、同名异构索引及缺失索引；修复 sqlite_ 过滤使用 LIKE 下划线通配符的问题，未知 sqliteXextra 表不能漏检。白名单不是通用 SQL 等价解析器，手工变体 fail-closed，不悄悄删除未知约束。
+
+备份路径分配后的异常在原异常 Data 中附带 JobStorageBackupPath / JobStorageBackupVerified，不包装 IOException / SqliteException / OperationCanceledException；未校验备份保留但明确 false。新增 backup-created 测试检查点，空备份故障后原数据不变、再次迁移产生新备份且不覆盖旧证据。锁后/备份创建后/备份完成后/复制后取消均保留旧格式。同步 BackupDatabase 和单条原生 SQL 的中途取消不保证立即响应，下一边界检查；未冒充真实断电或跨进程覆盖。
+
+专项首轮 36 项全过（`artifacts/split-product-20261026/kernel-hardening.trx`），增加对象前缀与未校验备份测试后 39 项全过（`kernel-hardening-final.trx`）。完整 Release build 0 警告/0 错误，非 Perf/Soak **1386 项全部通过、零跳过**，证据 `hardening-regression/` 七份 TRX。用户 PID 23360/8940 创建时间由 CIM 确认为 2026-10-24 12:51:59/12:51:46，主 checkout 干净。不操作 UI/客户端/真实打印机、不推送/远端/安装部署，无前端变更、无新用户面 CHANGELOG 或 ROADMAP 结项。
+
+下一步仍直接实施，不需要用户再次说继续：优先将跨进程/强制退出恢复测试与离线维护工具一并搭建，然后接入新库/旧库初始化及存储读写，避免持续只补内核而迟迟不接线。使用内部 friend 程序集或独立测试探针，不扩大公共作业 API；维护工具要输出上述备份诊断。对分表普通重复初始化不独占维护、不清全局池；未知版本拒绝；运行时读取 LEFT JOIN 并检测缺载荷。原有直接旧 schema 的 Perf SQL 和旧库测试夹具须显式分离基线/候选。完整接线后才更新部署承诺并做模拟整链路与 A-B。当前上下文因恢复长记录已较长，按用户授权提前全新串行接续，不声称精确百分比，不 fork/派代理/并行写文件。
