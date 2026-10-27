@@ -16,13 +16,13 @@ public sealed partial class MainActivity
     private Button? _manualRecovery;
     private bool _preparingUpdate;
     private string? _updateActionError;
+    private LinearLayout? _updateAdminPanel;
+    private readonly UpdateInteraction _updateInteraction = new();
 
     private ScrollView BuildUpdatesScreen()
     {
         var content = ScrollColumn();
         content.AddView(Header(L(Resource.String.update_title)));
-        content.AddView(Subtle(L(Resource.String.update_policy)));
-        content.AddView(Spacing(16));
         content.AddView(FieldLabel(L(Resource.String.device_version_label)));
         content.AddView(TextView(HostInfo.GetVersion(this), 22, ColorText, true));
         content.AddView(Spacing(16));
@@ -30,31 +30,33 @@ public sealed partial class MainActivity
         _updateDetails = TextView("", 13, ColorTextSecondary);
         content.AddView(_updateState);
         content.AddView(Spacing(8));
-        content.AddView(_updateDetails);
         content.AddView(Spacing(24));
-        content.AddView(ActionButton(L(Resource.String.update_permission), () =>
-        {
-            if (OperatingSystem.IsAndroidVersionAtLeast(26))
-                StartActivity(new Intent(Settings.ActionManageUnknownAppSources, Android.Net.Uri.Parse("package:" + PackageName)));
-        }, ViewGroup.LayoutParams.MatchParent));
-        content.AddView(Spacing(12));
-        _installUpdate = DangerButton(L(Resource.String.update_install), ConfirmUpdate, ViewGroup.LayoutParams.MatchParent);
+        _installUpdate = DangerButton(L(Resource.String.update_install), StartUpdate, ViewGroup.LayoutParams.MatchParent);
         content.AddView(_installUpdate);
-        content.AddView(Spacing(12));
-        content.AddView(ActionButton(L(Resource.String.update_system_confirmation), () =>
+        content.AddView(Spacing(24));
+        var adminEntry = Subtle(L(Resource.String.update_admin_tools));
+        adminEntry.SetMinHeight(Dp(48));
+        adminEntry.Click += (_, _) =>
         {
-            if (!AndroidUpdateInstaller.ShowConfirmation(this))
-                Toast.MakeText(this, L(Resource.String.update_no_confirmation), ToastLength.Long)?.Show();
-        }, ViewGroup.LayoutParams.MatchParent));
-        content.AddView(Spacing(12));
-        content.AddView(ActionButton(L(Resource.String.update_retry_health), () => RunAsync(async () =>
+            if (_updateAdminPanel is not null)
+                _updateAdminPanel.Visibility = _updateAdminPanel.Visibility == ViewStates.Visible ? ViewStates.Gone : ViewStates.Visible;
+        };
+        content.AddView(adminEntry);
+        _updateAdminPanel = ScrollColumn();
+        _updateAdminPanel.Visibility = ViewStates.Gone;
+        _updateAdminPanel.AddView(_updateDetails);
+        _updateAdminPanel.AddView(ActionButton(L(Resource.String.update_retry_health), () => RunAsync(async () =>
         {
-            if (AndroidUpdateInstaller.Current is { } installer) await installer.RetryHealthAsync(CancellationToken.None);
-            RefreshUpdateStatus();
+            try
+            {
+                if (AndroidUpdateInstaller.Current is { } installer) await installer.RetryHealthAsync(CancellationToken.None);
+            }
+            catch (Exception error) { _updateActionError = error.Message; }
+            finally { RefreshUpdateStatus(); }
         }), ViewGroup.LayoutParams.MatchParent));
-        content.AddView(Spacing(12));
         _manualRecovery = DangerButton(L(Resource.String.update_manual_recovery), ConfirmManualRecovery, ViewGroup.LayoutParams.MatchParent);
-        content.AddView(_manualRecovery);
+        _updateAdminPanel.AddView(_manualRecovery);
+        content.AddView(_updateAdminPanel);
         return WrapScroll(content);
     }
 
@@ -64,17 +66,17 @@ public sealed partial class MainActivity
         var download = AndroidUpdateMonitor.Current;
         var transaction = AndroidUpdateInstaller.Journal;
         var state = transaction.Current;
-        var phase = transaction.Fault is not null ? "repair" : state is not null && (transaction.NeedsRecovery || download.Phase != "ready")
-            ? state.Phase : download.Phase;
+        var phase = UpdateStatusProjection.Create("ui", 0, download.Phase, download.Reason,
+            download.Release?.Package.VersionCode, state, transaction.Fault, transaction.NeedsRecovery).Phase;
         _updateState.Text = phase switch
         {
-            "ready" => L(Resource.String.update_ready),
+            "ready" => L(Resource.String.update_available, download.Release?.Package.VersionName),
             "downloading" or "checking" => L(Resource.String.update_downloading),
             "preparing" or "submitted" => L(Resource.String.update_submitted),
             "confirmation" => L(Resource.String.update_confirmation),
             "recovering" => L(Resource.String.update_recovering),
-            "succeeded" => L(Resource.String.update_succeeded),
-            "manually-resumed" => L(Resource.String.update_manually_resumed),
+            "succeeded" => L(Resource.String.update_idle),
+            "manually-resumed" => L(Resource.String.update_idle),
             "cancelled" or "rejected" => L(Resource.String.update_cancelled),
             "repair" or "unknown" => L(Resource.String.update_repair),
             "unsupported" => L(Resource.String.update_unsupported),
@@ -96,7 +98,16 @@ public sealed partial class MainActivity
             _updateDetails.Text += "\n" + L(Resource.String.update_manually_resumed);
         if (_updateActionError is not null)
             _updateDetails.Text += "\n" + _updateActionError;
-        if (_installUpdate is not null) _installUpdate.Enabled = !_preparingUpdate && download.Phase == "ready" && !transaction.NeedsRecovery;
+        if (_updateActionError is not null)
+            _updateState.Text = _updateActionError == L(Resource.String.update_permission_needed)
+                ? _updateActionError : L(Resource.String.update_action_blocked);
+        if (_installUpdate is not null)
+        {
+            var canUpdate = !transaction.NeedsRecovery && download.Release is not null;
+            var canConfirm = state?.Phase == "confirmation" && AndroidUpdateInstaller.HasConfirmation;
+            _installUpdate.Visibility = canUpdate || canConfirm ? ViewStates.Visible : ViewStates.Gone;
+            _installUpdate.Enabled = !_preparingUpdate && (canConfirm || download.Phase == "ready" && canUpdate);
+        }
         if (_manualRecovery is not null)
         {
             _manualRecovery.Visibility = transaction.Fault is null && (transaction.NeedsRecovery
@@ -104,6 +115,40 @@ public sealed partial class MainActivity
                 : AndroidUpdateInstaller.Current?.HasUnknownRoute == true) ? ViewStates.Visible : ViewStates.Gone;
             _manualRecovery.Enabled = !_preparingUpdate;
         }
+        ContinueUpdateInteraction();
+    }
+
+    private void StartUpdate()
+    {
+        _updateActionError = null;
+        if (AndroidUpdateInstaller.Journal.Current?.Phase == "confirmation")
+        {
+            if (!AndroidUpdateInstaller.ShowConfirmation(this)) _updateActionError = L(Resource.String.update_no_confirmation);
+            return;
+        }
+        ConfirmUpdate();
+    }
+
+    private void ContinueUpdateInteraction()
+    {
+        var action = _updateInteraction.Next(_autoRefresh && _current == Screen.Updates && !IsFinishing && !IsDestroyed,
+            OperatingSystem.IsAndroidVersionAtLeast(26) && PackageManager!.CanRequestPackageInstalls(),
+            AndroidUpdateInstaller.HasConfirmation, AndroidUpdateInstaller.Journal.NeedsRecovery);
+        if (action == UpdateInteraction.Action.Prepare) RunAsync(PrepareUpdateAsync);
+        if (action == UpdateInteraction.Action.Confirm) AndroidUpdateInstaller.ShowConfirmation(this);
+        if (action == UpdateInteraction.Action.PermissionDenied)
+            _updateActionError = L(Resource.String.update_permission_needed);
+    }
+
+    private void BeginUpdateInteraction()
+    {
+        _updateInteraction.Begin();
+        if (OperatingSystem.IsAndroidVersionAtLeast(26) && !PackageManager!.CanRequestPackageInstalls())
+        {
+            _updateInteraction.WaitForPermission();
+            StartActivity(new Intent(Settings.ActionManageUnknownAppSources, Android.Net.Uri.Parse("package:" + PackageName)));
+        }
+        else RunAsync(PrepareUpdateAsync);
     }
 
     private void ConfirmManualRecovery()
@@ -138,6 +183,7 @@ public sealed partial class MainActivity
                         await installer.RecoverManuallyAsync(transactionId, password, explanation,
                             () => _autoRefresh && _current == Screen.Updates && !IsFinishing && !IsDestroyed, CancellationToken.None);
                     }
+                    catch (Exception error) { _updateActionError = error.Message; }
                     finally { password = ""; _preparingUpdate = false; RefreshUpdateStatus(); }
                 });
             })!.Create()!;
@@ -155,7 +201,7 @@ public sealed partial class MainActivity
             .SetTitle(L(Resource.String.update_install))!
             .SetMessage(L(Resource.String.update_confirm_impact, HostInfo.GetVersion(this), release.Package.VersionName))!
             .SetNegativeButton(L(Resource.String.update_not_now), (_, _) => { })!
-            .SetPositiveButton(L(Resource.String.update_install), (_, _) => RunAsync(PrepareUpdateAsync))!.Create()!;
+            .SetPositiveButton(L(Resource.String.update_install), (_, _) => BeginUpdateInteraction())!.Create()!;
         dialog.Show();
         var confirm = dialog.GetButton((int)DialogButtonType.Positive)!;
         confirm.Enabled = false;
@@ -172,11 +218,12 @@ public sealed partial class MainActivity
         {
             var installer = AndroidUpdateInstaller.Current ?? throw new InvalidOperationException(L(Resource.String.update_service_not_ready));
             await installer.PrepareAsync(() => _autoRefresh && _current == Screen.Updates && !IsFinishing && !IsDestroyed, CancellationToken.None);
+            _updateInteraction.WaitForConfirmation();
         }
         catch (Exception error)
         {
             _updateActionError = error.Message;
-            throw;
+            _updateInteraction.Cancel();
         }
         finally { _preparingUpdate = false; RefreshUpdateStatus(); }
     }

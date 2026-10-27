@@ -19,6 +19,7 @@ public sealed class AndroidUpdateInstaller(Context context, LabelHostConfig conf
     private static long _processVersion;
     private static Intent? _confirmation;
     private static string? _confirmationId;
+    public static bool HasConfirmation => _confirmation is not null && Journal.Current is { Phase: "confirmation" } state && state.Id == _confirmationId;
 
     public static void InitializeProcess(Context context)
     {

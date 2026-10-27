@@ -93,6 +93,7 @@ public sealed partial class MainActivity : Activity
     protected override void OnPause()
     {
         _autoRefresh = false;
+        _updateInteraction.Pause();
         base.OnPause();
     }
 
@@ -148,6 +149,7 @@ public sealed partial class MainActivity : Activity
 
     private void ShowScreen(Screen screen)
     {
+        if (screen != Screen.Updates) _updateInteraction.Cancel();
         if (screen is not (Screen.Home or Screen.Updates) && _editorLease is null)
         {
             _editorLease = MaintenanceGate.Shared.TryEnterEditor();

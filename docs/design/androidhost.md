@@ -5,7 +5,7 @@
 
 ## 1. 职责与边界
 
-受控 APK 升级的设计、维护门闩与安装恢复边界见 [Android 升级设计](android-updates.md)；后台下载、APK 校验和业务保护层已接线，安装提交与恢复仍在实现中，不把既有 BootReceiver 拉起服务等同于更新后健康验收。
+受控 APK 升级的设计、维护门闩与安装恢复边界见 [Android 升级设计](android-updates.md)；后台下载、APK 校验、系统确认安装与健康恢复已接线。普通更新页只展示新版本状态与一个更新按钮，许可按需引导、系统确认由用户发起流程衔接，管理员诊断默认收起。`UpdateInteraction` 限制前台单次继续，`UpdateStatusProjection` 防止历史终态掩盖新候选或检查失败。实际设备证据与未完成边界见 [真机记录](../evidence/172/device-baseline.md)，不把 BootReceiver 拉起服务等同于健康验收。
 
 **做什么**：Android / PDA 上的**后台打印执行服务**（决策 #93 / #95）——作业队列、Android 平台位图渲染、`^GF` 编码、Zebra SDK 传输（TCP 默认 / 蓝牙 SPP / USB OTG）、Server 注册轮询、开机自启保活全部在宿主内，不依赖任何 PC 侧组件。自研 App 形态：前台常驻服务（`PrintHostService`）+ 唯一配置 Activity（`MainActivity`）+ 本地 HTTP（`EmbeddedHttpServer`，仅 127.0.0.1:53970，TcpListener 极简实现，决策 #27——不承载 ASP.NET Core）+ LF_* 错误码 zh/en 码表（决策 #167）。打印入口有两个：Server 路由模式（主，`ServerPoller` 长轮询领取定向作业）与同机直连模式（「JS 桥」，第三方 WebView / 浏览器页面直接调本地 HTTP，决策 #93）。
 

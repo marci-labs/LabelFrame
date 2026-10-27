@@ -7,7 +7,7 @@ namespace LabelFrame.AndroidHost.Updates;
 public sealed class AndroidUpdateMonitor
 {
     public sealed record Snapshot(string Phase, string? Reason = null, AndroidUpdateRelease? Release = null, string? PackagePath = null);
-    private static Snapshot _current = new("idle");
+    private static Snapshot _current = new("checking");
     public static Snapshot Current => Volatile.Read(ref _current);
 
     public static async Task RunAsync(Context context, LabelHostConfig config, CancellationToken ct)
@@ -67,10 +67,9 @@ public sealed class AndroidUpdateMonitor
                     var state = Current;
                     var transaction = AndroidUpdateInstaller.Journal;
                     var install = transaction.Current;
-                    var phase = transaction.Fault is not null ? "repair" : install?.Phase ?? state.Phase;
-                    var detail = transaction.Fault ?? install?.Reason ?? state.Reason;
-                    await client.ReportAsync(new(identity.DeviceId, identity.CurrentVersionCode, phase, install?.TargetVersion ?? state.Release?.Package.VersionCode,
-                        detail is { Length: > 1024 } reason ? reason[..1024] : detail, install?.Id), ct);
+                    var report = UpdateStatusProjection.Create(identity.DeviceId, identity.CurrentVersionCode, state.Phase,
+                        state.Reason, state.Release?.Package.VersionCode, install, transaction.Fault, transaction.NeedsRecovery);
+                    await client.ReportAsync(report with { Reason = report.Reason is { Length: > 1024 } reason ? reason[..1024] : report.Reason }, ct);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
                 catch (Exception error) { HostLog.Warn(HostLog.Tags.Host, $"更新状态回报失败：{error.Message}"); }
