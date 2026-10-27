@@ -5,6 +5,14 @@ namespace LabelFrame.AndroidHost.Tests;
 
 public sealed class UpdateInteractionTests
 {
+    [Theory]
+    [InlineData("device", true)]
+    [InlineData(" device ", true)]
+    [InlineData("changed", false)]
+    [InlineData(null, false)]
+    public void UnsavedDeviceNameCannotReleaseEditor(string? entered, bool allowed)
+        => Assert.Equal(allowed, UpdateInteraction.CanLeaveEditor(entered, "device"));
+
     [Fact]
     public void PermissionReturnPreparesOnce()
     {

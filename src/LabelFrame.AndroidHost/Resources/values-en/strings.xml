@@ -166,6 +166,7 @@
   <string name="update_policy">Downloads do not interrupt printing. Finish all jobs and route reports and leave configuration editing before installation. No silent installation or background prompts.</string>
   <string name="update_permission">1. Open system installation permission</string>
   <string name="update_install">Update</string>
+  <string name="update_save_device_first">Save the device name before updating.</string>
   <string name="update_available">New version available: {0}</string>
   <string name="update_admin_tools">Administrator troubleshooting</string>
   <string name="update_action_blocked">Unable to update yet. Finish jobs and leave configuration editing, then try again. Contact an administrator if this continues.</string>

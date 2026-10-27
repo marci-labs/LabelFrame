@@ -165,6 +165,7 @@
   <string name="update_policy">下载不影响打印。安装前须完成整批作业、路由回报并退出配置编辑。不会静默安装或从后台弹出安装界面。</string>
   <string name="update_permission">① 打开系统安装许可设置</string>
   <string name="update_install">更新</string>
+  <string name="update_save_device_first">请先保存设备名称，再更新。</string>
   <string name="update_available">发现新版本 {0}</string>
   <string name="update_admin_tools">管理员故障处理</string>
   <string name="update_action_blocked">暂时无法更新，请完成作业并退出配置编辑后重试。仍有问题请联系管理员。</string>

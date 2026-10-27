@@ -7,6 +7,8 @@ public sealed class UpdateInteraction
     private bool _active;
     private bool _permission;
     private bool _confirmation;
+    public bool IsActive => _active;
+    public static bool CanLeaveEditor(string? enteredName, string savedName) => string.Equals(enteredName?.Trim(), savedName, StringComparison.Ordinal);
 
     public void Begin() { _active = true; _permission = false; _confirmation = false; }
     public void WaitForPermission() => _permission = _active;

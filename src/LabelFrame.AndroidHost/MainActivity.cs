@@ -40,7 +40,6 @@ public sealed partial class MainActivity : Activity
         Printer,
         Device,
         Plugins,
-        Updates,
     }
 
     private Screen _current = Screen.Home;
@@ -52,7 +51,6 @@ public sealed partial class MainActivity : Activity
     private View? _printerView;
     private View? _deviceView;
     private View? _pluginsView;
-    private View? _updatesView;
 
     /// <inheritdoc />
     protected override void OnCreate(Bundle? savedInstanceState)
@@ -149,8 +147,8 @@ public sealed partial class MainActivity : Activity
 
     private void ShowScreen(Screen screen)
     {
-        if (screen != Screen.Updates) _updateInteraction.Cancel();
-        if (screen is not (Screen.Home or Screen.Updates) && _editorLease is null)
+        if (screen != Screen.Device) _updateInteraction.Cancel();
+        if (screen is not (Screen.Home or Screen.Device) && _editorLease is null)
         {
             _editorLease = MaintenanceGate.Shared.TryEnterEditor();
             if (_editorLease is null)
@@ -166,7 +164,6 @@ public sealed partial class MainActivity : Activity
             Screen.Printer => _printerView ??= BuildPrinterScreen(),
             Screen.Device => _deviceView ??= BuildDeviceScreen(),
             Screen.Plugins => _pluginsView ??= BuildPluginsScreen(),
-            Screen.Updates => _updatesView ??= BuildUpdatesScreen(),
             _ => _homeView ??= BuildHomeScreen(),
         };
         _root.RemoveAllViews();
@@ -183,7 +180,7 @@ public sealed partial class MainActivity : Activity
             // 每次进入刷新两份列表（已装 / 服务器可选）
             RunAsync(RefreshPluginsScreenAsync);
         }
-        if (screen == Screen.Updates) RefreshUpdateStatus();
+        if (screen == Screen.Device) RefreshUpdateStatus();
     }
 
     private void ShowServer() => ShowScreen(Screen.Server);

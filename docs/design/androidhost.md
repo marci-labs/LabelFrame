@@ -5,7 +5,7 @@
 
 ## 1. 职责与边界
 
-受控 APK 升级的设计、维护门闩与安装恢复边界见 [Android 升级设计](android-updates.md)；后台下载、APK 校验、系统确认安装与健康恢复已接线。普通更新页只展示新版本状态与一个更新按钮，许可按需引导、系统确认由用户发起流程衔接，管理员诊断默认收起。`UpdateInteraction` 限制前台单次继续，`UpdateStatusProjection` 防止历史终态掩盖新候选或检查失败。实际设备证据与未完成边界见 [真机记录](../evidence/172/device-baseline.md)，不把 BootReceiver 拉起服务等同于健康验收。
+受控 APK 升级的设计、维护门闩与安装恢复边界见 [Android 升级设计](android-updates.md)；后台下载、APK 校验、系统确认安装与健康恢复已接线。更新区位于本机信息页，展示新版本状态与一个更新按钮；许可按需引导、系统确认由用户发起流程衔接，无独立菜单或管理员处理入口。本机信息只在名称无未保存修改时释放编辑lease并禁用编辑，更新结束后恢复。`UpdateInteraction` 限制前台单次继续，`UpdateStatusProjection` 防止历史终态掩盖新候选或检查失败。实际设备证据与未完成边界见 [真机记录](../evidence/172/device-baseline.md)，不把 BootReceiver 拉起服务等同于健康验收。
 
 **做什么**：Android / PDA 上的**后台打印执行服务**（决策 #93 / #95）——作业队列、Android 平台位图渲染、`^GF` 编码、Zebra SDK 传输（TCP 默认 / 蓝牙 SPP / USB OTG）、Server 注册轮询、开机自启保活全部在宿主内，不依赖任何 PC 侧组件。自研 App 形态：前台常驻服务（`PrintHostService`）+ 唯一配置 Activity（`MainActivity`）+ 本地 HTTP（`EmbeddedHttpServer`，仅 127.0.0.1:53970，TcpListener 极简实现，决策 #27——不承载 ASP.NET Core）+ LF_* 错误码 zh/en 码表（决策 #167）。打印入口有两个：Server 路由模式（主，`ServerPoller` 长轮询领取定向作业）与同机直连模式（「JS 桥」，第三方 WebView / 浏览器页面直接调本地 HTTP，决策 #93）。
 
@@ -65,7 +65,7 @@
 
 ### 3.3 本地 HTTP 直连（`EmbeddedHttpServer`，JS 桥）
 
-历史路由未知可在原生更新页由管理员明确接受风险后恢复；仍有本机领取在途、待提交/回报、整批/挂起或配置编辑时拒绝。原日志与原因先写私有审计，人工豁免不改变服务端结果，新的领取失败重新阻断。安装未知/修复态另有人工恢复，确认系统会话消失、实际签名和版本满足条件后记 `manually-resumed`，不标成功；不增加本地 HTTP 恢复端点。详见 [维护简化](android-updates.md#简化维护用户批准2026-10-27)。
+历史路由未知恢复后端保留，但按用户最新修订不提供客户端入口；仍有本机领取在途、待提交/回报、整批/挂起或配置编辑时拒绝。原日志与原因先写私有审计，人工豁免不改变服务端结果，新的领取失败重新阻断。安装未知/修复态另有人工恢复，确认系统会话消失、实际签名和版本满足条件后记 `manually-resumed`，不标成功；不增加本地 HTTP 恢复端点。详见 [维护简化](android-updates.md#简化维护用户批准2026-10-27)。
 
 统一缓冲读取（头 + 体同一份累积字节解析；**不能用 StreamReader 预读**，见 §6 坑 8）；所有响应带宽松 CORS 头（`OPTIONS` 直接 204），第三方跨源页面可直连。端点与 WinHost 同构：
 
@@ -87,7 +87,7 @@
 
 ### 3.5 崩溃捕获（`CrashGuard`）
 
-应用入口同时在所有组件启动前恢复安装事务冻结；服务初始化后更新协调器仅开放只读 API/注册健康通道，目标版本新进程核验完成才解除业务门闩。「应用更新」为只读维护页，不复用配置编辑 lease，不增加 HTTP 安装写接口。下载/安装互斥、Session 提交回执与取消/未知处理详见 [Android 升级设计](android-updates.md#系统确认事务与恢复实现)。
+应用入口同时在所有组件启动前恢复安装事务冻结；服务初始化后更新协调器仅开放只读 API/注册健康通道，目标版本新进程核验完成才解除业务门闩。更新区并入本机信息，确认设备名无未保存修改后才释放本页编辑lease，不增加 HTTP 安装写接口。下载/安装互斥、Session 提交回执与取消/未知处理详见 [Android 升级设计](android-updates.md#系统确认事务与恢复实现)。
 
 双通道：.NET `AppDomain.UnhandledException` + Java 层 `Thread.DefaultUncaughtExceptionHandler`（记录后交回原处理器保持系统崩溃流程；托管异常最终也以 Java 形态到达，此时摘要只补 logcat）。完整堆栈入 `HostLog`（Error）；摘要文件 `{FilesDir}/crash/crash-yyyyMMdd-HHmmss.txt`（保留 3 份，**单份只落第一次**）供下次启动读证（`adb pull` 取证），不回传服务端。
 
