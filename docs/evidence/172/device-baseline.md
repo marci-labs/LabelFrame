@@ -40,3 +40,16 @@
 - 为继续正向验证，经正常取消 API 结束两个已备份历史隔离夹具 `validation-interrupted`、`validation-suspended`；作业记录和已完成/失败项保留，不删数据、不恢复陈旧库、不新增发送。此后它们为 Cancelled，不再声称原状态未变化。
 - 第二次准备真实创建事务 `21d718cfd0e640798849b98f817bf1ce`，设备报告 confirmation。点击③显示 Android 原生「要为此应用安装更新吗？您现有的数据将不会丢失」对话框，未走公共 Download 或 ADB 安装。
 - 点击系统取消，收到 `INSTALL_FAILED_ABORTED: User rejected permissions`，随后页面恢复未冻结、②可用，实际版本仍 1.5.2。第三次准备继续用于用户最终安装确认；更新后新进程健康尚待验证。
+
+## 产品实升与新进程健康通过
+
+- 用户明确点击第二次系统确认框的「安装」。PackageManager 实际 `lastUpdateTime=2026-10-27 14:55:01`，versionCode=10503、versionName=1.5.3，pkgFlags 不含 DEBUGGABLE。候选没有经 ADB 安装。
+- 旧进程 PID13749 → 新进程 PID14100；14:55:05.395 日志记录收到 `android.intent.action.MY_PACKAGE_REPLACED` 拉起打印服务，14:55:06.272 完成初始化、开放 HTTP 与 Worker。取证之前没有人为启动新版本来代替自启验证。
+- 实际本地 `/healthz` 返回 `LabelFrame.AndroidHost / ok / 1.5.3`；事务 `b596471e04ed421bac9a98585e030f59` 在 14:55:47 自报 succeeded、reason=null、实际版本10503。该终态由设备新进程执行实际签名/版本、原配置摘要、插件文件摘要与加载、品牌、本地 API 和原服务端注册健康链后形成，不只依赖系统安装成功回执。
+- 独立复读配置：设备 ID、设备名、隔离 ServerUrl、validation-simulation 品牌、tcp/127.0.0.1:59999 均保留。插件 Loaded=true、LoadError=null；6 条作业及总项数、已完成数与本次安装前一致（两个挂起夹具已按上一节正常取消）。服务端同一设备持续 Online，14:56:30 有真实注册更新。
+- 14:57 人为打开更新页做视觉验收，实际显示「更新及健康核验通过」、版本1.5.3、业务未冻结。没有以模拟打印或物理出纸证明健康。
+- 边界：这是非调试 APK＋原隔离验证证书的同签名实升，不是正式发行私钥验收。人工恢复、确认期间进程重建、中英文全界面、整批/编辑负向与最新修复候选仍需继续；完整回归、PR三门禁及逐AC结项未完成。
+
+![Android 系统确认](device-system-confirmation.png)
+
+![新版本健康通过](device-update-success.png)
