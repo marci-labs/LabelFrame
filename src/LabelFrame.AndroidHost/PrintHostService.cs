@@ -36,6 +36,8 @@ public sealed class PrintHostService : Service
     private Task? _notifyLoop;
     private Task? _updateLoop;
     private RouteJournal? _routeJournal;
+    private AndroidUpdateInstaller? _updateInstaller;
+    private Task? _updateRecovery;
 
     /// <inheritdoc />
     public override void OnCreate()
@@ -86,6 +88,9 @@ public sealed class PrintHostService : Service
         var config = _config!;
         _http = new EmbeddedHttpServer(LabelHostConfig.LocalPort, _submission!, _queue!, _store!, _transport!, this, _pluginHost!.Installer);
         _http.Start();
+        _updateInstaller = new AndroidUpdateInstaller(this, config, _pluginHost!, _store!, _routeJournal!, token);
+        _updateInstaller.Activate();
+        _updateRecovery = Task.Run(() => _updateInstaller.RecoverAsync(token), CancellationToken.None);
         HostStatus.NoteServiceStarted(config.ServerUrl, _printerFacts!);
         var printerEndpoint = LabelHostConfig.PrinterDisplayText(this, _printerFacts!);
         _printLoop = Task.Run(() => PrintLoopAsync(printerEndpoint, token), CancellationToken.None);
@@ -122,11 +127,14 @@ public sealed class PrintHostService : Service
             try
             {
                 await Task.WhenAll(_printLoop ?? Task.CompletedTask, _routingLoop ?? Task.CompletedTask,
-                    _notifyLoop ?? Task.CompletedTask, _updateLoop ?? Task.CompletedTask).ConfigureAwait(false);
+                    _notifyLoop ?? Task.CompletedTask, _updateLoop ?? Task.CompletedTask,
+                    _updateRecovery ?? Task.CompletedTask).ConfigureAwait(false);
             }
             finally
             {
+                using var updateOperation = await UpdateOperation.Shared.EnterAsync(CancellationToken.None).ConfigureAwait(false);
                 _poller?.Dispose();
+                _updateInstaller?.Deactivate();
                 (_transport as IDisposable)?.Dispose();
             }
         }
@@ -139,6 +147,7 @@ public sealed class PrintHostService : Service
     /// <inheritdoc />
     public override void OnDestroy()
     {
+        _updateInstaller?.Deactivate();
         _lifetime.Dispose();
         HostStatus.NoteServiceStopped();
         HostLog.Info(HostLog.Tags.Host, "打印服务停止");

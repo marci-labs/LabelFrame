@@ -85,6 +85,8 @@
 
 ### 3.5 崩溃捕获（`CrashGuard`）
 
+应用入口同时在所有组件启动前恢复安装事务冻结；服务初始化后更新协调器仅开放只读 API/注册健康通道，目标版本新进程核验完成才解除业务门闩。「应用更新」为只读维护页，不复用配置编辑 lease，不增加 HTTP 安装写接口。下载/安装互斥、Session 提交回执与取消/未知处理详见 [Android 升级设计](android-updates.md#系统确认事务与恢复实现)。
+
 双通道：.NET `AppDomain.UnhandledException` + Java 层 `Thread.DefaultUncaughtExceptionHandler`（记录后交回原处理器保持系统崩溃流程；托管异常最终也以 Java 形态到达，此时摘要只补 logcat）。完整堆栈入 `HostLog`（Error）；摘要文件 `{FilesDir}/crash/crash-yyyyMMdd-HHmmss.txt`（保留 3 份，**单份只落第一次**）供下次启动读证（`adb pull` 取证），不回传服务端。
 
 ## 4. 对外契约与依赖

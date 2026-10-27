@@ -29,7 +29,8 @@ public sealed class ServerPoller : IDisposable
     public ServerPoller(string serverUrl, string deviceId, string? deviceName = null)
     {
         // 超时按请求单独控制（notify 长轮询可达 20s+，不能被全局 Timeout 掐断）
-        _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan, MaxResponseContentBufferSize = 64 * 1024 * 1024 };
+        _http = new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false })
+            { Timeout = Timeout.InfiniteTimeSpan, MaxResponseContentBufferSize = 64 * 1024 * 1024 };
         _serverUrl = serverUrl.TrimEnd('/');
         _deviceId = deviceId;
         _deviceName = string.IsNullOrWhiteSpace(deviceName) ? deviceId : deviceName;

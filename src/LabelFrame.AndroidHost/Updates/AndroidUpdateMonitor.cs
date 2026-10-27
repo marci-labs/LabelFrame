@@ -27,28 +27,31 @@ public sealed class AndroidUpdateMonitor
             {
                 try
                 {
-                    if (MaintenanceGate.Shared.IsFrozen) { await Task.Delay(TimeSpan.FromSeconds(5), ct); continue; }
-                    var release = await client.CandidateAsync(ct);
-                    if (release is null)
+                    using var operation = await UpdateOperation.Shared.EnterAsync(ct);
+                    if (!MaintenanceGate.Shared.IsFrozen)
                     {
-                        Set(new("idle"));
-                        File.Delete(Path.Combine(directory, "candidate.apk"));
-                        lastId = null;
-                        attempts = 0;
-                    }
-                    else
-                    {
-                        if (lastId != release.Id) { lastId = release.Id; attempts = 0; Set(new("checking", Release: release)); }
-                        if (Current.Release?.Id == release.Id && Current.PackagePath is { } cached && File.Exists(cached))
-                            Set(Current with { Phase = "ready", Reason = "后台下载已校验，等待前台确认安装。" });
-                        else if (attempts < 3)
+                        var release = await client.CandidateAsync(ct);
+                        if (release is null)
                         {
-                            attempts++;
-                            Set(new("downloading", Release: release));
-                            var path = await client.DownloadAsync(release, directory, inspector, ct);
-                            Set(new("ready", "后台下载已校验，等待前台确认安装。", release, path));
+                            Set(new("idle"));
+                            File.Delete(Path.Combine(directory, "candidate.apk"));
+                            lastId = null;
+                            attempts = 0;
                         }
-                        else Set(new("failed", "此发布下载或校验连续失败三次，已停止自动重试。", release));
+                        else
+                        {
+                            if (lastId != release.Id) { lastId = release.Id; attempts = 0; Set(new("checking", Release: release)); }
+                            if (Current.Release?.Id == release.Id && Current.PackagePath is { } cached && File.Exists(cached))
+                                Set(Current with { Phase = "ready", Reason = "后台下载已校验，等待前台确认安装。" });
+                            else if (attempts < 3)
+                            {
+                                attempts++;
+                                Set(new("downloading", Release: release));
+                                var path = await client.DownloadAsync(release, directory, inspector, ct);
+                                Set(new("ready", "后台下载已校验，等待前台确认安装。", release, path));
+                            }
+                            else Set(new("failed", "此发布下载或校验连续失败三次，已停止自动重试。", release));
+                        }
                     }
                     failures = 0;
                 }
@@ -62,8 +65,12 @@ public sealed class AndroidUpdateMonitor
                 try
                 {
                     var state = Current;
-                    await client.ReportAsync(new(identity.DeviceId, identity.CurrentVersionCode, state.Phase, state.Release?.Package.VersionCode,
-                        state.Reason is { Length: > 1024 } reason ? reason[..1024] : state.Reason), ct);
+                    var transaction = AndroidUpdateInstaller.Journal;
+                    var install = transaction.Current;
+                    var phase = transaction.Fault is not null ? "repair" : install?.Phase ?? state.Phase;
+                    var detail = transaction.Fault ?? install?.Reason ?? state.Reason;
+                    await client.ReportAsync(new(identity.DeviceId, identity.CurrentVersionCode, phase, install?.TargetVersion ?? state.Release?.Package.VersionCode,
+                        detail is { Length: > 1024 } reason ? reason[..1024] : detail, install?.Id), ct);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
                 catch (Exception error) { HostLog.Warn(HostLog.Tags.Host, $"更新状态回报失败：{error.Message}"); }

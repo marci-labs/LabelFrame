@@ -26,6 +26,8 @@
     <Compile Include="..\..\src\LabelFrame.AndroidHost\Updates\RouteJournal.cs" Link="Updates\RouteJournal.cs" />
     <Compile Include="..\..\src\LabelFrame.AndroidHost\Updates\MaintenanceGate.cs" Link="Updates\MaintenanceGate.cs" />
     <Compile Include="..\..\src\LabelFrame.AndroidHost\Updates\MaintenanceSafety.cs" Link="Updates\MaintenanceSafety.cs" />
+    <Compile Include="..\..\src\LabelFrame.AndroidHost\Updates\InstallTransaction.cs" Link="Updates\InstallTransaction.cs" />
+    <Compile Include="..\..\src\LabelFrame.AndroidHost\Updates\UpdateOperation.cs" Link="Updates\UpdateOperation.cs" />
     <Compile Include="..\..\src\LabelFrame.AndroidHost\Api\Dtos.cs" Link="Api\Dtos.cs" />
     <Compile Include="..\..\src\LabelFrame.AndroidHost\ServerPoller.cs" Link="ServerPoller.cs" />
     <Compile Include="..\..\src\LabelFrame.AndroidHost\Updates\UpdateDownloadClient.cs" Link="Updates\UpdateDownloadClient.cs" />

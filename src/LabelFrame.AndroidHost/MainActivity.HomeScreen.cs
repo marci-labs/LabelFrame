@@ -64,6 +64,9 @@ public sealed partial class MainActivity
         content.AddView(EntryRow(L(Resource.String.entry_plugins), ShowPlugins, out _pluginsEntrySummary));
         content.AddView(Spacing(10));
         content.AddView(EntryRow(L(Resource.String.entry_device), ShowDevice, out _deviceEntrySummary));
+        content.AddView(Spacing(10));
+        content.AddView(EntryRow(L(Resource.String.update_title), () => ShowScreen(Screen.Updates), out var updatesSummary));
+        updatesSummary.Text = L(Resource.String.update_entry_hint);
 
         return WrapScroll(content);
     }
@@ -120,6 +123,7 @@ public sealed partial class MainActivity
 
     private void RefreshStatus()
     {
+        RefreshUpdateStatus();
         if (_statusSummary is null || _serverEntrySummary is null)
         {
             return;
