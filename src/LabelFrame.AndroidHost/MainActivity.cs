@@ -9,6 +9,7 @@ using Android.Text;
 using Android.Views;
 using Android.Widget;
 using LabelFrame.AndroidHost.Errors;
+using LabelFrame.AndroidHost.Updates;
 using System.Globalization;
 using System.Net.Http;
 using System.Text.Json;
@@ -42,6 +43,7 @@ public sealed partial class MainActivity : Activity
     }
 
     private Screen _current = Screen.Home;
+    private IDisposable? _editorLease;
 
     // 屏幕视图构建后缓存：往返导航不丢未保存的输入
     private View? _homeView;
@@ -92,6 +94,14 @@ public sealed partial class MainActivity : Activity
         base.OnPause();
     }
 
+    /// <inheritdoc />
+    protected override void OnDestroy()
+    {
+        _editorLease?.Dispose();
+        _editorLease = null;
+        base.OnDestroy();
+    }
+
     /// <summary>系统返回键：子页回主页，主页退出。</summary>
     // API 33 起 OnBackPressed 被标记过时（为预测性返回让路），但未启用 enableOnBackInvokedCallback
     // 时框架仍回调它；为避免引入 AndroidX 依赖按既有行为保留，屏蔽平台版本分析。
@@ -136,6 +146,15 @@ public sealed partial class MainActivity : Activity
 
     private void ShowScreen(Screen screen)
     {
+        if (screen != Screen.Home && _editorLease is null)
+        {
+            _editorLease = MaintenanceGate.Shared.TryEnterEditor();
+            if (_editorLease is null)
+            {
+                Toast.MakeText(this, "应用升级维护中，暂不能进入配置或插件页面。", ToastLength.Long)?.Show();
+                return;
+            }
+        }
         _current = screen;
         var view = screen switch
         {
@@ -150,6 +169,8 @@ public sealed partial class MainActivity : Activity
         if (screen == Screen.Home)
         {
             SyncInputsFromConfig();
+            _editorLease?.Dispose();
+            _editorLease = null;
             RefreshStatus();
         }
         else if (screen == Screen.Plugins)
@@ -199,6 +220,8 @@ public sealed partial class MainActivity : Activity
         string? bluetoothMac = null,
         string? deviceName = null)
     {
+        using var write = MaintenanceGate.Shared.TryEnterWrite()
+            ?? throw new InvalidOperationException("应用升级维护中，暂不能保存配置。");
         Toast.MakeText(this, L(Resource.String.apply_saving_toast), ToastLength.Short)?.Show();
         _config.Persist(this, serverUrl, printerBrand: printerBrand, connectionType: connectionType, tcpHost: tcpHost, tcpPort: tcpPort, bluetoothMac: bluetoothMac, deviceName: deviceName);
         await RestartServiceAsync();
@@ -208,6 +231,8 @@ public sealed partial class MainActivity : Activity
     /// <summary>重启宿主服务并等待本地 HTTP 就绪（配置保存 / 插件安装 / 卸载后共用——重启生效）。</summary>
     private async Task RestartServiceAsync()
     {
+        using var write = MaintenanceGate.Shared.TryEnterWrite()
+            ?? throw new InvalidOperationException("应用升级维护中，暂不能重启服务。");
         StopService(new Intent(this, typeof(PrintHostService)));
         await Task.Delay(800);
         EnsureServiceStarted();
