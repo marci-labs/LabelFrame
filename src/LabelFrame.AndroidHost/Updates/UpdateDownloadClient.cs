@@ -9,6 +9,12 @@ namespace LabelFrame.AndroidHost.Updates;
 /// <summary>从固定服务端读取候选并有界下载到应用私有缓存。</summary>
 public sealed class UpdateDownloadClient : IDisposable
 {
+    public static void RemoveCandidate(string directory)
+    {
+        try { File.Delete(Path.Combine(directory, "candidate.apk")); }
+        catch (DirectoryNotFoundException) { }
+    }
+
     private readonly HttpClient _http;
     private readonly string _base;
     private readonly string _query;

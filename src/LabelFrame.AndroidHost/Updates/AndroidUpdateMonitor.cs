@@ -34,7 +34,7 @@ public sealed class AndroidUpdateMonitor
                         if (release is null)
                         {
                             Set(new("idle"));
-                            File.Delete(Path.Combine(directory, "candidate.apk"));
+                            UpdateDownloadClient.RemoveCandidate(directory);
                             lastId = null;
                             attempts = 0;
                         }
