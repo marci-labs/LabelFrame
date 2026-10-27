@@ -15,6 +15,7 @@ public sealed partial class MainActivity
     private Button? _installUpdate;
     private Button? _manualRecovery;
     private bool _preparingUpdate;
+    private string? _updateActionError;
 
     private ScrollView BuildUpdatesScreen()
     {
@@ -93,6 +94,8 @@ public sealed partial class MainActivity
             _updateDetails.Text += "\n" + L(Resource.String.update_unknown_route);
         if (state?.ManualRecovery is not null || AndroidUpdateInstaller.Current?.RouteAcknowledgement is not null)
             _updateDetails.Text += "\n" + L(Resource.String.update_manually_resumed);
+        if (_updateActionError is not null)
+            _updateDetails.Text += "\n" + _updateActionError;
         if (_installUpdate is not null) _installUpdate.Enabled = !_preparingUpdate && download.Phase == "ready" && !transaction.NeedsRecovery;
         if (_manualRecovery is not null)
         {
@@ -163,11 +166,17 @@ public sealed partial class MainActivity
     {
         if (_preparingUpdate || !_autoRefresh || _current != Screen.Updates) return;
         _preparingUpdate = true;
+        _updateActionError = null;
         RefreshUpdateStatus();
         try
         {
             var installer = AndroidUpdateInstaller.Current ?? throw new InvalidOperationException(L(Resource.String.update_service_not_ready));
             await installer.PrepareAsync(() => _autoRefresh && _current == Screen.Updates && !IsFinishing && !IsDestroyed, CancellationToken.None);
+        }
+        catch (Exception error)
+        {
+            _updateActionError = error.Message;
+            throw;
         }
         finally { _preparingUpdate = false; RefreshUpdateStatus(); }
     }
