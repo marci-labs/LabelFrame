@@ -21,6 +21,49 @@ public sealed class RouteJournalTests : IDisposable
     }
 
     [Fact]
+    public void Manual_acknowledgement_retains_original_and_survives_restart_but_new_failure_blocks()
+    {
+        var journal = Open(legacy: true);
+        journal.AcknowledgeUncertainty("管理员核对现场后接受历史未回报风险");
+        Assert.False(Open().HasOutstanding);
+        Assert.NotNull(Open().Acknowledgement);
+        var audit = Directory.GetFiles(Path.Combine(_directory, "recovery-audit")).Single();
+        Assert.Contains("\"ClaimUncertain\":true", File.ReadAllText(audit));
+        Assert.Contains("\"Acknowledgement\":null", File.ReadAllText(audit));
+        journal = Open();
+        journal.BeginClaim();
+        journal.CompleteClaim([]);
+        Assert.False(Open().HasOutstanding);
+        journal.BeginClaim();
+        journal.AbandonClaim();
+        Assert.True(Open().HasOutstanding);
+        Assert.Null(Open().Acknowledgement);
+        Assert.True(File.Exists(audit));
+    }
+
+    [Fact]
+    public void Manual_acknowledgement_cannot_skip_active_claim_or_payload()
+    {
+        var journal = Open(legacy: true);
+        journal.BeginClaim();
+        Assert.Throws<InvalidOperationException>(() => journal.AcknowledgeUncertainty("已核对"));
+        journal.CompleteClaim([Job()]);
+        Assert.Throws<InvalidOperationException>(() => journal.AcknowledgeUncertainty("已核对"));
+        Assert.True(Open().HasOutstanding);
+    }
+
+    [Fact]
+    public void Invalid_reason_or_audit_failure_preserves_unknown_state()
+    {
+        var journal = Open(legacy: true);
+        Assert.Throws<ArgumentException>(() => journal.AcknowledgeUncertainty(" "));
+        Assert.Throws<ArgumentException>(() => journal.AcknowledgeUncertainty(new string('x', 513)));
+        File.WriteAllText(Path.Combine(_directory, "recovery-audit"), "blocked");
+        Assert.Throws<IOException>(() => journal.AcknowledgeUncertainty("已核对"));
+        Assert.True(Open().HasOutstanding);
+    }
+
+    [Fact]
     public void Claim_marker_survives_crash_and_cannot_be_cleared_by_another_process()
     {
         Open().BeginClaim();

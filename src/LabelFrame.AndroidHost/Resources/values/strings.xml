@@ -189,4 +189,12 @@
   <string name="update_retry_health">重试健康核验（不重新安装）</string>
   <string name="update_permission_granted">系统安装许可：已允许</string>
   <string name="update_permission_missing">系统安装许可：尚未允许，请点击①</string>
+  <string name="update_manual_recovery">管理员人工恢复</string>
+  <string name="update_manually_resumed">已人工恢复；不代表升级或历史作业已核验成功</string>
+  <string name="update_unknown_route">历史路由结果未知，升级暂受阻。管理员核对后可人工恢复。</string>
+  <string name="update_manual_route_risk">仅解除本设备历史未知路由的升级阻断。服务端可能存在未回报作业或迟到领取；请先核对现场，不要盲目重打。原记录保留，这不是系统核验通过。正在打印、挂起、领取或待回报的作业不会被跳过。</string>
+  <string name="update_manual_install_risk">将尝试终止本设备待确认的系统安装会话，并恢复业务。升级或健康核验可能未完成，请先核对实际版本、配置与打印机。原事务保留，不记为升级成功；若系统安装仍在进行则不能恢复。</string>
+  <string name="update_admin_token">原服务端更新管理口令（仅本次使用）</string>
+  <string name="update_recovery_reason">核对情况与恢复原因（必填，最多512字）</string>
+  <string name="update_accept_risk">接受风险并恢复</string>
 </resources>

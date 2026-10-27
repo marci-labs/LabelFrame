@@ -41,6 +41,37 @@ public sealed class MaintenanceSafetyTests : IDisposable
         Assert.False(gate.IsFrozen);
     }
 
+    [Theory]
+    [InlineData(LabelJobStatus.Pending)]
+    [InlineData(LabelJobStatus.Printing)]
+    [InlineData(LabelJobStatus.Suspended)]
+    public async Task Manual_route_recovery_still_blocks_unfinished_jobs(LabelJobStatus status)
+    {
+        var journal = Journal;
+        journal.BeginClaim();
+        journal.AbandonClaim();
+        var gate = new MaintenanceGate();
+        var store = new Store(s => Task.FromResult<IReadOnlyList<LabelJob>>(s == status ? [new() { Id = "job", RequestId = "request", Status = status, Items = [] }] : []));
+        Assert.False(await MaintenanceSafety.TryFreezeForRouteRecoveryAsync(gate, store, journal, default));
+        Assert.False(gate.IsFrozen);
+        Assert.True(journal.ClaimUncertain);
+    }
+
+    [Fact]
+    public async Task Manual_route_recovery_freezes_only_when_no_known_work_or_editor_remains()
+    {
+        var journal = Journal;
+        var gate = new MaintenanceGate();
+        var store = new Store(_ => Task.FromResult<IReadOnlyList<LabelJob>>([]));
+        journal.BeginClaim();
+        Assert.False(await MaintenanceSafety.TryFreezeForRouteRecoveryAsync(gate, store, journal, default));
+        journal.AbandonClaim();
+        using (gate.TryEnterEditor())
+            Assert.False(await MaintenanceSafety.TryFreezeForRouteRecoveryAsync(gate, store, journal, default));
+        Assert.True(await MaintenanceSafety.TryFreezeForRouteRecoveryAsync(gate, store, journal, default));
+        Assert.Null(gate.TryEnterWrite());
+    }
+
     [Fact]
     public async Task Queue_inspection_runs_with_new_writes_blocked_and_success_keeps_freeze()
     {

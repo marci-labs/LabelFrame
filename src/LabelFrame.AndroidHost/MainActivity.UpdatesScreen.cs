@@ -13,6 +13,7 @@ public sealed partial class MainActivity
     private TextView? _updateState;
     private TextView? _updateDetails;
     private Button? _installUpdate;
+    private Button? _manualRecovery;
     private bool _preparingUpdate;
 
     private ScrollView BuildUpdatesScreen()
@@ -50,6 +51,9 @@ public sealed partial class MainActivity
             if (AndroidUpdateInstaller.Current is { } installer) await installer.RetryHealthAsync(CancellationToken.None);
             RefreshUpdateStatus();
         }), ViewGroup.LayoutParams.MatchParent));
+        content.AddView(Spacing(12));
+        _manualRecovery = DangerButton(L(Resource.String.update_manual_recovery), ConfirmManualRecovery, ViewGroup.LayoutParams.MatchParent);
+        content.AddView(_manualRecovery);
         return WrapScroll(content);
     }
 
@@ -69,6 +73,7 @@ public sealed partial class MainActivity
             "confirmation" => L(Resource.String.update_confirmation),
             "recovering" => L(Resource.String.update_recovering),
             "succeeded" => L(Resource.String.update_succeeded),
+            "manually-resumed" => L(Resource.String.update_manually_resumed),
             "cancelled" or "rejected" => L(Resource.String.update_cancelled),
             "repair" or "unknown" => L(Resource.String.update_repair),
             "unsupported" => L(Resource.String.update_unsupported),
@@ -84,7 +89,60 @@ public sealed partial class MainActivity
             + "\n" + L(OperatingSystem.IsAndroidVersionAtLeast(26) && PackageManager!.CanRequestPackageInstalls()
                 ? Resource.String.update_permission_granted : Resource.String.update_permission_missing)
             + (reason is null ? "" : "\n" + reason);
+        if (AndroidUpdateInstaller.Current is { HasUnknownRoute: true })
+            _updateDetails.Text += "\n" + L(Resource.String.update_unknown_route);
+        if (state?.ManualRecovery is not null || AndroidUpdateInstaller.Current?.RouteAcknowledgement is not null)
+            _updateDetails.Text += "\n" + L(Resource.String.update_manually_resumed);
         if (_installUpdate is not null) _installUpdate.Enabled = !_preparingUpdate && download.Phase == "ready" && !transaction.NeedsRecovery;
+        if (_manualRecovery is not null)
+        {
+            _manualRecovery.Visibility = transaction.Fault is null && (transaction.NeedsRecovery
+                ? state?.Phase is "unknown" or "confirmation" or "repair" or "rejected"
+                : AndroidUpdateInstaller.Current?.HasUnknownRoute == true) ? ViewStates.Visible : ViewStates.Gone;
+            _manualRecovery.Enabled = !_preparingUpdate;
+        }
+    }
+
+    private void ConfirmManualRecovery()
+    {
+        if (_preparingUpdate) return;
+        var transaction = AndroidUpdateInstaller.Journal;
+        var transactionId = transaction.NeedsRecovery ? transaction.Current?.Id : null;
+        var fields = ScrollColumn();
+        fields.AddView(Subtle(L(transactionId is null ? Resource.String.update_manual_route_risk : Resource.String.update_manual_install_risk)));
+        fields.AddView(FieldLabel(L(Resource.String.update_admin_token)));
+        var token = new EditText(this) { InputType = Android.Text.InputTypes.ClassText | Android.Text.InputTypes.TextVariationPassword };
+        fields.AddView(token);
+        fields.AddView(FieldLabel(L(Resource.String.update_recovery_reason)));
+        var reason = new EditText(this) { InputType = Android.Text.InputTypes.ClassText | Android.Text.InputTypes.TextFlagMultiLine };
+        fields.AddView(reason);
+        var dialog = new AlertDialog.Builder(this)!
+            .SetTitle(L(Resource.String.update_manual_recovery))!
+            .SetView(WrapScroll(fields))!
+            .SetNegativeButton(L(Resource.String.update_not_now), (_, _) => { })!
+            .SetPositiveButton(L(Resource.String.update_accept_risk), (_, _) =>
+            {
+                var password = token.Text ?? "";
+                var explanation = reason.Text ?? "";
+                token.Text = "";
+                RunAsync(async () =>
+                {
+                    _preparingUpdate = true;
+                    RefreshUpdateStatus();
+                    try
+                    {
+                        var installer = AndroidUpdateInstaller.Current ?? throw new InvalidOperationException(L(Resource.String.update_service_not_ready));
+                        await installer.RecoverManuallyAsync(transactionId, password, explanation,
+                            () => _autoRefresh && _current == Screen.Updates && !IsFinishing && !IsDestroyed, CancellationToken.None);
+                    }
+                    finally { password = ""; _preparingUpdate = false; RefreshUpdateStatus(); }
+                });
+            })!.Create()!;
+        dialog.DismissEvent += (_, _) => token.Text = "";
+        dialog.Show();
+        var confirm = dialog.GetButton((int)DialogButtonType.Positive)!;
+        confirm.Enabled = false;
+        _refreshHandler.PostDelayed(() => { if (dialog.IsShowing) confirm.Enabled = true; }, 3000);
     }
 
     private void ConfirmUpdate()

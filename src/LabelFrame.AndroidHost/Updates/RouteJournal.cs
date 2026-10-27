@@ -12,9 +12,11 @@ public sealed class RouteJournal
     private State _state;
     private bool _claimStarted;
     private bool _uncertainBeforeClaim;
+    private RecoveryAudit.Receipt? _acknowledgementBeforeClaim;
     private bool _storageFault;
     public sealed record Entry(PendingJob Job, string? LocalId = null, JobResult? Failure = null);
-    public sealed record State(int Format, string ServerUrl, string DeviceId, bool ClaimUncertain, Entry[] Entries);
+    public sealed record State(int Format, string ServerUrl, string DeviceId, bool ClaimUncertain, Entry[] Entries,
+        RecoveryAudit.Receipt? Acknowledgement = null);
 
     public RouteJournal(string path, string serverUrl, string deviceId, bool legacyRouteStateUnknown = false)
     {
@@ -31,16 +33,28 @@ public sealed class RouteJournal
             throw new InvalidDataException("路由日志损坏，不能确认领取状态。");
         if (_state.ServerUrl != serverUrl.TrimEnd('/') || _state.DeviceId != deviceId)
         {
-            if (_state.ClaimUncertain || _state.Entries.Length > 0)
+            if (HasOutstanding)
                 throw new InvalidDataException("原服务端仍有未决路由，请恢复原配置后处理，不能迁移回报对象。");
             Save(new(1, serverUrl.TrimEnd('/'), deviceId, false, []));
         }
         if (!File.Exists(path)) Save(_state);
     }
 
-    public bool HasOutstanding { get { lock (_sync) return _storageFault || _state.ClaimUncertain || _state.Entries.Length > 0; } }
-    public bool ClaimUncertain { get { lock (_sync) return _storageFault || _state.ClaimUncertain; } }
+    public bool HasOutstanding { get { lock (_sync) return HasPendingWork || ClaimUncertain; } }
+    public bool HasPendingWork { get { lock (_sync) return _storageFault || _claimStarted || _state.Entries.Length > 0; } }
+    public bool ClaimUncertain { get { lock (_sync) return _storageFault || (_state.ClaimUncertain && _state.Acknowledgement is null); } }
+    public RecoveryAudit.Receipt? Acknowledgement { get { lock (_sync) return _state.Acknowledgement; } }
     public Entry[] Snapshot() { lock (_sync) return [.. _state.Entries]; }
+
+    public void AcknowledgeUncertainty(string reason)
+    {
+        lock (_sync)
+        {
+            if (HasPendingWork || !ClaimUncertain) throw new InvalidOperationException("仅可人工处理历史未知领取，不能跳过在途领取或待回报。");
+            var receipt = RecoveryAudit.Save(_path, reason, _state);
+            Save(_state with { Acknowledgement = receipt });
+        }
+    }
 
     public void BeginClaim()
     {
@@ -49,7 +63,8 @@ public sealed class RouteJournal
             if (_storageFault || _claimStarted || _state.Entries.Length > 0)
                 throw new InvalidOperationException("路由尚有未决领取或回报，暂不领取新批次。");
             _uncertainBeforeClaim = _state.ClaimUncertain;
-            Save(_state with { ClaimUncertain = true });
+            _acknowledgementBeforeClaim = _state.Acknowledgement;
+            Save(_state with { ClaimUncertain = true, Acknowledgement = null });
             _claimStarted = true;
         }
     }
@@ -61,7 +76,8 @@ public sealed class RouteJournal
             if (!_claimStarted || _storageFault) throw new InvalidOperationException("没有可完成的本进程领取。");
             if (jobs.Select(j => j.JobId).Distinct().Count() != jobs.Count)
                 throw new InvalidDataException("服务端返回重复作业，领取结果需核对。");
-            Save(_state with { ClaimUncertain = _uncertainBeforeClaim, Entries = jobs.Select(j => new Entry(j)).ToArray() });
+            Save(_state with { ClaimUncertain = _uncertainBeforeClaim, Acknowledgement = _acknowledgementBeforeClaim,
+                Entries = jobs.Select(j => new Entry(j)).ToArray() });
             _claimStarted = false;
         }
     }

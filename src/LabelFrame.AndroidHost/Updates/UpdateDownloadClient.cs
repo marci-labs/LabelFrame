@@ -52,6 +52,23 @@ public sealed class UpdateDownloadClient : IDisposable
         return envelope.Release;
     }
 
+    public async Task VerifyAdministratorAsync(string token, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(token)) throw new InvalidOperationException("请输入原服务端的更新管理口令。");
+        var uri = new Uri(_base);
+        if (uri.Scheme != "https" && !uri.IsLoopback)
+            throw new InvalidOperationException("管理口令仅通过 HTTPS 或回环连接发送，请使用已配置的安全服务端地址。");
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        using var request = new HttpRequestMessage(HttpMethod.Get, _base);
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        using var response = await _http.SendAsync(request, timeout.Token);
+        response.EnsureSuccessStatusCode();
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+        if (body.RootElement.ValueKind != JsonValueKind.Array)
+            throw new InvalidDataException("管理验证响应无效。");
+    }
+
     public async Task<string> DownloadAsync(AndroidUpdateRelease release, string privateDirectory,
         IAndroidUpdatePackageInspector inspector, CancellationToken ct)
     {

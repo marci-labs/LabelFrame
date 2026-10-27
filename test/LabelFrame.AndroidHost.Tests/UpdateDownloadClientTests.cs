@@ -36,6 +36,35 @@ public sealed class UpdateDownloadClientTests : IDisposable
         Assert.Equal(1, inspector.Calls);
     }
 
+    [Fact]
+    public async Task Administrator_check_reuses_original_management_endpoint_without_persisting_token()
+    {
+        using var client = new UpdateDownloadClient("https://example.test/prefix", Identity, new Handler(request =>
+        {
+            Assert.Equal("/prefix/api/android-updates", request.RequestUri!.AbsolutePath);
+            Assert.Equal("Bearer", request.Headers.Authorization!.Scheme);
+            Assert.Equal("test-token", request.Headers.Authorization.Parameter);
+            return new(HttpStatusCode.OK) { Content = new StringContent("[]") };
+        }));
+        await client.VerifyAdministratorAsync("test-token", default);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.Redirect)]
+    public async Task Administrator_failure_or_redirect_never_authorizes_recovery(HttpStatusCode code)
+    {
+        using var client = new UpdateDownloadClient("https://example.test", Identity, new Handler(_ => new(code)));
+        await Assert.ThrowsAsync<HttpRequestException>(() => client.VerifyAdministratorAsync("test-token", default));
+    }
+
+    [Fact]
+    public async Task Administrator_token_never_sent_over_remote_plaintext()
+    {
+        using var client = new UpdateDownloadClient("http://example.test", Identity, new Handler(_ => throw new InvalidOperationException("不得发送")));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.VerifyAdministratorAsync("test-token", default));
+    }
+
     [Theory]
     [InlineData(2)]
     [InlineData(5)]

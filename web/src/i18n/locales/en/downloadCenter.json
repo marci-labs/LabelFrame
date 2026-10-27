@@ -100,7 +100,8 @@
       "rejected": "System rejected; checking safe cancellation",
       "repair": "Recovery failed; repair required",
       "succeeded": "Recovery verified (device report)",
-      "cancelled": "Cancellation verified"
+      "cancelled": "Cancellation verified",
+      "manually-resumed": "Manually resumed (not verified successful)"
     }
   },
   "publish": {

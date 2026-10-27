@@ -190,4 +190,12 @@
   <string name="update_retry_health">Retry health checks (no reinstall)</string>
   <string name="update_permission_granted">System installation permission: allowed</string>
   <string name="update_permission_missing">System installation permission: not allowed; tap 1</string>
+  <string name="update_manual_recovery">Administrator recovery</string>
+  <string name="update_manually_resumed">Manually resumed; update and historical jobs are not verified</string>
+  <string name="update_unknown_route">Historical route result is unknown. An administrator can review and resume updates.</string>
+  <string name="update_manual_route_risk">Remove only this device’s historical route block. The server may have unreported jobs or delayed claims. Check the actual work first; do not blindly reprint. Original records are retained, not marked verified. Active, suspended, claiming or unreported jobs cannot be skipped.</string>
+  <string name="update_manual_install_risk">Attempt to abandon this device’s pending system installation and resume work. The update or health check may be incomplete. Check the actual version, settings and printer first. The original transaction is retained, not marked successful. Recovery is blocked while system installation remains active.</string>
+  <string name="update_admin_token">Original server update admin token (this action only)</string>
+  <string name="update_recovery_reason">Review and recovery reason (required, max 512 characters)</string>
+  <string name="update_accept_risk">Accept risk and resume</string>
 </resources>

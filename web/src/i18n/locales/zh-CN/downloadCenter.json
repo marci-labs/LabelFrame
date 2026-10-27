@@ -100,7 +100,8 @@
       "rejected": "系统拒绝，等待安全收尾",
       "repair": "恢复失败，需修复",
       "succeeded": "恢复核验通过（设备自报）",
-      "cancelled": "已核实取消"
+      "cancelled": "已核实取消",
+      "manually-resumed": "已人工恢复（未核验成功）"
     }
   },
   "publish": {

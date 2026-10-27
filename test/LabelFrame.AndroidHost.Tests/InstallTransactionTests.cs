@@ -56,6 +56,55 @@ public sealed class InstallTransactionTests : IDisposable
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Manual_recovery_is_audited_not_success_and_late_callbacks_are_ignored(long version)
+    {
+        var journal = Start();
+        journal.SessionCreated(42);
+        journal.BeforeCommit();
+        journal.AcceptResult(journal.Current!.Id, 42, "unknown", "原始未知结果");
+        journal.ResumeManually(journal.Current.Id, version, Digest, true, "已核对现场，接受风险");
+        Assert.False(_gate.IsFrozen);
+        Assert.Equal("manually-resumed", journal.Current.Phase);
+        Assert.NotNull(journal.Current.ManualRecovery);
+        var audit = Directory.GetFiles(Path.Combine(_directory, "recovery-audit")).Single();
+        Assert.Contains("\"Phase\":\"unknown\"", File.ReadAllText(audit));
+        Assert.False(new InstallTransaction(JournalPath, new()).NeedsRecovery);
+        Assert.False(journal.AcceptResult(journal.Current.Id, 42, "recovering", null));
+        Assert.False(journal.AcceptResult(journal.Current.Id, 42, "rejected", null));
+    }
+
+    [Theory]
+    [InlineData("session")]
+    [InlineData("version")]
+    [InlineData("signer")]
+    [InlineData("transaction")]
+    [InlineData("active")]
+    public void Manual_recovery_cannot_skip_installation_identity_or_active_transaction(string fault)
+    {
+        var journal = Start();
+        journal.SessionCreated(42);
+        journal.BeforeCommit();
+        if (fault != "active") journal.AcceptResult(journal.Current!.Id, 42, "unknown", null);
+        Assert.Throws<InvalidOperationException>(() => journal.ResumeManually(fault == "transaction" ? "other" : journal.Current!.Id,
+            fault == "version" ? 3 : 1, fault == "signer" ? new('B', 64) : Digest, fault != "session", "已核对"));
+        Assert.True(_gate.IsFrozen);
+        Assert.True(journal.NeedsRecovery);
+    }
+
+    [Fact]
+    public void Manual_recovery_audit_write_failure_keeps_freeze()
+    {
+        var journal = Start();
+        journal.RecoveryFailed("待核对");
+        File.WriteAllText(Path.Combine(_directory, "recovery-audit"), "blocked");
+        Assert.Throws<IOException>(() => journal.ResumeManually(journal.Current!.Id, 1, Digest, true, "已核对"));
+        Assert.True(_gate.IsFrozen);
+        Assert.True(new InstallTransaction(JournalPath, new()).NeedsRecovery);
+    }
+
+    [Theory]
     [InlineData("version")]
     [InlineData("signer")]
     [InlineData("config")]

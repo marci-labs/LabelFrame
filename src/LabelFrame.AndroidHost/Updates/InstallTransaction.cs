@@ -11,7 +11,7 @@ public sealed class InstallTransaction
     public sealed record Baseline(string ConfigDigest, string ServerUrl, string DeviceId, string Brand, Plugin[] Plugins);
     public sealed record State(int Format, string Id, string ReleaseId, long OriginalVersion, long TargetVersion,
         string PackageDigest, string PublisherDigest, Baseline Original, string Phase, int? SessionId,
-        DateTimeOffset UpdatedUtc, string? Reason);
+        DateTimeOffset UpdatedUtc, string? Reason, RecoveryAudit.Receipt? ManualRecovery = null);
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         RespectRequiredConstructorParameters = true,
@@ -24,7 +24,7 @@ public sealed class InstallTransaction
     private string? _fault;
     public State? Current { get { lock (_sync) return _current; } }
     public string? Fault { get { lock (_sync) return _fault; } }
-    public bool NeedsRecovery { get { lock (_sync) return _fault is not null || _current is { Phase: not ("succeeded" or "cancelled") }; } }
+    public bool NeedsRecovery { get { lock (_sync) return _fault is not null || _current is { Phase: not ("succeeded" or "cancelled" or "manually-resumed") }; } }
 
     public InstallTransaction(string path, MaintenanceGate gate)
     {
@@ -70,7 +70,7 @@ public sealed class InstallTransaction
         lock (_sync)
         {
             if (_fault is not null || _current is not { } s || s.Id != id || s.SessionId != sessionId
-                || s.Phase is "succeeded" or "cancelled" || phase is not ("confirmation" or "recovering" or "unknown" or "rejected")) return false;
+                || s.Phase is "succeeded" or "cancelled" or "manually-resumed" || phase is not ("confirmation" or "recovering" or "unknown" or "rejected")) return false;
             // 迟到的待确认回调不能覆盖已收到的安装结果。
             if (phase == "confirmation" && s.Phase is not ("submitted" or "confirmation")) return false;
             Save(s with { Phase = phase, Reason = Limit(reason) });
@@ -114,8 +114,23 @@ public sealed class InstallTransaction
         && a.Plugins.All(p => p.Loaded) && b.Plugins.All(p => p.Loaded)
         && a.Plugins.OrderBy(p => p.Id, StringComparer.Ordinal).SequenceEqual(b.Plugins.OrderBy(p => p.Id, StringComparer.Ordinal));
 
+    public void ResumeManually(string expectedId, long actualVersion, string publisher, bool sessionGone, string reason)
+    {
+        lock (_sync)
+        {
+            var s = RequireActive();
+            if (s.Id != expectedId || !sessionGone || s.Phase is not ("unknown" or "confirmation" or "repair" or "rejected")
+                || (actualVersion != s.OriginalVersion && actualVersion != s.TargetVersion)
+                || !string.Equals(publisher, s.PublisherDigest, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("安装仍在进行、事务已变化或本机身份异常，不能人工恢复。");
+            var receipt = RecoveryAudit.Save(_path, reason, s);
+            Save(s with { Phase = "manually-resumed", ManualRecovery = receipt, Reason = "管理员接受风险后恢复，未核验升级成功。" });
+            _gate.ReleaseAfterResolution();
+        }
+    }
+
     private void Change(Func<State, State> change) { lock (_sync) Save(change(RequireActive())); }
-    private State RequireActive() => _fault is null && _current is { Phase: not ("succeeded" or "cancelled") } s
+    private State RequireActive() => _fault is null && _current is { Phase: not ("succeeded" or "cancelled" or "manually-resumed") } s
         ? s : throw new InvalidOperationException("没有可处理的安装事务或事务存储故障。");
     private static string? Limit(string? text) => text is { Length: > 1024 } ? text[..1024] : text;
     private static void Validate(State s)
@@ -127,7 +142,8 @@ public sealed class InstallTransaction
             || b.ServerUrl is null || string.IsNullOrWhiteSpace(b.Brand) || b.Plugins.Length > 100
             || b.Plugins.Any(p => p is null || string.IsNullOrWhiteSpace(p.Id) || p.Version is null || !AndroidUpdateContract.IsDigest(p.Digest))
             || b.Plugins.Select(p => p.Id).Distinct(StringComparer.Ordinal).Count() != b.Plugins.Length
-            || s.Phase is not ("preparing" or "submitted" or "confirmation" or "recovering" or "unknown" or "rejected" or "repair" or "succeeded" or "cancelled")
+            || s.Phase is not ("preparing" or "submitted" or "confirmation" or "recovering" or "unknown" or "rejected" or "repair" or "succeeded" or "cancelled" or "manually-resumed")
+            || (s.Phase == "manually-resumed" && s.ManualRecovery is null)
             || s.SessionId is < 0 || (s.Phase is "submitted" or "confirmation" or "recovering" or "succeeded" && s.SessionId is null)
             || s.UpdatedUtc == default)
             throw new InvalidDataException("安装事务格式或恢复事实无效。");

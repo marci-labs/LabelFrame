@@ -29,6 +29,47 @@ public sealed class AndroidUpdateInstaller(Context context, LabelHostConfig conf
 
     public void Activate() => Current = this;
     public void Deactivate() { if (ReferenceEquals(Current, this)) Current = null; }
+    public bool HasUnknownRoute => routes.ClaimUncertain;
+    public RecoveryAudit.Receipt? RouteAcknowledgement => routes.Acknowledgement;
+
+    public async Task RecoverManuallyAsync(string? transactionId, string token, string reason, Func<bool> isForeground, CancellationToken ct)
+    {
+        if (!OperatingSystem.IsAndroidVersionAtLeast(28)) throw new InvalidOperationException("受控升级需要 Android 9 或更高版本。");
+        if (string.IsNullOrWhiteSpace(reason) || reason.Length > 512) throw new ArgumentException("请填写 1～512 字的人工恢复原因。");
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct, lifetime);
+        budget.CancelAfter(TimeSpan.FromSeconds(45));
+        ct = budget.Token;
+        using var operation = await UpdateOperation.Shared.EnterAsync(ct);
+        if (!ReferenceEquals(Current, this) || !isForeground()) throw new InvalidOperationException("请在当前服务的前台更新页确认恢复。");
+        var identity = DevicePackageInspector.Identity(context, config.DeviceId);
+        using var client = new UpdateDownloadClient(config.ServerUrl, identity);
+        await client.VerifyAdministratorAsync(token, ct);
+        if (!isForeground()) throw new InvalidOperationException("页面已离开前台，请重新确认。");
+        if (transactionId is null)
+        {
+            if (Journal.NeedsRecovery || !await MaintenanceSafety.TryFreezeForRouteRecoveryAsync(MaintenanceGate.Shared, store, routes, ct))
+                throw new InvalidOperationException("仍有作业、待回报、配置编辑或安装事务，不能人工解除路由阻断。");
+            try { routes.AcknowledgeUncertainty(reason); }
+            finally { MaintenanceGate.Shared.ReleaseAfterResolution(); }
+        }
+        else
+        {
+            if (Journal.Current is not { } state || state.Id != transactionId || !Journal.NeedsRecovery
+                || !MaintenanceGate.Shared.IsFrozen || routes.HasOutstanding || !await MaintenanceSafety.IsQueueIdleAsync(store, ct))
+                throw new InvalidOperationException("事务已变化或仍有本地作业、未决路由，不能人工恢复。");
+            if (state.Phase is not ("unknown" or "confirmation" or "repair" or "rejected"))
+                throw new InvalidOperationException("安装或自动核验仍在进行，请等待结果。");
+            var installer = context.PackageManager!.PackageInstaller!;
+            if (state.SessionId is { } id && installer.GetSessionInfo(id) is not null) installer.AbandonSession(id);
+            identity = DevicePackageInspector.Identity(context, config.DeviceId);
+            if (identity.CurrentVersionCode != _processVersion) throw new InvalidOperationException("应用版本已变化，请重新打开应用后处理。");
+            Journal.ResumeManually(transactionId, identity.CurrentVersionCode, identity.PublisherSha256,
+                state.SessionId is null || installer.GetSessionInfo(state.SessionId.Value) is null, reason);
+            _confirmation = null;
+            _confirmationId = null;
+        }
+        HostLog.Warn(HostLog.Tags.Host, "管理员人工恢复维护状态，原异常已存入 recovery-audit；不是升级成功证明。");
+    }
 
     public async Task PrepareAsync(Func<bool> isForeground, CancellationToken ct)
     {
