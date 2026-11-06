@@ -21,9 +21,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- 2.1.12/2.1.13 的 android 包误装 glibc 构建的 so（DT_NEEDED 含 libc.so.6，Android 装载失败）；
-         2.1.11 为 NDK 构建（依赖 liblog/libc/libm 等）且 LOAD 段 16KB 对齐，真机验证通过。 -->
-    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.11" />
+    <!-- 必须使用 Android 原生资产；升级时核对 DT_NEEDED 与 16KB 对齐，防止 glibc 库混入 APK。 -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.14" />
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
     <!-- Zebra 官方 Link-OS SDK：android 目标为纯托管 DLL（无 .so / 无 jar，仅引用 Mono.Android）；
          TCP / 蓝牙 SPP / USB OTG 连接与 PrinterStatus 官方状态语义。 -->

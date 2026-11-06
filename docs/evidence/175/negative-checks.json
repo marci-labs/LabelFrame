@@ -1,0 +1,40 @@
+[
+  {
+    "case": "官方 2.1.11",
+    "result": "预期拒绝",
+    "reason": "SQLite 3.49.1 低于安全基线 3.50.2"
+  },
+  {
+    "case": "注入 glibc DT_NEEDED",
+    "result": "预期拒绝",
+    "reason": "SQLite 含非预期 Android 动态依赖：['libc.so.6', 'libc.so', 'libm.so', 'libdl.so']"
+  },
+  {
+    "case": "LOAD 对齐降为 4KB",
+    "result": "预期拒绝",
+    "reason": "SQLite ELF LOAD 段不满足 16KB 对齐"
+  },
+  {
+    "case": "重新下载官方 2.1.13",
+    "result": "未复现历史 glibc 缺陷",
+    "details": {
+      "sqliteVersion": "3.53.3",
+      "needed": [
+        "liblog.so",
+        "libc.so",
+        "libm.so",
+        "libdl.so"
+      ],
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "sha256": "f6672612ceb79d6f5681773ba8343776bc34fdc963f4d5882bed774c890aaabd"
+    }
+  },
+  {
+    "case": "最终 APK SQLite 字节篡改",
+    "result": "预期拒绝：与官方包不一致"
+  }
+]

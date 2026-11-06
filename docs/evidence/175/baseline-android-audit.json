@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "parameters": "--vulnerable --include-transitive",
+  "projects": [
+    {
+      "path": "src/LabelFrame.AndroidHost/LabelFrame.AndroidHost.csproj",
+      "frameworks": [
+        {
+          "framework": "net10.0-android",
+          "topLevelPackages": [
+            {
+              "id": "SQLitePCLRaw.lib.e_sqlite3.android",
+              "requestedVersion": "2.1.11",
+              "resolvedVersion": "2.1.11",
+              "vulnerabilities": [
+                {
+                  "severity": "High",
+                  "advisoryurl": "https://github.com/advisories/GHSA-2m69-gcr7-jv3q"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sourceNote": "报告仅移除本机源地址及绝对路径；保留包版本、漏洞与项目字段。"
+}
