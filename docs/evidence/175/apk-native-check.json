@@ -1,0 +1,21 @@
+{
+  "packageSha256": "ca0abf7f28d6559c8cf7b767a70ef6ec2109cb9bdd93dfe6266c65d893788fdf",
+  "native": {
+    "sqliteVersion": "3.54.0",
+    "needed": [
+      "liblog.so",
+      "libc.so",
+      "libm.so",
+      "libdl.so"
+    ],
+    "loadAlignments": [
+      16384,
+      16384,
+      16384
+    ],
+    "sha256": "a578840c80adc0f319f05bef43f798ebe0b38bcb3e9526f925f700e16f5b1d9b"
+  },
+  "apkSha256": "2637f2bfb9e6fd03959944b832e36a5969f8cb4d3da643157da631ff9bf95c0f",
+  "apkNativeMatchesPackage": true,
+  "zipAlignmentPassed": true
+}

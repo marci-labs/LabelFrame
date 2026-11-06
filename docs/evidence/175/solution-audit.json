@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "parameters": "--vulnerable --include-transitive",
+  "projects": [
+    {
+      "path": "src/LabelFrame.Api/LabelFrame.Api.csproj"
+    },
+    {
+      "path": "src/LabelFrame.Bootstrapper.Ba/LabelFrame.Bootstrapper.Ba.csproj"
+    },
+    {
+      "path": "src/LabelFrame.Bootstrapper.PayloadTool/LabelFrame.Bootstrapper.PayloadTool.csproj"
+    },
+    {
+      "path": "src/LabelFrame.Bootstrapper/LabelFrame.Bootstrapper.csproj"
+    },
+    {
+      "path": "src/LabelFrame.Core/LabelFrame.Core.csproj"
+    },
+    {
+      "path": "src/LabelFrame.Rendering/LabelFrame.Rendering.csproj"
+    },
+    {
+      "path": "src/LabelFrame.Server/LabelFrame.Server.csproj"
+    },
+    {
+      "path": "src/LabelFrame.TransportPlugin.Tspl/LabelFrame.TransportPlugin.Tspl.csproj"
+    },
+    {
+      "path": "src/LabelFrame.TransportPlugin.Zebra/LabelFrame.TransportPlugin.Zebra.csproj"
+    },
+    {
+      "path": "src/LabelFrame.Updates/LabelFrame.Updates.csproj"
+    },
+    {
+      "path": "src/LabelFrame.WinHost/LabelFrame.WinHost.csproj"
+    },
+    {
+      "path": "test/LabelFrame.AndroidHost.Tests/LabelFrame.AndroidHost.Tests.csproj"
+    },
+    {
+      "path": "test/LabelFrame.Api.Tests/LabelFrame.Api.Tests.csproj"
+    },
+    {
+      "path": "test/LabelFrame.Benchmarks/LabelFrame.Benchmarks.csproj"
+    },
+    {
+      "path": "test/LabelFrame.Bootstrapper.Tests/LabelFrame.Bootstrapper.Tests.csproj"
+    },
+    {
+      "path": "test/LabelFrame.ClientHost.Tests/LabelFrame.ClientHost.Tests.csproj"
+    },
+    {
+      "path": "test/LabelFrame.Core.Tests/LabelFrame.Core.Tests.csproj"
+    },
+    {
+      "path": "test/LabelFrame.JobStorageProbe/LabelFrame.JobStorageProbe.csproj"
+    },
+    {
+      "path": "test/LabelFrame.Server.Tests/LabelFrame.Server.Tests.csproj"
+    },
+    {
+      "path": "test/LabelFrame.WinHost.Tests/LabelFrame.WinHost.Tests.csproj"
+    },
+    {
+      "path": "tools/LabelFrame.JobStorageTool/LabelFrame.JobStorageTool.csproj"
+    },
+    {
+      "path": "tools/LabelFrame.PrintImageVerifier/LabelFrame.PrintImageVerifier.csproj"
+    }
+  ],
+  "sourceNote": "报告仅移除本机源地址及绝对路径；保留包版本、漏洞与项目字段。"
+}

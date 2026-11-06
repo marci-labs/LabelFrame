@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "parameters": "--vulnerable --include-transitive",
+  "projects": [
+    {
+      "path": "src/LabelFrame.AndroidHost/LabelFrame.AndroidHost.csproj"
+    }
+  ],
+  "sourceNote": "报告仅移除本机源地址及绝对路径；保留包版本、漏洞与项目字段。"
+}

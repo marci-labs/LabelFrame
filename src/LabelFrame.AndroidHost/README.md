@@ -100,7 +100,7 @@ Android / PDA 打印宿主。
 
 ## 原生库注意
 
-- `SQLitePCLRaw.lib.e_sqlite3.android` 定版 **2.1.11**：2.1.12/2.1.13 误装 glibc 构建的 so（装载即 LinkageError）；升级前必须核对 android 包 so 为 NDK 构建（DT_NEEDED 应为 liblog/libc/libm 等，而非 libc.so.6）。
+- `SQLitePCLRaw.lib.e_sqlite3.android` 使用 **2.1.14**（SQLite 3.54.0），修复旧版 2.1.11 的 CVE-2025-6965。2.1.12/2.1.13 曾混入 glibc 构建，升级必须核对 Android DT_NEEDED、ELF 16KB 对齐及最终 APK 资产来源。检查命令与证据边界见 [模块设计](../../docs/design/androidhost.md#sqlite-原生资产核验)。本次同签名覆盖升级与打印真机验收仍待完成，跟踪入口见模块设计；旧版真机结果不代替本次验证。
 - 桌面版 `SQLitePCLRaw.lib.e_sqlite3` 不得回到 Core 引用——经 RID 回退图（android-arm64 → linux-arm64）会把 glibc so 打进 APK 压过 android 包。
 - 服务启动已先 `JavaSystem.LoadLibrary("e_sqlite3")`（Android 链接器命名空间要求）。
 - **Zebra SDK 毒丸引用清单**（csproj 内注释同步维护）：`Zebra.Printer.SDK 5.0.3685` 的传递依赖链含 MAUI / `System.Private.Windows.Core` 毒化物，须逐包 `ExcludeAssets="all"` 排除后才能 Android AOT 打包（官方支持矩阵偏离声明见 DESIGN）；SDK 升级时复查清单。许可证 §3.3.3：SDK 只随应用目标码分发，本体不单独进 Release 附件。

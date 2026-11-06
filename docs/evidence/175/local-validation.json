@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-07",
+  "baseline": "08b10216cc08f3ff234e8397d13a872cee0dfc4b",
+  "dotnetSdk": "10.0.402",
+  "build": {
+    "command": "dotnet build LabelFrame.slnx",
+    "exitCode": 0,
+    "warnings": 0,
+    "errors": 0
+  },
+  "test": {
+    "command": "dotnet test LabelFrame.slnx --no-build --filter \"FullyQualifiedName!~Perf&FullyQualifiedName!~Soak\"",
+    "passed": 1608,
+    "failed": 0,
+    "skipped": 1,
+    "skipReason": "首次全量运行未提供 APK；构建后单独补跑该验签集成测试通过"
+  },
+  "apkVerification": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "signing": "本地 Android Debug 证书，Release 非调试 APK；不是正式发布签名"
+  },
+  "androidBuild": {
+    "command": "scripts/build-androidhost.ps1 -Configuration Release",
+    "exitCode": 0,
+    "warnings": 0,
+    "errors": 0,
+    "aotAssemblies": 87
+  },
+  "deviceAcceptance": {
+    "status": "待验收",
+    "reason": "ADB 无设备，用户确认暂不可得",
+    "items": [
+      "AC-04 同签名覆盖升级、运行时 SQLite 版本与数据保留",
+      "AC-05 真机打印/恢复闭环"
+    ]
+  },
+  "nativePackageUrl": "https://api.nuget.org/v3-flatcontainer/sqlitepclraw.lib.e_sqlite3.android/2.1.14/sqlitepclraw.lib.e_sqlite3.android.2.1.14.nupkg"
+}

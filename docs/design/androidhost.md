@@ -101,7 +101,7 @@
 
 **被谁依赖**：无代码消费方（grep 全仓 csproj / sln 无引用；不在 `LabelFrame.slnx`，决策 #104）。构建消费：CI `ci.yml` android job（第三项必需检查「Android 构建（PDA 宿主）」，Release + `EmbedAssembliesIntoApk=true`）、`release.yml`（`v*` tag 出 `LabelFrame-AndroidHost-<版本>.apk` 上传 GitHub Release）、`scripts/build-androidhost.ps1` / `create-android-keystore.ps1` / `generate-install-manifest.ps1` / `test-pda-plugin-spike.ps1`。运行时消费方 = 第三方 PDA 程序（JS 桥）与 Server（路由投递目标）。
 
-**依赖**：`LabelFrame.Core`（唯一工程引用：文档 / 布局解析 / 校验 / `ZplImageEncoder` / 作业队列 / SQLite 存储 / 传输契约 / 插件加载与安装）＋ NuGet：`Zebra.Printer.SDK 5.0.3685`（纯托管 DLL，TCP / SPP / USB + `PrinterStatus`）、`SQLitePCLRaw.lib.e_sqlite3.android 2.1.11`（版本钉定，见 §6 坑 11）、`ZXing.Net 0.16.11`、`SkiaSharp.NativeAssets.Android 3.119.2`（Zebra SDK 图形工具引用）＋ 毒丸引用清单（全部 `ExcludeAssets="all"`，见 §6 坑 12）。目标框架 `net10.0-android` 单目标（minSdk 23 / targetSdk 36 / 单 `android-arm64` ABI）。
+**依赖**：`LabelFrame.Core`（唯一工程引用：文档 / 布局解析 / 校验 / `ZplImageEncoder` / 作业队列 / SQLite 存储 / 传输契约 / 插件加载与安装）＋ NuGet：`Zebra.Printer.SDK 5.0.3685`（纯托管 DLL，TCP / SPP / USB + `PrinterStatus`）、`SQLitePCLRaw.lib.e_sqlite3.android 2.1.14`（SQLite 3.54.0，见 §6 坑 3）、`ZXing.Net 0.16.11`、`SkiaSharp.NativeAssets.Android 3.119.2`（Zebra SDK 图形工具引用）＋ 毒丸引用清单（全部 `ExcludeAssets="all"`，见 §6 坑 12）。目标框架 `net10.0-android` 单目标（minSdk 23 / targetSdk 36 / 单 `android-arm64` ABI）。
 
 ## 5. 设计取舍（决策索引）
 
@@ -133,7 +133,7 @@
 
 1. **e_sqlite3 必须先 `JavaSystem.LoadLibrary` 装载**：SQLitePCLRaw 原生库需先进 Android 链接器命名空间，否则 `raw.SetProvider` 的 `DllImport("e_sqlite3")` 抛 `DllNotFoundException`——APK 内已含 `libe_sqlite3.so` 也不行（`PrintHostService.OnCreate`）。
 2. **毒丸引用清单是兼容义务**：Zebra SDK 官方不支持非 MAUI .NET 10 的 Android，实测成因是依赖链毒化（`System.Drawing.Common` 夹带 `System.Private.Windows.Core.dll` 致 AOT 失败；MAUI 链经 buildTransitive 注入 AOT profile）——csproj 内 `ExcludeAssets="all"` 清单须逐包显式排除（`ExcludeAssets` 不裁剪传递闭包），SDK 升级时复查。
-3. **SQLitePCLRaw 钉定 2.1.11**：2.1.12/2.1.13 的 android 包误装 glibc 构建的 so（DT_NEEDED 含 libc.so.6，Android 装载失败）；2.1.11 为 NDK 构建且 LOAD 段 16KB 对齐，真机验证通过。
+3. **Android SQLite 原生包使用 2.1.14**：内含 SQLite 3.54.0，替换命中 CVE-2025-6965 的 2.1.11；保留共享 provider/core 2.1.13，不改变数据库结构与加载顺序。2.1.12/2.1.13 曾混入 glibc 构建（DT_NEEDED 含 libc.so.6）；今后升级必须同时核验包和最终 APK，不能仅凭 NuGet audit 零告警判定兼容。
 4. **HTTP 读取不能用 StreamReader 预读**：StreamReader 预读缓冲会把请求体一并吞掉，后续按 Content-Length 直读网络流将永久等待（POST 带体请求挂死）——头与体必须从同一份累积字节解析（`ReadRequestAsync`）。
 5. **崩溃注册时机越早越好**：`HostApplication` 进程创建首行 + `PrintHostService.OnCreate` 兜底（幂等）；`HostApplication` 的 `(IntPtr, JniHandleOwnership)` 构造器是 .NET Android 约定，系统重建应用对象经 JNI 调用，**必须保留**。
 6. **度量 / 绘制同源**：`AndroidTextWidthMeasurer` 与 `AndroidLabelRenderer` 共用同一 Paint 管线（`TextSize` / `FakeBoldText`）——任何一侧单独改动都会造成区域锚定偏移错位（决策 #110 的存在理由）。锚定文本框高 = 解析锚定框高（与 PC Skia 同口径），禁改用非锚定兜底框再垂直居中（字形下沉穿出盒底，曾有真机缺陷）。
@@ -148,3 +148,14 @@
 15. **`OnBackPressed` 暂保留**：API 33 起被标记过时（CA1422，为预测性返回让路），但未启用 `enableOnBackInvokedCallback` 前框架仍回调它；为避免引入 AndroidX 依赖按既有行为保留。
 16. **aapt 默认裁剪字符串首尾空白**：资源文案需保留尾部空格时用引号包裹（values-en `common_name_version`）。
 17. **MainActivity 已按页面拆 partial**（六屏 partial + 主文件 290 行）：新增页面 / 大块 UI 优先落对应 partial 而非回填主文件；UI 层无组件级单测不变（验证通道 = 真机走查）。
+
+
+### SQLite 原生资产核验
+
+使用 `python scripts/check-android-sqlite.py --package <官方nupkg> --apk <Release-Signed.apk> --zipalign <Android-SDK/build-tools/36.0.0/zipalign.exe>`。省略 APK 参数时仅检查候选包，不代表最终 APK 验证通过。
+
+检查器读取 AAR 中 arm64 ELF 的程序头和动态段，要求 SQLite ≥ 3.50.2、DT_NEEDED 仅包含 Android 系统库、所有 LOAD 段满足 16KB 对齐；最终 APK 必须仅含 arm64 SQLite，且与指定包逐字节一致，再由 SDK zipalign 验证 APK 对齐。输出包含包、原生库与 APK 的 SHA256，官方来源为 NuGet.org；下载来源和实际审计结果在 Issue 证据中记录。该脚本为本地验收入口，本轮不修改 CI workflow。
+
+应用继续先 `JavaSystem.LoadLibrary` 再初始化 provider，共享 Core 不引用桌面原生包，避免 RID 回退覆盖 Android 资产。本次只替换原生引擎，不迁移数据格式，不新增降级能力。原生包静态版本字符串不能替代设备上的 `sqlite_version()`；同签名覆盖升级、配置/设备身份/作业保留和打印恢复仍需真机验证。2026-11-07 用户确认暂无设备，这些项目按 [#480](https://github.com/marci-labs/LabelFrame/issues/480) 转待验收；Android 15+ 16KB 内核运行验证继续保持既有未验证边界。
+
+历史文档记录过 2.1.12/2.1.13 的 glibc 加载失败；本轮从 NuGet.org 重新下载的 2.1.13 arm64 库实测为 Android DT_NEEDED、SQLite 3.53.3、16KB 对齐，未复现该静态缺陷。历史原因不据此推定为当前官方包缺陷，继续按最终 APK 哈希与实际设备行为验收；本轮候选仍为 2.1.14。
