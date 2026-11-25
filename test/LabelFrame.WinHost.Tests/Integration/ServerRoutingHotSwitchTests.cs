@@ -89,8 +89,7 @@ public sealed class ServerRoutingHotSwitchTests : IDisposable
         await UntilAsync(() => _newServer.RegisterCount >= 1);
 
         // 与旧服务端的轮询连接断开（旧 notify 长轮询请求被中止，无新轮询建立）
-        var disconnected = await Task.WhenAny(_oldServer.NotifyAborted.Task, Task.Delay(TimeSpan.FromSeconds(10)));
-        Assert.Same(_oldServer.NotifyAborted.Task, disconnected);
+        await _oldServer.NotifyAborted.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await UntilAsync(() => _oldServer.ActiveNotifyCount == 0);
 
         // 保存回读一致（生效配置已更新）

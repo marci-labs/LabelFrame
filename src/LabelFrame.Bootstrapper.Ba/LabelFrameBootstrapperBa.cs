@@ -1020,10 +1020,16 @@ internal sealed class LabelFrameBootstrapperBa : BootstrapperApplication
 
     private static async Task<int> WaitStageAsync(Task<int> stage, string stageName)
     {
-        var completed = await Task.WhenAny(stage, Task.Delay(StageTimeout)).ConfigureAwait(true);
-        if (completed != stage)
+        // 平台坑：.NET Framework 没有 Task.WaitAsync；计时用可取消的延迟，任务先完成时立即取消，计时器不会留到超时才结束
+        using (var timeoutSource = new CancellationTokenSource())
         {
-            throw new TimeoutException($"{stageName}超时（{StageTimeout.TotalSeconds:0} 秒），请查看安装日志。");
+            var timeout = Task.Delay(StageTimeout, timeoutSource.Token);
+            var completed = await Task.WhenAny(stage, timeout).ConfigureAwait(true);
+            timeoutSource.Cancel();
+            if (completed != stage)
+            {
+                throw new TimeoutException($"{stageName}超时（{StageTimeout.TotalSeconds:0} 秒），请查看安装日志。");
+            }
         }
 
         var status = await stage.ConfigureAwait(true);

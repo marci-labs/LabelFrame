@@ -67,7 +67,7 @@ public sealed class JobCallbackTests : IDisposable
 
         await _delivery.ScanOnceAsync();
 
-        var root = JsonDocument.Parse(_sender.Sent.Single().Payload).RootElement;
+        var root = JsonElement.Parse(_sender.Sent.Single().Payload);
         Assert.Equal("Failed", root.GetProperty("status").GetString());
         Assert.Equal("打印机离线", root.GetProperty("errorMessage").GetString());
         Assert.Equal(1, root.GetProperty("completedItems").GetInt32());
@@ -89,7 +89,7 @@ public sealed class JobCallbackTests : IDisposable
         Assert.Equal(1, await scanner.ScanOnceAsync());
 
         Assert.Equal(1, await _delivery.ScanOnceAsync());
-        var root = JsonDocument.Parse(_sender.Sent.Single().Payload).RootElement;
+        var root = JsonElement.Parse(_sender.Sent.Single().Payload);
         Assert.Equal("Expired", root.GetProperty("status").GetString());
         Assert.Contains("已放弃", root.GetProperty("errorMessage").GetString());
     }
@@ -109,7 +109,7 @@ public sealed class JobCallbackTests : IDisposable
         Assert.Equal(1, await scanner.ScanOnceAsync());
 
         Assert.Equal(1, await _delivery.ScanOnceAsync());
-        var root = JsonDocument.Parse(_sender.Sent.Single().Payload).RootElement;
+        var root = JsonElement.Parse(_sender.Sent.Single().Payload);
         Assert.Equal("Failed", root.GetProperty("status").GetString());
         Assert.Contains(ServerErrorCodes.HostLostTimeout, root.GetProperty("errorMessage").GetString());
         Assert.Equal(claimed.JobId, root.GetProperty("jobId").GetString());
