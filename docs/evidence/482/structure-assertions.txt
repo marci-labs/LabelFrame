@@ -1,0 +1,111 @@
+Structure assertions of scripts/verify-msi-ui.ps1 against different packages.
+Mutants are built from the final source with one deliberate mistake each; a package is rejected on its first failing assertion.
+=== 1. final build: expected to pass ===
+=== C:/work/OpenCode/LabelFrame-wt1-client-msi-install-guard/artifacts/LabelFrame-Client-1.6.1.msi ===
+-- Dialog 表（向导 + 自定义）--
+  ErrorDlg  (270x105)
+  RuntimeMissingDlg  (370x230)
+  WebView2MissingDlg  (370x200)
+  ClearDataDlg  (370x170)
+  InstallLocationDlg  (370x270)
+  OptionsDlg  (370x270)
+  BrowseDlg  (370x270)
+  InstallDirDlg  (370x270)
+  CancelDlg  (260x85)
+  VerifyReadyDlg  (370x270)
+  OutOfRbDiskDlg  (370x270)
+  OutOfDiskDlg  (370x270)
+  DiskCostDlg  (370x270)
+  FatalError  (370x270)
+  FilesInUse  (370x270)
+  MsiRMFilesInUse  (370x270)
+  PrepareDlg  (370x270)
+  ProgressDlg  (370x270)
+  ResumeDlg  (370x270)
+  WaitForCostingDlg  (260x85)
+  UserExit  (370x270)
+  ExitDialog  (370x270)
+  WelcomeDlg  (370x270)
+  LicenseAgreementDlg  (370x270)
+  MaintenanceTypeDlg  (370x270)
+  MaintenanceWelcomeDlg  (370x270)
+-- InstallUISequence（关键顺序）--
+  ExitDialog = -1
+  RuntimeMissingDlg = 1150
+  WebView2MissingDlg = 1160
+  ClearDataDlg = 1290
+  WelcomeDlg = 1297
+  ExecuteAction = 1300
+-- 品牌二进制（WixUI 位图 / 图标 / 许可）--
+  WixUI_Bmp_Banner
+  WixUI_Bmp_Up
+  WixUI_Bmp_New
+  WixUI_Ico_Info
+  WixUI_Bmp_Dialog
+  WixUI_Ico_Exclam
+-- ARP 属性（控制面板）--
+  ARPPRODUCTICON = LabelframeAppIco
+  ARPHELPLINK = https://github.com/marci-labs/LabelFrame
+  ARPURLINFOABOUT = https://github.com/marci-labs/LabelFrame/releases
+  ARPNOMODIFY = 1
+-- 选项页与链路（Client）--
+  选项页复选框：OK（开机自动启动 LabelFrame）
+  安装位置页：只读展示固定目录 OK；向导链路：许可页 -> 安装位置页 -> 选项页 -> 确认页 OK
+  Run 键：F = a
+  AUTO_START 默认：1
+-- 中文文案抽查（WelcomeDlg）--
+  欢迎页下一步按钮：下一步(&N)
+WebView2 注册表检测：2 个 EdgeUpdate 视图 OK
+WebView2 LaunchCondition：OK
+WebView2 缺失对话框：重新检测链路 OK
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+运行中升级进程角色：真实 MSI 格式化脚本排除更新服务与等待器，保留打印客户端；无客户端时返回空。
+运行中升级协调：同步动作 ShutdownWinHost(1399) 位于 CostFinalize 后、InstallValidate 前；命令含旧版作业预检与 15 秒退出等待，卸载跳过；命令经引擎 Formatted 转换后仍可解析。
+运行时检测（ASP.NET Core + Desktop 双项、三段缺失说明）、安装位置固定（只读页旁路 + INSTALLFOLDER 拦截 + 组件挂载）、安装日志与失败提示、更新服务启动动作：OK
+断言通过：向导齐全，运行时检查（.NET 1150 / WebView2 1160）先于欢迎页（1297）。
+
+VERDICT=PASS
+SHA256=18188bd07f36d33d3718bf2f336cf514b154f5634c346734d1a24e9736f7ca15
+
+=== 2. mutant A, the three runtime-missing texts visible by default: expected to be rejected ===
+VERDICT=REJECTED
+REASON=「NoRuntimeText」必须默认隐藏：显示条件为假时不会隐藏，默认可见会让三段说明叠在一起
+SHA256=99c72f22dd5b5668b3616e8cb1f615ddc68ba13114d3b34c27aa78a54e7761dd
+
+=== 3. mutant B, the "no runtime" text carries the ASP.NET Core condition: expected to be rejected ===
+VERDICT=REJECTED
+REASON=运行时缺失对话框的「NoRuntimeText」应只有一条显示条件：NOT DOTNET10_PRESENT = "0" AND NOT DOTNET10_DESKTOP_PRESENT = "0"
+SHA256=a392b8a3b71bb31e9f26e4f60ea516c06493b9df7d5b05fb2f2e9d536bfd02f6
+
+=== 4. mutant C, the first launch condition requires both runtimes usable: expected to be rejected ===
+VERDICT=REJECTED
+REASON=缺少运行时启动条件：(DOTNET10_PRESENT = "0" OR DOTNET10_DESKTOP_PRESENT = "0") OR UILevel = 5 OR REMOVE
+SHA256=f076bbf3a2055a3266a8632857a3dfd30acb077a3360f9323a3149448b574b53
+
+=== 5. mutant D, failure page without the install log path: expected to be rejected ===
+VERDICT=REJECTED
+REASON=向导的「提前结束」页应写明安装日志位置（界面库本地化覆盖 FatalErrorDescription2）
+SHA256=b39257c32722e82c65e447d81f721f2be8eda7142188bb8dd6d0bb700a3f97ad
+
+=== 6. previous build, install-directory page still carried an explanation: expected to be rejected ===
+    (while it was current it was also rejected for the failure page without the install log path)
+VERDICT=REJECTED
+REASON=安装目录页只保留标题「安装目录」与路径，不加说明文字
+SHA256=61241da46813750edb1e5a1218461beac35d10a01740313df085f6680eb328b0
+
+=== 7. earlier intermediate build, failure page without the install log path: expected to be rejected ===
+    (it predates the trimmed install-directory page, so the assertion on that page fires first)
+VERDICT=REJECTED
+REASON=安装目录页只保留标题「安装目录」与路径，不加说明文字
+SHA256=4698f687a390d6b2c03e3cd95895532c4dc1458d0cc2848ca3ea0ecd5d0474b3
+
+=== 8. earliest intermediate build, three runtime-missing texts visible by default: expected to be rejected ===
+    (it predates the trimmed install-directory page, so the assertion on that page fires first; mutant A covers the default-hidden assertion)
+VERDICT=REJECTED
+REASON=安装目录页只保留标题「安装目录」与路径，不加说明文字
+SHA256=7f9022763a14274493ebb6dfc30e74262ad3920bc5e0d3d7fc4591f8adb1b204
+
+=== 9. control, released 1.6.0: expected to be rejected ===
+VERDICT=REJECTED
+REASON=缺少只读的安装位置页 InstallLocationDlg
+SHA256=e905ffd2cad6efcf01a8cad5e46b726a4ff2013d941b8943698b664b398c315c

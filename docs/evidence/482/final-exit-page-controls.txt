@@ -1,0 +1,29 @@
+Controls of the cancel, early-end, interrupted and completion pages in the final build.
+MSI=C:\work\OpenCode\LabelFrame-wt1-client-msi-install-guard\artifacts\LabelFrame-Client-1.6.1.msi sha256=18188bd07f36d33d3718bf2f336cf514b154f5634c346734d1a24e9736f7ca15
+CancelDlg | Icon | Icon | 5242881 | WixUI_Ico_Info
+CancelDlg | Text | Text | 131075 | 是否确实要取消安装 [ProductName]?
+CancelDlg | No | PushButton | 3 | 否(&N)
+CancelDlg | Yes | PushButton | 3 | 是(&Y)
+FatalError | Description | Text | 196611 | 由于发生错误，[ProductName] 安装向导提前结束。您的系统尚未修改。 安装日志：[MsiLogFileLocation]。
+FatalError | Bitmap | Bitmap | 1 | WixUI_Bmp_Dialog
+FatalError | Title | Text | 196611 | {\WixUI_Font_Bigger}[ProductName] 安装向导提前结束
+FatalError | BottomLine | Line | 1 |
+FatalError | Back | PushButton | 1 | 上一步(&B)
+FatalError | Cancel | PushButton | 1 | 取消
+FatalError | Finish | PushButton | 3 | 完成(&F)
+UserExit | Description | Text | 196611 | [ProductName] 安装程序已中断。您的系统尚未修改。若要稍后安装此程序，请再次运行安装程序。 单击“完成”按钮退出安装向导。
+UserExit | Bitmap | Bitmap | 1 | WixUI_Bmp_Dialog
+UserExit | Title | Text | 196611 | {\WixUI_Font_Bigger}[ProductName] 安装向导中断
+UserExit | BottomLine | Line | 1 |
+UserExit | Back | PushButton | 1 | 上一步(&B)
+UserExit | Cancel | PushButton | 1 | 取消
+UserExit | Finish | PushButton | 3 | 完成(&F)
+ExitDialog | Description | Text | 196611 | 单击“完成”按钮退出安装向导。
+ExitDialog | Bitmap | Bitmap | 1 | WixUI_Bmp_Dialog
+ExitDialog | Title | Text | 196611 | {\WixUI_Font_Bigger}[ProductName] 安装向导已完成
+ExitDialog | BottomLine | Line | 1 |
+ExitDialog | Back | PushButton | 1 | 上一步(&B)
+ExitDialog | Cancel | PushButton | 1 | 取消
+ExitDialog | Finish | PushButton | 3 | 完成(&F)
+ExitDialog | OptionalCheckBox | CheckBox | 2 | [WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT]
+ExitDialog | OptionalText | Text | 196610 | [WIXUI_EXITDIALOGOPTIONALTEXT]

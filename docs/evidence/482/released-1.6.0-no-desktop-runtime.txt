@@ -1,0 +1,107 @@
+
+=== T2 step 1: install, one after another, what a user gets on the download page: dotnet-runtime-10.0.12-win-x64.exe + aspnetcore-runtime-10.0.12-win-x64.exe  [guest 19:23:54] ===
+INSTALL_dotnet-runtime-10.0.12-win-x64_EXIT=0 elapsed=4.2s
+INSTALL_aspnetcore-runtime-10.0.12-win-x64_EXIT=0 elapsed=2.1s
+--- installed runtimes ---
+  Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+  Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+--- registered .NET products ---
+  Microsoft .NET Host - 10.0.12 (x64) | 80.48.58476
+  Microsoft .NET Host FX Resolver - 10.0.12 (x64) | 80.48.58476
+  Microsoft .NET Runtime - 10.0.12 (x64) | 10.0.12.36422
+  Microsoft .NET Runtime - 10.0.12 (x64) | 80.48.58476
+  Microsoft ASP.NET Core Runtime - 10.0.12 (x64) | 80.48.58476
+  Microsoft ASP.NET Core Runtime - 10.0.12 (x64) | 10.0.12.36422
+--- .NET bundle installer logs: packages detected / planned / applied ---
+LOG=Microsoft_.NET_Runtime_-_10.0.12_(x64)_20261124192355.elevated.log
+  7: i021: Exit code: 0x0
+LOG=Microsoft_.NET_Runtime_-_10.0.12_(x64)_20261124192354.log
+  19: i100: Detect begin, 3 packages
+  24: i101: Detected package: dotnet_runtime_10.0.12_win_x64.msi, state: Absent, cached: No, install registration state: Absent, cache registration state: Absent
+  25: i101: Detected package: dotnet_hostfxr_10.0.12_win_x64.msi, state: Absent, cached: No, install registration state: Absent, cache registration state: Absent
+  26: i101: Detected package: dotnet_host_10.0.12_win_x64.msi, state: Absent, cached: No, install registration state: Absent, cache registration state: Absent
+  39: i201: Planned package: dotnet_runtime_10.0.12_win_x64.msi, state: Absent, default requested: Present, ba requested: Present, execute: Install, rollback: Uninstall, default cache strategy: Keep, ba requested strategy: Keep, cache: Vital, uncache: No, dependency: Register, expected install registration state: Present, expected cache registration state: Present
+  40: i201: Planned package: dotnet_hostfxr_10.0.12_win_x64.msi, state: Absent, default requested: Present, ba requested: Present, execute: Install, rollback: Uninstall, default cache strategy: Keep, ba requested strategy: Keep, cache: Vital, uncache: No, dependency: Register, expected install registration state: Present, expected cache registration state: Present
+  41: i201: Planned package: dotnet_host_10.0.12_win_x64.msi, state: Absent, default requested: Present, ba requested: Present, execute: Install, rollback: Uninstall, default cache strategy: Keep, ba requested strategy: Keep, cache: Vital, uncache: No, dependency: Register, expected install registration state: Present, expected cache registration state: Present
+  57: i319: Applied execute package: dotnet_runtime_10.0.12_win_x64.msi, result: 0x0, restart: None
+  60: i319: Applied execute package: dotnet_hostfxr_10.0.12_win_x64.msi, result: 0x0, restart: None
+  63: i319: Applied execute package: dotnet_host_10.0.12_win_x64.msi, result: 0x0, restart: None
+  75: i500: Shutting down, exit code: 0x0
+  114: i007: Exit code: 0x0, restarting: No
+LOG=Microsoft_ASP.NET_Core_Runtime_-_10.0.12_(x64)_20261124192358.log
+  19: i100: Detect begin, 1 packages
+  24: i101: Detected package: aspnetcore_runtime_10.0.12_win_x64.msi, state: Absent, cached: No, install registration state: Absent, cache registration state: Absent
+  33: i201: Planned package: aspnetcore_runtime_10.0.12_win_x64.msi, state: Absent, default requested: Present, ba requested: Present, execute: Install, rollback: Uninstall, default cache strategy: Keep, ba requested strategy: Keep, cache: Vital, uncache: No, dependency: Register, expected install registration state: Present, expected cache registration state: Present
+  47: i319: Applied execute package: aspnetcore_runtime_10.0.12_win_x64.msi, result: 0x0, restart: None
+  57: i500: Shutting down, exit code: 0x0
+  92: i007: Exit code: 0x0, restarting: No
+LOG=Microsoft_ASP.NET_Core_Runtime_-_10.0.12_(x64)_20261124192358.elevated.log
+  7: i021: Exit code: 0x0
+
+=== T2 step 2: run Client MSI 1.6.0 at the default directory (silent, verbose log)  [guest 19:24:00] ===
+MSI_INSTALL_EXIT=1603 elapsed=241.7s
+MSI_EXIT_MEANING=0=success 1603=fatal error during installation
+--- state after the MSI ---
+UPDATER_SERVICE_PRESENT=False
+INSTALL_DIR_EXISTS=False
+--- System log: Service Control Manager ---
+[19:24:01] id=7045 服务已安装在系统中。 服务名称: LabelFrame Client Updater 服务文件名: "C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service 服务类型: 用户模式服务 服务启动类型: 自动启动 服务帐户: LocalSystem
+[19:24:31] id=7000 由于下列错误，LabelFrame Client Updater 服务启动失败: 服务没有及时响应启动或控制请求。
+[19:24:31] id=7009 等待 LabelFrame Client Updater 服务的连接超时(30000 毫秒)。
+[19:25:06] id=7000 由于下列错误，LabelFrame Client Updater 服务启动失败: 服务没有及时响应启动或控制请求。
+[19:25:06] id=7009 等待 LabelFrame Client Updater 服务的连接超时(30000 毫秒)。
+[19:25:41] id=7009 等待 LabelFrame Client Updater 服务的连接超时(30000 毫秒)。
+[19:25:41] id=7000 由于下列错误，LabelFrame Client Updater 服务启动失败: 服务没有及时响应启动或控制请求。
+[19:26:16] id=7000 由于下列错误，LabelFrame Client Updater 服务启动失败: 服务没有及时响应启动或控制请求。
+[19:26:16] id=7009 等待 LabelFrame Client Updater 服务的连接超时(30000 毫秒)。
+[19:26:51] id=7000 由于下列错误，LabelFrame Client Updater 服务启动失败: 服务没有及时响应启动或控制请求。
+[19:26:51] id=7009 等待 LabelFrame Client Updater 服务的连接超时(30000 毫秒)。
+[19:27:26] id=7000 由于下列错误，LabelFrame Client Updater 服务启动失败: 服务没有及时响应启动或控制请求。
+[19:27:26] id=7009 等待 LabelFrame Client Updater 服务的连接超时(30000 毫秒)。
+--- Application/System log: .NET Runtime, Application Error, Windows Error Reporting, MsiInstaller (Edge updater noise filtered) ---
+[19:24:00] MsiInstaller id=1040 正在开始 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 7768。
+[19:24:01] .NET Runtime id=1023 Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: You must install or update .NET to run this application. |  | App: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Architecture: x64 | Framework: 'Microsoft.WindowsDesktop.App', version '10.0.0' (x64) | .NET location: C:\Program Files\dotnet\ |  | No frameworks were found. |  | Learn more: | https://aka.ms/dotnet/app-launch-failed |  | To install missing framework, download: | https://aka.ms/dotnet-core-applaunch?framework=Microsoft.WindowsDesktop.App&framework_version=10.0.0&arch=x64&rid=win-x64&os=win10 |  |
+[19:24:36] .NET Runtime id=1023 Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: You must install or update .NET to run this application. |  | App: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Architecture: x64 | Framework: 'Microsoft.WindowsDesktop.App', version '10.0.0' (x64) | .NET location: C:\Program Files\dotnet\ |  | No frameworks were found. |  | Learn more: | https://aka.ms/dotnet/app-launch-failed |  | To install missing framework, download: | https://aka.ms/dotnet-core-applaunch?framework=Microsoft.WindowsDesktop.App&framework_version=10.0.0&arch=x64&rid=win-x64&os=win10 |  |
+[19:25:11] .NET Runtime id=1023 Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: You must install or update .NET to run this application. |  | App: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Architecture: x64 | Framework: 'Microsoft.WindowsDesktop.App', version '10.0.0' (x64) | .NET location: C:\Program Files\dotnet\ |  | No frameworks were found. |  | Learn more: | https://aka.ms/dotnet/app-launch-failed |  | To install missing framework, download: | https://aka.ms/dotnet-core-applaunch?framework=Microsoft.WindowsDesktop.App&framework_version=10.0.0&arch=x64&rid=win-x64&os=win10 |  |
+[19:25:46] .NET Runtime id=1023 Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: You must install or update .NET to run this application. |  | App: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Architecture: x64 | Framework: 'Microsoft.WindowsDesktop.App', version '10.0.0' (x64) | .NET location: C:\Program Files\dotnet\ |  | No frameworks were found. |  | Learn more: | https://aka.ms/dotnet/app-launch-failed |  | To install missing framework, download: | https://aka.ms/dotnet-core-applaunch?framework=Microsoft.WindowsDesktop.App&framework_version=10.0.0&arch=x64&rid=win-x64&os=win10 |  |
+[19:26:21] .NET Runtime id=1023 Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: You must install or update .NET to run this application. |  | App: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Architecture: x64 | Framework: 'Microsoft.WindowsDesktop.App', version '10.0.0' (x64) | .NET location: C:\Program Files\dotnet\ |  | No frameworks were found. |  | Learn more: | https://aka.ms/dotnet/app-launch-failed |  | To install missing framework, download: | https://aka.ms/dotnet-core-applaunch?framework=Microsoft.WindowsDesktop.App&framework_version=10.0.0&arch=x64&rid=win-x64&os=win10 |  |
+[19:26:56] .NET Runtime id=1023 Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: You must install or update .NET to run this application. |  | App: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Architecture: x64 | Framework: 'Microsoft.WindowsDesktop.App', version '10.0.0' (x64) | .NET location: C:\Program Files\dotnet\ |  | No frameworks were found. |  | Learn more: | https://aka.ms/dotnet/app-launch-failed |  | To install missing framework, download: | https://aka.ms/dotnet-core-applaunch?framework=Microsoft.WindowsDesktop.App&framework_version=10.0.0&arch=x64&rid=win-x64&os=win10 |  |
+[19:27:32] .NET Runtime id=1023 Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: You must install or update .NET to run this application. |  | App: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Architecture: x64 | Framework: 'Microsoft.WindowsDesktop.App', version '10.0.0' (x64) | .NET location: C:\Program Files\dotnet\ |  | No frameworks were found. |  | Learn more: | https://aka.ms/dotnet/app-launch-failed |  | To install missing framework, download: | https://aka.ms/dotnet-core-applaunch?framework=Microsoft.WindowsDesktop.App&framework_version=10.0.0&arch=x64&rid=win-x64&os=win10 |  |
+[19:28:02] MsiInstaller id=11920 产品: LabelFrame Client -- 错误 1920。未能启动服务“LabelFrame Client Updater”(LabelFrameClientUpdater)。请确认你有足够的权限启动系统服务。
+[19:28:02] MsiInstaller id=1033 Windows Installer 已安装产品。产品名称: LabelFrame Client。产品版本: 1.6.0。产品语言: 2052。制造商: LabelFrame。安装成功或错误状态: 1603。
+[19:28:02] MsiInstaller id=11708 产品: LabelFrame Client -- 安装失败。
+[19:28:02] MsiInstaller id=1042 正在结束 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 7768。
+--- MSI log: key lines ---
+MSI_LOG=C:\Probe\logs\t2-client-no-desktop-runtime.msi.log lines=1238
+1110: Property(S): DOTNET10_PRESENT = 0
+1111: Property(S): WEBVIEW2_HKLM = 153.0.4234.48
+1213: MSI (s) (B0:CC) [19:28:02:102]: Note: 1: 1708
+1223: MSI (s) (B0:CC) [19:28:02:102]: MainEngineThread is returning 1603
+1236: MSI (c) (58:48) [19:28:02:117]: MainEngineThread is returning 1603
+
+=== T2 step 3: why? run the updater entry point by hand (files from an administrative install image; the product is NOT registered)  [guest 19:28:02] ===
+HOST_EXE=C:\Probe\extract\PFiles64\LabelFrame\Client\LabelFrame.WinHost.exe
+HOST_BEHAVIOUR=still running after 20s (no exit on its own) -> killed for the probe
+HOST_EXIT= (hex 0x) elapsed=20.1s
+--- host stderr ---
+  You must install or update .NET to run this application.
+
+  App: C:\Probe\extract\PFiles64\LabelFrame\Client\LabelFrame.WinHost.exe
+  Architecture: x64
+  Framework: 'Microsoft.WindowsDesktop.App', version '10.0.0' (x64)
+  .NET location: C:\Program Files\dotnet\
+
+  No frameworks were found.
+
+  Learn more:
+  https://aka.ms/dotnet/app-launch-failed
+
+  To install missing framework, download:
+  https://aka.ms/dotnet-core-applaunch?framework=Microsoft.WindowsDesktop.App&framework_version=10.0.0&arch=x64&rid=win-x64&os=win10
+--- host stdout ---
+--- System log: Service Control Manager ---
+--- Application/System log: .NET Runtime, Application Error, Windows Error Reporting, MsiInstaller (Edge updater noise filtered) ---
+[19:28:03] MsiInstaller id=1033 Windows Installer 已安装产品。产品名称: LabelFrame Client。产品版本: 1.6.0。产品语言: 2052。制造商: LabelFrame。安装成功或错误状态: 0。
+[19:28:03] MsiInstaller id=11707 产品: LabelFrame Client -- 成功地完成了安装。
+[19:28:03] MsiInstaller id=1042 正在结束 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 440。
+[19:28:04] .NET Runtime id=1023 Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Probe\extract\PFiles64\LabelFrame\Client\LabelFrame.WinHost.exe | Message: You must install or update .NET to run this application. |  | App: C:\Probe\extract\PFiles64\LabelFrame\Client\LabelFrame.WinHost.exe | Architecture: x64 | Framework: 'Microsoft.WindowsDesktop.App', version '10.0.0' (x64) | .NET location: C:\Program Files\dotnet\ |  | No frameworks were found. |  | Learn more: | https://aka.ms/dotnet/app-launch-failed |  | To install missing framework, download: | https://aka.ms/dotnet-core-applaunch?framework=Microsoft.WindowsDesktop.App&framework_version=10.0.0&arch=x64&rid=win-x64&os=win10 |  |

@@ -1,0 +1,107 @@
+
+=== A2 recovered: step 1 manual runs  [guest 23:50:14] ===
+--- a2-check.stdout.txt ---
+  更新服务启动失败，停在阶段「安装目录自检」：自动安装仅支持管理员部署在 Program Files 下的客户端。
+--- a2-check.stderr.txt ---
+--- a2-service-interactive.stdout.txt ---
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: C:\Probe\extract2\PFiles64\LabelFrame\Client\
+  fail: Microsoft.Extensions.Hosting.Internal.Host[9]
+        BackgroundService failed
+        System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。
+           at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path)
+           at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot()
+           at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(UpdaterStartup startup)
+           at LabelFrame.WinHost.Updates.ClientUpdaterService.ExecuteAsync(CancellationToken stoppingToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.TryExecuteBackgroundServiceAsync(BackgroundService backgroundService)
+--- a2-service-interactive.stderr.txt ---
+
+=== A2 recovered: step 2 (install to C:\LabelFrame\Client, self-check fails)  [guest 23:50:14] ===
+--- timeline ---
+samples=444 first=23:44:47.198 last=23:49:02.700
+23:44:47.198  service=absent exitCode= servicePid=  winhost:
+23:44:49.714  service=Start Pending exitCode=0 servicePid=0  winhost: 6804@23:44:49
+23:44:50.292  service=Stopped exitCode=1064 servicePid=0  winhost:
+23:46:02.888  service=Start Pending exitCode=0 servicePid=8916  winhost:
+23:46:03.451  service=Stopped exitCode=1064 servicePid=0  winhost:
+23:46:38.821  service=Stopped exitCode=1064 servicePid=0  winhost: 11028@23:46:38
+23:46:39.478  service=Stopped exitCode=1064 servicePid=0  winhost:
+23:47:14.914  service=Stopped exitCode=1064 servicePid=0  winhost: 7800@23:47:14
+23:47:15.414  service=Stopped exitCode=1064 servicePid=0  winhost:
+23:47:51.449  service=Start Pending exitCode=0 servicePid=0  winhost:
+23:47:51.937  service=Stopped exitCode=1064 servicePid=0  winhost:
+23:48:27.594  service=Start Pending exitCode=0 servicePid=0  winhost: 648@23:48:27
+23:48:28.181  service=Stopped exitCode=1064 servicePid=0  winhost:
+23:48:58.747  service=absent exitCode= servicePid=  winhost:
+--- MSI log ---
+  239: MSI (s) (CC:60) [23:44:47:417]: Note: 1: 1402 2: HKEY_CURRENT_USER\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} 3: 2
+  541: MSI (s) (CC:60) [23:44:48:480]: Doing action: StartServices
+  544: 操作开始 23:44:48: StartServices。
+  547: 操作结束 23:44:48: StartServices。返回值 1。
+  644: MSI (s) (CC:60) [23:44:48:589]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
+  683: MSI (s) (CC:60) [23:44:48:667]: Executing op: FileCopy(SourceName=LF000012.JSO|LabelFrame.WinHost.staticwebassets.endpoints.json,SourceCabKey=ff12,DestName=LabelFrame.WinHost.staticwebassets.endpoints.json,Attributes=512,FileSize=53,PerTick=65536,,VerifyMedia=1,,,,,CheckCRC=0,,,InstallMode=58982400,HashOptions=0,HashPart1=1308055490,HashPart2=1335709552,HashPart3=320023773,HashPart4=1920662998,,)
+  809: MSI (s) (CC:60) [23:44:49:105]: Executing op: FileCopy(SourceName=LF000004.JS|index-CIxrFu2H.js,SourceCabKey=wf4,DestName=index-CIxrFu2H.js,Attributes=512,FileSize=961927,PerTick=65536,,VerifyMedia=1,,,,,CheckCRC=0,,,InstallMode=58982400,HashOptions=0,HashPart1=407910426,HashPart2=-1770440547,HashPart3=788771389,HashPart4=-2011722120,,)
+  835: MSI (s) (CC:60) [23:44:49:198]: Executing op: ServiceInstall(Name=LabelFrameClientUpdater,DisplayName=LabelFrame Client Updater,ImagePath=C:\LabelFrame\Client\LabelFrame.WinHost.exe --update-service,ServiceType=16,StartType=2,ErrorControl=1,,Dependencies=[~],,StartName=LocalSystem,,,,)
+  836: MSI (s) (CC:60) [23:44:49:198]: Executing op: ActionStart(Name=StartServices,Description=正在启动服务,Template=服务: [1])
+  838: MSI (s) (CC:60) [23:44:49:198]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=1,Wait=1,)
+  840: MSI (s) (CC:60) [23:48:58:575]: Note: 1: 2228 2:  3: Error 4: SELECT `Message` FROM `Error` WHERE `Error` = 1920
+  843: MSI (s) (CC:60) [23:48:58:575]: 产品: LabelFrame Client -- 错误 1920。未能启动服务“LabelFrame Client Updater”(LabelFrameClientUpdater)。请确认你有足够的权限启动系统服务。
+  845: 错误 1920。未能启动服务“LabelFrame Client Updater”(LabelFrameClientUpdater)。请确认你有足够的权限启动系统服务。
+  855: MSI (s) (CC:60) [23:48:58:591]: Executing op: ActionStart(Name=StartServices,Description=正在启动服务,Template=服务: [1])
+
+=== A2 recovered: step 3 (install to the default directory)  [guest 23:50:14] ===
+--- timeline ---
+samples=12 first=23:49:04.106 last=23:49:12.075
+23:49:04.106  service=absent exitCode= servicePid=  winhost:
+23:49:06.294  service=Start Pending exitCode=0 servicePid=0  winhost: 11252@23:49:05
+23:49:07.012  service=Running exitCode=0 servicePid=11252  winhost: 11252@23:49:05
+--- MSI log ---
+  238: MSI (s) (CC:DC) [23:49:03:450]: Note: 1: 1402 2: HKEY_CURRENT_USER\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} 3: 2
+  539: MSI (s) (CC:DC) [23:49:04:669]: Doing action: StartServices
+  542: 操作开始 23:49:04: StartServices。
+  545: 操作结束 23:49:04: StartServices。返回值 1。
+  642: MSI (s) (CC:DC) [23:49:04:762]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
+  681: MSI (s) (CC:DC) [23:49:04:903]: Executing op: FileCopy(SourceName=LF000012.JSO|LabelFrame.WinHost.staticwebassets.endpoints.json,SourceCabKey=ff12,DestName=LabelFrame.WinHost.staticwebassets.endpoints.json,Attributes=512,FileSize=53,PerTick=65536,,VerifyMedia=1,,,,,CheckCRC=0,,,InstallMode=58982400,HashOptions=0,HashPart1=1308055490,HashPart2=1335709552,HashPart3=320023773,HashPart4=1920662998,,)
+  807: MSI (s) (CC:DC) [23:49:05:419]: Executing op: FileCopy(SourceName=LF000004.JS|index-CIxrFu2H.js,SourceCabKey=wf4,DestName=index-CIxrFu2H.js,Attributes=512,FileSize=961927,PerTick=65536,,VerifyMedia=1,,,,,CheckCRC=0,,,InstallMode=58982400,HashOptions=0,HashPart1=407910426,HashPart2=-1770440547,HashPart3=788771389,HashPart4=-2011722120,,)
+  833: MSI (s) (CC:DC) [23:49:05:465]: Executing op: ServiceInstall(Name=LabelFrameClientUpdater,DisplayName=LabelFrame Client Updater,ImagePath="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service,ServiceType=16,StartType=2,ErrorControl=1,,Dependencies=[~],,StartName=LocalSystem,,,,)
+  834: MSI (s) (CC:DC) [23:49:05:465]: Executing op: ActionStart(Name=StartServices,Description=正在启动服务,Template=服务: [1])
+  836: MSI (s) (CC:DC) [23:49:05:465]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=1,Wait=1,)
+UPDATER_SERVICE state=Running exitCode=0 pid=8232
+PIPE_PRESENT=False
+--- a2-check-installed.stdout.txt ---
+  更新服务自检通过。
+
+=== A2 recovered: events (SCM + LabelFrame / .NET / MsiInstaller)  [guest 23:50:14] ===
+[23:44:49.198] System/SCM id=7045 服务已安装在系统中。 服务名称: LabelFrame Client Updater 服务文件名: C:\LabelFrame\Client\LabelFrame.WinHost.exe --update-service 服务类型: 用户模式服务 服务启动类型: 自动启动 服务帐户: LocalSystem
+[23:44:49.777] System/SCM id=7023 LabelFrame Client Updater 服务因下列错误而停止: 当处理控制请求时，在服务中发生异常。
+[23:45:26.277] System/SCM id=7023 LabelFrame Client Updater 服务因下列错误而停止: 当处理控制请求时，在服务中发生异常。
+[23:46:02.669] System/SCM id=7023 LabelFrame Client Updater 服务因下列错误而停止: 当处理控制请求时，在服务中发生异常。
+[23:46:38.883] System/SCM id=7023 LabelFrame Client Updater 服务因下列错误而停止: 当处理控制请求时，在服务中发生异常。
+[23:47:15.039] System/SCM id=7023 LabelFrame Client Updater 服务因下列错误而停止: 当处理控制请求时，在服务中发生异常。
+[23:47:51.293] System/SCM id=7023 LabelFrame Client Updater 服务因下列错误而停止: 当处理控制请求时，在服务中发生异常。
+[23:48:27.547] System/SCM id=7023 LabelFrame Client Updater 服务因下列错误而停止: 当处理控制请求时，在服务中发生异常。
+[23:49:05.465] System/SCM id=7045 服务已安装在系统中。 服务名称: LabelFrame Client Updater 服务文件名: "C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service 服务类型: 用户模式服务 服务启动类型: 自动启动 服务帐户: LocalSystem
+[23:44:43.355] Application/.NET Runtime id=1000 Category: Microsoft.Extensions.Hosting.Internal.Host | EventId: 9 |  | BackgroundService failed |  | Exception:  | System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |   ...[truncated]
+[23:44:43.370] Application/.NET Runtime id=1000 Category: Microsoft.Extensions.Hosting.Internal.Host | EventId: 10 |  | The HostOptions.BackgroundServiceExceptionBehavior is configured to StopHost. A BackgroundService has thrown an unhandled exception, and the IHost instance is stopping. To avoid this behavior, configure this to Ignore; however the BackgroundService will not  ...[truncated]
+[23:44:43.386] Application/LabelFrameClientUpdater id=1 更新服务启动失败，停在阶段「安装目录自检」：自动安装仅支持管理员部署在 Program Files 下的客户端。
+[23:44:49.761] Application/LabelFrameClientUpdater id=1 更新服务启动失败，停在阶段「安装目录自检」：自动安装仅支持管理员部署在 Program Files 下的客户端。
+[23:44:49.777] Application/LabelFrameClientUpdater id=0 Service cannot be started. System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |    at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(UpdaterStartup startup) | ...[truncated]
+[23:45:26.262] Application/LabelFrameClientUpdater id=1 更新服务启动失败，停在阶段「安装目录自检」：自动安装仅支持管理员部署在 Program Files 下的客户端。
+[23:45:26.277] Application/LabelFrameClientUpdater id=0 Service cannot be started. System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |    at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(UpdaterStartup startup) | ...[truncated]
+[23:46:02.638] Application/LabelFrameClientUpdater id=1 更新服务启动失败，停在阶段「安装目录自检」：自动安装仅支持管理员部署在 Program Files 下的客户端。
+[23:46:02.669] Application/LabelFrameClientUpdater id=0 Service cannot be started. System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |    at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(UpdaterStartup startup) | ...[truncated]
+[23:46:38.852] Application/LabelFrameClientUpdater id=1 更新服务启动失败，停在阶段「安装目录自检」：自动安装仅支持管理员部署在 Program Files 下的客户端。
+[23:46:38.883] Application/LabelFrameClientUpdater id=0 Service cannot be started. System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |    at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(UpdaterStartup startup) | ...[truncated]
+[23:47:15.023] Application/LabelFrameClientUpdater id=1 更新服务启动失败，停在阶段「安装目录自检」：自动安装仅支持管理员部署在 Program Files 下的客户端。
+[23:47:15.039] Application/LabelFrameClientUpdater id=0 Service cannot be started. System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |    at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(UpdaterStartup startup) | ...[truncated]
+[23:47:51.277] Application/LabelFrameClientUpdater id=1 更新服务启动失败，停在阶段「安装目录自检」：自动安装仅支持管理员部署在 Program Files 下的客户端。
+[23:47:51.293] Application/LabelFrameClientUpdater id=0 Service cannot be started. System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |    at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(UpdaterStartup startup) | ...[truncated]
+[23:48:27.515] Application/LabelFrameClientUpdater id=1 更新服务启动失败，停在阶段「安装目录自检」：自动安装仅支持管理员部署在 Program Files 下的客户端。
+[23:48:27.547] Application/LabelFrameClientUpdater id=0 Service cannot be started. System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |    at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(UpdaterStartup startup) | ...[truncated]
+[23:49:06.606] Application/LabelFrameClientUpdater id=0 Service started successfully.
+[23:49:13.169] Application/LabelFrameClientUpdater id=0 Service stopped successfully.
+[23:49:13.669] Application/LabelFrameClientUpdater id=0 Service started successfully.

@@ -3,6 +3,7 @@ param(
     [string]$PublishDir = '',
     [string]$OutFile = '',
     [string]$GuidSalt = 'default',
+    [string]$InstallDirId = 'INSTALLFOLDER',
     [string]$ServerServiceName = '',
     [string]$ServerServiceDisplayName = ''
 )
@@ -55,17 +56,10 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('<?xml version="1.0" encoding="utf-8"?>')
 [void]$sb.AppendLine('<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">')
 [void]$sb.AppendLine('  <Fragment>')
-if ($webFiles.Count -gt 0) {
-[void]$sb.AppendLine('    <DirectoryRef Id="INSTALLFOLDER">')
-[void]$sb.AppendLine('      <Directory Id="WebDir" Name="web">')
-[void]$sb.AppendLine('        <Directory Id="WebDistDir" Name="dist">')
-foreach ($sub in $webSubDirs.Keys) {
-    [void]$sb.AppendLine('          <Directory Id="' + $webSubDirs[$sub] + '" Name="' + $sub + '" />')
-}
-[void]$sb.AppendLine('        </Directory>')
-[void]$sb.AppendLine('      </Directory>')
-[void]$sb.AppendLine('    </DirectoryRef>')
-}
+# 防回归警示：程序文件组件必须写在安装目录的 DirectoryRef 内。写在片段顶层时 WiX 会给它们一个
+# 名为 INSTALLFOLDER 的默认目录，一旦安装目录不叫这个名字，文件就落到 Program Files 下的默认位置。
+$appSb = New-Object System.Text.StringBuilder
+$webRefSb = New-Object System.Text.StringBuilder
 
 $webSb = New-Object System.Text.StringBuilder
 if ($webFiles.Count -gt 0) {
@@ -84,16 +78,16 @@ foreach ($f in $allFiles) {
     if ($rel -eq 'LabelFrame.WinHost.exe') {
         $updaterXml = @'
         <ServiceInstall Id="ClientUpdaterInstall" Name="LabelFrameClientUpdater" DisplayName="LabelFrame Client Updater" Type="ownProcess" Start="auto" Account="LocalSystem" ErrorControl="normal" Arguments="--update-service" />
-        <ServiceControl Id="ClientUpdaterControl" Name="LabelFrameClientUpdater" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+        <ServiceControl Id="ClientUpdaterControl" Name="LabelFrameClientUpdater" Stop="both" Remove="uninstall" Wait="yes" />
 '@
-        Add-FileLine $sb $index $guid $rel ' Id="WinHostExe"' 'f' $updaterXml
+        Add-FileLine $appSb $index $guid $rel ' Id="WinHostExe"' 'f' $updaterXml
         $index++
     } elseif ($rel -eq 'LabelFrame.Server.exe') {
         $serviceXml = ''
         if ($ServerServiceName) {
             $serviceXml = "`n        <ServiceInstall Id=`"LabelFrameServerInstall`" Name=`"$ServerServiceName`" DisplayName=`"$ServerServiceDisplayName`" Type=`"ownProcess`" Start=`"auto`" Account=`"LocalSystem`" ErrorControl=`"normal`" />`n        <ServiceControl Id=`"LabelFrameServerControl`" Name=`"$ServerServiceName`" Start=`"install`" Stop=`"both`" Remove=`"uninstall`" Wait=`"yes`" />`n"
         }
-        Add-FileLine $sb $index $guid $rel ' Id="ServerExe"' 'f' $serviceXml
+        Add-FileLine $appSb $index $guid $rel ' Id="ServerExe"' 'f' $serviceXml
         $index++
     } elseif ($rel -like 'web/dist/*') {
         $relWeb = $rel.Substring('web/dist/'.Length)
@@ -101,23 +95,36 @@ foreach ($f in $allFiles) {
         if ($slash -ge 0) {
             $sub = $relWeb.Substring(0, $slash)
             $dirId = $webSubDirs[$sub]
-            [void]$sb.AppendLine('    <DirectoryRef Id="' + $dirId + '">')
-            Add-FileLine $sb $webIndex $guid $rel (' Id="wf' + $webIndex + '"') 'w'
-            [void]$sb.AppendLine('    </DirectoryRef>')
+            [void]$webRefSb.AppendLine('    <DirectoryRef Id="' + $dirId + '">')
+            Add-FileLine $webRefSb $webIndex $guid $rel (' Id="wf' + $webIndex + '"') 'w'
+            [void]$webRefSb.AppendLine('    </DirectoryRef>')
         } else {
-            [void]$sb.AppendLine('    <DirectoryRef Id="WebDistDir">')
-            Add-FileLine $sb $webIndex $guid $rel (' Id="wf' + $webIndex + '"') 'w'
-            [void]$sb.AppendLine('    </DirectoryRef>')
+            [void]$webRefSb.AppendLine('    <DirectoryRef Id="WebDistDir">')
+            Add-FileLine $webRefSb $webIndex $guid $rel (' Id="wf' + $webIndex + '"') 'w'
+            [void]$webRefSb.AppendLine('    </DirectoryRef>')
         }
         [void]$webSb.AppendLine('      <ComponentRef Id="w' + $webIndex + '" />')
         $webIndex++
     } else {
-        Add-FileLine $sb $index $guid $rel (' Id="ff' + $index + '"') 'f'
+        Add-FileLine $appSb $index $guid $rel (' Id="ff' + $index + '"') 'f'
         $index++
     }
 }
 
-[void]$sb.AppendLine('    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">')
+[void]$sb.AppendLine('    <DirectoryRef Id="' + $InstallDirId + '">')
+if ($webFiles.Count -gt 0) {
+    [void]$sb.AppendLine('      <Directory Id="WebDir" Name="web">')
+    [void]$sb.AppendLine('        <Directory Id="WebDistDir" Name="dist">')
+    foreach ($sub in $webSubDirs.Keys) {
+        [void]$sb.AppendLine('          <Directory Id="' + $webSubDirs[$sub] + '" Name="' + $sub + '" />')
+    }
+    [void]$sb.AppendLine('        </Directory>')
+    [void]$sb.AppendLine('      </Directory>')
+}
+[void]$sb.Append($appSb.ToString())
+[void]$sb.AppendLine('    </DirectoryRef>')
+[void]$sb.Append($webRefSb.ToString())
+[void]$sb.AppendLine('    <ComponentGroup Id="AppFiles" Directory="' + $InstallDirId + '">')
 for ($i = 0; $i -lt $index; $i++) { [void]$sb.AppendLine('      <ComponentRef Id="f' + $i + '" />') }
 [void]$sb.AppendLine('    </ComponentGroup>')
 if ($webFiles.Count -gt 0) {

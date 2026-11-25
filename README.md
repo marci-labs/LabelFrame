@@ -33,7 +33,7 @@
 
 ### 文员：一台电脑一台打印机（单机模式）
 
-1. 从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 **`LabelFrame-Bootstrapper-x.x.x.exe`（安装引导程序，推荐）** 双击运行，选「单机一体」拓扑走完向导即可——运行时缺失会自动补装，无需手工准备 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) 与 [Microsoft Edge WebView2 运行时](https://go.microsoft.com/fwlink/p/?LinkId=2124703)。高级路径：分别安装 `LabelFrame-Server-x.x.x.msi` 与 `LabelFrame-Client-x.x.x.msi`（缺失运行时时安装包会给出官方下载链接，需手动补装；见[部署指南](docs/DEPLOY.md) 的「安装引导程序（推荐安装入口）」与「安装包（MSI，高级路径）」两节）。
+1. 从 [GitHub Releases](https://github.com/marci-labs/LabelFrame/releases) 下载 **`LabelFrame-Bootstrapper-x.x.x.exe`（安装引导程序，推荐）** 双击运行，选「单机一体」拓扑走完向导即可——运行时缺失会自动补装，无需手工准备 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) 与 [Microsoft Edge WebView2 运行时](https://go.microsoft.com/fwlink/p/?LinkId=2124703)。高级路径：分别安装 `LabelFrame-Server-x.x.x.msi` 与 `LabelFrame-Client-x.x.x.msi`（Client 需先手动装好两项 .NET 10 运行时，均为 x64：.NET Desktop Runtime 10 与 ASP.NET Core Runtime 10；缺哪项安装包会明确提示并给出官方下载链接；见[部署指南](docs/DEPLOY.md) 的「安装引导程序（推荐安装入口）」与「安装包（MSI，高级路径）」两节）。
 2. Client 装完会自动打开 **LabelFrame 应用窗口**（自有窗口与任务栏图标，也可从桌面快捷方式打开）；窗口关闭后服务驻留系统托盘，打印不受影响。
 3. 「设计器」页新建模板：画布拖入文本 / 条码 / 二维码，毫米级排版，实时预览。
 4. 「数据与打印」页填数据（或「下载 Excel 模板」→ 填好 → 导入）。
@@ -42,7 +42,7 @@
 ### 管理员：一台服务器 + 多台打印电脑
 
 1. 服务器安装 Server（[部署指南](docs/DEPLOY.md) 四种形态任选：MSI / Docker / Ubuntu / 单机同装；Windows 上推荐直接跑安装引导程序选「服务端」拓扑）。
-2. 每台打印电脑安装客户端：推荐运行 `LabelFrame-Bootstrapper-x.x.x.exe` 选「打印客户端」拓扑（自动补装运行时），或直装 `LabelFrame-Client-x.x.x.msi`。
+2. 每台打印电脑安装客户端：推荐运行 `LabelFrame-Bootstrapper-x.x.x.exe` 选「打印客户端」拓扑（自动补装运行时）；或直装 `LabelFrame-Client-x.x.x.msi`（固定装到 `C:\Program Files\LabelFrame\Client`，需先手动装好 .NET Desktop Runtime 10 与 ASP.NET Core Runtime 10，均为 x64）。
 3. 每台 Client 的「设置」页把服务端地址改为 `http://<服务器IP>:53961` → 测试连接 → 保存并**重启 Client**。
 4. 模板集中在服务端维护，各电脑打印与历史互不干扰；可选用管理界面插件（服务端网页管理）与「下载中心」页集中分发安装包（客户端 MSI + PDA APK，PDA 可扫码下载）。
 

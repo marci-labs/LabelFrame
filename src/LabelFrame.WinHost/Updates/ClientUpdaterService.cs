@@ -3,49 +3,85 @@ using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using System.Text;
 using System.Text.Json;
 using LabelFrame.Updates;
+using Microsoft.Extensions.Hosting.WindowsServices;
 
 namespace LabelFrame.WinHost.Updates;
 
 /// <summary>仅接受本机已安装客户端可信 MSI 的特权安装服务。</summary>
-internal sealed class ClientUpdaterService(ILogger<ClientUpdaterService> logger) : BackgroundService
+internal sealed class ClientUpdaterService(ILogger<ClientUpdaterService> logger, UpdaterStartup startup) : BackgroundService
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     public static async Task RunAsync()
     {
         var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { ContentRootPath = AppContext.BaseDirectory, Args = [] });
         builder.Services.AddWindowsService(options => options.ServiceName = ClientUpdateContract.ServiceName);
+        builder.Services.AddSingleton<UpdaterStartup>();
+        if (WindowsServiceHelpers.IsWindowsService()) builder.Services.AddSingleton<IHostLifetime, ClientUpdaterLifetime>();
         builder.Services.AddHostedService<ClientUpdaterService>();
-        await builder.Build().RunAsync();
+        var host = builder.Build();
+        var startup = host.Services.GetRequiredService<UpdaterStartup>();
+        try { await host.RunAsync(); }
+        catch (Exception error) { startup.MarkFailed(error); }
+        startup.ReportFailure();
+        Environment.ExitCode = startup.Complete();
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    /// <summary>安装目录保护自检，先于创建升级请求管道。</summary>
+    internal static void SelfCheck(UpdaterStartup startup)
     {
+        startup.Enter(UpdaterStartup.Stages.SelfCheck);
         ProtectedUpdatePaths.CreateRoot();
         ProtectedUpdatePaths.Verify(ProtectedUpdatePaths.Executable);
         ProtectedUpdatePaths.Verify(ClientUpdateContract.CertificatePath);
-        while (!stoppingToken.IsCancellationRequested)
+        startup.MarkSelfChecked();
+    }
+
+    /// <summary>标准输出按 UTF-8（无 BOM）写出：安装器的隐藏执行组件按 UTF-8 解读子进程输出，按系统代码页写会变成问号。</summary>
+    internal static TextWriter CreateOutputWriter() => new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        // 不变量：自检先于管道创建；非系统服务方式运行时没有 OnStart，在此补做
+        try
         {
-            using var pipe = CreatePipe();
-            try
+            if (!startup.IsSelfChecked) SelfCheck(startup);
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await pipe.WaitForConnectionAsync(stoppingToken);
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-                timeout.CancelAfter(TimeSpan.FromMinutes(3));
-                var response = await AcceptAsync(pipe, timeout.Token);
-                await UpdatePipeProtocol.WriteAsync(pipe, response, timeout.Token);
+                startup.Enter(UpdaterStartup.Stages.PipeReady);
+                using var pipe = CreatePipe();
+                startup.MarkReady();
+                await ServeAsync(pipe, stoppingToken);
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-            catch (Exception ex)
+        }
+        catch (Exception error)
+        {
+            if (error is not OperationCanceledException || !stoppingToken.IsCancellationRequested) startup.MarkFailed(error);
+            throw;
+        }
+    }
+
+    private async Task ServeAsync(NamedPipeServerStream pipe, CancellationToken stoppingToken)
+    {
+        try
+        {
+            await pipe.WaitForConnectionAsync(stoppingToken);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+            timeout.CancelAfter(TimeSpan.FromMinutes(3));
+            var response = await AcceptAsync(pipe, timeout.Token);
+            await UpdatePipeProtocol.WriteAsync(pipe, response, timeout.Token);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            logger.LogWarning("客户端升级请求被拒绝：{Reason}", ex.Message);
+            if (pipe.IsConnected)
             {
-                logger.LogWarning("客户端升级请求被拒绝：{Reason}", ex.Message);
-                if (pipe.IsConnected)
-                {
-                    try { using var replyTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                        await UpdatePipeProtocol.WriteAsync(pipe, new UpdateInstallResponse(false, Reason: "安装服务拒绝此请求，请管理员查看更新服务日志。"), replyTimeout.Token); }
-                    catch (Exception replyError) when (replyError is IOException or OperationCanceledException) { }
-                }
+                try { using var replyTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    await UpdatePipeProtocol.WriteAsync(pipe, new UpdateInstallResponse(false, Reason: "安装服务拒绝此请求，请管理员查看更新服务日志。"), replyTimeout.Token); }
+                catch (Exception replyError) when (replyError is IOException or OperationCanceledException) { }
             }
         }
     }

@@ -1,0 +1,25 @@
+=== intermediate build (three explanatory texts visible by default and stacked) ===
+--- Control rows (Attributes: visible 1, enabled 2) ---
+NoRuntimeText | Text | 15 | 15 | 340 | 48 | 3 | 未检测到可用的 .NET 10 运行时（x64）。LabelFrame 需要 .NET Desktop Runtime 10 和 ASP.NET Core Runtime 10 两项，请都安装 x64 版本后再运行本安装 ...
+DesktopMissingText | Text | 15 | 15 | 340 | 48 | 3 | 未检测到可用的 .NET Desktop Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后再运行本安装程序。
+AspNetMissingText | Text | 15 | 15 | 340 | 48 | 3 | 缺少可用的 ASP.NET Core Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后再运行本安装程序。
+HintText | Text | 15 | 75 | 340 | 20 | 3 | 微软官方下载页（两项都在这里，都选 x64）：
+RuntimeLink | Hyperlink | 15 | 100 | 340 | 25 | 3 | <a href="https://dotnet.microsoft.com/download/dotnet/10.0">https://dotnet.microsoft.com/download/dotnet/10.0< ...
+ExitButton | PushButton | 280 | 190 | 75 | 25 | 3 | 退出
+--- ControlCondition rows (Action: 0 hide 1 show 2 disable 3 enable) ---
+RuntimeMissingDlg | NoRuntimeText | Show | NOT DOTNET10_PRESENT = "0" AND NOT DOTNET10_DESKTOP_PRESENT = "0"
+RuntimeMissingDlg | DesktopMissingText | Show | DOTNET10_PRESENT = "0" AND NOT DOTNET10_DESKTOP_PRESENT = "0"
+RuntimeMissingDlg | AspNetMissingText | Show | DOTNET10_DESKTOP_PRESENT = "0" AND NOT DOTNET10_PRESENT = "0"
+
+=== final build (the three texts hidden by default, shown by their own condition) ===
+--- Control rows (Attributes: visible 1, enabled 2) ---
+NoRuntimeText | Text | 15 | 15 | 340 | 48 | 2 | 未检测到可用的 .NET 10 运行时（x64）。LabelFrame 需要 .NET Desktop Runtime 10 和 ASP.NET Core Runtime 10 两项，请都安装 x64 版本后再运行本安装 ...
+DesktopMissingText | Text | 15 | 15 | 340 | 48 | 2 | 未检测到可用的 .NET Desktop Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后再运行本安装程序。
+AspNetMissingText | Text | 15 | 15 | 340 | 48 | 2 | 缺少可用的 ASP.NET Core Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后再运行本安装程序。
+HintText | Text | 15 | 75 | 340 | 20 | 3 | 微软官方下载页（两项都在这里，都选 x64）：
+RuntimeLink | Hyperlink | 15 | 100 | 340 | 25 | 3 | <a href="https://dotnet.microsoft.com/download/dotnet/10.0">https://dotnet.microsoft.com/download/dotnet/10.0< ...
+ExitButton | PushButton | 280 | 190 | 75 | 25 | 3 | 退出
+--- ControlCondition rows (Action: 0 hide 1 show 2 disable 3 enable) ---
+RuntimeMissingDlg | NoRuntimeText | Show | NOT DOTNET10_PRESENT = "0" AND NOT DOTNET10_DESKTOP_PRESENT = "0"
+RuntimeMissingDlg | DesktopMissingText | Show | DOTNET10_PRESENT = "0" AND NOT DOTNET10_DESKTOP_PRESENT = "0"
+RuntimeMissingDlg | AspNetMissingText | Show | DOTNET10_DESKTOP_PRESENT = "0" AND NOT DOTNET10_PRESENT = "0"
