@@ -18,9 +18,9 @@ public sealed class ErrorViewParamsTests
     // minimal API 默认 JSON 选项（Microsoft.AspNetCore.Http.Json → JsonSerializerDefaults.Web：camelCase、null 输出）
     private static readonly JsonSerializerOptions WebDefaults = new(JsonSerializerDefaults.Web);
 
-    /// <summary>解析 JSON 顶层字段名序列（JsonDocument 保持文档顺序，可断言字段顺序）。</summary>
+    /// <summary>解析 JSON 顶层字段名序列（JsonElement.Parse 保持文档顺序，可断言字段顺序）。</summary>
     private static string[] FieldNames(string json)
-        => JsonDocument.Parse(json).RootElement.EnumerateObject().Select(p => p.Name).ToArray();
+        => JsonElement.Parse(json).EnumerateObject().Select(p => p.Name).ToArray();
 
     [Fact]
     public void Params_absent_should_serialize_byte_equal_to_legacy_shape()

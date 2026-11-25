@@ -154,7 +154,7 @@ public sealed class ErrorParamsEndpointsTests : IDisposable
             "job-1", "req-1", "Failed", DateTimeOffset.Parse("2026-09-29T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture), 3, 2, 1, "发送失败");
         var json = JsonSerializer.Serialize(payload, WebDefaults);
 
-        var body = JsonDocument.Parse(json).RootElement;
+        var body = JsonElement.Parse(json);
         string[] fields = [.. body.EnumerateObject().Select(p => p.Name)];
         string[] expected =
             ["jobId", "requestId", "status", "completedAt", "totalItems", "completedItems", "failedItems", "errorMessage"];

@@ -45,9 +45,7 @@ public class LabelJobQueueTests
 
         // 提交（写入提交后）应立即唤醒等待者
         await db.Queue.SubmitAsync("req-wake", ["zpl-0"]);
-        var finished = await Task.WhenAny(idleWait, Task.Delay(2000));
-        Assert.Same(idleWait, finished);
-        Assert.True(await idleWait);
+        Assert.True(await idleWait.WaitAsync(TimeSpan.FromSeconds(2)));
     }
 
     [Fact]
@@ -82,8 +80,7 @@ public class LabelJobQueueTests
 
         var wait = db.Queue.WaitForPendingWakeAsync(TimeSpan.FromSeconds(30));
         await db.Queue.ResumeAsync(job.Id);
-        var finished = await Task.WhenAny(wait, Task.Delay(2000));
-        Assert.Same(wait, finished);
+        await wait.WaitAsync(TimeSpan.FromSeconds(2));
 
         // 第 1 张也失败 → 作业 Failed；失败项重打（Failed → Pending）同样应唤醒
         var afterResume = await db.Queue.GetAsync(job.Id);
@@ -94,8 +91,7 @@ public class LabelJobQueueTests
 
         var retryWait = db.Queue.WaitForPendingWakeAsync(TimeSpan.FromSeconds(30));
         await db.Queue.RetryItemAsync(job.Id, 0);
-        var retryFinished = await Task.WhenAny(retryWait, Task.Delay(2000));
-        Assert.Same(retryWait, retryFinished);
+        await retryWait.WaitAsync(TimeSpan.FromSeconds(2));
     }
 
     [Fact]

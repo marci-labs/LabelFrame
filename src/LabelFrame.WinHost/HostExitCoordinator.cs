@@ -166,8 +166,17 @@ public sealed class HostExitCoordinator
                 // 不再烧满固定宽限，仅留稳定窗观察——期间自然退出则看门狗收手，
                 // 届满仍未返回即判定卡死，提前执行清理与强退
                 _log($"宿主已停止（ApplicationStopped）而主流程未返回，进入稳定窗观察（{_stabilizationWindow.TotalMilliseconds:0} 毫秒）。");
-                var stabilized = await Task.WhenAny(naturalExit, Task.Delay(_stabilizationWindow)).ConfigureAwait(false);
-                if (stabilized == naturalExit)
+                var stabilized = true;
+                try
+                {
+                    await naturalExit.WaitAsync(_stabilizationWindow).ConfigureAwait(false);
+                }
+                catch (TimeoutException)
+                {
+                    stabilized = false;
+                }
+
+                if (stabilized)
                 {
                     _log("稳定窗内主流程自然退出，兜底看门狗收手（退出收尾由主流程完成）。");
                     return;

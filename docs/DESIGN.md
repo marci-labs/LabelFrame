@@ -1270,3 +1270,4 @@ Docker Builder 按 `serverImage.digest` 拉取并校验实际 RepoDigest 后 `do
 - manifest / 插件包签名：升级触发条件 = 公网分发的陌生第三方插件生态出现（衔接 #79，#117）；购证书后 manifest 签名是自然增强位。
 - Docker 镜像 digest 收录 manifest：首版不含（registry digest 机制兜底，#115）；引导程序对 Docker 拓扑只做 compose 生成与拉取指引。
 - i18n 不进 setup 问卷：引导问卷与向导文案中文单语（决策 #164：多语言范围限定 Web UI / API 错误消息 / PDA 三端，安装链维持中文单语，专项各迭代不新增语言项）。
+- CI 用的 SDK 比工作流声明的更新（2026-11-25，是否固定版本待用户决定）：工作流里的 `DOTNET_VERSION: 10.0.x` 只保证装了 10.x，仓库没有 `global.json`，`dotnet` 会选用 runner 镜像上最高的 SDK——镜像更新后带上了 .NET 11 SDK，构建、测试与打包都在 .NET 11 SDK 上进行。配合 `AnalysisLevel=latest-recommended` 与 `TreatWarningsAsErrors=true`，新 SDK 带来的推荐规则（当次为 CA2026 / CA2027）直接让 master 的 CI 失败。当次已按新规则改写命中的 11 处调用，行为不变。是否用 `global.json` 把 SDK 固定在 10.x 并约定升级节奏仍未决定；不固定的话，镜像再次更新时还会遇到同样的事。
