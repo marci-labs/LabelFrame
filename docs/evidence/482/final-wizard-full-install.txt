@@ -1,0 +1,113 @@
+=== interactive run  [guest 09:40:44] ===
+用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/25 9:36
+script present=True size=31419
+TASK_STATE=Ready resultPresent=True lastResult=0
+=== wizard capture 'w-e': mode=install  [09:40:48] ===
+arguments: /i "C:\Probe\LabelFrame-Client-1.6.1.msi" /norestart
+identity=DESKTOP-D65DJ5S\<account> elevated=True
+TEMP=C:\Users\<ACCOUNT>~1\AppData\Local\Temp
+before: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
+--- page Welcome (actual Welcome, match=True): 'LabelFrame Client 安装程序' ---
+  [204] 下一步(&N)
+  [206] 取消
+  [192] WixUI_Bmp_Dialog
+  [202] 上一步(&B)
+  [58] 安装向导将在计算机上安装 LabelFrame Client。单击“下一步”继续，或单击“取消”退出安装向导。
+  [194] 欢迎使用 LabelFrame Client 安装向导
+  screenshot -> C:\Probe\logs\w-e-01-Welcome.png (PrintWindow)
+--- page License (actual License, match=True): 'LabelFrame Client 安装程序' ---
+  [191] WixUI_Bmp_Banner
+  [380] 我接受许可协议中的条款(&A)
+  [385] 打印(&P)
+  [202] 上一步(&B)
+  [204] 下一步(&N)
+  [206] 取消
+  [58] 请认真阅读以下许可协议
+  [194] 最终用户许可协议
+  screenshot -> C:\Probe\logs\w-e-02-License.png (PrintWindow)
+--- page Location (actual Location, match=True): 'LabelFrame Client 安装' ---
+  [202] 上一步(&B)
+  [204] 下一步(&N)
+  [206] 取消
+  [58] LabelFrame 固定安装到下面的位置，不能修改（客户端更新服务要求程序位于 Program Files 下）。
+  [191] WixUI_Bmp_Banner
+  [194] 安装位置
+  [199] C:\Program Files\LabelFrame\Client\
+  screenshot -> C:\Probe\logs\w-e-03-Location.png (PrintWindow)
+--- page Options (actual Options, match=True): 'LabelFrame Client 安装' ---
+  [209] 开机自动启动 LabelFrame
+  [202] 上一步(&B)
+  [204] 下一步(&N)
+  [206] 取消
+  [191] WixUI_Bmp_Banner
+  [194] 安装选项
+  [211] 开机自启以托盘方式常驻运行，不自动打开界面窗口；可随时从托盘图标打开界面或退出。
+  screenshot -> C:\Probe\logs\w-e-04-Options.png (PrintWindow)
+--- page Verify (actual Verify, match=True): 'LabelFrame Client 安装程序' ---
+  [248] 安装(&I)
+  [206] 取消
+  [202] 上一步(&B)
+  [191] WixUI_Bmp_Banner
+  [261] 已准备好安装 LabelFrame Client
+  [263] 单击“安装”开始安装。单击“上一步”查看或更改任何安装设置。单击“取消”退出向导。
+  screenshot -> C:\Probe\logs\w-e-05-Verify.png (PrintWindow)
+INSTALL_CLICK_TO_NEXT_WINDOW_SECONDS=1.9
+INSTALL_STEP_SECONDS=0.5 (from clicking Install to the next window)
+--- page Installing (actual Installing, match=True): 'LabelFrame Client 安装程序' ---
+  [206] 取消
+  [191] WixUI_Bmp_Banner
+  [202] 上一步(&B)
+  [204] 下一步(&N)
+  [330] 正在验证安装
+  [332] 安装向导正在安装 LabelFrame Client，请稍候。
+  [334] 正在安装 LabelFrame Client
+  [354] 状态:
+  screenshot -> C:\Probe\logs\w-e-06-Installing.png (PrintWindow)
+--- page Exit (actual Exit, match=True): 'LabelFrame Client 安装程序' ---
+  [306] 完成(&F)
+  [206] 取消
+  [192] WixUI_Bmp_Dialog
+  [202] 上一步(&B)
+  [369] 立即打开 LabelFrame
+  [58] 单击“完成”按钮退出安装向导。
+  [194] LabelFrame Client 安装向导已完成
+  screenshot -> C:\Probe\logs\w-e-07-Exit.png (PrintWindow)
+  launch checkbox '立即打开 LabelFrame' checked before=True
+  launch checkbox checked after=False
+OUTCOME=completed
+--- installer windows on screen from the Install click on (one entry per change) ---
+09:40:58.434 poll 13 MsiDialogCloseClass 1311302 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:40:59.028 poll 15 MsiDialogCloseClass 1311302 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 正在更新组件注册 | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:40:59.543 poll 16 MsiDialogCloseClass 1311302 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 正在复制新文件 | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:00.059 poll 17 MsiDialogCloseClass 1311302 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:00.574 poll 18 MsiDialogCloseClass 1311302 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:01.090 poll 19 MsiDialogCloseClass 1311302 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:01.590 poll 20 MsiDialogCloseClass 1311302 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:02.090 poll 21 MsiDialogCloseClass 1311302 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:02.606 poll 22 MsiDialogCloseClass 1311302 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 正在删除备份文件 | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:03.106 poll 23 MsiDialogCloseClass 458862 name=Exit :: 完成(&F) | 取消 | WixUI_Bmp_Dialog | 上一步(&B) | 立即打开 LabelFrame | 单击“完成”按钮退出安装向导。 | LabelFrame Client 安装向导已完成
+last unrecognised installer window:
+windows seen: Exit, Installing, License, Location, Options, Prepare, Verify, Welcome
+exit code=0
+WIZARD_PATH=Welcome -> License -> Location -> Options -> Verify -> Exit
+client processes started during the run=0
+after: product=1.6.1 | service=Running (LocalSystem, Auto) | winhost processes=1 | C:\LabelFrame exists=False
+--- install logs created during this run (no /L switch was given) ---
+  log file: C:\Users\<account>\AppData\Local\Temp\MSI3d310.LOG.updater-service.log  (174 bytes, 09:41:02)
+    2026-11-25 09:41:00  更新服务启动：开始。
+    2026-11-25 09:41:02  更新服务启动：已进入运行状态，升级请求管道已就绪（用时 2.1 秒）。
+  log file: C:\Users\<account>\AppData\Local\Temp\MSI3d310.LOG  (359052 bytes, 09:41:04)
+    L121: MSI (c) (2C:50) [09:40:49:199]: Doing action: PrepareDlg
+    L198: MSI (c) (2C:50) [09:40:49:590]: Doing action: LaunchConditions
+    L275: MSI (c) (2C:50) [09:40:49:621]: Doing action: WelcomeDlg
+    L323: MSI (c) (2C:50) [09:40:56:512]: Doing action: ProgressDlg
+    L550: MSI (s) (E8:28) [09:40:56:887]: Doing action: LaunchConditions
+    L964: MSI (s) (E8:28) [09:40:59:137]: Doing action: StartUpdaterService
+    L1416: WixQuietExec:  LabelFrame updater service start: begin.
+    L1419: WixQuietExec:  LabelFrame updater service start: OK (running and request pipe ready after 2.1s).
+    L1615: MSI (s) (E8:28) [09:41:02:637]: MainEngineThread is returning 0
+    L1776: MSI (c) (2C:50) [09:41:04:371]: 产品: LabelFrame Client -- 成功地完成了安装。
+    L1782: MSI (c) (2C:50) [09:41:04:371]: MainEngineThread is returning 0
+CHECK_FAILURES=0
+=== end 'w-e'  [09:41:12] ===

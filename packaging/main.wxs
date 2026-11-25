@@ -9,11 +9,13 @@
     <Property Id="LABELFRAME_MIN_SERVER_VERSION" Value="1.0.0" />
     <Property Id="LABELFRAME_MAX_SERVER_VERSION" Value="2.0.0" />
     <Property Id="LABELFRAME_RUNTIME_MAJOR" Value="10" />
+    <!-- 每次安装（向导双击 / 静默）都在用户临时目录自动生成安装日志；日志留在临时目录，不要求用户清理 -->
+    <Property Id="MsiLogging" Value="voicewarmupx" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <!-- 安装向导 UI（欢迎 / 许可 / 目录 / 进度 / 完成）+ 品牌资产（assets/ 静态文件，源出 assets/brand/ 母版库）+ 控制面板元数据 -->
+    <!-- 安装向导 UI（欢迎 / 许可 / 安装位置（只读）/ 选项 / 进度 / 完成）+ 品牌资产（assets/ 静态文件，源出 assets/brand/ 母版库）+ 控制面板元数据 -->
     <ui:WixUI Id="WixUI_InstallDir" />
-    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Property Id="WIXUI_INSTALLDIR" Value="ClientInstallDir" />
     <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)/installer-dialog.bmp" />
     <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)/installer-banner.bmp" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
@@ -28,22 +30,38 @@
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/marci-labs/LabelFrame/releases" />
 
 
-    <!-- 检测 ASP.NET Core Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
-    <!-- RuntimeType = aspnet：WinHost 为 Microsoft.NET.Sdk.Web（隐式 FrameworkReference
-         Microsoft.AspNetCore.App），实际框架需求是 AspNetCore 而非仅 Desktop——两者互不包含，只装 Desktop Runtime 的机器
-         必须在检测阶段拦截，而非装完客户端进程起不来（.NET Runtime 1023）。
-         注：WinHost 双框架需求（WinForms 的 WindowsDesktop + Web 托管的 AspNetCore）中 Desktop 腿由引导链 runtime-desktop 补装承载，
-         NetCoreCheck 单检测单 RuntimeType，静默直装场景以 AspNetCore 口径为拦截锚点。
-         WiX netfx 扩展的 RuntimeType 合法枚举为 aspnet / desktop / core（构建实测 WIX0021），aspnet 对应 ASP.NET Core Runtime。 -->
-    <!-- 之前的注册表搜索读不到运行时，因为版本号是命名值而非默认值，这里不再依赖注册表结构 -->
-    <netfx:DotNetCompatibilityCheck Id="DotNet10RuntimeCheck"
+    <!-- 运行时检测：.NET 官方 NetCoreCheck 自检（属性值 0 = 满足；其余为未安装 / 版本不足 / 平台不兼容）。
+         客户端同时依赖 ASP.NET Core 与 Desktop 两个共享框架，只查一项会让缺另一项的机器走到启动服务才失败。
+         WiX netfx 扩展的 RuntimeType 合法枚举为 aspnet / desktop / core，构建实测 WIX0021。
+         不再依赖注册表：版本号是命名值而非默认值，注册表搜索读不到。 -->
+    <netfx:DotNetCompatibilityCheck Id="DotNet10AspNetCheck"
                                     Property="DOTNET10_PRESENT"
                                     Platform="x64"
                                     RuntimeType="aspnet"
                                     Version="10.0.0"
                                     RollForward="latestMajor" />
+    <netfx:DotNetCompatibilityCheck Id="DotNet10DesktopCheck"
+                                    Property="DOTNET10_DESKTOP_PRESENT"
+                                    Platform="x64"
+                                    RuntimeType="desktop"
+                                    Version="10.0.0"
+                                    RollForward="latestMajor" />
+    <!-- 平台坑：只装了 ASP.NET Core Runtime 而没有 .NET Runtime 时两项检测都不满足（检测工具找不到宿主），
+         所以「两项都不满足」按没有可用的 .NET 10 提示，不能说成 ASP.NET Core 未安装。
+         微软的 ASP.NET Core Runtime 独立安装包不含 .NET Runtime，Hosting Bundle 才含；Desktop Runtime 自带 .NET Runtime。
+         防回归警示：启动条件是「为真才放行」，第一条必须在「至少一项可用」时为真，否则只要缺任何一项都先弹它的笼统提示，
+         后两条精确提示永远轮不到；三条件的顺序不能换。 -->
+    <Launch Condition="(DOTNET10_PRESENT = &quot;0&quot; OR DOTNET10_DESKTOP_PRESENT = &quot;0&quot;) OR UILevel = 5 OR REMOVE"
+      Message="未检测到可用的 .NET 10 运行时（x64）。LabelFrame 需要 .NET Desktop Runtime 10 和 ASP.NET Core Runtime 10 两项，请都安装 x64 版本后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
+    <Launch Condition="DOTNET10_DESKTOP_PRESENT = &quot;0&quot; OR UILevel = 5 OR REMOVE"
+      Message="未检测到可用的 .NET Desktop Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
     <Launch Condition="DOTNET10_PRESENT = &quot;0&quot; OR UILevel = 5 OR REMOVE"
-      Message="本机未检测到 ASP.NET Core Runtime，请先安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
+      Message="缺少可用的 ASP.NET Core Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
+
+    <!-- 安装位置固定：目录标识含小写字母，不是公开属性，命令行传入 INSTALLFOLDER 改不了安装位置；
+         显式传入时直接拦下并说明，而不是静默装到别处 -->
+    <Launch Condition="NOT INSTALLFOLDER"
+      Message="LabelFrame 客户端固定安装到 [ProgramFiles64Folder]LabelFrame\Client，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。" />
 
     <!-- 检测 WebView2 Evergreen 运行时：界面窗口（WebView2 嵌入）依赖；
          注册表 EdgeUpdate Clients 的 WebView2 产品键（per-machine 走 WOW6432Node 视图 / per-user HKCU），
@@ -62,16 +80,26 @@
       Message="本机未检测到 Microsoft Edge WebView2 运行时（LabelFrame 界面窗口依赖），请先安装后重新运行安装程序。下载：https://go.microsoft.com/fwlink/p/?LinkId=2124703" />
 
     <!-- 运行时缺失对话框：可点击官方下载链接（MSI Hyperlink 控件） -->
+    <!-- 向导以失败收场时显示界面库的标准「提前结束」页，其说明文字由 packaging\wixui-zh-cn-override.wxl 补上安装日志的位置 -->
     <UI Id="RuntimeCheckUI">
-      <Dialog Id="RuntimeMissingDlg" X="50" Y="50" Width="370" Height="180"
-              Title="LabelFrame 安装 - 缺少 ASP.NET Core Runtime" NoMinimize="yes">
-        <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="30"
-                 Text="本机未检测到 ASP.NET Core 10 Runtime，请先安装后再运行本安装程序。" />
-        <Control Id="HintText" Type="Text" X="15" Y="50" Width="340" Height="20"
-                 Text="点击下方链接打开微软官方下载页：" />
-        <Control Id="RuntimeLink" Type="Hyperlink" X="15" Y="75" Width="340" Height="25"
+      <!-- 运行时缺失对话框：按实际缺的那一项说明，三段说明共用一个位置，由控件显示条件择一。
+           平台坑：显示条件为真时才显示，为假时并不隐藏，所以三段必须默认隐藏，否则全部叠在一起、最后一段盖住其余 -->
+      <Dialog Id="RuntimeMissingDlg" X="50" Y="50" Width="370" Height="230"
+              Title="LabelFrame 安装 - 缺少 .NET 运行时" NoMinimize="yes">
+        <Control Id="NoRuntimeText" Type="Text" X="15" Y="15" Width="340" Height="48" Hidden="yes"
+                 Text="未检测到可用的 .NET 10 运行时（x64）。LabelFrame 需要 .NET Desktop Runtime 10 和 ASP.NET Core Runtime 10 两项，请都安装 x64 版本后再运行本安装程序。"
+                 ShowCondition="NOT DOTNET10_PRESENT = &quot;0&quot; AND NOT DOTNET10_DESKTOP_PRESENT = &quot;0&quot;" />
+        <Control Id="DesktopMissingText" Type="Text" X="15" Y="15" Width="340" Height="48" Hidden="yes"
+                 Text="未检测到可用的 .NET Desktop Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后再运行本安装程序。"
+                 ShowCondition="DOTNET10_PRESENT = &quot;0&quot; AND NOT DOTNET10_DESKTOP_PRESENT = &quot;0&quot;" />
+        <Control Id="AspNetMissingText" Type="Text" X="15" Y="15" Width="340" Height="48" Hidden="yes"
+                 Text="缺少可用的 ASP.NET Core Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后再运行本安装程序。"
+                 ShowCondition="DOTNET10_DESKTOP_PRESENT = &quot;0&quot; AND NOT DOTNET10_PRESENT = &quot;0&quot;" />
+        <Control Id="HintText" Type="Text" X="15" Y="75" Width="340" Height="20"
+                 Text="微软官方下载页（两项都在这里，都选 x64）：" />
+        <Control Id="RuntimeLink" Type="Hyperlink" X="15" Y="100" Width="340" Height="25"
                  Text="&lt;a href=&quot;https://dotnet.microsoft.com/download/dotnet/10.0&quot;&gt;https://dotnet.microsoft.com/download/dotnet/10.0&lt;/a&gt;" />
-        <Control Id="ExitButton" Type="PushButton" X="280" Y="140" Width="75" Height="25"
+        <Control Id="ExitButton" Type="PushButton" X="280" Y="190" Width="75" Height="25"
                  Text="退出" Default="yes" Cancel="yes">
           <Publish Event="EndDialog" Value="Exit" Condition="1" />
         </Control>
@@ -113,7 +141,29 @@
           <Publish Event="EndDialog" Value="Return" Condition="1" />
         </Control>
       </Dialog>
-      <!-- 安装选项页：目录页之后、确认安装页之前 -->
+      <!-- 安装位置页（只读）：更新服务只接受 Program Files 下的安装目录，所以不提供修改入口。
+           防回归警示：WiX 自带向导组里可改目录的那一页不能单独替换（重复定义，编译失败），它仍留在包里；
+           这里靠「同一按钮上登记顺序靠后的跳转生效」把它旁路，接法由结构断言脚本守住 -->
+      <Dialog Id="InstallLocationDlg" Width="370" Height="270" Title="[ProductName] 安装">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="yes" Text="WixUI_Bmp_Banner" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" TabSkip="yes"
+                 Text="{\WixUI_Font_Title}安装位置" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="Description" Type="Text" X="20" Y="60" Width="330" Height="30"
+                 Text="LabelFrame 固定安装到下面的位置，不能修改（客户端更新服务要求程序位于 Program Files 下）。" />
+        <Control Id="InstallLocationText" Type="Text" X="20" Y="100" Width="330" Height="40" NoPrefix="yes" Text="[ClientInstallDir]" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="上一步(&amp;B)">
+          <Publish Event="NewDialog" Value="LicenseAgreementDlg" />
+        </Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="下一步(&amp;N)">
+          <Publish Event="NewDialog" Value="OptionsDlg" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="取消">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+      <!-- 安装选项页：安装位置页之后、确认安装页之前 -->
       <Dialog Id="OptionsDlg" Width="370" Height="270" Title="[ProductName] 安装">
         <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="yes" Text="WixUI_Bmp_Banner" />
         <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" TabSkip="yes"
@@ -124,7 +174,7 @@
         <Control Id="AutoStartHint" Type="Text" X="20" Y="105" Width="320" Height="40"
                  Text="开机自启以托盘方式常驻运行，不自动打开界面窗口；可随时从托盘图标打开界面或退出。" />
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="上一步(&amp;B)">
-          <Publish Event="NewDialog" Value="InstallDirDlg" />
+          <Publish Event="NewDialog" Value="InstallLocationDlg" />
         </Control>
         <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Text="下一步(&amp;N)">
           <Publish Event="NewDialog" Value="VerifyReadyDlg" />
@@ -133,9 +183,11 @@
           <Publish Event="SpawnDialog" Value="CancelDlg" />
         </Control>
       </Dialog>
-      <!-- 向导链路改道：目录页 Next 先进选项页；确认页 Back（仅全新安装）回选项页。
-           ControlEvent 重复发布时后执行者生效，Order 越大越后执行。 -->
-      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="OptionsDlg" Order="10" />
+      <!-- 向导链路：许可页 Next 进只读的安装位置页 → 选项页 → 确认页；确认页 Back（仅全新安装）回选项页。
+           ControlEvent 重复发布时后执行者生效，Order 越大越后执行：许可页 Next 与确认页 Back 上自带向导组的
+           默认目标仍是那一页可改目录的旧页，这里的登记顺序必须更大 -->
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="InstallLocationDlg" Order="10"
+               Condition="NOT Installed" />
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OptionsDlg" Order="10"
                Condition="NOT Installed AND NOT REMOVE" />
       <!-- 向导完成页启动：对 UI 扩展库的 ExitDialog 追加控件事件（勾选 + 全新安装才启动） -->
@@ -144,18 +196,18 @@
     </UI>
     <InstallUISequence>
       <Show Dialog="RuntimeMissingDlg" Sequence="1150"
-            Condition="NOT DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
+            Condition="(NOT DOTNET10_PRESENT = &quot;0&quot; OR NOT DOTNET10_DESKTOP_PRESENT = &quot;0&quot;) AND NOT REMOVE" />
       <!-- WebView2 检测在 .NET 检测之后（两者都缺时先引导 .NET）；全 UI 才显示，静默 / 基础 UI 由 LaunchCondition 拦截 -->
       <Show Dialog="WebView2MissingDlg" Sequence="1160"
-            Condition="NOT WEBVIEW2_HKLM AND NOT WEBVIEW2_HKCU AND DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
+            Condition="NOT WEBVIEW2_HKLM AND NOT WEBVIEW2_HKCU AND DOTNET10_PRESENT = &quot;0&quot; AND DOTNET10_DESKTOP_PRESENT = &quot;0&quot; AND NOT REMOVE" />
       <Show Dialog="ClearDataDlg" Sequence="1290"
             Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
     </InstallUISequence>
 
-    <!-- 安装目录：Program Files\LabelFrame（64 位） -->
+    <!-- 安装目录：Program Files\LabelFrame\Client（64 位）。目录标识含小写字母 = 非公开属性，安装位置无法从外部改写 -->
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="LABELFRAMEROOT" Name="LabelFrame">
-      <Directory Id="INSTALLFOLDER" Name="Client">
+      <Directory Id="ClientInstallDir" Name="Client">
       <!-- 官方插件附带包：随 MSI 携带 Zebra / TSPL 外置插件包，供存量升级自动安装
            （OfficialPluginMigration 启动检测已用官方插件配置 → 从本目录自动装外置插件）。
            build-msi.ps1 检测到 artifacts 下的 .lfplugin 时传入 -d ZebraPluginPackage / -d TsplPluginPackage
@@ -183,11 +235,14 @@
     </Directory>
     </StandardDirectory>
 
-    <!-- 开机自启注册表（HKLM Run 键）：由隐藏子 Feature 的 Level 条件控制——安装选项页未勾选（AUTO_START 空）时 Level=0 不安装 -->
-    <Component Id="AutoStartRunKey" Guid="3F8A9C71-6B2D-4E45-9A10-58C6E2D7B013">
-      <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run"
-                     Name="LabelFrame" Type="string" Value="&quot;[#WinHostExe]&quot; --autostart" KeyPath="yes" />
-    </Component>
+    <!-- 开机自启注册表（HKLM Run 键）：由隐藏子 Feature 的 Level 条件控制——安装选项页未勾选（AUTO_START 空）时 Level=0 不安装。
+         防回归警示：组件必须挂在某个目录引用下，写在包顶层会被 WiX 挂到名为 INSTALLFOLDER 的默认目录 -->
+    <DirectoryRef Id="ClientInstallDir">
+      <Component Id="AutoStartRunKey" Guid="3F8A9C71-6B2D-4E45-9A10-58C6E2D7B013">
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                       Name="LabelFrame" Type="string" Value="&quot;[#WinHostExe]&quot; --autostart" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
 
     <!-- 开始菜单 -->
     <StandardDirectory Id="ProgramMenuFolder">
@@ -196,7 +251,7 @@
           <Shortcut Id="StartMenuShortcut" Name="LabelFrame Client"
                     Description="打开 LabelFrame 界面编辑与打印标签"
                     Target="[#WinHostExe]"
-                    WorkingDirectory="INSTALLFOLDER" />
+                    WorkingDirectory="ClientInstallDir" />
           <RemoveFolder Id="ApplicationProgramsRemove" Directory="ApplicationProgramsFolder" On="uninstall" />
           <RegistryValue Root="HKCU" Key="Software\LabelFrame" Name="startmenu" Type="integer" Value="1" KeyPath="yes" />
         </Component>
@@ -209,7 +264,7 @@
         <Shortcut Id="DesktopShortcut" Name="LabelFrame Client"
                   Description="打开 LabelFrame 界面编辑与打印标签"
                   Target="[#WinHostExe]"
-                  WorkingDirectory="INSTALLFOLDER" />
+                  WorkingDirectory="ClientInstallDir" />
         <RemoveFolder Id="DesktopRemove" Directory="DesktopFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\LabelFrame" Name="desktop" Type="integer" Value="1" KeyPath="yes" />
       </Component>
@@ -238,8 +293,21 @@
     <CustomAction Id="ShutdownWinHost" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="immediate" Return="check" />
     <CustomAction Id="SetShutdownWinHostCommand" Property="WixQuietExecCmdLine"
       Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command &quot;$ErrorActionPreference='Stop'; $servicePids=@(Get-CimInstance Win32_Service -Filter 'Name=''LabelFrameClientUpdater''' -ErrorAction Stop | Select-Object -ExpandProperty ProcessId); $p=Get-CimInstance Win32_Process -Filter 'Name=''LabelFrame.WinHost.exe''' -ErrorAction Stop | Where-Object { $_.ProcessId -notin $servicePids -and $_.CommandLine -notmatch '(^|\s)--(update-service|restart-wait)(\s|$)' } | Select-Object -First 1; if (!$p) { exit 0 }; $pidToStop=$p.ProcessId; $ports=@(Get-NetTCPConnection -State Listen -OwningProcess $pidToStop -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort -Unique); if (!$ports) { Write-Error 'LabelFrame 正在运行但无法定位本机 API 端口，已中止升级'; exit 1 }; $base=$null; foreach ($port in $ports) { try { $jobs=@(Invoke-RestMethod -TimeoutSec 3 -Uri ('http://127.0.0.1:'+$port+'/api/jobs?limit=500')); $base='http://127.0.0.1:'+$port; break } catch { $null } }; if (!$base) { Write-Error '无法读取 LabelFrame 作业状态，已中止升级'; exit 1 }; $busy=@($jobs | Where-Object { $_.status -eq 'Printing' -or @($_.items | Where-Object { $_.status -eq 'Printing' }).Count -gt 0 }); if ($busy.Count -gt 0) { Write-Error 'LabelFrame 当前有标签正在打印，请等待本张完成后重试升级'; exit 1 }; try { Invoke-WebRequest -UseBasicParsing -Method Post -TimeoutSec 2 -Uri ($base+'/api/host/shutdown') | Out-Null } catch { if ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__ -eq 409) { Write-Error 'LabelFrame 当前有标签正在打印，请等待本张完成后重试升级'; exit 1 }; Write-Error '无法请求 LabelFrame 安全退出，已中止升级'; exit 1 }; $deadline=(Get-Date).AddSeconds(15); do { Start-Sleep -Milliseconds 250; $p=Get-Process -Id $pidToStop -ErrorAction SilentlyContinue } while ($p -and (Get-Date) -lt $deadline); if ($p) { Write-Error 'LabelFrame 未能在 15 秒内安全退出，已中止升级'; exit 1 }&quot;" />
+    <!-- 更新服务由本包自己启动并等到就绪，不走 Windows Installer 内建的服务启动动作：
+         平台坑：内建动作在服务启动失败时会按固定间隔反复重试（实测约 4 分钟才报错），也不会把服务侧的失败原因写进安装日志。
+         本动作以 SYSTEM 身份运行刚装好的程序文件：服务一报告停止即判失败，超时只作兜底。
+         平台坑：安装器按 UTF-8 记录子进程输出，而安装日志文件是系统代码页，混排会乱码——所以进安装日志的只有 ASCII 结论，
+         中文详情写到安装日志旁边的明细日志（路径经 [MsiLogFileLocation] 传给启动入口） -->
+    <CustomAction Id="StartUpdaterService" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
+    <SetProperty Id="StartUpdaterService" Value="&quot;[#WinHostExe]&quot; --start-update-service --log &quot;[MsiLogFileLocation].updater-service.log&quot;" Before="StartUpdaterService" Sequence="execute" />
+    <!-- 服务起来之后安装若回滚，得先把服务停下再删文件；服务自身退出最长要 30 秒，Stop-Service 会等到停止为止。
+         失败不影响回滚继续（Return=ignore） -->
+    <CustomAction Id="StopUpdaterServiceOnRollback" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="rollback" Return="ignore" Impersonate="no" />
+    <SetProperty Id="StopUpdaterServiceOnRollback"
+      Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -Command &quot;Stop-Service -Name LabelFrameClientUpdater -Force -ErrorAction SilentlyContinue&quot;"
+      Before="StopUpdaterServiceOnRollback" Sequence="execute" />
     <!-- 完成页「立即打开」：Finish 按钮在勾选时触发（见 Publish），异步启动不阻塞向导关闭 -->
-    <CustomAction Id="LaunchClientOnExit" Directory="INSTALLFOLDER" Execute="immediate" Return="asyncNoWait"
+    <CustomAction Id="LaunchClientOnExit" Directory="ClientInstallDir" Execute="immediate" Return="asyncNoWait"
                   ExeCommand="&quot;[#WinHostExe]&quot;" />
     <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；新增机器级配置 settings.json）。
          host 日志按日轮转（host-yyyyMMdd.log），清理一并覆盖单名历史文件与轮转文件 -->
@@ -255,6 +323,9 @@
       <!-- CostFinalize 后、InstallValidate 前停止宿主，避免文件占用检查先弹出 Restart Manager 对话框。 -->
       <Custom Action="ShutdownWinHost" Before="InstallValidate" Condition="NOT REMOVE~=&quot;ALL&quot;" />
       <Custom Action="SetShutdownWinHostCommand" Before="ShutdownWinHost" Condition="NOT REMOVE~=&quot;ALL&quot;" />
+      <!-- 服务注册（InstallServices）之后、提交（InstallFinalize）之前启动更新服务：失败时整笔安装连同服务注册一起回滚 -->
+      <Custom Action="StartUpdaterService" After="InstallServices" Condition="NOT REMOVE" />
+      <Custom Action="StopUpdaterServiceOnRollback" Before="SetStartUpdaterService" Condition="NOT REMOVE" />
       <Custom Action="ClearDataDelFiles" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelPrintDir" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelMachineConfig" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />

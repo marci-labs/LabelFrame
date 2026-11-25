@@ -1,0 +1,106 @@
+=== interactive run  [guest 09:41:32] ===
+用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/25 9:36
+script present=True size=31438
+TASK_STATE=Ready resultPresent=True lastResult=0
+=== wizard capture 'w-g': mode=install  [09:41:34] ===
+arguments: /i "C:\Probe\LabelFrame-Client-1.6.1.msi" /norestart
+identity=DESKTOP-D65DJ5S\<account> elevated=True
+TEMP=C:\Users\<ACCOUNT>~1\AppData\Local\Temp
+before: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
+--- page Welcome (actual Welcome, match=True): 'LabelFrame Client 安装程序' ---
+  [204] 下一步(&N)
+  [206] 取消
+  [192] WixUI_Bmp_Dialog
+  [202] 上一步(&B)
+  [58] 安装向导将在计算机上安装 LabelFrame Client。单击“下一步”继续，或单击“取消”退出安装向导。
+  [194] 欢迎使用 LabelFrame Client 安装向导
+  screenshot -> C:\Probe\logs\w-g-01-Welcome.png (PrintWindow)
+--- page License (actual License, match=True): 'LabelFrame Client 安装程序' ---
+  [191] WixUI_Bmp_Banner
+  [380] 我接受许可协议中的条款(&A)
+  [385] 打印(&P)
+  [202] 上一步(&B)
+  [204] 下一步(&N)
+  [206] 取消
+  [58] 请认真阅读以下许可协议
+  [194] 最终用户许可协议
+  screenshot -> C:\Probe\logs\w-g-02-License.png (PrintWindow)
+--- page Location (actual Location, match=True): 'LabelFrame Client 安装' ---
+  [202] 上一步(&B)
+  [204] 下一步(&N)
+  [206] 取消
+  [58] LabelFrame 固定安装到下面的位置，不能修改（客户端更新服务要求程序位于 Program Files 下）。
+  [191] WixUI_Bmp_Banner
+  [194] 安装位置
+  [199] C:\Program Files\LabelFrame\Client\
+  screenshot -> C:\Probe\logs\w-g-03-Location.png (PrintWindow)
+--- page Options (actual Options, match=True): 'LabelFrame Client 安装' ---
+  [209] 开机自动启动 LabelFrame
+  [202] 上一步(&B)
+  [204] 下一步(&N)
+  [206] 取消
+  [191] WixUI_Bmp_Banner
+  [194] 安装选项
+  [211] 开机自启以托盘方式常驻运行，不自动打开界面窗口；可随时从托盘图标打开界面或退出。
+  screenshot -> C:\Probe\logs\w-g-04-Options.png (PrintWindow)
+--- page Verify (actual Verify, match=True): 'LabelFrame Client 安装程序' ---
+  [248] 安装(&I)
+  [206] 取消
+  [202] 上一步(&B)
+  [191] WixUI_Bmp_Banner
+  [261] 已准备好安装 LabelFrame Client
+  [263] 单击“安装”开始安装。单击“上一步”查看或更改任何安装设置。单击“取消”退出向导。
+  screenshot -> C:\Probe\logs\w-g-05-Verify.png (PrintWindow)
+INSTALL_CLICK_TO_NEXT_WINDOW_SECONDS=1.2
+INSTALL_STEP_SECONDS=0.5 (from clicking Install to the next window)
+--- page Installing (actual Installing, match=True): 'LabelFrame Client 安装程序' ---
+  [206] 取消
+  [191] WixUI_Bmp_Banner
+  [202] 上一步(&B)
+  [204] 下一步(&N)
+  [330] 正在停止服务
+  [332] 安装向导正在安装 LabelFrame Client，请稍候。
+  [334] 正在安装 LabelFrame Client
+  [354] 状态:
+  screenshot -> C:\Probe\logs\w-g-06-Installing.png (PrintWindow)
+--- page FatalError (actual FatalError, match=True): 'LabelFrame Client 安装程序' ---
+  [306] 完成(&F)
+  [206] 取消
+  [192] WixUI_Bmp_Dialog
+  [202] 上一步(&B)
+  [58] 由于发生错误，LabelFrame Client 安装向导提前结束。您的系统尚未修改。 安装日志：C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI486df.LOG。
+  [194] LabelFrame Client 安装向导提前结束
+  screenshot -> C:\Probe\logs\w-g-07-FatalError.png (PrintWindow)
+OUTCOME=ended with FatalError
+--- installer windows on screen from the Install click on (one entry per change) ---
+09:41:43.184 poll 12 MsiDialogCloseClass 1572962 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:43.793 poll 14 MsiDialogCloseClass 1572962 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 正在复制新文件 | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:44.293 poll 15 MsiDialogCloseClass 1572962 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:44.856 poll 16 MsiDialogCloseClass 1572962 name=Installing :: 取消 | WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:45.903 poll 17 MsiDialogCloseClass 1572962 name=Installing :: WixUI_Bmp_Banner | 上一步(&B) | 下一步(&N) | 正在回退操作: | 安装向导正在安装 LabelFrame Client，请稍候。 | 正在安装 LabelFrame Client | 状态:
+09:41:46.403 poll 18 MsiDialogCloseClass 852064 name=FatalError :: 完成(&F) | 取消 | WixUI_Bmp_Dialog | 上一步(&B) | 由于发生错误，LabelFrame Client 安装向导提前结束。您的系统尚未修改。 安装日志：C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI486df.LOG。 | LabelFrame Client 安装向导提前结束
+last unrecognised installer window:
+windows seen: FatalError, Installing, License, Location, MessageBox, Options, Verify, Welcome
+exit code=1603
+WIZARD_PATH=Welcome -> License -> Location -> Options -> Verify -> FatalError
+client processes started during the run=0
+after: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
+--- install logs created during this run (no /L switch was given) ---
+  log file: C:\Users\<account>\AppData\Local\Temp\MSI486df.LOG.updater-service.log  (508 bytes, 09:41:44)
+    2026-11-25 09:41:44  更新服务启动：开始。
+    2026-11-25 09:41:44  更新服务启动：失败，安装将中止并撤回本次改动。服务记录的原因：[09:41:44 事件 0] Service cannot be started. System.IO.InvalidDataException: 更新路径允许非管理员写入，请重新以管理员身份安装客户端。 | [09:41:44 事件 1] 更新服务启动失败，停在阶段「安装目录自检」：更新路径允许非管理员写入，请重新以管理员身份安装客户端。
+  log file: C:\Users\<account>\AppData\Local\Temp\MSI486df.LOG  (400574 bytes, 09:41:46)
+    L121: MSI (c) (74:F8) [09:41:35:168]: Doing action: PrepareDlg
+    L198: MSI (c) (74:F8) [09:41:35:418]: Doing action: LaunchConditions
+    L276: MSI (c) (74:F8) [09:41:35:418]: Doing action: WelcomeDlg
+    L324: MSI (c) (74:F8) [09:41:41:965]: Doing action: ProgressDlg
+    L551: MSI (s) (E8:EC) [09:41:42:199]: Doing action: LaunchConditions
+    L966: MSI (s) (E8:EC) [09:41:43:653]: Doing action: StartUpdaterService
+    L1414: WixQuietExec:  LabelFrame updater service start: begin.
+    L1417: WixQuietExec:  LabelFrame updater service start: FAILED - the service did not stay running; the installation will be rolled back. Details: C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI486df.LOG.updater-service.log ; service events: Windows Application log, source LabelFrameClientUpdater.
+    L1794: MSI (s) (E8:EC) [09:41:46:168]: MainEngineThread is returning 1603
+    L1954: MSI (c) (74:F8) [09:41:46:949]: 产品: LabelFrame Client -- 安装失败。
+    L1960: MSI (c) (74:F8) [09:41:46:949]: MainEngineThread is returning 1603
+CHECK_FAILURES=0
+=== end 'w-g'  [09:41:53] ===

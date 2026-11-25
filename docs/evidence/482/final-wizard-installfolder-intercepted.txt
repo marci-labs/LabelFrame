@@ -1,0 +1,42 @@
+=== interactive run  [guest 09:39:58] ===
+用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/25 9:36
+script present=True size=31471
+TASK_STATE=Ready resultPresent=True lastResult=0
+=== wizard capture 'w-d': mode=prompt  [09:40:01] ===
+arguments: /i "C:\Probe\LabelFrame-Client-1.6.1.msi" /norestart INSTALLFOLDER="C:\LabelFrame\Client"
+identity=DESKTOP-D65DJ5S\<account> elevated=True
+TEMP=C:\Users\<ACCOUNT>~1\AppData\Local\Temp
+before: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
+windows seen while waiting: InstallFolderBox, MessageBox, Prepare
+--- page InstallFolderBox (actual InstallFolderBox, match=True): 'LabelFrame Client 安装程序' ---
+  [302] 确定
+  [294] LabelFrame 客户端固定安装到 C:\Program Files\LabelFrame\Client，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。
+  [298] 信息图标
+  screenshot -> C:\Probe\logs\w-d-01-InstallFolderBox.png (PrintWindow)
+  explanatory text 'none' visible=0
+  explanatory text 'desktop' visible=0
+  explanatory text 'aspnet' visible=0
+  check ok: the intercept states that INSTALLFOLDER is not supported
+  check ok: the intercept names the fixed install location
+--- page FatalError (actual FatalError, match=True): 'LabelFrame Client 安装程序' ---
+  [306] 完成(&F)
+  [206] 取消
+  [192] WixUI_Bmp_Dialog
+  [202] 上一步(&B)
+  [58] 由于发生错误，LabelFrame Client 安装向导提前结束。您的系统尚未修改。 安装日志：C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI31975.LOG。
+  [194] LabelFrame Client 安装向导提前结束
+  screenshot -> C:\Probe\logs\w-d-02-FatalError.png (PrintWindow)
+  page after '确定': FatalError
+exit code=1603
+client processes started during the run=0
+after: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
+--- install logs created during this run (no /L switch was given) ---
+  log file: C:\Users\<account>\AppData\Local\Temp\MSI31975.LOG  (79198 bytes, 09:40:03)
+    L225: MSI (c) (D4:8C) [09:40:01:627]: Doing action: PrepareDlg
+    L302: MSI (c) (D4:8C) [09:40:01:862]: Doing action: LaunchConditions
+    L309: MSI (c) (D4:8C) [09:40:02:862]: 产品: LabelFrame Client -- LabelFrame 客户端固定安装到 C:\Program Files\LabelFrame\Client，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。
+    L443: MSI (c) (D4:8C) [09:40:03:953]: 产品: LabelFrame Client -- 安装失败。
+    L449: MSI (c) (D4:8C) [09:40:03:953]: MainEngineThread is returning 1603
+CHECK_FAILURES=0
+=== end 'w-d'  [09:40:05] ===

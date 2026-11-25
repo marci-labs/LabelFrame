@@ -1,0 +1,94 @@
+
+=== H1-A step 1: install ASP.NET Core Runtime 10.0.12 x64 ONLY  [guest 19:15:25] ===
+ASPNETCORE_INSTALL_EXIT=0 elapsed=3.1s
+--- installed runtimes ---
+  dotnet.exe NOT FOUND
+  dir Microsoft.AspNetCore.App: 10.0.12
+
+=== H1-A step 2: install Client MSI 1.6.0 at the default directory (silent, verbose log)  [guest 19:15:29] ===
+MSI_INSTALL_EXIT=1603 elapsed=1.0s
+MSI_EXIT_MEANING=0=success 1603=fatal error during installation 3010=success, reboot required
+--- state after the MSI ---
+UPDATER_SERVICE_PRESENT=False
+INSTALL_DIR_EXISTS=False
+--- System log: Service Control Manager ---
+--- Application/System log: .NET Runtime, Application Error, Windows Error Reporting, MsiInstaller ---
+[19:15:29] MsiInstaller id=1040 正在开始 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 5052。
+[19:15:29] MsiInstaller id=10005 产品: LabelFrame Client -- 本机未检测到 ASP.NET Core Runtime，请先安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0
+[19:15:29] MsiInstaller id=1042 正在结束 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 5052。
+[19:15:29] MsiInstaller id=1033 Windows Installer 已安装产品。产品名称: LabelFrame Client。产品版本: 1.6.0。产品语言: 2052。制造商: LabelFrame。安装成功或错误状态: 1603。
+[19:15:29] MsiInstaller id=11708 产品: LabelFrame Client -- 安装失败。
+--- MSI log: key lines ---
+MSI_LOG=C:\Probe\logs\h1a-client-aspnetcore-only.msi.log lines=390
+281: Property(S): DOTNET10_PRESENT = 12289
+282: Property(S): WEBVIEW2_HKLM = 153.0.4234.48
+363: Property(S): UILevel = 2
+365: MSI (s) (3C:70) [19:15:29:336]: Note: 1: 1708
+
+=== H1-A step 3: why? run the updater entry point by hand (files laid out by an administrative install image; the product is NOT registered)  [guest 19:15:30] ===
+MSI_ADMIN_EXTRACT_EXIT=0 elapsed=1.0s
+HOST_EXE=C:\Probe\extract\PFiles64\LabelFrame\Client\LabelFrame.WinHost.exe
+--- runtimeconfig.json shipped inside the 1.6.0 MSI ---
+  {
+    "runtimeOptions": {
+      "tfm": "net10.0",
+      "frameworks": [
+        {
+          "name": "Microsoft.NETCore.App",
+          "version": "10.0.0"
+        },
+        {
+          "name": "Microsoft.WindowsDesktop.App",
+          "version": "10.0.0"
+        },
+        {
+          "name": "Microsoft.AspNetCore.App",
+          "version": "10.0.0"
+        }
+      ],
+      "configProperties": {
+        "System.GC.Server": true,
+        "System.Reflection.Metadata.MetadataUpdater.IsSupported": false,
+        "System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization": false,
+        "CSWINRT_USE_WINDOWS_UI_XAML_PROJECTIONS": false
+      }
+    }
+  }
+HOST_STILL_RUNNING_AFTER_20S=killed
+HOST_EXIT= (hex 0x) elapsed=20.1s
+--- host stderr ---
+  You must install .NET to run this application.
+
+  App: C:\Probe\extract\PFiles64\LabelFrame\Client\LabelFrame.WinHost.exe
+  Architecture: x64
+  App host version: 10.0.14
+  .NET location: Not found
+
+  The following locations were searched:
+    Application directory:
+      C:\Probe\extract\PFiles64\LabelFrame\Client\
+    Environment variable:
+      DOTNET_ROOT_X64 = <not set>
+      DOTNET_ROOT = <not set>
+    Registered location:
+      HKLM\SOFTWARE\dotnet\Setup\InstalledVersions\x64\InstallLocation = <not set>
+    Default location:
+      C:\Program Files\dotnet
+
+  Learn more:
+  https://aka.ms/dotnet/app-launch-failed
+
+  Download the .NET runtime:
+  https://aka.ms/dotnet-core-applaunch?missing_runtime=true&arch=x64&rid=win-x64&os=win10&apphost_version=10.0.14
+--- host stdout ---
+--- System log: Service Control Manager ---
+--- Application/System log: .NET Runtime, Application Error, Windows Error Reporting, MsiInstaller ---
+[19:15:31] MsiInstaller id=1033 Windows Installer 已安装产品。产品名称: LabelFrame Client。产品版本: 1.6.0。产品语言: 2052。制造商: LabelFrame。安装成功或错误状态: 0。
+[19:15:31] MsiInstaller id=11707 产品: LabelFrame Client -- 成功地完成了安装。
+[19:15:31] MsiInstaller id=1042 正在结束 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 4536。
+[19:15:31] .NET Runtime id=1023 Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Probe\extract\PFiles64\LabelFrame\Client\LabelFrame.WinHost.exe | Message: You must install .NET to run this application. |  | App: C:\Probe\extract\PFiles64\LabelFrame\Client\LabelFrame.WinHost.exe | Architecture: x64 | App host version: 10.0.14 | .NET location: Not found |  | The following locations were searched: |   Application directory: |     C:\Probe\extract\PFiles64\LabelFrame\Client\ |   Environment variable: |     DOTNET_ROOT_X64 = <not set> |     DOTNET_ROOT = <not set> |   Registered location: |     HKLM\SOFTWARE\dotnet\Setup\InstalledVersions\x64\InstallLocation = <not set> |   Default location: |     C:\Program Files\dotnet |  | Learn more: | https://aka.ms/dotnet/app-launch-failed |  | Download the .NET runtime: | https://aka.ms/dotnet-core-applaunch?missing_runtime=true&arch=x64&rid=win-x64&os=win10&apphost_version=10.0.14 |  |
+[19:15:39] Windows Error Reporting id=1001 故障存储段 ，类型 0 | 事件名称: crashpad_log | 响应: 不可用 | Cab ID: 0 |  | 问题签名: | P1: MicrosoftEdgeUpdate.exe | P2: 1.3.319.41 | P3: InstallError|pcmanager | P4: 0xa043050d | P5:  | P6:  | P7:  | P8:  | P9:  | P10:  |  | 附加文件: | \\?\C:\ProgramData\Microsoft\EdgeUpdate\Log\MicrosoftEdgeUpdate.log |  | 可在此处获取这些文件: |  |  | 分析符号:  | 重新检查解决方案: 0 | 报告 ID: d7f69eb3-0057-48dc-9f89-664a35560534 | 报告状态: 268697600 | 哈希存储段:  | Cab GUID: 0
+[19:15:39] Windows Error Reporting id=1001 故障存储段 1470673887787489535，类型 5 | 事件名称: crashpad_log | 响应: 不可用 | Cab ID: 0 |  | 问题签名: | P1: MicrosoftEdgeUpdate.exe | P2: 1.3.319.41 | P3: InstallError|pcmanager | P4: 0xa043050d | P5:  | P6:  | P7:  | P8:  | P9:  | P10:  |  | 附加文件: | \\?\C:\ProgramData\Microsoft\EdgeUpdate\Log\MicrosoftEdgeUpdate.log | \\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER9459.tmp.WERInternalMetadata.xml | \\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER94A8.tmp.xml | \\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER94B3.tmp.csv | \\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER94C3.tmp.txt |  | 可在此处获取这些文件: | \\?\C:\ProgramData\Microsoft\Windows\WER\ReportArchive\NonCritical_MicrosoftEdgeUpd_55aa9284878173eb96f6f2bef0b2cc9b1999518b_00000000_d7f69eb3-0057-48dc-9f89-664a35560534 |  | 分析符号:  | 重新检查解决方案: 0 | 报告 ID: d7f69eb3-0057-48dc-9f89-664a35560534 | 报告状态: 268435456 | 哈希存储段: 29f90729c02ab994f468e21be60418ff | Cab GUID: 0
+
+=== The message Windows Installer shows for this failure (formatted on this machine)  [guest 19:15:52] ===
+FORMAT_1920_FAILED=使用“5”个参数调用“InvokeMember”时发生异常:“类型不匹配。 (异常来自 HRESULT:0x80020005 (DISP_E_TYPEMISMATCH))”

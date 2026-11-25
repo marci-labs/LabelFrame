@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 界面库本地化字符串的覆盖：只改写用到的条目，其余仍取界面库自带的简体中文文案。
+     向导以失败收场时显示的是界面库的标准「提前结束」页，其说明文字由下面两段拼成；这里收紧措辞并补上安装日志的位置，
+     否则放不进该页的说明区域。[MsiLogFileLocation] 由安装器在显示时填入（安装包启用了自动日志，失败时一定已有日志）。 -->
+<WixLocalization Culture="zh-cn" xmlns="http://wixtoolset.org/schemas/v4/wxl">
+  <String Id="FatalErrorDescription1" Value="由于发生错误，[ProductName] 安装向导提前结束。您的系统尚未修改。" />
+  <String Id="FatalErrorDescription2" Value="安装日志：[MsiLogFileLocation]。" />
+</WixLocalization>

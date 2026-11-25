@@ -27,7 +27,7 @@ Copy-Item (Join-Path $root 'packaging\appsettings.json') (Join-Path $publishDir 
 
 # 3) 生成 WiX 文件清单（GUID 加盐 client，避免与 Server 包组件 GUID 冲突）
 $filesWxs = Join-Path $root 'packaging\files-client.wxs'
-& (Join-Path $root 'packaging\generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs -GuidSalt 'client'
+& (Join-Path $root 'packaging\generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs -GuidSalt 'client' -InstallDirId ClientInstallDir
 
 # 3b) 官方插件附带包（迭代 63，决策 #123；迭代 143 扩 TSPL，决策 #195）：检测 artifacts 下的官方 .lfplugin → 随 MSI 携带
 #     （plugin-packages\ 目录，供 OfficialPluginMigration 存量升级自动安装；无产物时跳过——本地裸构建）
@@ -51,7 +51,7 @@ foreach ($plugin in $officialPlugins) {
 $msi = Join-Path $root "artifacts\LabelFrame-Client-$Version.msi"
 $global:LASTEXITCODE = 0
 & $wix eula accept wix7 2>$null | Out-Null
-& $wix build (Join-Path $root 'packaging\main.wxs') $filesWxs -d PublishDir=$publishDir -d Version=$Version -d AssetsDir=$(Join-Path $root 'assets') -d LicenseRtf=$(Join-Path $root 'packaging\license.rtf') -d PackagingDir=$(Join-Path $root 'packaging') @pluginPackageArgs -o $msi -arch x64 -ext WixToolset.NetFx.wixext -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext/7.0.0 -culture zh-cn 2>&1 | Write-Host
+& $wix build (Join-Path $root 'packaging\main.wxs') $filesWxs -d PublishDir=$publishDir -d Version=$Version -d AssetsDir=$(Join-Path $root 'assets') -d LicenseRtf=$(Join-Path $root 'packaging\license.rtf') -d PackagingDir=$(Join-Path $root 'packaging') @pluginPackageArgs -o $msi -arch x64 -ext WixToolset.NetFx.wixext -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext/7.0.0 -culture zh-cn -loc (Join-Path $root 'packaging\wixui-zh-cn-override.wxl') 2>&1 | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
 
 # 4b) 发布工件依赖降版回归断言（迭代 64 返修，#57 AC-01，决策 #130）：

@@ -1,0 +1,74 @@
+
+=== T4 step 1: uninstall the client that was installed at the default directory (all three runtimes stay installed)  [guest 19:29:41] ===
+INSTALLED_PRODUCT_CODE={C5E74128-79FF-4C4B-9227-781AF07519CD}
+MSI_UNINSTALL_EXIT=0 elapsed=2.1s
+UPDATER_SERVICE_PRESENT_AFTER_UNINSTALL=False
+PF_LABELFRAME_EXISTS_AFTER_UNINSTALL=True
+--- runtimes still present ---
+  Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+  Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+  Microsoft.WindowsDesktop.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+
+=== T4 step 2: install Client MSI 1.6.0 with the directory page changed to a location outside Program Files  [guest 19:29:43] ===
+MSI_INSTALL_EXIT=1603 elapsed=250.6s
+REQUESTED_INSTALLFOLDER=C:\LabelFrame\Client
+MSI_EXIT_MEANING=0=success 1603=fatal error during installation
+--- state after the MSI ---
+UPDATER_SERVICE_PRESENT=False
+CUSTOM_DIR_LEFT_BEHIND=False
+PF_INSTALL_DIR_EXISTS=False
+--- System log: Service Control Manager ---
+[19:29:44] id=7045 服务已安装在系统中。 服务名称: LabelFrame Client Updater 服务文件名: C:\LabelFrame\Client\LabelFrame.WinHost.exe --update-service 服务类型: 用户模式服务 服务启动类型: 自动启动 服务帐户: LocalSystem
+[19:33:14] id=7040 Background Intelligent Transfer Service 服务的启动类型从 自动启动 更改为 按需启动。
+--- Application/System log: .NET Runtime, Application Error, Windows Error Reporting, MsiInstaller (Edge updater noise filtered) ---
+[19:29:43] MsiInstaller id=1034 Windows Installer 已删除产品。产品名称: LabelFrame Client。产品版本: 1.6.0。产品语言: 2052。制造商: LabelFrame。删除成功或错误状态: 0。
+[19:29:43] MsiInstaller id=11724 产品: LabelFrame Client -- 成功地完成了删除。
+[19:29:43] MsiInstaller id=1042 正在结束 Windows Installer 事务 {C5E74128-79FF-4C4B-9227-781AF07519CD}。客户端进程 ID: 9836。
+[19:29:43] MsiInstaller id=1040 正在开始 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 6032。
+[19:33:54] MsiInstaller id=11920 产品: LabelFrame Client -- 错误 1920。未能启动服务“LabelFrame Client Updater”(LabelFrameClientUpdater)。请确认你有足够的权限启动系统服务。
+[19:33:54] MsiInstaller id=1042 正在结束 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 6032。
+[19:33:54] MsiInstaller id=1033 Windows Installer 已安装产品。产品名称: LabelFrame Client。产品版本: 1.6.0。产品语言: 2052。制造商: LabelFrame。安装成功或错误状态: 1603。
+[19:33:54] MsiInstaller id=11708 产品: LabelFrame Client -- 安装失败。
+--- MSI log: key lines ---
+MSI_LOG=C:\Probe\logs\t4-client-custom-dir.msi.log lines=1246
+1118: Property(S): DOTNET10_PRESENT = 0
+1119: Property(S): WEBVIEW2_HKLM = 153.0.4234.48
+1221: MSI (s) (B0:34) [19:33:54:217]: Note: 1: 1708
+1231: MSI (s) (B0:34) [19:33:54:233]: MainEngineThread is returning 1603
+1244: MSI (c) (90:94) [19:33:54:233]: MainEngineThread is returning 1603
+
+=== T4 step 3: why? run the updater entry point by hand from outside Program Files (all three runtimes present; product NOT registered)  [guest 19:33:54] ===
+HOST_EXE=C:\Probe\extract\PFiles64\LabelFrame\Client\LabelFrame.WinHost.exe
+HOST_EXIT= (hex 0x) elapsed=0.3s
+--- host stderr ---
+--- host stdout ---
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: C:\Probe\extract\PFiles64\LabelFrame\Client\
+  fail: Microsoft.Extensions.Hosting.Internal.Host[9]
+        BackgroundService failed
+        System.IO.InvalidDataException: �Զ���װ��֧�ֹ���Ա������ Program Files �µĿͻ��ˡ�
+           at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path)
+           at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot()
+           at LabelFrame.WinHost.Updates.ClientUpdaterService.ExecuteAsync(CancellationToken stoppingToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.TryExecuteBackgroundServiceAsync(BackgroundService backgroundService)
+  crit: Microsoft.Extensions.Hosting.Internal.Host[10]
+        The HostOptions.BackgroundServiceExceptionBehavior is configured to StopHost. A BackgroundService has thrown an unhandled exception, and the IHost instance is stopping. To avoid this behavior, configure this to Ignore; however the BackgroundService will not be restarted.
+        System.IO.InvalidDataException: �Զ���װ��֧�ֹ���Ա������ Program Files �µĿͻ��ˡ�
+           at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path)
+           at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot()
+           at LabelFrame.WinHost.Updates.ClientUpdaterService.ExecuteAsync(CancellationToken stoppingToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.TryExecuteBackgroundServiceAsync(BackgroundService backgroundService)
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+--- System log: Service Control Manager ---
+--- Application/System log: .NET Runtime, Application Error, Windows Error Reporting, MsiInstaller (Edge updater noise filtered) ---
+[19:33:54] MsiInstaller id=11920 产品: LabelFrame Client -- 错误 1920。未能启动服务“LabelFrame Client Updater”(LabelFrameClientUpdater)。请确认你有足够的权限启动系统服务。
+[19:33:54] MsiInstaller id=1033 Windows Installer 已安装产品。产品名称: LabelFrame Client。产品版本: 1.6.0。产品语言: 2052。制造商: LabelFrame。安装成功或错误状态: 1603。
+[19:33:54] MsiInstaller id=11708 产品: LabelFrame Client -- 安装失败。
+[19:33:54] MsiInstaller id=1042 正在结束 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 6032。
+[19:33:55] .NET Runtime id=1000 Category: Microsoft.Extensions.Hosting.Internal.Host | EventId: 9 |  | BackgroundService failed |  | Exception:  | System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |    at LabelFrame.WinHost.Updates.ClientUpdaterService.ExecuteAsync(CancellationToken stoppingToken) |    at Microsoft.Extensions.Hosting.Internal.Host.TryExecuteBackgroundServiceAsync(BackgroundService backgroundService) |
+[19:33:55] .NET Runtime id=1000 Category: Microsoft.Extensions.Hosting.Internal.Host | EventId: 10 |  | The HostOptions.BackgroundServiceExceptionBehavior is configured to StopHost. A BackgroundService has thrown an unhandled exception, and the IHost instance is stopping. To avoid this behavior, configure this to Ignore; however the BackgroundService will not be restarted. |  | Exception:  | System.IO.InvalidDataException: 自动安装仅支持管理员部署在 Program Files 下的客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |    at LabelFrame.WinHost.Updates.ClientUpdaterService.ExecuteAsync(CancellationToken stoppingToken) |    at Microsoft.Extensions.Hosting.Internal.Host.TryExecuteBackgroundServiceAsync(BackgroundService backgroundService) |

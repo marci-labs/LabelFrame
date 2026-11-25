@@ -1,0 +1,54 @@
+
+=== T3 step 1 (control): additionally install .NET Desktop Runtime 10.0.12 x64  [guest 19:28:44] ===
+DESKTOP_INSTALL_EXIT=0 elapsed=3.2s
+--- installed runtimes ---
+  Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+  Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+  Microsoft.WindowsDesktop.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+--- registered .NET products ---
+  Microsoft .NET Host - 10.0.12 (x64) | 80.48.58476
+  Microsoft .NET Host FX Resolver - 10.0.12 (x64) | 80.48.58476
+  Microsoft .NET Runtime - 10.0.12 (x64) | 10.0.12.36422
+  Microsoft .NET Runtime - 10.0.12 (x64) | 80.48.58476
+  Microsoft ASP.NET Core Runtime - 10.0.12 (x64) | 80.48.58476
+  Microsoft ASP.NET Core Runtime - 10.0.12 (x64) | 10.0.12.36422
+
+=== T3 step 2 (control): run Client MSI 1.6.0 at the default directory (silent, verbose log)  [guest 19:28:48] ===
+MSI_INSTALL_EXIT=0 elapsed=3.0s
+MSI_EXIT_MEANING=0=success 1603=fatal error during installation
+--- state after the MSI ---
+UPDATER_SERVICE_PRESENT=True
+UPDATER_SERVICE displayName=LabelFrame Client Updater state=Running startMode=Auto startName=LocalSystem pid=11860 path="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+UPDATER_PROCESS owner=NT AUTHORITY\SYSTEM sessionId=0 cmd="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+INSTALLED_PRODUCT=LabelFrame Client 1.6.0 productCode={C5E74128-79FF-4C4B-9227-781AF07519CD} installLocation=
+INSTALL_DIR_EXISTS=True
+UPDATE_STATE_DIR_EXISTS=True
+--- ACL of the install directory ---
+  C:\Program Files\LabelFrame\Client NT SERVICE\TrustedInstaller:(I)(F)
+                                     NT SERVICE\TrustedInstaller:(I)(CI)(IO)(F)
+                                     NT AUTHORITY\SYSTEM:(I)(F)
+                                     NT AUTHORITY\SYSTEM:(I)(OI)(CI)(IO)(F)
+                                     BUILTIN\Administrators:(I)(F)
+                                     BUILTIN\Administrators:(I)(OI)(CI)(IO)(F)
+                                     BUILTIN\Users:(I)(RX)
+                                     BUILTIN\Users:(I)(OI)(CI)(IO)(GR,GE)
+                                     CREATOR OWNER:(I)(OI)(CI)(IO)(F)
+                                     APPLICATION PACKAGE AUTHORITY\ALL APPLICATION PACKAGES:(I)(RX)
+                                     APPLICATION PACKAGE AUTHORITY\ALL APPLICATION PACKAGES:(I)(OI)(CI)(IO)(GR,GE)
+                                     APPLICATION PACKAGE AUTHORITY\所有受限制的应用程序包:(I)(RX)
+                                     APPLICATION PACKAGE AUTHORITY\所有受限制的应用程序包:(I)(OI)(CI)(IO)(GR,GE)
+
+  已成功处理 1 个文件; 处理 0 个文件时失败
+--- System log: Service Control Manager ---
+[19:28:49] id=7045 服务已安装在系统中。 服务名称: LabelFrame Client Updater 服务文件名: "C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service 服务类型: 用户模式服务 服务启动类型: 自动启动 服务帐户: LocalSystem
+--- Application/System log: .NET Runtime, Application Error, Windows Error Reporting, MsiInstaller (Edge updater noise filtered) ---
+[19:28:48] MsiInstaller id=1040 正在开始 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 3040。
+[19:28:51] MsiInstaller id=11707 产品: LabelFrame Client -- 成功地完成了安装。
+[19:28:51] MsiInstaller id=1033 Windows Installer 已安装产品。产品名称: LabelFrame Client。产品版本: 1.6.0。产品语言: 2052。制造商: LabelFrame。安装成功或错误状态: 0。
+[19:28:51] MsiInstaller id=1042 正在结束 Windows Installer 事务 C:\Probe\LabelFrame-Client-1.6.0.msi。客户端进程 ID: 3040。
+--- MSI log: key lines ---
+MSI_LOG=C:\Probe\logs\t3-client-all-runtimes.msi.log lines=1061
+932: Property(S): DOTNET10_PRESENT = 0
+933: Property(S): WEBVIEW2_HKLM = 153.0.4234.48
+1045: MSI (s) (B0:94) [19:28:51:071]: MainEngineThread is returning 0
+1059: MSI (c) (E0:08) [19:28:51:071]: MainEngineThread is returning 0

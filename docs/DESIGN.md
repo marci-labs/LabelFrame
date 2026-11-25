@@ -345,6 +345,7 @@ flowchart LR
 | 238 | v1.6.0 发行与欠账边界（2026-10-29，[#478](https://github.com/marci-labs/LabelFrame/issues/478)） | 用户明确接受 Android 更新剩余错签名、整批/编辑、待确认进程重建与故障矩阵作为披露的非阻断欠账，批准正式发布；PDA 新增更新能力使用 minor 版本 1.6.0，APK versionCode 10600 严格高于测试 10507。发布管理权限沿用已批准的可信网络模型，不修改打印公共契约。 | 风险接受不是验收通过，#474 与既有性能/平台/物理设备欠账保持开放；正式 APK 必须对照旧正式证书，不能覆盖不同签名测试设备。新 tag 仅在记账 PR 最新门禁通过并 squash 后创建；不移动公开 tag，不操作真实设备。 |
 
 | 239 | Android SQLite 安全升级（2026-11-07，[#480](https://github.com/marci-labs/LabelFrame/issues/480)） | Android 原生包 2.1.11 升至 2.1.14（SQLite 3.54.0），修复 CVE-2025-6965；provider/core 2.1.13 与桌面依赖保持，数据库格式、打印契约及初始化顺序不变。增加包与 APK 的原生资产核验入口，详见 [Android 模块设计](design/androidhost.md#sqlite-原生资产核验)。 | NuGet 零告警不能代替 Android ELF/ZIP 对齐与资产来源检查；用户确认设备暂不可得，同签名升级及打印恢复转待验收。16KB 内核运行验证仍需相应设备；不以历史真机结果冒充本轮验证，不发版或部署。 |
+| 240 | 裸装 Client MSI：运行时检测、固定安装位置与更新服务启动（2026-11-25，[#482](https://github.com/marci-labs/LabelFrame/issues/482)） | Client MSI 同时检测 ASP.NET Core 10 与 .NET Desktop 10（x64），缺失提示按实际缺项说明并注明 x64；两项都不满足按「没有可用的 .NET 10」提示——只装 ASP.NET Core Runtime 的机器两项检测都不满足（检测工具找不到 .NET 宿主），不能说成 ASP.NET Core 未安装；缺 Desktop 在安装前拦截。安装位置固定为 Program Files\LabelFrame\Client：目录标识改为非公开属性，向导的安装位置页只读，命令行传入 INSTALLFOLDER 拦下并说明。更新服务的自检在系统报告「已启动」之前完成（不在启动握手里等就绪，免得系统丢弃停止请求），就绪等待放到后台并设 60 秒兜底时限，失败原因与阶段同步写入事件日志。Client MSI 不用内建的服务启动动作（服务启动失败时它按固定间隔反复重试约 4 分钟），改由延迟动作运行 `--start-update-service` 启动并等待（75 秒兜底），失败立即中止安装并把服务侧原因转进安装日志。安装包启用 MsiLogging，每次安装在用户临时目录自动留安装日志（其中启动步骤的结论只用 ASCII，避免与系统代码页混排乱码；中文详情写到旁边的明细日志）。向导失败时不出现错误对话框，安装日志位置通过界面库本地化覆盖写在「提前结束」页上；按条件择一显示的向导说明控件必须默认隐藏（显示条件为假时并不隐藏，否则互相叠盖）。 | 裸 MSI 直装在缺运行时、装到别处、服务起不来三种情形下都在安装前或数秒内给出准确原因，不再出现约 4 分钟等待后「权限不足」的提示；安装位置不再可定制；安装日志留在临时目录，不要求用户清理。机制见 [design/client-updates.md](design/client-updates.md#服务启动与安装期启动)。引导 EXE 链、服务端 MSI 与自动更新协议不变。 |
 
 ### 客户端安全重启（决策 #210，迭代 164，#451）
 
@@ -1001,6 +1002,8 @@ public interface ITopologyResolver
 - **.NET 运行时（Desktop / AspNetCore）= 文件版本探测**：枚举 `%ProgramFiles%\dotnet\shared\Microsoft.WindowsDesktop.App\`（Desktop）或 `%ProgramFiles%\dotnet\shared\Microsoft.AspNetCore.App\`（AspNetCore）下版本目录名，按 `System.Version` 解析后取最大值与最低版本（10.0.0）比较——对齐 MSI 侧 NetCoreCheck 口径（desktop / aspnet 各自条目 / 10.0.0 / latestMajor 前滚）。**不采用注册表 `dotnet\Setup\InstalledVersions\...\sharedfx`**：实证（2026-09-14 开发机）运行时已装而该键不存在（本仓 MSI 注释亦记录「版本号是命名值而非默认值，注册表搜索读不到」）；文件枚举是微软官方《How to check that .NET is installed》口径。
 - **WebView2 = 注册表探测**：`HKLM\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}` 值 `pv`，或 HKCU 同键（per-user 安装）——对齐 MSI 侧 `WEBVIEW2_HKLM` / `WEBVIEW2_HKCU` 先例；Evergreen 自更新，只判存在不比版本。
 - 探测实现于核心库（`RuntimeProbe`，net48 / net10 双腿；目录枚举与注册表读取以委托注入可单测），BA 启动时（`engine.Detect()` 前）写入 Burn 探测变量；Burn 语义：`DetectCondition` 真 = 已装（Present）→ 计划跳过，假 = 缺失 → 计划安装。运行时包 `Permanent="yes"`（共享系统组件，不随 bundle 卸载 / 升级移除）。
+
+**裸装 Client MSI 的运行时检测（决策 #240 补记）**：MSI 侧同样逐项检测 ASP.NET Core 与 .NET Desktop（NetCoreCheck 各一条、x64、10.0.0、latestMajor 前滚），与本节文件版本探测口径一致；缺失在安装前拦截并按实际缺项提示，不再让缺 Desktop 的机器走到启动更新服务才失败。
 
 **非 MSI 落位机制（定案：ExePackage 包装解压工具；备选 Burn 自定义动作否决）**：
 

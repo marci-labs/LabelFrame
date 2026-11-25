@@ -186,6 +186,8 @@ Linux Client 镜像的缓存还原层必须复制 WinHost 的全部项目引用�
 
 `Updates/ClientUpdateAgent` 是宿主后台服务，复用 `HostRestartCoordinator` 的整批打印、结果回报与界面冻结门。恢复检查前先冻结队列和路由领取，实际版本、插件、连接及注册通过后恢复业务；恢复失败的页面可读，业务写操作仍被保护。`--update-service` 在普通宿主装配前进入 `ClientUpdaterService`，不启动打印与 Web UI；安装和原用户恢复分别使用独立监督进程，避免自身 MSI 停服务与程序集占用。安装权限、两阶段提交、持久化失败和缓存契约见 [client-updates.md](client-updates.md)。
 
+`--update-service` 的启动由 `UpdaterStartup` 握手（阶段、就绪 / 失败信号、兜底时限与退出码结算）和 `ClientUpdaterLifetime`（自检先于系统记为「已启动」，就绪等待在后台兜底）承担；`--start-update-service`（`UpdaterServiceStarter`）是安装包调用的启动入口，启动服务并等到运行且升级请求管道就绪，或判定失败并停服务；结论以 ASCII 写进安装日志，中文详情写到明细日志。两者的契约与时限见 [client-updates.md](client-updates.md#服务启动与安装期启动)。
+
 ## 6. 平台坑与不变量
 
 修改本模块前必读（源码中对应位置保留白名单注释）：

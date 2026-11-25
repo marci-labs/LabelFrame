@@ -1,0 +1,45 @@
+=== interactive run  [guest 09:50:14] ===
+用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/25 9:47
+script present=True size=32396
+TASK_STATE=Ready resultPresent=True lastResult=0
+=== wizard capture 'w-c': mode=prompt  [09:50:17] ===
+arguments: /i "C:\Probe\LabelFrame-Client-1.6.1.msi" /norestart
+identity=DESKTOP-D65DJ5S\<account> elevated=True
+TEMP=C:\Users\<ACCOUNT>~1\AppData\Local\Temp
+before: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
+windows seen while waiting: Prepare, RuntimeMissing
+--- page RuntimeMissing (actual RuntimeMissing, match=True): 'LabelFrame 安装 - 缺少 .NET 运行时' ---
+  [163] <a href="https://dotnet.microsoft.com/download/dotnet/10.0">https://dotnet.microsoft.com/download/dotnet/10.0</a>
+  [166] 退出
+  [157] 未检测到可用的 .NET Desktop Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后再运行本安装程序。
+  [161] 微软官方下载页（两项都在这里，都选 x64）：
+  screenshot -> C:\Probe\logs\w-c-01-RuntimeMissing.png (PrintWindow)
+  explanatory text 'none' visible=0
+  explanatory text 'desktop' visible=1
+  explanatory text 'aspnet' visible=0
+  check ok: the prompt states the x64 architecture
+  check ok: the prompt carries the official download link
+  check ok: the prompt has an exit button
+  check ok: the prompt offers no way to continue the installation
+--- page UserExit (actual UserExit, match=True): 'LabelFrame Client 安装程序' ---
+  [306] 完成(&F)
+  [206] 取消
+  [192] WixUI_Bmp_Dialog
+  [202] 上一步(&B)
+  [58] LabelFrame Client 安装程序已中断。您的系统尚未修改。若要稍后安装此程序，请再次运行安装程序。 单击“完成”按钮退出安装向导。
+  [194] LabelFrame Client 安装向导中断
+  screenshot -> C:\Probe\logs\w-c-02-UserExit.png (PrintWindow)
+  page after '退出': UserExit
+exit code=1602
+client processes started during the run=0
+after: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
+--- install logs created during this run (no /L switch was given) ---
+  log file: C:\Users\<account>\AppData\Local\Temp\MSI29dfb.LOG  (65066 bytes, 09:50:20)
+    L121: MSI (c) (C4:EC) [09:50:18:347]: Doing action: PrepareDlg
+    L198: MSI (c) (C4:EC) [09:50:18:706]: Doing action: LaunchConditions
+    L266: MSI (c) (C4:EC) [09:50:18:722]: Doing action: RuntimeMissingDlg
+    L427: MSI (c) (C4:EC) [09:50:20:862]: 产品: LabelFrame Client -- 安装失败。
+    L433: MSI (c) (C4:EC) [09:50:20:862]: MainEngineThread is returning 1602
+CHECK_FAILURES=0
+=== end 'w-c'  [09:50:22] ===

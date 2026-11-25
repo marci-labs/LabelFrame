@@ -4,6 +4,13 @@
 
 ## [未发布]
 
+### 修复
+
+- Windows 客户端直接用 MSI 安装时，运行时缺失提示改为按实际缺的那一项说明（.NET Desktop Runtime 10 与 ASP.NET Core Runtime 10，均注明 x64）；缺 .NET Desktop Runtime 时在安装前拦截，不再等到启动服务才失败。只装了 ASP.NET Core Runtime 的机器不会再被提示「未检测到 ASP.NET Core Runtime」。
+- 客户端固定安装到 `C:\Program Files\LabelFrame\Client`：安装向导的安装位置页改为只读，命令行传入 `INSTALLFOLDER` 会被拦下并说明原因（客户端更新服务只接受 Program Files 下的安装目录，装到别处服务会拒绝启动）。
+- 更新服务启动失败时，安装不再空等约 4 分钟后提示「权限不足」：由安装包启动服务并等待，失败立即中止并撤回本次安装；启动较慢只要最终能就绪不会被误判，长时间停在启动中才按兜底时限中止。
+- 每次安装自动在用户临时目录生成安装日志（`%TEMP%\MSI*.log`），向导安装失败时在结束页上写明本次安装日志的路径；更新服务启动失败的原因与停在哪个阶段写入事件日志，并转写到安装日志旁边的明细日志（`MSI*.log.updater-service.log`）。
+
 ### 安全修复
 
 - Android 宿主 SQLite 原生依赖由 2.1.11 升至 2.1.14（SQLite 3.54.0），修复 CVE-2025-6965；保持现有数据格式与打印接口。同签名升级和打印真机验收仍待完成，见 [#480](https://github.com/marci-labs/LabelFrame/issues/480)。

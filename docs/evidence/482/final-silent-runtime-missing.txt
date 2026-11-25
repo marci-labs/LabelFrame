@@ -1,0 +1,103 @@
+
+=== R0: pristine baseline, no .NET runtime at all  [guest 09:30:26] ===
+  dotnet.exe not present
+DOTNET_PRODUCTS=0
+MSI_INSTALL_EXIT=1603 elapsed=1.0s
+--- result ---
+  install log: MSI6b954.LOG (80006 bytes)
+    L295: MSI (s) (40:44) [09:30:27:088]: Doing action: LaunchConditions
+    L301: MSI (s) (40:44) [09:30:27:088]: 产品: LabelFrame Client -- 未检测到可用的 .NET 10 运行时（x64）。LabelFrame 需要 .NET Desktop Runtime 10 和 ASP.NET Core Runtime 10 两项，请都安装 x64 版本后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0
+    L419: MSI (s) (40:44) [09:30:27:104]: 产品: LabelFrame Client -- 安装失败。
+    L425: MSI (s) (40:44) [09:30:27:104]: MainEngineThread is returning 1603
+    L438: MSI (c) (B8:F4) [09:30:27:104]: MainEngineThread is returning 1603
+  event id=10005: 产品: LabelFrame Client -- 未检测到可用的 .NET 10 运行时（x64）。LabelFrame 需要 .NET Desktop Runtime 10 和 ASP.NET Core Runtime 10 两项，请都安装 x64 版本后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0
+  event id=11708: 产品: LabelFrame Client -- 安装失败。
+  state: product=none service=absent installDir=False
+
+=== R1: only the ASP.NET Core Runtime installer (the one the old message pointed at)  [guest 09:30:28] ===
+install aspnetcore-runtime-10.0.12-win-x64.exe_EXIT=0 elapsed=3.1s
+  dotnet.exe not present
+MSI_INSTALL_EXIT=1603 elapsed=1.0s
+--- result ---
+  install log: MSI6ccfb.LOG (80520 bytes)
+    L297: MSI (s) (40:9C) [09:30:32:104]: Doing action: LaunchConditions
+    L303: MSI (s) (40:9C) [09:30:32:104]: 产品: LabelFrame Client -- 未检测到可用的 .NET 10 运行时（x64）。LabelFrame 需要 .NET Desktop Runtime 10 和 ASP.NET Core Runtime 10 两项，请都安装 x64 版本后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0
+    L421: MSI (s) (40:9C) [09:30:32:119]: 产品: LabelFrame Client -- 安装失败。
+    L427: MSI (s) (40:9C) [09:30:32:135]: MainEngineThread is returning 1603
+    L440: MSI (c) (54:A0) [09:30:32:135]: MainEngineThread is returning 1603
+  event id=11707: Product: Microsoft ASP.NET Core Runtime - 10.0.12 (x64) -- Installation completed successfully.
+  event id=10005: 产品: LabelFrame Client -- 未检测到可用的 .NET 10 运行时（x64）。LabelFrame 需要 .NET Desktop Runtime 10 和 ASP.NET Core Runtime 10 两项，请都安装 x64 版本后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0
+  event id=11708: 产品: LabelFrame Client -- 安装失败。
+  state: product=none service=absent installDir=False
+
+=== R2: plus the .NET Runtime installer (ASP.NET Core usable, no Desktop Runtime)  [guest 09:30:33] ===
+install dotnet-runtime-10.0.12-win-x64.exe_EXIT=0 elapsed=4.1s
+  Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+  Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+MSI_INSTALL_EXIT=1603 elapsed=1.0s
+--- result ---
+  install log: MSI6e21a.LOG (81826 bytes)
+    L303: MSI (s) (40:7C) [09:30:37:541]: Doing action: LaunchConditions
+    L309: MSI (s) (40:7C) [09:30:37:541]: 产品: LabelFrame Client -- 未检测到可用的 .NET Desktop Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0
+    L427: MSI (s) (40:7C) [09:30:37:541]: 产品: LabelFrame Client -- 安装失败。
+    L433: MSI (s) (40:7C) [09:30:37:557]: MainEngineThread is returning 1603
+    L446: MSI (c) (50:20) [09:30:37:557]: MainEngineThread is returning 1603
+  event id=10005: 产品: LabelFrame Client -- 未检测到可用的 .NET Desktop Runtime 10（x64）：可能未安装、版本低于 10，或装的不是 x64 版本。请安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0
+  event id=11708: 产品: LabelFrame Client -- 安装失败。
+  state: product=none service=absent installDir=False
+
+=== R3: plus the .NET Desktop Runtime installer - all three frameworks present  [guest 09:30:38] ===
+install windowsdesktop-runtime-10.0.12-win-x64.exe_EXIT=0 elapsed=4.2s
+  Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+  Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+  Microsoft.WindowsDesktop.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+MSI_INSTALL_EXIT=0 elapsed=4.1s
+--- result ---
+  install log: MSI6f747.LOG (277066 bytes)
+    L305: MSI (s) (40:B4) [09:30:42:963]: Doing action: LaunchConditions
+    L683: MSI (s) (40:B4) [09:30:43:666]: Doing action: StartUpdaterService
+    L687: MSI (s) (40:B4) [09:30:43:666]: Doing action: StartServices
+    L1191: MSI (s) (40:B4) [09:30:46:198]: 产品: LabelFrame Client -- 成功地完成了安装。
+    L1197: MSI (s) (40:B4) [09:30:46:213]: MainEngineThread is returning 0
+    L1211: MSI (c) (D0:F0) [09:30:46:213]: MainEngineThread is returning 0
+  install log: MSI6f747.LOG.updater-service.log (174 bytes)
+    L1: 2026-11-25 09:30:44  更新服务启动：开始。
+    L2: 2026-11-25 09:30:46  更新服务启动：已进入运行状态，升级请求管道已就绪（用时 1.5 秒）。
+  event id=11707: Product: Microsoft Windows Desktop Runtime - 10.0.12 (x64) -- Installation completed successfully.
+  event id=11707: 产品: LabelFrame Client -- 成功地完成了安装。
+  state: product=1.6.1 service=Running installDir=True
+
+=== R4: basic-UI style silent install again (log is written even when nothing else changes)  [guest 09:30:47] ===
+MSI_INSTALL_EXIT=0 elapsed=3.0s
+--- result ---
+  install log: MSI6f747.LOG (277066 bytes)
+    L305: MSI (s) (40:B4) [09:30:42:963]: Doing action: LaunchConditions
+    L683: MSI (s) (40:B4) [09:30:43:666]: Doing action: StartUpdaterService
+    L687: MSI (s) (40:B4) [09:30:43:666]: Doing action: StartServices
+    L1191: MSI (s) (40:B4) [09:30:46:198]: 产品: LabelFrame Client -- 成功地完成了安装。
+    L1197: MSI (s) (40:B4) [09:30:46:213]: MainEngineThread is returning 0
+    L1211: MSI (c) (D0:F0) [09:30:46:213]: MainEngineThread is returning 0
+  install log: MSI6f747.LOG.updater-service.log (174 bytes)
+    L1: 2026-11-25 09:30:44  更新服务启动：开始。
+    L2: 2026-11-25 09:30:46  更新服务启动：已进入运行状态，升级请求管道已就绪（用时 1.5 秒）。
+  install log: MSI7083f.LOG (189466 bytes)
+    L342: MSI (s) (40:28) [09:30:47:323]: Doing action: LaunchConditions
+    L717: MSI (s) (40:28) [09:30:47:869]: Doing action: StartUpdaterService
+    L721: MSI (s) (40:28) [09:30:47:869]: Doing action: StartServices
+    L966: MSI (s) (40:28) [09:30:49:088]: 产品: LabelFrame Client -- 成功地完成了配置。
+    L972: MSI (s) (40:28) [09:30:49:088]: MainEngineThread is returning 0
+    L986: MSI (c) (8C:20) [09:30:49:104]: MainEngineThread is returning 0
+  install log: MSI7083f.LOG.updater-service.log (174 bytes)
+    L1: 2026-11-25 09:30:48  更新服务启动：开始。
+    L2: 2026-11-25 09:30:49  更新服务启动：已进入运行状态，升级请求管道已就绪（用时 1.0 秒）。
+  state: product=1.6.1 service=Running installDir=True
+
+=== install logs accumulated in the user TEMP during this run  [guest 09:30:50] ===
+  09:30:27     80006 bytes  MSI6b954.LOG
+  09:30:32     80520 bytes  MSI6ccfb.LOG
+  09:30:37     81826 bytes  MSI6e21a.LOG
+  09:30:46       174 bytes  MSI6f747.LOG.updater-service.log
+  09:30:46    277066 bytes  MSI6f747.LOG
+  09:30:49       174 bytes  MSI7083f.LOG.updater-service.log
+  09:30:49    189466 bytes  MSI7083f.LOG
+matrix runner exit=0

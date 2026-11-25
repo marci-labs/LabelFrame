@@ -1,0 +1,27 @@
+MSI1e634.LOG  (09:49:33)
+  L59: PROPERTY CHANGE: Adding CLIENTUILEVEL property. Its value is '0'.
+  L105: PROPERTY CHANGE: Adding UILevel property. Its value is '5'.
+  L172: DotNetCompatibilityCheck:  Command: C:\Users\<ACCOUNT>~1\AppData\Local\Temp\{90A4A2A5-2136-4543-AC6A-A49D12C634AE}\NetCoreCheck.exe -n Microsoft.AspNetCore.App -v 10.0.0 -r  ...
+  L177: PROPERTY CHANGE: Adding DOTNET10_PRESENT property. Its value is '12289'.
+  L187: DotNetCompatibilityCheck:  Command: C:\Users\<ACCOUNT>~1\AppData\Local\Temp\{D5A610D8-9092-424B-A212-2FAA5DA50E9F}\NetCoreCheck.exe -n Microsoft.WindowsDesktop.App -v 10.0.0 ...
+  L192: PROPERTY CHANGE: Adding DOTNET10_DESKTOP_PRESENT property. Its value is '12289'.
+  L320: Property(C): DOTNET10_PRESENT = 12289
+  L321: Property(C): DOTNET10_DESKTOP_PRESENT = 12289
+MSI2401c.LOG  (09:49:56)
+  L59: PROPERTY CHANGE: Adding CLIENTUILEVEL property. Its value is '0'.
+  L105: PROPERTY CHANGE: Adding UILevel property. Its value is '5'.
+  L172: DotNetCompatibilityCheck:  Command: C:\Users\<ACCOUNT>~1\AppData\Local\Temp\{62440EBA-ABEF-4D31-824F-4B3A8F30EEDF}\NetCoreCheck.exe -n Microsoft.AspNetCore.App -v 10.0.0 -r  ...
+  L177: PROPERTY CHANGE: Adding DOTNET10_PRESENT property. Its value is '12289'.
+  L187: DotNetCompatibilityCheck:  Command: C:\Users\<ACCOUNT>~1\AppData\Local\Temp\{0523D764-C9F9-4B08-9392-B28E514C0700}\NetCoreCheck.exe -n Microsoft.WindowsDesktop.App -v 10.0.0 ...
+  L192: PROPERTY CHANGE: Adding DOTNET10_DESKTOP_PRESENT property. Its value is '12289'.
+  L320: Property(C): DOTNET10_PRESENT = 12289
+  L321: Property(C): DOTNET10_DESKTOP_PRESENT = 12289
+MSI29dfb.LOG  (09:50:20)
+  L59: PROPERTY CHANGE: Adding CLIENTUILEVEL property. Its value is '0'.
+  L105: PROPERTY CHANGE: Adding UILevel property. Its value is '5'.
+  L172: DotNetCompatibilityCheck:  Command: C:\Users\<ACCOUNT>~1\AppData\Local\Temp\{B56CF92B-733B-42CD-89AF-3CAF000FABBD}\NetCoreCheck.exe -n Microsoft.AspNetCore.App -v 10.0.0 -r  ...
+  L177: PROPERTY CHANGE: Adding DOTNET10_PRESENT property. Its value is '0'.
+  L187: DotNetCompatibilityCheck:  Command: C:\Users\<ACCOUNT>~1\AppData\Local\Temp\{8F49503E-95DE-4BB5-9779-D9FF84E0AA7D}\NetCoreCheck.exe -n Microsoft.WindowsDesktop.App -v 10.0.0 ...
+  L192: PROPERTY CHANGE: Adding DOTNET10_DESKTOP_PRESENT property. Its value is '12290'.
+  L320: Property(C): DOTNET10_PRESENT = 0
+  L321: Property(C): DOTNET10_DESKTOP_PRESENT = 12290

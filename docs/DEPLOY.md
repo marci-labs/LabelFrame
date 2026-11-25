@@ -35,7 +35,11 @@
 
 要点：
 
-- 前置：.NET 10 Desktop Runtime（x64）+ Microsoft Edge WebView2 运行时（Evergreen，Win10/11 多数已随 Edge 预装）。MSI 内置检测：.NET 缺失时 NetCoreCheck 自检弹出可点击的官方下载链接（不自动安装）；WebView2 缺失时全 UI 安装显示带官方下载链接的中文对话框（装完点「重新检测」即可继续，无需重启安装程序），静默 / 基础 UI 由 LaunchCondition 拦截提示。客户端启动时若 WebView2 初始化失败，自动回退默认浏览器打开界面并在 host.log 记录原因。
+- 前置（Client）：**.NET Desktop Runtime 10（x64）** 与 **ASP.NET Core Runtime 10（x64）** 两项，外加 Microsoft Edge WebView2 运行时（Evergreen，Win10/11 多数已随 Edge 预装）。ASP.NET Core 请下载同一栏的 **Hosting Bundle**（已含 .NET Runtime）；单独的 ASP.NET Core Runtime 安装包不含 .NET Runtime，只装它在缺 .NET 的机器上仍不可用。.NET Desktop Runtime 自带 .NET Runtime。
+- MSI 内置检测，缺哪项提示哪项：.NET 缺失时向导弹出带官方下载链接的中文对话框，说明缺的是哪一项并注明 x64（不自动安装）；WebView2 缺失时显示带官方下载链接的中文对话框（装完点「重新检测」即可继续，无需重启安装程序）；静默 / 基础 UI 安装由启动条件拦截，原因写入安装日志。客户端启动时若 WebView2 初始化失败，自动回退默认浏览器打开界面并在 host.log 记录原因。
+- **Client 固定安装到 `C:\Program Files\LabelFrame\Client`**：向导的安装位置页只读，命令行传入 `INSTALLFOLDER` 会被拦下并说明原因。客户端更新服务只接受 Program Files 下的安装目录，装到别处服务会拒绝启动。
+- **更新服务**：安装时由安装包启动并等到就绪。服务启动失败（例如安装目录不满足保护条件）会立即中止并撤回本次安装，不再长时间等待后提示「权限不足」；启动较慢只要最终能就绪不会被误判，长时间停在启动中才按兜底时限中止。失败原因与停在哪个阶段同时写入事件日志（应用程序日志，来源 `LabelFrameClientUpdater`）和安装日志。
+- **安装日志**：每次安装（向导双击 / 静默）都会在当前用户的临时目录自动生成一份安装日志（`%TEMP%\MSI*.log`），向导安装失败时「安装向导提前结束」页上写明本次安装日志的路径，日志里能看出停在哪个步骤。更新服务启动一步的结论在安装日志里是一行英文（以 `LabelFrame updater service start` 开头），中文原因写在旁边的明细日志（`MSI*.log.updater-service.log`）里。日志留在临时目录即可，无需手工清理。
 - 单机使用 = 同机安装两个包；多台打印电脑 = 每台装 Client，设置页把服务端地址指向服务端 IP。
 - 两个包的 appsettings.json 均为独立用户配置组件：覆盖安装 / 修复不覆盖、卸载保留。卸载时可选是否清除用户数据（默认不清除）。
 - 公开下载的 MSI 若未用受信任商业证书签名，Windows 可能提示「未知发布者」，点「仍要运行」即可；内网可把自签根证书加入受信任根消除提示（见「自动化发布与签名」一节）。

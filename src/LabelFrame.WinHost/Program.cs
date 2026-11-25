@@ -14,6 +14,13 @@ public static class Program
             await Updates.ClientUpdaterService.RunAsync();
             return;
         }
+        if (args.Contains("--start-update-service", StringComparer.OrdinalIgnoreCase))
+        {
+            var logIndex = Array.FindIndex(args, argument => argument.Equals("--log", StringComparison.OrdinalIgnoreCase));
+            using var output = Updates.ClientUpdaterService.CreateOutputWriter();
+            Environment.ExitCode = Updates.UpdaterServiceStarter.Run(output, logIndex >= 0 && logIndex + 1 < args.Length ? args[logIndex + 1] : null);
+            return;
+        }
         if (RestartProcess.IsWaiter(args))
         {
             await RestartProcess.RunWaiterAsync(args);

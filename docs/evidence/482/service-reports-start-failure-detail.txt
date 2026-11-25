@@ -1,0 +1,65 @@
+
+=== P4 self-check-failure install log MSI2a531.LOG: everything from the start step on  [guest 00:54:52] ===
+L987: MSI (s) (CC:5C) [00:43:30:679]: Executing op: CustomActionSchedule(Action=StartUpdaterService,ActionType=3073,Source=BinaryData,Target=WixQuietExec,CustomActionData="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --start-update-service)
+L989: MSI (s) (CC:E0) [00:43:30:679]: Invoking remote custom action. DLL: C:\Windows\Installer\MSIB439.tmp, Entrypoint: WixQuietExec
+L997: WixQuietExec:  Entering WixQuietExec in C:\Windows\Installer\MSIB439.tmp, version 7.0.0.0
+L1000: WixQuietExec:  "C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --start-update-service
+L1003: WixQuietExec:  鯦?鳦?郥??肼?芀?鯦?鳦?郥?????貼??薣????鋦麛鳦?铦?胣趜諥???蒚軥??定????论??崰匠牥楶散挠湡潮?敢猠慴瑲摥?祓瑳浥??湉慶楬?瑡?捸灥楴湯?鯦??蒾藥??鷩?郧频蛥????蟩???郧频????薣???芀簠嬠????论??崱?雦趜諥?諥???貼臥?飩?胣覮??????趀??雦???膅??麝?蚐釥馆藥?貼??趇雦??蚐釥???覮??裦?胣?
+L1006: WixQuietExec:  Error 0x8007000b: Command line returned an error.
+L1009: WixQuietExec:  Error 0x8007000b: QuietExec Failed
+L1011: WixQuietExec:  Error 0x8007000b: Failed in ExecCommon method
+L1013: CustomAction StartUpdaterService returned actual error code 1603 (note this may not be 100% accurate if translation happened inside sandbox)
+L1015: MSI (s) (CC:5C) [00:43:31:414]: User policy value 'DisableRollback' is 0
+L1016: MSI (s) (CC:5C) [00:43:31:414]: Machine policy value 'DisableRollback' is 0
+L1017: 操作结束 0:43:31: InstallFinalize。返回值 3。
+L1022: MSI (s) (CC:5C) [00:43:31:414]: Executing op: RollbackInfo(,RollbackAction=Rollback,RollbackDescription=正在回退操作:,RollbackTemplate=[1],CleanupAction=RollbackCleanup,CleanupDescription=正在删除备份文件,CleanupTemplate=文件: [1])
+L1027: MSI (s) (CC:5C) [00:43:31:429]: Executing op: ActionStart(Name=StopUpdaterServiceOnRollback,,)
+L1028: MSI (s) (CC:5C) [00:43:31:429]: Executing op: CustomActionRollback(Action=StopUpdaterServiceOnRollback,ActionType=3393,Source=BinaryData,Target=WixQuietExec,CustomActionData="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonI ...
+L1030: MSI (s) (CC:90) [00:43:31:429]: Invoking remote custom action. DLL: C:\Windows\Installer\MSIB728.tmp, Entrypoint: WixQuietExec
+L1034: WixQuietExec:  Entering WixQuietExec in C:\Windows\Installer\MSIB728.tmp, version 7.0.0.0
+L1037: WixQuietExec:  "C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "Stop-Service -Name LabelFrameClientUpdater -Force -ErrorAction SilentlyContinue"
+L1038: MSI (s) (CC:5C) [00:43:32:851]: Executing op: ActionStart(Name=InstallServices,Description=正在安装新服务,Template=服务: [2])
+L1039: MSI (s) (CC:5C) [00:43:32:851]: Executing op: ServiceInstall(Name=LabelFrameClientUpdater,DisplayName=LabelFrame Client Updater,ImagePath="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service,ServiceType=16,StartType=2,ErrorCon ...
+L1173: MSI (s) (CC:5C) [00:43:32:961]: Executing op: ActionStart(Name=StopServices,Description=正在停止服务,Template=服务: [1])
+L1174: MSI (s) (CC:5C) [00:43:32:961]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=1,Wait=1,)
+L1175: 信息1920。未能启动服务“LabelFrame Client Updater”(LabelFrameClientUpdater)。请确认你有足够的权限启动系统服务。
+L1236: MSI (s) (CC:5C) [00:47:33:018]: Error in rollback skipped.	Return: 5
+L1242: 操作结束 0:47:33: INSTALL。返回值 3。
+L1271: Property(S): StopUpdaterServiceOnRollback = "C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "Stop-Service -Name LabelFrameClientUpdater -Force -ErrorAction SilentlyContinue"
+L1371: MSI (s) (CC:5C) [00:47:33:075]: 产品: LabelFrame Client -- 安装失败。
+L1377: MSI (s) (CC:5C) [00:47:33:092]: MainEngineThread is returning 1603
+L1381: MSI (s) (CC:1C) [00:47:33:099]: User policy value 'DisableRollback' is 0
+L1382: MSI (s) (CC:1C) [00:47:33:099]: Machine policy value 'DisableRollback' is 0
+L1384: MSI (s) (CC:1C) [00:47:33:099]: Note: 1: 1402 2: HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Installer\Rollback\Scripts 3: 2
+L1385: MSI (s) (CC:1C) [00:47:33:099]: Note: 1: 1402 2: HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Installer\Rollback\Scripts 3: 2
+L1390: MSI (c) (60:18) [00:47:33:099]: MainEngineThread is returning 1603
+
+=== uninstall log MSI29b5d.LOG: service operations  [guest 00:54:52] ===
+  L70: [00:43:24:380]: Command Line: REBOOT=ReallySuppress REMOVE=ALL CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=9116
+  L99: [00:43:24:380]: PROPERTY CHANGE: Adding REBOOT property. Its value is 'ReallySuppress'.
+  L107: [00:43:24:380]: PROPERTY CHANGE: Adding MsiSystemRebootPending property. Its value is '1'.
+  L452: [00:43:24:661]: Note: 1: 2205 2:  3: FilesInUse
+  L500: [00:43:24:740]: Doing action: DeleteServices
+  L503: 操作开始 0:43:24: DeleteServices。
+  L506: 操作结束 0:43:24: DeleteServices。返回值 1。
+  L668: [00:43:24:787]: Scheduling file 'C:\Windows\Installer\123a53.msi' for deletion during post-install cleanup (not post-reboot).
+  L675: [00:43:24:802]: Scheduling file 'C:\Windows\Installer\{56450080-9415-434B-951D-3B15ACAB75CE}\LabelframeAppIco' for deletion during post-install cleanup (not post-reboot).
+  L863: Property(S): REBOOT = ReallySuppress
+  L868: Property(S): MsiSystemRebootPending = 1
+
+=== service-side events 00:43:20 - 00:50:00 (all LabelFrame sources)  [guest 00:54:52] ===
+[00:43:21.912] LabelFrameClientUpdater id= Service stopped successfully.
+[00:43:22.802] LabelFrameClientUpdater id= Service started successfully.
+[00:43:29.195] LabelFrameClientUpdater id= Service stopped successfully.
+[00:43:31.039] LabelFrameClientUpdater id= 更新服务启动失败，停在阶段「安装目录自检」：更新路径允许非管理员写入，请重新以管理员身份安装客户端。
+[00:43:31.101] LabelFrameClientUpdater id= Service cannot be started. System.IO.InvalidDataException: 更新路径允许非管理员写入，请重新以管理员身份安装客户端。 |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) |    at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() |    at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(U ...
+[00:43:32.961] .NET Runtime id= Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: A fatal error was encountered. The library 'hostpolicy.dll' required to execute the application was not found in 'C:\Program Files\dotnet\'. | Fa ...
+[00:44:07.997] .NET Runtime id= Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: A fatal error was encountered. The library 'hostpolicy.dll' required to execute the application was not found in 'C:\Program Files\dotnet\'. | Fa ...
+[00:44:42.974] .NET Runtime id= Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: A fatal error was encountered. The library 'hostpolicy.dll' required to execute the application was not found in 'C:\Program Files\dotnet\'. | Fa ...
+[00:45:17.975] .NET Runtime id= Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: A fatal error was encountered. The library 'hostpolicy.dll' required to execute the application was not found in 'C:\Program Files\dotnet\'. | Fa ...
+[00:45:52.989] .NET Runtime id= Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: A fatal error was encountered. The library 'hostpolicy.dll' required to execute the application was not found in 'C:\Program Files\dotnet\'. | Fa ...
+[00:46:28.005] .NET Runtime id= Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: A fatal error was encountered. The library 'hostpolicy.dll' required to execute the application was not found in 'C:\Program Files\dotnet\'. | Fa ...
+[00:47:03.023] .NET Runtime id= Description: A .NET application failed. | Application: LabelFrame.WinHost.exe | Path: C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe | Message: A fatal error was encountered. The library 'hostpolicy.dll' required to execute the application was not found in 'C:\Program Files\dotnet\'. | Fa ...
+[00:48:58.731] LabelFrameClientUpdater id= Service started successfully.
+[00:49:23.607] LabelFrameClientUpdater id= Service stopped successfully.
+[00:49:24.044] LabelFrameClientUpdater id= Service started successfully.
