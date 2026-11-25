@@ -1,32 +1,29 @@
-本地构建与测试（宿主机 Windows 10 10.0.19045 x64，2026-11-25，分支 fix/client-msi-install-guard）
+本地构建与测试（宿主机 Windows 10 10.0.19045 x64，本机 SDK 10.0.402，2026-11-25；分支 fix/client-msi-install-guard，已 rebase 到含 PR #484 的 master，含安装目录页文字调整）
 
-=== dotnet build LabelFrame.slnx -c Release ===
+=== dotnet build LabelFrame.slnx -c Release --no-incremental ===
 已成功生成。 0 个警告，0 个错误
 
-=== dotnet test LabelFrame.slnx -c Release（排除 Perf / Soak），第一次全量：1 项失败 ===
+=== dotnet test LabelFrame.slnx -c Release（排除 Perf / Soak，并显式排除下方「受宿主机环境影响的 1 项」）===
 已通过! - 失败:     0，通过:   282，已跳过:     0，总计:   282，持续时间: 1 s - LabelFrame.Bootstrapper.Tests.dll
-已通过! - 失败:     0，通过:     3，已跳过:     0，总计:     3，持续时间: 1 s - LabelFrame.ClientHost.Tests.dll
+已通过! - 失败:     0，通过:     3，已跳过:     0，总计:     3，持续时间: 2 s - LabelFrame.ClientHost.Tests.dll
 已通过! - 失败:     0，通过:   133，已跳过:     0，总计:   133，持续时间: 3 s - LabelFrame.AndroidHost.Tests.dll
-已通过! - 失败:     0，通过:    36，已跳过:     0，总计:    36，持续时间: 5 s - LabelFrame.Api.Tests.dll
-已通过! - 失败:     0，通过:   225，已跳过:     1，总计:   226，持续时间: 20 s - LabelFrame.Server.Tests.dll
-已通过! - 失败:     0，通过:   329，已跳过:     0，总计:   329，持续时间: 32 s - LabelFrame.Core.Tests.dll
-[xUnit.net 00:00:55.42]     LabelFrame.WinHost.Tests.UpdateSupervisorTests.Relauncher_waits_exact_parent_exit_and_keeps_original_user [FAIL]
-   System.TimeoutException : 监督进程没有输出验证结果。
-     at LabelFrame.WinHost.Tests.UpdateSupervisorTests.WaitForFileAsync(String path, TimeSpan timeout) in C:\work\OpenCode\LabelFrame-wt1-client-msi-install-guard\test\LabelFrame.WinHost.Tests\UpdateSupervisorTests.cs:line 97
-   at LabelFrame.WinHost.Tests.UpdateSupervisorTests.Relauncher_waits_exact_parent_exit_and_keeps_original_user() in C:\work\OpenCode\LabelFrame-wt1-client-msi-install-guard\test\LabelFrame.WinHost.Tests\UpdateSupervisorTests.cs:line 63
-失败!  - 失败:     1，通过:   614，已跳过:     0，总计:   615，持续时间: 1 m 11 s - LabelFrame.WinHost.Tests.dll
+已通过! - 失败:     0，通过:    36，已跳过:     0，总计:    36，持续时间: 7 s - LabelFrame.Api.Tests.dll
+已通过! - 失败:     0，通过:   225，已跳过:     1，总计:   226，持续时间: 31 s - LabelFrame.Server.Tests.dll
+已通过! - 失败:     0，通过:   329，已跳过:     0，总计:   329，持续时间: 42 s - LabelFrame.Core.Tests.dll
+已通过! - 失败:     0，通过:   614，已跳过:     0，总计:   614，持续时间: 48 s - LabelFrame.WinHost.Tests.dll
+合计：1622 通过，0 失败，1 跳过（Server 测试中的既有跳过项）。
 
-=== 同一项在未改动的 master（3e16821）上，同样失败 ===
-[xUnit.net 00:00:40.72]     LabelFrame.WinHost.Tests.UpdateSupervisorTests.Relauncher_waits_exact_parent_exit_and_keeps_original_user [FAIL]
-   System.TimeoutException : 监督进程没有输出验证结果。
-失败!  - 失败: 1，通过: 0，已跳过: 0，总计: 1，持续时间: 40 s - LabelFrame.WinHost.Tests.dll (net10.0)
+=== 同一天较早的一次全量运行里有 2 项偶发失败 ===
+ZebraNativeSubmissionTests.Native_mode_should_dispatch_to_real_zebra_compiler（ObjectDisposedException：已释放的 SQLite 连接被再次使用）与
+ServerRoutingWorkerTests.Worker_should_report_throttled_progress_with_fake_time_provider（断言为空）。这两个测试文件没有被 #483 或 #484 改动；
+单独重复运行 5 次全部通过，随后按同一过滤条件的全量运行全部通过，CI 上也全部通过。判断为宿主机负载下的偶发，与本次改动无关。
 
-=== 判断：宿主机环境所致，与本次改动无关 ===
-同一测试在未改动的 master 上以相同方式失败；与这条路径相关的源码和测试文件在本分支上没有改动。
-该测试与被测的 UpdateSupervisor.LaunchAsync 都用「powershell.exe -EncodedCommand」启动辅助进程。在这台宿主机上，
-这样启动的进程会被外部按在创建阶段：取到的进程 CPU 时间 0.00 秒、线程 1 个、句柄 0 个，PowerShell 引擎始终没有启动
-（没有任何引擎启动事件），约 30 秒后进程被结束（退出码 -1）。最可能的原因是宿主机上运行的安全软件
-（服务 HipsDaemon / HRWSCCtrl）的行为防护——现象与之吻合，但没有通过改动它的设置去验证；下面是只读测量的对照：
+=== 受宿主机环境影响的 1 项 ===
+UpdateSupervisorTests.Relauncher_waits_exact_parent_exit_and_keeps_original_user：40 秒内等不到监督进程的输出。
+同一测试在未改动的 master（3e16821）上以相同方式失败；与这条路径相关的源码和测试文件在本分支上没有改动。
+该测试与被测的 UpdateSupervisor.LaunchAsync 都用「powershell.exe -EncodedCommand」启动辅助进程。在这台宿主机上，这样启动的进程会被外部按在创建阶段：
+取到的进程 CPU 时间 0.00 秒、线程 1 个、句柄 0 个，PowerShell 引擎始终没有启动（没有任何引擎启动事件），约 30 秒后进程被结束（退出码 -1）。
+最可能的原因是宿主机上运行的安全软件（服务 HipsDaemon / HRWSCCtrl）的行为防护——现象与之吻合，但没有通过改动它的设置去验证；下面是只读测量的对照：
 
 -Command exit                                   1.09s exit=0
 -Command exit（显式 RemoteSigned）               1.03s exit=0
@@ -38,23 +35,14 @@
 经 cmd.exe 启动同一条 -EncodedCommand            1.03s exit=0
 PowerShell 7（pwsh）同一条 -EncodedCommand       1.04s exit=0
 
-=== dotnet test（排除 Perf / Soak，并显式排除上述受宿主机环境影响的 1 项）===
-已通过! - 失败:     0，通过:   282，已跳过:     0，总计:   282，持续时间: 2 s - LabelFrame.Bootstrapper.Tests.dll
-已通过! - 失败:     0，通过:     3，已跳过:     0，总计:     3，持续时间: 2 s - LabelFrame.ClientHost.Tests.dll
-已通过! - 失败:     0，通过:   133，已跳过:     0，总计:   133，持续时间: 4 s - LabelFrame.AndroidHost.Tests.dll
-已通过! - 失败:     0，通过:    36，已跳过:     0，总计:    36，持续时间: 7 s - LabelFrame.Api.Tests.dll
-已通过! - 失败:     0，通过:   225，已跳过:     1，总计:   226，持续时间: 23 s - LabelFrame.Server.Tests.dll
-已通过! - 失败:     0，通过:   329，已跳过:     0，总计:   329，持续时间: 36 s - LabelFrame.Core.Tests.dll
-已通过! - 失败:     0，通过:   614，已跳过:     0，总计:   614，持续时间: 36 s - LabelFrame.WinHost.Tests.dll
-合计：1622 通过，0 失败，1 跳过（Server 测试中的既有跳过项）。被排除的 1 项本应交给 CI 判断，但 CI 当前被下面的问题阻断，尚未得到结论。
+这一项在 CI 上通过（见下）。
 
-=== CI（PR #483）===
-「Android 构建（PDA 宿主）」通过；「构建与测试（dotnet + 前端）」与「MSI 结构断言（安装包 UI 契约）」都在 dotnet build 阶段失败，与本次改动无关：
-
-- 工作流的 DOTNET_VERSION 是 10.0.x，只保证 runner 上装了 .NET 10 SDK（当天是 10.0.404）；仓库没有 global.json，dotnet 实际用的是镜像上最高的 SDK。runner 镜像更新后预装了 .NET 11 SDK，CI 日志里安装工作负载用的版本是 11.0.100，构建、测试与打包都在 .NET 11 SDK 上进行。
-- .NET 11 SDK 的分析器对既有代码报 11 处错误：CA2026（JsonDocument.Parse(...).RootElement）与 CA2027（Task.WhenAny 配 Task.Delay）。仓库设置 AnalysisLevel=latest-recommended 且 TreatWarningsAsErrors=true，新规则直接成为编译错误。
-- 报错文件：src/LabelFrame.Bootstrapper.Ba/LabelFrameBootstrapperBa.cs、src/LabelFrame.WinHost/HostExitCoordinator.cs、test/LabelFrame.Core.Tests/Jobs/LabelJobQueueTests.cs、test/LabelFrame.Api.Tests/ErrorViewParamsTests.cs、test/LabelFrame.Server.Tests/JobCallbackTests.cs、test/LabelFrame.Server.Tests/ErrorParamsEndpointsTests.cs。这些文件本次改动都没有触及。
-- 本机看不出来：本机 SDK 是 10.0.402；另把 10.0.404 装到独立目录对 master 源码做过完整构建，0 警告 0 错误；按字节检查，10.0.402 与 10.0.404 自带的分析器里都没有这两条规则。
-- master 上最近一次 CI 通过是 2026-11-06（提交 3e16821，即本分支的基点）；同样的源码在今天的 CI 上会得到同样的错误。
-- 该问题由单独的 PR #484 处理（按新规则改写那些调用），不属于本缺陷的范围。
-- 后果：依赖这些项目的测试项目在 CI 上没有被编译，所以本次新增的代码在 .NET 11 SDK 下是否干净尚无 CI 结论；MSI 结构断言在 CI 上也没有跑到（本机 PowerShell 5.1 与 7 下均通过）。
+=== CI（GitHub runner，实际使用 .NET 11 SDK）===
+- PR #484（按新规则改写 11 处调用）：三项必需检查针对 bb484c7 全部通过——「构建与测试」6 分 57 秒、「MSI 结构断言」2 分 25 秒、「Android 构建」2 分 32 秒；已 squash 合并（46a4522）。
+- PR #483 rebase 到新 master 后（提交 cac4ea7）：四项检查全部通过——「构建与测试」6 分 04 秒、「MSI 结构断言」2 分 15 秒、「Android 构建」1 分 56 秒、「Linux 前端构建」26 秒。
+  测试 Passed 1623 / Failed 0 / Skipped 1：Bootstrapper 282、ClientHost 3、Api 36、AndroidHost 133、Server 225（跳过 1）、Core 329、WinHost 615——WinHost 的 615 项里包含本机被拦截的那一项。
+- CI 用的 SDK 为什么是 .NET 11：工作流的 DOTNET_VERSION 是 10.0.x，只保证 runner 上装了 .NET 10 SDK；仓库没有 global.json，dotnet 实际用的是镜像上最高的 SDK。
+  runner 镜像更新后预装了 .NET 11 SDK（CI 日志里安装工作负载用的版本是 11.0.100），构建、测试与打包都在 .NET 11 SDK 上进行。
+  在 PR #484 之前，.NET 11 SDK 的分析器对既有代码报 11 处 CA2026 / CA2027；仓库设置 AnalysisLevel=latest-recommended 且 TreatWarningsAsErrors=true，于是成为编译错误。
+  本地看不出来：10.0.402 与 10.0.404 自带的分析器里都没有这两条规则（按字节检查；用 10.0.404 对 master 源码完整构建也是 0 警告 0 错误）。
+- 本 PR 最后一次提交（安装目录页文字调整）以该提交自己的检查结果为准，见 PR 页面。

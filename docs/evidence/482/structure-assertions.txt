@@ -1,6 +1,7 @@
 Structure assertions of scripts/verify-msi-ui.ps1 against different packages.
+Mutants are built from the final source with one deliberate mistake each; a package is rejected on its first failing assertion.
 === 1. final build: expected to pass ===
-=== artifacts/LabelFrame-Client-1.6.1.msi ===
+=== C:/work/OpenCode/LabelFrame-wt1-client-msi-install-guard/artifacts/LabelFrame-Client-1.6.1.msi ===
 -- Dialog 表（向导 + 自定义）--
   ErrorDlg  (270x105)
   RuntimeMissingDlg  (370x230)
@@ -64,34 +65,47 @@ WebView2 缺失对话框：重新检测链路 OK
 断言通过：向导齐全，运行时检查（.NET 1150 / WebView2 1160）先于欢迎页（1297）。
 
 VERDICT=PASS
-SHA256=61241da46813750edb1e5a1218461beac35d10a01740313df085f6680eb328b0
+SHA256=18188bd07f36d33d3718bf2f336cf514b154f5634c346734d1a24e9736f7ca15
 
-=== 2. intermediate build A, three explanatory texts visible by default: expected to be rejected ===
+=== 2. mutant A, the three runtime-missing texts visible by default: expected to be rejected ===
 VERDICT=REJECTED
 REASON=「NoRuntimeText」必须默认隐藏：显示条件为假时不会隐藏，默认可见会让三段说明叠在一起
-SHA256=7f9022763a14274493ebb6dfc30e74262ad3920bc5e0d3d7fc4591f8adb1b204
+SHA256=99c72f22dd5b5668b3616e8cb1f615ddc68ba13114d3b34c27aa78a54e7761dd
 
-=== 3. intermediate build B, failure page without the install log path: expected to be rejected ===
-VERDICT=REJECTED
-REASON=向导的「提前结束」页应写明安装日志位置（界面库本地化覆盖 FatalErrorDescription2）
-SHA256=4698f687a390d6b2c03e3cd95895532c4dc1458d0cc2848ca3ea0ecd5d0474b3
-
-=== 4. mutant 1, the "no runtime" text carries the ASP.NET Core condition: expected to be rejected ===
+=== 3. mutant B, the "no runtime" text carries the ASP.NET Core condition: expected to be rejected ===
 VERDICT=REJECTED
 REASON=运行时缺失对话框的「NoRuntimeText」应只有一条显示条件：NOT DOTNET10_PRESENT = "0" AND NOT DOTNET10_DESKTOP_PRESENT = "0"
-SHA256=ba0074178d7fa4a4cb0dbc6c95639075051f7bcaad2ba7a98102493c5e8b3519
+SHA256=a392b8a3b71bb31e9f26e4f60ea516c06493b9df7d5b05fb2f2e9d536bfd02f6
 
-=== 5. mutant 2, the first launch condition requires both runtimes usable: expected to be rejected ===
+=== 4. mutant C, the first launch condition requires both runtimes usable: expected to be rejected ===
 VERDICT=REJECTED
 REASON=缺少运行时启动条件：(DOTNET10_PRESENT = "0" OR DOTNET10_DESKTOP_PRESENT = "0") OR UILevel = 5 OR REMOVE
-SHA256=4759f06f87a48a491d67510a5515c82308234db396a98b514cd2e75d9416ab22
+SHA256=f076bbf3a2055a3266a8632857a3dfd30acb077a3360f9323a3149448b574b53
 
-=== 6. mutant 3, failure page without the install log path: expected to be rejected ===
+=== 5. mutant D, failure page without the install log path: expected to be rejected ===
 VERDICT=REJECTED
 REASON=向导的「提前结束」页应写明安装日志位置（界面库本地化覆盖 FatalErrorDescription2）
-SHA256=5f51f39402b06d948d29635253a00d4170f4af3f953bf740fadfe8e8fe466816
+SHA256=b39257c32722e82c65e447d81f721f2be8eda7142188bb8dd6d0bb700a3f97ad
 
-=== 7. control, released 1.6.0: expected to be rejected ===
+=== 6. previous build, install-directory page still carried an explanation: expected to be rejected ===
+    (while it was current it was also rejected for the failure page without the install log path)
+VERDICT=REJECTED
+REASON=安装目录页只保留标题「安装目录」与路径，不加说明文字
+SHA256=61241da46813750edb1e5a1218461beac35d10a01740313df085f6680eb328b0
+
+=== 7. earlier intermediate build, failure page without the install log path: expected to be rejected ===
+    (it predates the trimmed install-directory page, so the assertion on that page fires first)
+VERDICT=REJECTED
+REASON=安装目录页只保留标题「安装目录」与路径，不加说明文字
+SHA256=4698f687a390d6b2c03e3cd95895532c4dc1458d0cc2848ca3ea0ecd5d0474b3
+
+=== 8. earliest intermediate build, three runtime-missing texts visible by default: expected to be rejected ===
+    (it predates the trimmed install-directory page, so the assertion on that page fires first; mutant A covers the default-hidden assertion)
+VERDICT=REJECTED
+REASON=安装目录页只保留标题「安装目录」与路径，不加说明文字
+SHA256=7f9022763a14274493ebb6dfc30e74262ad3920bc5e0d3d7fc4591f8adb1b204
+
+=== 9. control, released 1.6.0: expected to be rejected ===
 VERDICT=REJECTED
 REASON=缺少只读的安装位置页 InstallLocationDlg
 SHA256=e905ffd2cad6efcf01a8cad5e46b726a4ff2013d941b8943698b664b398c315c

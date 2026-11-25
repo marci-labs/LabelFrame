@@ -141,17 +141,15 @@
           <Publish Event="EndDialog" Value="Return" Condition="1" />
         </Control>
       </Dialog>
-      <!-- 安装位置页（只读）：更新服务只接受 Program Files 下的安装目录，所以不提供修改入口。
+      <!-- 安装目录页（只读）：更新服务只接受 Program Files 下的安装目录，所以不提供修改入口；页面上只有「安装目录」和路径，不加解释。
            防回归警示：WiX 自带向导组里可改目录的那一页不能单独替换（重复定义，编译失败），它仍留在包里；
            这里靠「同一按钮上登记顺序靠后的跳转生效」把它旁路，接法由结构断言脚本守住 -->
       <Dialog Id="InstallLocationDlg" Width="370" Height="270" Title="[ProductName] 安装">
         <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="yes" Text="WixUI_Bmp_Banner" />
         <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" TabSkip="yes"
-                 Text="{\WixUI_Font_Title}安装位置" />
+                 Text="{\WixUI_Font_Title}安装目录" />
         <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
-        <Control Id="Description" Type="Text" X="20" Y="60" Width="330" Height="30"
-                 Text="LabelFrame 固定安装到下面的位置，不能修改（客户端更新服务要求程序位于 Program Files 下）。" />
-        <Control Id="InstallLocationText" Type="Text" X="20" Y="100" Width="330" Height="40" NoPrefix="yes" Text="[ClientInstallDir]" />
+        <Control Id="InstallLocationText" Type="Text" X="20" Y="75" Width="330" Height="40" NoPrefix="yes" Text="[ClientInstallDir]" />
         <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="上一步(&amp;B)">
           <Publish Event="NewDialog" Value="LicenseAgreementDlg" />

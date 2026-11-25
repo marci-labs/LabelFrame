@@ -1,187 +1,202 @@
 
-=== F0: package identity and machine state  [guest 09:30:58] ===
+=== F0: package identity and machine state  [guest 11:14:32] ===
   LabelFrame-Client-1.6.0.msi  25153536 bytes  sha256=e905ffd2cad6efcf01a8cad5e46b726a4ff2013d941b8943698b664b398c315c
-  LabelFrame-Client-1.6.1.msi  14802944 bytes  sha256=61241da46813750edb1e5a1218461beac35d10a01740313df085f6680eb328b0
+  LabelFrame-Client-1.6.1.msi  14835712 bytes  sha256=18188bd07f36d33d3718bf2f336cf514b154f5634c346734d1a24e9736f7ca15
   Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
   Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
   Microsoft.WindowsDesktop.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
 state: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
 
-=== F1: clean install, silent, no /L switch  [guest 09:30:58] ===
-MSI_INSTALL_EXIT=0 elapsed=3.1s
+=== F1: clean install, silent, no /L switch  [guest 11:14:33] ===
+MSI_INSTALL_EXIT=0 elapsed=4.1s
 after install: product=1.6.1 | service=Running (LocalSystem, Auto) | winhost processes=1 | C:\LabelFrame exists=False
 --- logs ---
-  log file: MSI736c1.LOG.updater-service.log  (174 bytes)
-    2026-11-25 09:31:00  更新服务启动：开始。
-    2026-11-25 09:31:01  更新服务启动：已进入运行状态，升级请求管道已就绪（用时 1.4 秒）。
-  log file: MSI736c1.LOG  (276242 bytes)
-    L305: MSI (s) (40:54) [09:30:59:166]: Doing action: LaunchConditions
-    L684: MSI (s) (40:54) [09:30:59:698]: Doing action: StartUpdaterService
-    L688: MSI (s) (40:54) [09:30:59:698]: Doing action: StartServices
-    L711: MSI (s) (40:54) [09:30:59:713]: Doing action: InstallFinalize
-    L791: MSI (s) (40:54) [09:30:59:745]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
+  log file: MSI73eb1.LOG.updater-service.log  (174 bytes)
+    2026-11-25 11:14:34  更新服务启动：开始。
+    2026-11-25 11:14:36  更新服务启动：已进入运行状态，升级请求管道已就绪（用时 1.4 秒）。
+  log file: MSI73eb1.LOG  (276490 bytes)
+    L305: MSI (s) (40:B4) [11:14:33:610]: Doing action: LaunchConditions
+    L684: MSI (s) (40:B4) [11:14:34:157]: Doing action: StartUpdaterService
+    L688: MSI (s) (40:B4) [11:14:34:157]: Doing action: StartServices
+    L711: MSI (s) (40:B4) [11:14:34:157]: Doing action: InstallFinalize
+    L791: MSI (s) (40:B4) [11:14:34:188]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
     L999: WixQuietExec:  LabelFrame updater service start: begin.
     L1003: WixQuietExec:  LabelFrame updater service start: OK (running and request pipe ready after 1.4s).
-    L1189: MSI (s) (40:54) [09:31:01:807]: 产品: LabelFrame Client -- 成功地完成了安装。
-    L1195: MSI (s) (40:54) [09:31:01:807]: MainEngineThread is returning 0
-    L1209: MSI (c) (14:EC) [09:31:01:823]: MainEngineThread is returning 0
+    L1189: MSI (s) (40:B4) [11:14:36:454]: 产品: LabelFrame Client -- 成功地完成了安装。
+    L1195: MSI (s) (40:B4) [11:14:36:469]: MainEngineThread is returning 0
+    L1209: MSI (c) (60:50) [11:14:36:469]: MainEngineThread is returning 0
   event id=11707: 产品: LabelFrame Client -- 成功地完成了安装。
 
-=== F2: uninstall (silent), then what is left behind  [guest 09:31:02] ===
+=== F2: uninstall (silent), then what is left behind  [guest 11:14:37] ===
 MSI_UNINSTALL_EXIT=0 elapsed=2.0s
 after uninstall: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
 leftovers under the install root:
-      dir  11-25 09:31:04  C:\Program Files\LabelFrame\Client
+      dir  11-25 11:14:39  C:\Program Files\LabelFrame\Client
        257 11-24 23:24:14  C:\Program Files\LabelFrame\Client\appsettings.json
-      dir  11-25 09:30:45  C:\Program Files\LabelFrame\ClientUpdateState
+      dir  11-25 11:14:19  C:\Program Files\LabelFrame\ClientUpdateState
 
-=== F3: upgrade path - released 1.6.0 at the default location, then the fixed package over it  [guest 09:31:06] ===
-INSTALL_1.6.0_EXIT=0 elapsed=3.1s
+=== F3: upgrade path - released 1.6.0 at the default location, then the fixed package over it  [guest 11:14:42] ===
+INSTALL_1.6.0_EXIT=0 elapsed=4.1s
 after 1.6.0: product=1.6.0 | service=Running (LocalSystem, Auto) | winhost processes=1 | C:\LabelFrame exists=False
-UPGRADE_TO_FIXED_EXIT=0 elapsed=5.1s
+UPGRADE_TO_FIXED_EXIT=0 elapsed=6.1s
 after upgrade: product=1.6.1 | service=Running (LocalSystem, Auto) | winhost processes=1 | C:\LabelFrame exists=False
 --- logs ---
-  log file: MSI76227.LOG.updater-service.log  (174 bytes)
-    2026-11-25 09:31:13  更新服务启动：开始。
-    2026-11-25 09:31:14  更新服务启动：已进入运行状态，升级请求管道已就绪（用时 1.4 秒）。
-  log file: MSI76227.LOG  (497620 bytes)
-    L315: MSI (s) (40:9C) [09:31:10:276]: Doing action: LaunchConditions
-    L692: MSI (s) (40:D0) [09:31:11:244]: Doing action: LaunchConditions
-    L1041: MSI (s) (40:D0) [09:31:11:401]: Doing action: StartServices
-    L1064: MSI (s) (40:D0) [09:31:11:401]: Doing action: InstallFinalize
-    L1225: MSI (s) (40:D0) [09:31:11:463]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
-    L1228: MSI (s) (40:D0) [09:31:12:494]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=8,Wait=1,)
-    L1808: MSI (s) (40:9C) [09:31:12:932]: Doing action: StartUpdaterService
-    L1812: MSI (s) (40:9C) [09:31:12:932]: Doing action: StartServices
-    L1835: MSI (s) (40:9C) [09:31:12:948]: Doing action: InstallFinalize
-    L1916: MSI (s) (40:9C) [09:31:12:963]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
+  log file: MSI772ff.LOG.updater-service.log  (174 bytes)
+    2026-11-25 11:14:50  更新服务启动：开始。
+    2026-11-25 11:14:52  更新服务启动：已进入运行状态，升级请求管道已就绪（用时 1.4 秒）。
+  log file: MSI772ff.LOG  (497916 bytes)
+    L315: MSI (s) (40:D4) [11:14:47:110]: Doing action: LaunchConditions
+    L692: MSI (s) (40:48) [11:14:48:204]: Doing action: LaunchConditions
+    L1041: MSI (s) (40:48) [11:14:48:360]: Doing action: StartServices
+    L1064: MSI (s) (40:48) [11:14:48:376]: Doing action: InstallFinalize
+    L1225: MSI (s) (40:48) [11:14:48:423]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
+    L1228: MSI (s) (40:48) [11:14:49:454]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=8,Wait=1,)
+    L1808: MSI (s) (40:D4) [11:14:50:016]: Doing action: StartUpdaterService
+    L1812: MSI (s) (40:D4) [11:14:50:016]: Doing action: StartServices
+    L1835: MSI (s) (40:D4) [11:14:50:016]: Doing action: InstallFinalize
+    L1916: MSI (s) (40:D4) [11:14:50:048]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
     L2118: WixQuietExec:  LabelFrame updater service start: begin.
     L2122: WixQuietExec:  LabelFrame updater service start: OK (running and request pipe ready after 1.4s).
-    L2310: MSI (s) (40:9C) [09:31:14:932]: 产品: LabelFrame Client -- 成功地完成了安装。
-    L2316: MSI (s) (40:9C) [09:31:14:932]: MainEngineThread is returning 0
+    L2310: MSI (s) (40:D4) [11:14:52:219]: 产品: LabelFrame Client -- 成功地完成了安装。
+    L2316: MSI (s) (40:D4) [11:14:52:219]: MainEngineThread is returning 0
   event id=11707: 产品: LabelFrame Client -- 成功地完成了安装。
-MSI_UNINSTALL_EXIT=0 elapsed=2.0s
+MSI_UNINSTALL_EXIT=0 elapsed=3.1s
 after uninstall: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
 
-=== F4: self-check failure - the fixed install directory already exists and normal users can write to it  [guest 09:31:19] ===
+=== F4: self-check failure - the fixed install directory already exists and normal users can write to it  [guest 11:14:58] ===
 MSI_INSTALL_EXIT=1603 elapsed=3.1s
 after the rejected install: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
 --- logs ---
-  log file: MSI7881e.LOG.updater-service.log  (508 bytes)
-    2026-11-25 09:31:21  更新服务启动：开始。
-    2026-11-25 09:31:21  更新服务启动：失败，安装将中止并撤回本次改动。服务记录的原因：[09:31:21 事件 0] Service cannot be started. System.IO.InvalidDataException: 更新路径允许非管理员写入，请重新以管理员身份安装客户端。 | [09:31:21 事件 1] 更新服务启动失败，停在阶段「安装目录自检」：更新路径允许非管理员写入，请重新以管理员身份安装客户端。
-  log file: MSI7881e.LOG  (318684 bytes)
-    L305: MSI (s) (40:1C) [09:31:20:010]: Doing action: LaunchConditions
-    L684: MSI (s) (40:1C) [09:31:20:542]: Doing action: StartUpdaterService
-    L688: MSI (s) (40:1C) [09:31:20:542]: Doing action: StartServices
-    L711: MSI (s) (40:1C) [09:31:20:557]: Doing action: InstallFinalize
-    L791: MSI (s) (40:1C) [09:31:20:636]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
+  log file: MSI7a124.LOG.updater-service.log  (508 bytes)
+    2026-11-25 11:15:00  更新服务启动：开始。
+    2026-11-25 11:15:01  更新服务启动：失败，安装将中止并撤回本次改动。服务记录的原因：[11:15:00 事件 0] Service cannot be started. System.IO.InvalidDataException: 更新路径允许非管理员写入，请重新以管理员身份安装客户端。 | [11:15:00 事件 1] 更新服务启动失败，停在阶段「安装目录自检」：更新路径允许非管理员写入，请重新以管理员身份安装客户端。
+  log file: MSI7a124.LOG  (318844 bytes)
+    L305: MSI (s) (40:94) [11:14:58:923]: Doing action: LaunchConditions
+    L684: MSI (s) (40:94) [11:14:59:594]: Doing action: StartUpdaterService
+    L688: MSI (s) (40:94) [11:14:59:594]: Doing action: StartServices
+    L711: MSI (s) (40:94) [11:14:59:610]: Doing action: InstallFinalize
+    L791: MSI (s) (40:94) [11:14:59:641]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
     L999: WixQuietExec:  LabelFrame updater service start: begin.
-    L1002: WixQuietExec:  LabelFrame updater service start: FAILED - the service did not stay running; the installation will be rolled back. Details: C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI7881e.LOG.updater-service.log ; service events: Windows Application log, source LabelFrameClientUpdater.
-    L1036: MSI (s) (40:1C) [09:31:21:916]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=8,,)
-    L1369: MSI (s) (40:1C) [09:31:22:010]: 产品: LabelFrame Client -- 安装失败。
-    L1375: MSI (s) (40:1C) [09:31:22:010]: MainEngineThread is returning 1603
-    L1388: MSI (c) (B8:E4) [09:31:22:026]: MainEngineThread is returning 1603
+    L1002: WixQuietExec:  LabelFrame updater service start: FAILED - the service did not stay running; the installation will be rolled back. Details: C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI7a124.LOG.updater-service.log ; service events: Windows Application log, source LabelFrameClientUpdater.
+    L1036: MSI (s) (40:94) [11:15:01:344]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=8,,)
+    L1369: MSI (s) (40:94) [11:15:01:438]: 产品: LabelFrame Client -- 安装失败。
+    L1375: MSI (s) (40:94) [11:15:01:454]: MainEngineThread is returning 1603
+    L1388: MSI (c) (40:F0) [11:15:01:454]: MainEngineThread is returning 1603
   event id=11708: 产品: LabelFrame Client -- 安装失败。
-  service event id=1 instanceId= level=错误 time=09:31:21: 更新服务启动失败，停在阶段「安装目录自检」：更新路径允许非管理员写入，请重新以管理员身份安装客户端。
-  service event id=0 instanceId= level=错误 time=09:31:21: Service cannot be started. System.IO.InvalidDataException: 更新路径允许非管理员写入，请重新以管理员身份安装客户端。 at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(UpdaterStartup s ...
+  service event id=1 instanceId= level=错误 time=11:15:00: 更新服务启动失败，停在阶段「安装目录自检」：更新路径允许非管理员写入，请重新以管理员身份安装客户端。
+  service event id=0 instanceId= level=错误 time=11:15:00: Service cannot be started. System.IO.InvalidDataException: 更新路径允许非管理员写入，请重新以管理员身份安装客户端。 at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.Verify(String path) at LabelFrame.WinHost.Updates.ProtectedUpdatePaths.CreateRoot() at LabelFrame.WinHost.Updates.ClientUpdaterService.SelfCheck(UpdaterStartup s ...
 leftovers after the rollback:
-      dir  11-25 09:31:21  C:\Program Files\LabelFrame\Client
+      dir  11-25 11:15:01  C:\Program Files\LabelFrame\Client
        257 11-24 23:24:14  C:\Program Files\LabelFrame\Client\appsettings.json
-      dir  11-25 09:30:45  C:\Program Files\LabelFrame\ClientUpdateState
+      dir  11-25 11:14:19  C:\Program Files\LabelFrame\ClientUpdateState
   cleaned the pre-created directory: left=False
 
-=== F5: INSTALLFOLDER on the command line, silent  [guest 09:31:23] ===
+=== F5: INSTALLFOLDER on the command line, silent  [guest 11:15:02] ===
 MSI_INSTALL_EXIT=1603 elapsed=1.0s
 after the rejected install: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
 --- logs ---
-  log file: MSI7954d.LOG  (82654 bytes)
-    L306: MSI (s) (40:34) [09:31:23:354]: Doing action: LaunchConditions
-    L312: MSI (s) (40:34) [09:31:23:354]: 产品: LabelFrame Client -- LabelFrame 客户端固定安装到 C:\Program Files\LabelFrame\Client，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。
-    L431: MSI (s) (40:34) [09:31:23:369]: 产品: LabelFrame Client -- 安装失败。
-    L437: MSI (s) (40:34) [09:31:23:369]: MainEngineThread is returning 1603
-    L450: MSI (c) (04:EC) [09:31:23:385]: MainEngineThread is returning 1603
+  log file: MSI7a124.LOG.updater-service.log  (508 bytes)
+    2026-11-25 11:15:00  更新服务启动：开始。
+    2026-11-25 11:15:01  更新服务启动：失败，安装将中止并撤回本次改动。服务记录的原因：[11:15:00 事件 0] Service cannot be started. System.IO.InvalidDataException: 更新路径允许非管理员写入，请重新以管理员身份安装客户端。 | [11:15:00 事件 1] 更新服务启动失败，停在阶段「安装目录自检」：更新路径允许非管理员写入，请重新以管理员身份安装客户端。
+  log file: MSI7a124.LOG  (318844 bytes)
+    L305: MSI (s) (40:94) [11:14:58:923]: Doing action: LaunchConditions
+    L684: MSI (s) (40:94) [11:14:59:594]: Doing action: StartUpdaterService
+    L688: MSI (s) (40:94) [11:14:59:594]: Doing action: StartServices
+    L711: MSI (s) (40:94) [11:14:59:610]: Doing action: InstallFinalize
+    L791: MSI (s) (40:94) [11:14:59:641]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
+    L999: WixQuietExec:  LabelFrame updater service start: begin.
+    L1002: WixQuietExec:  LabelFrame updater service start: FAILED - the service did not stay running; the installation will be rolled back. Details: C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI7a124.LOG.updater-service.log ; service events: Windows Application log, source LabelFrameClientUpdater.
+    L1036: MSI (s) (40:94) [11:15:01:344]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=8,,)
+    L1369: MSI (s) (40:94) [11:15:01:438]: 产品: LabelFrame Client -- 安装失败。
+    L1375: MSI (s) (40:94) [11:15:01:454]: MainEngineThread is returning 1603
+    L1388: MSI (c) (40:F0) [11:15:01:454]: MainEngineThread is returning 1603
+  log file: MSI7ae91.LOG  (82678 bytes)
+    L306: MSI (s) (40:54) [11:15:02:376]: Doing action: LaunchConditions
+    L312: MSI (s) (40:54) [11:15:02:376]: 产品: LabelFrame Client -- LabelFrame 客户端固定安装到 C:\Program Files\LabelFrame\Client，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。
+    L431: MSI (s) (40:54) [11:15:02:391]: 产品: LabelFrame Client -- 安装失败。
+    L437: MSI (s) (40:54) [11:15:02:391]: MainEngineThread is returning 1603
+    L450: MSI (c) (38:A0) [11:15:02:391]: MainEngineThread is returning 1603
   event id=10005: 产品: LabelFrame Client -- LabelFrame 客户端固定安装到 C:\Program Files\LabelFrame\Client，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。
   event id=11708: 产品: LabelFrame Client -- 安装失败。
 
-=== F6: installer-side start entry run by hand - service disabled, then enabled  [guest 09:31:24] ===
-MSI_INSTALL_EXIT=0 elapsed=3.1s
+=== F6: installer-side start entry run by hand - service disabled, then enabled  [guest 11:15:03] ===
+MSI_INSTALL_EXIT=0 elapsed=4.1s
 service disabled -> start must be refused:
   starter exit=11 elapsed=0.2s
   | LabelFrame updater service start: begin.
   | LabelFrame updater service start: FAILED - InvalidOperationException (native error -); the installation will be rolled back. Details: C:\Users\<account>\AppData\Local\Temp\LabelFrame-updater-service-start.log ; service events: Windows Application log, source LabelFrameClientUpdater.
 service enabled again -> start must succeed:
-  starter exit=0 elapsed=1.4s
+  starter exit=0 elapsed=1.5s
   | LabelFrame updater service start: begin.
   | LabelFrame updater service start: OK (running and request pipe ready after 1.4s).
 after F6: product=1.6.1 | service=Running (LocalSystem, Auto) | winhost processes=1 | C:\LabelFrame exists=False
-MSI_UNINSTALL_EXIT=0 elapsed=2.0s
+MSI_UNINSTALL_EXIT=0 elapsed=4.1s
 after uninstall: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
 
-=== F7: slow machine - every logical processor saturated while installing  [guest 09:31:34] ===
-LOAD_START_SECONDS=0.2 loops=4 logicalCPUs=2
+=== F7: slow machine - every logical processor saturated while installing  [guest 11:15:18] ===
+LOAD_START_SECONDS=0.4 loops=4 logicalCPUs=2
 CPU_LOAD_PERCENT_BEFORE_INSTALL=100
-MSI_INSTALL_EXIT=0 elapsed=88.5s
+MSI_INSTALL_EXIT=0 elapsed=85.8s
 after install under load: product=1.6.1 | service=Running (LocalSystem, Auto) | winhost processes=1 | C:\LabelFrame exists=False
 --- logs ---
-  log file: MSI7e215.LOG.updater-service.log  (174 bytes)
-    2026-11-25 09:32:56  更新服务启动：开始。
-    2026-11-25 09:32:59  更新服务启动：已进入运行状态，升级请求管道已就绪（用时 3.1 秒）。
-  log file: MSI7e215.LOG  (276254 bytes)
-    L305: MSI (s) (40:98) [09:31:49:510]: Doing action: LaunchConditions
-    L684: MSI (s) (40:98) [09:32:32:432]: Doing action: StartUpdaterService
-    L688: MSI (s) (40:98) [09:32:32:901]: Doing action: StartServices
-    L711: MSI (s) (40:98) [09:32:35:401]: Doing action: InstallFinalize
-    L791: MSI (s) (40:98) [09:32:43:557]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
+  log file: MSI80cee.LOG.updater-service.log  (174 bytes)
+    2026-11-25 11:16:36  更新服务启动：开始。
+    2026-11-25 11:16:39  更新服务启动：已进入运行状态，升级请求管道已就绪（用时 3.4 秒）。
+  log file: MSI80cee.LOG  (276432 bytes)
+    L305: MSI (s) (40:EC) [11:15:33:282]: Doing action: LaunchConditions
+    L684: MSI (s) (40:EC) [11:16:15:204]: Doing action: StartUpdaterService
+    L688: MSI (s) (40:EC) [11:16:15:673]: Doing action: StartServices
+    L711: MSI (s) (40:EC) [11:16:18:063]: Doing action: InstallFinalize
+    L791: MSI (s) (40:EC) [11:16:25:469]: Executing op: ServiceControl(,Name=LabelFrameClientUpdater,Action=2,Wait=1,)
     L999: WixQuietExec:  LabelFrame updater service start: begin.
-    L1003: WixQuietExec:  LabelFrame updater service start: OK (running and request pipe ready after 3.1s).
-    L1189: MSI (s) (40:98) [09:33:09:073]: 产品: LabelFrame Client -- 成功地完成了安装。
-    L1195: MSI (s) (40:98) [09:33:09:073]: MainEngineThread is returning 0
-    L1209: MSI (c) (A8:00) [09:33:09:729]: MainEngineThread is returning 0
+    L1003: WixQuietExec:  LabelFrame updater service start: OK (running and request pipe ready after 3.4s).
+    L1189: MSI (s) (40:EC) [11:16:50:079]: 产品: LabelFrame Client -- 成功地完成了安装。
+    L1195: MSI (s) (40:EC) [11:16:50:079]: MainEngineThread is returning 0
+    L1209: MSI (c) (04:5C) [11:16:50:407]: MainEngineThread is returning 0
   event id=11707: 产品: LabelFrame Client -- 成功地完成了安装。
 CPU_LOAD_PERCENT_AFTER_INSTALL=100
---- time gaps of 2s or more in MSI7e215.LOG (1211 lines) ---
+--- time gaps of 2s or more in MSI80cee.LOG (1211 lines) ---
   (none)
 --- milestones ---
-  L305: MSI (s) (40:98) [09:31:49:510]: Doing action: LaunchConditions
-  L384: MSI (s) (40:98) [09:31:51:244]: PROPERTY CHANGE: Adding WixQuietExecCmdLine property. Its value is '"C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $servicePids=@(Get-CimInstance Win32_Service -Filter 'Name=''LabelFrameClientUpdater''' -ErrorAction Stop | Select-Object -ExpandProperty ProcessId); $p=Get-CimInstance Win32_Process -Filter 'Name=''LabelFrame.WinHost.exe''' -ErrorAction Stop | Where-Object { $_.ProcessId -notin $servicePids -and $_.CommandLine -notmatch '(^|\s)--(update-service|restart-wait)(\s|$)' } | Select-Object -First 1; if (!$p) { exit 0 }; $pidToStop=$p.ProcessId; $ports=@(Get-NetTCPConnection -State Listen -OwningProcess $pidToStop -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort -Unique); if (!$ports) { Write-Error 'LabelFrame 正在运行但无法定位本机 API 端口，已中止升级'; exit 1 }; $base=$null; foreach ($port in $ports) { try { $jobs=@(Invoke-RestMethod -TimeoutSec 3 -Uri ('http://127.0.0.1:'+$port+'/api/jobs?limit=500')); $base='http://127.0.0.1:'+$port;
-  L390: MSI (s) (40:70) [09:31:51:526]: Invoking remote custom action. DLL: C:\Windows\Installer\MSI3F3.tmp, Entrypoint: WixQuietExec
-  L397: MSI (s) (40!88) [09:31:51:760]: PROPERTY CHANGE: Deleting WixQuietExecCmdLine property. Its current value is '"C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $servicePids=@(Get-CimInstance Win32_Service -Filter 'Name=''LabelFrameClientUpdater''' -ErrorAction Stop | Select-Object -ExpandProperty ProcessId); $p=Get-CimInstance Win32_Process -Filter 'Name=''LabelFrame.WinHost.exe''' -ErrorAction Stop | Where-Object { $_.ProcessId -notin $servicePids -and $_.CommandLine -notmatch '(^|\s)--(update-service|restart-wait)(\s|$)' } | Select-Object -First 1; if (!$p) { exit 0 }; $pidToStop=$p.ProcessId; $ports=@(Get-NetTCPConnection -State Listen -OwningProcess $pidToStop -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort -Unique); if (!$ports) { Write-Error 'LabelFrame 正在运行但无法定位本机 API 端口，已中止升级'; exit 1 }; $base=$null; foreach ($port in $ports) { try { $jobs=@(Invoke-RestMethod -TimeoutSec 3 -Uri ('http://127.0.0.1:'+$port+'/api/jobs?limit=500')); $base='http://127.0.0.
-  L399: WixQuietExec:  Entering WixQuietExec in C:\Windows\Installer\MSI3F3.tmp, version 7.0.0.0
+  L305: MSI (s) (40:EC) [11:15:33:282]: Doing action: LaunchConditions
+  L384: MSI (s) (40:EC) [11:15:34:688]: PROPERTY CHANGE: Adding WixQuietExecCmdLine property. Its value is '"C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $servicePids=@(Get-CimInstance Win32_Service -Filter 'Name=''LabelFrameClientUpdater''' -ErrorAction Stop | Select-Object -ExpandProperty ProcessId); $p=Get-CimInstance Win32_Process -Filter 'Name=''LabelFrame.WinHost.exe''' -ErrorAction Stop | Where-Object { $_.ProcessId -notin $servicePids -and $_.CommandLine -notmatch '(^|\s)--(update-service|restart-wait)(\s|$)' } | Select-Object -First 1; if (!$p) { exit 0 }; $pidToStop=$p.ProcessId; $ports=@(Get-NetTCPConnection -State Listen -OwningProcess $pidToStop -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort -Unique); if (!$ports) { Write-Error 'LabelFrame 正在运行但无法定位本机 API 端口，已中止升级'; exit 1 }; $base=$null; foreach ($port in $ports) { try { $jobs=@(Invoke-RestMethod -TimeoutSec 3 -Uri ('http://127.0.0.1:'+$port+'/api/jobs?limit=500')); $base='http://127.0.0.1:'+$port;
+  L390: MSI (s) (40:AC) [11:15:34:938]: Invoking remote custom action. DLL: C:\Windows\Installer\MSI2EDC.tmp, Entrypoint: WixQuietExec
+  L397: MSI (s) (40!08) [11:15:35:204]: PROPERTY CHANGE: Deleting WixQuietExecCmdLine property. Its current value is '"C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $servicePids=@(Get-CimInstance Win32_Service -Filter 'Name=''LabelFrameClientUpdater''' -ErrorAction Stop | Select-Object -ExpandProperty ProcessId); $p=Get-CimInstance Win32_Process -Filter 'Name=''LabelFrame.WinHost.exe''' -ErrorAction Stop | Where-Object { $_.ProcessId -notin $servicePids -and $_.CommandLine -notmatch '(^|\s)--(update-service|restart-wait)(\s|$)' } | Select-Object -First 1; if (!$p) { exit 0 }; $pidToStop=$p.ProcessId; $ports=@(Get-NetTCPConnection -State Listen -OwningProcess $pidToStop -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort -Unique); if (!$ports) { Write-Error 'LabelFrame 正在运行但无法定位本机 API 端口，已中止升级'; exit 1 }; $base=$null; foreach ($port in $ports) { try { $jobs=@(Invoke-RestMethod -TimeoutSec 3 -Uri ('http://127.0.0.1:'+$port+'/api/jobs?limit=500')); $base='http://127.0.0.
+  L399: WixQuietExec:  Entering WixQuietExec in C:\Windows\Installer\MSI2EDC.tmp, version 7.0.0.0
   L403: WixQuietExec:  "C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $servicePids=@(Get-CimInstance Win32_Service -Filter 'Name=''LabelFrameClientUpdater''' -ErrorAction Stop | Select-Object -ExpandProperty ProcessId); $p=Get-CimInstance Win32_Process -Filter 'Name=''LabelFrame.WinHost.exe''' -ErrorAction Stop | Where-Object { $_.ProcessId -notin $servicePids -and $_.CommandLine -notmatch '(^|\s)--(update-service|restart-wait)(\s|$)' } | Select-Object -First 1; if (!$p) { exit 0 }; $pidToStop=$p.ProcessId; $ports=@(Get-NetTCPConnection -State Listen -OwningProcess $pidToStop -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort -Unique); if (!$ports) { Write-Error 'LabelFrame
-  L404: MSI (s) (40:98) [09:32:13:479]: Doing action: InstallValidate
-  L504: MSI (s) (40:98) [09:32:18:791]: Doing action: InstallInitialize
-  L587: MSI (s) (40:98) [09:32:25:541]: Doing action: InstallFiles
-  L666: MSI (s) (40:98) [09:32:31:385]: Doing action: InstallServices
-  L679: MSI (s) (40:98) [09:32:32:244]: Doing action: SetStartUpdaterService
-  L684: MSI (s) (40:98) [09:32:32:432]: Doing action: StartUpdaterService
-  L688: MSI (s) (40:98) [09:32:32:901]: Doing action: StartServices
-  L711: MSI (s) (40:98) [09:32:35:401]: Doing action: InstallFinalize
-  L981: MSI (s) (40:98) [09:32:53:244]: Executing op: CustomActionSchedule(Action=StopUpdaterServiceOnRollback,ActionType=3393,Source=BinaryData,Target=WixQuietExec,CustomActionData="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "Stop-Service -Name LabelFrameClientUpdater -Force -ErrorAction SilentlyContinue")
-  L983: MSI (s) (40:98) [09:32:53:338]: Executing op: CustomActionSchedule(Action=StartUpdaterService,ActionType=3073,Source=BinaryData,Target=WixQuietExec,CustomActionData="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --start-update-service --log "C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI7e215.LOG.updater-service.log")
-  L985: MSI (s) (40:78) [09:32:53:619]: Invoking remote custom action. DLL: C:\Windows\Installer\MSIF5C7.tmp, Entrypoint: WixQuietExec
-  L993: WixQuietExec:  Entering WixQuietExec in C:\Windows\Installer\MSIF5C7.tmp, version 7.0.0.0
-  L996: WixQuietExec:  "C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --start-update-service --log "C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI7e215.LOG.updater-service.log"
+  L404: MSI (s) (40:EC) [11:15:57:235]: Doing action: InstallValidate
+  L504: MSI (s) (40:EC) [11:16:02:438]: Doing action: InstallInitialize
+  L587: MSI (s) (40:EC) [11:16:08:235]: Doing action: InstallFiles
+  L666: MSI (s) (40:EC) [11:16:13:860]: Doing action: InstallServices
+  L679: MSI (s) (40:EC) [11:16:14:923]: Doing action: SetStartUpdaterService
+  L684: MSI (s) (40:EC) [11:16:15:204]: Doing action: StartUpdaterService
+  L688: MSI (s) (40:EC) [11:16:15:673]: Doing action: StartServices
+  L711: MSI (s) (40:EC) [11:16:18:063]: Doing action: InstallFinalize
+  L981: MSI (s) (40:EC) [11:16:34:001]: Executing op: CustomActionSchedule(Action=StopUpdaterServiceOnRollback,ActionType=3393,Source=BinaryData,Target=WixQuietExec,CustomActionData="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "Stop-Service -Name LabelFrameClientUpdater -Force -ErrorAction SilentlyContinue")
+  L983: MSI (s) (40:EC) [11:16:34:079]: Executing op: CustomActionSchedule(Action=StartUpdaterService,ActionType=3073,Source=BinaryData,Target=WixQuietExec,CustomActionData="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --start-update-service --log "C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI80cee.LOG.updater-service.log")
+  L985: MSI (s) (40:18) [11:16:34:344]: Invoking remote custom action. DLL: C:\Windows\Installer\MSI1640.tmp, Entrypoint: WixQuietExec
+  L993: WixQuietExec:  Entering WixQuietExec in C:\Windows\Installer\MSI1640.tmp, version 7.0.0.0
+  L996: WixQuietExec:  "C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --start-update-service --log "C:\Users\<ACCOUNT>~1\AppData\Local\Temp\MSI80cee.LOG.updater-service.log"
   L999: WixQuietExec:  LabelFrame updater service start: begin.
-  L1003: WixQuietExec:  LabelFrame updater service start: OK (running and request pipe ready after 3.1s).
-  L1189: MSI (s) (40:98) [09:33:09:073]: 产品: LabelFrame Client -- 成功地完成了安装。
+  L1003: WixQuietExec:  LabelFrame updater service start: OK (running and request pipe ready after 3.4s).
+  L1189: MSI (s) (40:EC) [11:16:50:079]: 产品: LabelFrame Client -- 成功地完成了安装。
 MSI_UNINSTALL_EXIT=0 elapsed=2.1s
 after uninstall: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
 
-=== install logs accumulated in the user TEMP during this run  [guest 09:33:29] ===
-  09:31:01       174 bytes  MSI736c1.LOG.updater-service.log
-  09:31:01    276242 bytes  MSI736c1.LOG
-  09:31:04    226816 bytes  MSI7449c.LOG
-  09:31:14       174 bytes  MSI76227.LOG.updater-service.log
-  09:31:14    497620 bytes  MSI76227.LOG
-  09:31:17    226758 bytes  MSI77755.LOG
-  09:31:21       508 bytes  MSI7881e.LOG.updater-service.log
-  09:31:22    318684 bytes  MSI7881e.LOG
-  09:31:23     82654 bytes  MSI7954d.LOG
-  09:31:27       174 bytes  MSI79a3e.LOG.updater-service.log
-  09:31:27    276968 bytes  MSI79a3e.LOG
-  09:31:32    226750 bytes  MSI7b299.LOG
-  09:32:59       174 bytes  MSI7e215.LOG.updater-service.log
-  09:33:09    276254 bytes  MSI7e215.LOG
-  09:33:27    226768 bytes  MSI9722b.LOG
+=== install logs accumulated in the user TEMP during this run  [guest 11:17:12] ===
+  11:14:36       174 bytes  MSI73eb1.LOG.updater-service.log
+  11:14:36    276490 bytes  MSI73eb1.LOG
+  11:14:39    226970 bytes  MSI750b2.LOG
+  11:14:52       174 bytes  MSI772ff.LOG.updater-service.log
+  11:14:52    497916 bytes  MSI772ff.LOG
+  11:14:55    226904 bytes  MSI78c63.LOG
+  11:15:01       508 bytes  MSI7a124.LOG.updater-service.log
+  11:15:01    318844 bytes  MSI7a124.LOG
+  11:15:02     82678 bytes  MSI7ae91.LOG
+  11:15:06       174 bytes  MSI7b373.LOG.updater-service.log
+  11:15:06    277140 bytes  MSI7b373.LOG
+  11:15:14    226922 bytes  MSI7d12d.LOG
+  11:16:39       174 bytes  MSI80cee.LOG.updater-service.log
+  11:16:50    276432 bytes  MSI80cee.LOG
+  11:17:10    226842 bytes  MSI99cc5.LOG
 acceptance runner exit=0

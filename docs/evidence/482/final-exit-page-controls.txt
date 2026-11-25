@@ -1,5 +1,5 @@
 Controls of the cancel, early-end, interrupted and completion pages in the final build.
-MSI=C:\work\OpenCode\LabelFrame-wt1-client-msi-install-guard\artifacts\LabelFrame-Client-1.6.1.msi sha256=61241da46813750edb1e5a1218461beac35d10a01740313df085f6680eb328b0
+MSI=C:\work\OpenCode\LabelFrame-wt1-client-msi-install-guard\artifacts\LabelFrame-Client-1.6.1.msi sha256=18188bd07f36d33d3718bf2f336cf514b154f5634c346734d1a24e9736f7ca15
 CancelDlg | Icon | Icon | 5242881 | WixUI_Ico_Info
 CancelDlg | Text | Text | 131075 | 是否确实要取消安装 [ProductName]?
 CancelDlg | No | PushButton | 3 | 否(&N)

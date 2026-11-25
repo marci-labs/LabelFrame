@@ -1,9 +1,9 @@
-=== interactive run  [guest 09:50:14] ===
+=== interactive run  [guest 11:07:29] ===
 用户名                会话名             ID  状态    空闲时间   登录时间
- <account>            console             1  运行中      无     2026/11/25 9:47
-script present=True size=32396
+ <account>            console             1  运行中      无     2026/11/25 11:05
+script present=True size=32434
 TASK_STATE=Ready resultPresent=True lastResult=0
-=== wizard capture 'w-c': mode=prompt  [09:50:17] ===
+=== wizard capture 'w-c': mode=prompt  [11:07:32] ===
 arguments: /i "C:\Probe\LabelFrame-Client-1.6.1.msi" /norestart
 identity=DESKTOP-D65DJ5S\<account> elevated=True
 TEMP=C:\Users\<ACCOUNT>~1\AppData\Local\Temp
@@ -23,10 +23,10 @@ windows seen while waiting: Prepare, RuntimeMissing
   check ok: the prompt has an exit button
   check ok: the prompt offers no way to continue the installation
 --- page UserExit (actual UserExit, match=True): 'LabelFrame Client 安装程序' ---
-  [306] 完成(&F)
-  [206] 取消
+  [305] 完成(&F)
+  [205] 取消
   [192] WixUI_Bmp_Dialog
-  [202] 上一步(&B)
+  [201] 上一步(&B)
   [58] LabelFrame Client 安装程序已中断。您的系统尚未修改。若要稍后安装此程序，请再次运行安装程序。 单击“完成”按钮退出安装向导。
   [194] LabelFrame Client 安装向导中断
   screenshot -> C:\Probe\logs\w-c-02-UserExit.png (PrintWindow)
@@ -35,11 +35,11 @@ exit code=1602
 client processes started during the run=0
 after: product=none | service=absent | winhost processes=0 | C:\LabelFrame exists=False
 --- install logs created during this run (no /L switch was given) ---
-  log file: C:\Users\<account>\AppData\Local\Temp\MSI29dfb.LOG  (65066 bytes, 09:50:20)
-    L121: MSI (c) (C4:EC) [09:50:18:347]: Doing action: PrepareDlg
-    L198: MSI (c) (C4:EC) [09:50:18:706]: Doing action: LaunchConditions
-    L266: MSI (c) (C4:EC) [09:50:18:722]: Doing action: RuntimeMissingDlg
-    L427: MSI (c) (C4:EC) [09:50:20:862]: 产品: LabelFrame Client -- 安装失败。
-    L433: MSI (c) (C4:EC) [09:50:20:862]: MainEngineThread is returning 1602
+  log file: C:\Users\<account>\AppData\Local\Temp\MSI258d4.LOG  (65160 bytes, 11:07:35)
+    L121: MSI (c) (68:08) [11:07:33:095]: Doing action: PrepareDlg
+    L198: MSI (c) (68:08) [11:07:33:377]: Doing action: LaunchConditions
+    L266: MSI (c) (68:08) [11:07:33:392]: Doing action: RuntimeMissingDlg
+    L427: MSI (c) (68:08) [11:07:35:486]: 产品: LabelFrame Client -- 安装失败。
+    L433: MSI (c) (68:08) [11:07:35:502]: MainEngineThread is returning 1602
 CHECK_FAILURES=0
-=== end 'w-c'  [09:50:22] ===
+=== end 'w-c'  [11:07:36] ===

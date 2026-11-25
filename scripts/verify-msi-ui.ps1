@@ -80,6 +80,9 @@ foreach ($path in $MsiPaths) {
         if ($locationControls.Count -eq 0) { throw '缺少只读的安装位置页 InstallLocationDlg' }
         if (@($locationControls | Where-Object { $_[0] -eq 'ChangeFolder' -or $_[1] -eq 'PathEdit' -or $_[1] -eq 'DirectoryList' }).Count -gt 0) { throw '安装位置页必须只读：不得有可编辑路径框、更改按钮或目录列表' }
         if (@($locationControls | Where-Object { $_[0] -eq 'InstallLocationText' -and $_[2] -eq '[ClientInstallDir]' }).Count -ne 1) { throw '安装位置页应只读展示固定安装目录 [ClientInstallDir]' }
+        # 这一页只写「安装目录」和路径，不加解释：文字控件只允许标题与路径两个
+        $locationTexts = @($locationControls | Where-Object { $_[1] -eq 'Text' })
+        if ($locationTexts.Count -ne 2 -or @($locationTexts | Where-Object { $_[0] -eq 'Title' -and $_[2] -like '*安装目录' }).Count -ne 1) { throw '安装目录页只保留标题「安装目录」与路径，不加说明文字' }
         foreach ($link in @(@('InstallLocationDlg', 'Next', 'OptionsDlg'), @('OptionsDlg', 'Back', 'InstallLocationDlg'), @('InstallLocationDlg', 'Back', 'LicenseAgreementDlg'))) {
             if (@($events | Where-Object { $_[0] -eq $link[0] -and $_[1] -eq $link[1] -and $_[2] -eq 'NewDialog' -and $_[3] -eq $link[2] }).Count -lt 1) { throw "向导链路缺失：$($link[0]).$($link[1]) 应跳转 $($link[2])" }
         }
