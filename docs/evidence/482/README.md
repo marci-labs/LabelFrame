@@ -40,7 +40,7 @@ Client MSI 直接安装时的两个问题：缺运行时提示不准；缺 .NET 
 | `final-runtime-dialog-tables.txt` | 中间构建、最终 | 「缺少 .NET 运行时」对话框的控件表对照：中间构建三段说明默认可见，最终构建默认隐藏 |
 | `final-exit-page-controls.txt` | 最终 | 取消确认、提前结束、中断、完成四个收尾页在包里的控件文字 |
 | `structure-assertions.txt` | 全部 | `scripts/verify-msi-ui.ps1` 的判定：最终包通过；两个中间构建、三个故意改错的变异包、发布版 1.6.0 被拒 |
-| `host-build-and-tests.txt` | — | 本地构建与测试 |
+| `host-build-and-tests.txt` | — | 本地构建与测试，以及 CI 的结果和未通过的原因 |
 
 ## 根因复现（发布版 1.6.0，2026-11-24）
 
@@ -70,7 +70,7 @@ Client MSI 直接安装时的两个问题：缺运行时提示不准；缺 .NET 
 | AC-9 安装日志 | 通过 | 向导安装（不传 `/L`）：`final-wizard-full-install.txt` 末尾列出 `%TEMP%\MSI3d310.LOG` 与 `MSI3d310.LOG.updater-service.log`；静默安装：`final-silent-acceptance.txt` F1。失败时给出日志路径：向导的「提前结束」页上写明（`final-wizard-install-failure-prompt.txt`、`final-wizard-installfolder-intercepted.txt`）；安装日志的结论行里给出明细日志路径（F4）。停在哪一步：明细日志与事件日志（F4） |
 | AC-10 引导 EXE 链 | 通过（代码核对） | `packaging/bootstrapper/Bundle.wxs`：链序 .NET Desktop Runtime → ASP.NET Core Runtime → WebView2 → Server MSI → Client MSI，没有向客户端 MSI 传 `INSTALLFOLDER`。运行时齐全时的静默安装见 AC-3 |
 | AC-11 升级路径 | 通过 | `final-silent-acceptance.txt` F3：发布版 1.6.0 装在默认位置 → 修复包覆盖升级，5.1 秒成功，服务运行 |
-| AC-12 回归 | 通过（有一项说明） | `host-build-and-tests.txt`：构建 0 警告 0 错误；测试 1622 通过、0 失败、1 跳过，另有 1 项既有测试受宿主机安全软件影响、在 master 上同样失败，已显式排除。结构断言见 `structure-assertions.txt` |
+| AC-12 回归 | 本地通过（有两项说明）；CI 被既有问题阻断 | `host-build-and-tests.txt`：本机 SDK 10.0.402 下构建 0 警告 0 错误；测试 1622 通过、0 失败、1 跳过，另有 1 项既有测试受宿主机安全软件影响、在 master 上同样失败，已显式排除。结构断言在本机通过（`structure-assertions.txt`）。CI 的「构建与测试」与「MSI 结构断言」在 SDK 10.0.404 下因既有代码的分析器错误失败，详见下方「观察与已知边界」 |
 | AC-13 文档与证据 | 通过 | 本目录；文档改动见 PR |
 
 ## 验收中发现并修复的问题
@@ -98,4 +98,5 @@ Client MSI 直接安装时的两个问题：缺运行时提示不准；缺 .NET 
 - **CPU 饱和时整次安装 88.5 秒**，但时间不在启动服务上：包内原有的「关闭运行中的客户端」PowerShell 动作和安装器自身的校验、复制、提交占了绝大部分。启动更新服务只占 3.1 秒。
 - 向导里点「退出」（或拦截后点「确定」）会进入标准的「安装向导中断 / 提前结束」页，需要再点一次「完成」。这是 Windows Installer 的标准流程，与包里原有的 WebView2 缺失对话框一致。
 - 卸载后安装目录下保留 `Client\appsettings.json`（不随卸载删除的配置组件）和空目录 `ClientUpdateState`。发布版 1.6.0 卸载后同样保留一个文件，属于既有行为。
-- 本地测试里被排除的那一项（`UpdateSupervisorTests.Relauncher_waits_exact_parent_exit_and_keeps_original_user`）与本次改动无关：它用 `powershell.exe -EncodedCommand` 启动辅助进程，而这台宿主机上这样启动的进程会被外部按在创建阶段约 30 秒后结束；在未改动的 master 上同样失败。以 CI 的「构建与测试」检查为准。
+- 本地测试里被排除的那一项（`UpdateSupervisorTests.Relauncher_waits_exact_parent_exit_and_keeps_original_user`）与本次改动无关：它用 `powershell.exe -EncodedCommand` 启动辅助进程，而这台宿主机上这样启动的进程会被外部按在创建阶段约 30 秒后结束；在未改动的 master 上同样失败。
+- **CI 目前被一个与本次改动无关的问题阻断。** CI 用的 .NET SDK 是 10.0.404，它的分析器对既有代码报 11 处错误（CA2026、CA2027），仓库设置 `AnalysisLevel=latest-recommended` 加 `TreatWarningsAsErrors=true`，又没有 `global.json` 固定 SDK，所以新规则直接让「构建与测试」和「MSI 结构断言」两项必需检查失败。报错的六个文件本次改动都没有触及；master 上最近一次 CI 通过是 2026-11-06，此后 SDK 补丁更新。这需要单独处理（修复这些调用，或固定 SDK 版本），不属于本缺陷的范围；在那之前，本次新增的代码在 10.0.404 下是否干净也还没有 CI 结论。详见 `host-build-and-tests.txt`。
