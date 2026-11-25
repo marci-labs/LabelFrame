@@ -48,11 +48,13 @@ PowerShell 7（pwsh）同一条 -EncodedCommand       1.04s exit=0
 已通过! - 失败:     0，通过:   614，已跳过:     0，总计:   614，持续时间: 36 s - LabelFrame.WinHost.Tests.dll
 合计：1622 通过，0 失败，1 跳过（Server 测试中的既有跳过项）。被排除的 1 项本应交给 CI 判断，但 CI 当前被下面的问题阻断，尚未得到结论。
 
-=== CI（PR #483，提交 bc86166）===
+=== CI（PR #483）===
 「Android 构建（PDA 宿主）」通过；「构建与测试（dotnet + 前端）」与「MSI 结构断言（安装包 UI 契约）」都在 dotnet build 阶段失败，与本次改动无关：
 
-- CI 用的 SDK 是 10.0.404，本机是 10.0.402（CI 的 DOTNET_VERSION 为 10.0.x，仓库没有 global.json）。本机做过不增量的完整构建，0 警告 0 错误。
-- 10.0.404 的分析器对既有代码报 11 处错误：CA2026（JsonDocument.Parse(...).RootElement）与 CA2027（Task.WhenAny 配 Task.Delay）。仓库设置 AnalysisLevel=latest-recommended 且 TreatWarningsAsErrors=true，新规则直接成为编译错误。
+- 工作流的 DOTNET_VERSION 是 10.0.x，只保证 runner 上装了 .NET 10 SDK（当天是 10.0.404）；仓库没有 global.json，dotnet 实际用的是镜像上最高的 SDK。runner 镜像更新后预装了 .NET 11 SDK，CI 日志里安装工作负载用的版本是 11.0.100，构建、测试与打包都在 .NET 11 SDK 上进行。
+- .NET 11 SDK 的分析器对既有代码报 11 处错误：CA2026（JsonDocument.Parse(...).RootElement）与 CA2027（Task.WhenAny 配 Task.Delay）。仓库设置 AnalysisLevel=latest-recommended 且 TreatWarningsAsErrors=true，新规则直接成为编译错误。
 - 报错文件：src/LabelFrame.Bootstrapper.Ba/LabelFrameBootstrapperBa.cs、src/LabelFrame.WinHost/HostExitCoordinator.cs、test/LabelFrame.Core.Tests/Jobs/LabelJobQueueTests.cs、test/LabelFrame.Api.Tests/ErrorViewParamsTests.cs、test/LabelFrame.Server.Tests/JobCallbackTests.cs、test/LabelFrame.Server.Tests/ErrorParamsEndpointsTests.cs。这些文件本次改动都没有触及。
-- master 上最近一次 CI 通过是 2026-11-06（提交 3e16821，即本分支的基点）；此后 SDK 补丁更新，同样的源码在今天会得到同样的错误。
-- 后果：依赖这些项目的测试项目在 CI 上没有被编译，所以本次新增的代码在 10.0.404 下是否干净尚无 CI 结论；MSI 结构断言在 CI 上也没有跑到（本机 PowerShell 5.1 与 7 下均通过）。需要先单独处理（修复这些调用，或固定 SDK 版本），本 PR 才能满足合并门禁。
+- 本机看不出来：本机 SDK 是 10.0.402；另把 10.0.404 装到独立目录对 master 源码做过完整构建，0 警告 0 错误；按字节检查，10.0.402 与 10.0.404 自带的分析器里都没有这两条规则。
+- master 上最近一次 CI 通过是 2026-11-06（提交 3e16821，即本分支的基点）；同样的源码在今天的 CI 上会得到同样的错误。
+- 该问题由单独的 PR #484 处理（按新规则改写那些调用），不属于本缺陷的范围。
+- 后果：依赖这些项目的测试项目在 CI 上没有被编译，所以本次新增的代码在 .NET 11 SDK 下是否干净尚无 CI 结论；MSI 结构断言在 CI 上也没有跑到（本机 PowerShell 5.1 与 7 下均通过）。
