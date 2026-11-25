@@ -4,8 +4,8 @@
 
 ## 开发环境
 
-- .NET 10 SDK
-- Node.js 24 + pnpm 11
+- .NET 10 SDK（版本由根目录 `global.json` 固定在 10.x：使用本机已安装的最高的 10.0.x；装有更高主版本的 SDK 也不会被用到）
+- Node.js 26.12.1 + pnpm 12.15.0（根目录 `.node-version` 与 `web/package.json` 的 `packageManager`）
 - Windows（WinHost / MSI 打包）；Server 可在 Linux 构建
 
 ```bash

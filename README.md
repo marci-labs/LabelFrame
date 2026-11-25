@@ -106,7 +106,7 @@ curl -X POST http://<服务器>:53961/api/jobs \
 
 ## 开发
 
-前置：.NET 10 SDK；前端使用 Node.js 26.12.1（根目录 `.node-version`）和 pnpm 12.15.0（`web/package.json` 的 `packageManager`）。开发、CI 与 E2E 构建使用相同版本；安装依赖使用 `pnpm install --frozen-lockfile`。
+前置：.NET 10 SDK（根目录 `global.json` 把 SDK 固定在 10.x，使用本机已安装的最高的 10.0.x）；前端使用 Node.js 26.12.1（根目录 `.node-version`）和 pnpm 12.15.0（`web/package.json` 的 `packageManager`）。开发、CI 与 E2E 构建使用相同版本；安装依赖使用 `pnpm install --frozen-lockfile`。
 
 ```bash
 dotnet build LabelFrame.slnx        # 构建
