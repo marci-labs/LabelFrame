@@ -220,6 +220,7 @@
 | 173 | 安装包列表直接发布与更新管理简化：无专用口令、一次确认、全兼容设备范围和就地暂停 | ✅ 实现与本地验证完成；PR 门禁、合并及逐项验收证据见 [#476](https://github.com/marci-labs/LabelFrame/issues/476)，不包含部署或设备实升 |
 | 174 | v1.6.0 正式发布与制品核验 | ✅ 发布范围与非阻断欠账经用户确认；版本记账、门禁与实际发行验收见 [#478](https://github.com/marci-labs/LabelFrame/issues/478)，未完成的真机/长测不据发版划账 |
 | 175 | Android SQLite 安全升级与原生库兼容验证 | ✅ 实现与本地验证完成：2.1.14、Release/AOT、包/APK 对齐与来源核验及依赖审计通过；最新门禁、合并及逐项验收以 [#480](https://github.com/marci-labs/LabelFrame/issues/480) 为准，用户确认真机暂不可得，升级与打印项待验收 |
+| 176 | 缺陷 #482：客户端 MSI 直装——运行时检测与提示、固定安装位置、更新服务启动握手与安装日志（决策 #240）：MSI 同时检测 ASP.NET Core 10 与 .NET Desktop 10（x64），缺失按实际缺的那一项提示并注明 x64，缺 Desktop 在安装前拦截；安装位置固定为 Program Files\LabelFrame\Client（向导里是只读的「安装目录」页，命令行传入 INSTALLFOLDER 时拦截并说明）；更新服务自检先于系统记为已启动、安装包改由延迟动作启动并等到就绪（失败立即中止并回滚，75 秒兜底）；每次安装在用户临时目录自动留安装日志，向导的结束页写明日志路径。随附两项无单独 Issue 的变更：CI 阻断修复 PR #484（CI 实际用的是 runner 上的 .NET 11 SDK，新分析器规则命中既有代码，11 处调用按新规则改写）与 SDK 固定（`global.json` 固定在 10.x） | ✅ 已完成（2026-11-25 PR #483 三项必需检查全绿 squash `3136196`；在纯净 Windows 10 测试机上用最终包重取全部证据，AC-1～AC-13 均满足，CI 测试 1623 全过；用户目视确认安装包界面后结项，[#482](https://github.com/marci-labs/LabelFrame/issues/482)） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
