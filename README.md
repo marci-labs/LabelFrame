@@ -83,7 +83,7 @@ curl -X POST http://<服务器>:53961/api/jobs \
 
 | 部署形态 | 怎么升级 | 数据与回滚 |
 |---|---|---|
-| Windows（单机 / 服务器 / 打印客户端） | 重跑新版安装引导程序（自动进入升级模式，逐组件覆盖）或运行新版 MSI 覆盖安装；客户端运行中升级会自动安全退出 | 模板 / 作业 / 日志与配置默认保留；本地作业库升级后不支持直接降级，MSI 仍禁止降级安装 |
+| Windows（单机 / 服务器 / 打印客户端） | 重跑新版安装引导程序（自动进入升级模式，逐组件覆盖）或运行新版 MSI 覆盖安装；客户端运行中升级或卸载时会自动安全退出，正在打印时等这一张打印完成后重试 | 模板 / 作业 / 日志与配置默认保留；本地作业库升级后不支持直接降级，MSI 仍禁止降级安装 |
 | Linux Docker | 更新 `.env` 中的版本号（或改 `latest`）后 `docker compose up -d` | 数据卷保留；回滚＝改回旧版本号重建 |
 | Windows Server 离线包 | 有网准备机运行 Builder 的 `build-windows-offline.ps1` 生成 Full / Upgrade；目标机解压后运行 `install-server.cmd` | Full 含三类离线运行时（WebView2 为 x64 Standalone），Installer 只按需补 Server 所需 ASP.NET Core；Upgrade 零 runtime，缺前置时改用 Full；配置与数据保留 |
 | Docker 离线部署包 | 有网准备机运行 `build-docker-offline.sh` 生成归档；在**当初部署的同一目录**解压新版后继续运行包内 `install.sh`（勿换目录） | 数据卷与配置不动；回滚＝旧版包同目录重跑 |

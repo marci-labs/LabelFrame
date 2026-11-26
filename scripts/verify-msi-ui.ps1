@@ -182,7 +182,29 @@ foreach ($path in $MsiPaths) {
         if ($shutdownSeq -le [int]::Parse($costRow[0][2]) -or $shutdownSeq -ge [int]::Parse($validateRow[0][2])) {
             throw "ShutdownWinHost($shutdownSeq) 必须位于 CostFinalize 与 InstallValidate 之间"
         }
-        if ($shutdownRow[0][1] -notlike '*REMOVE*ALL*') { throw 'ShutdownWinHost 必须在完整卸载时跳过' }
+        # 是否执行不能只看条件里有没有某些字：把条件翻译后对三种安装状态逐一求值。
+        # 防回归警示：Restart Manager 关不掉托盘里的客户端，手动卸载必须执行安全退出；
+        # 只有升级过程中旧产品的卸载子会话跳过——新产品的会话已经让客户端退出。
+        function Test-HostExitState([string]$condition, [bool]$removing, [bool]$upgrading) {
+            # 空条件恒真，与安装器一致
+            if ([string]::IsNullOrWhiteSpace($condition)) { return $true }
+            $expr = $condition.Replace('REMOVE~="ALL"', '($removing)')
+            $expr = [regex]::Replace($expr, '(?<![A-Za-z0-9_])UPGRADINGPRODUCTCODE(?![A-Za-z0-9_])', '($upgrading)')
+            $expr = $expr -creplace '\bAND\b', '-and' -creplace '\bOR\b', '-or' -creplace '\bNOT\b', '-not'
+            $left = $expr -creplace '\$(removing|upgrading)|-and|-or|-not|[()\s]', ''
+            if ($left.Length -ne 0) { throw "安全退出动作的执行条件用到了本断言不会求值的语法：$condition" }
+            [bool](Invoke-Expression $expr)
+        }
+        $hostExitStates = @(
+            @{ Name = '全新安装、修复、升级中新产品的会话'; Removing = $false; Upgrading = $false; Runs = $true },
+            @{ Name = '手动卸载'; Removing = $true; Upgrading = $false; Runs = $true },
+            @{ Name = '升级过程中旧产品的卸载子会话'; Removing = $true; Upgrading = $true; Runs = $false }
+        )
+        foreach ($state in $hostExitStates) {
+            if ((Test-HostExitState $shutdownRow[0][1] $state.Removing $state.Upgrading) -ne $state.Runs) {
+                throw "安全退出动作在「$($state.Name)」时应当$(if ($state.Runs) { '执行' } else { '跳过' })，当前条件不是这样：$($shutdownRow[0][1])"
+            }
+        }
         $quietAction = @(Invoke-MsiQuery $db "SELECT Action, Type, Target, Source FROM CustomAction WHERE Action = 'ShutdownWinHost'")
         if ($quietAction.Count -ne 1 -or $quietAction[0][1] -ne '1' -or $quietAction[0][2] -ne 'WixQuietExec' -or $quietAction[0][3] -ne 'Wix4UtilCA_X64') { throw 'ShutdownWinHost 必须是同步、失败阻断的 x64 QuietExec DLL 动作' }
         $shutdownAction = @(Invoke-MsiQuery $db "SELECT Action, Type, Target, Source FROM CustomAction WHERE Action = 'SetShutdownWinHostCommand'")
@@ -194,6 +216,8 @@ foreach ($path in $MsiPaths) {
             if ($shutdownAction[0][2] -notlike "*$required*") { throw "ShutdownWinHost MSI 命令缺少安全退出逻辑：$required" }
         }
         if ($customActions -contains 'KillWinHost') { throw 'Client MSI 不得再用 taskkill 强制结束 WinHost' }
+        # 手动卸载也走这段脚本：提示不能只提升级
+        if ($shutdownAction[0][2] -match '升级') { throw '安全退出预检的提示不能只提升级：手动卸载也会执行这段脚本' }
 
         # MSI 属性赋值会展开 Formatted 语法，必须验证展开后的脚本仍可解析。
         $caTarget = $shutdownAction[0][2]
@@ -247,7 +271,7 @@ foreach ($path in $MsiPaths) {
             } $case $selection
         }
         Write-Host '运行中升级进程角色：真实 MSI 格式化脚本排除更新服务与等待器，保留打印客户端；无客户端时返回空。'
-        Write-Host "运行中升级协调：同步动作 ShutdownWinHost($shutdownSeq) 位于 CostFinalize 后、InstallValidate 前；命令含旧版作业预检与 15 秒退出等待，卸载跳过；命令经引擎 Formatted 转换后仍可解析。"
+        Write-Host "运行中客户端的安全退出：同步动作 ShutdownWinHost($shutdownSeq) 位于 CostFinalize 后、InstallValidate 前；全新安装、修复、升级与手动卸载都执行，只有升级过程中旧产品的卸载子会话跳过；命令含作业预检与 15 秒退出等待，经引擎 Formatted 转换后仍可解析。"
 
         # 安装包自己启动更新服务并等待就绪：延迟动作以 SYSTEM 运行刚装好的程序文件，排在服务注册之后、提交之前，非卸载才执行
         $startAction = Get-MsiRows $db "SELECT Action, Type, Source, Target FROM CustomAction WHERE Action = 'StartUpdaterService'"

@@ -43,6 +43,7 @@
 - **安装日志**：每次安装（向导双击 / 静默）都会在当前用户的临时目录自动生成一份安装日志（`%TEMP%\MSI*.log`），向导安装失败时「安装向导提前结束」页上写明本次安装日志的路径，日志里能看出停在哪个步骤。更新服务启动一步的结论在安装日志里是一行英文（以 `LabelFrame updater service start` 开头），中文原因写在旁边的明细日志（`MSI*.log.updater-service.log`）里。日志留在临时目录即可，无需手工清理。
 - 单机使用 = 同机安装两个包；多台打印电脑 = 每台装 Client，设置页把服务端地址指向服务端 IP。
 - 两个包的 appsettings.json 均为独立用户配置组件：覆盖安装 / 修复不覆盖、卸载保留。卸载时可选是否清除用户数据（默认不清除）。
+- 卸载客户端时，安装包先让正在运行的客户端安全退出，再继续卸载。客户端正在打印时卸载会被拒绝，等这一张打印完成后重试；安装包不会强制结束客户端。
 - 公开下载的 MSI 若未用受信任商业证书签名，Windows 可能提示「未知发布者」，点「仍要运行」即可；内网可把自签根证书加入受信任根消除提示（见「自动化发布与签名」一节）。
 - 打印默认整版位图（Skia 渲染，与画布预览同源；图片指令按连接分派——默认 ZPL `^GF`，TSPL 连接输出 `BITMAP`）；具备原生指令能力的官方插件（Zebra / TSPL）可将文本、条码、二维码等直出打印机指令（连接的「打印方式」参数可选）；连接方式在客户端「设置」页配置（先测试后生效）。
 - **修改服务端地址后需重启 Client**（打印 Worker 使用启动时的地址）。
@@ -282,7 +283,7 @@ sudo bash install-server-linux.sh --manifest <清单 URL>               # 安装
 
 | 形态 | 升级方法 | 数据与回滚 |
 |---|---|---|
-| Windows（引导程序 / MSI） | 本机已装 LabelFrame 时**重跑新版安装引导程序**即进入升级模式（列出可升级组件「现版本 → 新版本」，复用同一安装链覆盖升级）；或直接运行新版 MSI 覆盖安装——客户端升级会自动安全退出正在运行的程序再安装。客户端「检查更新」发现新版本时同样指向引导程序入口 | 数据在 `%ProgramData%\LabelFrame`（模板 / 作业 / 日志），`appsettings.json` 与用户配置在覆盖安装 / 卸载时均默认保留（卸载时可选清除，默认不清除）；回滚＝运行旧版本引导程序或 MSI 覆盖安装 |
+| Windows（引导程序 / MSI） | 本机已装 LabelFrame 时**重跑新版安装引导程序**即进入升级模式（列出可升级组件「现版本 → 新版本」，复用同一安装链覆盖升级）；或直接运行新版 MSI 覆盖安装——客户端升级与卸载会自动安全退出正在运行的程序再继续（正在打印时被拒绝，等这一张打印完成后重试）。客户端「检查更新」发现新版本时同样指向引导程序入口 | 数据在 `%ProgramData%\LabelFrame`（模板 / 作业 / 日志），`appsettings.json` 与用户配置在覆盖安装 / 卸载时均默认保留（卸载时可选清除，默认不清除）；回滚＝运行旧版本引导程序或 MSI 覆盖安装 |
 | Linux Docker（compose 分发） | 编辑 `.env` 把 `LABELFRAME_VERSION` 改为新版本（或 `latest`）→ `docker compose pull && docker compose up -d` | 数据在数据卷（默认 `labelframe-data`），重建容器不丢失；回滚＝改回旧版本号后重建 |
 | Ubuntu（systemd） | 幂等设计：**重跑 `sudo bash install-server-linux.sh`** 即覆盖升级（也可 `--manifest` 指定版本） | `/var/lib/labelframe` 数据与 `appsettings.json` 不动；回滚＝`--manifest` 指定旧版本重跑 |
 | Windows Server 离线包 | 有网准备机用 Builder 的 `build-windows-offline.ps1` 生成 Full / Upgrade；目标机解压后运行 `install-server.cmd`。Upgrade 零 runtime，缺 ASP.NET Core 10+ 时改用 Full | `%ProgramData%\LabelFrame` 数据与配置保留；官方分发资源按账本收敛，第三方与自定义文件保留；回滚＝用旧版 Builder 生成对应包后安装旧版 |
