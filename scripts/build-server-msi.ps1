@@ -19,9 +19,12 @@ $publishDir = Join-Path $root "artifacts\server\$Runtime"
 # 清理旧发布目录，避免残留旧 web/dist 被打包
 if (Test-Path -LiteralPath $publishDir) { Remove-Item -LiteralPath $publishDir -Recurse -Force }
 dotnet publish (Join-Path $root 'src\LabelFrame.Server\LabelFrame.Server.csproj') `
-    -c Release -f net10.0-windows -r $Runtime -p:SelfContained=false `
+    -c Release -f net10.0-windows -r $Runtime -p:SelfContained=false -p:Version=$Version `
     -o $publishDir -p:DebugType=None -p:DebugSymbols=false | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Server publish failed' }
+# 防回归警示：程序文件版本只取自 -Version，不取环境变量——漏传会打出无法从旧版升级的包
+& (Join-Path $PSScriptRoot 'assert-publish-file-version.ps1') -ExePath (Join-Path $publishDir 'LabelFrame.Server.exe') -Version $Version
+if (-not $?) { throw '程序文件版本与安装包版本不一致' }
 
 # 迭代 18：服务端无头化——不再打包 web/dist（Web UI 由 Client 托管）。
 # 2) 复制服务端默认配置到发布目录（先于文件清单，确保 appsettings.json 被打包）
