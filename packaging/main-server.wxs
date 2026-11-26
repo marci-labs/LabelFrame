@@ -37,8 +37,6 @@
 
     <!-- 安装位置固定：目录标识含小写字母，不是公开属性，命令行传入 INSTALLFOLDER 改不了安装位置；
          显式传入时直接拦下并说明，而不是静默装到别处 -->
-    <Launch Condition="NOT INSTALLFOLDER"
-      Message="LabelFrame 服务端固定安装到 [ProgramFiles64Folder]LabelFrame\Server，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。" />
 
     <!-- 运行时缺失对话框：可点击官方下载链接（MSI Hyperlink 控件） -->
     <UI Id="RuntimeCheckUI">
