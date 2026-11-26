@@ -1,0 +1,112 @@
+# 轮次链记录：开机前自检、每轮的内存礼让等待与结果、轮间还原与关机。
+
+08:56:36 [chain] preconditions passed (syntax, parameter names, files, local plumbing rehearsal, local wizard-walk rehearsal)
+08:56:38 [chain] host free memory: 10074 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+08:57:10 [chain] host free memory: 10481 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+08:57:42 [chain] start r0 (attempt 1)
+09:03:48 STATE_BEFORE=Running
+09:03:52 RESTORE ok
+09:04:07 STATE_AFTER_RESTORE_SETTLED=Saved
+09:04:18 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+09:04:18 [chain] r0 attempt=1 exit=0 roundDone=yes
+09:04:20 [chain] host free memory: 9123 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:05:23 [chain] start a-fresh-silent (attempt 1)
+09:13:51 STATE_BEFORE=Running
+09:13:55 RESTORE ok
+09:14:08 STATE_AFTER_RESTORE_SETTLED=Saved
+09:14:19 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+09:14:19 [chain] a-fresh-silent attempt=1 exit=0 roundDone=yes
+09:14:21 [chain] host free memory: 10525 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:14:54 [chain] host free memory: 0 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:22:22 [chain] preconditions passed (syntax, parameter names, files, local plumbing rehearsal, local wizard-walk rehearsal)
+09:22:24 [chain] host free memory: 12461 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:23:27 [chain] start a-fresh-silent (attempt 1)
+09:32:21 STATE_BEFORE=Running
+09:32:27 RESTORE ok
+09:32:39 STATE_AFTER_RESTORE_SETTLED=Saved
+09:32:50 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+09:32:50 [chain] a-fresh-silent attempt=1 exit=0 roundDone=yes
+09:32:53 [chain] host free memory: 4860 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:33:25 [chain] host free memory: 4335 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:34:31 [chain] host free memory: 2415 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:36:09 [chain] host free memory: 1994 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:36:43 [chain] host free memory: 1589 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:37:16 [chain] host free memory: 939 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:37:48 [chain] host free memory: 3547 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:39:26 [chain] host free memory: 2915 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:40:00 [chain] host free memory: 2192 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:40:33 [chain] host free memory: 1504 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:41:38 [chain] host free memory: 1914 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:42:43 [chain] host free memory: 1498 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:45:30 [chain] host free memory: 966 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+09:48:19 [chain] host free memory: 1432 MB, other VMs running: 0, test VM running: False (a round starts when the test VM is running, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:01:51 [chain] preconditions passed (room rule self-test, syntax, parameter names, files, local plumbing rehearsal, local wizard-walk rehearsal)
+10:01:51 [chain] host free memory: 16553 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:02:53 [chain] start b-intercept-silent (attempt 1)
+10:05:56 STATE_BEFORE=Running
+10:06:00 RESTORE ok
+10:06:12 STATE_AFTER_RESTORE_SETTLED=Saved
+10:06:24 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:06:24 [chain] b-intercept-silent attempt=1 exit=0 roundDone=yes
+10:06:25 [chain] host free memory: 17697 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:07:27 [chain] host free memory: 17281 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:07:27 [chain] start c-upgrade-default-silent (attempt 1)
+10:11:26 STATE_BEFORE=Running
+10:11:31 RESTORE ok
+10:11:43 STATE_AFTER_RESTORE_SETTLED=Saved
+10:11:56 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:11:56 [chain] c-upgrade-default-silent attempt=1 exit=0 roundDone=yes
+10:12:00 [chain] host free memory: 16611 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:12:32 [chain] host free memory: 15058 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:13:04 [chain] start d-upgrade-custom-plain (attempt 1)
+10:17:34 STATE_BEFORE=Running
+10:17:39 RESTORE ok
+10:17:51 STATE_AFTER_RESTORE_SETTLED=Saved
+10:18:03 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:18:03 [chain] d-upgrade-custom-plain attempt=1 exit=0 roundDone=yes
+10:18:04 [chain] host free memory: 15563 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:19:06 [chain] start d-upgrade-custom-precopy (attempt 1)
+10:23:08 STATE_BEFORE=Running
+10:23:12 RESTORE ok
+10:23:24 STATE_AFTER_RESTORE_SETTLED=Saved
+10:23:36 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:23:36 [chain] d-upgrade-custom-precopy attempt=1 exit=0 roundDone=yes
+10:23:37 [chain] host free memory: 16481 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:24:39 [chain] start w-fresh (attempt 1)
+10:31:18 STATE_BEFORE=Running
+10:31:23 RESTORE ok
+10:31:35 STATE_AFTER_RESTORE_SETTLED=Saved
+10:31:46 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:31:46 [chain] w-fresh attempt=1 exit=0 roundDone=yes
+10:31:47 [chain] host free memory: 17363 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:32:49 [chain] start w-upgrade (attempt 1)
+10:39:17 STATE_BEFORE=Running
+10:39:21 RESTORE ok
+10:39:33 STATE_AFTER_RESTORE_SETTLED=Saved
+10:39:45 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:39:45 [chain] w-upgrade attempt=1 exit=0 roundDone=yes
+10:39:46 [chain] host free memory: 18876 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:40:48 [chain] start w-intercept (attempt 1)
+10:47:47 STATE_BEFORE=Running
+10:47:51 RESTORE ok
+10:48:03 STATE_AFTER_RESTORE_SETTLED=Saved
+10:48:14 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:48:14 [chain] w-intercept attempt=1 exit=0 roundDone=yes
+10:48:15 STATE_BEFORE=Off
+10:48:16 RESTORE ok
+10:48:28 STATE_AFTER_RESTORE_SETTLED=Saved
+10:48:40 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:48:40 [chain] CHAIN_DONE
+10:59:53 [chain] preconditions passed (room rule self-test, syntax, parameter names, files, local plumbing rehearsal, local wizard-walk rehearsal)
+10:59:54 [chain] host free memory: 18515 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+11:00:56 [chain] start w-intercept (attempt 1)
+11:07:05 STATE_BEFORE=Running
+11:07:09 RESTORE ok
+11:07:22 STATE_AFTER_RESTORE_SETTLED=Saved
+11:07:33 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+11:07:33 [chain] w-intercept attempt=1 exit=0 roundDone=yes
+11:07:34 STATE_BEFORE=Off
+11:07:36 RESTORE ok
+11:07:48 STATE_AFTER_RESTORE_SETTLED=Saved
+11:08:00 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+11:08:00 [chain] CHAIN_DONE

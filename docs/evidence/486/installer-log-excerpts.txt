@@ -1,0 +1,175 @@
+# Windows Installer 日志片段（从测试机取回的 /l*v 日志，按行号摘录；行内的测试机账户名已替换为占位符）
+#
+# 升级日志里有两条「Disallowing installation of component … marked to never overwrite existing installations」，说的是 appsettings.json 的组件：
+# 这份用户配置已存在时安装包有意不覆盖，属预期行为；它不同于组件规则的降级拒绝（「higher versioned keyfile exists」），后者在这些日志里没有出现。
+# 升级时旧产品的移除与新产品的安装在同一个会话里，所以 Command Line 出现两次：第一次是新版本，第二次带 UPGRADINGPRODUCTCODE 的是旧版本的移除。
+
+## 静默安装传入自定义目录：被启动条件拦下
+
+  L47    Command Line: REBOOT=ReallySuppress INSTALLFOLDER=C:\LabelFrame Test\Server CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=10624
+  L242   Doing action: LaunchConditions
+  L248   产品: LabelFrame Server -- LabelFrame 服务端固定安装到 C:\Program Files\LabelFrame\Server，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。
+  L251   操作结束 10:05:25: LaunchConditions。返回值 3。
+  L363   MainEngineThread is returning 1603
+  L376   MainEngineThread is returning 1603
+
+## 静默安装传入固定目录本身：同样被拦下
+
+  L47    Command Line: REBOOT=ReallySuppress INSTALLFOLDER=C:\Program Files\LabelFrame\Server CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=5360
+  L242   Doing action: LaunchConditions
+  L248   产品: LabelFrame Server -- LabelFrame 服务端固定安装到 C:\Program Files\LabelFrame\Server，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。
+  L251   操作结束 10:05:27: LaunchConditions。返回值 3。
+  L363   MainEngineThread is returning 1603
+  L376   MainEngineThread is returning 1603
+
+## 静默全新安装（不带属性）
+
+  L47    Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=6708
+  L285   PROPERTY CHANGE: Adding ServerInstallDir property. Its value is 'C:\Program Files\LabelFrame\Server\'.
+  L292   Dir (target): Key: ServerInstallDir	, Object: C:\Program Files\LabelFrame\Server\
+  L446   Doing action: InstallFiles
+  L461   Doing action: InstallServices
+  L822   MainEngineThread is returning 0
+  L836   MainEngineThread is returning 0
+
+## 卸载、不勾选清除用户数据：清除动作被跳过
+
+  L41    Command Line: REBOOT=ReallySuppress REMOVE=ALL CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=416
+  L323   Skipping action: ClearDataDelServerDir (condition is false)
+  L324   Skipping action: ClearDataDelServerDb (condition is false)
+  L325   Skipping action: ClearDataDelAppSettings (condition is false)
+  L735   MainEngineThread is returning 0
+  L753   MainEngineThread is returning 0
+
+## 卸载、勾选清除用户数据：三个清除动作执行
+
+  L41    Command Line: REBOOT=ReallySuppress CLEAR_USER_DATA=1 REMOVE=ALL CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=2772
+  L325   Doing action: ClearDataDelServerDir
+  L329   Doing action: ClearDataDelServerDb
+  L333   Doing action: ClearDataDelAppSettings
+  L754   MainEngineThread is returning 0
+  L772   MainEngineThread is returning 0
+
+## 从 1.6.0（固定目录）静默升级：新版本仍在固定目录，配置文件保留，清除数据动作在升级时被跳过
+
+  L47    Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=9052
+  L287   PROPERTY CHANGE: Adding ServerInstallDir property. Its value is 'C:\Program Files\LabelFrame\Server\'.
+  L294   Dir (target): Key: ServerInstallDir	, Object: C:\Program Files\LabelFrame\Server\
+  L298   Disallowing installation of component: {D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80} since the keyfile exists and the component is marked to never overwrite existing installations
+  L305   Disallowing installation of component: {D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80} since the keyfile exists and the component is marked to never overwrite existing installations
+  L369   Doing action: RemoveExistingProducts
+  L400   Command Line: UPGRADINGPRODUCTCODE={97BF233D-59D4-461E-9BA8-CD92F27278EC} CLIENTPROCESSID=9052 CLIENTUILEVEL=3 REMOVE=ALL
+  L533   PROPERTY CHANGE: Adding INSTALLFOLDER property. Its value is 'C:\Program Files\LabelFrame\Server'.
+  L546   Dir (target): Key: INSTALLFOLDER	, Object: C:\Program Files\LabelFrame\Server\
+  L617   Doing action: RemoveExistingProducts
+  L658   Doing action: StopServices
+  L662   Doing action: DeleteServices
+  L666   Doing action: RemoveFiles
+  L672   Skipping action: ClearDataDelServerDir (condition is false)
+  L673   Skipping action: ClearDataDelServerDb (condition is false)
+  L674   Skipping action: ClearDataDelAppSettings (condition is false)
+  L683   Doing action: InstallFiles
+  L695   Doing action: InstallServices
+  L1125  Doing action: StopServices
+  L1129  Doing action: DeleteServices
+  L1133  Doing action: RemoveFiles
+  L1150  Doing action: InstallFiles
+  L1165  Doing action: InstallServices
+  L1526  MainEngineThread is returning 0
+
+## 从 1.6.0（自定义目录，不预先处理配置）静默升级：旧产品从自定义目录移除，新版本落到固定目录
+
+  L47    Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=8356
+  L287   PROPERTY CHANGE: Adding ServerInstallDir property. Its value is 'C:\Program Files\LabelFrame\Server\'.
+  L294   Dir (target): Key: ServerInstallDir	, Object: C:\Program Files\LabelFrame\Server\
+  L366   Doing action: RemoveExistingProducts
+  L397   Command Line: UPGRADINGPRODUCTCODE={97BF233D-59D4-461E-9BA8-CD92F27278EC} CLIENTPROCESSID=8356 CLIENTUILEVEL=3 REMOVE=ALL
+  L530   PROPERTY CHANGE: Adding INSTALLFOLDER property. Its value is 'C:\LabelFrame Test\Server'.
+  L543   Dir (target): Key: INSTALLFOLDER	, Object: C:\LabelFrame Test\Server\
+  L614   Doing action: RemoveExistingProducts
+  L655   Doing action: StopServices
+  L659   Doing action: DeleteServices
+  L663   Doing action: RemoveFiles
+  L669   Skipping action: ClearDataDelServerDir (condition is false)
+  L670   Skipping action: ClearDataDelServerDb (condition is false)
+  L671   Skipping action: ClearDataDelAppSettings (condition is false)
+  L680   Doing action: InstallFiles
+  L692   Doing action: InstallServices
+  L1122  Doing action: StopServices
+  L1126  Doing action: DeleteServices
+  L1130  Doing action: RemoveFiles
+  L1147  Doing action: InstallFiles
+  L1162  Doing action: InstallServices
+  L1526  MainEngineThread is returning 0
+
+## 从 1.6.0（自定义目录，升级前已把配置复制到固定目录）静默升级：复制过去的配置没有被覆盖
+
+  L47    Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=4968
+  L287   PROPERTY CHANGE: Adding ServerInstallDir property. Its value is 'C:\Program Files\LabelFrame\Server\'.
+  L294   Dir (target): Key: ServerInstallDir	, Object: C:\Program Files\LabelFrame\Server\
+  L298   Disallowing installation of component: {D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80} since the keyfile exists and the component is marked to never overwrite existing installations
+  L305   Disallowing installation of component: {D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80} since the keyfile exists and the component is marked to never overwrite existing installations
+  L368   Doing action: RemoveExistingProducts
+  L399   Command Line: UPGRADINGPRODUCTCODE={97BF233D-59D4-461E-9BA8-CD92F27278EC} CLIENTPROCESSID=4968 CLIENTUILEVEL=3 REMOVE=ALL
+  L532   PROPERTY CHANGE: Adding INSTALLFOLDER property. Its value is 'C:\标签 服务\LabelFrameServer'.
+  L545   Dir (target): Key: INSTALLFOLDER	, Object: C:\标签 服务\LabelFrameServer\
+  L616   Doing action: RemoveExistingProducts
+  L657   Doing action: StopServices
+  L661   Doing action: DeleteServices
+  L665   Doing action: RemoveFiles
+  L671   Skipping action: ClearDataDelServerDir (condition is false)
+  L672   Skipping action: ClearDataDelServerDb (condition is false)
+  L673   Skipping action: ClearDataDelAppSettings (condition is false)
+  L682   Doing action: InstallFiles
+  L694   Doing action: InstallServices
+  L1124  Doing action: StopServices
+  L1128  Doing action: DeleteServices
+  L1132  Doing action: RemoveFiles
+  L1149  Doing action: InstallFiles
+  L1164  Doing action: InstallServices
+  L1525  MainEngineThread is returning 0
+
+## 向导全新安装
+
+  L37    Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4232
+  L195   PROPERTY CHANGE: Adding ServerInstallDir property. Its value is 'C:\Program Files\LabelFrame\Server\'.
+  L664   Doing action: InstallFiles
+  L681   Doing action: InstallServices
+  L1122  MainEngineThread is returning 0
+  L1275  MainEngineThread is returning 0
+
+## 向导升级（覆盖 1.6.0，固定目录）
+
+  L37    Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=5728
+  L198   PROPERTY CHANGE: Adding ServerInstallDir property. Its value is 'C:\Program Files\LabelFrame\Server\'.
+  L205   Dir (target): Key: ServerInstallDir	, Object: C:\Program Files\LabelFrame\Server\
+  L209   Disallowing installation of component: {D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80} since the keyfile exists and the component is marked to never overwrite existing installations
+  L218   Disallowing installation of component: {D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80} since the keyfile exists and the component is marked to never overwrite existing installations
+  L341   Command Line: WIX_UPGRADE_DETECTED={83350132-BE4F-476D-9D37-EF3D0D444365} DOTNET10_PRESENT=0 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=5728 USERNAME=labelframe SOURCEDIR=C:\Pr
+  L492   PROPERTY CHANGE: Adding ServerInstallDir property. Its value is 'C:\Program Files\LabelFrame\Server\'.
+  L499   Dir (target): Key: ServerInstallDir	, Object: C:\Program Files\LabelFrame\Server\
+  L572   Doing action: RemoveExistingProducts
+  L835   Doing action: RemoveExistingProducts
+  L890   Doing action: StopServices
+  L896   Doing action: DeleteServices
+  L902   Doing action: RemoveFiles
+  L910   Skipping action: ClearDataDelServerDir (condition is false)
+  L911   Skipping action: ClearDataDelServerDb (condition is false)
+  L912   Skipping action: ClearDataDelAppSettings (condition is false)
+  L923   Doing action: InstallFiles
+  L936   Doing action: InstallServices
+  L1487  Doing action: StopServices
+  L1493  Doing action: DeleteServices
+  L1498  Doing action: RemoveFiles
+  L1518  Doing action: InstallFiles
+  L1535  Doing action: InstallServices
+  L1975  MainEngineThread is returning 0
+
+## 向导启动时命令行传入 INSTALLFOLDER：启动条件拦下后结束
+
+  L37    Command Line: INSTALLFOLDER=C:\LabelFrame Test\Server CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4852
+  L257   Doing action: LaunchConditions
+  L264   产品: LabelFrame Server -- LabelFrame 服务端固定安装到 C:\Program Files\LabelFrame\Server，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。
+  L266   操作结束 11:06:45: LaunchConditions。返回值 3。
+  L394   MainEngineThread is returning 1603
+

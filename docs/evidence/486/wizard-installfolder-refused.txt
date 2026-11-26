@@ -1,0 +1,134 @@
+# 向导启动时命令行传入 INSTALLFOLDER（全界面）
+#
+# 测试机 LF-Accept-Win10（Hyper-V，Windows 10），每轮从基线还原点开始；安装包由提交 43127ac 的源码本地构建。
+# 安装应在第一个向导页之前被拦下并说明原因；点「确定」后是「提前结束」页；机器上不应留下任何东西。截图见 wizard-intercept-*.png。（原始记录 w-intercept-host-1.log）
+# 本文件是本轮宿主机侧记录：客机脚本的每一行输出按顺序带时间戳；测试机账户名已替换为占位符。
+
+11:00:57 STATE_BEFORE=Off
+11:00:57 HOST_FREE_MB=18279 VM_NEED_MB=4096
+11:00:58 STATE_AFTER_RESTORE=Off
+11:01:03 STATE_AFTER_START=Running
+11:01:18 PSDIRECT_OK host=DESKTOP-D65DJ5S
+11:01:26 GUEST clockBefore=2026-11-26T11:01:26.0060854+08:00 clockAfter=2026-11-26T11:01:18.7076472+08:00 setDate=ok
+11:01:26 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+11:01:26 VM state=Running uptime=00:00:25.1320000 cpu=0 memAssignedMB=3364
+11:01:26 DONE
+11:01:26 [w-intercept] waiting 90 seconds after boot before touching the guest
+11:02:56 [w-intercept] guest boot time recorded for this round: 2026-11-26 10:20:55
+11:02:57 [w-intercept] service wuauserv: status when the stop request was sent=Running startType=Disabled
+11:02:57 [w-intercept] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+11:02:57 [w-intercept] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+11:02:57 [w-intercept] last boot: 2026-11-26 10:20:55
+11:02:57 [w-intercept] in-progress installer registration exists: False
+11:02:59 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 1.5s
+11:02:59 COPIED custom-ascii.txt (25 bytes) in 0.1s
+11:02:59 COPIED custom-cn.txt (33 bytes) in 0.1s
+11:02:59 COPIED custom-default.txt (34 bytes) in 0.1s
+11:03:02 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 2.8s
+11:03:04 COPIED LabelFrame-Server-1.6.0.msi (24326144 bytes) in 2.0s
+11:03:06 COPIED LabelFrame-Server-1.6.1.msi (24313856 bytes) in 2.0s
+--- guest files: name size sha256 ---
+aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+custom-ascii.txt 25 e4a08c5ba7e1c91f162367df6c4b551fb155104549ec98af9e089916c5bbf4bc
+custom-cn.txt 33 ca622a014e9f0b527afaceee9e15c1e6e0953b39310b9cba4b13ebec21f58959
+custom-default.txt 34 11d2a1bd719f905608eeaa0b70d0a43f4c37e9ff70c1e3785e22449d771225be
+dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+LabelFrame-Server-1.6.0.msi 24326144 6c398c3dbd2f1e294cb26ed0dcc618631434284ec0226a14f5a4ec4bd69e930c
+LabelFrame-Server-1.6.1.msi 24313856 aacd03283de3d08d68712485450e8c286fc7558b82f4894407b27d2a9bff1a82
+11:03:10 [w-intercept] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=4.2s
+11:03:12 [w-intercept]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+11:03:12 [w-intercept]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+11:03:13 [w-intercept]     Microsoft .NET Runtime - 10.0.12 (x64)
+11:03:13 [w-intercept]     Microsoft .NET Runtime - 10.0.12 (x64)
+11:03:15 [w-intercept] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=2.1s
+11:03:17 [w-intercept]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+11:03:17 [w-intercept]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+11:03:17 [w-intercept]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+11:03:17 [w-intercept]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+11:03:17 [w-intercept]     Microsoft .NET Runtime - 10.0.12 (x64)
+11:03:17 [w-intercept]     Microsoft .NET Runtime - 10.0.12 (x64)
+11:03:17 [w-intercept]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+11:03:17 [w-intercept]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+11:03:18 [w-intercept] GUEST now=2026-11-26 11:03:17 programFiles=C:\Program Files lastBoot=2026-11-26 10:20:55
+11:03:18 [w-intercept] DIR install exists=False path=C:\LabelFrame Test\Server
+11:03:18 [w-intercept] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+11:03:18 [w-intercept] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+11:03:18 [w-intercept] SERVICE none
+11:03:18 [w-intercept] SERVICES_MATCHING
+11:03:18 [w-intercept] PRODUCT none
+11:03:18 [w-intercept] LISTEN none
+11:03:18 [w-intercept] DATA none
+11:03:19 [w-intercept] IN_PROGRESS_REGISTRATION False
+11:03:19 [w-intercept] guest is restarting; waiting for a new boot
+11:05:01 [w-intercept] guest is back: boot before=2026-11-26 10:20:55 boot now=2026-11-26 11:04:11 (guest clock read 2026-11-26 11:05:01)
+11:06:32 [w-intercept] 11:06:32 GUEST now=2026-11-26 11:06:31 autoLogon=1 desktopUp=True
+11:06:32 [w-intercept] 11:06:32 last probe: reachable, desktopUp=True
+11:06:32 [w-intercept] 11:06:32 sessions: 用户名                会话名             ID  状态    空闲时间   登录时间 |  <account>            console             1  运行中      无     2026/11/26 11:04
+11:06:32 [w-intercept] 11:06:32 DONE
+11:06:35 [w-intercept] service wuauserv: status when the stop request was sent=Running startType=Disabled
+11:06:35 [w-intercept] service UsoSvc: status when the stop request was sent=Stopped startType=Disabled
+11:06:35 [w-intercept] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+11:06:35 [w-intercept] last boot: 2026-11-26 11:04:11
+11:06:35 [w-intercept] in-progress installer registration exists: False
+11:06:37 [w-intercept] GUEST_FILE C:\Probe\wizard-intercept.ps1 25776 bytes sha256=2e744246e1c6fb2a760207c840bd9344ed3c1205739b93e0de97e914a4f0ae65
+11:06:53 [w-intercept] === interactive run  [guest 11:06:37] ===
+11:06:53 [w-intercept] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/26 11:04
+11:06:53 [w-intercept] script present=True size=25776
+11:06:53 [w-intercept] TASK_STATE=Ready resultPresent=True lastResult=0
+11:06:53 [w-intercept] === server wizard walk 'wizard-intercept': mode=intercept  [11:06:42] ===
+11:06:53 [w-intercept] arguments: /i "C:\Probe\LabelFrame-Server-1.6.1.msi" /l*v "C:\Probe\logs\wizard-intercept.log" INSTALLFOLDER="C:\LabelFrame Test\Server"
+11:06:53 [w-intercept] custom directory named on the command line (intercept mode only): C:\LabelFrame Test\Server
+11:06:53 [w-intercept] identity=DESKTOP-D65DJ5S\<account> elevated=True
+11:06:53 [w-intercept] before: product=none | service=absent | fixed dir exists=False | custom dir exists=False
+11:06:53 [w-intercept] --- page InstallFolderBox (actual InstallFolderBox, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+11:06:53 [w-intercept]   [206] Button 确定
+11:06:53 [w-intercept]   [198] Static LabelFrame 服务端固定安装到 C:\Program Files\LabelFrame\Server，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。
+11:06:53 [w-intercept]   [202] Static 信息图标
+11:06:53 [w-intercept]   screenshot -> C:\Probe\logs\wizard-intercept-01-InstallFolderBox.png (PrintWindow)
+11:06:53 [w-intercept]   check ok: the first window is the INSTALLFOLDER interception (actual InstallFolderBox)
+11:06:53 [w-intercept]   check ok: the interception states that the server is fixed to C:\Program Files\LabelFrame\Server
+11:06:53 [w-intercept]   check ok: the interception says that INSTALLFOLDER is not supported
+11:06:53 [w-intercept]   check ok: the interception tells to drop the parameter
+11:06:53 [w-intercept] INTERCEPT_BUTTONS=确定
+11:06:53 [w-intercept]   check ok: the interception only offers OK (buttons: 确定)
+11:06:53 [w-intercept] --- page FatalError (actual FatalError, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+11:06:53 [w-intercept]   [210] Button 完成(&F)
+11:06:53 [w-intercept]   [116] Button 取消
+11:06:53 [w-intercept]   [103] Static WixUI_Bmp_Dialog
+11:06:53 [w-intercept]   [112] Button 上一步(&B)
+11:06:53 [w-intercept]   [46] Static 由于发生错误，LabelFrame Server 安装向导提前结束。您的系统尚未修改。若要稍后安装该程序，请再次运行安装向导。 单击“完成”按钮退出安装向导。
+11:06:53 [w-intercept]   [105] Static LabelFrame Server 安装向导提前结束
+11:06:53 [w-intercept]   screenshot -> C:\Probe\logs\wizard-intercept-02-FatalError.png (PrintWindow)
+11:06:53 [w-intercept]   check ok: after OK the wizard ends on its early-end page (actual FatalError)
+11:06:53 [w-intercept] last unrecognised installer window:
+11:06:53 [w-intercept] windows seen: FatalError, InstallFolderBox
+11:06:53 [w-intercept] exit code=1603
+11:06:53 [w-intercept] after: product=none | service=absent | fixed dir exists=False | custom dir exists=False
+11:06:53 [w-intercept] OUTCOME=intercepted
+11:06:53 [w-intercept] WIZARD_PATH=InstallFolderBox -> FatalError
+11:06:53 [w-intercept] CLICKS=确定 [206], 完成(&F) [210]
+11:06:53 [w-intercept] CHECK_FAILURES=0
+11:06:53 [w-intercept] === end 'wizard-intercept'  [11:06:47] ===
+11:06:56 [w-intercept] GUEST now=2026-11-26 11:06:53 programFiles=C:\Program Files lastBoot=2026-11-26 11:04:11
+11:06:56 [w-intercept] DIR install exists=False path=C:\LabelFrame Test\Server
+11:06:56 [w-intercept] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+11:06:56 [w-intercept] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+11:06:56 [w-intercept] SERVICE none
+11:06:56 [w-intercept] SERVICES_MATCHING
+11:06:56 [w-intercept] PRODUCT none
+11:06:56 [w-intercept] LISTEN none
+11:06:56 [w-intercept] DATA none
+11:06:56 [w-intercept] IN_PROGRESS_REGISTRATION False
+11:06:57 [w-intercept] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=False
+11:06:57 [w-intercept] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json exists=False
+11:06:57 [w-intercept] ROOT_ENTRIES
+11:06:57 [w-intercept] X86_ROOT exists=False
+11:06:57 [w-intercept] CUSTOM_DIR path=C:\LabelFrame Test\Server exists=False
+11:06:57 [w-intercept] SETTINGS custom path=C:\LabelFrame Test\Server\appsettings.json exists=False
+11:07:00 [w-intercept] PULLED C:\Probe\logs\wizard-intercept.log (69982 bytes)
+11:07:01 [w-intercept] PULLED C:\Probe\logs\wizard-intercept-01-InstallFolderBox.png (7825 bytes)
+11:07:01 [w-intercept] PULLED C:\Probe\logs\wizard-intercept-02-FatalError.png (12748 bytes)
+11:07:03 [w-intercept] PULLED C:\Probe\logs\wizard-intercept-result.txt (2310 bytes)
+11:07:04 [w-intercept] NO_FILES_MATCHING=C:\Probe\out\*
+11:07:04 [w-intercept] ROUND_DONE

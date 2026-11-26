@@ -1,0 +1,382 @@
+# 向导升级（全界面走查，覆盖 1.6.0）
+#
+# 测试机 LF-Accept-Win10（Hyper-V，Windows 10），每轮从基线还原点开始；安装包由提交 43127ac 的源码本地构建。
+# 旧版装在固定目录、端口已改到 53970；走完向导后结果应与静默升级相同。截图见 wizard-upgrade-*.png。（原始记录 w-upgrade-host-1.log）
+# 本文件是本轮宿主机侧记录：客机脚本的每一行输出按顺序带时间戳；测试机账户名已替换为占位符。
+
+10:32:50 STATE_BEFORE=Off
+10:32:50 HOST_FREE_MB=17322 VM_NEED_MB=4096
+10:32:51 STATE_AFTER_RESTORE=Off
+10:32:56 STATE_AFTER_START=Running
+10:33:11 PSDIRECT_OK host=DESKTOP-D65DJ5S
+10:33:18 GUEST clockBefore=2026-11-26T10:33:18.7387996+08:00 clockAfter=2026-11-26T10:33:11.3619547+08:00 setDate=ok
+10:33:18 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+10:33:18 VM state=Running uptime=00:00:25.3020000 cpu=11 memAssignedMB=3364
+10:33:18 DONE
+10:33:18 [w-upgrade] waiting 90 seconds after boot before touching the guest
+10:34:49 [w-upgrade] guest boot time recorded for this round: 2026-11-26 09:52:47
+10:34:50 [w-upgrade] service wuauserv: status when the stop request was sent=Running startType=Disabled
+10:34:50 [w-upgrade] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+10:34:50 [w-upgrade] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+10:34:50 [w-upgrade] last boot: 2026-11-26 09:52:47
+10:34:50 [w-upgrade] in-progress installer registration exists: False
+10:34:52 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 1.7s
+10:34:52 COPIED custom-ascii.txt (25 bytes) in 0.1s
+10:34:52 COPIED custom-cn.txt (33 bytes) in 0.1s
+10:34:52 COPIED custom-default.txt (34 bytes) in 0.1s
+10:34:56 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 3.6s
+10:34:58 COPIED LabelFrame-Server-1.6.0.msi (24326144 bytes) in 2.2s
+10:35:00 COPIED LabelFrame-Server-1.6.1.msi (24313856 bytes) in 1.9s
+--- guest files: name size sha256 ---
+aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+custom-ascii.txt 25 e4a08c5ba7e1c91f162367df6c4b551fb155104549ec98af9e089916c5bbf4bc
+custom-cn.txt 33 ca622a014e9f0b527afaceee9e15c1e6e0953b39310b9cba4b13ebec21f58959
+custom-default.txt 34 11d2a1bd719f905608eeaa0b70d0a43f4c37e9ff70c1e3785e22449d771225be
+dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+LabelFrame-Server-1.6.0.msi 24326144 6c398c3dbd2f1e294cb26ed0dcc618631434284ec0226a14f5a4ec4bd69e930c
+LabelFrame-Server-1.6.1.msi 24313856 aacd03283de3d08d68712485450e8c286fc7558b82f4894407b27d2a9bff1a82
+10:35:05 [w-upgrade] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=4.2s
+10:35:07 [w-upgrade]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+10:35:07 [w-upgrade]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+10:35:07 [w-upgrade]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:35:07 [w-upgrade]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:35:09 [w-upgrade] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=2.1s
+10:35:11 [w-upgrade]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+10:35:11 [w-upgrade]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+10:35:11 [w-upgrade]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+10:35:11 [w-upgrade]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+10:35:11 [w-upgrade]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:35:11 [w-upgrade]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:35:11 [w-upgrade]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+10:35:11 [w-upgrade]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+10:35:16 [w-upgrade] 10:35:12 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.0.msi" /qn /norestart /l*v "C:\Probe\logs\install-old.log"
+10:35:16 [w-upgrade] 10:35:16 MSI mode=install msi=LabelFrame-Server-1.6.0.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+10:35:16 [w-upgrade] 10:35:16 LOG bytes=172414
+10:35:32 [w-upgrade] WAIT port=53961 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=10204 stateAfter=Running pidAfter=10204 body={"service":"LabelFrame.Server","status":"ok"}
+10:35:32 [w-upgrade] WAIT_STABILITY seconds=15 sameProcess=True state=Running pid=10204 healthCode=200
+10:35:33 [w-upgrade] old PASS H1 healthz returns 200 with status ok: status=200 body={"service":"LabelFrame.Server","status":"ok"}
+10:35:33 [w-upgrade] old PASS I1 server info returns 200: status=200 body={"listenUrl":"http://0.0.0.0:53961","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.0"}
+10:35:33 [w-upgrade] INFO root path status=404 contentType=0
+10:35:33 [w-upgrade] old PASS D1 device list returns 200: status=200
+10:35:33 [w-upgrade] old PASS D2 device registration returns 200: status=200 body={"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:35:32.856667+00:00","lastSeenAt":"2026-11-26T02:35:32.856667+00:00","status":"Online","lastIp":"127.0.0.1"}
+10:35:33 [w-upgrade] old PASS D3 registered device is listed with its name: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:35:32.856667+00:00","lastSeenAt":"2026-11-26T02:35:32.856667+00:00","status":"Online","lastIp":"127.0.0.1"}]
+10:35:33 [w-upgrade] old PASS J1 job submission is accepted as Pending: status=202 body={"jobId":"ceb2cd09066f495db52cb3551883e586","requestId":"probe-325fb5aa43f045dc92ca47a398c4189c","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:35:32.9282036+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:35:33 [w-upgrade] CREATED_JOB requestId=probe-325fb5aa43f045dc92ca47a398c4189c jobId=ceb2cd09066f495db52cb3551883e586
+10:35:33 [w-upgrade] old PASS J2 job can be queried and is Pending: status=200 body={"jobId":"ceb2cd09066f495db52cb3551883e586","requestId":"probe-325fb5aa43f045dc92ca47a398c4189c","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:35:32.9282036+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:35:33 [w-upgrade] old PASS N1 notify long poll returns 200: status=200 body={"hasPending":true}
+10:35:33 [w-upgrade] old PASS J3 device claims the pending job: status=200 claimed=1 body=[{"jobId":"ceb2cd09066f495db52cb3551883e586","requestId":"probe-325fb5aa43f045dc92ca47a398c4189c","totalItems":1,"payload":{"template":{"contract":{"name":"probe-contract","version":"1.0","fields":[]},"layout":{"name":"probe-layout","contractName":"probe-contract","contractVersion":"1.0","widthMm":40,"heightMm":20,"elements":[{"type":"text","xMm":1,"yMm":1,"sourceKey":"","literal":"标签打印 ABC 123","fontName":"0","fontHeightMm":3,"fontWidthMm":0}]},"name":null,"images":null},"labels":[{"data":{}}]}}]
+10:35:33 [w-upgrade] old PASS J4 progress report is accepted: status=200 body={"jobId":"ceb2cd09066f495db52cb3551883e586","requestId":"probe-325fb5aa43f045dc92ca47a398c4189c","targetDeviceId":"customdir-probe","status":"Claimed","createdAt":"2026-11-26T02:35:32.9282036+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:35:33 [w-upgrade] old PASS J5 result report is accepted: status=200 body={"jobId":"ceb2cd09066f495db52cb3551883e586","requestId":"probe-325fb5aa43f045dc92ca47a398c4189c","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:35:32.9282036+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:35:33 [w-upgrade] old PASS J6 job is Completed after the result report: status=200 body={"jobId":"ceb2cd09066f495db52cb3551883e586","requestId":"probe-325fb5aa43f045dc92ca47a398c4189c","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:35:32.9282036+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:35:33 [w-upgrade] old PASS J7 job history lists the job: status=200
+10:35:33 [w-upgrade] old PASS R1 debug render returns a PNG: status=200 bytes=3580
+10:35:33 [w-upgrade] old PASS R2 batch debug render returns a zip: status=200 bytes=2122
+10:35:33 [w-upgrade] old PASS T1 template save returns 200: status=200 body={"name":"customdir-template","group":"probe"}
+10:35:33 [w-upgrade] old PASS T2 saved template is listed: status=200 body=[{"name":"customdir-template","group":"probe","updatedAt":"2026-11-26T02:35:33.4140078+00:00","uid":"570b6e81a0334492b6b18b8f80cfc9f7"}]
+10:35:33 [w-upgrade] old PASS T3 saved template can be read: status=200
+10:35:33 [w-upgrade] old PASS T4 template preview returns a PNG: status=200 bytes=3580
+10:35:33 [w-upgrade] old PASS T5 template export returns a package: status=200 bytes=391
+10:35:33 [w-upgrade] old PASS L1 log push returns 200: status=200 body={"received":1}
+10:35:33 [w-upgrade] old PASS L2 pushed log line is returned: status=200 length=132
+10:35:33 [w-upgrade] old PASS P1 client package upload returns 200: status=200 body={"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:35:33.4832279+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}
+10:35:33 [w-upgrade] old PASS P2 uploaded package is listed: status=200 body=[{"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:35:33.4832279+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}]
+10:35:33 [w-upgrade] old PASS P3 uploaded package downloads byte-identical: status=200 bytes=4150 expected=4150
+10:35:33 [w-upgrade] old PASS P4 package delete returns 200: status=200 body={"deleted":"probe-package-1.2.3.zip"}
+10:35:33 [w-upgrade] old PASS P5 deleted package is no longer listed: status=200 body=[]
+10:35:33 [w-upgrade] old PASS X1 GET /api/pda-packages returns 200: status=200 body=[]
+10:35:33 [w-upgrade] old PASS X1 GET /api/plugin-packages returns 200: status=200 body=[]
+10:35:33 [w-upgrade] old PASS X1 GET /api/client-updates returns 200: status=200 body=[]
+10:35:33 [w-upgrade] old PASS X1 GET /api/android-updates returns 200: status=200 body=[]
+10:35:33 [w-upgrade] old PASS X1 GET /api/client-updates/drafts returns 200: status=200 body=[]
+10:35:33 [w-upgrade] old PASS X1 GET /api/server/ipv4-candidates returns 200: status=200 body={"candidates":["172.17.234.240"]}
+10:35:33 [w-upgrade] SMOKE_SUMMARY tag=old port=53961 passed=33 failed=0
+10:35:33 [w-upgrade] job created before the upgrade: ceb2cd09066f495db52cb3551883e586
+10:35:39 [w-upgrade] CONFIG_FILE path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=87 leadingMarks=1
+10:35:39 [w-upgrade] CONFIG_ORIGINAL { "Server": { "ListenUrl": "http://0.0.0.0:53961", "Dpi": 203 } }
+10:35:39 [w-upgrade] CONFIG_FILE_WRITTEN bytes=87 bomMarks=1 jsonValid=True listenUrlHasNewPort=True
+10:35:39 [w-upgrade] CONFIG step=moved newPort=53970 newPortListening=True oldPort=53961 oldPortListening=False
+10:35:40 [w-upgrade] GUEST now=2026-11-26 10:35:39 programFiles=C:\Program Files lastBoot=2026-11-26 09:52:47
+10:35:40 [w-upgrade] DIR install exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760804 exeProductVersion=1.6.0+08b10216cc08f3ff234e8397d13a872cee0dfc4b appsettings=True
+10:35:40 [w-upgrade] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760804 exeProductVersion=1.6.0+08b10216cc08f3ff234e8397d13a872cee0dfc4b appsettings=True
+10:35:40 [w-upgrade] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760804 exeProductVersion= appsettings=False
+10:35:40 [w-upgrade] INSTALL_TOP_LEVEL ApkVerifierBridge.java | appsettings.json | DocumentFormat.OpenXml.dll | DocumentFormat.OpenXml.Framework.dll | e_sqlite3.dll | LabelFrame.Api.dll | LabelFrame.Core.dll | LabelFrame.Rendering.dll | LabelFrame.Server.deps.json | LabelFrame.Server.dll | LabelFrame.Server.exe | LabelFrame.Server.runtimeconfig.json | LabelFrame.Server.staticwebassets.endpoints.json | LabelFrame.Updates.dll | libSkiaSharp.dll | libSkiaSharp.pdb | Microsoft.Data.Sqlite.dll | Microsoft.Extensions.Hosting.WindowsServices.dll | SkiaSharp.dll | SQLitePCLRaw.core.dll | SQLitePCLRaw.provider.e_sqlite3.dll | System.IO.Packaging.dll | System.ServiceProcess.ServiceController.dll | TemplateFrame.dll | TemplateFrame.Excel.Simple.dll | TemplateFrame.Excel.Simple.resources.dll | TemplateFrame.resources.dll | update-publisher.cer | web.config | zxing.dll
+10:35:40 [w-upgrade] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+10:35:40 [w-upgrade] SERVICE state=Running startMode=Auto startName=LocalSystem pid=7416 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+10:35:40 [w-upgrade] SERVICES_MATCHING LabelFrameServer
+10:35:40 [w-upgrade] PRODUCT name=LabelFrame Server version=1.6.0 installLocation= installDate=20261126
+10:35:40 [w-upgrade] PROCESS pid=7416 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=10:35:34
+10:35:40 [w-upgrade] LISTEN address=0.0.0.0 port=53970 pid=7416
+10:35:40 [w-upgrade] DATA root=C:\ProgramData\LabelFrame files=9
+10:35:40 [w-upgrade] DATA \server\logs.db 16384
+10:35:40 [w-upgrade] DATA \server\logs.db-shm 32768
+10:35:40 [w-upgrade] DATA \server\logs.db-wal 0
+10:35:40 [w-upgrade] DATA \server\server.db 45056
+10:35:40 [w-upgrade] DATA \server\server.db-shm 32768
+10:35:40 [w-upgrade] DATA \server\server.db-wal 0
+10:35:40 [w-upgrade] DATA \server\templates.db 28672
+10:35:40 [w-upgrade] DATA \server\templates.db-shm 32768
+10:35:40 [w-upgrade] DATA \server\templates.db-wal 0
+10:35:40 [w-upgrade] IN_PROGRESS_REGISTRATION False
+10:35:40 [w-upgrade] guest is restarting; waiting for a new boot
+10:36:36 [w-upgrade] guest is back: boot before=2026-11-26 09:52:47 boot now=2026-11-26 10:36:15 (guest clock read 2026-11-26 10:36:36)
+10:38:08 [w-upgrade] 10:38:08 GUEST now=2026-11-26 10:38:06 autoLogon=1 desktopUp=True
+10:38:08 [w-upgrade] 10:38:08 last probe: reachable, desktopUp=True
+10:38:08 [w-upgrade] 10:38:08 sessions: 用户名                会话名             ID  状态    空闲时间   登录时间 |  <account>            console             1  运行中      无     2026/11/26 10:36
+10:38:08 [w-upgrade] 10:38:08 DONE
+10:38:10 [w-upgrade] service wuauserv: status when the stop request was sent=Running startType=Disabled
+10:38:10 [w-upgrade] service UsoSvc: status when the stop request was sent=Stopped startType=Disabled
+10:38:10 [w-upgrade] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+10:38:10 [w-upgrade] last boot: 2026-11-26 10:36:15
+10:38:10 [w-upgrade] in-progress installer registration exists: False
+10:38:12 [w-upgrade] GUEST_FILE C:\Probe\wizard-upgrade.ps1 25188 bytes sha256=994abb013c089690ca730e9ae7947970c610f662f7ce1e50399de56f291e7222
+10:38:37 [w-upgrade] === interactive run  [guest 10:38:12] ===
+10:38:37 [w-upgrade] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/26 10:36
+10:38:37 [w-upgrade] script present=True size=25188
+10:38:37 [w-upgrade] TASK_STATE=Ready resultPresent=True lastResult=0
+10:38:37 [w-upgrade] === server wizard walk 'wizard-upgrade': mode=install  [10:38:15] ===
+10:38:37 [w-upgrade] arguments: /i "C:\Probe\LabelFrame-Server-1.6.1.msi" /l*v "C:\Probe\logs\wizard-upgrade.log"
+10:38:37 [w-upgrade] custom directory named on the command line (intercept mode only): C:\LabelFrame Test\Server
+10:38:37 [w-upgrade] identity=DESKTOP-D65DJ5S\<account> elevated=True
+10:38:37 [w-upgrade] before: product=1.6.0 | service=Running "C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe" | fixed dir exists=True | custom dir exists=False
+10:38:37 [w-upgrade] --- page Welcome (actual Welcome, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+10:38:37 [w-upgrade]   [114] Button 下一步(&N)
+10:38:37 [w-upgrade]   [116] Button 取消
+10:38:37 [w-upgrade]   [103] Static WixUI_Bmp_Dialog
+10:38:37 [w-upgrade]   [112] Button 上一步(&B)
+10:38:37 [w-upgrade]   [46] Static 安装向导将在计算机上安装 LabelFrame Server。单击“下一步”继续，或单击“取消”退出安装向导。
+10:38:37 [w-upgrade]   [105] Static 欢迎使用 LabelFrame Server 安装向导
+10:38:37 [w-upgrade]   screenshot -> C:\Probe\logs\wizard-upgrade-01-Welcome.png (PrintWindow)
+10:38:37 [w-upgrade] --- page License (actual License, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+10:38:37 [w-upgrade]   [102] Static WixUI_Bmp_Banner
+10:38:37 [w-upgrade]   [285] Button 我接受许可协议中的条款(&A)
+10:38:37 [w-upgrade]   [290] Button 打印(&P)
+10:38:37 [w-upgrade]   [112] Button 上一步(&B)
+10:38:37 [w-upgrade]   [114] Button 下一步(&N)
+10:38:37 [w-upgrade]   [116] Button 取消
+10:38:37 [w-upgrade]   [46] Static 请认真阅读以下许可协议
+10:38:37 [w-upgrade]   [105] Static 最终用户许可协议
+10:38:37 [w-upgrade]   screenshot -> C:\Probe\logs\wizard-upgrade-02-License.png (PrintWindow)
+10:38:37 [w-upgrade] --- page Location (actual Location, class MsiDialogCloseClass): 'LabelFrame Server 安装' ---
+10:38:37 [w-upgrade]   [112] Button 上一步(&B)
+10:38:37 [w-upgrade]   [114] Button 下一步(&N)
+10:38:37 [w-upgrade]   [116] Button 取消
+10:38:37 [w-upgrade]   [102] Static WixUI_Bmp_Banner
+10:38:37 [w-upgrade]   [105] Static 安装目录
+10:38:37 [w-upgrade]   [109] Static C:\Program Files\LabelFrame\Server\
+10:38:37 [w-upgrade]   screenshot -> C:\Probe\logs\wizard-upgrade-03-Location.png (PrintWindow)
+10:38:37 [w-upgrade] --- every control of the install-location page (visit 1): class, id, enabled, visible, text ---
+10:38:37 [w-upgrade]   class=Button id=112 enabled=True visible=True text=[上一步(&B)]
+10:38:37 [w-upgrade]   class=Button id=114 enabled=True visible=True text=[下一步(&N)]
+10:38:37 [w-upgrade]   class=Button id=116 enabled=True visible=True text=[取消]
+10:38:37 [w-upgrade]   class=Static id=102 enabled=False visible=True text=[WixUI_Bmp_Banner]
+10:38:37 [w-upgrade]   class=Static id=105 enabled=True visible=True text=[安装目录]
+10:38:37 [w-upgrade]   class=Static id=107 enabled=False visible=True text=[]
+10:38:37 [w-upgrade]   class=Static id=109 enabled=True visible=True text=[C:\Program Files\LabelFrame\Server\]
+10:38:37 [w-upgrade]   class=Static id=111 enabled=False visible=True text=[]
+10:38:37 [w-upgrade] LOCATION_PATH_SHOWN=C:\Program Files\LabelFrame\Server\
+10:38:37 [w-upgrade] LOCATION_TEXTS=安装目录 | C:\Program Files\LabelFrame\Server\
+10:38:37 [w-upgrade] LOCATION_EDITABLE_CONTROLS=0
+10:38:37 [w-upgrade]   check ok: the install-location page shows the fixed directory (shown: 'C:\Program Files\LabelFrame\Server\')
+10:38:37 [w-upgrade]   check ok: the install-location page has no edit box and no change button (found: )
+10:38:37 [w-upgrade]   check ok: the page is titled 安装目录
+10:38:37 [w-upgrade]   check ok: the page shows only the title and the path (text lines: 2)
+10:38:37 [w-upgrade]   check ok: the Next button is enabled on the install-location page
+10:38:37 [w-upgrade] --- page Location (actual Location, class MsiDialogCloseClass): 'LabelFrame Server 安装' ---
+10:38:37 [w-upgrade]   [112] Button 上一步(&B)
+10:38:37 [w-upgrade]   [114] Button 下一步(&N)
+10:38:37 [w-upgrade]   [116] Button 取消
+10:38:37 [w-upgrade]   [102] Static WixUI_Bmp_Banner
+10:38:37 [w-upgrade]   [105] Static 安装目录
+10:38:37 [w-upgrade]   [109] Static C:\Program Files\LabelFrame\Server\
+10:38:37 [w-upgrade]   screenshot -> C:\Probe\logs\wizard-upgrade-05-Location.png (PrintWindow)
+10:38:37 [w-upgrade] --- every control of the install-location page (visit 2): class, id, enabled, visible, text ---
+10:38:37 [w-upgrade]   class=Button id=112 enabled=True visible=True text=[上一步(&B)]
+10:38:37 [w-upgrade]   class=Button id=114 enabled=True visible=True text=[下一步(&N)]
+10:38:37 [w-upgrade]   class=Button id=116 enabled=True visible=True text=[取消]
+10:38:37 [w-upgrade]   class=Static id=102 enabled=False visible=True text=[WixUI_Bmp_Banner]
+10:38:37 [w-upgrade]   class=Static id=105 enabled=True visible=True text=[安装目录]
+10:38:37 [w-upgrade]   class=Static id=107 enabled=False visible=True text=[]
+10:38:37 [w-upgrade]   class=Static id=109 enabled=True visible=True text=[C:\Program Files\LabelFrame\Server\]
+10:38:37 [w-upgrade]   class=Static id=111 enabled=False visible=True text=[]
+10:38:37 [w-upgrade] LOCATION_PATH_SHOWN=C:\Program Files\LabelFrame\Server\
+10:38:37 [w-upgrade] LOCATION_TEXTS=安装目录 | C:\Program Files\LabelFrame\Server\
+10:38:37 [w-upgrade] LOCATION_EDITABLE_CONTROLS=0
+10:38:37 [w-upgrade]   check ok: the install-location page shows the fixed directory (shown: 'C:\Program Files\LabelFrame\Server\')
+10:38:37 [w-upgrade]   check ok: the install-location page has no edit box and no change button (found: )
+10:38:37 [w-upgrade]   check ok: the page is titled 安装目录
+10:38:37 [w-upgrade]   check ok: the page shows only the title and the path (text lines: 2)
+10:38:37 [w-upgrade]   check ok: the Next button is enabled on the install-location page
+10:38:37 [w-upgrade] --- page Verify (actual Verify, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+10:38:37 [w-upgrade]   [152] Button 安装(&I)
+10:38:37 [w-upgrade]   [116] Button 取消
+10:38:37 [w-upgrade]   [112] Button 上一步(&B)
+10:38:37 [w-upgrade]   [102] Static WixUI_Bmp_Banner
+10:38:37 [w-upgrade]   [165] Static 已准备好安装 LabelFrame Server
+10:38:37 [w-upgrade]   [167] Static 单击“安装”开始安装。单击“上一步”查看或更改任何安装设置。单击“取消”退出向导。
+10:38:37 [w-upgrade]   screenshot -> C:\Probe\logs\wizard-upgrade-06-Verify.png (PrintWindow)
+10:38:37 [w-upgrade] INSTALL_STEP_SECONDS=1 (from clicking the install button to the next window)
+10:38:37 [w-upgrade] --- page Installing (actual Installing, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+10:38:37 [w-upgrade]   [116] Button 取消
+10:38:37 [w-upgrade]   [102] Static WixUI_Bmp_Banner
+10:38:37 [w-upgrade]   [112] Button 上一步(&B)
+10:38:37 [w-upgrade]   [114] Button 下一步(&N)
+10:38:37 [w-upgrade]   [234] Static 正在停止服务
+10:38:37 [w-upgrade]   [236] Static 安装向导正在安装 LabelFrame Server，请稍候。
+10:38:37 [w-upgrade]   [238] Static 正在安装 LabelFrame Server
+10:38:37 [w-upgrade]   [258] Static 状态:
+10:38:37 [w-upgrade]   screenshot -> C:\Probe\logs\wizard-upgrade-07-Installing.png (PrintWindow)
+10:38:37 [w-upgrade] INSTALL_PROGRESS_SECONDS=4.1 (progress page until the next window)
+10:38:37 [w-upgrade] --- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+10:38:37 [w-upgrade]   [210] Button 完成(&F)
+10:38:37 [w-upgrade]   [116] Button 取消
+10:38:37 [w-upgrade]   [103] Static WixUI_Bmp_Dialog
+10:38:37 [w-upgrade]   [112] Button 上一步(&B)
+10:38:37 [w-upgrade]   [46] Static 单击“完成”按钮退出安装向导。
+10:38:37 [w-upgrade]   [105] Static LabelFrame Server 安装向导已完成
+10:38:37 [w-upgrade]   screenshot -> C:\Probe\logs\wizard-upgrade-08-Exit.png (PrintWindow)
+10:38:37 [w-upgrade] last unrecognised installer window:
+10:38:37 [w-upgrade] windows seen: Exit, Installing, License, Location, Verify, Welcome
+10:38:37 [w-upgrade] exit code=0
+10:38:37 [w-upgrade] after: product=1.6.1 | service=Running "C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe" | fixed dir exists=True | custom dir exists=False
+10:38:37 [w-upgrade] OUTCOME=completed
+10:38:37 [w-upgrade] WIZARD_PATH=Welcome -> License -> Location -> License -> Location -> Verify -> Installing -> Exit
+10:38:37 [w-upgrade] CLICKS=下一步(&N) [114], 我接受许可协议中的条款(&A) [285], 下一步(&N) [114], 上一步(&B) [112], 下一步(&N) [114], 下一步(&N) [114], 安装(&I) [152], 完成(&F) [210]
+10:38:37 [w-upgrade] CHECK_FAILURES=0
+10:38:37 [w-upgrade] === end 'wizard-upgrade'  [10:38:30] ===
+10:38:54 [w-upgrade] WAIT port=53970 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=8328 stateAfter=Running pidAfter=8328 body={"service":"LabelFrame.Server","status":"ok"}
+10:38:54 [w-upgrade] WAIT_STABILITY seconds=15 sameProcess=True state=Running pid=8328 healthCode=200
+10:38:57 [w-upgrade] GUEST now=2026-11-26 10:38:54 programFiles=C:\Program Files lastBoot=2026-11-26 10:36:15
+10:38:57 [w-upgrade] DIR install exists=False path=C:\LabelFrame Test\Server
+10:38:57 [w-upgrade] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760804 exeProductVersion=1.6.1+43127ac9d3f49ee9fc5d5d9917ca7e4952544f45 appsettings=True
+10:38:57 [w-upgrade] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760804 exeProductVersion= appsettings=False
+10:38:57 [w-upgrade] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+10:38:57 [w-upgrade] SERVICE state=Running startMode=Auto startName=LocalSystem pid=8328 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+10:38:57 [w-upgrade] SERVICES_MATCHING LabelFrameServer
+10:38:57 [w-upgrade] PRODUCT name=LabelFrame Server version=1.6.1 installLocation= installDate=20261126
+10:38:57 [w-upgrade] PROCESS pid=8328 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=10:38:27
+10:38:57 [w-upgrade] LISTEN address=0.0.0.0 port=53970 pid=8328
+10:38:57 [w-upgrade] DATA root=C:\ProgramData\LabelFrame files=9
+10:38:57 [w-upgrade] DATA \server\logs.db 16384
+10:38:57 [w-upgrade] DATA \server\logs.db-shm 32768
+10:38:57 [w-upgrade] DATA \server\logs.db-wal 0
+10:38:57 [w-upgrade] DATA \server\server.db 45056
+10:38:57 [w-upgrade] DATA \server\server.db-shm 32768
+10:38:57 [w-upgrade] DATA \server\server.db-wal 0
+10:38:57 [w-upgrade] DATA \server\templates.db 28672
+10:38:57 [w-upgrade] DATA \server\templates.db-shm 32768
+10:38:57 [w-upgrade] DATA \server\templates.db-wal 0
+10:38:57 [w-upgrade] IN_PROGRESS_REGISTRATION False
+10:38:59 [w-upgrade] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=30 subFolders=0
+10:38:59 [w-upgrade] FIXED_FILE ApkVerifierBridge.java 959
+10:38:59 [w-upgrade] FIXED_FILE appsettings.json 87
+10:38:59 [w-upgrade] FIXED_FILE DocumentFormat.OpenXml.dll 7985120
+10:38:59 [w-upgrade] FIXED_FILE DocumentFormat.OpenXml.Framework.dll 478688
+10:38:59 [w-upgrade] FIXED_FILE e_sqlite3.dll 1978880
+10:38:59 [w-upgrade] FIXED_FILE LabelFrame.Api.dll 59392
+10:38:59 [w-upgrade] FIXED_FILE LabelFrame.Core.dll 280064
+10:38:59 [w-upgrade] FIXED_FILE LabelFrame.Rendering.dll 18432
+10:38:59 [w-upgrade] FIXED_FILE LabelFrame.Server.deps.json 11765
+10:38:59 [w-upgrade] FIXED_FILE LabelFrame.Server.dll 418816
+10:38:59 [w-upgrade] FIXED_FILE LabelFrame.Server.exe 310272
+10:38:59 [w-upgrade] FIXED_FILE LabelFrame.Server.runtimeconfig.json 548
+10:38:59 [w-upgrade] FIXED_FILE LabelFrame.Server.staticwebassets.endpoints.json 53
+10:38:59 [w-upgrade] FIXED_FILE LabelFrame.Updates.dll 74240
+10:38:59 [w-upgrade] FIXED_FILE libSkiaSharp.dll 11611680
+10:38:59 [w-upgrade] FIXED_FILE libSkiaSharp.pdb 83832832
+10:38:59 [w-upgrade] FIXED_FILE Microsoft.Data.Sqlite.dll 173088
+10:38:59 [w-upgrade] FIXED_FILE Microsoft.Extensions.Hosting.WindowsServices.dll 29456
+10:38:59 [w-upgrade] FIXED_FILE SkiaSharp.dll 490016
+10:38:59 [w-upgrade] FIXED_FILE SQLitePCLRaw.core.dll 51200
+10:38:59 [w-upgrade] FIXED_FILE SQLitePCLRaw.provider.e_sqlite3.dll 36864
+10:38:59 [w-upgrade] FIXED_FILE System.IO.Packaging.dll 159504
+10:38:59 [w-upgrade] FIXED_FILE System.ServiceProcess.ServiceController.dll 92472
+10:38:59 [w-upgrade] FIXED_FILE TemplateFrame.dll 76288
+10:38:59 [w-upgrade] FIXED_FILE TemplateFrame.Excel.Simple.dll 57344
+10:38:59 [w-upgrade] FIXED_FILE TemplateFrame.Excel.Simple.resources.dll 6656
+10:38:59 [w-upgrade] FIXED_FILE TemplateFrame.resources.dll 8704
+10:38:59 [w-upgrade] FIXED_FILE update-publisher.cer 804
+10:38:59 [w-upgrade] FIXED_FILE web.config 484
+10:38:59 [w-upgrade] FIXED_FILE zxing.dll 516096
+10:38:59 [w-upgrade] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=87 sha256=6cd337093bbd074faf66ac115311a34daad26ccf5180bd325fb18fd82ee21575 listen="ListenUrl": "http://0.0.0.0:53970",
+10:38:59 [w-upgrade] ROOT_ENTRIES Server
+10:38:59 [w-upgrade] X86_ROOT exists=False
+10:38:59 [w-upgrade] CUSTOM_DIR path=C:\LabelFrame Test\Server exists=False
+10:38:59 [w-upgrade] SETTINGS custom path=C:\LabelFrame Test\Server\appsettings.json exists=False
+10:39:00 [w-upgrade] after-upgrade PASS K1 job created before is still readable and Completed: status=200 body={"jobId":"ceb2cd09066f495db52cb3551883e586","requestId":"probe-325fb5aa43f045dc92ca47a398c4189c","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:35:32.9282036+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Offline","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:39:00 [w-upgrade] after-upgrade PASS K2 device registered before is still listed: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:35:32.856667+00:00","lastSeenAt":"2026-11-26T02:35:33.1031151+00:00","status":"Offline","lastIp":"127.0.0.1"}]
+10:39:00 [w-upgrade] after-upgrade PASS K3 template saved before is still readable: status=200
+10:39:02 [w-upgrade] upgrade PASS H1 healthz returns 200 with status ok: status=200 body={"service":"LabelFrame.Server","status":"ok"}
+10:39:02 [w-upgrade] upgrade PASS I1 server info returns 200: status=200 body={"listenUrl":"http://0.0.0.0:53970","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.0"}
+10:39:02 [w-upgrade] INFO root path status=404 contentType=0
+10:39:02 [w-upgrade] upgrade PASS D1 device list returns 200: status=200
+10:39:02 [w-upgrade] upgrade PASS D2 device registration returns 200: status=200 body={"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:39:00.4907396+00:00","lastSeenAt":"2026-11-26T02:39:00.4907396+00:00","status":"Online","lastIp":"127.0.0.1"}
+10:39:02 [w-upgrade] upgrade PASS D3 registered device is listed with its name: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:35:32.856667+00:00","lastSeenAt":"2026-11-26T02:39:00.4907396+00:00","status":"Online","lastIp":"127.0.0.1"}]
+10:39:02 [w-upgrade] upgrade PASS J1 job submission is accepted as Pending: status=202 body={"jobId":"83229fc3ee7b47aabe2d3d4b046efcf1","requestId":"probe-34a4c735cb394058a6a14d42b2008582","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:39:00.5178784+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:39:02 [w-upgrade] CREATED_JOB requestId=probe-34a4c735cb394058a6a14d42b2008582 jobId=83229fc3ee7b47aabe2d3d4b046efcf1
+10:39:02 [w-upgrade] upgrade PASS J2 job can be queried and is Pending: status=200 body={"jobId":"83229fc3ee7b47aabe2d3d4b046efcf1","requestId":"probe-34a4c735cb394058a6a14d42b2008582","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:39:00.5178784+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:39:02 [w-upgrade] upgrade PASS N1 notify long poll returns 200: status=200 body={"hasPending":true}
+10:39:02 [w-upgrade] upgrade PASS J3 device claims the pending job: status=200 claimed=1 body=[{"jobId":"83229fc3ee7b47aabe2d3d4b046efcf1","requestId":"probe-34a4c735cb394058a6a14d42b2008582","totalItems":1,"payload":{"template":{"contract":{"name":"probe-contract","version":"1.0","fields":[]},"layout":{"name":"probe-layout","contractName":"probe-contract","contractVersion":"1.0","widthMm":40,"heightMm":20,"elements":[{"type":"text","xMm":1,"yMm":1,"sourceKey":"","literal":"标签打印 ABC 123","fontName":"0","fontHeightMm":3,"fontWidthMm":0}]},"name":null,"images":null},"labels":[{"data":{}}]}}]
+10:39:02 [w-upgrade] upgrade PASS J4 progress report is accepted: status=200 body={"jobId":"83229fc3ee7b47aabe2d3d4b046efcf1","requestId":"probe-34a4c735cb394058a6a14d42b2008582","targetDeviceId":"customdir-probe","status":"Claimed","createdAt":"2026-11-26T02:39:00.5178784+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:39:02 [w-upgrade] upgrade PASS J5 result report is accepted: status=200 body={"jobId":"83229fc3ee7b47aabe2d3d4b046efcf1","requestId":"probe-34a4c735cb394058a6a14d42b2008582","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:39:00.5178784+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:39:02 [w-upgrade] upgrade PASS J6 job is Completed after the result report: status=200 body={"jobId":"83229fc3ee7b47aabe2d3d4b046efcf1","requestId":"probe-34a4c735cb394058a6a14d42b2008582","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:39:00.5178784+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:39:02 [w-upgrade] upgrade PASS J7 job history lists the job: status=200
+10:39:02 [w-upgrade] upgrade PASS R1 debug render returns a PNG: status=200 bytes=3580
+10:39:02 [w-upgrade] upgrade PASS R2 batch debug render returns a zip: status=200 bytes=2122
+10:39:02 [w-upgrade] upgrade PASS T1 template save returns 200: status=200 body={"name":"customdir-template","group":"probe"}
+10:39:02 [w-upgrade] upgrade PASS T2 saved template is listed: status=200 body=[{"name":"customdir-template","group":"probe","updatedAt":"2026-11-26T02:39:00.9929866+00:00","uid":"4c26ece4f9ff4649a806b58c553e836f"}]
+10:39:02 [w-upgrade] upgrade PASS T3 saved template can be read: status=200
+10:39:02 [w-upgrade] upgrade PASS T4 template preview returns a PNG: status=200 bytes=3580
+10:39:02 [w-upgrade] upgrade PASS T5 template export returns a package: status=200 bytes=391
+10:39:02 [w-upgrade] upgrade PASS L1 log push returns 200: status=200 body={"received":1}
+10:39:02 [w-upgrade] upgrade PASS L2 pushed log line is returned: status=200 length=263
+10:39:02 [w-upgrade] upgrade PASS P1 client package upload returns 200: status=200 body={"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:39:01.0654084+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}
+10:39:02 [w-upgrade] upgrade PASS P2 uploaded package is listed: status=200 body=[{"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:39:01.0654084+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}]
+10:39:02 [w-upgrade] upgrade PASS P3 uploaded package downloads byte-identical: status=200 bytes=4150 expected=4150
+10:39:02 [w-upgrade] upgrade PASS P4 package delete returns 200: status=200 body={"deleted":"probe-package-1.2.3.zip"}
+10:39:02 [w-upgrade] upgrade PASS P5 deleted package is no longer listed: status=200 body=[]
+10:39:02 [w-upgrade] upgrade PASS X1 GET /api/pda-packages returns 200: status=200 body=[]
+10:39:02 [w-upgrade] upgrade PASS X1 GET /api/plugin-packages returns 200: status=200 body=[]
+10:39:02 [w-upgrade] upgrade PASS X1 GET /api/client-updates returns 200: status=200 body=[]
+10:39:02 [w-upgrade] upgrade PASS X1 GET /api/android-updates returns 200: status=200 body=[]
+10:39:02 [w-upgrade] upgrade PASS X1 GET /api/client-updates/drafts returns 200: status=200 body=[]
+10:39:02 [w-upgrade] upgrade PASS X1 GET /api/server/ipv4-candidates returns 200: status=200 body={"candidates":["172.17.234.240"]}
+10:39:02 [w-upgrade] SMOKE_SUMMARY tag=upgrade port=53970 passed=33 failed=0
+10:39:06 [w-upgrade] 10:39:02 ARGUMENTS /x "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\uninstall.log"
+10:39:06 [w-upgrade] 10:39:04 MSI mode=uninstall msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=2.1s
+10:39:06 [w-upgrade] 10:39:04 LOG bytes=132174
+10:39:08 [w-upgrade] GUEST now=2026-11-26 10:39:05 programFiles=C:\Program Files lastBoot=2026-11-26 10:36:15
+10:39:08 [w-upgrade] DIR install exists=False path=C:\LabelFrame Test\Server
+10:39:08 [w-upgrade] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=1 bytes=87 exeProductVersion= appsettings=True
+10:39:08 [w-upgrade] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=1 bytes=87 exeProductVersion= appsettings=False
+10:39:08 [w-upgrade] DEFAULT_ROOT_TREE \Server | \Server\appsettings.json
+10:39:08 [w-upgrade] SERVICE none
+10:39:08 [w-upgrade] SERVICES_MATCHING
+10:39:08 [w-upgrade] PRODUCT none
+10:39:08 [w-upgrade] LISTEN none
+10:39:08 [w-upgrade] DATA root=C:\ProgramData\LabelFrame files=3
+10:39:08 [w-upgrade] DATA \server\logs.db 16384
+10:39:08 [w-upgrade] DATA \server\server.db 45056
+10:39:08 [w-upgrade] DATA \server\templates.db 28672
+10:39:08 [w-upgrade] IN_PROGRESS_REGISTRATION False
+10:39:10 [w-upgrade] PULLED C:\Probe\logs\install-old.log (172414 bytes)
+10:39:10 [w-upgrade] PULLED C:\Probe\logs\uninstall.log (132174 bytes)
+10:39:10 [w-upgrade] PULLED C:\Probe\logs\wizard-upgrade.log (372096 bytes)
+10:39:12 [w-upgrade] PULLED C:\Probe\logs\wizard-upgrade-01-Welcome.png (11678 bytes)
+10:39:12 [w-upgrade] PULLED C:\Probe\logs\wizard-upgrade-02-License.png (21499 bytes)
+10:39:12 [w-upgrade] PULLED C:\Probe\logs\wizard-upgrade-03-Location.png (5697 bytes)
+10:39:12 [w-upgrade] PULLED C:\Probe\logs\wizard-upgrade-04-License.png (21502 bytes)
+10:39:12 [w-upgrade] PULLED C:\Probe\logs\wizard-upgrade-05-Location.png (5697 bytes)
+10:39:12 [w-upgrade] PULLED C:\Probe\logs\wizard-upgrade-06-Verify.png (7447 bytes)
+10:39:12 [w-upgrade] PULLED C:\Probe\logs\wizard-upgrade-07-Installing.png (7143 bytes)
+10:39:12 [w-upgrade] PULLED C:\Probe\logs\wizard-upgrade-08-Exit.png (10155 bytes)
+10:39:14 [w-upgrade] PULLED C:\Probe\logs\wizard-upgrade-result.txt (6678 bytes)
+10:39:16 [w-upgrade] PULLED C:\Probe\out\old-export.lfpkg (391 bytes)
+10:39:16 [w-upgrade] PULLED C:\Probe\out\old-preview.png (3580 bytes)
+10:39:16 [w-upgrade] PULLED C:\Probe\out\old-render.png (3580 bytes)
+10:39:16 [w-upgrade] PULLED C:\Probe\out\old-render.zip (2122 bytes)
+10:39:16 [w-upgrade] PULLED C:\Probe\out\upgrade-export.lfpkg (391 bytes)
+10:39:16 [w-upgrade] PULLED C:\Probe\out\upgrade-preview.png (3580 bytes)
+10:39:16 [w-upgrade] PULLED C:\Probe\out\upgrade-render.png (3580 bytes)
+10:39:16 [w-upgrade] PULLED C:\Probe\out\upgrade-render.zip (2122 bytes)
+10:39:16 [w-upgrade] ROUND_DONE

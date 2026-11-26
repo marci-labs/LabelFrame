@@ -1,0 +1,135 @@
+# 静默安装时命令行传入 INSTALLFOLDER
+#
+# 测试机 LF-Accept-Win10（Hyper-V，Windows 10），每轮从基线还原点开始；安装包由提交 43127ac 的源码本地构建。
+# 分别传入自定义目录和固定目录本身，两次都应被拒且不留任何痕迹；随后不带属性的正常安装应成功。（原始记录 b-intercept-silent-host-1.log）
+# 本文件是本轮宿主机侧记录：客机脚本的每一行输出按顺序带时间戳；测试机账户名已替换为占位符。
+
+10:02:54 STATE_BEFORE=Off
+10:02:54 HOST_FREE_MB=16439 VM_NEED_MB=4096
+10:02:55 STATE_AFTER_RESTORE=Off
+10:03:03 STATE_AFTER_START=Running
+10:03:23 PSDIRECT_OK host=DESKTOP-D65DJ5S
+10:03:31 GUEST clockBefore=2026-11-26T10:03:31.7103313+08:00 clockAfter=2026-11-26T10:03:23.7508634+08:00 setDate=ok
+10:03:31 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+10:03:31 VM state=Running uptime=00:00:31.3350000 cpu=11 memAssignedMB=3364
+10:03:31 DONE
+10:03:31 [b-intercept-silent] waiting 90 seconds after boot before touching the guest
+10:05:02 [b-intercept-silent] guest boot time recorded for this round: 2026-11-26 09:22:54
+10:05:03 [b-intercept-silent] service wuauserv: status when the stop request was sent=Running startType=Disabled
+10:05:03 [b-intercept-silent] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+10:05:03 [b-intercept-silent] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+10:05:03 [b-intercept-silent] last boot: 2026-11-26 09:22:54
+10:05:03 [b-intercept-silent] in-progress installer registration exists: False
+10:05:05 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 1.9s
+10:05:05 COPIED custom-ascii.txt (25 bytes) in 0.1s
+10:05:05 COPIED custom-cn.txt (33 bytes) in 0.1s
+10:05:05 COPIED custom-default.txt (34 bytes) in 0.1s
+10:05:08 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 2.8s
+10:05:10 COPIED LabelFrame-Server-1.6.0.msi (24326144 bytes) in 1.8s
+10:05:12 COPIED LabelFrame-Server-1.6.1.msi (24313856 bytes) in 1.8s
+--- guest files: name size sha256 ---
+aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+custom-ascii.txt 25 e4a08c5ba7e1c91f162367df6c4b551fb155104549ec98af9e089916c5bbf4bc
+custom-cn.txt 33 ca622a014e9f0b527afaceee9e15c1e6e0953b39310b9cba4b13ebec21f58959
+custom-default.txt 34 11d2a1bd719f905608eeaa0b70d0a43f4c37e9ff70c1e3785e22449d771225be
+dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+LabelFrame-Server-1.6.0.msi 24326144 6c398c3dbd2f1e294cb26ed0dcc618631434284ec0226a14f5a4ec4bd69e930c
+LabelFrame-Server-1.6.1.msi 24313856 aacd03283de3d08d68712485450e8c286fc7558b82f4894407b27d2a9bff1a82
+10:05:16 [b-intercept-silent] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=4.2s
+10:05:18 [b-intercept-silent]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+10:05:18 [b-intercept-silent]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+10:05:19 [b-intercept-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:05:19 [b-intercept-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:05:21 [b-intercept-silent] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=2.1s
+10:05:23 [b-intercept-silent]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+10:05:23 [b-intercept-silent]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+10:05:23 [b-intercept-silent]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+10:05:23 [b-intercept-silent]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+10:05:23 [b-intercept-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:05:23 [b-intercept-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:05:23 [b-intercept-silent]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+10:05:23 [b-intercept-silent]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+10:05:25 [b-intercept-silent] GUEST now=2026-11-26 10:05:23 programFiles=C:\Program Files lastBoot=2026-11-26 09:22:54
+10:05:25 [b-intercept-silent] DIR install exists=False path=C:\LabelFrame Test\Server
+10:05:25 [b-intercept-silent] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+10:05:25 [b-intercept-silent] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+10:05:25 [b-intercept-silent] SERVICE none
+10:05:25 [b-intercept-silent] SERVICES_MATCHING
+10:05:25 [b-intercept-silent] PRODUCT none
+10:05:25 [b-intercept-silent] LISTEN none
+10:05:25 [b-intercept-silent] DATA none
+10:05:25 [b-intercept-silent] IN_PROGRESS_REGISTRATION False
+10:05:26 [b-intercept-silent] 10:05:25 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart INSTALLFOLDER="C:\LabelFrame Test\Server" /l*v "C:\Probe\logs\b-intercept-custom.log"
+10:05:26 [b-intercept-silent] 10:05:26 MSI mode=install msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[C:\LabelFrame Test\Server] extra=[] exit=1603 elapsed=1.0s
+10:05:26 [b-intercept-silent] 10:05:26 LOG bytes=68970
+10:05:27 [b-intercept-silent] GUEST now=2026-11-26 10:05:26 programFiles=C:\Program Files lastBoot=2026-11-26 09:22:54
+10:05:27 [b-intercept-silent] DIR install exists=False path=C:\LabelFrame Test\Server
+10:05:27 [b-intercept-silent] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+10:05:27 [b-intercept-silent] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+10:05:27 [b-intercept-silent] SERVICE none
+10:05:27 [b-intercept-silent] SERVICES_MATCHING
+10:05:27 [b-intercept-silent] PRODUCT none
+10:05:27 [b-intercept-silent] LISTEN none
+10:05:27 [b-intercept-silent] DATA none
+10:05:27 [b-intercept-silent] IN_PROGRESS_REGISTRATION False
+10:05:28 [b-intercept-silent] 10:05:27 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart INSTALLFOLDER="C:\Program Files\LabelFrame\Server" /l*v "C:\Probe\logs\b-intercept-fixed.log"
+10:05:28 [b-intercept-silent] 10:05:28 MSI mode=install msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[C:\Program Files\LabelFrame\Server] extra=[] exit=1603 elapsed=1.0s
+10:05:28 [b-intercept-silent] 10:05:28 LOG bytes=69018
+10:05:29 [b-intercept-silent] GUEST now=2026-11-26 10:05:29 programFiles=C:\Program Files lastBoot=2026-11-26 09:22:54
+10:05:29 [b-intercept-silent] DIR install exists=False path=C:\LabelFrame Test\Server
+10:05:29 [b-intercept-silent] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+10:05:29 [b-intercept-silent] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+10:05:29 [b-intercept-silent] SERVICE none
+10:05:29 [b-intercept-silent] SERVICES_MATCHING
+10:05:29 [b-intercept-silent] PRODUCT none
+10:05:29 [b-intercept-silent] LISTEN none
+10:05:29 [b-intercept-silent] DATA none
+10:05:29 [b-intercept-silent] IN_PROGRESS_REGISTRATION False
+10:05:34 [b-intercept-silent] 10:05:29 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\b-install-plain.log"
+10:05:34 [b-intercept-silent] 10:05:34 MSI mode=install msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+10:05:34 [b-intercept-silent] 10:05:34 LOG bytes=172632
+10:05:50 [b-intercept-silent] WAIT port=53961 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=6588 stateAfter=Running pidAfter=6588 body={"service":"LabelFrame.Server","status":"ok"}
+10:05:50 [b-intercept-silent] WAIT_STABILITY seconds=15 sameProcess=True state=Running pid=6588 healthCode=200
+10:05:51 [b-intercept-silent] GUEST now=2026-11-26 10:05:50 programFiles=C:\Program Files lastBoot=2026-11-26 09:22:54
+10:05:51 [b-intercept-silent] DIR install exists=False path=C:\LabelFrame Test\Server
+10:05:51 [b-intercept-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760799 exeProductVersion=1.6.1+43127ac9d3f49ee9fc5d5d9917ca7e4952544f45 appsettings=True
+10:05:51 [b-intercept-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760799 exeProductVersion= appsettings=False
+10:05:51 [b-intercept-silent] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+10:05:51 [b-intercept-silent] SERVICE state=Running startMode=Auto startName=LocalSystem pid=6588 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+10:05:51 [b-intercept-silent] SERVICES_MATCHING LabelFrameServer
+10:05:51 [b-intercept-silent] PRODUCT name=LabelFrame Server version=1.6.1 installLocation= installDate=20261126
+10:05:51 [b-intercept-silent] PROCESS pid=6588 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=10:05:30
+10:05:51 [b-intercept-silent] LISTEN address=0.0.0.0 port=53961 pid=6588
+10:05:51 [b-intercept-silent] DATA root=C:\ProgramData\LabelFrame files=9
+10:05:51 [b-intercept-silent] DATA \server\logs.db 4096
+10:05:51 [b-intercept-silent] DATA \server\logs.db-shm 32768
+10:05:51 [b-intercept-silent] DATA \server\logs.db-wal 20632
+10:05:51 [b-intercept-silent] DATA \server\server.db 4096
+10:05:51 [b-intercept-silent] DATA \server\server.db-shm 32768
+10:05:51 [b-intercept-silent] DATA \server\server.db-wal 65952
+10:05:51 [b-intercept-silent] DATA \server\templates.db 4096
+10:05:51 [b-intercept-silent] DATA \server\templates.db-shm 32768
+10:05:51 [b-intercept-silent] DATA \server\templates.db-wal 41232
+10:05:51 [b-intercept-silent] IN_PROGRESS_REGISTRATION False
+10:05:53 [b-intercept-silent] 10:05:51 ARGUMENTS /x "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\b-uninstall.log"
+10:05:53 [b-intercept-silent] 10:05:53 MSI mode=uninstall msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=2.1s
+10:05:53 [b-intercept-silent] 10:05:53 LOG bytes=132254
+10:05:54 [b-intercept-silent] GUEST now=2026-11-26 10:05:53 programFiles=C:\Program Files lastBoot=2026-11-26 09:22:54
+10:05:54 [b-intercept-silent] DIR install exists=False path=C:\LabelFrame Test\Server
+10:05:54 [b-intercept-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=1 bytes=82 exeProductVersion= appsettings=True
+10:05:54 [b-intercept-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=1 bytes=82 exeProductVersion= appsettings=False
+10:05:54 [b-intercept-silent] DEFAULT_ROOT_TREE \Server | \Server\appsettings.json
+10:05:54 [b-intercept-silent] SERVICE none
+10:05:54 [b-intercept-silent] SERVICES_MATCHING
+10:05:54 [b-intercept-silent] PRODUCT none
+10:05:54 [b-intercept-silent] LISTEN none
+10:05:54 [b-intercept-silent] DATA root=C:\ProgramData\LabelFrame files=3
+10:05:54 [b-intercept-silent] DATA \server\logs.db 16384
+10:05:54 [b-intercept-silent] DATA \server\server.db 45056
+10:05:54 [b-intercept-silent] DATA \server\templates.db 28672
+10:05:54 [b-intercept-silent] IN_PROGRESS_REGISTRATION False
+10:05:55 [b-intercept-silent] PULLED C:\Probe\logs\b-install-plain.log (172632 bytes)
+10:05:55 [b-intercept-silent] PULLED C:\Probe\logs\b-intercept-custom.log (68970 bytes)
+10:05:55 [b-intercept-silent] PULLED C:\Probe\logs\b-intercept-fixed.log (69018 bytes)
+10:05:55 [b-intercept-silent] PULLED C:\Probe\logs\b-uninstall.log (132254 bytes)
+10:05:55 [b-intercept-silent] ROUND_DONE

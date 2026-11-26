@@ -1,0 +1,105 @@
+# 第 0 轮：演练（不安装任何东西）
+#
+# 测试机 LF-Accept-Win10（Hyper-V，Windows 10），每轮从基线还原点开始；安装包由提交 43127ac 的源码本地构建。
+# 只验证后续各轮依赖的基础：客机脚本按名字收到参数（含带空格的路径与非 ASCII 路径）、超时参数生效、重启等待可靠、证据落盘。（原始记录 r0-host-1.log）
+# 本文件是本轮宿主机侧记录：客机脚本的每一行输出按顺序带时间戳；测试机账户名已替换为占位符。
+
+08:57:42 STATE_BEFORE=Off
+08:57:43 HOST_FREE_MB=10567 VM_NEED_MB=4096
+08:57:45 STATE_AFTER_RESTORE=Off
+08:57:56 STATE_AFTER_START=Running
+08:58:20 PSDIRECT_OK host=DESKTOP-D65DJ5S
+08:58:21 GUEST clockBefore=2026-11-26T08:58:21.0171120+08:00 clockAfter=2026-11-26T08:58:20.7139724+08:00 setDate=ok
+08:58:21 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+08:58:21 VM state=Running uptime=00:00:27.2060000 cpu=12 memAssignedMB=3856
+08:58:21 DONE
+08:58:21 [r0-rehearsal] waiting 90 seconds after boot before touching the guest
+08:59:55 [r0-rehearsal] guest boot time recorded for this round: 2026-11-26 08:17:48
+08:59:56 [r0-rehearsal] service wuauserv: status when the stop request was sent=Running startType=Disabled
+08:59:56 [r0-rehearsal] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+08:59:56 [r0-rehearsal] service WaaSMedicSvc: status when the stop request was sent=Running startType=Manual
+08:59:56 [r0-rehearsal] last boot: 2026-11-26 08:17:48
+08:59:56 [r0-rehearsal] in-progress installer registration exists: False
+09:00:00 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 2.7s
+09:00:00 COPIED custom-ascii.txt (25 bytes) in 0.1s
+09:00:00 COPIED custom-cn.txt (33 bytes) in 0.2s
+09:00:00 COPIED custom-default.txt (34 bytes) in 0.2s
+09:00:05 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 5.1s
+09:00:07 COPIED LabelFrame-Server-1.6.0.msi (24326144 bytes) in 2.0s
+09:00:09 COPIED LabelFrame-Server-1.6.1.msi (24317952 bytes) in 1.9s
+--- guest files: name size sha256 ---
+aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+custom-ascii.txt 25 e4a08c5ba7e1c91f162367df6c4b551fb155104549ec98af9e089916c5bbf4bc
+custom-cn.txt 33 ca622a014e9f0b527afaceee9e15c1e6e0953b39310b9cba4b13ebec21f58959
+custom-default.txt 34 11d2a1bd719f905608eeaa0b70d0a43f4c37e9ff70c1e3785e22449d771225be
+dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+LabelFrame-Server-1.6.0.msi 24326144 6c398c3dbd2f1e294cb26ed0dcc618631434284ec0226a14f5a4ec4bd69e930c
+LabelFrame-Server-1.6.1.msi 24317952 a1ca4e7c4c6d5efa8755bcab5b7c1434d373d51afd081315380a74434990b36e
+09:00:14 [r0-rehearsal] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=4.2s
+09:00:16 [r0-rehearsal]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+09:00:16 [r0-rehearsal]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+09:00:16 [r0-rehearsal]     Microsoft .NET Runtime - 10.0.12 (x64)
+09:00:16 [r0-rehearsal]     Microsoft .NET Runtime - 10.0.12 (x64)
+09:00:18 [r0-rehearsal] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=2.1s
+09:00:20 [r0-rehearsal]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+09:00:20 [r0-rehearsal]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+09:00:20 [r0-rehearsal]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+09:00:20 [r0-rehearsal]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+09:00:20 [r0-rehearsal]     Microsoft .NET Runtime - 10.0.12 (x64)
+09:00:20 [r0-rehearsal]     Microsoft .NET Runtime - 10.0.12 (x64)
+09:00:20 [r0-rehearsal]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+09:00:20 [r0-rehearsal]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+09:00:22 [r0-rehearsal] GUEST now=2026-11-26 09:00:21 programFiles=C:\Program Files lastBoot=2026-11-26 08:17:48
+09:00:22 [r0-rehearsal] DIR install exists=False path=C:\LabelFrame Test\Server
+09:00:22 [r0-rehearsal] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+09:00:22 [r0-rehearsal] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+09:00:22 [r0-rehearsal] SERVICE none
+09:00:22 [r0-rehearsal] SERVICES_MATCHING
+09:00:22 [r0-rehearsal] PRODUCT none
+09:00:22 [r0-rehearsal] LISTEN none
+09:00:22 [r0-rehearsal] DATA none
+09:00:22 [r0-rehearsal] IN_PROGRESS_REGISTRATION False
+09:00:22 [r0-rehearsal]   check ok: a guest script received its arguments by name (path with a space)
+09:00:23 [r0-rehearsal] GUEST now=2026-11-26 09:00:23 programFiles=C:\Program Files lastBoot=2026-11-26 08:17:48
+09:00:23 [r0-rehearsal] DIR install exists=False path=C:\标签 服务\LabelFrameServer
+09:00:23 [r0-rehearsal] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+09:00:23 [r0-rehearsal] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+09:00:23 [r0-rehearsal] SERVICE none
+09:00:23 [r0-rehearsal] SERVICES_MATCHING
+09:00:23 [r0-rehearsal] PRODUCT none
+09:00:23 [r0-rehearsal] LISTEN none
+09:00:23 [r0-rehearsal] DATA none
+09:00:23 [r0-rehearsal] IN_PROGRESS_REGISTRATION False
+09:00:23 [r0-rehearsal]   check ok: a non-ASCII path reached the guest intact
+09:00:29 [r0-rehearsal] WAIT port=53961 restart=False result=timeout elapsed=5.2s lastCode=0 stateBefore=none pidBefore=0 stateAfter=none pidAfter=0 body=使用“0”个参数调用“GetResponse”时发生异常:“操作超时”
+09:00:29 [r0-rehearsal]   check ok: the wait honoured its TimeoutSec argument (no server is installed yet)
+09:00:30 [r0-rehearsal] GUEST now=2026-11-26 09:00:29 programFiles=C:\Program Files lastBoot=2026-11-26 08:17:48
+09:00:30 [r0-rehearsal] DIR install exists=False path=C:\Program Files\LabelFrame\Server
+09:00:30 [r0-rehearsal] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+09:00:30 [r0-rehearsal] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+09:00:30 [r0-rehearsal] SERVICE none
+09:00:30 [r0-rehearsal] SERVICES_MATCHING
+09:00:30 [r0-rehearsal] PRODUCT none
+09:00:30 [r0-rehearsal] LISTEN none
+09:00:30 [r0-rehearsal] DATA none
+09:00:30 [r0-rehearsal] IN_PROGRESS_REGISTRATION False
+09:00:30 [r0-rehearsal]   check ok: a call without arguments works (empty table) on the baseline
+09:00:30 [r0-rehearsal] guest is restarting; waiting for a new boot
+09:02:12 [r0-rehearsal] guest is back: boot before=2026-11-26 08:17:48 boot now=2026-11-26 09:01:26 (guest clock read 2026-11-26 09:02:15)
+09:03:45 [r0-rehearsal] service wuauserv: status when the stop request was sent=Running startType=Disabled
+09:03:45 [r0-rehearsal] service UsoSvc: status when the stop request was sent=Stopped startType=Disabled
+09:03:45 [r0-rehearsal] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+09:03:45 [r0-rehearsal] last boot: 2026-11-26 09:01:26
+09:03:45 [r0-rehearsal] in-progress installer registration exists: False
+09:03:48 [r0-rehearsal] GUEST now=2026-11-26 09:03:46 programFiles=C:\Program Files lastBoot=2026-11-26 09:01:26
+09:03:48 [r0-rehearsal] DIR install exists=False path=C:\LabelFrame Test\Server
+09:03:48 [r0-rehearsal] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+09:03:48 [r0-rehearsal] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+09:03:48 [r0-rehearsal] SERVICE none
+09:03:48 [r0-rehearsal] SERVICES_MATCHING
+09:03:48 [r0-rehearsal] PRODUCT none
+09:03:48 [r0-rehearsal] LISTEN none
+09:03:48 [r0-rehearsal] DATA none
+09:03:48 [r0-rehearsal] IN_PROGRESS_REGISTRATION False
+09:03:48 [r0-rehearsal]   check ok: guest scripts still run with named arguments after the restart
+09:03:48 [r0-rehearsal] ROUND_DONE

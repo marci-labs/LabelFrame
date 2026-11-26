@@ -1,0 +1,397 @@
+# 静默全新安装、配置与重启、两种卸载
+#
+# 测试机 LF-Accept-Win10（Hyper-V，Windows 10），每轮从基线还原点开始；安装包由提交 43127ac 的源码本地构建。
+# 不带任何属性的静默安装（引导程序与离线包的安装方式）；改端口后重启服务；重启系统；不勾选清除的卸载（配置保留并被再次安装时沿用）；勾选清除的卸载。（原始记录 a-fresh-silent-host-1.log）
+# 本文件是本轮宿主机侧记录：客机脚本的每一行输出按顺序带时间戳；测试机账户名已替换为占位符。
+
+09:23:27 STATE_BEFORE=Off
+09:23:28 HOST_FREE_MB=12409 VM_NEED_MB=4096
+09:23:29 STATE_AFTER_RESTORE=Off
+09:23:38 STATE_AFTER_START=Running
+09:23:54 PSDIRECT_OK host=DESKTOP-D65DJ5S
+09:24:01 GUEST clockBefore=2026-11-26T09:24:01.3083280+08:00 clockAfter=2026-11-26T09:23:54.0440001+08:00 setDate=ok
+09:24:01 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+09:24:01 VM state=Running uptime=00:00:26.2400000 cpu=7 memAssignedMB=3902
+09:24:01 DONE
+09:24:01 [a-fresh-silent] waiting 90 seconds after boot before touching the guest
+09:25:32 [a-fresh-silent] guest boot time recorded for this round: 2026-11-26 08:43:29
+09:25:32 [a-fresh-silent] service wuauserv: status when the stop request was sent=Running startType=Disabled
+09:25:32 [a-fresh-silent] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+09:25:32 [a-fresh-silent] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+09:25:32 [a-fresh-silent] last boot: 2026-11-26 08:43:29
+09:25:32 [a-fresh-silent] in-progress installer registration exists: False
+09:25:34 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 1.5s
+09:25:34 COPIED custom-ascii.txt (25 bytes) in 0.1s
+09:25:34 COPIED custom-cn.txt (33 bytes) in 0.1s
+09:25:34 COPIED custom-default.txt (34 bytes) in 0.1s
+09:25:37 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 2.5s
+09:25:39 COPIED LabelFrame-Server-1.6.0.msi (24326144 bytes) in 1.8s
+09:25:40 COPIED LabelFrame-Server-1.6.1.msi (24313856 bytes) in 1.7s
+--- guest files: name size sha256 ---
+aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+custom-ascii.txt 25 e4a08c5ba7e1c91f162367df6c4b551fb155104549ec98af9e089916c5bbf4bc
+custom-cn.txt 33 ca622a014e9f0b527afaceee9e15c1e6e0953b39310b9cba4b13ebec21f58959
+custom-default.txt 34 11d2a1bd719f905608eeaa0b70d0a43f4c37e9ff70c1e3785e22449d771225be
+dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+LabelFrame-Server-1.6.0.msi 24326144 6c398c3dbd2f1e294cb26ed0dcc618631434284ec0226a14f5a4ec4bd69e930c
+LabelFrame-Server-1.6.1.msi 24313856 aacd03283de3d08d68712485450e8c286fc7558b82f4894407b27d2a9bff1a82
+09:25:44 [a-fresh-silent] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=3.2s
+09:25:46 [a-fresh-silent]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+09:25:46 [a-fresh-silent]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+09:25:46 [a-fresh-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+09:25:46 [a-fresh-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+09:25:49 [a-fresh-silent] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=2.1s
+09:25:51 [a-fresh-silent]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+09:25:51 [a-fresh-silent]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+09:25:51 [a-fresh-silent]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+09:25:51 [a-fresh-silent]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+09:25:51 [a-fresh-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+09:25:51 [a-fresh-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+09:25:51 [a-fresh-silent]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+09:25:51 [a-fresh-silent]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+09:25:53 [a-fresh-silent] GUEST now=2026-11-26 09:25:51 programFiles=C:\Program Files lastBoot=2026-11-26 08:43:29
+09:25:53 [a-fresh-silent] DIR install exists=False path=C:\LabelFrame Test\Server
+09:25:53 [a-fresh-silent] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+09:25:53 [a-fresh-silent] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+09:25:53 [a-fresh-silent] SERVICE none
+09:25:53 [a-fresh-silent] SERVICES_MATCHING
+09:25:53 [a-fresh-silent] PRODUCT none
+09:25:53 [a-fresh-silent] LISTEN none
+09:25:53 [a-fresh-silent] DATA none
+09:25:53 [a-fresh-silent] IN_PROGRESS_REGISTRATION False
+09:25:57 [a-fresh-silent] 09:25:53 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\a-install.log"
+09:25:57 [a-fresh-silent] 09:25:57 MSI mode=install msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+09:25:57 [a-fresh-silent] 09:25:57 LOG bytes=172484
+09:26:28 [a-fresh-silent] WAIT port=53961 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=7740 stateAfter=Running pidAfter=7740 body={"service":"LabelFrame.Server","status":"ok"}
+09:26:28 [a-fresh-silent] WAIT_STABILITY seconds=30 sameProcess=True state=Running pid=7740 healthCode=200
+09:26:29 [a-fresh-silent] GUEST now=2026-11-26 09:26:28 programFiles=C:\Program Files lastBoot=2026-11-26 08:43:29
+09:26:29 [a-fresh-silent] DIR install exists=False path=C:\LabelFrame Test\Server
+09:26:29 [a-fresh-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760799 exeProductVersion=1.6.1+43127ac9d3f49ee9fc5d5d9917ca7e4952544f45 appsettings=True
+09:26:29 [a-fresh-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760799 exeProductVersion= appsettings=False
+09:26:29 [a-fresh-silent] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+09:26:29 [a-fresh-silent] SERVICE state=Running startMode=Auto startName=LocalSystem pid=7740 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+09:26:29 [a-fresh-silent] SERVICES_MATCHING LabelFrameServer
+09:26:29 [a-fresh-silent] PRODUCT name=LabelFrame Server version=1.6.1 installLocation= installDate=20261126
+09:26:29 [a-fresh-silent] PROCESS pid=7740 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=09:25:54
+09:26:29 [a-fresh-silent] LISTEN address=0.0.0.0 port=53961 pid=7740
+09:26:29 [a-fresh-silent] DATA root=C:\ProgramData\LabelFrame files=9
+09:26:29 [a-fresh-silent] DATA \server\logs.db 4096
+09:26:29 [a-fresh-silent] DATA \server\logs.db-shm 32768
+09:26:29 [a-fresh-silent] DATA \server\logs.db-wal 20632
+09:26:29 [a-fresh-silent] DATA \server\server.db 4096
+09:26:29 [a-fresh-silent] DATA \server\server.db-shm 32768
+09:26:29 [a-fresh-silent] DATA \server\server.db-wal 65952
+09:26:29 [a-fresh-silent] DATA \server\templates.db 4096
+09:26:29 [a-fresh-silent] DATA \server\templates.db-shm 32768
+09:26:29 [a-fresh-silent] DATA \server\templates.db-wal 41232
+09:26:29 [a-fresh-silent] IN_PROGRESS_REGISTRATION False
+09:26:29 [a-fresh-silent] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=30 subFolders=0
+09:26:29 [a-fresh-silent] FIXED_FILE ApkVerifierBridge.java 959
+09:26:29 [a-fresh-silent] FIXED_FILE appsettings.json 82
+09:26:29 [a-fresh-silent] FIXED_FILE DocumentFormat.OpenXml.dll 7985120
+09:26:29 [a-fresh-silent] FIXED_FILE DocumentFormat.OpenXml.Framework.dll 478688
+09:26:29 [a-fresh-silent] FIXED_FILE e_sqlite3.dll 1978880
+09:26:29 [a-fresh-silent] FIXED_FILE LabelFrame.Api.dll 59392
+09:26:29 [a-fresh-silent] FIXED_FILE LabelFrame.Core.dll 280064
+09:26:29 [a-fresh-silent] FIXED_FILE LabelFrame.Rendering.dll 18432
+09:26:29 [a-fresh-silent] FIXED_FILE LabelFrame.Server.deps.json 11765
+09:26:29 [a-fresh-silent] FIXED_FILE LabelFrame.Server.dll 418816
+09:26:29 [a-fresh-silent] FIXED_FILE LabelFrame.Server.exe 310272
+09:26:29 [a-fresh-silent] FIXED_FILE LabelFrame.Server.runtimeconfig.json 548
+09:26:29 [a-fresh-silent] FIXED_FILE LabelFrame.Server.staticwebassets.endpoints.json 53
+09:26:29 [a-fresh-silent] FIXED_FILE LabelFrame.Updates.dll 74240
+09:26:29 [a-fresh-silent] FIXED_FILE libSkiaSharp.dll 11611680
+09:26:29 [a-fresh-silent] FIXED_FILE libSkiaSharp.pdb 83832832
+09:26:29 [a-fresh-silent] FIXED_FILE Microsoft.Data.Sqlite.dll 173088
+09:26:29 [a-fresh-silent] FIXED_FILE Microsoft.Extensions.Hosting.WindowsServices.dll 29456
+09:26:29 [a-fresh-silent] FIXED_FILE SkiaSharp.dll 490016
+09:26:29 [a-fresh-silent] FIXED_FILE SQLitePCLRaw.core.dll 51200
+09:26:29 [a-fresh-silent] FIXED_FILE SQLitePCLRaw.provider.e_sqlite3.dll 36864
+09:26:29 [a-fresh-silent] FIXED_FILE System.IO.Packaging.dll 159504
+09:26:29 [a-fresh-silent] FIXED_FILE System.ServiceProcess.ServiceController.dll 92472
+09:26:29 [a-fresh-silent] FIXED_FILE TemplateFrame.dll 76288
+09:26:29 [a-fresh-silent] FIXED_FILE TemplateFrame.Excel.Simple.dll 57344
+09:26:29 [a-fresh-silent] FIXED_FILE TemplateFrame.Excel.Simple.resources.dll 6656
+09:26:29 [a-fresh-silent] FIXED_FILE TemplateFrame.resources.dll 8704
+09:26:29 [a-fresh-silent] FIXED_FILE update-publisher.cer 804
+09:26:29 [a-fresh-silent] FIXED_FILE web.config 484
+09:26:29 [a-fresh-silent] FIXED_FILE zxing.dll 516096
+09:26:29 [a-fresh-silent] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=82 sha256=bd2baf291aab5a15982aa6862552ca51b88702f9d042b2555ffb784ed34a545e listen="ListenUrl": "http://0.0.0.0:53961",
+09:26:29 [a-fresh-silent] ROOT_ENTRIES Server
+09:26:29 [a-fresh-silent] X86_ROOT exists=False
+09:26:29 [a-fresh-silent] CUSTOM_DIR path=C:\LabelFrame Test\Server exists=False
+09:26:29 [a-fresh-silent] SETTINGS custom path=C:\LabelFrame Test\Server\appsettings.json exists=False
+09:26:30 [a-fresh-silent] fresh PASS H1 healthz returns 200 with status ok: status=200 body={"service":"LabelFrame.Server","status":"ok"}
+09:26:30 [a-fresh-silent] fresh PASS I1 server info returns 200: status=200 body={"listenUrl":"http://0.0.0.0:53961","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.0"}
+09:26:30 [a-fresh-silent] INFO root path status=404 contentType=0
+09:26:30 [a-fresh-silent] fresh PASS D1 device list returns 200: status=200
+09:26:30 [a-fresh-silent] fresh PASS D2 device registration returns 200: status=200 body={"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T01:26:30.0974481+00:00","lastSeenAt":"2026-11-26T01:26:30.0974481+00:00","status":"Online","lastIp":"127.0.0.1"}
+09:26:30 [a-fresh-silent] fresh PASS D3 registered device is listed with its name: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T01:26:30.0974481+00:00","lastSeenAt":"2026-11-26T01:26:30.0974481+00:00","status":"Online","lastIp":"127.0.0.1"}]
+09:26:30 [a-fresh-silent] fresh PASS J1 job submission is accepted as Pending: status=202 body={"jobId":"2a85bd3e442245408bbd140ee8cfaf00","requestId":"probe-9cec19c286c34ae8a5898ac43912ce20","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T01:26:30.176548+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+09:26:30 [a-fresh-silent] CREATED_JOB requestId=probe-9cec19c286c34ae8a5898ac43912ce20 jobId=2a85bd3e442245408bbd140ee8cfaf00
+09:26:30 [a-fresh-silent] fresh PASS J2 job can be queried and is Pending: status=200 body={"jobId":"2a85bd3e442245408bbd140ee8cfaf00","requestId":"probe-9cec19c286c34ae8a5898ac43912ce20","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T01:26:30.176548+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+09:26:30 [a-fresh-silent] fresh PASS N1 notify long poll returns 200: status=200 body={"hasPending":true}
+09:26:30 [a-fresh-silent] fresh PASS J3 device claims the pending job: status=200 claimed=1 body=[{"jobId":"2a85bd3e442245408bbd140ee8cfaf00","requestId":"probe-9cec19c286c34ae8a5898ac43912ce20","totalItems":1,"payload":{"template":{"contract":{"name":"probe-contract","version":"1.0","fields":[]},"layout":{"name":"probe-layout","contractName":"probe-contract","contractVersion":"1.0","widthMm":40,"heightMm":20,"elements":[{"type":"text","xMm":1,"yMm":1,"sourceKey":"","literal":"标签打印 ABC 123","fontName":"0","fontHeightMm":3,"fontWidthMm":0}]},"name":null,"images":null},"labels":[{"data":{}}]}}]
+09:26:30 [a-fresh-silent] fresh PASS J4 progress report is accepted: status=200 body={"jobId":"2a85bd3e442245408bbd140ee8cfaf00","requestId":"probe-9cec19c286c34ae8a5898ac43912ce20","targetDeviceId":"customdir-probe","status":"Claimed","createdAt":"2026-11-26T01:26:30.176548+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+09:26:30 [a-fresh-silent] fresh PASS J5 result report is accepted: status=200 body={"jobId":"2a85bd3e442245408bbd140ee8cfaf00","requestId":"probe-9cec19c286c34ae8a5898ac43912ce20","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T01:26:30.176548+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+09:26:30 [a-fresh-silent] fresh PASS J6 job is Completed after the result report: status=200 body={"jobId":"2a85bd3e442245408bbd140ee8cfaf00","requestId":"probe-9cec19c286c34ae8a5898ac43912ce20","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T01:26:30.176548+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+09:26:30 [a-fresh-silent] fresh PASS J7 job history lists the job: status=200
+09:26:30 [a-fresh-silent] fresh PASS R1 debug render returns a PNG: status=200 bytes=3580
+09:26:30 [a-fresh-silent] fresh PASS R2 batch debug render returns a zip: status=200 bytes=2122
+09:26:30 [a-fresh-silent] fresh PASS T1 template save returns 200: status=200 body={"name":"customdir-template","group":"probe"}
+09:26:30 [a-fresh-silent] fresh PASS T2 saved template is listed: status=200 body=[{"name":"customdir-template","group":"probe","updatedAt":"2026-11-26T01:26:30.634849+00:00","uid":"504f121709ec48dcaf24d92f32da1cbf"}]
+09:26:30 [a-fresh-silent] fresh PASS T3 saved template can be read: status=200
+09:26:30 [a-fresh-silent] fresh PASS T4 template preview returns a PNG: status=200 bytes=3580
+09:26:30 [a-fresh-silent] fresh PASS T5 template export returns a package: status=200 bytes=391
+09:26:30 [a-fresh-silent] fresh PASS L1 log push returns 200: status=200 body={"received":1}
+09:26:30 [a-fresh-silent] fresh PASS L2 pushed log line is returned: status=200 length=132
+09:26:30 [a-fresh-silent] fresh PASS P1 client package upload returns 200: status=200 body={"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T01:26:30.6991362+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}
+09:26:30 [a-fresh-silent] fresh PASS P2 uploaded package is listed: status=200 body=[{"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T01:26:30.6991362+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}]
+09:26:30 [a-fresh-silent] fresh PASS P3 uploaded package downloads byte-identical: status=200 bytes=4150 expected=4150
+09:26:30 [a-fresh-silent] fresh PASS P4 package delete returns 200: status=200 body={"deleted":"probe-package-1.2.3.zip"}
+09:26:30 [a-fresh-silent] fresh PASS P5 deleted package is no longer listed: status=200 body=[]
+09:26:30 [a-fresh-silent] fresh PASS X1 GET /api/pda-packages returns 200: status=200 body=[]
+09:26:30 [a-fresh-silent] fresh PASS X1 GET /api/plugin-packages returns 200: status=200 body=[]
+09:26:30 [a-fresh-silent] fresh PASS X1 GET /api/client-updates returns 200: status=200 body=[]
+09:26:30 [a-fresh-silent] fresh PASS X1 GET /api/android-updates returns 200: status=200 body=[]
+09:26:30 [a-fresh-silent] fresh PASS X1 GET /api/client-updates/drafts returns 200: status=200 body=[]
+09:26:30 [a-fresh-silent] fresh PASS X1 GET /api/server/ipv4-candidates returns 200: status=200 body={"candidates":["172.17.234.240"]}
+09:26:30 [a-fresh-silent] SMOKE_SUMMARY tag=fresh port=53961 passed=33 failed=0
+09:26:41 [a-fresh-silent] CONFIG_FILE path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=82 leadingMarks=1
+09:26:41 [a-fresh-silent] CONFIG_ORIGINAL { "Server": { "ListenUrl": "http://0.0.0.0:53961", "Dpi": 203 } }
+09:26:41 [a-fresh-silent] CONFIG_FILE_WRITTEN bytes=82 bomMarks=1 jsonValid=True listenUrlHasNewPort=True
+09:26:41 [a-fresh-silent] CONFIG step=moved newPort=53970 newPortListening=True oldPort=53961 oldPortListening=False
+09:26:41 [a-fresh-silent] CONFIG step=restored fileIdentical=True oldPortListening=True newPortListening=False
+09:27:13 [a-fresh-silent] WAIT port=53961 restart=True result=ready elapsed=0.3s lastCode=200 stateBefore=Running pidBefore=5360 stateAfter=Running pidAfter=4816 body={"service":"LabelFrame.Server","status":"ok"}
+09:27:13 [a-fresh-silent] WAIT_STABILITY seconds=30 sameProcess=True state=Running pid=4816 healthCode=200
+09:27:15 [a-fresh-silent] EVENTS since=11/26/2026 08:57:13 errors=5
+09:27:15 [a-fresh-silent] EVENT level=错误 log=Application provider=Microsoft-Windows-Defrag id=264 time=09:25:24 message=存储优化程序无法在 (C:) 上完成 碎片合并，原因是: 由于可以回收的碎片数不足，碎片合并操作已中止(基于注册表中指定的限制)。 (0x89000028)
+09:27:15 [a-fresh-silent] EVENT level=错误 log=System provider=Microsoft-Windows-Time-Service id=34 time=09:24:15 message=时间服务检测到系统时间需要更改 0 秒。时间服务将不会更改系统时间超过 54000 秒。请验证你的时间和时区是正确的，并且时间源 VM IC Time Synchronization Provider 工作正常。
+09:27:15 [a-fresh-silent] EVENT level=错误 log=Application provider=Microsoft-Windows-Security-SPP id=8198 time=09:24:06 message=许可证激活(slui.exe)失败，返回以下错误代码: hr=0x8007139F 命令行参数: RuleId=31e71c49-8da7-4a2f-ad92-45d98a1c79ba;Action=AutoActivate;AppId=55c92734-d682-4d71-983e-d6ec3f16059f;SkuId=4de7cb65-cdf1-4de9-8ae8-e3cce27b9f2c;NotificationInterval=1440;Trigger=NetworkAvailable
+09:27:15 [a-fresh-silent] EVENT level=错误 log=Application provider=Microsoft-Windows-Security-SPP id=8198 time=09:24:06 message=许可证激活(slui.exe)失败，返回以下错误代码: hr=0x8007139F 命令行参数: RuleId=31e71c49-8da7-4a2f-ad92-45d98a1c79ba;Action=AutoActivate;AppId=55c92734-d682-4d71-983e-d6ec3f16059f;SkuId=4de7cb65-cdf1-4de9-8ae8-e3cce27b9f2c;NotificationInterval=1440;Trigger=NetworkAvailable
+09:27:15 [a-fresh-silent] EVENT level=错误 log=System provider=Microsoft-Windows-Time-Service id=34 time=09:23:52 message=时间服务检测到系统时间需要更改 0 秒。时间服务将不会更改系统时间超过 54000 秒。请验证你的时间和时区是正确的，并且时间源 VM IC Time Synchronization Provider 工作正常。
+09:27:15 [a-fresh-silent] EVENTS labelFrameWarnings=1
+09:27:15 [a-fresh-silent] EVENT level=警告 log=System provider=Microsoft-Windows-DistributedCOM id=10016 time=09:23:52 message=计算机-默认 权限设置并未向在应用程序容器 Microsoft.Windows.ShellExperienceHost_10.0.19041.3636_neutral_neutral_cw5n1h2txyewy SID (S-1-15-2-155514346-2573954481-755741238-1654018636-1233331829-3075935687-2861478708)中运行的地址 LocalHost (使用 LRPC) 中的用户 DESKTOP-D65DJ5S\<account> SID (<account-sid>)授予针对 CLSID 为 {C2F03A33-21F5-47FA-B4BB-156362A2F239} 、APPID 为 {316CDED5-E4AE-4B15-9113-7055D84DCC
+09:27:17 [a-fresh-silent] guest is restarting; waiting for a new boot
+09:29:12 [a-fresh-silent] guest is back: boot before=2026-11-26 08:43:29 boot now=2026-11-26 09:28:24 (guest clock read 2026-11-26 09:29:15)
+09:30:45 [a-fresh-silent] service wuauserv: status when the stop request was sent=Running startType=Disabled
+09:30:45 [a-fresh-silent] service UsoSvc: status when the stop request was sent=Stopped startType=Disabled
+09:30:45 [a-fresh-silent] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+09:30:45 [a-fresh-silent] last boot: 2026-11-26 09:28:24
+09:30:45 [a-fresh-silent] in-progress installer registration exists: False
+09:31:16 [a-fresh-silent] WAIT port=53961 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=3228 stateAfter=Running pidAfter=3228 body={"service":"LabelFrame.Server","status":"ok"}
+09:31:16 [a-fresh-silent] WAIT_STABILITY seconds=30 sameProcess=True state=Running pid=3228 healthCode=200
+09:31:19 [a-fresh-silent] GUEST now=2026-11-26 09:31:18 programFiles=C:\Program Files lastBoot=2026-11-26 09:28:24
+09:31:19 [a-fresh-silent] DIR install exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760799 exeProductVersion=1.6.1+43127ac9d3f49ee9fc5d5d9917ca7e4952544f45 appsettings=True
+09:31:19 [a-fresh-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760799 exeProductVersion=1.6.1+43127ac9d3f49ee9fc5d5d9917ca7e4952544f45 appsettings=True
+09:31:19 [a-fresh-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760799 exeProductVersion= appsettings=False
+09:31:19 [a-fresh-silent] INSTALL_TOP_LEVEL ApkVerifierBridge.java | appsettings.json | DocumentFormat.OpenXml.dll | DocumentFormat.OpenXml.Framework.dll | e_sqlite3.dll | LabelFrame.Api.dll | LabelFrame.Core.dll | LabelFrame.Rendering.dll | LabelFrame.Server.deps.json | LabelFrame.Server.dll | LabelFrame.Server.exe | LabelFrame.Server.runtimeconfig.json | LabelFrame.Server.staticwebassets.endpoints.json | LabelFrame.Updates.dll | libSkiaSharp.dll | libSkiaSharp.pdb | Microsoft.Data.Sqlite.dll | Microsoft.Extensions.Hosting.WindowsServices.dll | SkiaSharp.dll | SQLitePCLRaw.core.dll | SQLitePCLRaw.provider.e_sqlite3.dll | System.IO.Packaging.dll | System.ServiceProcess.ServiceController.dll | TemplateFrame.dll | TemplateFrame.Excel.Simple.dll | TemplateFrame.Excel.Simple.resources.dll | TemplateFrame.resources.dll | update-publisher.cer | web.config | zxing.dll
+09:31:19 [a-fresh-silent] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+09:31:19 [a-fresh-silent] SERVICE state=Running startMode=Auto startName=LocalSystem pid=3228 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+09:31:19 [a-fresh-silent] SERVICES_MATCHING LabelFrameServer
+09:31:19 [a-fresh-silent] PRODUCT name=LabelFrame Server version=1.6.1 installLocation= installDate=20261126
+09:31:19 [a-fresh-silent] PROCESS pid=3228 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=09:28:29
+09:31:19 [a-fresh-silent] LISTEN address=0.0.0.0 port=53961 pid=3228
+09:31:19 [a-fresh-silent] DATA root=C:\ProgramData\LabelFrame files=9
+09:31:19 [a-fresh-silent] DATA \server\logs.db 16384
+09:31:19 [a-fresh-silent] DATA \server\logs.db-shm 32768
+09:31:19 [a-fresh-silent] DATA \server\logs.db-wal 0
+09:31:19 [a-fresh-silent] DATA \server\server.db 45056
+09:31:19 [a-fresh-silent] DATA \server\server.db-shm 32768
+09:31:19 [a-fresh-silent] DATA \server\server.db-wal 0
+09:31:19 [a-fresh-silent] DATA \server\templates.db 28672
+09:31:19 [a-fresh-silent] DATA \server\templates.db-shm 32768
+09:31:19 [a-fresh-silent] DATA \server\templates.db-wal 0
+09:31:19 [a-fresh-silent] IN_PROGRESS_REGISTRATION False
+09:31:22 [a-fresh-silent] after-reboot PASS H1 healthz returns 200 with status ok: status=200 body={"service":"LabelFrame.Server","status":"ok"}
+09:31:22 [a-fresh-silent] after-reboot PASS I1 server info returns 200: status=200 body={"listenUrl":"http://0.0.0.0:53961","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.0"}
+09:31:22 [a-fresh-silent] INFO root path status=404 contentType=0
+09:31:22 [a-fresh-silent] after-reboot PASS D1 device list returns 200: status=200
+09:31:22 [a-fresh-silent] after-reboot PASS D2 device registration returns 200: status=200 body={"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T01:31:21.3962936+00:00","lastSeenAt":"2026-11-26T01:31:21.3962936+00:00","status":"Online","lastIp":"127.0.0.1"}
+09:31:22 [a-fresh-silent] after-reboot PASS D3 registered device is listed with its name: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T01:26:30.0974481+00:00","lastSeenAt":"2026-11-26T01:31:21.3962936+00:00","status":"Online","lastIp":"127.0.0.1"}]
+09:31:22 [a-fresh-silent] after-reboot PASS J1 job submission is accepted as Pending: status=202 body={"jobId":"c84ef3e100f74f158a0992904aae3146","requestId":"probe-fc21fe18410c46f09d8f3cc90c613255","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T01:31:21.4565297+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+09:31:22 [a-fresh-silent] CREATED_JOB requestId=probe-fc21fe18410c46f09d8f3cc90c613255 jobId=c84ef3e100f74f158a0992904aae3146
+09:31:22 [a-fresh-silent] after-reboot PASS J2 job can be queried and is Pending: status=200 body={"jobId":"c84ef3e100f74f158a0992904aae3146","requestId":"probe-fc21fe18410c46f09d8f3cc90c613255","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T01:31:21.4565297+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+09:31:22 [a-fresh-silent] after-reboot PASS N1 notify long poll returns 200: status=200 body={"hasPending":true}
+09:31:22 [a-fresh-silent] after-reboot PASS J3 device claims the pending job: status=200 claimed=1 body=[{"jobId":"c84ef3e100f74f158a0992904aae3146","requestId":"probe-fc21fe18410c46f09d8f3cc90c613255","totalItems":1,"payload":{"template":{"contract":{"name":"probe-contract","version":"1.0","fields":[]},"layout":{"name":"probe-layout","contractName":"probe-contract","contractVersion":"1.0","widthMm":40,"heightMm":20,"elements":[{"type":"text","xMm":1,"yMm":1,"sourceKey":"","literal":"标签打印 ABC 123","fontName":"0","fontHeightMm":3,"fontWidthMm":0}]},"name":null,"images":null},"labels":[{"data":{}}]}}]
+09:31:22 [a-fresh-silent] after-reboot PASS J4 progress report is accepted: status=200 body={"jobId":"c84ef3e100f74f158a0992904aae3146","requestId":"probe-fc21fe18410c46f09d8f3cc90c613255","targetDeviceId":"customdir-probe","status":"Claimed","createdAt":"2026-11-26T01:31:21.4565297+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+09:31:22 [a-fresh-silent] after-reboot PASS J5 result report is accepted: status=200 body={"jobId":"c84ef3e100f74f158a0992904aae3146","requestId":"probe-fc21fe18410c46f09d8f3cc90c613255","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T01:31:21.4565297+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+09:31:22 [a-fresh-silent] after-reboot PASS J6 job is Completed after the result report: status=200 body={"jobId":"c84ef3e100f74f158a0992904aae3146","requestId":"probe-fc21fe18410c46f09d8f3cc90c613255","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T01:31:21.4565297+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+09:31:22 [a-fresh-silent] after-reboot PASS J7 job history lists the job: status=200
+09:31:22 [a-fresh-silent] after-reboot PASS R1 debug render returns a PNG: status=200 bytes=3580
+09:31:22 [a-fresh-silent] after-reboot PASS R2 batch debug render returns a zip: status=200 bytes=2122
+09:31:22 [a-fresh-silent] after-reboot PASS T1 template save returns 200: status=200 body={"name":"customdir-template","group":"probe"}
+09:31:22 [a-fresh-silent] after-reboot PASS T2 saved template is listed: status=200 body=[{"name":"customdir-template","group":"probe","updatedAt":"2026-11-26T01:31:21.8681882+00:00","uid":"d8e7a96672104e0da826d56f3140ec83"}]
+09:31:22 [a-fresh-silent] after-reboot PASS T3 saved template can be read: status=200
+09:31:22 [a-fresh-silent] after-reboot PASS T4 template preview returns a PNG: status=200 bytes=3580
+09:31:22 [a-fresh-silent] after-reboot PASS T5 template export returns a package: status=200 bytes=391
+09:31:22 [a-fresh-silent] after-reboot PASS L1 log push returns 200: status=200 body={"received":1}
+09:31:22 [a-fresh-silent] after-reboot PASS L2 pushed log line is returned: status=200 length=263
+09:31:22 [a-fresh-silent] after-reboot PASS P1 client package upload returns 200: status=200 body={"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T01:31:21.9595294+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}
+09:31:22 [a-fresh-silent] after-reboot PASS P2 uploaded package is listed: status=200 body=[{"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T01:31:21.9595294+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}]
+09:31:22 [a-fresh-silent] after-reboot PASS P3 uploaded package downloads byte-identical: status=200 bytes=4150 expected=4150
+09:31:22 [a-fresh-silent] after-reboot PASS P4 package delete returns 200: status=200 body={"deleted":"probe-package-1.2.3.zip"}
+09:31:22 [a-fresh-silent] after-reboot PASS P5 deleted package is no longer listed: status=200 body=[]
+09:31:22 [a-fresh-silent] after-reboot PASS X1 GET /api/pda-packages returns 200: status=200 body=[]
+09:31:22 [a-fresh-silent] after-reboot PASS X1 GET /api/plugin-packages returns 200: status=200 body=[]
+09:31:22 [a-fresh-silent] after-reboot PASS X1 GET /api/client-updates returns 200: status=200 body=[]
+09:31:22 [a-fresh-silent] after-reboot PASS X1 GET /api/android-updates returns 200: status=200 body=[]
+09:31:22 [a-fresh-silent] after-reboot PASS X1 GET /api/client-updates/drafts returns 200: status=200 body=[]
+09:31:22 [a-fresh-silent] after-reboot PASS X1 GET /api/server/ipv4-candidates returns 200: status=200 body={"candidates":["172.17.234.240"]}
+09:31:22 [a-fresh-silent] SMOKE_SUMMARY tag=after-reboot port=53961 passed=33 failed=0
+09:31:29 [a-fresh-silent] CONFIG_FILE path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=82 leadingMarks=1
+09:31:29 [a-fresh-silent] CONFIG_ORIGINAL { "Server": { "ListenUrl": "http://0.0.0.0:53961", "Dpi": 203 } }
+09:31:29 [a-fresh-silent] CONFIG_FILE_WRITTEN bytes=82 bomMarks=1 jsonValid=True listenUrlHasNewPort=True
+09:31:29 [a-fresh-silent] CONFIG step=moved newPort=53970 newPortListening=True oldPort=53961 oldPortListening=False
+09:31:31 [a-fresh-silent] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=30 subFolders=0
+09:31:31 [a-fresh-silent] FIXED_FILE ApkVerifierBridge.java 959
+09:31:31 [a-fresh-silent] FIXED_FILE appsettings.json 82
+09:31:31 [a-fresh-silent] FIXED_FILE DocumentFormat.OpenXml.dll 7985120
+09:31:31 [a-fresh-silent] FIXED_FILE DocumentFormat.OpenXml.Framework.dll 478688
+09:31:31 [a-fresh-silent] FIXED_FILE e_sqlite3.dll 1978880
+09:31:31 [a-fresh-silent] FIXED_FILE LabelFrame.Api.dll 59392
+09:31:31 [a-fresh-silent] FIXED_FILE LabelFrame.Core.dll 280064
+09:31:31 [a-fresh-silent] FIXED_FILE LabelFrame.Rendering.dll 18432
+09:31:31 [a-fresh-silent] FIXED_FILE LabelFrame.Server.deps.json 11765
+09:31:31 [a-fresh-silent] FIXED_FILE LabelFrame.Server.dll 418816
+09:31:31 [a-fresh-silent] FIXED_FILE LabelFrame.Server.exe 310272
+09:31:31 [a-fresh-silent] FIXED_FILE LabelFrame.Server.runtimeconfig.json 548
+09:31:31 [a-fresh-silent] FIXED_FILE LabelFrame.Server.staticwebassets.endpoints.json 53
+09:31:31 [a-fresh-silent] FIXED_FILE LabelFrame.Updates.dll 74240
+09:31:31 [a-fresh-silent] FIXED_FILE libSkiaSharp.dll 11611680
+09:31:31 [a-fresh-silent] FIXED_FILE libSkiaSharp.pdb 83832832
+09:31:31 [a-fresh-silent] FIXED_FILE Microsoft.Data.Sqlite.dll 173088
+09:31:31 [a-fresh-silent] FIXED_FILE Microsoft.Extensions.Hosting.WindowsServices.dll 29456
+09:31:31 [a-fresh-silent] FIXED_FILE SkiaSharp.dll 490016
+09:31:31 [a-fresh-silent] FIXED_FILE SQLitePCLRaw.core.dll 51200
+09:31:31 [a-fresh-silent] FIXED_FILE SQLitePCLRaw.provider.e_sqlite3.dll 36864
+09:31:31 [a-fresh-silent] FIXED_FILE System.IO.Packaging.dll 159504
+09:31:31 [a-fresh-silent] FIXED_FILE System.ServiceProcess.ServiceController.dll 92472
+09:31:31 [a-fresh-silent] FIXED_FILE TemplateFrame.dll 76288
+09:31:31 [a-fresh-silent] FIXED_FILE TemplateFrame.Excel.Simple.dll 57344
+09:31:31 [a-fresh-silent] FIXED_FILE TemplateFrame.Excel.Simple.resources.dll 6656
+09:31:31 [a-fresh-silent] FIXED_FILE TemplateFrame.resources.dll 8704
+09:31:31 [a-fresh-silent] FIXED_FILE update-publisher.cer 804
+09:31:31 [a-fresh-silent] FIXED_FILE web.config 484
+09:31:31 [a-fresh-silent] FIXED_FILE zxing.dll 516096
+09:31:31 [a-fresh-silent] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=82 sha256=00089c61bfc522f87f68806f4ae489c41b128b121e140afb0798e994ac1fa314 listen="ListenUrl": "http://0.0.0.0:53970",
+09:31:31 [a-fresh-silent] ROOT_ENTRIES Server
+09:31:31 [a-fresh-silent] X86_ROOT exists=False
+09:31:34 [a-fresh-silent] 09:31:32 ARGUMENTS /x "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\a-uninstall-keep.log"
+09:31:34 [a-fresh-silent] 09:31:34 MSI mode=uninstall msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=2.1s
+09:31:34 [a-fresh-silent] 09:31:34 LOG bytes=131786
+09:31:38 [a-fresh-silent] GUEST now=2026-11-26 09:31:36 programFiles=C:\Program Files lastBoot=2026-11-26 09:28:24
+09:31:38 [a-fresh-silent] DIR install exists=True path=C:\Program Files\LabelFrame\Server files=1 bytes=82 exeProductVersion= appsettings=True
+09:31:38 [a-fresh-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=1 bytes=82 exeProductVersion= appsettings=True
+09:31:38 [a-fresh-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=1 bytes=82 exeProductVersion= appsettings=False
+09:31:38 [a-fresh-silent] INSTALL_TOP_LEVEL appsettings.json
+09:31:38 [a-fresh-silent] DEFAULT_ROOT_TREE \Server | \Server\appsettings.json
+09:31:38 [a-fresh-silent] SERVICE none
+09:31:38 [a-fresh-silent] SERVICES_MATCHING
+09:31:38 [a-fresh-silent] PRODUCT none
+09:31:38 [a-fresh-silent] LISTEN none
+09:31:38 [a-fresh-silent] DATA root=C:\ProgramData\LabelFrame files=3
+09:31:38 [a-fresh-silent] DATA \server\logs.db 16384
+09:31:38 [a-fresh-silent] DATA \server\server.db 45056
+09:31:38 [a-fresh-silent] DATA \server\templates.db 28672
+09:31:38 [a-fresh-silent] IN_PROGRESS_REGISTRATION False
+09:31:40 [a-fresh-silent] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=1 subFolders=0
+09:31:40 [a-fresh-silent] FIXED_FILE appsettings.json 82
+09:31:40 [a-fresh-silent] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=82 sha256=00089c61bfc522f87f68806f4ae489c41b128b121e140afb0798e994ac1fa314 listen="ListenUrl": "http://0.0.0.0:53970",
+09:31:40 [a-fresh-silent] ROOT_ENTRIES Server
+09:31:40 [a-fresh-silent] X86_ROOT exists=False
+09:31:45 [a-fresh-silent] 09:31:41 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\a-install-again.log"
+09:31:45 [a-fresh-silent] 09:31:45 MSI mode=install msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.2s
+09:31:45 [a-fresh-silent] 09:31:45 LOG bytes=171406
+09:32:03 [a-fresh-silent] WAIT port=53970 restart=False result=ready elapsed=0.6s lastCode=200 stateBefore=Running pidBefore=5980 stateAfter=Running pidAfter=5980 body={"service":"LabelFrame.Server","status":"ok"}
+09:32:03 [a-fresh-silent] WAIT_STABILITY seconds=15 sameProcess=True state=Running pid=5980 healthCode=200
+09:32:06 [a-fresh-silent] GUEST now=2026-11-26 09:32:05 programFiles=C:\Program Files lastBoot=2026-11-26 09:28:24
+09:32:06 [a-fresh-silent] DIR install exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760799 exeProductVersion=1.6.1+43127ac9d3f49ee9fc5d5d9917ca7e4952544f45 appsettings=True
+09:32:06 [a-fresh-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760799 exeProductVersion=1.6.1+43127ac9d3f49ee9fc5d5d9917ca7e4952544f45 appsettings=True
+09:32:06 [a-fresh-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760799 exeProductVersion= appsettings=False
+09:32:06 [a-fresh-silent] INSTALL_TOP_LEVEL ApkVerifierBridge.java | appsettings.json | DocumentFormat.OpenXml.dll | DocumentFormat.OpenXml.Framework.dll | e_sqlite3.dll | LabelFrame.Api.dll | LabelFrame.Core.dll | LabelFrame.Rendering.dll | LabelFrame.Server.deps.json | LabelFrame.Server.dll | LabelFrame.Server.exe | LabelFrame.Server.runtimeconfig.json | LabelFrame.Server.staticwebassets.endpoints.json | LabelFrame.Updates.dll | libSkiaSharp.dll | libSkiaSharp.pdb | Microsoft.Data.Sqlite.dll | Microsoft.Extensions.Hosting.WindowsServices.dll | SkiaSharp.dll | SQLitePCLRaw.core.dll | SQLitePCLRaw.provider.e_sqlite3.dll | System.IO.Packaging.dll | System.ServiceProcess.ServiceController.dll | TemplateFrame.dll | TemplateFrame.Excel.Simple.dll | TemplateFrame.Excel.Simple.resources.dll | TemplateFrame.resources.dll | update-publisher.cer | web.config | zxing.dll
+09:32:06 [a-fresh-silent] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+09:32:06 [a-fresh-silent] SERVICE state=Running startMode=Auto startName=LocalSystem pid=5980 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+09:32:06 [a-fresh-silent] SERVICES_MATCHING LabelFrameServer
+09:32:06 [a-fresh-silent] PRODUCT name=LabelFrame Server version=1.6.1 installLocation= installDate=20261126
+09:32:06 [a-fresh-silent] PROCESS pid=5980 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=09:31:42
+09:32:06 [a-fresh-silent] LISTEN address=0.0.0.0 port=53970 pid=5980
+09:32:06 [a-fresh-silent] DATA root=C:\ProgramData\LabelFrame files=9
+09:32:06 [a-fresh-silent] DATA \server\logs.db 16384
+09:32:06 [a-fresh-silent] DATA \server\logs.db-shm 32768
+09:32:06 [a-fresh-silent] DATA \server\logs.db-wal 0
+09:32:06 [a-fresh-silent] DATA \server\server.db 45056
+09:32:06 [a-fresh-silent] DATA \server\server.db-shm 32768
+09:32:06 [a-fresh-silent] DATA \server\server.db-wal 0
+09:32:06 [a-fresh-silent] DATA \server\templates.db 28672
+09:32:06 [a-fresh-silent] DATA \server\templates.db-shm 32768
+09:32:06 [a-fresh-silent] DATA \server\templates.db-wal 0
+09:32:06 [a-fresh-silent] IN_PROGRESS_REGISTRATION False
+09:32:08 [a-fresh-silent] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=30 subFolders=0
+09:32:08 [a-fresh-silent] FIXED_FILE ApkVerifierBridge.java 959
+09:32:08 [a-fresh-silent] FIXED_FILE appsettings.json 82
+09:32:08 [a-fresh-silent] FIXED_FILE DocumentFormat.OpenXml.dll 7985120
+09:32:08 [a-fresh-silent] FIXED_FILE DocumentFormat.OpenXml.Framework.dll 478688
+09:32:08 [a-fresh-silent] FIXED_FILE e_sqlite3.dll 1978880
+09:32:08 [a-fresh-silent] FIXED_FILE LabelFrame.Api.dll 59392
+09:32:08 [a-fresh-silent] FIXED_FILE LabelFrame.Core.dll 280064
+09:32:08 [a-fresh-silent] FIXED_FILE LabelFrame.Rendering.dll 18432
+09:32:08 [a-fresh-silent] FIXED_FILE LabelFrame.Server.deps.json 11765
+09:32:08 [a-fresh-silent] FIXED_FILE LabelFrame.Server.dll 418816
+09:32:08 [a-fresh-silent] FIXED_FILE LabelFrame.Server.exe 310272
+09:32:08 [a-fresh-silent] FIXED_FILE LabelFrame.Server.runtimeconfig.json 548
+09:32:08 [a-fresh-silent] FIXED_FILE LabelFrame.Server.staticwebassets.endpoints.json 53
+09:32:08 [a-fresh-silent] FIXED_FILE LabelFrame.Updates.dll 74240
+09:32:08 [a-fresh-silent] FIXED_FILE libSkiaSharp.dll 11611680
+09:32:08 [a-fresh-silent] FIXED_FILE libSkiaSharp.pdb 83832832
+09:32:08 [a-fresh-silent] FIXED_FILE Microsoft.Data.Sqlite.dll 173088
+09:32:08 [a-fresh-silent] FIXED_FILE Microsoft.Extensions.Hosting.WindowsServices.dll 29456
+09:32:08 [a-fresh-silent] FIXED_FILE SkiaSharp.dll 490016
+09:32:08 [a-fresh-silent] FIXED_FILE SQLitePCLRaw.core.dll 51200
+09:32:08 [a-fresh-silent] FIXED_FILE SQLitePCLRaw.provider.e_sqlite3.dll 36864
+09:32:08 [a-fresh-silent] FIXED_FILE System.IO.Packaging.dll 159504
+09:32:08 [a-fresh-silent] FIXED_FILE System.ServiceProcess.ServiceController.dll 92472
+09:32:08 [a-fresh-silent] FIXED_FILE TemplateFrame.dll 76288
+09:32:08 [a-fresh-silent] FIXED_FILE TemplateFrame.Excel.Simple.dll 57344
+09:32:08 [a-fresh-silent] FIXED_FILE TemplateFrame.Excel.Simple.resources.dll 6656
+09:32:08 [a-fresh-silent] FIXED_FILE TemplateFrame.resources.dll 8704
+09:32:08 [a-fresh-silent] FIXED_FILE update-publisher.cer 804
+09:32:08 [a-fresh-silent] FIXED_FILE web.config 484
+09:32:08 [a-fresh-silent] FIXED_FILE zxing.dll 516096
+09:32:08 [a-fresh-silent] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=82 sha256=00089c61bfc522f87f68806f4ae489c41b128b121e140afb0798e994ac1fa314 listen="ListenUrl": "http://0.0.0.0:53970",
+09:32:08 [a-fresh-silent] ROOT_ENTRIES Server
+09:32:08 [a-fresh-silent] X86_ROOT exists=False
+09:32:11 [a-fresh-silent] 09:32:09 ARGUMENTS /x "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart CLEAR_USER_DATA=1 /l*v "C:\Probe\logs\a-uninstall-clear.log"
+09:32:11 [a-fresh-silent] 09:32:11 MSI mode=uninstall msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[CLEAR_USER_DATA=1] exit=0 elapsed=2.1s
+09:32:11 [a-fresh-silent] 09:32:11 LOG bytes=134940
+09:32:15 [a-fresh-silent] GUEST now=2026-11-26 09:32:13 programFiles=C:\Program Files lastBoot=2026-11-26 09:28:24
+09:32:15 [a-fresh-silent] DIR install exists=True path=C:\Program Files\LabelFrame\Server files=0 bytes= exeProductVersion= appsettings=False
+09:32:15 [a-fresh-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=0 bytes= exeProductVersion= appsettings=False
+09:32:15 [a-fresh-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=0 bytes= exeProductVersion= appsettings=False
+09:32:15 [a-fresh-silent] INSTALL_TOP_LEVEL
+09:32:15 [a-fresh-silent] DEFAULT_ROOT_TREE \Server
+09:32:15 [a-fresh-silent] SERVICE none
+09:32:15 [a-fresh-silent] SERVICES_MATCHING
+09:32:15 [a-fresh-silent] PRODUCT none
+09:32:15 [a-fresh-silent] LISTEN none
+09:32:15 [a-fresh-silent] DATA root=C:\ProgramData\LabelFrame files=0
+09:32:15 [a-fresh-silent] IN_PROGRESS_REGISTRATION False
+09:32:16 [a-fresh-silent] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=0 subFolders=0
+09:32:16 [a-fresh-silent] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json exists=False
+09:32:16 [a-fresh-silent] ROOT_ENTRIES Server
+09:32:16 [a-fresh-silent] X86_ROOT exists=False
+09:32:16 [a-fresh-silent] CUSTOM_DIR path=C:\LabelFrame Test\Server exists=False
+09:32:16 [a-fresh-silent] SETTINGS custom path=C:\LabelFrame Test\Server\appsettings.json exists=False
+09:32:18 [a-fresh-silent] PULLED C:\Probe\logs\a-install.log (172484 bytes)
+09:32:18 [a-fresh-silent] PULLED C:\Probe\logs\a-install-again.log (171406 bytes)
+09:32:18 [a-fresh-silent] PULLED C:\Probe\logs\a-uninstall-clear.log (134940 bytes)
+09:32:18 [a-fresh-silent] PULLED C:\Probe\logs\a-uninstall-keep.log (131786 bytes)
+09:32:20 [a-fresh-silent] PULLED C:\Probe\out\after-reboot-export.lfpkg (391 bytes)
+09:32:20 [a-fresh-silent] PULLED C:\Probe\out\after-reboot-preview.png (3580 bytes)
+09:32:20 [a-fresh-silent] PULLED C:\Probe\out\after-reboot-render.png (3580 bytes)
+09:32:20 [a-fresh-silent] PULLED C:\Probe\out\after-reboot-render.zip (2122 bytes)
+09:32:20 [a-fresh-silent] PULLED C:\Probe\out\fresh-export.lfpkg (391 bytes)
+09:32:20 [a-fresh-silent] PULLED C:\Probe\out\fresh-preview.png (3580 bytes)
+09:32:21 [a-fresh-silent] PULLED C:\Probe\out\fresh-render.png (3580 bytes)
+09:32:21 [a-fresh-silent] PULLED C:\Probe\out\fresh-render.zip (2122 bytes)
+09:32:21 [a-fresh-silent] ROUND_DONE

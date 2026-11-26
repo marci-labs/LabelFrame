@@ -1,0 +1,316 @@
+# 向导全新安装（全界面走查）
+#
+# 测试机 LF-Accept-Win10（Hyper-V，Windows 10），每轮从基线还原点开始；安装包由提交 43127ac 的源码本地构建。
+# 在交互会话里走完向导；安装目录页两次进入都逐个控件记录并截图。截图见 wizard-fresh-*.png。（原始记录 w-fresh-host-1.log）
+# 本文件是本轮宿主机侧记录：客机脚本的每一行输出按顺序带时间戳；测试机账户名已替换为占位符。
+
+10:24:39 STATE_BEFORE=Off
+10:24:39 HOST_FREE_MB=16386 VM_NEED_MB=4096
+10:24:40 STATE_AFTER_RESTORE=Off
+10:24:45 STATE_AFTER_START=Running
+10:25:00 PSDIRECT_OK host=DESKTOP-D65DJ5S
+10:25:07 GUEST clockBefore=2026-11-26T10:25:07.8397310+08:00 clockAfter=2026-11-26T10:25:00.4399775+08:00 setDate=ok
+10:25:07 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+10:25:07 VM state=Running uptime=00:00:25.3910000 cpu=11 memAssignedMB=3364
+10:25:07 DONE
+10:25:07 [w-fresh] waiting 90 seconds after boot before touching the guest
+10:26:39 [w-fresh] guest boot time recorded for this round: 2026-11-26 09:44:36
+10:26:39 [w-fresh] service wuauserv: status when the stop request was sent=Running startType=Disabled
+10:26:39 [w-fresh] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+10:26:39 [w-fresh] service WaaSMedicSvc: status when the stop request was sent=Running startType=Manual
+10:26:39 [w-fresh] last boot: 2026-11-26 09:44:36
+10:26:39 [w-fresh] in-progress installer registration exists: False
+10:26:41 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 1.6s
+10:26:41 COPIED custom-ascii.txt (25 bytes) in 0.1s
+10:26:41 COPIED custom-cn.txt (33 bytes) in 0.1s
+10:26:41 COPIED custom-default.txt (34 bytes) in 0.1s
+10:26:44 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 2.6s
+10:26:46 COPIED LabelFrame-Server-1.6.0.msi (24326144 bytes) in 2.1s
+10:26:48 COPIED LabelFrame-Server-1.6.1.msi (24313856 bytes) in 1.7s
+--- guest files: name size sha256 ---
+aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+custom-ascii.txt 25 e4a08c5ba7e1c91f162367df6c4b551fb155104549ec98af9e089916c5bbf4bc
+custom-cn.txt 33 ca622a014e9f0b527afaceee9e15c1e6e0953b39310b9cba4b13ebec21f58959
+custom-default.txt 34 11d2a1bd719f905608eeaa0b70d0a43f4c37e9ff70c1e3785e22449d771225be
+dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+LabelFrame-Server-1.6.0.msi 24326144 6c398c3dbd2f1e294cb26ed0dcc618631434284ec0226a14f5a4ec4bd69e930c
+LabelFrame-Server-1.6.1.msi 24313856 aacd03283de3d08d68712485450e8c286fc7558b82f4894407b27d2a9bff1a82
+10:26:52 [w-fresh] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=4.2s
+10:26:54 [w-fresh]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+10:26:54 [w-fresh]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+10:26:54 [w-fresh]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:26:54 [w-fresh]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:26:57 [w-fresh] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=2.2s
+10:26:59 [w-fresh]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+10:26:59 [w-fresh]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+10:26:59 [w-fresh]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+10:26:59 [w-fresh]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+10:26:59 [w-fresh]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:26:59 [w-fresh]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:26:59 [w-fresh]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+10:26:59 [w-fresh]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+10:27:00 [w-fresh] GUEST now=2026-11-26 10:26:59 programFiles=C:\Program Files lastBoot=2026-11-26 09:44:36
+10:27:00 [w-fresh] DIR install exists=False path=C:\LabelFrame Test\Server
+10:27:00 [w-fresh] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+10:27:00 [w-fresh] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+10:27:00 [w-fresh] SERVICE none
+10:27:00 [w-fresh] SERVICES_MATCHING
+10:27:00 [w-fresh] PRODUCT none
+10:27:00 [w-fresh] LISTEN none
+10:27:00 [w-fresh] DATA none
+10:27:00 [w-fresh] IN_PROGRESS_REGISTRATION False
+10:27:01 [w-fresh] guest is restarting; waiting for a new boot
+10:28:42 [w-fresh] guest is back: boot before=2026-11-26 09:44:36 boot now=2026-11-26 10:27:53 (guest clock read 2026-11-26 10:28:44)
+10:30:14 [w-fresh] 10:30:14 GUEST now=2026-11-26 10:30:12 autoLogon=1 desktopUp=True
+10:30:14 [w-fresh] 10:30:14 last probe: reachable, desktopUp=True
+10:30:14 [w-fresh] 10:30:14 sessions: 用户名                会话名             ID  状态    空闲时间   登录时间 |  <account>            console             1  运行中      无     2026/11/26 10:28
+10:30:14 [w-fresh] 10:30:14 DONE
+10:30:16 [w-fresh] service wuauserv: status when the stop request was sent=Running startType=Disabled
+10:30:16 [w-fresh] service UsoSvc: status when the stop request was sent=Stopped startType=Disabled
+10:30:16 [w-fresh] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+10:30:16 [w-fresh] last boot: 2026-11-26 10:27:53
+10:30:16 [w-fresh] in-progress installer registration exists: False
+10:30:18 [w-fresh] GUEST_FILE C:\Probe\wizard-fresh.ps1 25184 bytes sha256=4064a0a2b28b9acc733bf7adc169762fd04b26a2b789e73a907af45e886086a7
+10:30:42 [w-fresh] === interactive run  [guest 10:30:17] ===
+10:30:42 [w-fresh] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/26 10:28
+10:30:42 [w-fresh] script present=True size=25184
+10:30:42 [w-fresh] TASK_STATE=Ready resultPresent=True lastResult=0
+10:30:42 [w-fresh] === server wizard walk 'wizard-fresh': mode=install  [10:30:21] ===
+10:30:42 [w-fresh] arguments: /i "C:\Probe\LabelFrame-Server-1.6.1.msi" /l*v "C:\Probe\logs\wizard-fresh.log"
+10:30:42 [w-fresh] custom directory named on the command line (intercept mode only): C:\LabelFrame Test\Server
+10:30:42 [w-fresh] identity=DESKTOP-D65DJ5S\<account> elevated=True
+10:30:42 [w-fresh] before: product=none | service=absent | fixed dir exists=False | custom dir exists=False
+10:30:42 [w-fresh] --- page Welcome (actual Welcome, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+10:30:42 [w-fresh]   [114] Button 下一步(&N)
+10:30:42 [w-fresh]   [116] Button 取消
+10:30:42 [w-fresh]   [103] Static WixUI_Bmp_Dialog
+10:30:42 [w-fresh]   [112] Button 上一步(&B)
+10:30:42 [w-fresh]   [46] Static 安装向导将在计算机上安装 LabelFrame Server。单击“下一步”继续，或单击“取消”退出安装向导。
+10:30:42 [w-fresh]   [105] Static 欢迎使用 LabelFrame Server 安装向导
+10:30:42 [w-fresh]   screenshot -> C:\Probe\logs\wizard-fresh-01-Welcome.png (PrintWindow)
+10:30:42 [w-fresh] --- page License (actual License, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+10:30:42 [w-fresh]   [102] Static WixUI_Bmp_Banner
+10:30:42 [w-fresh]   [285] Button 我接受许可协议中的条款(&A)
+10:30:42 [w-fresh]   [290] Button 打印(&P)
+10:30:42 [w-fresh]   [112] Button 上一步(&B)
+10:30:42 [w-fresh]   [114] Button 下一步(&N)
+10:30:42 [w-fresh]   [116] Button 取消
+10:30:42 [w-fresh]   [46] Static 请认真阅读以下许可协议
+10:30:42 [w-fresh]   [105] Static 最终用户许可协议
+10:30:42 [w-fresh]   screenshot -> C:\Probe\logs\wizard-fresh-02-License.png (PrintWindow)
+10:30:42 [w-fresh] --- page Location (actual Location, class MsiDialogCloseClass): 'LabelFrame Server 安装' ---
+10:30:42 [w-fresh]   [112] Button 上一步(&B)
+10:30:42 [w-fresh]   [114] Button 下一步(&N)
+10:30:42 [w-fresh]   [116] Button 取消
+10:30:42 [w-fresh]   [102] Static WixUI_Bmp_Banner
+10:30:42 [w-fresh]   [105] Static 安装目录
+10:30:42 [w-fresh]   [109] Static C:\Program Files\LabelFrame\Server\
+10:30:42 [w-fresh]   screenshot -> C:\Probe\logs\wizard-fresh-03-Location.png (PrintWindow)
+10:30:42 [w-fresh] --- every control of the install-location page (visit 1): class, id, enabled, visible, text ---
+10:30:42 [w-fresh]   class=Button id=112 enabled=True visible=True text=[上一步(&B)]
+10:30:42 [w-fresh]   class=Button id=114 enabled=True visible=True text=[下一步(&N)]
+10:30:42 [w-fresh]   class=Button id=116 enabled=True visible=True text=[取消]
+10:30:42 [w-fresh]   class=Static id=102 enabled=False visible=True text=[WixUI_Bmp_Banner]
+10:30:42 [w-fresh]   class=Static id=105 enabled=True visible=True text=[安装目录]
+10:30:42 [w-fresh]   class=Static id=107 enabled=False visible=True text=[]
+10:30:42 [w-fresh]   class=Static id=109 enabled=True visible=True text=[C:\Program Files\LabelFrame\Server\]
+10:30:42 [w-fresh]   class=Static id=111 enabled=False visible=True text=[]
+10:30:42 [w-fresh] LOCATION_PATH_SHOWN=C:\Program Files\LabelFrame\Server\
+10:30:42 [w-fresh] LOCATION_TEXTS=安装目录 | C:\Program Files\LabelFrame\Server\
+10:30:42 [w-fresh] LOCATION_EDITABLE_CONTROLS=0
+10:30:42 [w-fresh]   check ok: the install-location page shows the fixed directory (shown: 'C:\Program Files\LabelFrame\Server\')
+10:30:42 [w-fresh]   check ok: the install-location page has no edit box and no change button (found: )
+10:30:42 [w-fresh]   check ok: the page is titled 安装目录
+10:30:42 [w-fresh]   check ok: the page shows only the title and the path (text lines: 2)
+10:30:42 [w-fresh]   check ok: the Next button is enabled on the install-location page
+10:30:42 [w-fresh] --- page Location (actual Location, class MsiDialogCloseClass): 'LabelFrame Server 安装' ---
+10:30:42 [w-fresh]   [112] Button 上一步(&B)
+10:30:42 [w-fresh]   [114] Button 下一步(&N)
+10:30:42 [w-fresh]   [116] Button 取消
+10:30:42 [w-fresh]   [102] Static WixUI_Bmp_Banner
+10:30:42 [w-fresh]   [105] Static 安装目录
+10:30:42 [w-fresh]   [109] Static C:\Program Files\LabelFrame\Server\
+10:30:42 [w-fresh]   screenshot -> C:\Probe\logs\wizard-fresh-05-Location.png (PrintWindow)
+10:30:42 [w-fresh] --- every control of the install-location page (visit 2): class, id, enabled, visible, text ---
+10:30:42 [w-fresh]   class=Button id=112 enabled=True visible=True text=[上一步(&B)]
+10:30:42 [w-fresh]   class=Button id=114 enabled=True visible=True text=[下一步(&N)]
+10:30:42 [w-fresh]   class=Button id=116 enabled=True visible=True text=[取消]
+10:30:42 [w-fresh]   class=Static id=102 enabled=False visible=True text=[WixUI_Bmp_Banner]
+10:30:42 [w-fresh]   class=Static id=105 enabled=True visible=True text=[安装目录]
+10:30:42 [w-fresh]   class=Static id=107 enabled=False visible=True text=[]
+10:30:42 [w-fresh]   class=Static id=109 enabled=True visible=True text=[C:\Program Files\LabelFrame\Server\]
+10:30:42 [w-fresh]   class=Static id=111 enabled=False visible=True text=[]
+10:30:42 [w-fresh] LOCATION_PATH_SHOWN=C:\Program Files\LabelFrame\Server\
+10:30:42 [w-fresh] LOCATION_TEXTS=安装目录 | C:\Program Files\LabelFrame\Server\
+10:30:42 [w-fresh] LOCATION_EDITABLE_CONTROLS=0
+10:30:42 [w-fresh]   check ok: the install-location page shows the fixed directory (shown: 'C:\Program Files\LabelFrame\Server\')
+10:30:42 [w-fresh]   check ok: the install-location page has no edit box and no change button (found: )
+10:30:42 [w-fresh]   check ok: the page is titled 安装目录
+10:30:42 [w-fresh]   check ok: the page shows only the title and the path (text lines: 2)
+10:30:42 [w-fresh]   check ok: the Next button is enabled on the install-location page
+10:30:42 [w-fresh] --- page Verify (actual Verify, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+10:30:42 [w-fresh]   [152] Button 安装(&I)
+10:30:42 [w-fresh]   [116] Button 取消
+10:30:42 [w-fresh]   [112] Button 上一步(&B)
+10:30:42 [w-fresh]   [102] Static WixUI_Bmp_Banner
+10:30:42 [w-fresh]   [165] Static 已准备好安装 LabelFrame Server
+10:30:42 [w-fresh]   [167] Static 单击“安装”开始安装。单击“上一步”查看或更改任何安装设置。单击“取消”退出向导。
+10:30:42 [w-fresh]   screenshot -> C:\Probe\logs\wizard-fresh-06-Verify.png (PrintWindow)
+10:30:42 [w-fresh] INSTALL_STEP_SECONDS=1 (from clicking the install button to the next window)
+10:30:42 [w-fresh] --- page Installing (actual Installing, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+10:30:42 [w-fresh]   [116] Button 取消
+10:30:42 [w-fresh]   [102] Static WixUI_Bmp_Banner
+10:30:42 [w-fresh]   [112] Button 上一步(&B)
+10:30:42 [w-fresh]   [114] Button 下一步(&N)
+10:30:42 [w-fresh]   [234] Static 正在启动服务
+10:30:42 [w-fresh]   [236] Static 安装向导正在安装 LabelFrame Server，请稍候。
+10:30:42 [w-fresh]   [238] Static 正在安装 LabelFrame Server
+10:30:42 [w-fresh]   [258] Static 状态:
+10:30:42 [w-fresh]   screenshot -> C:\Probe\logs\wizard-fresh-07-Installing.png (PrintWindow)
+10:30:42 [w-fresh] INSTALL_PROGRESS_SECONDS=2.5 (progress page until the next window)
+10:30:42 [w-fresh] --- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+10:30:42 [w-fresh]   [210] Button 完成(&F)
+10:30:42 [w-fresh]   [116] Button 取消
+10:30:42 [w-fresh]   [103] Static WixUI_Bmp_Dialog
+10:30:42 [w-fresh]   [112] Button 上一步(&B)
+10:30:42 [w-fresh]   [46] Static 单击“完成”按钮退出安装向导。
+10:30:42 [w-fresh]   [105] Static LabelFrame Server 安装向导已完成
+10:30:42 [w-fresh]   screenshot -> C:\Probe\logs\wizard-fresh-08-Exit.png (PrintWindow)
+10:30:42 [w-fresh] last unrecognised installer window:
+10:30:42 [w-fresh] windows seen: Exit, Installing, License, Location, Verify, Welcome
+10:30:42 [w-fresh] exit code=0
+10:30:42 [w-fresh] after: product=1.6.1 | service=Running "C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe" | fixed dir exists=True | custom dir exists=False
+10:30:42 [w-fresh] OUTCOME=completed
+10:30:42 [w-fresh] WIZARD_PATH=Welcome -> License -> Location -> License -> Location -> Verify -> Installing -> Exit
+10:30:42 [w-fresh] CLICKS=下一步(&N) [114], 我接受许可协议中的条款(&A) [285], 下一步(&N) [114], 上一步(&B) [112], 下一步(&N) [114], 下一步(&N) [114], 安装(&I) [152], 完成(&F) [210]
+10:30:42 [w-fresh] CHECK_FAILURES=0
+10:30:42 [w-fresh] === end 'wizard-fresh'  [10:30:34] ===
+10:30:59 [w-fresh] WAIT port=53961 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=4476 stateAfter=Running pidAfter=4476 body={"service":"LabelFrame.Server","status":"ok"}
+10:30:59 [w-fresh] WAIT_STABILITY seconds=15 sameProcess=True state=Running pid=4476 healthCode=200
+10:31:02 [w-fresh] GUEST now=2026-11-26 10:30:59 programFiles=C:\Program Files lastBoot=2026-11-26 10:27:53
+10:31:02 [w-fresh] DIR install exists=False path=C:\LabelFrame Test\Server
+10:31:02 [w-fresh] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760799 exeProductVersion=1.6.1+43127ac9d3f49ee9fc5d5d9917ca7e4952544f45 appsettings=True
+10:31:02 [w-fresh] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760799 exeProductVersion= appsettings=False
+10:31:02 [w-fresh] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+10:31:02 [w-fresh] SERVICE state=Running startMode=Auto startName=LocalSystem pid=4476 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+10:31:02 [w-fresh] SERVICES_MATCHING LabelFrameServer
+10:31:02 [w-fresh] PRODUCT name=LabelFrame Server version=1.6.1 installLocation= installDate=20261126
+10:31:02 [w-fresh] PROCESS pid=4476 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=10:30:30
+10:31:02 [w-fresh] LISTEN address=0.0.0.0 port=53961 pid=4476
+10:31:02 [w-fresh] DATA root=C:\ProgramData\LabelFrame files=9
+10:31:02 [w-fresh] DATA \server\logs.db 4096
+10:31:02 [w-fresh] DATA \server\logs.db-shm 32768
+10:31:02 [w-fresh] DATA \server\logs.db-wal 20632
+10:31:02 [w-fresh] DATA \server\server.db 4096
+10:31:02 [w-fresh] DATA \server\server.db-shm 32768
+10:31:02 [w-fresh] DATA \server\server.db-wal 65952
+10:31:02 [w-fresh] DATA \server\templates.db 4096
+10:31:02 [w-fresh] DATA \server\templates.db-shm 32768
+10:31:02 [w-fresh] DATA \server\templates.db-wal 41232
+10:31:02 [w-fresh] IN_PROGRESS_REGISTRATION False
+10:31:03 [w-fresh] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=30 subFolders=0
+10:31:03 [w-fresh] FIXED_FILE ApkVerifierBridge.java 959
+10:31:03 [w-fresh] FIXED_FILE appsettings.json 82
+10:31:03 [w-fresh] FIXED_FILE DocumentFormat.OpenXml.dll 7985120
+10:31:03 [w-fresh] FIXED_FILE DocumentFormat.OpenXml.Framework.dll 478688
+10:31:03 [w-fresh] FIXED_FILE e_sqlite3.dll 1978880
+10:31:03 [w-fresh] FIXED_FILE LabelFrame.Api.dll 59392
+10:31:03 [w-fresh] FIXED_FILE LabelFrame.Core.dll 280064
+10:31:03 [w-fresh] FIXED_FILE LabelFrame.Rendering.dll 18432
+10:31:03 [w-fresh] FIXED_FILE LabelFrame.Server.deps.json 11765
+10:31:03 [w-fresh] FIXED_FILE LabelFrame.Server.dll 418816
+10:31:03 [w-fresh] FIXED_FILE LabelFrame.Server.exe 310272
+10:31:03 [w-fresh] FIXED_FILE LabelFrame.Server.runtimeconfig.json 548
+10:31:03 [w-fresh] FIXED_FILE LabelFrame.Server.staticwebassets.endpoints.json 53
+10:31:03 [w-fresh] FIXED_FILE LabelFrame.Updates.dll 74240
+10:31:03 [w-fresh] FIXED_FILE libSkiaSharp.dll 11611680
+10:31:03 [w-fresh] FIXED_FILE libSkiaSharp.pdb 83832832
+10:31:03 [w-fresh] FIXED_FILE Microsoft.Data.Sqlite.dll 173088
+10:31:03 [w-fresh] FIXED_FILE Microsoft.Extensions.Hosting.WindowsServices.dll 29456
+10:31:03 [w-fresh] FIXED_FILE SkiaSharp.dll 490016
+10:31:03 [w-fresh] FIXED_FILE SQLitePCLRaw.core.dll 51200
+10:31:03 [w-fresh] FIXED_FILE SQLitePCLRaw.provider.e_sqlite3.dll 36864
+10:31:03 [w-fresh] FIXED_FILE System.IO.Packaging.dll 159504
+10:31:03 [w-fresh] FIXED_FILE System.ServiceProcess.ServiceController.dll 92472
+10:31:03 [w-fresh] FIXED_FILE TemplateFrame.dll 76288
+10:31:03 [w-fresh] FIXED_FILE TemplateFrame.Excel.Simple.dll 57344
+10:31:03 [w-fresh] FIXED_FILE TemplateFrame.Excel.Simple.resources.dll 6656
+10:31:03 [w-fresh] FIXED_FILE TemplateFrame.resources.dll 8704
+10:31:03 [w-fresh] FIXED_FILE update-publisher.cer 804
+10:31:03 [w-fresh] FIXED_FILE web.config 484
+10:31:03 [w-fresh] FIXED_FILE zxing.dll 516096
+10:31:03 [w-fresh] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=82 sha256=bd2baf291aab5a15982aa6862552ca51b88702f9d042b2555ffb784ed34a545e listen="ListenUrl": "http://0.0.0.0:53961",
+10:31:03 [w-fresh] ROOT_ENTRIES Server
+10:31:03 [w-fresh] X86_ROOT exists=False
+10:31:03 [w-fresh] CUSTOM_DIR path=C:\LabelFrame Test\Server exists=False
+10:31:03 [w-fresh] SETTINGS custom path=C:\LabelFrame Test\Server\appsettings.json exists=False
+10:31:05 [w-fresh] fresh PASS H1 healthz returns 200 with status ok: status=200 body={"service":"LabelFrame.Server","status":"ok"}
+10:31:05 [w-fresh] fresh PASS I1 server info returns 200: status=200 body={"listenUrl":"http://0.0.0.0:53961","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.0"}
+10:31:05 [w-fresh] INFO root path status=404 contentType=0
+10:31:05 [w-fresh] fresh PASS D1 device list returns 200: status=200
+10:31:05 [w-fresh] fresh PASS D2 device registration returns 200: status=200 body={"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:31:03.3661345+00:00","lastSeenAt":"2026-11-26T02:31:03.3661345+00:00","status":"Online","lastIp":"127.0.0.1"}
+10:31:05 [w-fresh] fresh PASS D3 registered device is listed with its name: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:31:03.3661345+00:00","lastSeenAt":"2026-11-26T02:31:03.3661345+00:00","status":"Online","lastIp":"127.0.0.1"}]
+10:31:05 [w-fresh] fresh PASS J1 job submission is accepted as Pending: status=202 body={"jobId":"0c404d4cd2bf49e3baf08c760bc97a07","requestId":"probe-506b002de65e4febb7c2b92ee61d0f78","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:31:03.4328256+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:31:05 [w-fresh] CREATED_JOB requestId=probe-506b002de65e4febb7c2b92ee61d0f78 jobId=0c404d4cd2bf49e3baf08c760bc97a07
+10:31:05 [w-fresh] fresh PASS J2 job can be queried and is Pending: status=200 body={"jobId":"0c404d4cd2bf49e3baf08c760bc97a07","requestId":"probe-506b002de65e4febb7c2b92ee61d0f78","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:31:03.4328256+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:31:05 [w-fresh] fresh PASS N1 notify long poll returns 200: status=200 body={"hasPending":true}
+10:31:05 [w-fresh] fresh PASS J3 device claims the pending job: status=200 claimed=1 body=[{"jobId":"0c404d4cd2bf49e3baf08c760bc97a07","requestId":"probe-506b002de65e4febb7c2b92ee61d0f78","totalItems":1,"payload":{"template":{"contract":{"name":"probe-contract","version":"1.0","fields":[]},"layout":{"name":"probe-layout","contractName":"probe-contract","contractVersion":"1.0","widthMm":40,"heightMm":20,"elements":[{"type":"text","xMm":1,"yMm":1,"sourceKey":"","literal":"标签打印 ABC 123","fontName":"0","fontHeightMm":3,"fontWidthMm":0}]},"name":null,"images":null},"labels":[{"data":{}}]}}]
+10:31:05 [w-fresh] fresh PASS J4 progress report is accepted: status=200 body={"jobId":"0c404d4cd2bf49e3baf08c760bc97a07","requestId":"probe-506b002de65e4febb7c2b92ee61d0f78","targetDeviceId":"customdir-probe","status":"Claimed","createdAt":"2026-11-26T02:31:03.4328256+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:31:05 [w-fresh] fresh PASS J5 result report is accepted: status=200 body={"jobId":"0c404d4cd2bf49e3baf08c760bc97a07","requestId":"probe-506b002de65e4febb7c2b92ee61d0f78","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:31:03.4328256+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:31:05 [w-fresh] fresh PASS J6 job is Completed after the result report: status=200 body={"jobId":"0c404d4cd2bf49e3baf08c760bc97a07","requestId":"probe-506b002de65e4febb7c2b92ee61d0f78","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:31:03.4328256+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:31:05 [w-fresh] fresh PASS J7 job history lists the job: status=200
+10:31:05 [w-fresh] fresh PASS R1 debug render returns a PNG: status=200 bytes=3580
+10:31:05 [w-fresh] fresh PASS R2 batch debug render returns a zip: status=200 bytes=2122
+10:31:05 [w-fresh] fresh PASS T1 template save returns 200: status=200 body={"name":"customdir-template","group":"probe"}
+10:31:05 [w-fresh] fresh PASS T2 saved template is listed: status=200 body=[{"name":"customdir-template","group":"probe","updatedAt":"2026-11-26T02:31:03.8020125+00:00","uid":"4cdf9fa70d59484091830ce821f943c9"}]
+10:31:05 [w-fresh] fresh PASS T3 saved template can be read: status=200
+10:31:05 [w-fresh] fresh PASS T4 template preview returns a PNG: status=200 bytes=3580
+10:31:05 [w-fresh] fresh PASS T5 template export returns a package: status=200 bytes=391
+10:31:05 [w-fresh] fresh PASS L1 log push returns 200: status=200 body={"received":1}
+10:31:05 [w-fresh] fresh PASS L2 pushed log line is returned: status=200 length=132
+10:31:05 [w-fresh] fresh PASS P1 client package upload returns 200: status=200 body={"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:31:03.8643836+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}
+10:31:05 [w-fresh] fresh PASS P2 uploaded package is listed: status=200 body=[{"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:31:03.8643836+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}]
+10:31:05 [w-fresh] fresh PASS P3 uploaded package downloads byte-identical: status=200 bytes=4150 expected=4150
+10:31:05 [w-fresh] fresh PASS P4 package delete returns 200: status=200 body={"deleted":"probe-package-1.2.3.zip"}
+10:31:05 [w-fresh] fresh PASS P5 deleted package is no longer listed: status=200 body=[]
+10:31:05 [w-fresh] fresh PASS X1 GET /api/pda-packages returns 200: status=200 body=[]
+10:31:05 [w-fresh] fresh PASS X1 GET /api/plugin-packages returns 200: status=200 body=[]
+10:31:05 [w-fresh] fresh PASS X1 GET /api/client-updates returns 200: status=200 body=[]
+10:31:05 [w-fresh] fresh PASS X1 GET /api/android-updates returns 200: status=200 body=[]
+10:31:05 [w-fresh] fresh PASS X1 GET /api/client-updates/drafts returns 200: status=200 body=[]
+10:31:05 [w-fresh] fresh PASS X1 GET /api/server/ipv4-candidates returns 200: status=200 body={"candidates":["172.17.234.240"]}
+10:31:05 [w-fresh] SMOKE_SUMMARY tag=fresh port=53961 passed=33 failed=0
+10:31:08 [w-fresh] 10:31:05 ARGUMENTS /x "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\uninstall.log"
+10:31:08 [w-fresh] 10:31:07 MSI mode=uninstall msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=2.1s
+10:31:08 [w-fresh] 10:31:07 LOG bytes=132170
+10:31:11 [w-fresh] GUEST now=2026-11-26 10:31:08 programFiles=C:\Program Files lastBoot=2026-11-26 10:27:53
+10:31:11 [w-fresh] DIR install exists=False path=C:\LabelFrame Test\Server
+10:31:11 [w-fresh] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=1 bytes=82 exeProductVersion= appsettings=True
+10:31:11 [w-fresh] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=1 bytes=82 exeProductVersion= appsettings=False
+10:31:11 [w-fresh] DEFAULT_ROOT_TREE \Server | \Server\appsettings.json
+10:31:11 [w-fresh] SERVICE none
+10:31:11 [w-fresh] SERVICES_MATCHING
+10:31:11 [w-fresh] PRODUCT none
+10:31:11 [w-fresh] LISTEN none
+10:31:11 [w-fresh] DATA root=C:\ProgramData\LabelFrame files=3
+10:31:11 [w-fresh] DATA \server\logs.db 16384
+10:31:11 [w-fresh] DATA \server\server.db 45056
+10:31:11 [w-fresh] DATA \server\templates.db 28672
+10:31:11 [w-fresh] IN_PROGRESS_REGISTRATION False
+10:31:12 [w-fresh] PULLED C:\Probe\logs\uninstall.log (132170 bytes)
+10:31:12 [w-fresh] PULLED C:\Probe\logs\wizard-fresh.log (228150 bytes)
+10:31:14 [w-fresh] PULLED C:\Probe\logs\wizard-fresh-01-Welcome.png (11678 bytes)
+10:31:14 [w-fresh] PULLED C:\Probe\logs\wizard-fresh-02-License.png (21499 bytes)
+10:31:14 [w-fresh] PULLED C:\Probe\logs\wizard-fresh-03-Location.png (5697 bytes)
+10:31:14 [w-fresh] PULLED C:\Probe\logs\wizard-fresh-04-License.png (21502 bytes)
+10:31:14 [w-fresh] PULLED C:\Probe\logs\wizard-fresh-05-Location.png (5697 bytes)
+10:31:14 [w-fresh] PULLED C:\Probe\logs\wizard-fresh-06-Verify.png (7447 bytes)
+10:31:14 [w-fresh] PULLED C:\Probe\logs\wizard-fresh-07-Installing.png (7142 bytes)
+10:31:14 [w-fresh] PULLED C:\Probe\logs\wizard-fresh-08-Exit.png (10155 bytes)
+10:31:16 [w-fresh] PULLED C:\Probe\logs\wizard-fresh-result.txt (6598 bytes)
+10:31:17 [w-fresh] PULLED C:\Probe\out\fresh-export.lfpkg (391 bytes)
+10:31:17 [w-fresh] PULLED C:\Probe\out\fresh-preview.png (3580 bytes)
+10:31:18 [w-fresh] PULLED C:\Probe\out\fresh-render.png (3580 bytes)
+10:31:18 [w-fresh] PULLED C:\Probe\out\fresh-render.zip (2122 bytes)
+10:31:18 [w-fresh] ROUND_DONE
