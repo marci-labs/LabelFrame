@@ -124,6 +124,15 @@ jobs:
           if (-not $?) { throw 'Client MSI 打包失败' }
           & .\scripts/verify-msi-ui.ps1 -MsiPaths @('artifacts\LabelFrame-Client-0.0.1.msi')
 
+      # 服务端 MSI 与客户端 MSI 放在同一个 job：门禁只把本 job 的名字登记为必需检查，
+      # 拆成独立 job 会让服务端的断言不再拦得住合并
+      - name: 打包 Server MSI + 结构断言
+        shell: pwsh
+        run: |
+          & .\scripts\build-server-msi.ps1 -Version 0.0.1 -WixPath (Join-Path $HOME '.dotnet/tools/wix.exe')
+          if (-not $?) { throw 'Server MSI 打包失败' }
+          & .\scripts\assert-server-msi-structure.ps1 -MsiPaths @('artifacts\LabelFrame-Server-0.0.1.msi')
+
   # Android 构建迭代 49 起为第三项必需检查（先合入本 job、验证全绿后补进门禁 ruleset）；
   # AndroidHost 不在 LabelFrame.slnx，本 job 单独构建该工程（决策 #104）。
   android:
