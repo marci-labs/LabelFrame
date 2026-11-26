@@ -41,7 +41,7 @@
 
 ### 管理员：一台服务器 + 多台打印电脑
 
-1. 服务器安装 Server（[部署指南](docs/DEPLOY.md) 四种形态任选：MSI / Docker / Ubuntu / 单机同装；Windows 上推荐直接跑安装引导程序选「服务端」拓扑）。
+1. 服务器安装 Server（[部署指南](docs/DEPLOY.md) 四种形态任选：MSI / Docker / Ubuntu / 单机同装；Windows 上推荐直接跑安装引导程序选「服务端」拓扑，Server 固定装到 `C:\Program Files\LabelFrame\Server`）。
 2. 每台打印电脑安装客户端：推荐运行 `LabelFrame-Bootstrapper-x.x.x.exe` 选「打印客户端」拓扑（自动补装运行时）；或直装 `LabelFrame-Client-x.x.x.msi`（固定装到 `C:\Program Files\LabelFrame\Client`，需先手动装好 .NET Desktop Runtime 10 与 ASP.NET Core Runtime 10，均为 x64）。
 3. 每台 Client 的「设置」页把服务端地址改为 `http://<服务器IP>:53961` → 测试连接 → 保存并**重启 Client**。
 4. 模板集中在服务端维护，各电脑打印与历史互不干扰；可选用管理界面插件（服务端网页管理）与「下载中心」页集中分发安装包（客户端 MSI + PDA APK，PDA 可扫码下载）。

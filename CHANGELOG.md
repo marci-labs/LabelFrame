@@ -8,12 +8,18 @@
 
 - Windows 客户端直接用 MSI 安装时，运行时缺失提示改为按实际缺的那一项说明（.NET Desktop Runtime 10 与 ASP.NET Core Runtime 10，均注明 x64）；缺 .NET Desktop Runtime 时在安装前拦截，不再等到启动服务才失败。只装了 ASP.NET Core Runtime 的机器不会再被提示「未检测到 ASP.NET Core Runtime」。
 - 客户端固定安装到 `C:\Program Files\LabelFrame\Client`：安装向导的安装位置页改为只读，命令行传入 `INSTALLFOLDER` 会被拦下并说明原因（客户端更新服务只接受 Program Files 下的安装目录，装到别处服务会拒绝启动）。
+- 服务端固定安装到 `C:\Program Files\LabelFrame\Server`：安装向导的「目标文件夹」页改为只读的「安装目录」页，命令行传入 `INSTALLFOLDER` 会被拦下并说明原因。此前装在自定义目录的服务端经引导程序、离线包或手动双击升级后，新版本会落到默认目录，原目录里改过的 `appsettings.json` 不再生效（监听端口回到 53961）。
 - 更新服务启动失败时，安装不再空等约 4 分钟后提示「权限不足」：由安装包启动服务并等待，失败立即中止并撤回本次安装；启动较慢只要最终能就绪不会被误判，长时间停在启动中才按兜底时限中止。
 - 每次安装自动在用户临时目录生成安装日志（`%TEMP%\MSI*.log`），向导安装失败时在结束页上写明本次安装日志的路径；更新服务启动失败的原因与停在哪个阶段写入事件日志，并转写到安装日志旁边的明细日志（`MSI*.log.updater-service.log`）。
 
 ### 安全修复
 
 - Android 宿主 SQLite 原生依赖由 2.1.11 升至 2.1.14（SQLite 3.54.0），修复 CVE-2025-6965；保持现有数据格式与打印接口。同签名升级和打印真机验收仍待完成，见 [#480](https://github.com/marci-labs/LabelFrame/issues/480)。
+
+### 升级注意
+
+- **Windows 部署人员注意**：服务端现在固定安装到 `C:\Program Files\LabelFrame\Server`，安装向导里只能查看安装目录。装在默认目录的服务端照常升级——重跑引导程序、离线包的 `install-server.cmd` 或直接运行新版 MSI 都可以，`appsettings.json` 里改过的监听地址 / 端口和 Dpi 会保留。
+- 旧版服务端装在别的目录的（在服务的属性里查看 `LabelFrameServer` 的可执行路径即可确认）：升级前先把旧目录里的 `appsettings.json` 复制到 `C:\Program Files\LabelFrame\Server\`（目录不存在就先建）再升级。安装包不会覆盖已经存在的配置文件，端口等设置原样生效。不先复制也能升级成功，但新版会按默认配置启动（端口回到 53961），需要在新目录的 `appsettings.json` 里重新设置并重启 `LabelFrameServer` 服务。模板、作业、日志等数据在 `%ProgramData%\LabelFrame` 下，不受影响；旧目录里留下的旧配置文件，确认新版正常后可以删除。
 
 ## [1.6.0] - 2026-10-29
 

@@ -1,0 +1,39 @@
+# 结构断言的反向验证：每个变异包只在安装位置契约的某一处故意改坏，断言必须因对应的原因拒绝它
+#
+# 变异源码由提交 43127ac 的 packaging/main-server.wxs 与生成的文件清单改写而来，用与正式构建相同的 wix 参数构建（不含发布步骤）。
+# 「对照」是未改动的源码，必须通过。
+
+| 变异包 | 改坏了什么 | 结论 |
+|---|---|---|
+| `browse-dialog-new-entry` | 目录浏览页多了入口 | 拒绝：目录浏览页出现了新的入口（InstallLocationDlg.Next），安装位置可能被修改 |
+| `clear-data-action-missing` | 去掉清除 appsettings.json 的动作 | 拒绝：缺少清除 appsettings.json 的动作 ClearDataDelAppSettings |
+| `clear-data-not-sequenced` | 清除 appsettings.json 的动作不排进执行序列 | 拒绝：清除用户数据的动作 ClearDataDelAppSettings 应在安装执行序列里出现一次，实际 0 次 |
+| `clear-data-runs-on-upgrade` | 清除用户数据的条件去掉「不是升级」 | 拒绝：清除用户数据的动作 ClearDataDelAppSettings 应只在手动卸载且勾选清除时执行（REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA="1"），实际条件：REMOVE~="ALL" AND CLEAR_USER_DATA="1" |
+| `clear-data-wrong-path` | 清除用户数据删错路径的 appsettings.json | 拒绝：清除用户数据应删除安装目录下的配置（%ProgramFiles%\LabelFrame\Server\appsettings.json），实际命令：cmd.exe /c del /q "%ProgramFiles%\LabelFrame\appsettings.json" |
+| `condition-syntax-unknown-to-assertion` | 旁路登记用了断言不会求值的条件写法 | 拒绝：条件用到了本断言不会求值的语法：REMOVE ~= "ALL" |
+| `control` | （未改动） | 通过：— |
+| `directory-id-all-uppercase` | 安装目录标识全大写（等于公开属性） | 拒绝：安装目录标识 SERVERINSTALLDIR 不含小写字母：全大写的标识是公开属性，命令行能改写安装位置 |
+| `directory-name-changed` | 安装目录名从 Server 改成 ServerX | 拒绝：安装目录应固定为 Program Files\LabelFrame\Server（64 位），Directory 表里是 ProgramFiles64Folder\LabelFrame\ServerX |
+| `intercept-text-without-location` | 拦截说明不写固定目录 | 拒绝：INSTALLFOLDER 拦截条件的说明应提到：[ProgramFiles64Folder]LabelFrame\Server |
+| `intercept-weakened` | 启动条件加了放行分支（`OR UILevel = 5`） | 拒绝：缺少「安装位置固定、不支持 INSTALLFOLDER」的启动条件（NOT INSTALLFOLDER） |
+| `legacy-page-new-entry` | 可改目录的自带页面多了入口（欢迎页「下一步」） | 拒绝：可改目录的自带页面出现了新的入口（WelcomeDlg.Next），安装位置可能被修改 |
+| `legacy-page-shown-by-sequence` | 可改目录的自带页面改由安装序列直接显示 | 拒绝：可改目录的自带页面不得由安装序列直接显示 |
+| `license-bypass-always` | 许可页「下一步」的旁路登记写成恒真 | 拒绝：「维护：修复」时许可页的下一步应到 不跳转，实际会到 InstallLocationDlg |
+| `license-bypass-missing` | 去掉许可页「下一步」指向安装目录页的登记 | 拒绝：「全新安装 / 向导升级」时许可页的下一步应到 InstallLocationDlg，实际会到 InstallDirDlg |
+| `license-bypass-order-tied` | 旁路登记的顺序与自带登记相同 | 拒绝：LicenseAgreementDlg.Next 上有两条条件同时成立的跳转登记顺序相同（1），谁生效不确定 |
+| `location-page-change-button` | 安装目录页加「更改」按钮 | 拒绝：安装目录页必须只读：不得有可编辑路径框、更改按钮或目录列表 |
+| `location-page-extra-text` | 安装目录页加一段说明文字 | 拒绝：安装目录页只保留标题「安装目录」与路径，不加说明文字 |
+| `location-page-missing` | 去掉只读的安装目录页 | 拒绝：缺少只读的安装目录页 InstallLocationDlg |
+| `location-page-next-wrong` | 安装目录页的「下一步」跳错页 | 拒绝：向导链路缺失：InstallLocationDlg.Next 应跳转 VerifyReadyDlg |
+| `location-page-path-edit` | 安装目录页加一个路径输入框 | 拒绝：安装目录页必须只读：不得有可编辑路径框、更改按钮或目录列表 |
+| `location-page-text-other-directory` | 安装目录页显示别的目录 | 拒绝：安装目录页应只读展示安装目录 [ServerInstallDir] |
+| `no-intercept` | 去掉 INSTALLFOLDER 启动条件 | 拒绝：缺少「安装位置固定、不支持 INSTALLFOLDER」的启动条件（NOT INSTALLFOLDER） |
+| `public-directory-property` | 安装目录标识改回公开的 INSTALLFOLDER | 拒绝：安装目录标识不得是公开属性 INSTALLFOLDER（命令行可改写安装位置） |
+| `settings-component-in-subfolder` | appsettings.json 的组件挪到子目录 | 拒绝：用户配置 appsettings.json 的组件必须与服务程序挂在同一个安装目录下 |
+| `verify-bypass-always` | 确认页「上一步」的旁路登记写成恒真 | 拒绝：「维护：修复」时确认页的上一步应到 MaintenanceTypeDlg，实际会到 InstallLocationDlg |
+| `verify-bypass-missing` | 去掉确认页「上一步」指向安装目录页的登记 | 拒绝：「全新安装 / 向导升级」时确认页的上一步应到 InstallLocationDlg，实际会到 InstallDirDlg |
+| `wixui-dir-property-points-elsewhere` | WIXUI_INSTALLDIR 指向别的目录 | 拒绝：WIXUI_INSTALLDIR 应指向安装目录标识 ServerInstallDir |
+
+共 28 个：符合预期 28 个。
+
+另有直接改表的副本与拿错的包（已发布的 1.6.0 包、客户端包），见 structure-assertion.txt。

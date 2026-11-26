@@ -1,0 +1,25 @@
+# Server MSI 结构断言：scripts/assert-server-msi-structure.ps1
+#
+assertion script: C:\work\OpenCode\LabelFrame\scripts\assert-server-msi-structure.ps1
+assertion script sha256: 50bd330392b733d78dc7c1158ff6aa7193c2e00480b067aaa669cc7bf4b6ea2e
+run at: 2026-11-26 09:18:06
+msi: C:\work\OpenCode\itenv\lf-probe-server-fixed-dir-20261126\materials\LabelFrame-Server-1.6.1.msi
+sha256: aacd03283de3d08d68712485450e8c286fc7558b82f4894407b27d2a9bff1a82
+verdict: PASS  expected: PASS
+msi: C:\work\OpenCode\itenv\lf-probe-server-fixed-dir-20261126\materials\LabelFrame-Server-1.6.0.msi
+sha256: 6c398c3dbd2f1e294cb26ed0dcc618631434284ec0226a14f5a4ec4bd69e930c
+verdict: REJECT  expected: REJECT
+reason: 安装目录标识不得是公开属性 INSTALLFOLDER（命令行可改写安装位置）
+msi: C:\work\OpenCode\itenv\lf-probe-msi-runtime-20261124\materials\LabelFrame-Client-1.6.0.msi
+sha256: e905ffd2cad6efcf01a8cad5e46b726a4ff2013d941b8943698b664b398c315c
+verdict: REJECT  expected: REJECT
+reason: 这不是 Server MSI：没有注册 LabelFrameServer 服务
+msi: C:\work\OpenCode\itenv\lf-iter177-work\edited\edited-legacy-links-removed.msi
+sha256: 2afdc27e53ec4eb917f8a0f764e74af491db72c1a5596230ecd381cab2f50072
+verdict: REJECT  expected: REJECT
+reason: 自带向导组的默认跳转形态变了（不再指向可改目录页），请复核只读安装目录页的旁路接法
+msi: C:\work\OpenCode\itenv\lf-iter177-work\edited\edited-licence-gate-removed.msi
+sha256: e3610f4469e98357bee40d9812fd18c32c856f1e7c943cb592044f39b0c96f6c
+verdict: REJECT  expected: REJECT
+reason: 许可页的「下一步」必须只在接受许可后可用（安装目录页的跳转登记不检查许可状态）
+cases: 5  as expected: 5  unexpected: 0

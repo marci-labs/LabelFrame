@@ -1,0 +1,328 @@
+# 从 1.6.0（装在自定义目录）静默升级：升级前先把配置复制到固定目录
+#
+# 测试机 LF-Accept-Win10（Hyper-V，Windows 10），每轮从基线还原点开始；安装包由提交 43127ac 的源码本地构建。
+# 旧版装在含中文和空格的路径。升级前执行升级提示里的手工步骤：把旧目录的 appsettings.json 复制到 C:\Program Files\LabelFrame\Server\，升级后原端口应直接生效。（原始记录 d-upgrade-custom-precopy-host-1.log）
+# 本文件是本轮宿主机侧记录：客机脚本的每一行输出按顺序带时间戳；测试机账户名已替换为占位符。
+
+10:19:07 STATE_BEFORE=Off
+10:19:07 HOST_FREE_MB=15678 VM_NEED_MB=4096
+10:19:08 STATE_AFTER_RESTORE=Off
+10:19:13 STATE_AFTER_START=Running
+10:19:29 PSDIRECT_OK host=DESKTOP-D65DJ5S
+10:19:37 GUEST clockBefore=2026-11-26T10:19:36.9352626+08:00 clockAfter=2026-11-26T10:19:29.2927277+08:00 setDate=ok
+10:19:37 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+10:19:37 VM state=Running uptime=00:00:26.1650000 cpu=11 memAssignedMB=3364
+10:19:37 DONE
+10:19:37 [d-upgrade-custom-precopy] waiting 90 seconds after boot before touching the guest
+10:21:09 [d-upgrade-custom-precopy] guest boot time recorded for this round: 2026-11-26 09:39:05
+10:21:10 [d-upgrade-custom-precopy] service wuauserv: status when the stop request was sent=Running startType=Disabled
+10:21:10 [d-upgrade-custom-precopy] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+10:21:10 [d-upgrade-custom-precopy] service WaaSMedicSvc: status when the stop request was sent=Running startType=Manual
+10:21:10 [d-upgrade-custom-precopy] last boot: 2026-11-26 09:39:05
+10:21:10 [d-upgrade-custom-precopy] in-progress installer registration exists: False
+10:21:15 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 4.1s
+10:21:15 COPIED custom-ascii.txt (25 bytes) in 0.4s
+10:21:16 COPIED custom-cn.txt (33 bytes) in 0.4s
+10:21:16 COPIED custom-default.txt (34 bytes) in 0.2s
+10:21:21 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 4.9s
+10:21:24 COPIED LabelFrame-Server-1.6.0.msi (24326144 bytes) in 3.2s
+10:21:27 COPIED LabelFrame-Server-1.6.1.msi (24313856 bytes) in 2.8s
+--- guest files: name size sha256 ---
+aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+custom-ascii.txt 25 e4a08c5ba7e1c91f162367df6c4b551fb155104549ec98af9e089916c5bbf4bc
+custom-cn.txt 33 ca622a014e9f0b527afaceee9e15c1e6e0953b39310b9cba4b13ebec21f58959
+custom-default.txt 34 11d2a1bd719f905608eeaa0b70d0a43f4c37e9ff70c1e3785e22449d771225be
+dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+LabelFrame-Server-1.6.0.msi 24326144 6c398c3dbd2f1e294cb26ed0dcc618631434284ec0226a14f5a4ec4bd69e930c
+LabelFrame-Server-1.6.1.msi 24313856 aacd03283de3d08d68712485450e8c286fc7558b82f4894407b27d2a9bff1a82
+10:21:33 [d-upgrade-custom-precopy] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=5.3s
+10:21:35 [d-upgrade-custom-precopy]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+10:21:35 [d-upgrade-custom-precopy]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+10:21:35 [d-upgrade-custom-precopy]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:21:35 [d-upgrade-custom-precopy]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:21:39 [d-upgrade-custom-precopy] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=3.2s
+10:21:41 [d-upgrade-custom-precopy]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+10:21:41 [d-upgrade-custom-precopy]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+10:21:41 [d-upgrade-custom-precopy]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+10:21:41 [d-upgrade-custom-precopy]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+10:21:41 [d-upgrade-custom-precopy]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:21:41 [d-upgrade-custom-precopy]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:21:41 [d-upgrade-custom-precopy]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+10:21:41 [d-upgrade-custom-precopy]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+10:21:47 [d-upgrade-custom-precopy] 10:21:41 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.0.msi" /qn /norestart INSTALLFOLDER="C:\标签 服务\LabelFrameServer" /l*v "C:\Probe\logs\install-old.log"
+10:21:47 [d-upgrade-custom-precopy] 10:21:47 MSI mode=install msi=LabelFrame-Server-1.6.0.msi INSTALLFOLDER=[C:\标签 服务\LabelFrameServer] extra=[] exit=0 elapsed=5.1s
+10:21:47 [d-upgrade-custom-precopy] 10:21:47 LOG bytes=171656
+10:22:05 [d-upgrade-custom-precopy] WAIT port=53961 restart=False result=ready elapsed=0.9s lastCode=200 stateBefore=Running pidBefore=11104 stateAfter=Running pidAfter=11104 body={"service":"LabelFrame.Server","status":"ok"}
+10:22:05 [d-upgrade-custom-precopy] WAIT_STABILITY seconds=15 sameProcess=True state=Running pid=11104 healthCode=200
+10:22:08 [d-upgrade-custom-precopy] GUEST now=2026-11-26 10:22:06 programFiles=C:\Program Files lastBoot=2026-11-26 09:39:05
+10:22:08 [d-upgrade-custom-precopy] DIR install exists=True path=C:\标签 服务\LabelFrameServer files=30 bytes=108760804 exeProductVersion=1.6.0+08b10216cc08f3ff234e8397d13a872cee0dfc4b appsettings=True
+10:22:08 [d-upgrade-custom-precopy] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+10:22:08 [d-upgrade-custom-precopy] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+10:22:08 [d-upgrade-custom-precopy] INSTALL_TOP_LEVEL ApkVerifierBridge.java | appsettings.json | DocumentFormat.OpenXml.dll | DocumentFormat.OpenXml.Framework.dll | e_sqlite3.dll | LabelFrame.Api.dll | LabelFrame.Core.dll | LabelFrame.Rendering.dll | LabelFrame.Server.deps.json | LabelFrame.Server.dll | LabelFrame.Server.exe | LabelFrame.Server.runtimeconfig.json | LabelFrame.Server.staticwebassets.endpoints.json | LabelFrame.Updates.dll | libSkiaSharp.dll | libSkiaSharp.pdb | Microsoft.Data.Sqlite.dll | Microsoft.Extensions.Hosting.WindowsServices.dll | SkiaSharp.dll | SQLitePCLRaw.core.dll | SQLitePCLRaw.provider.e_sqlite3.dll | System.IO.Packaging.dll | System.ServiceProcess.ServiceController.dll | TemplateFrame.dll | TemplateFrame.Excel.Simple.dll | TemplateFrame.Excel.Simple.resources.dll | TemplateFrame.resources.dll | update-publisher.cer | web.config | zxing.dll
+10:22:08 [d-upgrade-custom-precopy] SERVICE state=Running startMode=Auto startName=LocalSystem pid=11104 path="C:\标签 服务\LabelFrameServer\LabelFrame.Server.exe"
+10:22:08 [d-upgrade-custom-precopy] SERVICES_MATCHING LabelFrameServer
+10:22:08 [d-upgrade-custom-precopy] PRODUCT name=LabelFrame Server version=1.6.0 installLocation= installDate=20261126
+10:22:08 [d-upgrade-custom-precopy] PROCESS pid=11104 path=C:\标签 服务\LabelFrameServer\LabelFrame.Server.exe session=0 start=10:21:43
+10:22:08 [d-upgrade-custom-precopy] LISTEN address=0.0.0.0 port=53961 pid=11104
+10:22:08 [d-upgrade-custom-precopy] DATA root=C:\ProgramData\LabelFrame files=9
+10:22:08 [d-upgrade-custom-precopy] DATA \server\logs.db 4096
+10:22:08 [d-upgrade-custom-precopy] DATA \server\logs.db-shm 32768
+10:22:08 [d-upgrade-custom-precopy] DATA \server\logs.db-wal 20632
+10:22:08 [d-upgrade-custom-precopy] DATA \server\server.db 4096
+10:22:08 [d-upgrade-custom-precopy] DATA \server\server.db-shm 32768
+10:22:08 [d-upgrade-custom-precopy] DATA \server\server.db-wal 65952
+10:22:08 [d-upgrade-custom-precopy] DATA \server\templates.db 4096
+10:22:08 [d-upgrade-custom-precopy] DATA \server\templates.db-shm 32768
+10:22:08 [d-upgrade-custom-precopy] DATA \server\templates.db-wal 41232
+10:22:08 [d-upgrade-custom-precopy] IN_PROGRESS_REGISTRATION False
+10:22:09 [d-upgrade-custom-precopy] old PASS H1 healthz returns 200 with status ok: status=200 body={"service":"LabelFrame.Server","status":"ok"}
+10:22:09 [d-upgrade-custom-precopy] old PASS I1 server info returns 200: status=200 body={"listenUrl":"http://0.0.0.0:53961","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.0"}
+10:22:09 [d-upgrade-custom-precopy] INFO root path status=404 contentType=0
+10:22:09 [d-upgrade-custom-precopy] old PASS D1 device list returns 200: status=200
+10:22:09 [d-upgrade-custom-precopy] old PASS D2 device registration returns 200: status=200 body={"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:22:08.8160015+00:00","lastSeenAt":"2026-11-26T02:22:08.8160015+00:00","status":"Online","lastIp":"127.0.0.1"}
+10:22:09 [d-upgrade-custom-precopy] old PASS D3 registered device is listed with its name: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:22:08.8160015+00:00","lastSeenAt":"2026-11-26T02:22:08.8160015+00:00","status":"Online","lastIp":"127.0.0.1"}]
+10:22:09 [d-upgrade-custom-precopy] old PASS J1 job submission is accepted as Pending: status=202 body={"jobId":"402b077f7a7b4dcb8db783c184b238e9","requestId":"probe-d9957fc91a654e02bfb2c8f420d15a60","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:22:08.975626+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:22:09 [d-upgrade-custom-precopy] CREATED_JOB requestId=probe-d9957fc91a654e02bfb2c8f420d15a60 jobId=402b077f7a7b4dcb8db783c184b238e9
+10:22:09 [d-upgrade-custom-precopy] old PASS J2 job can be queried and is Pending: status=200 body={"jobId":"402b077f7a7b4dcb8db783c184b238e9","requestId":"probe-d9957fc91a654e02bfb2c8f420d15a60","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:22:08.975626+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:22:09 [d-upgrade-custom-precopy] old PASS N1 notify long poll returns 200: status=200 body={"hasPending":true}
+10:22:09 [d-upgrade-custom-precopy] old PASS J3 device claims the pending job: status=200 claimed=1 body=[{"jobId":"402b077f7a7b4dcb8db783c184b238e9","requestId":"probe-d9957fc91a654e02bfb2c8f420d15a60","totalItems":1,"payload":{"template":{"contract":{"name":"probe-contract","version":"1.0","fields":[]},"layout":{"name":"probe-layout","contractName":"probe-contract","contractVersion":"1.0","widthMm":40,"heightMm":20,"elements":[{"type":"text","xMm":1,"yMm":1,"sourceKey":"","literal":"标签打印 ABC 123","fontName":"0","fontHeightMm":3,"fontWidthMm":0}]},"name":null,"images":null},"labels":[{"data":{}}]}}]
+10:22:09 [d-upgrade-custom-precopy] old PASS J4 progress report is accepted: status=200 body={"jobId":"402b077f7a7b4dcb8db783c184b238e9","requestId":"probe-d9957fc91a654e02bfb2c8f420d15a60","targetDeviceId":"customdir-probe","status":"Claimed","createdAt":"2026-11-26T02:22:08.975626+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:22:09 [d-upgrade-custom-precopy] old PASS J5 result report is accepted: status=200 body={"jobId":"402b077f7a7b4dcb8db783c184b238e9","requestId":"probe-d9957fc91a654e02bfb2c8f420d15a60","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:22:08.975626+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:22:09 [d-upgrade-custom-precopy] old PASS J6 job is Completed after the result report: status=200 body={"jobId":"402b077f7a7b4dcb8db783c184b238e9","requestId":"probe-d9957fc91a654e02bfb2c8f420d15a60","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:22:08.975626+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:22:09 [d-upgrade-custom-precopy] old PASS J7 job history lists the job: status=200
+10:22:09 [d-upgrade-custom-precopy] old PASS R1 debug render returns a PNG: status=200 bytes=3580
+10:22:09 [d-upgrade-custom-precopy] old PASS R2 batch debug render returns a zip: status=200 bytes=2122
+10:22:09 [d-upgrade-custom-precopy] old PASS T1 template save returns 200: status=200 body={"name":"customdir-template","group":"probe"}
+10:22:09 [d-upgrade-custom-precopy] old PASS T2 saved template is listed: status=200 body=[{"name":"customdir-template","group":"probe","updatedAt":"2026-11-26T02:22:09.6862669+00:00","uid":"f8a52fe58a93492886a7271671b787a2"}]
+10:22:09 [d-upgrade-custom-precopy] old PASS T3 saved template can be read: status=200
+10:22:09 [d-upgrade-custom-precopy] old PASS T4 template preview returns a PNG: status=200 bytes=3580
+10:22:09 [d-upgrade-custom-precopy] old PASS T5 template export returns a package: status=200 bytes=391
+10:22:09 [d-upgrade-custom-precopy] old PASS L1 log push returns 200: status=200 body={"received":1}
+10:22:09 [d-upgrade-custom-precopy] old PASS L2 pushed log line is returned: status=200 length=132
+10:22:09 [d-upgrade-custom-precopy] old PASS P1 client package upload returns 200: status=200 body={"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:22:09.7731558+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}
+10:22:09 [d-upgrade-custom-precopy] old PASS P2 uploaded package is listed: status=200 body=[{"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:22:09.7731558+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}]
+10:22:09 [d-upgrade-custom-precopy] old PASS P3 uploaded package downloads byte-identical: status=200 bytes=4150 expected=4150
+10:22:09 [d-upgrade-custom-precopy] old PASS P4 package delete returns 200: status=200 body={"deleted":"probe-package-1.2.3.zip"}
+10:22:09 [d-upgrade-custom-precopy] old PASS P5 deleted package is no longer listed: status=200 body=[]
+10:22:09 [d-upgrade-custom-precopy] old PASS X1 GET /api/pda-packages returns 200: status=200 body=[]
+10:22:09 [d-upgrade-custom-precopy] old PASS X1 GET /api/plugin-packages returns 200: status=200 body=[]
+10:22:09 [d-upgrade-custom-precopy] old PASS X1 GET /api/client-updates returns 200: status=200 body=[]
+10:22:09 [d-upgrade-custom-precopy] old PASS X1 GET /api/android-updates returns 200: status=200 body=[]
+10:22:09 [d-upgrade-custom-precopy] old PASS X1 GET /api/client-updates/drafts returns 200: status=200 body=[]
+10:22:09 [d-upgrade-custom-precopy] old PASS X1 GET /api/server/ipv4-candidates returns 200: status=200 body={"candidates":["172.17.234.240"]}
+10:22:09 [d-upgrade-custom-precopy] SMOKE_SUMMARY tag=old port=53961 passed=33 failed=0
+10:22:09 [d-upgrade-custom-precopy] job created before the upgrade: 402b077f7a7b4dcb8db783c184b238e9
+10:22:15 [d-upgrade-custom-precopy] CONFIG_FILE path=C:\标签 服务\LabelFrameServer\appsettings.json bytes=87 leadingMarks=1
+10:22:15 [d-upgrade-custom-precopy] CONFIG_ORIGINAL { "Server": { "ListenUrl": "http://0.0.0.0:53961", "Dpi": 203 } }
+10:22:15 [d-upgrade-custom-precopy] CONFIG_FILE_WRITTEN bytes=87 bomMarks=1 jsonValid=True listenUrlHasNewPort=True
+10:22:15 [d-upgrade-custom-precopy] CONFIG step=moved newPort=53970 newPortListening=True oldPort=53961 oldPortListening=False
+10:22:16 [d-upgrade-custom-precopy] GUEST now=2026-11-26 10:22:16 programFiles=C:\Program Files lastBoot=2026-11-26 09:39:05
+10:22:16 [d-upgrade-custom-precopy] DIR install exists=True path=C:\标签 服务\LabelFrameServer files=30 bytes=108760804 exeProductVersion=1.6.0+08b10216cc08f3ff234e8397d13a872cee0dfc4b appsettings=True
+10:22:16 [d-upgrade-custom-precopy] DIR default exists=False path=C:\Program Files\LabelFrame\Server
+10:22:16 [d-upgrade-custom-precopy] DIR labelframe-root exists=False path=C:\Program Files\LabelFrame
+10:22:16 [d-upgrade-custom-precopy] INSTALL_TOP_LEVEL ApkVerifierBridge.java | appsettings.json | DocumentFormat.OpenXml.dll | DocumentFormat.OpenXml.Framework.dll | e_sqlite3.dll | LabelFrame.Api.dll | LabelFrame.Core.dll | LabelFrame.Rendering.dll | LabelFrame.Server.deps.json | LabelFrame.Server.dll | LabelFrame.Server.exe | LabelFrame.Server.runtimeconfig.json | LabelFrame.Server.staticwebassets.endpoints.json | LabelFrame.Updates.dll | libSkiaSharp.dll | libSkiaSharp.pdb | Microsoft.Data.Sqlite.dll | Microsoft.Extensions.Hosting.WindowsServices.dll | SkiaSharp.dll | SQLitePCLRaw.core.dll | SQLitePCLRaw.provider.e_sqlite3.dll | System.IO.Packaging.dll | System.ServiceProcess.ServiceController.dll | TemplateFrame.dll | TemplateFrame.Excel.Simple.dll | TemplateFrame.Excel.Simple.resources.dll | TemplateFrame.resources.dll | update-publisher.cer | web.config | zxing.dll
+10:22:16 [d-upgrade-custom-precopy] SERVICE state=Running startMode=Auto startName=LocalSystem pid=5844 path="C:\标签 服务\LabelFrameServer\LabelFrame.Server.exe"
+10:22:16 [d-upgrade-custom-precopy] SERVICES_MATCHING LabelFrameServer
+10:22:16 [d-upgrade-custom-precopy] PRODUCT name=LabelFrame Server version=1.6.0 installLocation= installDate=20261126
+10:22:16 [d-upgrade-custom-precopy] PROCESS pid=5844 path=C:\标签 服务\LabelFrameServer\LabelFrame.Server.exe session=0 start=10:22:10
+10:22:16 [d-upgrade-custom-precopy] LISTEN address=0.0.0.0 port=53970 pid=5844
+10:22:16 [d-upgrade-custom-precopy] DATA root=C:\ProgramData\LabelFrame files=9
+10:22:16 [d-upgrade-custom-precopy] DATA \server\logs.db 16384
+10:22:16 [d-upgrade-custom-precopy] DATA \server\logs.db-shm 32768
+10:22:16 [d-upgrade-custom-precopy] DATA \server\logs.db-wal 0
+10:22:16 [d-upgrade-custom-precopy] DATA \server\server.db 45056
+10:22:16 [d-upgrade-custom-precopy] DATA \server\server.db-shm 32768
+10:22:16 [d-upgrade-custom-precopy] DATA \server\server.db-wal 0
+10:22:16 [d-upgrade-custom-precopy] DATA \server\templates.db 28672
+10:22:16 [d-upgrade-custom-precopy] DATA \server\templates.db-shm 32768
+10:22:16 [d-upgrade-custom-precopy] DATA \server\templates.db-wal 0
+10:22:16 [d-upgrade-custom-precopy] IN_PROGRESS_REGISTRATION False
+10:22:17 [d-upgrade-custom-precopy] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=False
+10:22:17 [d-upgrade-custom-precopy] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json exists=False
+10:22:17 [d-upgrade-custom-precopy] ROOT_ENTRIES
+10:22:17 [d-upgrade-custom-precopy] X86_ROOT exists=False
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_DIR path=C:\标签 服务\LabelFrameServer exists=True files=30
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE ApkVerifierBridge.java 959
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE appsettings.json 87
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE DocumentFormat.OpenXml.dll 7985120
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE DocumentFormat.OpenXml.Framework.dll 478688
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE e_sqlite3.dll 1978880
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE LabelFrame.Api.dll 59392
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE LabelFrame.Core.dll 280064
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE LabelFrame.Rendering.dll 18432
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE LabelFrame.Server.deps.json 11765
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE LabelFrame.Server.dll 418816
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE LabelFrame.Server.exe 310272
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE LabelFrame.Server.runtimeconfig.json 548
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE LabelFrame.Server.staticwebassets.endpoints.json 53
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE LabelFrame.Updates.dll 74240
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE libSkiaSharp.dll 11611680
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE libSkiaSharp.pdb 83832832
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE Microsoft.Data.Sqlite.dll 173088
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE Microsoft.Extensions.Hosting.WindowsServices.dll 29456
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE SkiaSharp.dll 490016
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE SQLitePCLRaw.core.dll 51200
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE SQLitePCLRaw.provider.e_sqlite3.dll 36864
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE System.IO.Packaging.dll 159504
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE System.ServiceProcess.ServiceController.dll 92472
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE TemplateFrame.dll 76288
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE TemplateFrame.Excel.Simple.dll 57344
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE TemplateFrame.Excel.Simple.resources.dll 6656
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE TemplateFrame.resources.dll 8704
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE update-publisher.cer 804
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE web.config 484
+10:22:17 [d-upgrade-custom-precopy] CUSTOM_FILE zxing.dll 516096
+10:22:17 [d-upgrade-custom-precopy] SETTINGS custom path=C:\标签 服务\LabelFrameServer\appsettings.json bytes=87 sha256=6cd337093bbd074faf66ac115311a34daad26ccf5180bd325fb18fd82ee21575 listen="ListenUrl": "http://0.0.0.0:53970",
+10:22:17 [d-upgrade-custom-precopy] PRECOPY source=C:\标签 服务\LabelFrameServer\appsettings.json target=C:\Program Files\LabelFrame\Server\appsettings.json copied=True identical=True sha256=6cd337093bbd074faf66ac115311a34daad26ccf5180bd325fb18fd82ee21575
+10:22:17 [d-upgrade-custom-precopy] PRECOPY fixed dir now holds: appsettings.json
+10:22:22 [d-upgrade-custom-precopy] 10:22:18 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\upgrade.log"
+10:22:22 [d-upgrade-custom-precopy] 10:22:22 MSI mode=install msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+10:22:22 [d-upgrade-custom-precopy] 10:22:22 LOG bytes=297026
+10:22:38 [d-upgrade-custom-precopy] WAIT port=53970 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=5532 stateAfter=Running pidAfter=5532 body={"service":"LabelFrame.Server","status":"ok"}
+10:22:38 [d-upgrade-custom-precopy] WAIT_STABILITY seconds=15 sameProcess=True state=Running pid=5532 healthCode=200
+10:22:59 [d-upgrade-custom-precopy] WAIT port=53961 restart=False result=timeout elapsed=20.3s lastCode=0 stateBefore=Running pidBefore=5532 stateAfter=Running pidAfter=5532 body=使用“0”个参数调用“GetResponse”时发生异常:“操作超时”
+10:23:00 [d-upgrade-custom-precopy] GUEST now=2026-11-26 10:22:59 programFiles=C:\Program Files lastBoot=2026-11-26 09:39:05
+10:23:00 [d-upgrade-custom-precopy] DIR install exists=True path=C:\标签 服务\LabelFrameServer files=1 bytes=87 exeProductVersion= appsettings=True
+10:23:00 [d-upgrade-custom-precopy] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760804 exeProductVersion=1.6.1+43127ac9d3f49ee9fc5d5d9917ca7e4952544f45 appsettings=True
+10:23:00 [d-upgrade-custom-precopy] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760804 exeProductVersion= appsettings=False
+10:23:00 [d-upgrade-custom-precopy] INSTALL_TOP_LEVEL appsettings.json
+10:23:00 [d-upgrade-custom-precopy] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+10:23:00 [d-upgrade-custom-precopy] SERVICE state=Running startMode=Auto startName=LocalSystem pid=5532 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+10:23:00 [d-upgrade-custom-precopy] SERVICES_MATCHING LabelFrameServer
+10:23:00 [d-upgrade-custom-precopy] PRODUCT name=LabelFrame Server version=1.6.1 installLocation= installDate=20261126
+10:23:00 [d-upgrade-custom-precopy] PROCESS pid=5532 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=10:22:19
+10:23:00 [d-upgrade-custom-precopy] LISTEN address=0.0.0.0 port=53970 pid=5532
+10:23:00 [d-upgrade-custom-precopy] DATA root=C:\ProgramData\LabelFrame files=9
+10:23:00 [d-upgrade-custom-precopy] DATA \server\logs.db 16384
+10:23:00 [d-upgrade-custom-precopy] DATA \server\logs.db-shm 32768
+10:23:00 [d-upgrade-custom-precopy] DATA \server\logs.db-wal 0
+10:23:00 [d-upgrade-custom-precopy] DATA \server\server.db 45056
+10:23:00 [d-upgrade-custom-precopy] DATA \server\server.db-shm 32768
+10:23:00 [d-upgrade-custom-precopy] DATA \server\server.db-wal 0
+10:23:00 [d-upgrade-custom-precopy] DATA \server\templates.db 28672
+10:23:00 [d-upgrade-custom-precopy] DATA \server\templates.db-shm 32768
+10:23:00 [d-upgrade-custom-precopy] DATA \server\templates.db-wal 0
+10:23:00 [d-upgrade-custom-precopy] IN_PROGRESS_REGISTRATION False
+10:23:00 [d-upgrade-custom-precopy] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=30 subFolders=0
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE ApkVerifierBridge.java 959
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE appsettings.json 87
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE DocumentFormat.OpenXml.dll 7985120
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE DocumentFormat.OpenXml.Framework.dll 478688
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE e_sqlite3.dll 1978880
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE LabelFrame.Api.dll 59392
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE LabelFrame.Core.dll 280064
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE LabelFrame.Rendering.dll 18432
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE LabelFrame.Server.deps.json 11765
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE LabelFrame.Server.dll 418816
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE LabelFrame.Server.exe 310272
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE LabelFrame.Server.runtimeconfig.json 548
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE LabelFrame.Server.staticwebassets.endpoints.json 53
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE LabelFrame.Updates.dll 74240
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE libSkiaSharp.dll 11611680
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE libSkiaSharp.pdb 83832832
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE Microsoft.Data.Sqlite.dll 173088
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE Microsoft.Extensions.Hosting.WindowsServices.dll 29456
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE SkiaSharp.dll 490016
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE SQLitePCLRaw.core.dll 51200
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE SQLitePCLRaw.provider.e_sqlite3.dll 36864
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE System.IO.Packaging.dll 159504
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE System.ServiceProcess.ServiceController.dll 92472
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE TemplateFrame.dll 76288
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE TemplateFrame.Excel.Simple.dll 57344
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE TemplateFrame.Excel.Simple.resources.dll 6656
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE TemplateFrame.resources.dll 8704
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE update-publisher.cer 804
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE web.config 484
+10:23:00 [d-upgrade-custom-precopy] FIXED_FILE zxing.dll 516096
+10:23:00 [d-upgrade-custom-precopy] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=87 sha256=6cd337093bbd074faf66ac115311a34daad26ccf5180bd325fb18fd82ee21575 listen="ListenUrl": "http://0.0.0.0:53970",
+10:23:00 [d-upgrade-custom-precopy] ROOT_ENTRIES Server
+10:23:00 [d-upgrade-custom-precopy] X86_ROOT exists=False
+10:23:00 [d-upgrade-custom-precopy] CUSTOM_DIR path=C:\标签 服务\LabelFrameServer exists=True files=1
+10:23:00 [d-upgrade-custom-precopy] CUSTOM_FILE appsettings.json 87
+10:23:00 [d-upgrade-custom-precopy] SETTINGS custom path=C:\标签 服务\LabelFrameServer\appsettings.json bytes=87 sha256=6cd337093bbd074faf66ac115311a34daad26ccf5180bd325fb18fd82ee21575 listen="ListenUrl": "http://0.0.0.0:53970",
+10:23:00 [d-upgrade-custom-precopy] port answering after the upgrade: 53970
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS K1 job created before is still readable and Completed: status=200 body={"jobId":"402b077f7a7b4dcb8db783c184b238e9","requestId":"probe-d9957fc91a654e02bfb2c8f420d15a60","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:22:08.975626+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Offline","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS K2 device registered before is still listed: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:22:08.8160015+00:00","lastSeenAt":"2026-11-26T02:22:09.2463096+00:00","status":"Offline","lastIp":"127.0.0.1"}]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS K3 template saved before is still readable: status=200
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS H1 healthz returns 200 with status ok: status=200 body={"service":"LabelFrame.Server","status":"ok"}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS I1 server info returns 200: status=200 body={"listenUrl":"http://0.0.0.0:53970","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.0"}
+10:23:01 [d-upgrade-custom-precopy] INFO root path status=404 contentType=0
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS D1 device list returns 200: status=200
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS D2 device registration returns 200: status=200 body={"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:23:01.4704099+00:00","lastSeenAt":"2026-11-26T02:23:01.4704099+00:00","status":"Online","lastIp":"127.0.0.1"}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS D3 registered device is listed with its name: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:22:08.8160015+00:00","lastSeenAt":"2026-11-26T02:23:01.4704099+00:00","status":"Online","lastIp":"127.0.0.1"}]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS J1 job submission is accepted as Pending: status=202 body={"jobId":"868aaaa5e5224c3d834a805fa9c70a87","requestId":"probe-32a2daf4c0084ac3b5a2f3fe78e62090","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:23:01.501142+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:23:01 [d-upgrade-custom-precopy] CREATED_JOB requestId=probe-32a2daf4c0084ac3b5a2f3fe78e62090 jobId=868aaaa5e5224c3d834a805fa9c70a87
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS J2 job can be queried and is Pending: status=200 body={"jobId":"868aaaa5e5224c3d834a805fa9c70a87","requestId":"probe-32a2daf4c0084ac3b5a2f3fe78e62090","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:23:01.501142+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS N1 notify long poll returns 200: status=200 body={"hasPending":true}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS J3 device claims the pending job: status=200 claimed=1 body=[{"jobId":"868aaaa5e5224c3d834a805fa9c70a87","requestId":"probe-32a2daf4c0084ac3b5a2f3fe78e62090","totalItems":1,"payload":{"template":{"contract":{"name":"probe-contract","version":"1.0","fields":[]},"layout":{"name":"probe-layout","contractName":"probe-contract","contractVersion":"1.0","widthMm":40,"heightMm":20,"elements":[{"type":"text","xMm":1,"yMm":1,"sourceKey":"","literal":"标签打印 ABC 123","fontName":"0","fontHeightMm":3,"fontWidthMm":0}]},"name":null,"images":null},"labels":[{"data":{}}]}}]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS J4 progress report is accepted: status=200 body={"jobId":"868aaaa5e5224c3d834a805fa9c70a87","requestId":"probe-32a2daf4c0084ac3b5a2f3fe78e62090","targetDeviceId":"customdir-probe","status":"Claimed","createdAt":"2026-11-26T02:23:01.501142+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS J5 result report is accepted: status=200 body={"jobId":"868aaaa5e5224c3d834a805fa9c70a87","requestId":"probe-32a2daf4c0084ac3b5a2f3fe78e62090","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:23:01.501142+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS J6 job is Completed after the result report: status=200 body={"jobId":"868aaaa5e5224c3d834a805fa9c70a87","requestId":"probe-32a2daf4c0084ac3b5a2f3fe78e62090","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:23:01.501142+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS J7 job history lists the job: status=200
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS R1 debug render returns a PNG: status=200 bytes=3580
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS R2 batch debug render returns a zip: status=200 bytes=2122
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS T1 template save returns 200: status=200 body={"name":"customdir-template","group":"probe"}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS T2 saved template is listed: status=200 body=[{"name":"customdir-template","group":"probe","updatedAt":"2026-11-26T02:23:01.8015737+00:00","uid":"49d9d969ab96412f87a1a0aa3227639d"}]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS T3 saved template can be read: status=200
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS T4 template preview returns a PNG: status=200 bytes=3580
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS T5 template export returns a package: status=200 bytes=391
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS L1 log push returns 200: status=200 body={"received":1}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS L2 pushed log line is returned: status=200 length=263
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS P1 client package upload returns 200: status=200 body={"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:23:01.8512877+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS P2 uploaded package is listed: status=200 body=[{"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:23:01.8512877+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS P3 uploaded package downloads byte-identical: status=200 bytes=4150 expected=4150
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS P4 package delete returns 200: status=200 body={"deleted":"probe-package-1.2.3.zip"}
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS P5 deleted package is no longer listed: status=200 body=[]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS X1 GET /api/pda-packages returns 200: status=200 body=[]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS X1 GET /api/plugin-packages returns 200: status=200 body=[]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS X1 GET /api/client-updates returns 200: status=200 body=[]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS X1 GET /api/android-updates returns 200: status=200 body=[]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS X1 GET /api/client-updates/drafts returns 200: status=200 body=[]
+10:23:01 [d-upgrade-custom-precopy] after-upgrade PASS X1 GET /api/server/ipv4-candidates returns 200: status=200 body={"candidates":["172.17.234.240"]}
+10:23:01 [d-upgrade-custom-precopy] SMOKE_SUMMARY tag=after-upgrade port=53970 passed=33 failed=0
+10:23:02 [d-upgrade-custom-precopy] EVENTS since=11/26/2026 09:53:01 errors=5
+10:23:02 [d-upgrade-custom-precopy] EVENT level=错误 log=Application provider=Microsoft-Windows-Defrag id=264 time=10:21:39 message=存储优化程序无法在 (C:) 上完成 碎片合并，原因是: 由于可以回收的碎片数不足，碎片合并操作已中止(基于注册表中指定的限制)。 (0x89000028)
+10:23:02 [d-upgrade-custom-precopy] EVENT level=错误 log=Application provider=Microsoft-Windows-Security-SPP id=8198 time=10:20:16 message=许可证激活(slui.exe)失败，返回以下错误代码: hr=0x8007139F 命令行参数: RuleId=31e71c49-8da7-4a2f-ad92-45d98a1c79ba;Action=AutoActivate;AppId=55c92734-d682-4d71-983e-d6ec3f16059f;SkuId=4de7cb65-cdf1-4de9-8ae8-e3cce27b9f2c;NotificationInterval=1440;Trigger=NetworkAvailable
+10:23:02 [d-upgrade-custom-precopy] EVENT level=错误 log=Application provider=Microsoft-Windows-Security-SPP id=8198 time=10:19:59 message=许可证激活(slui.exe)失败，返回以下错误代码: hr=0x8007139F 命令行参数: RuleId=31e71c49-8da7-4a2f-ad92-45d98a1c79ba;Action=AutoActivate;AppId=55c92734-d682-4d71-983e-d6ec3f16059f;SkuId=4de7cb65-cdf1-4de9-8ae8-e3cce27b9f2c;NotificationInterval=1440;Trigger=NetworkAvailable
+10:23:02 [d-upgrade-custom-precopy] EVENT level=错误 log=System provider=Microsoft-Windows-Time-Service id=34 time=10:19:51 message=时间服务检测到系统时间需要更改 0 秒。时间服务将不会更改系统时间超过 54000 秒。请验证你的时间和时区是正确的，并且时间源 VM IC Time Synchronization Provider 工作正常。
+10:23:02 [d-upgrade-custom-precopy] EVENT level=错误 log=System provider=Microsoft-Windows-Time-Service id=34 time=10:19:28 message=时间服务检测到系统时间需要更改 0 秒。时间服务将不会更改系统时间超过 54000 秒。请验证你的时间和时区是正确的，并且时间源 VM IC Time Synchronization Provider 工作正常。
+10:23:02 [d-upgrade-custom-precopy] EVENTS labelFrameWarnings=1
+10:23:02 [d-upgrade-custom-precopy] EVENT level=警告 log=System provider=Microsoft-Windows-DistributedCOM id=10016 time=10:21:19 message=应用程序-特定 权限设置并未向在应用程序容器 不可用 SID (不可用)中运行的地址 LocalHost (使用 LRPC) 中的用户 DESKTOP-D65DJ5S\<account> SID (<account-sid>)授予针对 CLSID 为 {2593F8B9-4EAF-457C-B68A-50F6B8EA6B54} 、APPID 为 {15C20B67-12E7-4BB6-92BB-7AFF07997402} 的 COM 服务器应用程序的 本地 激活 权限。此安全权限可以使用组件服务管理工具进行修改。
+10:23:03 [d-upgrade-custom-precopy] 10:23:02 ARGUMENTS /x "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\uninstall.log"
+10:23:03 [d-upgrade-custom-precopy] 10:23:03 MSI mode=uninstall msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=1.1s
+10:23:03 [d-upgrade-custom-precopy] 10:23:03 LOG bytes=126212
+10:23:04 [d-upgrade-custom-precopy] GUEST now=2026-11-26 10:23:04 programFiles=C:\Program Files lastBoot=2026-11-26 09:39:05
+10:23:04 [d-upgrade-custom-precopy] DIR install exists=True path=C:\标签 服务\LabelFrameServer files=1 bytes=87 exeProductVersion= appsettings=True
+10:23:04 [d-upgrade-custom-precopy] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=1 bytes=87 exeProductVersion= appsettings=True
+10:23:04 [d-upgrade-custom-precopy] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=1 bytes=87 exeProductVersion= appsettings=False
+10:23:04 [d-upgrade-custom-precopy] INSTALL_TOP_LEVEL appsettings.json
+10:23:04 [d-upgrade-custom-precopy] DEFAULT_ROOT_TREE \Server | \Server\appsettings.json
+10:23:04 [d-upgrade-custom-precopy] SERVICE none
+10:23:04 [d-upgrade-custom-precopy] SERVICES_MATCHING
+10:23:04 [d-upgrade-custom-precopy] PRODUCT none
+10:23:04 [d-upgrade-custom-precopy] LISTEN none
+10:23:04 [d-upgrade-custom-precopy] DATA root=C:\ProgramData\LabelFrame files=3
+10:23:04 [d-upgrade-custom-precopy] DATA \server\logs.db 16384
+10:23:04 [d-upgrade-custom-precopy] DATA \server\server.db 45056
+10:23:04 [d-upgrade-custom-precopy] DATA \server\templates.db 28672
+10:23:04 [d-upgrade-custom-precopy] IN_PROGRESS_REGISTRATION False
+10:23:05 [d-upgrade-custom-precopy] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=1 subFolders=0
+10:23:05 [d-upgrade-custom-precopy] FIXED_FILE appsettings.json 87
+10:23:05 [d-upgrade-custom-precopy] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=87 sha256=6cd337093bbd074faf66ac115311a34daad26ccf5180bd325fb18fd82ee21575 listen="ListenUrl": "http://0.0.0.0:53970",
+10:23:05 [d-upgrade-custom-precopy] ROOT_ENTRIES Server
+10:23:05 [d-upgrade-custom-precopy] X86_ROOT exists=False
+10:23:05 [d-upgrade-custom-precopy] CUSTOM_DIR path=C:\标签 服务\LabelFrameServer exists=True files=1
+10:23:05 [d-upgrade-custom-precopy] CUSTOM_FILE appsettings.json 87
+10:23:05 [d-upgrade-custom-precopy] SETTINGS custom path=C:\标签 服务\LabelFrameServer\appsettings.json bytes=87 sha256=6cd337093bbd074faf66ac115311a34daad26ccf5180bd325fb18fd82ee21575 listen="ListenUrl": "http://0.0.0.0:53970",
+10:23:06 [d-upgrade-custom-precopy] PULLED C:\Probe\logs\install-old.log (171656 bytes)
+10:23:06 [d-upgrade-custom-precopy] PULLED C:\Probe\logs\uninstall.log (126212 bytes)
+10:23:06 [d-upgrade-custom-precopy] PULLED C:\Probe\logs\upgrade.log (297026 bytes)
+10:23:07 [d-upgrade-custom-precopy] PULLED C:\Probe\out\after-upgrade-export.lfpkg (391 bytes)
+10:23:07 [d-upgrade-custom-precopy] PULLED C:\Probe\out\after-upgrade-preview.png (3580 bytes)
+10:23:07 [d-upgrade-custom-precopy] PULLED C:\Probe\out\after-upgrade-render.png (3580 bytes)
+10:23:07 [d-upgrade-custom-precopy] PULLED C:\Probe\out\after-upgrade-render.zip (2122 bytes)
+10:23:07 [d-upgrade-custom-precopy] PULLED C:\Probe\out\old-export.lfpkg (391 bytes)
+10:23:07 [d-upgrade-custom-precopy] PULLED C:\Probe\out\old-preview.png (3580 bytes)
+10:23:07 [d-upgrade-custom-precopy] PULLED C:\Probe\out\old-render.png (3580 bytes)
+10:23:07 [d-upgrade-custom-precopy] PULLED C:\Probe\out\old-render.zip (2122 bytes)
+10:23:07 [d-upgrade-custom-precopy] ROUND_DONE

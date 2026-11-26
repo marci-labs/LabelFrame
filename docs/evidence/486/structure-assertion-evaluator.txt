@@ -1,0 +1,35 @@
+# 断言脚本里条件求值器的单元检查（30 项）
+#
+# 向导跳转的真值表靠它把安装器的条件翻译后求值；它只认用到的语法，别的写法一律报错而不是猜。
+
+  ok   '' -> True
+  ok   'NOT Installed' -> True
+  ok   'NOT Installed' -> False
+  ok   'LicenseAccepted = "1"' -> False
+  ok   'LicenseAccepted = "1"' -> True
+  ok   'LicenseAccepted <> "1"' -> True
+  ok   'LicenseAccepted <> "1"' -> False
+  ok   'NOT Installed AND NOT REMOVE' -> False
+  ok   'NOT Installed AND NOT REMOVE' -> True
+  ok   'Installed AND PATCH' -> False
+  ok   'Installed AND NOT PATCH' -> True
+  ok   'Installed AND (RESUME OR Preselected) AND NOT PATCH' -> True
+  ok   'Installed AND (RESUME OR Preselected) AND NOT PATCH' -> False
+  ok   '1' -> True
+  ok   '0' -> False
+  ok   '2' -> True
+  ok   'NOT 0' -> True
+  ok   'NOT 1' -> False
+  ok   '( NOT Installed ) OR PATCH' -> True
+  ok   '( NOT Installed ) OR PATCH' -> False
+  ok   'not Installed' -> error as expected
+  ok   'Installed And PATCH' -> error as expected
+  ok   'Installed AND (RESUME OR' -> error as expected
+  ok   'Installed AND RESUME)' -> error as expected
+  ok   'REMOVE~="ALL"' -> error as expected
+  ok   'Installed >= 1' -> error as expected
+  ok   'WixUI_InstallMode = "Remove"' -> error as expected
+  ok   'LicenseAccepted = "0"' -> error as expected
+  ok   'Installed AND NOT (PATCH OR REMOVE)' -> True
+  ok   'Installed AND NOT (PATCH OR REMOVE)' -> False
+  evaluator checks failed: 0

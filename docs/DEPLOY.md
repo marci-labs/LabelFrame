@@ -38,6 +38,7 @@
 - 前置（Client）：**.NET Desktop Runtime 10（x64）** 与 **ASP.NET Core Runtime 10（x64）** 两项，外加 Microsoft Edge WebView2 运行时（Evergreen，Win10/11 多数已随 Edge 预装）。ASP.NET Core 请下载同一栏的 **Hosting Bundle**（已含 .NET Runtime）；单独的 ASP.NET Core Runtime 安装包不含 .NET Runtime，只装它在缺 .NET 的机器上仍不可用。.NET Desktop Runtime 自带 .NET Runtime。
 - MSI 内置检测，缺哪项提示哪项：.NET 缺失时向导弹出带官方下载链接的中文对话框，说明缺的是哪一项并注明 x64（不自动安装）；WebView2 缺失时显示带官方下载链接的中文对话框（装完点「重新检测」即可继续，无需重启安装程序）；静默 / 基础 UI 安装由启动条件拦截，原因写入安装日志。客户端启动时若 WebView2 初始化失败，自动回退默认浏览器打开界面并在 host.log 记录原因。
 - **Client 固定安装到 `C:\Program Files\LabelFrame\Client`**：向导的安装位置页只读，命令行传入 `INSTALLFOLDER` 会被拦下并说明原因。客户端更新服务只接受 Program Files 下的安装目录，装到别处服务会拒绝启动。
+- **Server 固定安装到 `C:\Program Files\LabelFrame\Server`**：向导的「安装目录」页只读，命令行传入 `INSTALLFOLDER` 会被拦下并说明原因。升级总是原地覆盖，`appsettings.json` 里改过的监听地址 / 端口和 Dpi 随之保留；卸载时「清除用户数据」删除的也是这一份。旧版本装在别的目录的，升级前先按「升级与迁移」一节处理。
 - **更新服务**：安装时由安装包启动并等到就绪。服务启动失败（例如安装目录不满足保护条件）会立即中止并撤回本次安装，不再长时间等待后提示「权限不足」；启动较慢只要最终能就绪不会被误判，长时间停在启动中才按兜底时限中止。失败原因与停在哪个阶段同时写入事件日志（应用程序日志，来源 `LabelFrameClientUpdater`）和安装日志。
 - **安装日志**：每次安装（向导双击 / 静默）都会在当前用户的临时目录自动生成一份安装日志（`%TEMP%\MSI*.log`），向导安装失败时「安装向导提前结束」页上写明本次安装日志的路径，日志里能看出停在哪个步骤。更新服务启动一步的结论在安装日志里是一行英文（以 `LabelFrame updater service start` 开头），中文原因写在旁边的明细日志（`MSI*.log.updater-service.log`）里。日志留在临时目录即可，无需手工清理。
 - 单机使用 = 同机安装两个包；多台打印电脑 = 每台装 Client，设置页把服务端地址指向服务端 IP。
@@ -291,6 +292,7 @@ sudo bash install-server-linux.sh --manifest <清单 URL>               # 安装
 补充要点：
 
 - **升级顺序**：建议先升级服务端，再升级各打印客户端与 PDA；跨版本升级前先读[更新日志](../CHANGELOG.md)当版的「升级注意」。
+- **服务端安装目录**：服务端只安装在 `C:\Program Files\LabelFrame\Server`。引导程序、离线包、直接运行新版 MSI 三种升级方式都是原地覆盖，`appsettings.json` 里改过的设置随之保留。旧版本如果装在别的目录（在服务的属性里查看 `LabelFrameServer` 的可执行路径即可确认），按更新日志当版的「升级注意」先处理配置再升级。
 - **模板兼容**：新版本可继续打开既有模板；但**旧版本程序可能不认识新版本模板中的新元素**（如图片元素）——把模板回传给旧版本使用前请先确认。
 - **插件随行**：Zebra / TSPL 官方传输插件随客户端 MSI 附带并在启动时自动安装 / 升级（见「分发通道」一节），升级客户端无需单独处理插件。
 - **服务端管理界面（可选插件）**：经安装引导程序安装的随升级自动处理；手动放置 `web-ui` 插件的，升级后用新版 `labelframe-server-webui-*.zip` 覆盖目录即可（放入即生效）。

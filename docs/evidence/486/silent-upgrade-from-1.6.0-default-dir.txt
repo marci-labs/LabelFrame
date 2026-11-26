@@ -1,0 +1,316 @@
+# 从 1.6.0（装在固定目录）静默升级
+#
+# 测试机 LF-Accept-Win10（Hyper-V，Windows 10），每轮从基线还原点开始；安装包由提交 43127ac 的源码本地构建。
+# 升级前把监听端口改到 53970 并造一批数据；不带目录的静默升级（等价引导程序 / 离线包）后端口、配置文件与数据都应保留。（原始记录 c-upgrade-default-silent-host-1.log）
+# 本文件是本轮宿主机侧记录：客机脚本的每一行输出按顺序带时间戳；测试机账户名已替换为占位符。
+
+10:07:27 STATE_BEFORE=Off
+10:07:27 HOST_FREE_MB=17268 VM_NEED_MB=4096
+10:07:28 STATE_AFTER_RESTORE=Off
+10:07:33 STATE_AFTER_START=Running
+10:08:09 PSDIRECT_OK host=DESKTOP-D65DJ5S
+10:08:09 GUEST clockBefore=2026-11-26T10:08:09.8713126+08:00 clockAfter=2026-11-26T10:08:09.5887954+08:00 setDate=ok
+10:08:09 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+10:08:09 VM state=Running uptime=00:00:39.4230000 cpu=12 memAssignedMB=4216
+10:08:09 DONE
+10:08:09 [c-upgrade-default-silent] waiting 90 seconds after boot before touching the guest
+10:09:40 [c-upgrade-default-silent] guest boot time recorded for this round: 2026-11-26 09:27:24
+10:09:41 [c-upgrade-default-silent] service wuauserv: status when the stop request was sent=Running startType=Disabled
+10:09:41 [c-upgrade-default-silent] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+10:09:41 [c-upgrade-default-silent] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+10:09:41 [c-upgrade-default-silent] last boot: 2026-11-26 09:27:24
+10:09:41 [c-upgrade-default-silent] in-progress installer registration exists: False
+10:09:43 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 1.8s
+10:09:43 COPIED custom-ascii.txt (25 bytes) in 0.1s
+10:09:43 COPIED custom-cn.txt (33 bytes) in 0.1s
+10:09:44 COPIED custom-default.txt (34 bytes) in 0.1s
+10:09:47 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 3.4s
+10:09:49 COPIED LabelFrame-Server-1.6.0.msi (24326144 bytes) in 1.9s
+10:09:51 COPIED LabelFrame-Server-1.6.1.msi (24313856 bytes) in 1.9s
+--- guest files: name size sha256 ---
+aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+custom-ascii.txt 25 e4a08c5ba7e1c91f162367df6c4b551fb155104549ec98af9e089916c5bbf4bc
+custom-cn.txt 33 ca622a014e9f0b527afaceee9e15c1e6e0953b39310b9cba4b13ebec21f58959
+custom-default.txt 34 11d2a1bd719f905608eeaa0b70d0a43f4c37e9ff70c1e3785e22449d771225be
+dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+LabelFrame-Server-1.6.0.msi 24326144 6c398c3dbd2f1e294cb26ed0dcc618631434284ec0226a14f5a4ec4bd69e930c
+LabelFrame-Server-1.6.1.msi 24313856 aacd03283de3d08d68712485450e8c286fc7558b82f4894407b27d2a9bff1a82
+10:09:57 [c-upgrade-default-silent] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=5.2s
+10:09:59 [c-upgrade-default-silent]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+10:09:59 [c-upgrade-default-silent]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+10:09:59 [c-upgrade-default-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:09:59 [c-upgrade-default-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:10:01 [c-upgrade-default-silent] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=2.2s
+10:10:03 [c-upgrade-default-silent]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+10:10:03 [c-upgrade-default-silent]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+10:10:03 [c-upgrade-default-silent]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+10:10:03 [c-upgrade-default-silent]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+10:10:03 [c-upgrade-default-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:10:03 [c-upgrade-default-silent]     Microsoft .NET Runtime - 10.0.12 (x64)
+10:10:03 [c-upgrade-default-silent]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+10:10:03 [c-upgrade-default-silent]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+10:10:08 [c-upgrade-default-silent] 10:10:03 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.0.msi" /qn /norestart /l*v "C:\Probe\logs\install-old.log"
+10:10:08 [c-upgrade-default-silent] 10:10:07 MSI mode=install msi=LabelFrame-Server-1.6.0.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+10:10:08 [c-upgrade-default-silent] 10:10:07 LOG bytes=172416
+10:10:24 [c-upgrade-default-silent] WAIT port=53961 restart=False result=ready elapsed=0.5s lastCode=200 stateBefore=Running pidBefore=7528 stateAfter=Running pidAfter=7528 body={"service":"LabelFrame.Server","status":"ok"}
+10:10:24 [c-upgrade-default-silent] WAIT_STABILITY seconds=15 sameProcess=True state=Running pid=7528 healthCode=200
+10:10:26 [c-upgrade-default-silent] GUEST now=2026-11-26 10:10:24 programFiles=C:\Program Files lastBoot=2026-11-26 09:27:24
+10:10:26 [c-upgrade-default-silent] DIR install exists=False path=C:\LabelFrame Test\Server
+10:10:26 [c-upgrade-default-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760804 exeProductVersion=1.6.0+08b10216cc08f3ff234e8397d13a872cee0dfc4b appsettings=True
+10:10:26 [c-upgrade-default-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760804 exeProductVersion= appsettings=False
+10:10:26 [c-upgrade-default-silent] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+10:10:26 [c-upgrade-default-silent] SERVICE state=Running startMode=Auto startName=LocalSystem pid=7528 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+10:10:26 [c-upgrade-default-silent] SERVICES_MATCHING LabelFrameServer
+10:10:26 [c-upgrade-default-silent] PRODUCT name=LabelFrame Server version=1.6.0 installLocation= installDate=20261126
+10:10:26 [c-upgrade-default-silent] PROCESS pid=7528 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=10:10:04
+10:10:26 [c-upgrade-default-silent] LISTEN address=0.0.0.0 port=53961 pid=7528
+10:10:26 [c-upgrade-default-silent] DATA root=C:\ProgramData\LabelFrame files=9
+10:10:26 [c-upgrade-default-silent] DATA \server\logs.db 4096
+10:10:26 [c-upgrade-default-silent] DATA \server\logs.db-shm 32768
+10:10:26 [c-upgrade-default-silent] DATA \server\logs.db-wal 20632
+10:10:26 [c-upgrade-default-silent] DATA \server\server.db 4096
+10:10:26 [c-upgrade-default-silent] DATA \server\server.db-shm 32768
+10:10:26 [c-upgrade-default-silent] DATA \server\server.db-wal 65952
+10:10:26 [c-upgrade-default-silent] DATA \server\templates.db 4096
+10:10:26 [c-upgrade-default-silent] DATA \server\templates.db-shm 32768
+10:10:26 [c-upgrade-default-silent] DATA \server\templates.db-wal 41232
+10:10:26 [c-upgrade-default-silent] IN_PROGRESS_REGISTRATION False
+10:10:28 [c-upgrade-default-silent] old PASS H1 healthz returns 200 with status ok: status=200 body={"service":"LabelFrame.Server","status":"ok"}
+10:10:28 [c-upgrade-default-silent] old PASS I1 server info returns 200: status=200 body={"listenUrl":"http://0.0.0.0:53961","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.0"}
+10:10:28 [c-upgrade-default-silent] INFO root path status=404 contentType=0
+10:10:28 [c-upgrade-default-silent] old PASS D1 device list returns 200: status=200
+10:10:28 [c-upgrade-default-silent] old PASS D2 device registration returns 200: status=200 body={"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:10:26.6392957+00:00","lastSeenAt":"2026-11-26T02:10:26.6392957+00:00","status":"Online","lastIp":"127.0.0.1"}
+10:10:28 [c-upgrade-default-silent] old PASS D3 registered device is listed with its name: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:10:26.6392957+00:00","lastSeenAt":"2026-11-26T02:10:26.6392957+00:00","status":"Online","lastIp":"127.0.0.1"}]
+10:10:28 [c-upgrade-default-silent] old PASS J1 job submission is accepted as Pending: status=202 body={"jobId":"8a0c6a1af29b40119b6c5f407792791e","requestId":"probe-acf214a275744646b5738757214f01c4","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:10:26.7555374+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:10:28 [c-upgrade-default-silent] CREATED_JOB requestId=probe-acf214a275744646b5738757214f01c4 jobId=8a0c6a1af29b40119b6c5f407792791e
+10:10:28 [c-upgrade-default-silent] old PASS J2 job can be queried and is Pending: status=200 body={"jobId":"8a0c6a1af29b40119b6c5f407792791e","requestId":"probe-acf214a275744646b5738757214f01c4","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:10:26.7555374+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:10:28 [c-upgrade-default-silent] old PASS N1 notify long poll returns 200: status=200 body={"hasPending":true}
+10:10:28 [c-upgrade-default-silent] old PASS J3 device claims the pending job: status=200 claimed=1 body=[{"jobId":"8a0c6a1af29b40119b6c5f407792791e","requestId":"probe-acf214a275744646b5738757214f01c4","totalItems":1,"payload":{"template":{"contract":{"name":"probe-contract","version":"1.0","fields":[]},"layout":{"name":"probe-layout","contractName":"probe-contract","contractVersion":"1.0","widthMm":40,"heightMm":20,"elements":[{"type":"text","xMm":1,"yMm":1,"sourceKey":"","literal":"标签打印 ABC 123","fontName":"0","fontHeightMm":3,"fontWidthMm":0}]},"name":null,"images":null},"labels":[{"data":{}}]}}]
+10:10:28 [c-upgrade-default-silent] old PASS J4 progress report is accepted: status=200 body={"jobId":"8a0c6a1af29b40119b6c5f407792791e","requestId":"probe-acf214a275744646b5738757214f01c4","targetDeviceId":"customdir-probe","status":"Claimed","createdAt":"2026-11-26T02:10:26.7555374+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:10:28 [c-upgrade-default-silent] old PASS J5 result report is accepted: status=200 body={"jobId":"8a0c6a1af29b40119b6c5f407792791e","requestId":"probe-acf214a275744646b5738757214f01c4","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:10:26.7555374+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:10:28 [c-upgrade-default-silent] old PASS J6 job is Completed after the result report: status=200 body={"jobId":"8a0c6a1af29b40119b6c5f407792791e","requestId":"probe-acf214a275744646b5738757214f01c4","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:10:26.7555374+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:10:28 [c-upgrade-default-silent] old PASS J7 job history lists the job: status=200
+10:10:28 [c-upgrade-default-silent] old PASS R1 debug render returns a PNG: status=200 bytes=3580
+10:10:28 [c-upgrade-default-silent] old PASS R2 batch debug render returns a zip: status=200 bytes=2122
+10:10:28 [c-upgrade-default-silent] old PASS T1 template save returns 200: status=200 body={"name":"customdir-template","group":"probe"}
+10:10:28 [c-upgrade-default-silent] old PASS T2 saved template is listed: status=200 body=[{"name":"customdir-template","group":"probe","updatedAt":"2026-11-26T02:10:27.3666762+00:00","uid":"75f710a33b114a3db184ed93eca761fe"}]
+10:10:28 [c-upgrade-default-silent] old PASS T3 saved template can be read: status=200
+10:10:28 [c-upgrade-default-silent] old PASS T4 template preview returns a PNG: status=200 bytes=3580
+10:10:28 [c-upgrade-default-silent] old PASS T5 template export returns a package: status=200 bytes=391
+10:10:28 [c-upgrade-default-silent] old PASS L1 log push returns 200: status=200 body={"received":1}
+10:10:28 [c-upgrade-default-silent] old PASS L2 pushed log line is returned: status=200 length=132
+10:10:28 [c-upgrade-default-silent] old PASS P1 client package upload returns 200: status=200 body={"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:10:27.464155+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}
+10:10:28 [c-upgrade-default-silent] old PASS P2 uploaded package is listed: status=200 body=[{"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:10:27.464155+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}]
+10:10:28 [c-upgrade-default-silent] old PASS P3 uploaded package downloads byte-identical: status=200 bytes=4150 expected=4150
+10:10:28 [c-upgrade-default-silent] old PASS P4 package delete returns 200: status=200 body={"deleted":"probe-package-1.2.3.zip"}
+10:10:28 [c-upgrade-default-silent] old PASS P5 deleted package is no longer listed: status=200 body=[]
+10:10:28 [c-upgrade-default-silent] old PASS X1 GET /api/pda-packages returns 200: status=200 body=[]
+10:10:28 [c-upgrade-default-silent] old PASS X1 GET /api/plugin-packages returns 200: status=200 body=[]
+10:10:28 [c-upgrade-default-silent] old PASS X1 GET /api/client-updates returns 200: status=200 body=[]
+10:10:28 [c-upgrade-default-silent] old PASS X1 GET /api/android-updates returns 200: status=200 body=[]
+10:10:28 [c-upgrade-default-silent] old PASS X1 GET /api/client-updates/drafts returns 200: status=200 body=[]
+10:10:28 [c-upgrade-default-silent] old PASS X1 GET /api/server/ipv4-candidates returns 200: status=200 body={"candidates":["172.17.234.240"]}
+10:10:28 [c-upgrade-default-silent] SMOKE_SUMMARY tag=old port=53961 passed=33 failed=0
+10:10:28 [c-upgrade-default-silent] job created before the upgrade: 8a0c6a1af29b40119b6c5f407792791e
+10:10:33 [c-upgrade-default-silent] CONFIG_FILE path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=87 leadingMarks=1
+10:10:33 [c-upgrade-default-silent] CONFIG_ORIGINAL { "Server": { "ListenUrl": "http://0.0.0.0:53961", "Dpi": 203 } }
+10:10:33 [c-upgrade-default-silent] CONFIG_FILE_WRITTEN bytes=87 bomMarks=1 jsonValid=True listenUrlHasNewPort=True
+10:10:33 [c-upgrade-default-silent] CONFIG step=moved newPort=53970 newPortListening=True oldPort=53961 oldPortListening=False
+10:10:34 [c-upgrade-default-silent] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=30 subFolders=0
+10:10:34 [c-upgrade-default-silent] FIXED_FILE ApkVerifierBridge.java 959
+10:10:34 [c-upgrade-default-silent] FIXED_FILE appsettings.json 87
+10:10:34 [c-upgrade-default-silent] FIXED_FILE DocumentFormat.OpenXml.dll 7985120
+10:10:34 [c-upgrade-default-silent] FIXED_FILE DocumentFormat.OpenXml.Framework.dll 478688
+10:10:34 [c-upgrade-default-silent] FIXED_FILE e_sqlite3.dll 1978880
+10:10:34 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Api.dll 59392
+10:10:34 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Core.dll 280064
+10:10:34 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Rendering.dll 18432
+10:10:34 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Server.deps.json 11765
+10:10:34 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Server.dll 418816
+10:10:34 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Server.exe 310272
+10:10:34 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Server.runtimeconfig.json 548
+10:10:34 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Server.staticwebassets.endpoints.json 53
+10:10:34 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Updates.dll 74240
+10:10:34 [c-upgrade-default-silent] FIXED_FILE libSkiaSharp.dll 11611680
+10:10:34 [c-upgrade-default-silent] FIXED_FILE libSkiaSharp.pdb 83832832
+10:10:34 [c-upgrade-default-silent] FIXED_FILE Microsoft.Data.Sqlite.dll 173088
+10:10:34 [c-upgrade-default-silent] FIXED_FILE Microsoft.Extensions.Hosting.WindowsServices.dll 29456
+10:10:34 [c-upgrade-default-silent] FIXED_FILE SkiaSharp.dll 490016
+10:10:34 [c-upgrade-default-silent] FIXED_FILE SQLitePCLRaw.core.dll 51200
+10:10:34 [c-upgrade-default-silent] FIXED_FILE SQLitePCLRaw.provider.e_sqlite3.dll 36864
+10:10:34 [c-upgrade-default-silent] FIXED_FILE System.IO.Packaging.dll 159504
+10:10:34 [c-upgrade-default-silent] FIXED_FILE System.ServiceProcess.ServiceController.dll 92472
+10:10:34 [c-upgrade-default-silent] FIXED_FILE TemplateFrame.dll 76288
+10:10:34 [c-upgrade-default-silent] FIXED_FILE TemplateFrame.Excel.Simple.dll 57344
+10:10:34 [c-upgrade-default-silent] FIXED_FILE TemplateFrame.Excel.Simple.resources.dll 6656
+10:10:34 [c-upgrade-default-silent] FIXED_FILE TemplateFrame.resources.dll 8704
+10:10:34 [c-upgrade-default-silent] FIXED_FILE update-publisher.cer 804
+10:10:34 [c-upgrade-default-silent] FIXED_FILE web.config 484
+10:10:34 [c-upgrade-default-silent] FIXED_FILE zxing.dll 516096
+10:10:34 [c-upgrade-default-silent] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=87 sha256=6cd337093bbd074faf66ac115311a34daad26ccf5180bd325fb18fd82ee21575 listen="ListenUrl": "http://0.0.0.0:53970",
+10:10:34 [c-upgrade-default-silent] ROOT_ENTRIES Server
+10:10:34 [c-upgrade-default-silent] X86_ROOT exists=False
+10:10:34 [c-upgrade-default-silent] CUSTOM_DIR path=C:\LabelFrame Test\Server exists=False
+10:10:34 [c-upgrade-default-silent] SETTINGS custom path=C:\LabelFrame Test\Server\appsettings.json exists=False
+10:10:35 [c-upgrade-default-silent] GUEST now=2026-11-26 10:10:34 programFiles=C:\Program Files lastBoot=2026-11-26 09:27:24
+10:10:35 [c-upgrade-default-silent] DIR install exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760804 exeProductVersion=1.6.0+08b10216cc08f3ff234e8397d13a872cee0dfc4b appsettings=True
+10:10:35 [c-upgrade-default-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760804 exeProductVersion=1.6.0+08b10216cc08f3ff234e8397d13a872cee0dfc4b appsettings=True
+10:10:35 [c-upgrade-default-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760804 exeProductVersion= appsettings=False
+10:10:35 [c-upgrade-default-silent] INSTALL_TOP_LEVEL ApkVerifierBridge.java | appsettings.json | DocumentFormat.OpenXml.dll | DocumentFormat.OpenXml.Framework.dll | e_sqlite3.dll | LabelFrame.Api.dll | LabelFrame.Core.dll | LabelFrame.Rendering.dll | LabelFrame.Server.deps.json | LabelFrame.Server.dll | LabelFrame.Server.exe | LabelFrame.Server.runtimeconfig.json | LabelFrame.Server.staticwebassets.endpoints.json | LabelFrame.Updates.dll | libSkiaSharp.dll | libSkiaSharp.pdb | Microsoft.Data.Sqlite.dll | Microsoft.Extensions.Hosting.WindowsServices.dll | SkiaSharp.dll | SQLitePCLRaw.core.dll | SQLitePCLRaw.provider.e_sqlite3.dll | System.IO.Packaging.dll | System.ServiceProcess.ServiceController.dll | TemplateFrame.dll | TemplateFrame.Excel.Simple.dll | TemplateFrame.Excel.Simple.resources.dll | TemplateFrame.resources.dll | update-publisher.cer | web.config | zxing.dll
+10:10:35 [c-upgrade-default-silent] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+10:10:35 [c-upgrade-default-silent] SERVICE state=Running startMode=Auto startName=LocalSystem pid=3024 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+10:10:35 [c-upgrade-default-silent] SERVICES_MATCHING LabelFrameServer
+10:10:35 [c-upgrade-default-silent] PRODUCT name=LabelFrame Server version=1.6.0 installLocation= installDate=20261126
+10:10:35 [c-upgrade-default-silent] PROCESS pid=3024 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=10:10:28
+10:10:35 [c-upgrade-default-silent] LISTEN address=0.0.0.0 port=53970 pid=3024
+10:10:35 [c-upgrade-default-silent] DATA root=C:\ProgramData\LabelFrame files=9
+10:10:35 [c-upgrade-default-silent] DATA \server\logs.db 16384
+10:10:35 [c-upgrade-default-silent] DATA \server\logs.db-shm 32768
+10:10:35 [c-upgrade-default-silent] DATA \server\logs.db-wal 0
+10:10:35 [c-upgrade-default-silent] DATA \server\server.db 45056
+10:10:35 [c-upgrade-default-silent] DATA \server\server.db-shm 32768
+10:10:35 [c-upgrade-default-silent] DATA \server\server.db-wal 0
+10:10:35 [c-upgrade-default-silent] DATA \server\templates.db 28672
+10:10:35 [c-upgrade-default-silent] DATA \server\templates.db-shm 32768
+10:10:35 [c-upgrade-default-silent] DATA \server\templates.db-wal 0
+10:10:35 [c-upgrade-default-silent] IN_PROGRESS_REGISTRATION False
+10:10:39 [c-upgrade-default-silent] 10:10:35 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\upgrade.log"
+10:10:39 [c-upgrade-default-silent] 10:10:39 MSI mode=install msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+10:10:39 [c-upgrade-default-silent] 10:10:39 LOG bytes=297760
+10:10:55 [c-upgrade-default-silent] WAIT port=53970 restart=False result=ready elapsed=0.3s lastCode=200 stateBefore=Running pidBefore=4020 stateAfter=Running pidAfter=4020 body={"service":"LabelFrame.Server","status":"ok"}
+10:10:55 [c-upgrade-default-silent] WAIT_STABILITY seconds=15 sameProcess=True state=Running pid=4020 healthCode=200
+10:11:16 [c-upgrade-default-silent] WAIT port=53961 restart=False result=timeout elapsed=20.4s lastCode=0 stateBefore=Running pidBefore=4020 stateAfter=Running pidAfter=4020 body=使用“0”个参数调用“GetResponse”时发生异常:“操作超时”
+10:11:18 [c-upgrade-default-silent] GUEST now=2026-11-26 10:11:16 programFiles=C:\Program Files lastBoot=2026-11-26 09:27:24
+10:11:18 [c-upgrade-default-silent] DIR install exists=False path=C:\LabelFrame Test\Server
+10:11:18 [c-upgrade-default-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=30 bytes=108760804 exeProductVersion=1.6.1+43127ac9d3f49ee9fc5d5d9917ca7e4952544f45 appsettings=True
+10:11:18 [c-upgrade-default-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=30 bytes=108760804 exeProductVersion= appsettings=False
+10:11:18 [c-upgrade-default-silent] DEFAULT_ROOT_TREE \Server | \Server\ApkVerifierBridge.java | \Server\appsettings.json | \Server\DocumentFormat.OpenXml.dll | \Server\DocumentFormat.OpenXml.Framework.dll | \Server\e_sqlite3.dll | \Server\LabelFrame.Api.dll | \Server\LabelFrame.Core.dll | \Server\LabelFrame.Rendering.dll | \Server\LabelFrame.Server.deps.json | \Server\LabelFrame.Server.dll | \Server\LabelFrame.Server.exe | \Server\LabelFrame.Server.runtimeconfig.json | \Server\LabelFrame.Server.staticwebassets.endpoints.json | \Server\LabelFrame.Updates.dll | \Server\libSkiaSharp.dll | \Server\libSkiaSharp.pdb | \Server\Microsoft.Data.Sqlite.dll | \Server\Microsoft.Extensions.Hosting.WindowsServices.dll | \Server\SkiaSharp.dll | \Server\SQLitePCLRaw.core.dll | \Server\SQLitePCLRaw.provider.e_sqlite3.dll | \Server\System.IO.Packaging.dll | \Server\System.ServiceProcess.ServiceController.dll | \Server\TemplateFrame.dll | \Server\TemplateFrame.Excel.Simple.dll | \Server\TemplateFrame.Excel.Simple.resources.dll | \Server\TemplateFrame.resources.dll | \Server\update-publisher.cer | \Server\web.config | \Server\zxing.dll
+10:11:18 [c-upgrade-default-silent] SERVICE state=Running startMode=Auto startName=LocalSystem pid=4020 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+10:11:18 [c-upgrade-default-silent] SERVICES_MATCHING LabelFrameServer
+10:11:18 [c-upgrade-default-silent] PRODUCT name=LabelFrame Server version=1.6.1 installLocation= installDate=20261126
+10:11:18 [c-upgrade-default-silent] PROCESS pid=4020 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe session=0 start=10:10:37
+10:11:18 [c-upgrade-default-silent] LISTEN address=0.0.0.0 port=53970 pid=4020
+10:11:18 [c-upgrade-default-silent] DATA root=C:\ProgramData\LabelFrame files=9
+10:11:18 [c-upgrade-default-silent] DATA \server\logs.db 16384
+10:11:18 [c-upgrade-default-silent] DATA \server\logs.db-shm 32768
+10:11:18 [c-upgrade-default-silent] DATA \server\logs.db-wal 0
+10:11:18 [c-upgrade-default-silent] DATA \server\server.db 45056
+10:11:18 [c-upgrade-default-silent] DATA \server\server.db-shm 32768
+10:11:18 [c-upgrade-default-silent] DATA \server\server.db-wal 0
+10:11:18 [c-upgrade-default-silent] DATA \server\templates.db 28672
+10:11:18 [c-upgrade-default-silent] DATA \server\templates.db-shm 32768
+10:11:18 [c-upgrade-default-silent] DATA \server\templates.db-wal 0
+10:11:18 [c-upgrade-default-silent] IN_PROGRESS_REGISTRATION False
+10:11:18 [c-upgrade-default-silent] FIXED_DIR path=C:\Program Files\LabelFrame\Server exists=True files=30 subFolders=0
+10:11:18 [c-upgrade-default-silent] FIXED_FILE ApkVerifierBridge.java 959
+10:11:18 [c-upgrade-default-silent] FIXED_FILE appsettings.json 87
+10:11:18 [c-upgrade-default-silent] FIXED_FILE DocumentFormat.OpenXml.dll 7985120
+10:11:18 [c-upgrade-default-silent] FIXED_FILE DocumentFormat.OpenXml.Framework.dll 478688
+10:11:18 [c-upgrade-default-silent] FIXED_FILE e_sqlite3.dll 1978880
+10:11:18 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Api.dll 59392
+10:11:18 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Core.dll 280064
+10:11:18 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Rendering.dll 18432
+10:11:18 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Server.deps.json 11765
+10:11:18 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Server.dll 418816
+10:11:18 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Server.exe 310272
+10:11:18 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Server.runtimeconfig.json 548
+10:11:18 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Server.staticwebassets.endpoints.json 53
+10:11:18 [c-upgrade-default-silent] FIXED_FILE LabelFrame.Updates.dll 74240
+10:11:18 [c-upgrade-default-silent] FIXED_FILE libSkiaSharp.dll 11611680
+10:11:18 [c-upgrade-default-silent] FIXED_FILE libSkiaSharp.pdb 83832832
+10:11:18 [c-upgrade-default-silent] FIXED_FILE Microsoft.Data.Sqlite.dll 173088
+10:11:18 [c-upgrade-default-silent] FIXED_FILE Microsoft.Extensions.Hosting.WindowsServices.dll 29456
+10:11:18 [c-upgrade-default-silent] FIXED_FILE SkiaSharp.dll 490016
+10:11:18 [c-upgrade-default-silent] FIXED_FILE SQLitePCLRaw.core.dll 51200
+10:11:18 [c-upgrade-default-silent] FIXED_FILE SQLitePCLRaw.provider.e_sqlite3.dll 36864
+10:11:18 [c-upgrade-default-silent] FIXED_FILE System.IO.Packaging.dll 159504
+10:11:18 [c-upgrade-default-silent] FIXED_FILE System.ServiceProcess.ServiceController.dll 92472
+10:11:18 [c-upgrade-default-silent] FIXED_FILE TemplateFrame.dll 76288
+10:11:18 [c-upgrade-default-silent] FIXED_FILE TemplateFrame.Excel.Simple.dll 57344
+10:11:18 [c-upgrade-default-silent] FIXED_FILE TemplateFrame.Excel.Simple.resources.dll 6656
+10:11:18 [c-upgrade-default-silent] FIXED_FILE TemplateFrame.resources.dll 8704
+10:11:18 [c-upgrade-default-silent] FIXED_FILE update-publisher.cer 804
+10:11:18 [c-upgrade-default-silent] FIXED_FILE web.config 484
+10:11:18 [c-upgrade-default-silent] FIXED_FILE zxing.dll 516096
+10:11:18 [c-upgrade-default-silent] SETTINGS fixed path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=87 sha256=6cd337093bbd074faf66ac115311a34daad26ccf5180bd325fb18fd82ee21575 listen="ListenUrl": "http://0.0.0.0:53970",
+10:11:18 [c-upgrade-default-silent] ROOT_ENTRIES Server
+10:11:18 [c-upgrade-default-silent] X86_ROOT exists=False
+10:11:18 [c-upgrade-default-silent] CUSTOM_DIR path=C:\LabelFrame Test\Server exists=False
+10:11:18 [c-upgrade-default-silent] SETTINGS custom path=C:\LabelFrame Test\Server\appsettings.json exists=False
+10:11:18 [c-upgrade-default-silent] port answering after the upgrade: 53970
+10:11:18 [c-upgrade-default-silent] after-upgrade PASS K1 job created before is still readable and Completed: status=200 body={"jobId":"8a0c6a1af29b40119b6c5f407792791e","requestId":"probe-acf214a275744646b5738757214f01c4","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:10:26.7555374+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Offline","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:11:18 [c-upgrade-default-silent] after-upgrade PASS K2 device registered before is still listed: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:10:26.6392957+00:00","lastSeenAt":"2026-11-26T02:10:26.9865743+00:00","status":"Offline","lastIp":"127.0.0.1"}]
+10:11:18 [c-upgrade-default-silent] after-upgrade PASS K3 template saved before is still readable: status=200
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS H1 healthz returns 200 with status ok: status=200 body={"service":"LabelFrame.Server","status":"ok"}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS I1 server info returns 200: status=200 body={"listenUrl":"http://0.0.0.0:53970","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.0"}
+10:11:19 [c-upgrade-default-silent] INFO root path status=404 contentType=0
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS D1 device list returns 200: status=200
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS D2 device registration returns 200: status=200 body={"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:11:19.0923515+00:00","lastSeenAt":"2026-11-26T02:11:19.0923515+00:00","status":"Online","lastIp":"127.0.0.1"}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS D3 registered device is listed with its name: status=200 body=[{"deviceId":"customdir-probe","name":"测试设备","registeredAt":"2026-11-26T02:10:26.6392957+00:00","lastSeenAt":"2026-11-26T02:11:19.0923515+00:00","status":"Online","lastIp":"127.0.0.1"}]
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS J1 job submission is accepted as Pending: status=202 body={"jobId":"fcfac1a9bb2c499fb5bbad11a5d3b4fa","requestId":"probe-f04d80aa57e842aaad9008f50d863547","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:11:19.1258051+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:11:19 [c-upgrade-default-silent] CREATED_JOB requestId=probe-f04d80aa57e842aaad9008f50d863547 jobId=fcfac1a9bb2c499fb5bbad11a5d3b4fa
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS J2 job can be queried and is Pending: status=200 body={"jobId":"fcfac1a9bb2c499fb5bbad11a5d3b4fa","requestId":"probe-f04d80aa57e842aaad9008f50d863547","targetDeviceId":"customdir-probe","status":"Pending","createdAt":"2026-11-26T02:11:19.1258051+00:00","totalItems":1,"completedItems":0,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS N1 notify long poll returns 200: status=200 body={"hasPending":true}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS J3 device claims the pending job: status=200 claimed=1 body=[{"jobId":"fcfac1a9bb2c499fb5bbad11a5d3b4fa","requestId":"probe-f04d80aa57e842aaad9008f50d863547","totalItems":1,"payload":{"template":{"contract":{"name":"probe-contract","version":"1.0","fields":[]},"layout":{"name":"probe-layout","contractName":"probe-contract","contractVersion":"1.0","widthMm":40,"heightMm":20,"elements":[{"type":"text","xMm":1,"yMm":1,"sourceKey":"","literal":"标签打印 ABC 123","fontName":"0","fontHeightMm":3,"fontWidthMm":0}]},"name":null,"images":null},"labels":[{"data":{}}]}}]
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS J4 progress report is accepted: status=200 body={"jobId":"fcfac1a9bb2c499fb5bbad11a5d3b4fa","requestId":"probe-f04d80aa57e842aaad9008f50d863547","targetDeviceId":"customdir-probe","status":"Claimed","createdAt":"2026-11-26T02:11:19.1258051+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS J5 result report is accepted: status=200 body={"jobId":"fcfac1a9bb2c499fb5bbad11a5d3b4fa","requestId":"probe-f04d80aa57e842aaad9008f50d863547","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:11:19.1258051+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS J6 job is Completed after the result report: status=200 body={"jobId":"fcfac1a9bb2c499fb5bbad11a5d3b4fa","requestId":"probe-f04d80aa57e842aaad9008f50d863547","targetDeviceId":"customdir-probe","status":"Completed","createdAt":"2026-11-26T02:11:19.1258051+00:00","totalItems":1,"completedItems":1,"failedItems":0,"errorMessage":null,"deviceStatus":"Online","callbackStatus":null,"callbackAttempts":null,"callbackLastError":null}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS J7 job history lists the job: status=200
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS R1 debug render returns a PNG: status=200 bytes=3580
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS R2 batch debug render returns a zip: status=200 bytes=2122
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS T1 template save returns 200: status=200 body={"name":"customdir-template","group":"probe"}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS T2 saved template is listed: status=200 body=[{"name":"customdir-template","group":"probe","updatedAt":"2026-11-26T02:11:19.3891038+00:00","uid":"20806ae6c19243f29b5e23a6b00f6236"}]
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS T3 saved template can be read: status=200
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS T4 template preview returns a PNG: status=200 bytes=3580
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS T5 template export returns a package: status=200 bytes=391
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS L1 log push returns 200: status=200 body={"received":1}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS L2 pushed log line is returned: status=200 length=263
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS P1 client package upload returns 200: status=200 body={"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:11:19.4823334+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS P2 uploaded package is listed: status=200 body=[{"fileName":"probe-package-1.2.3.zip","sizeBytes":4150,"modifiedAt":"2026-11-26T02:11:19.4823334+00:00","url":"/api/client-packages/probe-package-1.2.3.zip"}]
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS P3 uploaded package downloads byte-identical: status=200 bytes=4150 expected=4150
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS P4 package delete returns 200: status=200 body={"deleted":"probe-package-1.2.3.zip"}
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS P5 deleted package is no longer listed: status=200 body=[]
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS X1 GET /api/pda-packages returns 200: status=200 body=[]
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS X1 GET /api/plugin-packages returns 200: status=200 body=[]
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS X1 GET /api/client-updates returns 200: status=200 body=[]
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS X1 GET /api/android-updates returns 200: status=200 body=[]
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS X1 GET /api/client-updates/drafts returns 200: status=200 body=[]
+10:11:19 [c-upgrade-default-silent] after-upgrade PASS X1 GET /api/server/ipv4-candidates returns 200: status=200 body={"candidates":["172.17.234.240"]}
+10:11:19 [c-upgrade-default-silent] SMOKE_SUMMARY tag=after-upgrade port=53970 passed=33 failed=0
+10:11:20 [c-upgrade-default-silent] EVENTS since=11/26/2026 09:41:19 errors=6
+10:11:20 [c-upgrade-default-silent] EVENT level=错误 log=Application provider=Microsoft-Windows-Defrag id=264 time=10:08:43 message=存储优化程序无法在 (C:) 上完成 碎片合并，原因是: 由于可以回收的碎片数不足，碎片合并操作已中止(基于注册表中指定的限制)。 (0x89000028)
+10:11:20 [c-upgrade-default-silent] EVENT level=错误 log=System provider=Microsoft-Windows-Time-Service id=34 time=10:08:10 message=时间服务检测到系统时间需要更改 0 秒。时间服务将不会更改系统时间超过 54000 秒。请验证你的时间和时区是正确的，并且时间源 VM IC Time Synchronization Provider 工作正常。
+10:11:20 [c-upgrade-default-silent] EVENT level=错误 log=Application provider=Microsoft-Windows-Security-SPP id=8198 time=10:07:55 message=许可证激活(slui.exe)失败，返回以下错误代码: hr=0x8007139F 命令行参数: RuleId=31e71c49-8da7-4a2f-ad92-45d98a1c79ba;Action=AutoActivate;AppId=55c92734-d682-4d71-983e-d6ec3f16059f;SkuId=4de7cb65-cdf1-4de9-8ae8-e3cce27b9f2c;NotificationInterval=1440;Trigger=NetworkAvailable
+10:11:20 [c-upgrade-default-silent] EVENT level=错误 log=Application provider=Microsoft-Windows-Security-SPP id=8198 time=10:07:55 message=许可证激活(slui.exe)失败，返回以下错误代码: hr=0x8007139F 命令行参数: RuleId=31e71c49-8da7-4a2f-ad92-45d98a1c79ba;Action=AutoActivate;AppId=55c92734-d682-4d71-983e-d6ec3f16059f;SkuId=4de7cb65-cdf1-4de9-8ae8-e3cce27b9f2c;NotificationInterval=1440;Trigger=NetworkAvailable
+10:11:20 [c-upgrade-default-silent] EVENT level=错误 log=Application provider=Microsoft-Windows-Security-SPP id=8198 time=10:07:55 message=许可证激活(slui.exe)失败，返回以下错误代码: hr=0x8007139F 命令行参数: RuleId=31e71c49-8da7-4a2f-ad92-45d98a1c79ba;Action=AutoActivate;AppId=55c92734-d682-4d71-983e-d6ec3f16059f;SkuId=4de7cb65-cdf1-4de9-8ae8-e3cce27b9f2c;NotificationInterval=1440;Trigger=TimerEvent
+10:11:20 [c-upgrade-default-silent] EVENT level=错误 log=System provider=Microsoft-Windows-Time-Service id=34 time=10:07:47 message=时间服务检测到系统时间需要更改 0 秒。时间服务将不会更改系统时间超过 54000 秒。请验证你的时间和时区是正确的，并且时间源 VM IC Time Synchronization Provider 工作正常。
+10:11:20 [c-upgrade-default-silent] EVENTS labelFrameWarnings=0
+10:11:21 [c-upgrade-default-silent] 10:11:20 ARGUMENTS /x "C:\Probe\LabelFrame-Server-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\uninstall.log"
+10:11:21 [c-upgrade-default-silent] 10:11:21 MSI mode=uninstall msi=LabelFrame-Server-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=1.1s
+10:11:21 [c-upgrade-default-silent] 10:11:21 LOG bytes=132246
+10:11:23 [c-upgrade-default-silent] GUEST now=2026-11-26 10:11:21 programFiles=C:\Program Files lastBoot=2026-11-26 09:27:24
+10:11:23 [c-upgrade-default-silent] DIR install exists=False path=C:\LabelFrame Test\Server
+10:11:23 [c-upgrade-default-silent] DIR default exists=True path=C:\Program Files\LabelFrame\Server files=1 bytes=87 exeProductVersion= appsettings=True
+10:11:23 [c-upgrade-default-silent] DIR labelframe-root exists=True path=C:\Program Files\LabelFrame files=1 bytes=87 exeProductVersion= appsettings=False
+10:11:23 [c-upgrade-default-silent] DEFAULT_ROOT_TREE \Server | \Server\appsettings.json
+10:11:23 [c-upgrade-default-silent] SERVICE none
+10:11:23 [c-upgrade-default-silent] SERVICES_MATCHING
+10:11:23 [c-upgrade-default-silent] PRODUCT none
+10:11:23 [c-upgrade-default-silent] LISTEN none
+10:11:23 [c-upgrade-default-silent] DATA root=C:\ProgramData\LabelFrame files=3
+10:11:23 [c-upgrade-default-silent] DATA \server\logs.db 16384
+10:11:23 [c-upgrade-default-silent] DATA \server\server.db 45056
+10:11:23 [c-upgrade-default-silent] DATA \server\templates.db 28672
+10:11:23 [c-upgrade-default-silent] IN_PROGRESS_REGISTRATION False
+10:11:24 [c-upgrade-default-silent] PULLED C:\Probe\logs\install-old.log (172416 bytes)
+10:11:24 [c-upgrade-default-silent] PULLED C:\Probe\logs\uninstall.log (132246 bytes)
+10:11:24 [c-upgrade-default-silent] PULLED C:\Probe\logs\upgrade.log (297760 bytes)
+10:11:25 [c-upgrade-default-silent] PULLED C:\Probe\out\after-upgrade-export.lfpkg (391 bytes)
+10:11:25 [c-upgrade-default-silent] PULLED C:\Probe\out\after-upgrade-preview.png (3580 bytes)
+10:11:25 [c-upgrade-default-silent] PULLED C:\Probe\out\after-upgrade-render.png (3580 bytes)
+10:11:25 [c-upgrade-default-silent] PULLED C:\Probe\out\after-upgrade-render.zip (2122 bytes)
+10:11:25 [c-upgrade-default-silent] PULLED C:\Probe\out\old-export.lfpkg (391 bytes)
+10:11:25 [c-upgrade-default-silent] PULLED C:\Probe\out\old-preview.png (3580 bytes)
+10:11:25 [c-upgrade-default-silent] PULLED C:\Probe\out\old-render.png (3580 bytes)
+10:11:26 [c-upgrade-default-silent] PULLED C:\Probe\out\old-render.zip (2122 bytes)
+10:11:26 [c-upgrade-default-silent] ROUND_DONE
