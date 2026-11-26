@@ -1,0 +1,37 @@
+PASS S01 nothing is installed before the round: no product, no .NET runtime, no data directory : products=0 runtime=RUNTIME none serverData=SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=False
+PASS S02 the elevation prompt was turned off for the round only, and the walks ran unelevated : ELEVATION_POLICY ConsentPromptBehaviorAdmin before=5 after=0 EnableLUA=1 identity=DESKTOP-D65DJ5S\<account> elevated=False
+PASS S10 Server package: the first window is the missing-runtime dialog and no wizard page came before it : order=Prepare -> RuntimeMissing -> UserExit pagesBefore=0 outcome=runtime missing
+PASS S10a Server package: the dialog is the installer's own window, its wording is the package's, and it is on record as a screen shot : page=--- page RuntimeMissing (actual RuntimeMissing, class MsiDialogCloseClass) dialogShot=True desktopShot=True
+INFO S10a Server package, what the dialog says: --- page RuntimeMissing (actual RuntimeMissing, class MsiDialogCloseClass): 'LabelFrame 安装 - 缺少 ASP.NET Core Runtime' --- ; [84] SysLink <a href="https://dotnet.microsoft.com/download/dotnet/10.0">https://dotnet.microsoft.com/download/dotnet/10.0</a> ; [87] Button 退出 ; [80] Static 本机未检测到 ASP.NET Core 10 Runtime，请先安装后再运行本安装程序。 ; [82] Static 点击下方链接打开微软官方下载页： ; [210] Button 完成(&F) ; [116] Button 取消   (disabled) ; [103] Static WixUI_Bmp_Dialog ; [112] Button 上一步(&B)   (disabled) ; [46] Static LabelFrame Server 安装程序已中断。您的系统尚未修改。若要稍后安装此程序，请再次运行安装程序。 单击“完成”按钮退出安装向导。 ; [105] Static LabelFrame Server 安装向导中断
+PASS S10b Server package: the dialog links to the official .NET 10 download page : link=class=SysLink url=https://dotnet.microsoft.com/download/dotnet/10.0
+FAIL S10c Server package: the link was really clicked with the pointer and the default browser opened the download page : click=1 browsers=0 withAddress=0 windows=0 pageShown=False
+INFO S10c Server package: browser process: 
+INFO S10c Server package: browser windows: 
+INFO S10c Server package: what started after the click: taskhostw.exe(1092) msiexec.exe(1928) svchost.exe(2476) SgrmBroker.exe(2996) TextInputHost.exe(3392) wermgr.exe(5012) svchost.exe(5996) MicrosoftEdgeUpdate.exe(6132) RuntimeBroker.exe(6200) NisSrv.exe(6332) MSPCManagerOnline_3.3.14.3.exe(6340) MicrosoftEdgeUpdate.exe(6460) svchost.exe(7424) msiexec.exe(7512) msiexec.exe(7976) svchost.exe(8176) sppsvc.exe(8512) svchost.exe(8556) mscorsvw.exe(8680) MicrosoftEdgeUpdate.exe(8860) svchost.exe(8924)
+INFO S10c Server package: the walk's own checks: clicking the link starts a browser with the download address on its command line
+PASS S10d Server package: the desktop after the click is on record as a screen shot : afterClickShot=True browserShot=False
+PASS S10e Server package: after Exit the installer left nothing behind : products=0 services=0 serverSettings=exists=False clientSettings=exists=False
+PASS S15 Client package: the first window is the missing-runtime dialog and no wizard page came before it : order=Prepare -> RuntimeMissing -> UserExit pagesBefore=0 outcome=runtime missing
+PASS S15a Client package: the dialog is the installer's own window, its wording is the package's, and it is on record as a screen shot : page=--- page RuntimeMissing (actual RuntimeMissing, class MsiDialogCloseClass) dialogShot=True desktopShot=True
+INFO S15a Client package, what the dialog says: --- page RuntimeMissing (actual RuntimeMissing, class MsiDialogCloseClass): 'LabelFrame 安装 - 缺少 .NET 运行时' --- ; [163] SysLink <a href="https://dotnet.microsoft.com/download/dotnet/10.0">https://dotnet.microsoft.com/download/dotnet/10.0</a> ; [166] Button 退出 ; [155] Static 未检测到可用的 .NET 10 运行时（x64）。LabelFrame 需要 .NET Desktop Runtime 10 和 ASP.NET Core Runtime 10 两项，请都安装 x64 版本后再运行本安装程序。 ; [161] Static 微软官方下载页（两项都在这里，都选 x64）： ; [305] Button 完成(&F) ; [205] Button 取消   (disabled) ; [192] Static WixUI_Bmp_Dialog ; [201] Button 上一步(&B)   (disabled) ; [58] Static LabelFrame Client 安装程序已中断。您的系统尚未修改。若要稍后安装此程序，请再次运行安装程序。 单击“完成”按钮退出安装向导。 ; [194] Static LabelFrame Client 安装向导中断
+PASS S15b Client package: the dialog links to the official .NET 10 download page : link=class=SysLink url=https://dotnet.microsoft.com/download/dotnet/10.0
+FAIL S15c Client package: the link was really clicked with the pointer and the default browser opened the download page : click=1 browsers=0 withAddress=0 windows=0 pageShown=False
+INFO S15c Client package: browser process: 
+INFO S15c Client package: browser windows: 
+INFO S15c Client package: what started after the click: WinStore.App.exe(1044) backgroundTaskHost.exe(1628) backgroundTaskHost.exe(4016) dllhost.exe(5392) backgroundTaskHost.exe(5904) msiexec.exe(5984) RuntimeBroker.exe(6848) backgroundTaskHost.exe(7084) msiexec.exe(8084) ApplicationFrameHost.exe(8620) HxTsr.exe(9204)
+INFO S15c Client package: the walk's own checks: clicking the link starts a browser with the download address on its command line
+PASS S15d Client package: the desktop after the click is on record as a screen shot : afterClickShot=True browserShot=False
+PASS S15e Client package: after Exit the installer left nothing behind : products=0 services=0 serverSettings=exists=False clientSettings=exists=False
+PASS S20 the server was installed silently and its service runs : install=exit=0 elapsed=5.3s wait=result=ready elapsed=1.0s product=1.6.1 service=Running
+PASS S21 there are a configuration file and a data directory before the removal : settings= data=SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=9
+PASS S22 msiexec /x answered Yes removes the server with the basic interface: the package shows none of its own dialogs : outcome=removed after the system prompt path=UninstallConfirm packageDialogs=0 failed=0
+PASS S23 afterwards the server is gone while the configuration file and the data directory are still there (nothing asked about them) : products=0 services=0 settings= data=SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3
+PASS S30 the server was installed again and its service runs, with data there : install=exit=0 elapsed=4.4s wait=result=ready elapsed=0.6s service=Running data=SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=9
+FAIL S31 msiexec /i {code} REMOVE=ALL: the user data is asked about first, the box was ticked, the walk finished : outcome=unexpected window 'Verify' box=CLEAR_CHECKBOX initial=0 -> CLEAR_CHECKBOX after the click=1 failed=1 path=ClearData
+PASS S32 the ticked data question is on record as a screenshot : True
+FAIL S33 with the box ticked the server is gone, and so are the configuration file and the data directory : products=1 services=1 settings= data=SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True
+FAIL S40 the server was installed again and its service runs : install=exit=0 elapsed=1.1s service=Stopped
+PASS S41 running the package again and choosing Remove goes through the maintenance wizard without the user data question : outcome=removed question=False failed=0 path=MaintenanceWelcome -> MaintenanceType -> VerifyRemove -> Exit
+PASS S42 afterwards the server is gone : products=0 services=0
+PASS S50 no state of the round shows an unfinished installation : states=9 of 9 withInProgressRegistration=0
+SUMMARY pass=21 fail=5

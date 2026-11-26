@@ -1,0 +1,157 @@
+# Windows Installer log excerpts (client round). Line numbers refer to the pulled log of the same name.
+
+## new installation through the wizard, installer started elevated  [walk-client-install-launch-elevated.log]
+L9: ******* Product: C:\Probe\LabelFrame-Client-1.6.1.msi
+L36: MSI (c) (C0:98) [22:47:33:307]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8896
+L235: MSI (c) (C0:98) [22:47:33:885]: Skipping action: ClearDataDlg (condition is false)
+L284: MSI (c) (C0:98) [22:47:40:838]: Skipping action: MaintenanceWelcomeDlg (condition is false)
+L299: MSI (c) (C0:98) [22:47:40:885]: Doing action: ExecuteAction
+L312: ******* Product: C:\Probe\LabelFrame-Client-1.6.1.msi
+L344: MSI (s) (60:8C) [22:47:40:979]: Command Line: DOTNET10_PRESENT=0 DOTNET10_DESKTOP_PRESENT=0 WEBVIEW2_HKLM=153.0.4234.48 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8896 USERNAME=<account> SOURCEDIR=C:\Probe\ ACTION=I
+L541: MSI (s) (60:8C) [22:47:41:213]: Doing action: ShutdownWinHost
+L556: MSI (s) (60:8C) [22:47:43:401]: Feature: MainFeature; Installed: Absent; Request: Local; Action: Local
+L641: MSI (s) (60:8C) [22:47:43:416]: Doing action: RemoveExistingProducts
+L654: MSI (s) (60:8C) [22:47:43:416]: Doing action: InstallInitialize
+L715: MSI (s) (60:8C) [22:47:43:494]: Doing action: StopServices
+L721: MSI (s) (60:8C) [22:47:43:494]: Doing action: DeleteServices
+L736: MSI (s) (60:8C) [22:47:43:494]: Doing action: RemoveFiles
+L741: MSI (s) (60:8C) [22:47:43:494]: Skipping action: ClearDataDelFiles (condition is false)
+L742: MSI (s) (60:8C) [22:47:43:494]: Skipping action: ClearDataDelPrintDir (condition is false)
+L743: MSI (s) (60:8C) [22:47:43:494]: Skipping action: ClearDataDelMachineConfig (condition is false)
+L744: MSI (s) (60:8C) [22:47:43:494]: Skipping action: ClearDataDelAppSettings (condition is false)
+L786: MSI (s) (60:8C) [22:47:43:526]: Doing action: InstallServices
+L810: MSI (s) (60:8C) [22:47:43:541]: Doing action: StartUpdaterService
+L816: MSI (s) (60:8C) [22:47:43:541]: Doing action: StartServices
+L847: MSI (s) (60:8C) [22:47:43:557]: Doing action: InstallFinalize
+L1264: MSI (s) (60:8C) [22:47:44:260]: Executing op: CustomActionSchedule(Action=StartUpdaterService,ActionType=3073,Source=BinaryData,Target=WixQuietExec,CustomActionData="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --start-update-service --log "C:\Probe\logswalk-client-install-launch-eleva
+L1455: Property(S): UILevel = 5
+L1466: MSI (s) (60:8C) [22:47:47:197]: MainEngineThread is returning 0
+L1491: MSI (c) (C0:FC) [22:47:48:041]: Doing action: LaunchClientOnExit
+L1497: 操作结束 22:47:48: LaunchClientOnExit。返回值 1631。
+L1616: Property(C): UILevel = 5
+L1639: MSI (c) (C0:98) [22:47:48:088]: MainEngineThread is returning 0
+FACTS command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8896] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'LaunchClientOnExit', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StartUpdaterService', 'StopServices'] questionSkipped=[235] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=['1631'] feature=('AutoStartFeature', 'Absent', 'Local', 'Local')
+
+## new installation through the wizard, installer started the way a user starts it  [walk-client-install-launch-user.log]
+L9: ******* Product: C:\Probe\LabelFrame-Client-1.6.1.msi
+L41: MSI (c) (80:34) [22:49:34:013]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7040
+L238: MSI (c) (80:34) [22:49:34:388]: Skipping action: ClearDataDlg (condition is false)
+L287: MSI (c) (80:34) [22:49:41:004]: Skipping action: MaintenanceWelcomeDlg (condition is false)
+L302: MSI (c) (80:34) [22:49:41:020]: Doing action: ExecuteAction
+L315: ******* Product: C:\Probe\LabelFrame-Client-1.6.1.msi
+L352: MSI (s) (60:3C) [22:49:41:145]: Command Line: DOTNET10_PRESENT=0 DOTNET10_DESKTOP_PRESENT=0 WEBVIEW2_HKLM=153.0.4234.48 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7040 USERNAME=<account> SOURCEDIR=C:\Probe\ ACTION=I
+L557: MSI (s) (60:3C) [22:49:41:582]: Doing action: ShutdownWinHost
+L572: MSI (s) (60:3C) [22:49:43:770]: Feature: MainFeature; Installed: Absent; Request: Local; Action: Local
+L657: MSI (s) (60:3C) [22:49:43:801]: Doing action: RemoveExistingProducts
+L670: MSI (s) (60:3C) [22:49:43:801]: Doing action: InstallInitialize
+L732: MSI (s) (60:3C) [22:49:43:879]: Doing action: StopServices
+L738: MSI (s) (60:3C) [22:49:43:895]: Doing action: DeleteServices
+L753: MSI (s) (60:3C) [22:49:43:895]: Doing action: RemoveFiles
+L758: MSI (s) (60:3C) [22:49:43:910]: Skipping action: ClearDataDelFiles (condition is false)
+L759: MSI (s) (60:3C) [22:49:43:910]: Skipping action: ClearDataDelPrintDir (condition is false)
+L760: MSI (s) (60:3C) [22:49:43:910]: Skipping action: ClearDataDelMachineConfig (condition is false)
+L761: MSI (s) (60:3C) [22:49:43:910]: Skipping action: ClearDataDelAppSettings (condition is false)
+L803: MSI (s) (60:3C) [22:49:43:957]: Doing action: InstallServices
+L827: MSI (s) (60:3C) [22:49:43:973]: Doing action: StartUpdaterService
+L833: MSI (s) (60:3C) [22:49:43:973]: Doing action: StartServices
+L864: MSI (s) (60:3C) [22:49:43:988]: Doing action: InstallFinalize
+L1279: MSI (s) (60:3C) [22:49:44:660]: Executing op: CustomActionSchedule(Action=StartUpdaterService,ActionType=3073,Source=BinaryData,Target=WixQuietExec,CustomActionData="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --start-update-service --log "C:\Probe\logswalk-client-install-launch-user.
+L1471: Property(S): UILevel = 5
+L1482: MSI (s) (60:3C) [22:49:46:879]: MainEngineThread is returning 0
+L1507: MSI (c) (80:04) [22:49:47:739]: Doing action: LaunchClientOnExit
+L1513: 操作结束 22:49:47: LaunchClientOnExit。返回值 1631。
+L1630: Property(C): UILevel = 5
+L1653: MSI (c) (80:34) [22:49:47:785]: MainEngineThread is returning 0
+FACTS command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7040] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'LaunchClientOnExit', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StartUpdaterService', 'StopServices'] questionSkipped=[238] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=['1631'] feature=('AutoStartFeature', 'Absent', 'Local', 'Local')
+
+## msiexec /x answered Yes (the way "Apps and features" uninstalls)  [walk-client-remove-arp.log]
+L9: ******* Product: {A3E983CE-5143-480C-9C13-C5674715FDC6}
+L22: ******* Product: {A3E983CE-5143-480C-9C13-C5674715FDC6}
+L56: MSI (s) (EC:24) [22:54:30:163]: Command Line: REMOVE=ALL CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=7828
+L258: MSI (s) (EC:24) [22:54:30:710]: Feature: MainFeature; Installed: Local; Request: Absent; Action: Absent
+L343: MSI (s) (EC:24) [22:54:30:850]: Doing action: RemoveExistingProducts
+L348: MSI (s) (EC:24) [22:54:30:850]: Doing action: InstallInitialize
+L386: MSI (s) (EC:24) [22:54:31:054]: Doing action: StopServices
+L390: MSI (s) (EC:24) [22:54:31:054]: Doing action: DeleteServices
+L402: MSI (s) (EC:24) [22:54:31:069]: Doing action: RemoveFiles
+L409: MSI (s) (EC:24) [22:54:31:085]: Skipping action: ClearDataDelFiles (condition is false)
+L410: MSI (s) (EC:24) [22:54:31:085]: Skipping action: ClearDataDelPrintDir (condition is false)
+L411: MSI (s) (EC:24) [22:54:31:085]: Skipping action: ClearDataDelMachineConfig (condition is false)
+L412: MSI (s) (EC:24) [22:54:31:085]: Skipping action: ClearDataDelAppSettings (condition is false)
+L443: MSI (s) (EC:24) [22:54:31:085]: Doing action: InstallServices
+L459: MSI (s) (EC:24) [22:54:31:085]: Doing action: StartServices
+L479: MSI (s) (EC:24) [22:54:31:100]: Doing action: InstallFinalize
+L1033: Property(S): UILevel = 3
+L1055: MSI (s) (EC:24) [22:54:32:929]: MainEngineThread is returning 0
+L1073: MSI (c) (94:F0) [22:54:32:944]: MainEngineThread is returning 0
+FACTS command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=7828] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+
+## running the package again and choosing Remove in the maintenance wizard  [walk-client-remove-rerun.log]
+L9: ******* Product: C:\Probe\LabelFrame-Client-1.6.1.msi
+L38: MSI (c) (54:94) [23:01:22:869]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4436
+L255: MSI (c) (54:94) [23:01:23:337]: Skipping action: ClearDataDlg (condition is false)
+L258: MSI (c) (54:94) [23:01:23:337]: Doing action: MaintenanceWelcomeDlg
+L324: MSI (c) (54:94) [23:01:27:665]: Doing action: ExecuteAction
+L337: ******* Product: C:\Probe\LabelFrame-Client-1.6.1.msi
+L367: MSI (s) (D4:DC) [23:01:27:681]: Command Line: DOTNET10_PRESENT=0 DOTNET10_DESKTOP_PRESENT=0 WEBVIEW2_HKLM=153.0.4234.48 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4436 PRODUCTLANGUAGE=2052 USERNAME=<account> ACTION=
+L593: MSI (s) (D4:DC) [23:01:28:275]: Doing action: ShutdownWinHost
+L608: MSI (s) (D4:DC) [23:01:30:634]: Feature: MainFeature; Installed: Local; Request: Absent; Action: Absent
+L694: MSI (s) (D4:DC) [23:01:30:728]: Doing action: RemoveExistingProducts
+L700: MSI (s) (D4:DC) [23:01:30:744]: Doing action: InstallInitialize
+L741: MSI (s) (D4:DC) [23:01:30:931]: Doing action: StopServices
+L747: MSI (s) (D4:DC) [23:01:30:931]: Doing action: DeleteServices
+L765: MSI (s) (D4:DC) [23:01:30:931]: Doing action: RemoveFiles
+L774: MSI (s) (D4:DC) [23:01:30:947]: Skipping action: ClearDataDelFiles (condition is false)
+L775: MSI (s) (D4:DC) [23:01:30:947]: Skipping action: ClearDataDelPrintDir (condition is false)
+L776: MSI (s) (D4:DC) [23:01:30:947]: Skipping action: ClearDataDelMachineConfig (condition is false)
+L777: MSI (s) (D4:DC) [23:01:30:947]: Skipping action: ClearDataDelAppSettings (condition is false)
+L813: MSI (s) (D4:DC) [23:01:30:962]: Doing action: InstallServices
+L832: MSI (s) (D4:DC) [23:01:30:962]: Doing action: StartServices
+L858: MSI (s) (D4:DC) [23:01:30:978]: Doing action: InstallFinalize
+L1610: Property(S): UILevel = 5
+L1619: MSI (s) (D4:DC) [23:01:32:634]: MainEngineThread is returning 0
+L1762: Property(C): UILevel = 5
+L1786: MSI (c) (54:94) [23:01:33:619]: MainEngineThread is returning 0
+FACTS command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4436] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'MaintenanceWelcomeDlg', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StopServices'] questionSkipped=[255] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+
+## silent uninstall  [13-uninstall-silent.log]
+L5: ******* Product: C:\Probe\LabelFrame-Client-1.6.1.msi
+L18: ******* Product: C:\Probe\LabelFrame-Client-1.6.1.msi
+L41: MSI (s) (60:A8) [22:49:12:440]: Command Line: REBOOT=ReallySuppress REMOVE=ALL CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=6648
+L244: MSI (s) (60:A8) [22:49:12:689]: Feature: MainFeature; Installed: Local; Request: Absent; Action: Absent
+L330: MSI (s) (60:A8) [22:49:12:768]: Doing action: RemoveExistingProducts
+L335: MSI (s) (60:A8) [22:49:12:768]: Doing action: InstallInitialize
+L365: MSI (s) (60:A8) [22:49:12:815]: Doing action: StopServices
+L369: MSI (s) (60:A8) [22:49:12:815]: Doing action: DeleteServices
+L381: MSI (s) (60:A8) [22:49:12:815]: Doing action: RemoveFiles
+L388: MSI (s) (60:A8) [22:49:12:830]: Skipping action: ClearDataDelFiles (condition is false)
+L389: MSI (s) (60:A8) [22:49:12:830]: Skipping action: ClearDataDelPrintDir (condition is false)
+L390: MSI (s) (60:A8) [22:49:12:830]: Skipping action: ClearDataDelMachineConfig (condition is false)
+L391: MSI (s) (60:A8) [22:49:12:830]: Skipping action: ClearDataDelAppSettings (condition is false)
+L422: MSI (s) (60:A8) [22:49:12:846]: Doing action: InstallServices
+L438: MSI (s) (60:A8) [22:49:12:846]: Doing action: StartServices
+L458: MSI (s) (60:A8) [22:49:12:846]: Doing action: InstallFinalize
+L1010: Property(S): UILevel = 2
+L1031: MSI (s) (60:A8) [22:49:14:658]: MainEngineThread is returning 0
+L1049: MSI (c) (F8:9C) [22:49:14:674]: MainEngineThread is returning 0
+FACTS command=[REBOOT=ReallySuppress REMOVE=ALL  dir=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=6648] uilevel=2 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+
+# Judgements
+PASS new installation through the wizard, installer started elevated: the installation itself succeeded : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8896] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'LaunchClientOnExit', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StartUpdaterService', 'StopServices'] questionSkipped=[235] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=['1631'] feature=('AutoStartFeature', 'Absent', 'Local', 'Local')
+PASS new installation through the wizard, installer started elevated: with the box ticked the launch action ran : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8896] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'LaunchClientOnExit', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StartUpdaterService', 'StopServices'] questionSkipped=[235] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=['1631'] feature=('AutoStartFeature', 'Absent', 'Local', 'Local')
+FAIL new installation through the wizard, installer started elevated: the launch action returned 1 (success) : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8896] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'LaunchClientOnExit', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StartUpdaterService', 'StopServices'] questionSkipped=[235] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=['1631'] feature=('AutoStartFeature', 'Absent', 'Local', 'Local')
+PASS new installation through the wizard, installer started the way a user starts it: the installation itself succeeded : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7040] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'LaunchClientOnExit', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StartUpdaterService', 'StopServices'] questionSkipped=[238] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=['1631'] feature=('AutoStartFeature', 'Absent', 'Local', 'Local')
+PASS new installation through the wizard, installer started the way a user starts it: with the box ticked the launch action ran : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7040] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'LaunchClientOnExit', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StartUpdaterService', 'StopServices'] questionSkipped=[238] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=['1631'] feature=('AutoStartFeature', 'Absent', 'Local', 'Local')
+FAIL new installation through the wizard, installer started the way a user starts it: the launch action returned 1 (success) : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7040] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'LaunchClientOnExit', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StartUpdaterService', 'StopServices'] questionSkipped=[238] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=['1631'] feature=('AutoStartFeature', 'Absent', 'Local', 'Local')
+PASS msiexec /x answered Yes (the way "Apps and features" uninstalls): the basic interface (what "Apps and features" starts) : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=7828] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /x answered Yes (the way "Apps and features" uninstalls): nothing asks about the user data : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=7828] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /x answered Yes (the way "Apps and features" uninstalls): the package shows none of its wizard pages : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=7828] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /x answered Yes (the way "Apps and features" uninstalls): every clear action is skipped : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=7828] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /x answered Yes (the way "Apps and features" uninstalls): the removal succeeds : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=7828] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS running the package again and choosing Remove in the maintenance wizard: the maintenance wizard ran : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4436] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'MaintenanceWelcomeDlg', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StopServices'] questionSkipped=[255] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS running the package again and choosing Remove in the maintenance wizard: the data question is skipped : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4436] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'MaintenanceWelcomeDlg', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StopServices'] questionSkipped=[255] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS running the package again and choosing Remove in the maintenance wizard: every clear action is skipped : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4436] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'MaintenanceWelcomeDlg', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StopServices'] questionSkipped=[255] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS running the package again and choosing Remove in the maintenance wizard: the removal succeeds : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4436] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'MaintenanceWelcomeDlg', 'RemoveExistingProducts', 'RemoveFiles', 'ShutdownWinHost', 'StartServices', 'StopServices'] questionSkipped=[255] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS silent uninstall: nothing asks about the user data : command=[REBOOT=ReallySuppress REMOVE=ALL  dir=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=6648] uilevel=2 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS silent uninstall: every clear action is skipped : command=[REBOOT=ReallySuppress REMOVE=ALL  dir=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=6648] uilevel=2 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS silent uninstall: the removal succeeds : command=[REBOOT=ReallySuppress REMOVE=ALL  dir=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=6648] uilevel=2 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')

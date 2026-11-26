@@ -1,0 +1,57 @@
+FAIL C01 nothing is installed before the round: no product, no .NET runtime, no auto-start entry, no user data : products=0 runtime=RUNTIME name=Microsoft.AspNetCore.App runKey=RUN_KEY present=False userDir=USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+PASS C02 the elevation prompt was turned off for the round only, and the test account is an ordinary administrator (UAC on) : ELEVATION_POLICY ConsentPromptBehaviorAdmin before=5 after=0 EnableLUA=1 ACCOUNT sid=<sid> inAdministrators=True
+PASS C03 contrast, installer started elevated: the walk went through every page, both boxes were ticked by default : outcome=completed autoStart=1 launch=1 identity=identity=DESKTOP-D65DJ5S\<account> elevated=True runLevel=RUN_LEVEL=Highest
+INFO C03 contrast: after Finish with the box ticked: LAUNCH_PROCESSES=0 ; token=TOKEN sid=<sid> linkedToken=available ; failed checks=1 the client starts after Finish while "open LabelFrame now" is ticked
+PASS C04 contrast: the installation itself is in place, and the package was removed silently afterwards : product=1.6.1 runKey=True userDirAfterwards=USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False silentUninstall=exit=0 elapsed=3.2s cleanAgain=1
+FAIL C05 installer started unelevated (as from the desktop): the walk went through every page, both boxes ticked, no check failed : outcome=completed identity=identity=DESKTOP-D65DJ5S\<account> elevated=False runLevel=RUN_LEVEL=Limited token=TOKEN sid=<sid> linkedToken=available failed=1 the client starts after Finish while "open LabelFrame now" is ticked
+FAIL C06 the client started after Finish, shows its window, answers on its port and opened no system browser : processes=0 window= api= browsersOpened= webview2=
+INFO C06 the launched client: 
+FAIL C07 the state outside the desktop agrees: a printing client runs in the interactive session, the updater service runs, and the client has created its data : printingClientsInSession1=0 updater=Running userDir=
+FAIL C08 the completion page and the launched client are on record as screenshots : True False False
+FAIL C09 the client that was started from the completion page left through its own shutdown endpoint : HOST_SHUTDOWN_SUMMARY targets=0 leftByItself=0 endedByForce=0 printingHostsLeft=0 listening53960=0 updaterServiceRunning=1
+FAIL C10 after the restart the client came back by itself: in the tray, no window, no browser window, and no check failed : failed=2 processes=1 captionedWindows=0 sessions=1 browsersOpened=0 browserWindows=0 tray=TRAY_ICON_FOUND=False place= trayWindow=TRAY_WINDOW present=False process=0 ofClient=False
+INFO C10 browsers since boot: 5 (the browser's own background start and helper processes do not count as opened)
+INFO C10 the client started at logon: AUTOSTART_PROCESS name=LabelFrame.WinHost.exe pid=7648 session=1 started=22:52:03 commandLine="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart
+PASS C11 the client that came back answers on its port and the host log says the tray is ready : api=200 trayLogLines=1
+INFO C11 host log: 
+PASS C12 the tray reading itself worked: every button was read, what was read is on record raw, and the desktop and the opened list of hidden icons are on record : visibleTrayButtons=3 hiddenTrayButtons=2 place= desktopShot=True overflowShot=True
+INFO C12 visible: 2:4968:未安装任何音频输出设备。
+INFO C12 hidden: ::
+INFO C12 raw: count=3 ; 0|7596|OneDrive / 未登录 ; 1|4968|网络 2 / Internet 访问 ; 2|4968|未安装任何音频输出设备。
+INFO C12 raw: 65772
+PASS C13 the state taken outside the desktop agrees: a client with --autostart in session 1, created after the boot, and no browser opened : autostartProcesses=1 inSession1SinceBoot=1 browsersOpened=0
+INFO C13 the process started at logon: PROCESS name=LabelFrame.WinHost.exe pid=7648 parent=4968 session=1 started=22:52:03 sinceBoot=True commandLine="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart
+PASS C14 the auto-start client left through its own shutdown endpoint : HOST_SHUTDOWN_SUMMARY targets=1 leftByItself=1 endedByForce=0 printingHostsLeft=0 listening53960=0 updaterServiceRunning=1
+PASS C20 msiexec /x starts with the system question (not with a page of the package); answered No, the installer ends : outcome=uninstall declined path=UninstallConfirm prompt=UNINSTALL_PROMPT text=是(&Y) | 否(&N) | 你确定要卸载此产品吗? failed=0 runLevel=RUN_LEVEL=Limited productCode=product code: {A3E983CE-5143-480C-9C13-C5674715FDC6}  way of starting: x
+PASS C21 after No everything is still there: product, updater service, auto-start entry, user data : product=1.6.1 updater=Running runKey=True userDir=USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=6
+PASS C22 msiexec /x answered Yes removes the product with the basic interface: the package shows none of its own dialogs : outcome=removed after the system prompt path=UninstallConfirm packageDialogs=0 failed=0 
+INFO C22 what was seen after Yes: UninstallConfirm ; installer exit code=0
+PASS C23 afterwards the product is gone while the user data is still there (nothing asked about it) : products=0 services=0 printingClientProcesses=0 runKey=False userDir=USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=6 clientAppsettings=exists=True
+PASS C24 the system question is on record as a screenshot : True
+PASS C30 there was user data before the removal with the box not ticked : product=1.6.1 userDir=USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=6
+FAIL C31 msiexec /i {code} REMOVE=ALL: the user data is asked about first, the box is not ticked by default, the walk finished : outcome=unexpected window 'Verify' question=True box=0 failed=1 path=ClearData
+INFO C31 the page after the data question and the rest of the route: ClearData
+FAIL C32 with the box not ticked the product is gone and the user data is still there : products=1 userDir=USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=6 clientAppsettings=exists=True
+PASS C33 there was user data before the removal with the box ticked : product=1.6.1 userDir=USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=6
+FAIL C34 the data question was answered with the box ticked and the walk finished : outcome=unexpected window 'Verify' box=CLEAR_CHECKBOX initial=0 -> CLEAR_CHECKBOX after the click=1 failed=1 path=ClearData
+PASS C35 the ticked data question is on record as a screenshot : True
+FAIL C36 with the box ticked the product is gone, and so are the user data directory, the machine-level settings and the client configuration file : products=1 userDir=USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True clientAppsettings=exists=True machineSettings=CLIENT_SETTINGS exists=False
+INFO C36 files left in the user directory after the uninstall with the box ticked: 6 | sub-directories: 1
+INFO C36 USER_FILE name=host-20261126.log bytes=1646 sha256=978879c9cdf8b64f70e5b69a4d0ffcfe50156257ae9b87aaa330bcafd3be5834
+INFO C36 USER_FILE name=jobs.db bytes=40960 sha256=5c588d8a0ddf443d8dd2df8fb0c0cf12f17922c34e379682b6e1482f7cc46cdb
+INFO C36 USER_FILE name=logs.db bytes=16384 sha256=da4132138b3049c7e6ebd9c490407d456ae725ecf47ada4a723344d7a37d2ae8
+INFO C36 USER_FILE name=logs\app-20261126.log bytes=36157 sha256=b3a2a3a2205cb2b15819b6d570262975d74dbe99bffece6a461c4790e86c9256
+INFO C36 USER_FILE name=logs\serilog-self.log bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+INFO C36 USER_FILE name=templates.db bytes=28672 sha256=1f533df3563b63cc5975ab88f08a8dda254cf1bb7860b898649bdf9abea1f43a
+INFO C36 USER_SUBDIRS logs | updates
+INFO C32 user data kept with the box not ticked: 6 files
+FAIL C40 the auto-start box was unticked on the options page, "open LabelFrame now" was unticked too, and the walk finished without a client being started : autoStart= ->  launch= clientStarted= failed=1
+FAIL C41 the installation is in place but without the auto-start entry : product=1.6.1 updater=Running runKey=True
+FAIL C42 after the restart no client was started, there is no tray icon and no tray window, no browser window, and no check failed : failed=2 processes=1 otherClients=1 tray=TRAY_ICON_FOUND=False place= trayWindow=TRAY_WINDOW present=False process=0 ofClient=False trayButtons=3 desktopShot=True overflowShot=True
+INFO C42 hidden: ::
+FAIL C43 the state taken outside the desktop agrees: only the updater service runs : winhostProcesses=2 updater=1 runKey=True
+PASS C50 running the package again and choosing Remove goes through the maintenance wizard without the user data question : install=exit=0 elapsed=6.2s outcome=removed question=False failed=0 path=MaintenanceWelcome -> MaintenanceType -> VerifyRemove -> Removing -> Exit buttons=4
+INFO C50 the buttons of the change/repair/remove page: MAINTENANCE_BUTTON caption=[更改(&C)] enabled=False ; MAINTENANCE_BUTTON caption=[修复(&P)] enabled=True ; MAINTENANCE_BUTTON caption=[删除(&R)] enabled=True ; MAINTENANCE_BUTTON caption=[上一步(&B)] enabled=True ; MAINTENANCE_BUTTON caption=[下一步(&N)] enabled=False ; MAINTENANCE_BUTTON caption=[取消] enabled=True
+PASS C51 afterwards the product is gone and the user data is still there : products=0 userDir=USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=6
+PASS C60 no state of the round shows an unfinished installation : states=14 of 14 withInProgressRegistration=0
+SUMMARY pass=18 fail=15

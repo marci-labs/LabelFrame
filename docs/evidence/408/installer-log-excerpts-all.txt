@@ -1,0 +1,157 @@
+# Windows Installer log excerpts (all round). Line numbers refer to the pulled log of the same name.
+
+## msiexec /i {code} REMOVE=ALL, the data question not ticked  [walk-client-remove-all-keep.log]
+L9: ******* Product: {A3E983CE-5143-480C-9C13-C5674715FDC6}
+L38: MSI (c) (BC:F4) [23:37:04:295]: Command Line: REMOVE=ALL CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7868
+L247: MSI (c) (BC:F4) [23:37:04:889]: Doing action: ClearDataDlg
+L275: MSI (c) (BC:F4) [23:37:07:451]: Skipping action: MaintenanceWelcomeDlg (condition is false)
+L293: MSI (c) (BC:F4) [23:37:07:529]: Doing action: ExecuteAction
+L306: ******* Product: C:\Windows\Installer\35306.msi
+L340: MSI (s) (68:D8) [23:37:07:608]: Command Line: DOTNET10_PRESENT=0 DOTNET10_DESKTOP_PRESENT=0 WEBVIEW2_HKLM=153.0.4234.48 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7868 PRODUCTLANGUAGE=2052 USERNAME=<account> ACTION=
+L550: MSI (s) (68:D8) [23:37:08:295]: Feature: MainFeature; Installed: Local; Request: Absent; Action: Absent
+L635: MSI (s) (68:D8) [23:37:08:389]: Doing action: RemoveExistingProducts
+L641: MSI (s) (68:D8) [23:37:08:404]: Doing action: InstallInitialize
+L682: MSI (s) (68:D8) [23:37:08:451]: Doing action: StopServices
+L688: MSI (s) (68:D8) [23:37:08:451]: Doing action: DeleteServices
+L706: MSI (s) (68:D8) [23:37:08:467]: Doing action: RemoveFiles
+L715: MSI (s) (68:D8) [23:37:08:498]: Skipping action: ClearDataDelFiles (condition is false)
+L716: MSI (s) (68:D8) [23:37:08:498]: Skipping action: ClearDataDelPrintDir (condition is false)
+L717: MSI (s) (68:D8) [23:37:08:498]: Skipping action: ClearDataDelMachineConfig (condition is false)
+L718: MSI (s) (68:D8) [23:37:08:498]: Skipping action: ClearDataDelAppSettings (condition is false)
+L754: MSI (s) (68:D8) [23:37:08:514]: Doing action: InstallServices
+L773: MSI (s) (68:D8) [23:37:08:514]: Doing action: StartServices
+L799: MSI (s) (68:D8) [23:37:08:529]: Doing action: InstallFinalize
+L1551: Property(S): UILevel = 5
+L1560: MSI (s) (68:D8) [23:37:10:295]: MainEngineThread is returning 0
+L1704: Property(C): UILevel = 5
+L1728: MSI (c) (BC:F4) [23:37:14:905]: MainEngineThread is returning 0
+FACTS command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7868] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+
+## msiexec /i {code} REMOVE=ALL, the data question ticked  [walk-client-remove-all-clear.log]
+L9: ******* Product: {A3E983CE-5143-480C-9C13-C5674715FDC6}
+L38: MSI (c) (D4:00) [23:39:18:575]: Command Line: REMOVE=ALL CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=5076
+L247: MSI (c) (D4:00) [23:39:19:075]: Doing action: ClearDataDlg
+L276: MSI (c) (D4:00) [23:39:22:012]: Skipping action: MaintenanceWelcomeDlg (condition is false)
+L294: MSI (c) (D4:00) [23:39:22:075]: Doing action: ExecuteAction
+L307: ******* Product: C:\Windows\Installer\1c387.msi
+L341: MSI (s) (68:78) [23:39:22:106]: Command Line: DOTNET10_PRESENT=0 DOTNET10_DESKTOP_PRESENT=0 WEBVIEW2_HKLM=153.0.4234.48 CLEAR_USER_DATA=1 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=5076 PRODUCTLANGUAGE=2052 USERNAME=
+L552: MSI (s) (68:78) [23:39:22:512]: Feature: MainFeature; Installed: Local; Request: Absent; Action: Absent
+L637: MSI (s) (68:78) [23:39:22:606]: Doing action: RemoveExistingProducts
+L643: MSI (s) (68:78) [23:39:22:606]: Doing action: InstallInitialize
+L684: MSI (s) (68:78) [23:39:22:668]: Doing action: StopServices
+L690: MSI (s) (68:78) [23:39:22:668]: Doing action: DeleteServices
+L708: MSI (s) (68:78) [23:39:22:684]: Doing action: RemoveFiles
+L717: MSI (s) (68:78) [23:39:22:715]: Doing action: ClearDataDelFiles
+L723: MSI (s) (68:78) [23:39:22:715]: Doing action: ClearDataDelPrintDir
+L729: MSI (s) (68:78) [23:39:22:715]: Doing action: ClearDataDelMachineConfig
+L735: MSI (s) (68:78) [23:39:22:731]: Doing action: ClearDataDelAppSettings
+L776: MSI (s) (68:78) [23:39:22:747]: Doing action: InstallServices
+L795: MSI (s) (68:78) [23:39:22:747]: Doing action: StartServices
+L821: MSI (s) (68:78) [23:39:22:762]: Doing action: InstallFinalize
+L1374: MSI (s) (68:78) [23:39:24:262]: Executing op: CustomActionSchedule(Action=ClearDataDelFiles,ActionType=525410,Source=C:\Windows\SysWOW64\,Target=cmd.exe /c del /q "%LOCALAPPDATA%\LabelFrame\jobs.db" "%LOCALAPPDATA%\LabelFrame\templates.db" "%LOCALAPPDATA%\LabelFrame\logs.db" "%LOCALAPPDATA%\LabelFra
+L1378: MSI (s) (68:78) [23:39:24:387]: Executing op: CustomActionSchedule(Action=ClearDataDelPrintDir,ActionType=525410,Source=C:\Windows\SysWOW64\,Target=cmd.exe /c rmdir /s /q "%LOCALAPPDATA%\LabelFrame\print",)
+L1383: MSI (s) (68:78) [23:39:24:496]: Executing op: CustomActionSchedule(Action=ClearDataDelMachineConfig,ActionType=525410,Source=C:\Windows\SysWOW64\,Target=cmd.exe /c del /q "%ProgramData%\LabelFrame\Client\settings.json",)
+L1388: MSI (s) (68:78) [23:39:24:590]: Executing op: CustomActionSchedule(Action=ClearDataDelAppSettings,ActionType=525410,Source=C:\Windows\SysWOW64\,Target=cmd.exe /c del /q "%ProgramFiles%\LabelFrame\Client\appsettings.json",)
+L1592: Property(S): UILevel = 5
+L1601: MSI (s) (68:78) [23:39:24:809]: MainEngineThread is returning 0
+L1746: Property(C): UILevel = 5
+L1770: MSI (c) (D4:00) [23:39:28:121]: MainEngineThread is returning 0
+FACTS command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=5076] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] clearSkipped=[] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+
+## msiexec /i {code} REMOVE=ALL, the data question not ticked  [walk-server-remove-all-keep.log]
+L9: ******* Product: {9E0433E6-D433-4F08-A367-9FA58EFABE3F}
+L38: MSI (c) (3C:F4) [23:44:40:116]: Command Line: REMOVE=ALL CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1596
+L220: MSI (c) (3C:F4) [23:44:40:631]: Doing action: ClearDataDlg
+L250: MSI (c) (3C:F4) [23:44:43:210]: Skipping action: MaintenanceWelcomeDlg (condition is false)
+L268: MSI (c) (3C:F4) [23:44:43:288]: Doing action: ExecuteAction
+L281: ******* Product: C:\Windows\Installer\22cd1.msi
+L315: MSI (s) (88:24) [23:44:43:335]: Command Line: DOTNET10_PRESENT=0 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1596 PRODUCTLANGUAGE=2052 USERNAME=<account> ACTION=INSTALL EXECUTEACTION=INSTALL ROOTDRIVE=C:\ INSTALLLEVE
+L493: MSI (s) (88:24) [23:44:43:772]: Feature: MainFeature; Installed: Local; Request: Absent; Action: Absent
+L550: MSI (s) (88:24) [23:44:43:944]: Doing action: RemoveExistingProducts
+L556: MSI (s) (88:24) [23:44:43:944]: Doing action: InstallInitialize
+L587: MSI (s) (88:24) [23:44:43:960]: Doing action: StopServerService
+L605: MSI (s) (88:24) [23:44:43:991]: Doing action: StopServices
+L611: MSI (s) (88:24) [23:44:43:991]: Doing action: DeleteServices
+L617: MSI (s) (88:24) [23:44:44:006]: Doing action: RemoveFiles
+L625: MSI (s) (88:24) [23:44:44:022]: Skipping action: ClearDataDelServerDir (condition is false)
+L626: MSI (s) (88:24) [23:44:44:022]: Skipping action: ClearDataDelServerDb (condition is false)
+L627: MSI (s) (88:24) [23:44:44:022]: Skipping action: ClearDataDelAppSettings (condition is false)
+L651: MSI (s) (88:24) [23:44:44:038]: Doing action: InstallServices
+L656: MSI (s) (88:24) [23:44:44:038]: Doing action: StartServices
+L682: MSI (s) (88:24) [23:44:44:053]: Doing action: InstallFinalize
+L721: MSI (s) (88:24) [23:44:44:069]: Executing op: CustomActionSchedule(Action=StopServerService,ActionType=3170,Source=C:\Windows\SysWOW64\,Target=sc.exe stop LabelFrameServer,)
+L1137: Property(S): UILevel = 5
+L1146: MSI (s) (88:24) [23:44:45:460]: MainEngineThread is returning 0
+L1275: Property(C): UILevel = 5
+L1299: MSI (c) (3C:F4) [23:44:49:475]: MainEngineThread is returning 0
+FACTS command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1596] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+
+## msiexec /i {code} REMOVE=ALL, the data question ticked  [walk-server-remove-all-clear.log]
+L9: ******* Product: {9E0433E6-D433-4F08-A367-9FA58EFABE3F}
+L38: MSI (c) (AC:84) [23:45:56:585]: Command Line: REMOVE=ALL CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7596
+L220: MSI (c) (AC:84) [23:45:56:913]: Doing action: ClearDataDlg
+L251: MSI (c) (AC:84) [23:46:00:241]: Skipping action: MaintenanceWelcomeDlg (condition is false)
+L269: MSI (c) (AC:84) [23:46:00:288]: Doing action: ExecuteAction
+L282: ******* Product: C:\Windows\Installer\22cf3.msi
+L316: MSI (s) (88:14) [23:46:00:303]: Command Line: DOTNET10_PRESENT=0 CLEAR_USER_DATA=1 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7596 PRODUCTLANGUAGE=2052 USERNAME=<account> ACTION=INSTALL EXECUTEACTION=INSTALL ROOTDRI
+L495: MSI (s) (88:14) [23:46:00:647]: Feature: MainFeature; Installed: Local; Request: Absent; Action: Absent
+L552: MSI (s) (88:14) [23:46:00:803]: Doing action: RemoveExistingProducts
+L558: MSI (s) (88:14) [23:46:00:803]: Doing action: InstallInitialize
+L589: MSI (s) (88:14) [23:46:00:819]: Doing action: StopServerService
+L607: MSI (s) (88:14) [23:46:00:866]: Doing action: StopServices
+L613: MSI (s) (88:14) [23:46:00:866]: Doing action: DeleteServices
+L619: MSI (s) (88:14) [23:46:00:866]: Doing action: RemoveFiles
+L627: MSI (s) (88:14) [23:46:00:881]: Doing action: ClearDataDelServerDir
+L633: MSI (s) (88:14) [23:46:00:881]: Doing action: ClearDataDelServerDb
+L639: MSI (s) (88:14) [23:46:00:881]: Doing action: ClearDataDelAppSettings
+L668: MSI (s) (88:14) [23:46:00:897]: Doing action: InstallServices
+L673: MSI (s) (88:14) [23:46:00:897]: Doing action: StartServices
+L699: MSI (s) (88:14) [23:46:00:913]: Doing action: InstallFinalize
+L738: MSI (s) (88:14) [23:46:00:944]: Executing op: CustomActionSchedule(Action=StopServerService,ActionType=3170,Source=C:\Windows\SysWOW64\,Target=sc.exe stop LabelFrameServer,)
+L999: MSI (s) (88:14) [23:46:01:178]: Executing op: CustomActionSchedule(Action=ClearDataDelServerDir,ActionType=525410,Source=C:\Windows\SysWOW64\,Target=cmd.exe /c rmdir /s /q "%ProgramData%\LabelFrame\server",)
+L1003: MSI (s) (88:14) [23:46:01:303]: Executing op: CustomActionSchedule(Action=ClearDataDelServerDb,ActionType=525410,Source=C:\Windows\SysWOW64\,Target=cmd.exe /c del /q "%ProgramData%\LabelFrame\server.db",)
+L1007: MSI (s) (88:14) [23:46:01:413]: Executing op: CustomActionSchedule(Action=ClearDataDelAppSettings,ActionType=525410,Source=C:\Windows\SysWOW64\,Target=cmd.exe /c del /q "%ProgramFiles%\LabelFrame\Server\appsettings.json",)
+L1167: Property(S): UILevel = 5
+L1176: MSI (s) (88:14) [23:46:01:647]: MainEngineThread is returning 0
+L1306: Property(C): UILevel = 5
+L1330: MSI (c) (AC:84) [23:46:06:600]: MainEngineThread is returning 0
+FACTS command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7596] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] clearSkipped=[] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+
+## the package run again silently over the installed server  [63-rerun-silent.log]
+L5: ******* Product: C:\Probe\LabelFrame-Server-1.6.1.msi
+L18: ******* Product: C:\Probe\LabelFrame-Server-1.6.1.msi
+L41: MSI (s) (88:08) [23:47:06:570]: Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=1436
+L310: MSI (s) (88:08) [23:47:06:726]: Feature: MainFeature; Installed: Local; Request: Null; Action: Null
+L366: MSI (s) (88:08) [23:47:06:741]: Doing action: RemoveExistingProducts
+L371: MSI (s) (88:08) [23:47:06:741]: Doing action: InstallInitialize
+L382: MSI (s) (88:08) [23:47:06:741]: Doing action: StopServerService
+L409: MSI (s) (88:08) [23:47:06:788]: Doing action: StopServices
+L413: MSI (s) (88:08) [23:47:06:788]: Doing action: DeleteServices
+L417: MSI (s) (88:08) [23:47:06:788]: Doing action: RemoveFiles
+L423: MSI (s) (88:08) [23:47:06:788]: Skipping action: ClearDataDelServerDir (condition is false)
+L424: MSI (s) (88:08) [23:47:06:788]: Skipping action: ClearDataDelServerDb (condition is false)
+L425: MSI (s) (88:08) [23:47:06:788]: Skipping action: ClearDataDelAppSettings (condition is false)
+L446: MSI (s) (88:08) [23:47:06:788]: Doing action: InstallServices
+L450: MSI (s) (88:08) [23:47:06:804]: Doing action: StartServices
+L476: MSI (s) (88:08) [23:47:06:804]: Doing action: InstallFinalize
+L495: MSI (s) (88:08) [23:47:06:819]: Executing op: CustomActionSchedule(Action=StopServerService,ActionType=3170,Source=C:\Windows\SysWOW64\,Target=sc.exe stop LabelFrameServer,)
+L622: Property(S): UILevel = 2
+L644: MSI (s) (88:08) [23:47:06:929]: MainEngineThread is returning 0
+L658: MSI (c) (9C:5C) [23:47:06:944]: MainEngineThread is returning 0
+FACTS command=[REBOOT=ReallySuppress  dir=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=1436] uilevel=2 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Null', 'Null')
+
+# Judgements
+PASS msiexec /i {code} REMOVE=ALL, the data question not ticked: with the full interface the user data is asked about : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7868] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question not ticked: with the box not ticked every clear action is skipped : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7868] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question not ticked: the removal succeeds : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7868] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question ticked: with the full interface the user data is asked about : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=5076] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] clearSkipped=[] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question ticked: with the box ticked every clear action ran : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=5076] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] clearSkipped=[] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question ticked: the removal succeeds : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=5076] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServices'] questionSkipped=[] clearDone=['ClearDataDelAppSettings', 'ClearDataDelFiles', 'ClearDataDelMachineConfig', 'ClearDataDelPrintDir'] clearSkipped=[] launchReturn=[] feature=('AutoStartFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question not ticked: with the full interface the user data is asked about : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1596] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question not ticked: with the box not ticked every clear action is skipped : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1596] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question not ticked: the removal succeeds : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1596] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question ticked: with the full interface the user data is asked about : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7596] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] clearSkipped=[] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question ticked: with the box ticked every clear action ran : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7596] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] clearSkipped=[] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /i {code} REMOVE=ALL, the data question ticked: the removal succeeds : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7596] uilevel=5 exit=0 sessions=2 upgrading= showed=['ClearDataDlg', 'DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] clearSkipped=[] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS the package run again silently over the installed server: no feature requests any change (a maintenance run that changes nothing) : command=[REBOOT=ReallySuppress  dir=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=1436] uilevel=2 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Null', 'Null')
+PASS the package run again silently over the installed server: the service is stopped by the package action : command=[REBOOT=ReallySuppress  dir=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=1436] uilevel=2 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Null', 'Null')

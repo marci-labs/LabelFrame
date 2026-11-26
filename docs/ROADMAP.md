@@ -225,6 +225,7 @@
 | 178 | 流程治理 #488：Server MSI 结构断言接入 CI——「MSI 结构断言（安装包 UI 契约）」必需检查在客户端之后打包服务端 MSI 并运行 `scripts/assert-server-msi-structure.ps1`，两个安装包的断言同在一个 job 里，门禁不动；新增的服务端步骤耗时不到一分钟，仍远短于「构建与测试」。顺带堵住本地打包的一个坑：两个 MSI 脚本把 `-Version` 传给发布步骤并在发布后核对文件版本，包内程序文件版本不再依赖 `VERSION` 环境变量，不一致即构建失败（发版链产物不变）。门禁演练：去掉 `INSTALLFOLDER` 启动条件的演练 PR 被这道检查拦下（WORKFLOW §5） | ✅ 已完成（2026-11-26 PR #490 三项必需检查全绿后 squash 合并；演练 PR #491 被拦下后关闭，[#488](https://github.com/marci-labs/LabelFrame/issues/488)） |
 | 179 | v1.6.1 正式发布与制品核验 | ✅ 已完成（2026-11-26 发布，tag `v1.6.1` 指向 `e2b7a03`，发版链首次运行 8 个任务全部成功；13 项附件、安装清单、两个安装包的结构断言与版本、双镜像 digest、离线 Builder、正式 APK 证书（与 v1.6.0 一致）核验通过；在纯净 Windows 10 测试机上用正式包完成 1.6.0 → 1.6.1 升级冒烟。带 Android SQLite 安全升级的两项真机欠账发版，经用户接受为已披露的非阻断欠账，[#480](https://github.com/marci-labs/LabelFrame/issues/480) 保持待验收、不因发版关闭；逐条证据见 [#492](https://github.com/marci-labs/LabelFrame/issues/492)） |
 | 180 | 缺陷 #495：客户端安装包——更新服务的就绪探测不再连接管道（此前每次安装、升级都会在应用程序日志里留下两条「客户端升级请求被拒绝」的警告）；手动卸载也执行安全退出预检（空闲的客户端被结束，正在打印时拒绝卸载、不强杀；升级过程中旧产品的卸载子会话仍跳过）；结构断言把执行条件按安装状态求值 | ✅ 已完成（2026-11-26 PR #496 三项必需检查全绿 squash `e2841d2`；在纯净 Windows 10 测试机上静默取证，卸载轮 25 项、升级回归轮 10 项、安装日志判定 10 项全过——候选包的安装与升级 0 条警告，同一轮里已发布的 1.6.1 包各留 2 条，证据见 `docs/evidence/495/`；用户确认卸载行为（空闲的客户端被结束，正在打印时拒绝且不强杀）后结项，[#495](https://github.com/marci-labs/LabelFrame/issues/495)） |
+| 验收 #408 | 安装链人工验收补验（正式 1.6.1 包，纯净 Windows 10：净机安装冒烟、安装向导视觉、覆盖升级保留配置、卸载可选清数据） | ✅ 已补验（2026-11-27 PR [#503](https://github.com/marci-labs/LabelFrame/pull/503)；清单 6 项里 2 项通过、3 项部分通过、1 项不通过——全中文、开机自启与托盘、运行时缺失提示在向导之前、覆盖升级保留配置通过；发现 5 项安装包缺陷，均未修复、待排期：[#498](https://github.com/marci-labs/LabelFrame/issues/498) 完成页勾选「立即打开」后客户端不启动、[#499](https://github.com/marci-labs/LabelFrame/issues/499) 用户可达的卸载不询问是否清除数据、[#500](https://github.com/marci-labs/LabelFrame/issues/500) 缺运行时对话框的链接鼠标点不开、[#501](https://github.com/marci-labs/LabelFrame/issues/501) 已安装服务端静默重跑 MSI 后服务停止、[#502](https://github.com/marci-labs/LabelFrame/issues/502) 清除数据后残留日志文件；证据见 `docs/evidence/408/`；[#408](https://github.com/marci-labs/LabelFrame/issues/408) 是否关闭由用户决定） |
 | 待需求 | 兼容与扩展（net48 / WMS 模板下发 / TSPL / 统计 / 契约 Pattern 校验） | 待定 |
 
 ## 待需求（有真实需求再排）
@@ -249,4 +250,4 @@
 
 ---
 
-> 未闭环的真机 / 用户验收欠账由打 `待验收` 标签的 Issue 追踪（存量：[#407](https://github.com/marci-labs/LabelFrame/issues/407) PDA 蓝牙 / USB 真机、[#408](https://github.com/marci-labs/LabelFrame/issues/408) 安装链人工面；历史清欠清单存档于 [archive/ACCEPTANCE-BACKLOG.md](archive/ACCEPTANCE-BACKLOG.md)）。
+> 未闭环的真机 / 用户验收欠账由打 `待验收` 标签的 Issue 追踪（存量：[#407](https://github.com/marci-labs/LabelFrame/issues/407) PDA 蓝牙 / USB 真机；[#408](https://github.com/marci-labs/LabelFrame/issues/408) 安装链人工面已于 2026-11-27 用正式包补验，验收本身做完了，但清单没有全部通过——发现的缺陷见上表「验收 #408」一行，Issue 是否关闭由用户决定；历史清欠清单存档于 [archive/ACCEPTANCE-BACKLOG.md](archive/ACCEPTANCE-BACKLOG.md)）。
