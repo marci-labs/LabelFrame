@@ -1,0 +1,65 @@
+# 安装日志判定的对照：同一个脚本对「应当不过」的输入必须给出 FAIL。全部用取回日志的副本来做，原日志只读。
+
+# Controls for the installer-log judgements (extract-logs.py). Built on 2026-11-26 from copies of the pulled logs.
+
+## Control 1, uninstall round: the real logs judged as if every log had to show the released 1.6.1 behaviour (EXPECT=old)
+  PASS L official uninstall with nothing running: the exit action is skipped and the operation succeeds (released 1.6.1 behaviour) : ran=False; skipped=True; action_ok=False; code=0; files_removed=True; rm_failed=False; rm_files_in_use=False;
+  FAIL L candidate uninstall with nothing running: the exit action is skipped and the operation succeeds (released 1.6.1 behaviour) : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in_use=False;
+  FAIL L candidate uninstall with an idle client running: the exit action is skipped and the operation succeeds (released 1.6.1 behaviour) : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in_use
+  FAIL L candidate uninstall while the client prints: the exit action is skipped and the operation succeeds (released 1.6.1 behaviour) : ran=True; skipped=False; action_ok=False; code=1603; files_removed=False; rm_failed=False; rm_files_in_us
+  FAIL L candidate uninstall after the batch: the exit action is skipped and the operation succeeds (released 1.6.1 behaviour) : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in_use=False; prec
+  FAIL L candidate uninstall, job state unreadable: the exit action is skipped and the operation succeeds (released 1.6.1 behaviour) : ran=True; skipped=False; action_ok=False; code=1603; files_removed=False; rm_failed=False; rm_files_in_use=
+  FAIL L candidate uninstall after the client was stopped by hand: the exit action is skipped and the operation succeeds (released 1.6.1 behaviour) : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_fil
+  SUMMARY pass=1 fail=6
+  exit code 1 (1 = at least one judgement failed, as it must here for every log of the candidate)
+
+## Control 1, upgrade round: the real logs judged as if every log had to show the released 1.6.1 behaviour (EXPECT=old)
+  FAIL L uninstall after the upgrade: the exit action is skipped and the operation succeeds (released 1.6.1 behaviour) : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in_use=False; precheck_ref
+  SUMMARY pass=0 fail=1
+  exit code 1 (1 = at least one judgement failed, as it must here for every log of the candidate)
+
+## Controls 2 and 3: copies of the real logs with one thing wrong each
+
+### Scenario 2: the log of "uninstall while printing" is missing
+  expected: only the judgement(s) about "while the client prints: log present" fail -> as expected
+  SUMMARY pass=6 fail=1 ; exit code 1
+  FAIL L candidate uninstall while the client prints: log present : 45-uninstall-while-printing.log
+
+### Scenario 3: 35-uninstall-client-running.log: the line "Doing action: ShutdownWinHost" renamed, as if the action had not run
+  expected: only the judgement(s) about "idle client running" fail -> as expected
+  SUMMARY pass=6 fail=1 ; exit code 1
+  FAIL L candidate uninstall with an idle client running: the exit action runs once, no Restart Manager file-in-use round, operation succeeds : ran=False; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in
+
+### Scenario 4: 24-uninstall-nothing-running.log: a "Doing action: MsiRMFilesInUse" line injected, as if Restart Manager had asked
+  expected: only the judgement(s) about "with nothing running: the exit action runs" fail -> as expected
+  SUMMARY pass=6 fail=1 ; exit code 1
+  FAIL L candidate uninstall with nothing running: the exit action runs once, no Restart Manager file-in-use round, operation succeeds : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in_use=Tru
+
+### Scenario 5: 45-uninstall-while-printing.log: the error record of the precheck removed
+  expected: only the judgement(s) about "while the client prints" fail -> as expected
+  SUMMARY pass=6 fail=1 ; exit code 1
+  FAIL L candidate uninstall while the client prints: the exit action runs and refuses the operation before any file is removed : ran=True; skipped=False; action_ok=False; code=1603; files_removed=False; rm_failed=False; rm_files_in_use=False
+
+### Scenario 6: 64-uninstall-job-state-unreadable.log: a "Doing action: RemoveFiles" line injected, as if files had been removed
+  expected: only the judgement(s) about "job state unreadable" fail -> as expected
+  SUMMARY pass=6 fail=1 ; exit code 1
+  FAIL L candidate uninstall, job state unreadable: the exit action runs and refuses the operation before any file is removed : ran=True; skipped=False; action_ok=False; code=1603; files_removed=True; rm_failed=False; rm_files_in_use=False; p
+
+### Scenario 7: 45-uninstall-while-printing.log: "MainEngineThread is returning 1603" changed to 0
+  expected: only the judgement(s) about "while the client prints" fail -> as expected
+  SUMMARY pass=6 fail=1 ; exit code 1
+  FAIL L candidate uninstall while the client prints: the exit action runs and refuses the operation before any file is removed : ran=True; skipped=False; action_ok=False; code=0; files_removed=False; rm_failed=False; rm_files_in_use=False; p
+
+### Scenario 8: 21-upgrade-candidate.log: the nested session's "Skipping action: ShutdownWinHost" changed into "Doing action"
+  expected: only the judgement(s) about "upgrade to the candidate" fail -> as expected
+  SUMMARY pass=1 fail=2 ; exit code 1
+  FAIL L upgrade to the candidate with the client running: the new product's session runs the exit action once and the upgrade succeeds : ran=2; skipped=0; ranBeforeNested=False; differentSessions=False; action_ok=True; code=0
+  FAIL L upgrade to the candidate with the client running: the old product's nested uninstall session (after RemoveExistingProducts, another session) skips it : ran=2; skipped=0; ranBeforeNested=False; differentSessions=False; action_ok=True;
+
+### Scenario 9: 21-upgrade-candidate.log: the new session's "Doing action: ShutdownWinHost" line renamed
+  expected: only the judgement(s) about "upgrade to the candidate" fail -> as expected
+  SUMMARY pass=1 fail=2 ; exit code 1
+  FAIL L upgrade to the candidate with the client running: the new product's session runs the exit action once and the upgrade succeeds : ran=0; skipped=1; ranBeforeNested=False; differentSessions=False; action_ok=True; code=0
+  FAIL L upgrade to the candidate with the client running: the old product's nested uninstall session (after RemoveExistingProducts, another session) skips it : ran=0; skipped=1; ranBeforeNested=False; differentSessions=False; action_ok=True;
+
+# Scenarios that came out as expected: 8 of 8

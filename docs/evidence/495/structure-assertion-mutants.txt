@@ -1,0 +1,143 @@
+# 结构断言对变异包的结论：每个变异包是候选包的副本，只改坏一处（经 Windows Installer 数据库接口改执行序列里的条件，或改赋值动作的脚本）。
+# 断言取提交 c2fcea8 里的脚本，在 Windows PowerShell 5.1 下执行，2026-11-26 19:23:26 至 2026-11-26 19:23:33。八个都被拒，原因如下；之后是每个包的输出后半部分。
+
+always-explicit
+  改了什么：两个动作的条件都改成 REMOVE~="ALL" OR NOT REMOVE~="ALL"（写成显式的恒真）
+  被拒原因：安全退出动作在「升级过程中旧产品的卸载子会话」时应当跳过，当前条件不是这样：REMOVE~="ALL" OR NOT REMOVE~="ALL"
+
+always
+  改了什么：两个动作的条件都清空（空条件在安装器里恒真）
+  被拒原因：安全退出动作在「升级过程中旧产品的卸载子会话」时应当跳过，当前条件不是这样：
+
+only-in-nested-uninstall
+  改了什么：两个动作的条件都改成 REMOVE~="ALL" AND UPGRADINGPRODUCTCODE（只在卸载子会话执行）
+  被拒原因：安全退出动作在「全新安装、修复、升级中新产品的会话」时应当执行，当前条件不是这样：REMOVE~="ALL" AND UPGRADINGPRODUCTCODE
+
+manual-uninstall-skipped
+  改了什么：两个动作的条件都改成 NOT REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE（卸载时跳过）
+  被拒原因：安全退出动作在「手动卸载」时应当执行，当前条件不是这样：NOT REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE
+
+conditions-differ
+  改了什么：只改赋值动作的条件，在 AND 后多打一个空格，与退出动作的条件不再相同
+  被拒原因：预检命令赋值必须同条件位于 CostFinalize 与退出动作之间
+
+lowercase-and
+  改了什么：条件里改用小写的 and
+  被拒原因：安全退出动作的执行条件用到了本断言不会求值的语法：REMOVE~="ALL" and UPGRADINGPRODUCTCODE
+
+unknown-syntax
+  改了什么：条件里改用 <> 比较：NOT (REMOVE~="ALL" <> "ALL" AND UPGRADINGPRODUCTCODE)
+  被拒原因：安全退出动作的执行条件用到了本断言不会求值的语法：NOT (REMOVE~="ALL" <> "ALL" AND UPGRADINGPRODUCTCODE)
+
+upgrade-only-wording
+  改了什么：预检提示改回「请等待本张完成后重试升级」
+  被拒原因：安全退出预检的提示不能只提升级：手动卸载也会执行这段脚本
+
+
+== LabelFrame-Client-1.6.99-always-explicit.msi ==
+exit code: 1
+
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+安全退出动作在「升级过程中旧产品的卸载子会话」时应当跳过，当前条件不是这样：REMOVE~="ALL" OR NOT REMOVE~="ALL"
+所在位置 C:\work\OpenCode\LabelFrame\scripts\verify-msi-ui.ps1:205 字符: 17
++ ...             throw "安全退出动作在「$($state.Name)」时应当$(if ($state.Runs) { '执行 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (安全退出动作在「升级过程中旧产...T REMOVE~="ALL":String) [], RuntimeEx
+ception
+    + FullyQualifiedErrorId : 安全退出动作在「升级过程中旧产品的卸载子会话」时应当跳过，当前条件不是这样：REMOVE~="ALL"
+ OR NOT REMOVE~="ALL"
+
+
+== LabelFrame-Client-1.6.99-always.msi ==
+exit code: 1
+
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+安全退出动作在「升级过程中旧产品的卸载子会话」时应当跳过，当前条件不是这样：
+所在位置 C:\work\OpenCode\LabelFrame\scripts\verify-msi-ui.ps1:205 字符: 17
++ ...             throw "安全退出动作在「$($state.Name)」时应当$(if ($state.Runs) { '执行 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (安全退出动作在「升级过程中旧产品的卸载子会话」时应当跳过，当前条件不是
+这样：:String) [], RuntimeException
+    + FullyQualifiedErrorId : 安全退出动作在「升级过程中旧产品的卸载子会话」时应当跳过，当前条件不是这样：
+
+
+== LabelFrame-Client-1.6.99-only-in-nested-uninstall.msi ==
+exit code: 1
+
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+安全退出动作在「全新安装、修复、升级中新产品的会话」时应当执行，当前条件不是这样：REMOVE~="ALL" AND UPGRADINGPRODUCTCOD
+E
+所在位置 C:\work\OpenCode\LabelFrame\scripts\verify-msi-ui.ps1:205 字符: 17
++ ...             throw "安全退出动作在「$($state.Name)」时应当$(if ($state.Runs) { '执行 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (安全退出动作在「全新安装、修复...DINGPRODUCTCODE:String) [], RuntimeEx
+ception
+    + FullyQualifiedErrorId : 安全退出动作在「全新安装、修复、升级中新产品的会话」时应当执行，当前条件不是这样：REMOVE~
+="ALL" AND UPGRADINGPRODUCTCODE
+
+
+== LabelFrame-Client-1.6.99-manual-uninstall-skipped.msi ==
+exit code: 1
+
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+安全退出动作在「手动卸载」时应当执行，当前条件不是这样：NOT REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE
+所在位置 C:\work\OpenCode\LabelFrame\scripts\verify-msi-ui.ps1:205 字符: 17
++ ...             throw "安全退出动作在「$($state.Name)」时应当$(if ($state.Runs) { '执行 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (安全退出动作在「手动卸载」时应...DINGPRODUCTCODE:String) [], RuntimeEx
+ception
+    + FullyQualifiedErrorId : 安全退出动作在「手动卸载」时应当执行，当前条件不是这样：NOT REMOVE~="ALL" AND NOT UPGRADI
+NGPRODUCTCODE
+
+
+== LabelFrame-Client-1.6.99-conditions-differ.msi ==
+exit code: 1
+
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+预检命令赋值必须同条件位于 CostFinalize 与退出动作之间
+所在位置 C:\work\OpenCode\LabelFrame\scripts\verify-msi-ui.ps1:213 字符: 192
++ ... ne $shutdownRow[0][1]) { throw '预检命令赋值必须同条件位于 CostFinalize 与退出动作之间' }
++                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (预检命令赋值必须同条件位于 CostFinalize 与退出动作之间:String) [], Run
+timeException
+    + FullyQualifiedErrorId : 预检命令赋值必须同条件位于 CostFinalize 与退出动作之间
+
+
+== LabelFrame-Client-1.6.99-lowercase-and.msi ==
+exit code: 1
+
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+安全退出动作的执行条件用到了本断言不会求值的语法：REMOVE~="ALL" and UPGRADINGPRODUCTCODE
+所在位置 C:\work\OpenCode\LabelFrame\scripts\verify-msi-ui.ps1:195 字符: 39
++ ...  ($left.Length -ne 0) { throw "安全退出动作的执行条件用到了本断言不会求值的语法：$condition" }
++                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (安全退出动作的执行条件用到了本...DINGPRODUCTCODE:String) [], RuntimeEx
+ception
+    + FullyQualifiedErrorId : 安全退出动作的执行条件用到了本断言不会求值的语法：REMOVE~="ALL" and UPGRADINGPRODUCTCODE
+
+
+== LabelFrame-Client-1.6.99-unknown-syntax.msi ==
+exit code: 1
+
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+安全退出动作的执行条件用到了本断言不会求值的语法：NOT (REMOVE~="ALL" <> "ALL" AND UPGRADINGPRODUCTCODE)
+所在位置 C:\work\OpenCode\LabelFrame\scripts\verify-msi-ui.ps1:195 字符: 39
++ ...  ($left.Length -ne 0) { throw "安全退出动作的执行条件用到了本断言不会求值的语法：$condition" }
++                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (安全退出动作的执行条件用到了本...INGPRODUCTCODE):String) [], RuntimeEx
+ception
+    + FullyQualifiedErrorId : 安全退出动作的执行条件用到了本断言不会求值的语法：NOT (REMOVE~="ALL" <> "ALL" AND UPGRADI
+NGPRODUCTCODE)
+
+
+== LabelFrame-Client-1.6.99-upgrade-only-wording.msi ==
+exit code: 1
+
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+安全退出预检的提示不能只提升级：手动卸载也会执行这段脚本
+所在位置 C:\work\OpenCode\LabelFrame\scripts\verify-msi-ui.ps1:220 字符: 50
++ ... ownAction[0][2] -match '升级') { throw '安全退出预检的提示不能只提升级：手动卸载也会执行这段脚本' }
++                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (安全退出预检的提示不能只提升级：手动卸载也会执行这段脚本:String) [], R
+untimeException
+    + FullyQualifiedErrorId : 安全退出预检的提示不能只提升级：手动卸载也会执行这段脚本

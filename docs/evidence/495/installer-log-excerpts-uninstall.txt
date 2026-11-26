@@ -1,0 +1,105 @@
+# 从测试机取回的 Windows Installer 日志里摘出的关键行（卸载轮）。行号是取回的日志里原来的行号；完整日志体积大，不入库。
+# 每份日志先是摘录，文件末尾「Judgements」之下是逐份日志的判定，由同一脚本给出。日志里的脚本输出被控制台宽度折行，摘录保持原样。
+
+# Windows Installer log excerpts (uninstall round). Line numbers refer to the pulled log of the same name.
+
+## official uninstall with nothing running  [14-uninstall-official.log]
+L237: MSI (s) (40:EC) [19:00:57:995]: Skipping action: SetShutdownWinHostCommand (condition is false)
+L238: MSI (s) (40:EC) [19:00:57:995]: Skipping action: ShutdownWinHost (condition is false)
+L239: MSI (s) (40:EC) [19:00:57:995]: Doing action: InstallValidate
+L330: MSI (s) (40:EC) [19:00:58:057]: Doing action: RemoveExistingProducts
+L381: MSI (s) (40:EC) [19:00:58:088]: Doing action: RemoveFiles
+L1027: MSI (s) (40:EC) [19:00:59:495]: 产品: LabelFrame Client -- 成功地完成了删除。
+L1032: MSI (s) (40:EC) [19:00:59:495]: MainEngineThread is returning 0
+L1050: MSI (c) (50:08) [19:00:59:510]: MainEngineThread is returning 0
+
+## candidate uninstall with nothing running  [24-uninstall-nothing-running.log]
+L237: MSI (s) (40:3C) [19:01:29:948]: Doing action: SetShutdownWinHostCommand
+L242: MSI (s) (40:3C) [19:01:29:948]: Doing action: ShutdownWinHost
+L250: MSI (s) (40:3C) [19:01:30:307]: Doing action: InstallValidate
+L252: 操作结束 19:01:30: ShutdownWinHost。返回值 1。
+L341: MSI (s) (40:3C) [19:01:30:370]: Doing action: RemoveExistingProducts
+L392: MSI (s) (40:3C) [19:01:30:385]: Doing action: RemoveFiles
+L1038: MSI (s) (40:3C) [19:01:31:870]: 产品: LabelFrame Client -- 成功地完成了删除。
+L1043: MSI (s) (40:3C) [19:01:31:870]: MainEngineThread is returning 0
+L1061: MSI (c) (D4:F0) [19:01:31:885]: MainEngineThread is returning 0
+
+## candidate uninstall with an idle client running  [35-uninstall-client-running.log]
+L237: MSI (s) (40:14) [19:02:05:823]: Doing action: SetShutdownWinHostCommand
+L242: MSI (s) (40:14) [19:02:05:823]: Doing action: ShutdownWinHost
+L250: MSI (s) (40:14) [19:02:06:932]: Doing action: InstallValidate
+L252: 操作结束 19:02:06: ShutdownWinHost。返回值 1。
+L341: MSI (s) (40:14) [19:02:07:010]: Doing action: RemoveExistingProducts
+L392: MSI (s) (40:14) [19:02:07:042]: Doing action: RemoveFiles
+L1038: MSI (s) (40:14) [19:02:08:432]: 产品: LabelFrame Client -- 成功地完成了删除。
+L1043: MSI (s) (40:14) [19:02:08:432]: MainEngineThread is returning 0
+L1061: MSI (c) (8C:28) [19:02:08:448]: MainEngineThread is returning 0
+
+## candidate uninstall while the client prints  [45-uninstall-while-printing.log]
+L237: MSI (s) (40:90) [19:02:33:307]: Doing action: SetShutdownWinHostCommand
+L242: MSI (s) (40:90) [19:02:33:307]: Doing action: ShutdownWinHost
+L265: WixQuietExec: LabelFrame 当前有标签正在打印，请
+L266: WixQuietExec: 等待本张完成后重试
+L267: WixQuietExec: 所在位置 行:1 字符: 1136
+L268: WixQuietExec: + ... .Count -gt 0) { Write-Error 'LabelFrame 当前有标签正在打印，请等待本张完成后重试'; exit 1 ...
+L269: WixQuietExec: + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+L270: WixQuietExec: + CategoryInfo : NotSpecified: (:) , WriteErrorException
+L271: WixQuietExec: + FullyQualifiedErrorId : Microsoft.PowerShell.Commands.WriteErrorException
+L273: WixQuietExec: Error 0x80070001: Command line returned an error.
+L274: WixQuietExec: Error 0x80070001: QuietExec Failed
+L275: WixQuietExec: Error 0x80070001: Failed in ExecCommon method
+L276: CustomAction ShutdownWinHost returned actual error code 1603 (note this may not be 100% accurate if translation happened inside sandbox)
+L277: 操作结束 19:02:34: ShutdownWinHost。返回值 3。
+L413: MSI (s) (40:90) [19:02:34:354]: 产品: LabelFrame Client -- 删除失败。
+L418: MSI (s) (40:90) [19:02:34:354]: MainEngineThread is returning 1603
+L431: MSI (c) (80:58) [19:02:34:370]: MainEngineThread is returning 1603
+
+## candidate uninstall after the batch  [49-uninstall-after-job.log]
+L237: MSI (s) (40:48) [19:03:57:386]: Doing action: SetShutdownWinHostCommand
+L242: MSI (s) (40:48) [19:03:57:386]: Doing action: ShutdownWinHost
+L250: MSI (s) (40:48) [19:03:58:436]: Doing action: InstallValidate
+L252: 操作结束 19:03:58: ShutdownWinHost。返回值 1。
+L341: MSI (s) (40:48) [19:03:58:514]: Doing action: RemoveExistingProducts
+L392: MSI (s) (40:48) [19:03:58:545]: Doing action: RemoveFiles
+L1038: MSI (s) (40:48) [19:03:59:909]: 产品: LabelFrame Client -- 成功地完成了删除。
+L1043: MSI (s) (40:48) [19:03:59:909]: MainEngineThread is returning 0
+L1061: MSI (c) (40:FC) [19:03:59:924]: MainEngineThread is returning 0
+
+## candidate uninstall, job state unreadable  [64-uninstall-job-state-unreadable.log]
+L237: MSI (s) (40:CC) [19:04:39:962]: Doing action: SetShutdownWinHostCommand
+L242: MSI (s) (40:CC) [19:04:39:978]: Doing action: ShutdownWinHost
+L265: WixQuietExec: 无法读取 LabelFrame 作业状态，已
+L266: WixQuietExec: 中止安装或卸载
+L267: WixQuietExec: 所在位置 行:1 字符: 924
+L268: WixQuietExec: + ... }; if (!$base) { Write-Error '无法读取 LabelFrame 作业状态，已中止安装或卸载'; exit 1 ...
+L269: WixQuietExec: + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+L270: WixQuietExec: + CategoryInfo : NotSpecified: (:) , WriteErrorException
+L271: WixQuietExec: + FullyQualifiedErrorId : Microsoft.PowerShell.Commands.WriteErrorException
+L273: WixQuietExec: Error 0x80070001: Command line returned an error.
+L274: WixQuietExec: Error 0x80070001: QuietExec Failed
+L275: WixQuietExec: Error 0x80070001: Failed in ExecCommon method
+L276: CustomAction ShutdownWinHost returned actual error code 1603 (note this may not be 100% accurate if translation happened inside sandbox)
+L277: 操作结束 19:04:42: ShutdownWinHost。返回值 3。
+L413: MSI (s) (40:CC) [19:04:42:838]: 产品: LabelFrame Client -- 删除失败。
+L418: MSI (s) (40:CC) [19:04:42:838]: MainEngineThread is returning 1603
+L431: MSI (c) (6C:DC) [19:04:42:838]: MainEngineThread is returning 1603
+
+## candidate uninstall after the client was stopped by hand  [67-uninstall-after-stop.log]
+L237: MSI (s) (40:88) [19:04:58:340]: Doing action: SetShutdownWinHostCommand
+L242: MSI (s) (40:88) [19:04:58:340]: Doing action: ShutdownWinHost
+L250: MSI (s) (40:88) [19:04:58:683]: Doing action: InstallValidate
+L252: 操作结束 19:04:58: ShutdownWinHost。返回值 1。
+L341: MSI (s) (40:88) [19:04:58:746]: Doing action: RemoveExistingProducts
+L392: MSI (s) (40:88) [19:04:58:777]: Doing action: RemoveFiles
+L1038: MSI (s) (40:88) [19:05:00:183]: 产品: LabelFrame Client -- 成功地完成了删除。
+L1043: MSI (s) (40:88) [19:05:00:183]: MainEngineThread is returning 0
+L1061: MSI (c) (CC:C0) [19:05:00:199]: MainEngineThread is returning 0
+
+# Judgements
+PASS L official uninstall with nothing running: the exit action is skipped and the operation succeeds (released 1.6.1 behaviour) : ran=False; skipped=True; action_ok=False; code=0; files_removed=True; rm_failed=False; rm_files_in_use=False; precheck_refused=False; busy_text=False; unreadable_text=False
+PASS L candidate uninstall with nothing running: the exit action runs once, no Restart Manager file-in-use round, operation succeeds : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in_use=False; precheck_refused=False; busy_text=False; unreadable_text=False
+PASS L candidate uninstall with an idle client running: the exit action runs once, no Restart Manager file-in-use round, operation succeeds : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in_use=False; precheck_refused=False; busy_text=False; unreadable_text=False
+PASS L candidate uninstall while the client prints: the exit action runs and refuses the operation before any file is removed : ran=True; skipped=False; action_ok=False; code=1603; files_removed=False; rm_failed=False; rm_files_in_use=False; precheck_refused=True; busy_text=True; unreadable_text=False
+PASS L candidate uninstall after the batch: the exit action runs once, no Restart Manager file-in-use round, operation succeeds : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in_use=False; precheck_refused=False; busy_text=False; unreadable_text=False
+PASS L candidate uninstall, job state unreadable: the exit action runs and refuses the operation before any file is removed : ran=True; skipped=False; action_ok=False; code=1603; files_removed=False; rm_failed=False; rm_files_in_use=False; precheck_refused=True; busy_text=False; unreadable_text=True
+PASS L candidate uninstall after the client was stopped by hand: the exit action runs once, no Restart Manager file-in-use round, operation succeeds : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in_use=False; precheck_refused=False; busy_text=False; unreadable_text=False

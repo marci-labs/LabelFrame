@@ -1,0 +1,49 @@
+# 从测试机取回的 Windows Installer 日志里摘出的关键行（升级回归轮）。行号是取回的日志里原来的行号；完整日志体积大，不入库。
+# 每份日志先是摘录，文件末尾「Judgements」之下是逐份日志的判定，由同一脚本给出。日志里的脚本输出被控制台宽度折行，摘录保持原样。
+
+# Windows Installer log excerpts (upgrade round). Line numbers refer to the pulled log of the same name.
+
+## official install (control)  [11-install-official.log]
+L326: MSI (s) (18:94) [19:11:05:103]: Doing action: SetShutdownWinHostCommand
+L331: MSI (s) (18:94) [19:11:05:103]: Doing action: ShutdownWinHost
+L339: MSI (s) (18:94) [19:11:06:619]: Doing action: InstallValidate
+L341: 操作结束 19:11:06: ShutdownWinHost。返回值 1。
+L429: MSI (s) (18:94) [19:11:06:634]: Doing action: RemoveExistingProducts
+L509: MSI (s) (18:94) [19:11:06:681]: Doing action: RemoveFiles
+L568: MSI (s) (18:94) [19:11:06:697]: Doing action: StartUpdaterService
+L1078: MSI (s) (18:94) [19:11:09:181]: 产品: LabelFrame Client -- 成功地完成了安装。
+L1083: MSI (s) (18:94) [19:11:09:181]: MainEngineThread is returning 0
+L1097: MSI (c) (E4:F4) [19:11:09:197]: MainEngineThread is returning 0
+
+## upgrade to the candidate with the client running  [21-upgrade-candidate.log]
+L334: MSI (s) (18:58) [19:11:36:072]: Doing action: SetShutdownWinHostCommand
+L339: MSI (s) (18:58) [19:11:36:072]: Doing action: ShutdownWinHost
+L347: MSI (s) (18:58) [19:11:38:619]: Doing action: InstallValidate
+L349: 操作结束 19:11:38: ShutdownWinHost。返回值 1。
+L438: MSI (s) (18:58) [19:11:38:728]: Doing action: RemoveExistingProducts
+L654: MSI (s) (18:40) [19:11:38:853]: Skipping action: SetShutdownWinHostCommand (condition is false)
+L655: MSI (s) (18:40) [19:11:38:853]: Skipping action: ShutdownWinHost (condition is false)
+L656: MSI (s) (18:40) [19:11:38:853]: Doing action: InstallValidate
+L747: MSI (s) (18:40) [19:11:38:900]: Doing action: RemoveExistingProducts
+L798: MSI (s) (18:40) [19:11:38:916]: Doing action: RemoveFiles
+L1508: MSI (s) (18:58) [19:11:40:369]: Doing action: RemoveFiles
+L1567: MSI (s) (18:58) [19:11:40:384]: Doing action: StartUpdaterService
+L2077: MSI (s) (18:58) [19:11:42:291]: 产品: LabelFrame Client -- 成功地完成了安装。
+L2082: MSI (s) (18:58) [19:11:42:291]: MainEngineThread is returning 0
+L2101: MSI (c) (BC:38) [19:11:42:306]: MainEngineThread is returning 0
+
+## uninstall after the upgrade  [30-uninstall.log]
+L237: MSI (s) (18:20) [19:12:21:963]: Doing action: SetShutdownWinHostCommand
+L242: MSI (s) (18:20) [19:12:21:963]: Doing action: ShutdownWinHost
+L250: MSI (s) (18:20) [19:12:23:869]: Doing action: InstallValidate
+L252: 操作结束 19:12:23: ShutdownWinHost。返回值 1。
+L341: MSI (s) (18:20) [19:12:23:916]: Doing action: RemoveExistingProducts
+L392: MSI (s) (18:20) [19:12:23:963]: Doing action: RemoveFiles
+L1037: MSI (s) (18:20) [19:12:25:338]: 产品: LabelFrame Client -- 成功地完成了删除。
+L1042: MSI (s) (18:20) [19:12:25:338]: MainEngineThread is returning 0
+L1060: MSI (c) (EC:6C) [19:12:25:354]: MainEngineThread is returning 0
+
+# Judgements
+PASS L upgrade to the candidate with the client running: the new product's session runs the exit action once and the upgrade succeeds : ran=1; skipped=1; ranBeforeNested=True; differentSessions=True; action_ok=True; code=0
+PASS L upgrade to the candidate with the client running: the old product's nested uninstall session (after RemoveExistingProducts, another session) skips it : ran=1; skipped=1; ranBeforeNested=True; differentSessions=True; action_ok=True; code=0
+PASS L uninstall after the upgrade: the exit action runs once, no Restart Manager file-in-use round, operation succeeds : ran=True; skipped=False; action_ok=True; code=0; files_removed=True; rm_failed=False; rm_files_in_use=False; precheck_refused=False; busy_text=False; unreadable_text=False

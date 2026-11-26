@@ -1,0 +1,125 @@
+# 汇总脚本的对照：喂给它三组「不是本轮真实证据」的输入，看它给出的结论对不对。真实证据的结论见 summary-uninstall.txt 与 summary-upgrade.txt。
+
+## 对照一：编造的一整套证据
+按「每一项都应该通过」编出来，写进一个空目录，不与真实证据混放。用来确认证据齐全、数值符合预期时汇总脚本会全部通过。
+
+### 卸载轮
+
+  PASS U01 official 1.6.1 package installed silently : exit=0 4.0s
+  PASS U02 control: the official package leaves exactly 2 rejected-request warnings when it starts the updater service : warnings=2 listed=2
+  PASS U03 official package: uninstall with nothing running exits 0 and leaves nothing : exit=0 2.0s clean=True
+  PASS U10 candidate installed silently : exit=0 4.5s
+  PASS U11 candidate state right after the install: product 1.6.99, client program 1.6.99.0, updater service running, no printing host : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=1 listening53960=0
+  PASS U12 no rejected-request warning when the candidate starts the updater service : warnings=0 control=2
+  PASS U13 uninstall with nothing running exits 0 : exit=0 2.1s
+  PASS U14 nothing left after that uninstall : clean=True
+  PASS U20 idle client answers on 53960 before the uninstall : wait=ready elapsed=0.3s state=product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=2 listening53960=1
+  PASS U21 uninstall with an idle client running exits 0 : exit=0 5.2s
+  PASS U22 the installer ended the client: no printing host process and nothing on 53960 afterwards : before: winhostProcesses=2 listening53960=1 ; after: processes=0 listening53960=0
+  PASS U23 nothing left after that uninstall : clean=True
+  PASS U30 the client was Printing when the uninstall started : busy=BUSY jobId=job1 status=Printing after=0.5s precheckBusyJobs=1
+  PASS U31 uninstall while printing was refused (non-zero exit) : exit=1603 elapsed=3.2s
+  PASS U32 product, files and updater service are intact after the refusal, the client keeps running : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=2 listening53960=1
+  PASS U33 the batch ran to the end: job Completed with every label Completed : final=JOB_FINAL jobId=job1 final=True status=Completed seconds=76.2 items=75 Completed=75 completed=75 failed=0
+  PASS U34 the client is still running after the batch : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=2 listening53960=1
+  PASS U35 print settings switched back to defaults : reset=status=200
+  PASS U36 uninstall after the batch exits 0 : exit=0 5.0s
+  PASS U37 nothing left after that uninstall : clean=True
+  PASS U40 the client listens on its own address only, not on 127.0.0.1 : listen=listen=http://172.23.1.10:53960 listeners=1 clientOn127=HTTP client config port=53960 code=0
+  PASS U41 uninstall was refused at once (non-zero exit within 30 seconds) : exit=1603 elapsed=4.1s
+  PASS U42 product, files and updater service are intact after the refusal, the client keeps running : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=2 listening53960=1
+  PASS U43 after the client is stopped by hand the uninstall exits 0 and leaves nothing : stop=HOST_STOPPED stopped=1 printingHostsLeft=0 listening53960=0 updaterServiceRunning=1 exit=0 clean=True
+  PASS U50 no rejected-request warning during the whole candidate phase : warnings=0 control=2 labelFrameEvents=6
+  SUMMARY pass=25 fail=0
+
+### 升级轮
+
+  PASS G01 official 1.6.1 package installed silently : exit=0 4.0s
+  PASS G02 control: the official package leaves exactly 2 rejected-request warnings when it starts the updater service : warnings=2 listed=2
+  PASS G03 the old client is running and reports 1.6.1 before the upgrade : product=1.6.1 clientProgram=1.6.1.0 updater=Running winhostProcesses=2 listening53960=1 versionReported=1.6.1
+  PASS G04 upgrade to the candidate exits 0 while the client runs : exit=0 7.0s
+  PASS G05 the installer ended the client: only the updater service process remains, nothing on 53960 : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=1 listening53960=0 versionReported=
+  PASS G06 the new version is in place: product 1.6.99, client program 1.6.99.0 : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=1 listening53960=0 versionReported=
+  PASS G07 no rejected-request warning when the candidate starts the updater service : warnings=0 control=2
+  PASS G08 the client starts again after the upgrade and answers on 53960 : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=2 listening53960=1 versionReported=1.6.99
+  PASS G09 uninstall after the upgrade exits 0 and leaves nothing : exit=0 clean=True
+  PASS G10 no rejected-request warning from the upgrade on : warnings=0 control=2 labelFrameEvents=5
+  SUMMARY pass=10 fail=0
+
+## 对照二：空的证据目录
+读不到任何证据时必须全部不过——没有任何一项会因为「没读到」而算通过。
+
+### 卸载轮
+
+  FAIL U01 official 1.6.1 package installed silently : exit= s
+  FAIL U02 control: the official package leaves exactly 2 rejected-request warnings when it starts the updater service : warnings= listed=0
+  FAIL U03 official package: uninstall with nothing running exits 0 and leaves nothing : exit= s clean=False
+  FAIL U10 candidate installed silently : exit= s
+  FAIL U11 candidate state right after the install: product 1.6.99, client program 1.6.99.0, updater service running, no printing host : product= clientProgram= updater= winhostProcesses=0 listening53960=0
+  FAIL U12 no rejected-request warning when the candidate starts the updater service : warnings= control=
+  FAIL U13 uninstall with nothing running exits 0 : exit= s
+  FAIL U14 nothing left after that uninstall : clean=False
+  FAIL U20 idle client answers on 53960 before the uninstall : wait= state=product= clientProgram= updater= winhostProcesses=0 listening53960=0
+  FAIL U21 uninstall with an idle client running exits 0 : exit= s
+  FAIL U22 the installer ended the client: no printing host process and nothing on 53960 afterwards : before: winhostProcesses=0 listening53960=0 ; after: processes=0 listening53960=0
+  FAIL U23 nothing left after that uninstall : clean=False
+  FAIL U30 the client was Printing when the uninstall started : busy=
+  FAIL U31 uninstall while printing was refused (non-zero exit) : exit= elapsed=s
+  FAIL U32 product, files and updater service are intact after the refusal, the client keeps running : product= clientProgram= updater= winhostProcesses=0 listening53960=0
+  FAIL U33 the batch ran to the end: job Completed with every label Completed : final=
+  FAIL U34 the client is still running after the batch : product= clientProgram= updater= winhostProcesses=0 listening53960=0
+  FAIL U35 print settings switched back to defaults : reset=
+  FAIL U36 uninstall after the batch exits 0 : exit= s
+  FAIL U37 nothing left after that uninstall : clean=False
+  FAIL U40 the client listens on its own address only, not on 127.0.0.1 : listen= listeners=0 clientOn127=
+  FAIL U41 uninstall was refused at once (non-zero exit within 30 seconds) : exit= elapsed=s
+  FAIL U42 product, files and updater service are intact after the refusal, the client keeps running : product= clientProgram= updater= winhostProcesses=0 listening53960=0
+  FAIL U43 after the client is stopped by hand the uninstall exits 0 and leaves nothing : stop= exit= clean=False
+  FAIL U50 no rejected-request warning during the whole candidate phase : warnings= control= labelFrameEvents=
+  SUMMARY pass=0 fail=25
+
+### 升级轮
+
+  FAIL G01 official 1.6.1 package installed silently : exit= s
+  FAIL G02 control: the official package leaves exactly 2 rejected-request warnings when it starts the updater service : warnings= listed=0
+  FAIL G03 the old client is running and reports 1.6.1 before the upgrade : product= clientProgram= updater= winhostProcesses=0 listening53960=0 versionReported=
+  FAIL G04 upgrade to the candidate exits 0 while the client runs : exit= s
+  FAIL G05 the installer ended the client: only the updater service process remains, nothing on 53960 : product= clientProgram= updater= winhostProcesses=0 listening53960=0 versionReported=
+  FAIL G06 the new version is in place: product 1.6.99, client program 1.6.99.0 : product= clientProgram= updater= winhostProcesses=0 listening53960=0 versionReported=
+  FAIL G07 no rejected-request warning when the candidate starts the updater service : warnings= control=
+  FAIL G08 the client starts again after the upgrade and answers on 53960 : product= clientProgram= updater= winhostProcesses=0 listening53960=0 versionReported=
+  FAIL G09 uninstall after the upgrade exits 0 and leaves nothing : exit= clean=False
+  FAIL G10 no rejected-request warning from the upgrade on : warnings= control= labelFrameEvents=
+  SUMMARY pass=0 fail=10
+
+## 对照三：第一次运行的卸载轮证据
+第一次运行时「造一个正在打印的作业」没有成功（客机脚本里两个变量名只差大小写，提交的请求体不合法），
+所以「正在打印时卸载」那一步实际是在客户端空闲时执行的。用定稿的汇总脚本去判这份证据：U30–U36 七项不过。
+U31 记录的那次卸载退出码是 0——没有被拒绝，汇总脚本把它判为不过；U36 的 1605 是因为产品已被上一步卸掉。
+
+  PASS U01 official 1.6.1 package installed silently : exit=0 4.1s
+  PASS U02 control: the official package leaves exactly 2 rejected-request warnings when it starts the updater service : warnings=2 listed=2
+  PASS U03 official package: uninstall with nothing running exits 0 and leaves nothing : exit=0 2.1s clean=True
+  PASS U10 candidate installed silently : exit=0 4.1s
+  PASS U11 candidate state right after the install: product 1.6.99, client program 1.6.99.0, updater service running, no printing host : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=1 listening53960=0
+  PASS U12 no rejected-request warning when the candidate starts the updater service : warnings=0 control=2
+  PASS U13 uninstall with nothing running exits 0 : exit=0 3.1s
+  PASS U14 nothing left after that uninstall : clean=True
+  PASS U20 idle client answers on 53960 before the uninstall : wait=ready elapsed=0.5s state=product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=2 listening53960=1
+  PASS U21 uninstall with an idle client running exits 0 : exit=0 4.1s
+  PASS U22 the installer ended the client: no printing host process and nothing on 53960 afterwards : before: winhostProcesses=2 listening53960=1 ; after: processes=0 listening53960=0
+  PASS U23 nothing left after that uninstall : clean=True
+  FAIL U30 the client was Printing when the uninstall started : busy=
+  FAIL U31 uninstall while printing was refused (non-zero exit) : exit=0 elapsed=4.1s
+  FAIL U32 product, files and updater service are intact after the refusal, the client keeps running : product= clientProgram= updater= winhostProcesses=0 listening53960=0
+  FAIL U33 the batch ran to the end: job Completed with every label Completed : final=
+  FAIL U34 the client is still running after the batch : product= clientProgram= updater= winhostProcesses=0 listening53960=0
+  FAIL U35 print settings switched back to defaults : reset=
+  FAIL U36 uninstall after the batch exits 0 : exit=1605 1.1s
+  PASS U37 nothing left after that uninstall : clean=True
+  PASS U40 the client listens on its own address only, not on 127.0.0.1 : listen=listen=http://172.17.234.240:53960 listeners=1 clientOn127=HTTP client config port=53960 code=0
+  PASS U41 uninstall was refused at once (non-zero exit within 30 seconds) : exit=1603 elapsed=4.1s
+  PASS U42 product, files and updater service are intact after the refusal, the client keeps running : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=2 listening53960=1
+  PASS U43 after the client is stopped by hand the uninstall exits 0 and leaves nothing : stop=HOST_STOPPED stopped=1 printingHostsLeft=0 listening53960=0 updaterServiceRunning=1 exit=0 clean=True
+  PASS U50 no rejected-request warning during the whole candidate phase : warnings=0 control=2 labelFrameEvents=8
+  SUMMARY pass=18 fail=7
