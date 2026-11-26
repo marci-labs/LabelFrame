@@ -62,6 +62,7 @@
 |---|---|---|
 | 失败阻断：故意失败 PR 应被禁止合并 | ✅ 通过——两项必需检查失败（注入 `DrillGateFail.cs` 语法错误，dotnet build 报 `CS1525`，因果确认），`mergeStateStatus=BLOCKED`，平台禁止合并；PR 关闭、分支删除 | [PR #2](https://github.com/marci-labs/LabelFrame/pull/2)（job 日志见 Actions run 34326168208） |
 | 正常合并：合法变更全绿后可 squash 合并 | ✅ 通过——本表所在的 PR（首个正式 PR）两项必需检查针对最新提交全绿后 squash 合并入 master | [PR #3](https://github.com/marci-labs/LabelFrame/pull/3) |
+| 失败阻断：服务端 MSI 结构断言——去掉 `main-server.wxs` 里 `INSTALLFOLDER` 的启动条件，应被禁止合并 | ✅ 通过——「MSI 结构断言（安装包 UI 契约）」失败（服务端 MSI 构建成功后，`assert-server-msi-structure.ps1` 报「缺少『安装位置固定、不支持 INSTALLFOLDER』的启动条件（NOT INSTALLFOLDER）」，步骤退出码 1；同一份 ci.yml 在 PR #490 上该步骤通过，因果确认），其余两项必需检查通过，`mergeStateStatus=BLOCKED`，平台禁止合并；PR 关闭、分支删除 | [PR #491](https://github.com/marci-labs/LabelFrame/pull/491)（job 日志见 Actions run 45753089409） |
 
 ## 6. 选配未启用
 

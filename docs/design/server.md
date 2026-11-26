@@ -161,7 +161,7 @@ Android 受控发布由 `AndroidUpdatesService` 与 `Api/AndroidUpdatesApi` 提�
 12. **停机超时 5s 是安装链契约**：MSI 升级 / 卸载依赖 Server 5 秒内停止（决策 #60），调大会拖慢安装链。
 13. **文件名一律经 `SafeFileName` 规范化**：三个包目录服务共享基类的路径穿越防护（拒绝路径分隔符 / `..`），绕过即在服务端开目录穿越读写。
 14. **错误码新增的联动义务**：`LF_SRV_*` 新码须同步 web 端码表（`errorCodes.json`，覆盖断言测试挡漏译）；同一语义不得复用旧码带不同参数键集（历史拆码 LF_SRV_012、LF_SRV_013 均为此）。
-15. **Server MSI 的安装位置固定为 Program Files\LabelFrame\Server，目录标识必须是非公开属性**：标识含小写字母（`ServerInstallDir`）时 Windows Installer 才不允许从命令行改写；标识是公开的 `INSTALLFOLDER` 时，不带安装目录的升级（引导程序、离线包、手动双击都是）会把装在自定义目录的服务端装到默认目录，原目录里改过的 `appsettings.json` 随之失效。向导的目录页是旁路出来的只读页，三处接法缺一不可，由 `scripts/assert-server-msi-structure.ps1` 逐条守住：
+15. **Server MSI 的安装位置固定为 Program Files\LabelFrame\Server，目录标识必须是非公开属性**：标识含小写字母（`ServerInstallDir`）时 Windows Installer 才不允许从命令行改写；标识是公开的 `INSTALLFOLDER` 时，不带安装目录的升级（引导程序、离线包、手动双击都是）会把装在自定义目录的服务端装到默认目录，原目录里改过的 `appsettings.json` 随之失效。向导的目录页是旁路出来的只读页，三处接法缺一不可，由 `scripts/assert-server-msi-structure.ps1` 逐条守住（日常 CI 每次合并前都构建服务端 MSI 并执行）：
     - 界面库自带的「可改目录」页不能单独替换（重复定义，编译失败），它仍留在包里；只读页靠「同一按钮上登记顺序更大的跳转生效」旁路它，维护流程（修复 / 卸载 / 小版本更新）的上一步不能被旁路带走。
     - 许可页「下一步」的旁路登记不检查许可是否被接受，许可是由这个按钮的启用条件把关的。
     - 显式传入 `INSTALLFOLDER` 由启动条件拦下并说明原因；「清除用户数据」删除的配置写的是同一个固定目录，改目录名时两处要一起改。
