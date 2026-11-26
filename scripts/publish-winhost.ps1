@@ -2,16 +2,21 @@
 param(
     [string]$Configuration = 'Release',
     [string]$Runtime = 'win-x64',
-    [string]$OutputDir = ''
+    [string]$OutputDir = '',
+    [string]$Version = ''
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 if (-not $OutputDir) { $OutputDir = Join-Path $root 'artifacts' }
 $publishDir = Join-Path $OutputDir $Runtime
 
+# 给了版本就写进程序文件：安装包脚本靠它保证包内文件版本与安装包版本一致
+$versionArgs = @()
+if ($Version) { $versionArgs = @("-p:Version=$Version") }
+
 Write-Host "publish WinHost ($Configuration / $Runtime framework-dependent) ..."
 dotnet publish (Join-Path $root 'src\LabelFrame.WinHost\LabelFrame.WinHost.csproj') `
-    -c $Configuration -f net10.0-windows10.0.26100 -r $Runtime -p:SelfContained=false `
+    -c $Configuration -f net10.0-windows10.0.26100 -r $Runtime -p:SelfContained=false @versionArgs `
     -o $publishDir -p:DebugType=None -p:DebugSymbols=false
 if ($LASTEXITCODE -ne 0) { throw 'WinHost publish failed' }
 

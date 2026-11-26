@@ -68,7 +68,7 @@
 | P0 | Server / Linux Client 版本镜像 | 候选镜像 Compose E2E 后原镜像推送 | 发布后 pull 双稳定镜像复验 | v0.22.0 已验证 |
 | P0 | SQLite WAL、并发领取、清理保留 | 数据层 / Server tests | soak 监控 WAL / 堆 / 错误率 | 日常 + nightly 分层 |
 | P0 | CI 测试口径稳定 | CI 排除 Perf / Soak | Release 同口径，nightly 单独执行 | 已对齐 |
-| P1 | MSI 向导结构、中文、目录、自启契约 | CI `verify-msi-ui.ps1` | 视觉 / 净机 / 升级保留待人工清单 | 结构自动，视觉仍欠账 |
+| P1 | MSI 向导结构、中文、目录、自启契约（客户端）；安装位置契约——只读的安装目录页、`INSTALLFOLDER` 拦截、清除用户数据的路径（服务端） | CI：客户端 `verify-msi-ui.ps1`、服务端 `assert-server-msi-structure.ps1`，同一个必需检查里对每个 PR 打包并断言两个 MSI | 视觉 / 净机 / 升级保留待人工清单；服务端固定目录的净机取证见 [evidence/486](evidence/486/README.md) | 结构自动，视觉仍欠账 |
 | P1 | Ubuntu systemd 部署 | 脚本与发布归档构建 | 2026-08-17 跨机验收 | 已有真机证据 |
 | P1 | 服务端可选管理界面 | ServerPluginUi tests + web server build | Docker 测试 Compose 显式启用 | 默认无头边界保持 |
 | P2 | 延迟 / 并发门槛 | Perf Trait | nightly-perf | 不进日常 / Release 测试 |

@@ -19,8 +19,11 @@ if ($LASTEXITCODE -ne 0) { throw 'WiX Util 隐藏执行扩展准备失败' }
 
 # 1) 发布 WinHost（Client，framework-dependent）+ 复制 web/dist
 $publishDir = Join-Path $root "artifacts\client\$Runtime"
-& (Join-Path $PSScriptRoot 'publish-winhost.ps1') -Runtime $Runtime -OutputDir (Join-Path $root 'artifacts\client')
+& (Join-Path $PSScriptRoot 'publish-winhost.ps1') -Runtime $Runtime -OutputDir (Join-Path $root 'artifacts\client') -Version $Version
 if (-not $?) { throw 'publish failed' }
+# 防回归警示：程序文件版本只取自 -Version，不取环境变量——漏传会打出无法从旧版升级的包
+& (Join-Path $PSScriptRoot 'assert-publish-file-version.ps1') -ExePath (Join-Path $publishDir 'LabelFrame.WinHost.exe') -Version $Version
+if (-not $?) { throw '程序文件版本与安装包版本不一致' }
 
 # 2) 复制默认配置到发布目录（先于文件清单，确保 appsettings.json 被打包）
 Copy-Item (Join-Path $root 'packaging\appsettings.json') (Join-Path $publishDir 'appsettings.json') -Force

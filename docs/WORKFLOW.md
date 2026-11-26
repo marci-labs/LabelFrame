@@ -1,6 +1,6 @@
 # LabelFrame 工作流（GitHub）
 
-> 版本：2 · 落地：2026-09-09（迭代 42，决策 #97）；2026-09-10 增补 §7 多会话 worktree 并行试行（流程治理 #17）；2026-09-10 增第三必需检查「Android 构建（PDA 宿主）」（迭代 49，决策 #104）。
+> 版本：2 · 落地：2026-09-09（迭代 42，决策 #97）；2026-09-10 增补 §7 多会话 worktree 并行试行（流程治理 #17）；2026-09-10 增第三必需检查「Android 构建（PDA 宿主）」（迭代 49，决策 #104）；2026-11-26「MSI 结构断言」必需检查扩到服务端 MSI，§5 增补演练记录（流程治理 #488）。
 > 参考外部通用「产品迭代工作流」资料 v1.1，已按本仓库事实实例化；仓库运行不依赖外部资料。
 > 修改本文件、门禁规则或流程模板属于**流程治理迭代**，普通迭代不做。
 
@@ -15,8 +15,8 @@
 | 合并方式 | squash；PR 标题 = Conventional Commits（中文说明为主） |
 | 分支清理 | 仓库开启合并后自动删除远端分支；本地分支合并后手动清理 |
 | 门禁 | ruleset「master 门禁」：必须 PR + 三项必需检查（strict，要求目标分支新鲜度）+ 禁强推；**管理员无豁免名单** |
-| 必需检查 | 「构建与测试（dotnet + 前端）」「MSI 结构断言（安装包 UI 契约）」「Android 构建（PDA 宿主）」（均来自 [ci.yml](../.github/workflows/ci.yml)；第三项为迭代 49 引入——先合入 job 的 PR 验证全绿、合并后立即补进门禁，避免 job 未入库时必需检查自锁）。改名 / 增删必须**先改门禁再改 ci.yml**（删除方向），避免出现无保护窗口 |
-| 日常 CI | push master / 全部 PR / 手动：dotnet 构建 + 测试（排除 Perf/Soak）+ 前端 lint / 双模式测试 / 双构建 + MSI 结构断言 + Android 构建（Release APK）；Perf/Soak 由 [nightly-perf.yml](../.github/workflows/nightly-perf.yml) 周一 04:00 跑 |
+| 必需检查 | 「构建与测试（dotnet + 前端）」「MSI 结构断言（安装包 UI 契约）」「Android 构建（PDA 宿主）」（均来自 [ci.yml](../.github/workflows/ci.yml)；第三项为迭代 49 引入——先合入 job 的 PR 验证全绿、合并后立即补进门禁，避免 job 未入库时必需检查自锁）。第二项是 `msi-verify` 一个 job，先后打包并断言客户端 MSI（`scripts/verify-msi-ui.ps1`）与服务端 MSI（`scripts/assert-server-msi-structure.ps1`）——两个安装包的结构断言都靠它把门，新增安装包断言加在这个 job 里；拆成独立 job 时必须同时把新 job 补进门禁。改名 / 增删必须**先改门禁再改 ci.yml**（删除方向），避免出现无保护窗口 |
+| 日常 CI | push master / 全部 PR / 手动：dotnet 构建 + 测试（排除 Perf/Soak）+ 前端 lint / 双模式测试 / 双构建 + MSI 结构断言（客户端 + 服务端两个安装包）+ Android 构建（Release APK）；Perf/Soak 由 [nightly-perf.yml](../.github/workflows/nightly-perf.yml) 周一 04:00 跑 |
 | 发布 | 记账 PR 合并后推 `v*` tag → [release.yml](../.github/workflows/release.yml) 自动构建发布（ghcr 镜像 + MSI / 插件 zip / Linux 归档 / Android APK 上传 Release）；除发版 tag 外不推其他 tag |
 
 ## 2. 日常迭代流程
@@ -54,12 +54,15 @@
 - **标准**（默认）：模板全字段；UI 变更附真实界面验收证据；回归测试随风险补充。
 - **强化**（跨端公共契约：模板包格式 / 打印 API / 作业模型；权限 / 数据迁移）：先更新 DESIGN 文档再改代码（AGENTS 既有约束）；PR 附兼容影响与回退方式；合并后增加真机 / 集成复验。
 
-## 5. 门禁演练记录（迭代 42 落地证据）
+## 5. 门禁演练记录
+
+门禁拦不拦得住靠真实演练确认，不靠读配置。首次落地（迭代 42）做了失败阻断与正常合并两项；之后门禁的拦截面有变化（新增必需检查、必需检查多拦一类问题）时补做一次失败阻断，结果追加在下表。
 
 | 演练 | 结果 | 证据 |
 |---|---|---|
 | 失败阻断：故意失败 PR 应被禁止合并 | ✅ 通过——两项必需检查失败（注入 `DrillGateFail.cs` 语法错误，dotnet build 报 `CS1525`，因果确认），`mergeStateStatus=BLOCKED`，平台禁止合并；PR 关闭、分支删除 | [PR #2](https://github.com/marci-labs/LabelFrame/pull/2)（job 日志见 Actions run 34326168208） |
 | 正常合并：合法变更全绿后可 squash 合并 | ✅ 通过——本表所在的 PR（首个正式 PR）两项必需检查针对最新提交全绿后 squash 合并入 master | [PR #3](https://github.com/marci-labs/LabelFrame/pull/3) |
+| 失败阻断：服务端 MSI 结构断言——去掉 `main-server.wxs` 里 `INSTALLFOLDER` 的启动条件，应被禁止合并 | ✅ 通过——「MSI 结构断言（安装包 UI 契约）」失败（服务端 MSI 构建成功后，`assert-server-msi-structure.ps1` 报「缺少『安装位置固定、不支持 INSTALLFOLDER』的启动条件（NOT INSTALLFOLDER）」，步骤退出码 1；同一份 ci.yml 在 PR #490 上该步骤通过，因果确认），其余两项必需检查通过，`mergeStateStatus=BLOCKED`，平台禁止合并；PR 关闭、分支删除 | [PR #491](https://github.com/marci-labs/LabelFrame/pull/491)（job 日志见 Actions run 45753089409） |
 
 ## 6. 选配未启用
 
