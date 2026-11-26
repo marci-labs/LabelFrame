@@ -4,27 +4,34 @@
 
 ## [未发布]
 
+## [1.6.1] - 2026-11-26
+
 ### 修复
 
-- Windows 客户端直接用 MSI 安装时，运行时缺失提示改为按实际缺的那一项说明（.NET Desktop Runtime 10 与 ASP.NET Core Runtime 10，均注明 x64）；缺 .NET Desktop Runtime 时在安装前拦截，不再等到启动服务才失败。只装了 ASP.NET Core Runtime 的机器不会再被提示「未检测到 ASP.NET Core Runtime」。
-- 客户端固定安装到 `C:\Program Files\LabelFrame\Client`：安装向导的安装位置页改为只读，命令行传入 `INSTALLFOLDER` 会被拦下并说明原因（客户端更新服务只接受 Program Files 下的安装目录，装到别处服务会拒绝启动）。
-- 服务端固定安装到 `C:\Program Files\LabelFrame\Server`：安装向导的「目标文件夹」页改为只读的「安装目录」页，命令行传入 `INSTALLFOLDER` 会被拦下并说明原因。此前装在自定义目录的服务端经引导程序、离线包或手动双击升级后，新版本会落到默认目录，原目录里改过的 `appsettings.json` 不再生效（监听端口回到 53961）。
-- 更新服务启动失败时，安装不再空等约 4 分钟后提示「权限不足」：由安装包启动服务并等待，失败立即中止并撤回本次安装；启动较慢只要最终能就绪不会被误判，长时间停在启动中才按兜底时限中止。
-- 每次安装自动在用户临时目录生成安装日志（`%TEMP%\MSI*.log`），向导安装失败时在结束页上写明本次安装日志的路径；更新服务启动失败的原因与停在哪个阶段写入事件日志，并转写到安装日志旁边的明细日志（`MSI*.log.updater-service.log`）。
+- **运行时缺失提示准确**：Windows 客户端直接用 MSI 安装时，按实际缺的那一项说明（.NET Desktop Runtime 10 与 ASP.NET Core Runtime 10，均注明 x64）；缺 .NET Desktop Runtime 时在安装前拦截，不再等到启动服务才失败。只装了 ASP.NET Core Runtime 的机器不会再被提示「未检测到 ASP.NET Core Runtime」。
+- **客户端固定安装到 `C:\Program Files\LabelFrame\Client`**：安装向导的安装位置页改为只读，命令行传入 `INSTALLFOLDER` 会被拦下并说明原因（客户端更新服务只接受 Program Files 下的安装目录，装到别处服务会拒绝启动）。
+- **服务端固定安装到 `C:\Program Files\LabelFrame\Server`**：安装向导的「目标文件夹」页改为只读的「安装目录」页，命令行传入 `INSTALLFOLDER` 会被拦下并说明原因。旧版装在别的目录的，升级后新版本装到固定目录，原目录里改过的 `appsettings.json` 不再生效（监听端口回到 53961），升级前的处理办法见下方「升级注意」。
+- **更新服务启动失败时立即中止**：不再空等约 4 分钟后提示「权限不足」，失败立即中止并撤回本次安装；启动较慢只要最终能就绪不会被误判，长时间停在启动中才按兜底时限中止。
+- **每次安装自动留安装日志**：在用户临时目录生成安装日志（`%TEMP%\MSI*.log`），向导安装失败时在结束页上写明本次安装日志的路径；更新服务启动失败的原因与停在哪个阶段写入事件日志，并转写到安装日志旁边的明细日志（`MSI*.log.updater-service.log`）。
 
 ### 安全修复
 
-- Android 宿主 SQLite 原生依赖由 2.1.11 升至 2.1.14（SQLite 3.54.0），修复 CVE-2025-6965；保持现有数据格式与打印接口。同签名升级和打印真机验收仍待完成，见 [#480](https://github.com/marci-labs/LabelFrame/issues/480)。
+- Android 宿主 SQLite 原生依赖由 2.1.11 升至 2.1.14（SQLite 3.54.0），修复 CVE-2025-6965；保持现有数据格式与打印接口。
 
 ### 升级注意
 
 - **Windows 部署人员注意**：服务端现在固定安装到 `C:\Program Files\LabelFrame\Server`，安装向导里只能查看安装目录。装在默认目录的服务端照常升级——重跑引导程序、离线包的 `install-server.cmd` 或直接运行新版 MSI 都可以，`appsettings.json` 里改过的监听地址 / 端口和 Dpi 会保留。
 - 旧版服务端装在别的目录的（在服务的属性里查看 `LabelFrameServer` 的可执行路径即可确认）：升级前先把旧目录里的 `appsettings.json` 复制到 `C:\Program Files\LabelFrame\Server\`（目录不存在就先建）再升级。安装包不会覆盖已经存在的配置文件，端口等设置原样生效。不先复制也能升级成功，但新版会按默认配置启动（端口回到 53961），需要在新目录的 `appsettings.json` 里重新设置并重启 `LabelFrameServer` 服务。模板、作业、日志等数据在 `%ProgramData%\LabelFrame` 下，不受影响；旧目录里留下的旧配置文件，确认新版正常后可以删除。
 
+### 验收边界
+
+- **PDA 宿主的 SQLite 安全升级尚未做真机验收**：arm64 PDA 上的同签名覆盖升级与真实出纸，因当前没有测试设备而未执行。已有证据是安装包内原生库的来源与对齐核验，以及 x86_64 模拟器上的同签名升级和模拟打印恢复，不代表真实设备与真实出纸。本版带此项欠账发布：欠账已披露并接受为非阻断项，不等于验收通过，见 [#480](https://github.com/marci-labs/LabelFrame/issues/480)。
+- **Windows 安装包的验证范围**：客户端与服务端安装包修复的完整验证（缺运行时的提示、固定安装目录、升级后配置保留）是在纯净 Windows 10 测试机上用本地构建的安装包做的，正式发布包未经同等的逐项验证。未覆盖：Windows 11；x86 版运行时与 Hosting Bundle 安装包；安装引导程序与离线包的完整安装链路（它们调用安装包的方式与已实测的静默安装相同）。MSI 人工验收欠账 [#408](https://github.com/marci-labs/LabelFrame/issues/408) 继续原状态。
+- 既有欠账继续原状态，不因发版关闭：[Android 更新矩阵 #474](https://github.com/marci-labs/LabelFrame/issues/474)、性能 / 平台长测 [#462](https://github.com/marci-labs/LabelFrame/issues/462)、蓝牙 / USB [#407](https://github.com/marci-labs/LabelFrame/issues/407)、观察项 [#144](https://github.com/marci-labs/LabelFrame/issues/144)。
+
 ### 工程维护
 
-- 持续集成在每次合并前都会构建服务端安装包并检查它的安装位置约定（安装目录页只读、命令行传入 `INSTALLFOLDER` 会被拦下、「清除用户数据」删的是固定目录下的配置）。这些约定被改坏时，问题在合并前被发现，不再等到测试机上重装才暴露。
-- 本地构建 Windows 安装包时，包内程序文件的版本跟随 `-Version` 参数，不再需要另外设置 `VERSION` 环境变量；两者不一致时构建直接失败，不会再产出「安装包版本正确、程序文件版本停在 1.0.0.0」的安装包（这种包无法从旧版升级）。正式发版的产物不变。
+- 持续集成在每次合并前都会构建服务端安装包并检查它的安装位置约定，这些约定被改坏时在合并前发现；本地构建 Windows 安装包时，包内程序文件的版本跟随 `-Version` 参数，与安装包版本不一致即构建失败。正式发版的产物不变。
 
 ## [1.6.0] - 2026-10-29
 
