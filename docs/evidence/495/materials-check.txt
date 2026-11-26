@@ -1,0 +1,18 @@
+# 物料自检（轮次链开机前自检的一步，2026-11-26 18:56）：两个安装包与三个运行时安装包的 SHA-256，微软运行时安装包的签名，
+# 已发布包的摘要与 GitHub 发行记录一致，两个安装包的产品版本与包内文件版本。
+
+PASS hash file lists exactly the five installers : missing=[] expected=5 present=5
+PASS sha256 aspnetcore-runtime-10.0.12-win-x64.exe : e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad bytes=11262864
+PASS signature aspnetcore-runtime-10.0.12-win-x64.exe : status=Valid signer=CN=.NET, O=Microsoft Corporation, L=Redmond, S=Washington, C=US
+PASS sha256 dotnet-runtime-10.0.12-win-x64.exe : 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585 bytes=30663104
+PASS signature dotnet-runtime-10.0.12-win-x64.exe : status=Valid signer=CN=.NET, O=Microsoft Corporation, L=Redmond, S=Washington, C=US
+PASS sha256 LabelFrame-Client-1.6.1.msi : a8f8c0c1eea34ad8988a6cf3a44bd83deacce44f48c98c09dabf497ddeb2b982 bytes=25153536
+PASS sha256 LabelFrame-Client-1.6.99.msi : 760d7722bb65cdb733f0a4f9c1fe149b80880c20840bf441dc78c645df3f4c01 bytes=24784896
+PASS sha256 windowsdesktop-runtime-10.0.12-win-x64.exe : 55a67d8476cde95a9cc43a95803b4f54446e7c9251ed22aa6421d4908174ae84 bytes=60032984
+PASS signature windowsdesktop-runtime-10.0.12-win-x64.exe : status=Valid signer=CN=.NET, O=Microsoft Corporation, L=Redmond, S=Washington, C=US
+PASS official package digest equals the GitHub record : digest=a8f8c0c1eea34ad8988a6cf3a44bd83deacce44f48c98c09dabf497ddeb2b982
+PASS LabelFrame-Client-1.6.1.msi product version : ProductVersion=1.6.1 expected=1.6.1 name=LabelFrame Client
+PASS LabelFrame-Client-1.6.1.msi file version in package : file table version=1.6.1.0 expected=1.6.1.0
+PASS LabelFrame-Client-1.6.99.msi product version : ProductVersion=1.6.99 expected=1.6.99 name=LabelFrame Client
+PASS LabelFrame-Client-1.6.99.msi file version in package : file table version=1.6.99.0 expected=1.6.99.0
+CHECK_MATERIALS failures=0

@@ -1,0 +1,27 @@
+# 轮次链记录（2026-11-26）：开机前自检、内存礼让检查、每轮的开始、轮次结束后的还原与关机。
+
+18:56:49 [chain] preconditions passed (room rule self-test, syntax, local rehearsal of the read-only guest scripts, materials)
+18:56:50 [chain] host free memory: 12909 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+18:57:52 [chain] start uninstall round (attempt 1)
+19:05:16 STATE_BEFORE=Running
+19:05:21 RESTORE ok
+19:05:33 STATE_AFTER_RESTORE_SETTLED=Saved
+19:05:44 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+19:05:44 [chain] uninstall attempt=1 exit=0 reached=ROUND_CORE_DONE
+19:05:44 [chain] CHAIN_DONE
+19:06:44 [chain] preconditions passed (room rule self-test, syntax, local rehearsal of the read-only guest scripts, materials)
+19:06:45 [chain] host free memory: 14383 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+19:07:47 [chain] start upgrade round (attempt 1)
+19:12:44 STATE_BEFORE=Running
+19:12:48 RESTORE ok
+19:13:02 STATE_AFTER_RESTORE_SETTLED=Saved
+19:13:13 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+19:13:13 [chain] upgrade attempt=1 exit=0 reached=ROUND_CORE_DONE
+19:13:14 [chain] CHAIN_DONE
+ROUND_MARK uninstall_exit=0 upgrade_exit=0 19:13:14
+SUMMARY_EXIT uninstall=1 19:13:14
+SUMMARY_EXIT upgrade=0 19:13:14
+
+说明：倒数第二行 SUMMARY_EXIT uninstall=1 是轮次链末尾自动汇总时，卸载轮汇总脚本的退出码。原因是汇总脚本的一处预期写法与客机输出的
+格式不符（「作业完成」那一项在作业耗时后面多写了一个单位字母 s，客机输出里没有单位），与产品行为无关。改掉之后对同一批客机输出
+重新汇总，即 summary-uninstall.txt 的 25 项全过。两轮结束时测试机都已还原到基线还原点并关机（FINAL_STATE=Off）。

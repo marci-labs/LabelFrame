@@ -1,0 +1,248 @@
+# 升级回归轮的宿主机侧记录（2026-11-26 19:07–19:13），格式同卸载轮。
+
+19:07:47 STATE_BEFORE=Off
+19:07:47 HOST_FREE_MB=14407 VM_NEED_MB=4096
+19:07:48 STATE_AFTER_RESTORE=Off
+19:07:56 STATE_AFTER_START=Running
+19:08:18 PSDIRECT_OK host=DESKTOP-D65DJ5S
+19:08:25 GUEST clockBefore=2026-11-26T19:08:25.7059546+08:00 clockAfter=2026-11-26T19:08:18.4081437+08:00 setDate=ok
+19:08:25 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+19:08:25 VM state=Running uptime=00:00:32.0910000 cpu=11 memAssignedMB=4088
+19:08:25 DONE
+19:08:25 [upgrade] waiting 90 seconds after boot before touching the guest
+19:10:14 [upgrade] service wuauserv: status when the stop request was sent=Running startType=Disabled
+19:10:14 [upgrade] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+19:10:14 [upgrade] service WaaSMedicSvc: status when the stop request was sent=Running startType=Manual
+19:10:14 [upgrade] last boot: 2026-11-26 19:09:46
+19:10:14 [upgrade] in-progress installer registration exists: False
+19:10:17 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 1.5s
+19:10:19 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 2.5s
+19:10:21 COPIED LabelFrame-Client-1.6.1.msi (25153536 bytes) in 1.9s
+19:10:24 COPIED LabelFrame-Client-1.6.99.msi (24784896 bytes) in 2.9s
+19:10:30 COPIED windowsdesktop-runtime-10.0.12-win-x64.exe (60032984 bytes) in 5.9s
+--- guest files: name size sha256 ---
+aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+LabelFrame-Client-1.6.1.msi 25153536 a8f8c0c1eea34ad8988a6cf3a44bd83deacce44f48c98c09dabf497ddeb2b982
+LabelFrame-Client-1.6.99.msi 24784896 760d7722bb65cdb733f0a4f9c1fe149b80880c20840bf441dc78c645df3f4c01
+windowsdesktop-runtime-10.0.12-win-x64.exe 60032984 55a67d8476cde95a9cc43a95803b4f54446e7c9251ed22aa6421d4908174ae84
+19:10:36 [upgrade] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=4.4s
+19:10:38 [upgrade]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+19:10:38 [upgrade]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+19:10:38 [upgrade]     Microsoft .NET Runtime - 10.0.12 (x64)
+19:10:38 [upgrade]     Microsoft .NET Runtime - 10.0.12 (x64)
+19:10:41 [upgrade] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=2.3s
+19:10:43 [upgrade]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+19:10:43 [upgrade]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+19:10:43 [upgrade]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+19:10:43 [upgrade]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+19:10:43 [upgrade]     Microsoft .NET Runtime - 10.0.12 (x64)
+19:10:43 [upgrade]     Microsoft .NET Runtime - 10.0.12 (x64)
+19:10:43 [upgrade]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+19:10:43 [upgrade]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+19:10:47 [upgrade] RUNTIME install windowsdesktop-runtime-10.0.12-win-x64.exe exit=0 elapsed=3.3s
+19:10:49 [upgrade]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+19:10:49 [upgrade]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+19:10:49 [upgrade]   \swidtag\Microsoft Windows Desktop Runtime 10.0.12 (x64).swidtag
+19:10:49 [upgrade]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+19:10:49 [upgrade]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+19:10:49 [upgrade]   runtime: Microsoft.WindowsDesktop.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+19:10:49 [upgrade]     Microsoft .NET Runtime - 10.0.12 (x64)
+19:10:49 [upgrade]     Microsoft .NET Runtime - 10.0.12 (x64)
+19:10:49 [upgrade]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+19:10:49 [upgrade]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+19:11:10 [upgrade] 19:10:52 ARGUMENTS /i "C:\Probe\LabelFrame-Client-1.6.1.msi" /qn /norestart /l*v "C:\Probe\logs\11-install-official.log"
+19:11:10 [upgrade] 19:11:10 MSI mode=install msi=LabelFrame-Client-1.6.1.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=17.3s
+19:11:10 [upgrade] 19:11:10 LOG bytes=253834
+19:11:11 [upgrade] LABELFRAME_EVENTS since=329 newest=340 count=3
+19:11:11 [upgrade] EVENT recordId=333 level=信息 provider=LabelFrameClientUpdater id=0 time=19:11:08 message=Service started successfully.
+19:11:11 [upgrade] EVENT recordId=334 level=警告 provider=LabelFrame.WinHost id=0 time=19:11:08 message=Category: LabelFrame.WinHost.Updates.ClientUpdaterService EventId: 0 客户端升级请求被拒绝：Unable to read beyond the end of the stream.
+19:11:11 [upgrade] EVENT recordId=336 level=警告 provider=LabelFrame.WinHost id=0 time=19:11:09 message=Category: LabelFrame.WinHost.Updates.ClientUpdaterService EventId: 0 客户端升级请求被拒绝：Unable to read beyond the end of the stream.
+19:11:11 [upgrade] REJECTED_REQUEST_WARNINGS=2
+19:11:16 [upgrade] HOST_START tag=before-upgrade result=started pid=2780 at=19:11:12
+19:11:16 [upgrade] HOST_START tag=before-upgrade aliveAfter3s=True
+19:11:22 [upgrade] CLIENT_WAIT port=53960 result=ready elapsed=0.6s lastCode=200 winhostPids=[776,2780] body={"serverUrl":"http://127.0.0.1:53961","deviceId":"DESKTOP-D65DJ5S","deviceName":"DESKTOP-D65DJ5S","ips":["172.17.234.240"],"version":"1.6.1"}
+19:11:22 [upgrade] CLIENT_WAIT_STABILITY seconds=5 sameProcesses=True winhostPids=[776,2780] code=200
+19:11:33 [upgrade]
+19:11:33 [upgrade] === products  [guest 19:11:23] ===
+19:11:33 [upgrade] PRODUCT name=LabelFrame Client version=1.6.1 location= key={A3E983CE-5143-480C-9C13-C5674715FDC6}
+19:11:33 [upgrade]
+19:11:33 [upgrade] === services  [guest 19:11:23] ===
+19:11:33 [upgrade] SERVICE name=LabelFrameServer none
+19:11:33 [upgrade] SERVICE name=LabelFrameClientUpdater state=Running startMode=Auto startName=LocalSystem pid=776 path="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+19:11:33 [upgrade]
+19:11:33 [upgrade] === main programs  [guest 19:11:24] ===
+19:11:33 [upgrade] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+19:11:33 [upgrade] PROGRAM role=client fileVersion=1.6.1.0 productVersion=1.6.1+e2b7a033271b3021f8193a4e8d87629bef1cba26 bytes=310272 sha256=754e6b9e2c677206e4ceff449e2a8d5c83214bb935dc1ee208a30a1a09066b78 path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+19:11:33 [upgrade]
+19:11:33 [upgrade] === processes  [guest 19:11:24] ===
+19:11:33 [upgrade] PROCESS name=LabelFrame.WinHost pid=776 session=0 path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+19:11:33 [upgrade] PROCESS name=LabelFrame.WinHost pid=2780 session=0 path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+19:11:33 [upgrade]
+19:11:33 [upgrade] === listeners  [guest 19:11:24] ===
+19:11:33 [upgrade] LISTEN address=127.0.0.1 port=53960 pid=2780
+19:11:33 [upgrade]
+19:11:33 [upgrade] === http  [guest 19:11:25] ===
+19:11:33 [upgrade] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:11:33 [upgrade] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:11:33 [upgrade] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:11:33 [upgrade] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:11:33 [upgrade] HTTP client config port=53960 code=200 body={"serverUrl":"http://127.0.0.1:53961","deviceId":"DESKTOP-D65DJ5S","deviceName":"DESKTOP-D65DJ5S","ips":["172.17.234.240"],"version":"1.6.1"}
+19:11:33 [upgrade]
+19:11:33 [upgrade] === client settings  [guest 19:11:33] ===
+19:11:33 [upgrade] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+19:11:33 [upgrade] CLIENT_PLUGINS exists=False path=C:\ProgramData\LabelFrame\Client\plugins
+19:11:33 [upgrade]
+19:11:33 [upgrade] === user files  [guest 19:11:33] ===
+19:11:33 [upgrade] USER_FILE name=host-20261126.log bytes=0 sha256=unreadable
+19:11:33 [upgrade] USER_FILE name=jobs.db bytes=40960 sha256=unreadable
+19:11:33 [upgrade] USER_FILE name=jobs.db-shm bytes=32768 sha256=unreadable
+19:11:33 [upgrade] USER_FILE name=jobs.db-wal bytes=0 sha256=unreadable
+19:11:33 [upgrade] USER_FILE name=logs.db bytes=4096 sha256=unreadable
+19:11:33 [upgrade] USER_FILE name=logs.db-shm bytes=32768 sha256=unreadable
+19:11:33 [upgrade] USER_FILE name=logs.db-wal bytes=20632 sha256=unreadable
+19:11:33 [upgrade] USER_FILE name=templates.db bytes=4096 sha256=unreadable
+19:11:33 [upgrade] USER_FILE name=templates.db-shm bytes=32768 sha256=unreadable
+19:11:33 [upgrade] USER_FILE name=templates.db-wal bytes=41232 sha256=unreadable
+19:11:33 [upgrade] IN_PROGRESS_REGISTRATION False
+19:11:43 [upgrade] 19:11:35 ARGUMENTS /i "C:\Probe\LabelFrame-Client-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\21-upgrade-candidate.log"
+19:11:43 [upgrade] 19:11:42 MSI mode=install msi=LabelFrame-Client-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=7.1s
+19:11:43 [upgrade] 19:11:42 LOG bytes=443422
+19:11:55 [upgrade]
+19:11:55 [upgrade] === products  [guest 19:11:43] ===
+19:11:55 [upgrade] PRODUCT name=LabelFrame Client version=1.6.99 location= key={64976C13-7293-451B-B3A9-706C76F3858A}
+19:11:55 [upgrade]
+19:11:55 [upgrade] === services  [guest 19:11:44] ===
+19:11:55 [upgrade] SERVICE name=LabelFrameServer none
+19:11:55 [upgrade] SERVICE name=LabelFrameClientUpdater state=Running startMode=Auto startName=LocalSystem pid=5168 path="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+19:11:55 [upgrade]
+19:11:55 [upgrade] === main programs  [guest 19:11:44] ===
+19:11:55 [upgrade] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+19:11:55 [upgrade] PROGRAM role=client fileVersion=1.6.99.0 productVersion=1.6.99+fe5726c895da12a2e389928632aa9a594c84cbee bytes=310272 sha256=83ea7ec1f1bad5a47425f7b2bdb78302e5ed1eb79bbdcf78989d96b65f7c6bcb path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+19:11:55 [upgrade]
+19:11:55 [upgrade] === processes  [guest 19:11:44] ===
+19:11:55 [upgrade] PROCESS name=LabelFrame.WinHost pid=5168 session=0 path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+19:11:55 [upgrade]
+19:11:55 [upgrade] === listeners  [guest 19:11:44] ===
+19:11:55 [upgrade] LISTEN none
+19:11:55 [upgrade]
+19:11:55 [upgrade] === http  [guest 19:11:45] ===
+19:11:55 [upgrade] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:11:55 [upgrade] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:11:55 [upgrade] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:11:55 [upgrade] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:11:55 [upgrade] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:11:55 [upgrade]
+19:11:55 [upgrade] === client settings  [guest 19:11:55] ===
+19:11:55 [upgrade] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+19:11:55 [upgrade] CLIENT_PLUGINS exists=False path=C:\ProgramData\LabelFrame\Client\plugins
+19:11:55 [upgrade]
+19:11:55 [upgrade] === user files  [guest 19:11:55] ===
+19:11:55 [upgrade] USER_FILE name=host-20261126.log bytes=1163 sha256=cea74f88bcd7c6be47086444c516f89bfc9ac95fbf557a8657cd8ba25bee7912
+19:11:55 [upgrade] USER_FILE name=jobs.db bytes=40960 sha256=5c588d8a0ddf443d8dd2df8fb0c0cf12f17922c34e379682b6e1482f7cc46cdb
+19:11:55 [upgrade] USER_FILE name=logs.db bytes=16384 sha256=da4132138b3049c7e6ebd9c490407d456ae725ecf47ada4a723344d7a37d2ae8
+19:11:55 [upgrade] USER_FILE name=templates.db bytes=28672 sha256=1f533df3563b63cc5975ab88f08a8dda254cf1bb7860b898649bdf9abea1f43a
+19:11:55 [upgrade] IN_PROGRESS_REGISTRATION False
+19:11:59 [upgrade] LABELFRAME_EVENTS since=340 newest=352 count=2
+19:11:59 [upgrade] EVENT recordId=343 level=信息 provider=LabelFrameClientUpdater id=0 time=19:11:38 message=Service stopped successfully.
+19:11:59 [upgrade] EVENT recordId=345 level=信息 provider=LabelFrameClientUpdater id=0 time=19:11:41 message=Service started successfully.
+19:11:59 [upgrade] REJECTED_REQUEST_WARNINGS=0
+19:12:03 [upgrade] HOST_START tag=after-upgrade result=started pid=9408 at=19:12:00
+19:12:03 [upgrade] HOST_START tag=after-upgrade aliveAfter3s=True
+19:12:10 [upgrade] CLIENT_WAIT port=53960 result=ready elapsed=0.5s lastCode=200 winhostPids=[5168,9408] body={"serverUrl":"http://127.0.0.1:53961","deviceId":"DESKTOP-D65DJ5S","deviceName":"DESKTOP-D65DJ5S","ips":["172.17.234.240"],"version":"1.6.1"}
+19:12:10 [upgrade] CLIENT_WAIT_STABILITY seconds=5 sameProcesses=True winhostPids=[5168,9408] code=200
+19:12:20 [upgrade]
+19:12:20 [upgrade] === products  [guest 19:12:10] ===
+19:12:20 [upgrade] PRODUCT name=LabelFrame Client version=1.6.99 location= key={64976C13-7293-451B-B3A9-706C76F3858A}
+19:12:20 [upgrade]
+19:12:20 [upgrade] === services  [guest 19:12:11] ===
+19:12:20 [upgrade] SERVICE name=LabelFrameServer none
+19:12:20 [upgrade] SERVICE name=LabelFrameClientUpdater state=Running startMode=Auto startName=LocalSystem pid=5168 path="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+19:12:20 [upgrade]
+19:12:20 [upgrade] === main programs  [guest 19:12:11] ===
+19:12:20 [upgrade] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+19:12:20 [upgrade] PROGRAM role=client fileVersion=1.6.99.0 productVersion=1.6.99+fe5726c895da12a2e389928632aa9a594c84cbee bytes=310272 sha256=83ea7ec1f1bad5a47425f7b2bdb78302e5ed1eb79bbdcf78989d96b65f7c6bcb path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+19:12:20 [upgrade]
+19:12:20 [upgrade] === processes  [guest 19:12:11] ===
+19:12:20 [upgrade] PROCESS name=LabelFrame.WinHost pid=5168 session=0 path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+19:12:20 [upgrade] PROCESS name=LabelFrame.WinHost pid=9408 session=0 path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+19:12:20 [upgrade]
+19:12:20 [upgrade] === listeners  [guest 19:12:11] ===
+19:12:20 [upgrade] LISTEN address=127.0.0.1 port=53960 pid=9408
+19:12:20 [upgrade]
+19:12:20 [upgrade] === http  [guest 19:12:12] ===
+19:12:20 [upgrade] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:12:20 [upgrade] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:12:20 [upgrade] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:12:20 [upgrade] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:12:20 [upgrade] HTTP client config port=53960 code=200 body={"serverUrl":"http://127.0.0.1:53961","deviceId":"DESKTOP-D65DJ5S","deviceName":"DESKTOP-D65DJ5S","ips":["172.17.234.240"],"version":"1.6.1"}
+19:12:20 [upgrade]
+19:12:20 [upgrade] === client settings  [guest 19:12:20] ===
+19:12:20 [upgrade] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+19:12:20 [upgrade] CLIENT_PLUGINS exists=False path=C:\ProgramData\LabelFrame\Client\plugins
+19:12:20 [upgrade]
+19:12:20 [upgrade] === user files  [guest 19:12:20] ===
+19:12:20 [upgrade] USER_FILE name=host-20261126.log bytes=1163 sha256=unreadable
+19:12:20 [upgrade] USER_FILE name=jobs.db bytes=40960 sha256=unreadable
+19:12:20 [upgrade] USER_FILE name=jobs.db-shm bytes=32768 sha256=unreadable
+19:12:20 [upgrade] USER_FILE name=jobs.db-wal bytes=0 sha256=unreadable
+19:12:20 [upgrade] USER_FILE name=logs.db bytes=16384 sha256=unreadable
+19:12:20 [upgrade] USER_FILE name=logs.db-shm bytes=32768 sha256=unreadable
+19:12:20 [upgrade] USER_FILE name=logs.db-wal bytes=0 sha256=unreadable
+19:12:20 [upgrade] USER_FILE name=templates.db bytes=28672 sha256=unreadable
+19:12:20 [upgrade] USER_FILE name=templates.db-shm bytes=32768 sha256=unreadable
+19:12:20 [upgrade] USER_FILE name=templates.db-wal bytes=0 sha256=unreadable
+19:12:20 [upgrade] IN_PROGRESS_REGISTRATION False
+19:12:20 [upgrade] ROUND_CORE_DONE
+19:12:25 [upgrade] 19:12:21 ARGUMENTS /x "C:\Probe\LabelFrame-Client-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\30-uninstall.log"
+19:12:25 [upgrade] 19:12:25 MSI mode=uninstall msi=LabelFrame-Client-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+19:12:25 [upgrade] 19:12:25 LOG bytes=203222
+19:12:38 [upgrade]
+19:12:38 [upgrade] === products  [guest 19:12:26] ===
+19:12:38 [upgrade] PRODUCT none
+19:12:38 [upgrade]
+19:12:38 [upgrade] === services  [guest 19:12:27] ===
+19:12:38 [upgrade] SERVICE name=LabelFrameServer none
+19:12:38 [upgrade] SERVICE name=LabelFrameClientUpdater none
+19:12:38 [upgrade]
+19:12:38 [upgrade] === main programs  [guest 19:12:27] ===
+19:12:38 [upgrade] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+19:12:38 [upgrade] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+19:12:38 [upgrade]
+19:12:38 [upgrade] === processes  [guest 19:12:27] ===
+19:12:38 [upgrade] PROCESS none
+19:12:38 [upgrade]
+19:12:38 [upgrade] === listeners  [guest 19:12:27] ===
+19:12:38 [upgrade] LISTEN none
+19:12:38 [upgrade]
+19:12:38 [upgrade] === http  [guest 19:12:27] ===
+19:12:38 [upgrade] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:12:38 [upgrade] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:12:38 [upgrade] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:12:38 [upgrade] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:12:38 [upgrade] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+19:12:38 [upgrade]
+19:12:38 [upgrade] === client settings  [guest 19:12:38] ===
+19:12:38 [upgrade] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+19:12:38 [upgrade] CLIENT_PLUGINS exists=False path=C:\ProgramData\LabelFrame\Client\plugins
+19:12:38 [upgrade]
+19:12:38 [upgrade] === user files  [guest 19:12:38] ===
+19:12:38 [upgrade] USER_FILE name=host-20261126.log bytes=2326 sha256=c4ab80a72093be688de450eae0f8c9d662a9b4d0126573e0fc461c93f3000132
+19:12:38 [upgrade] USER_FILE name=jobs.db bytes=40960 sha256=5c588d8a0ddf443d8dd2df8fb0c0cf12f17922c34e379682b6e1482f7cc46cdb
+19:12:38 [upgrade] USER_FILE name=logs.db bytes=16384 sha256=da4132138b3049c7e6ebd9c490407d456ae725ecf47ada4a723344d7a37d2ae8
+19:12:38 [upgrade] USER_FILE name=templates.db bytes=28672 sha256=1f533df3563b63cc5975ab88f08a8dda254cf1bb7860b898649bdf9abea1f43a
+19:12:38 [upgrade] IN_PROGRESS_REGISTRATION False
+19:12:39 [upgrade] LABELFRAME_EVENTS since=340 newest=359 count=3
+19:12:39 [upgrade] EVENT recordId=343 level=信息 provider=LabelFrameClientUpdater id=0 time=19:11:38 message=Service stopped successfully.
+19:12:39 [upgrade] EVENT recordId=345 level=信息 provider=LabelFrameClientUpdater id=0 time=19:11:41 message=Service started successfully.
+19:12:39 [upgrade] EVENT recordId=355 level=信息 provider=LabelFrameClientUpdater id=0 time=19:12:24 message=Service stopped successfully.
+19:12:39 [upgrade] REJECTED_REQUEST_WARNINGS=0
+19:12:41 [upgrade] PULLED C:\Probe\logs\11-install-official.log (253834 bytes)
+19:12:41 [upgrade] PULLED C:\Probe\logs\11-install-official.log.updater-service.log (174 bytes)
+19:12:41 [upgrade] PULLED C:\Probe\logs\21-upgrade-candidate.log (443422 bytes)
+19:12:41 [upgrade] PULLED C:\Probe\logs\21-upgrade-candidate.log.updater-service.log (174 bytes)
+19:12:41 [upgrade] PULLED C:\Probe\logs\30-uninstall.log (203222 bytes)
+19:12:42 [upgrade] PULLED C:\Probe\logs\11-install-official.log.updater-service.log (174 bytes)
+19:12:42 [upgrade] PULLED C:\Probe\logs\21-upgrade-candidate.log.updater-service.log (174 bytes)
+19:12:43 [upgrade] NO_FILES_MATCHING=C:\Users\<account>\AppData\Local\Temp\MSI*.log
+19:12:43 [upgrade] ROUND_DONE

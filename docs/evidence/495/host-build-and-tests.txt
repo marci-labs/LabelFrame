@@ -1,0 +1,72 @@
+# 本地构建与测试（提交 c2fcea8 的源码；开发机 .NET SDK 10.0.402；2026-11-26）
+
+dotnet build LabelFrame.slnx 与 dotnet test（排除 Perf / Soak），原始记录：
+
+  === START 2026-11-26 16:57:31 +0800 ===
+   CHANGELOG.md                                       |  5 ++++
+   README.md                                          |  2 +-
+   docs/DEPLOY.md                                     |  3 ++-
+   docs/DESIGN.md                                     |  3 ++-
+   docs/ROADMAP.md                                    |  1 +
+   docs/TEST-MATRIX.md                                |  2 +-
+   docs/design/client-updates.md                      | 10 +++++---
+   packaging/main.wxs                                 | 12 +++++----
+   scripts/verify-msi-ui.ps1                          | 28 ++++++++++++++++++--
+   .../Updates/UpdaterServiceStarter.cs               | 14 +++++++++-
+   .../UpdaterServiceStarterTests.cs                  | 30 ++++++++++++++++++++++
+   11 files changed, 95 insertions(+), 15 deletions(-)
+  10.0.402
+  === dotnet build LabelFrame.slnx ===
+  BUILD_EXIT=0
+  已成功生成。
+      0 个警告
+      0 个错误
+
+  已用时间 00:00:09.42
+  === dotnet test (exclude Perf/Soak) ===
+  TEST_EXIT=0
+  已通过! - 失败:     0，通过:   282，已跳过:     0，总计:   282，持续时间: 3 s - LabelFrame.Bootstrapper.Tests.dll (net10.0)
+  已通过! - 失败:     0，通过:     3，已跳过:     0，总计:     3，持续时间: 3 s - LabelFrame.ClientHost.Tests.dll (net10.0)
+  已通过! - 失败:     0，通过:   133，已跳过:     0，总计:   133，持续时间: 5 s - LabelFrame.AndroidHost.Tests.dll (net10.0)
+  已通过! - 失败:     0，通过:    36，已跳过:     0，总计:    36，持续时间: 10 s - LabelFrame.Api.Tests.dll (net10.0)
+  已通过! - 失败:     0，通过:   225，已跳过:     1，总计:   226，持续时间: 33 s - LabelFrame.Server.Tests.dll (net10.0)
+  已通过! - 失败:     0，通过:   329，已跳过:     0，总计:   329，持续时间: 43 s - LabelFrame.Core.Tests.dll (net10.0)
+  已通过! - 失败:     0，通过:   616，已跳过:     0，总计:   616，持续时间: 48 s - LabelFrame.WinHost.Tests.dll (net10.0)
+  === END 2026-11-26 16:58:35 +0800 BUILD_EXIT=0 TEST_EXIT=0 ===
+
+各测试项目合计：1624 通过、0 失败、1 跳过。跳过的是需要真实 APK 的 AndroidApkVerificationTests。
+
+候选包的构建（scripts/build-msi.ps1 -Version 1.6.99，按发版链的调用形式；发布程序、生成打包清单、打包、版本核对）：
+
+  publish WinHost (Release / win-x64 framework-dependent) ...
+    正在确定要还原的项目…
+    已还原 C:\work\OpenCode\LabelFrame\src\LabelFrame.Rendering\LabelFrame.Rendering.csproj (用时 362 毫秒)。
+    已还原 C:\work\OpenCode\LabelFrame\src\LabelFrame.Core\LabelFrame.Core.csproj (用时 362 毫秒)。
+    已还原 C:\work\OpenCode\LabelFrame\src\LabelFrame.Api\LabelFrame.Api.csproj (用时 363 毫秒)。
+    已还原 C:\work\OpenCode\LabelFrame\src\LabelFrame.Updates\LabelFrame.Updates.csproj (用时 362 毫秒)。
+    已还原 C:\work\OpenCode\LabelFrame\src\LabelFrame.WinHost\LabelFrame.WinHost.csproj (用时 426 毫秒)。
+    LabelFrame.Core -> C:\work\OpenCode\LabelFrame\src\LabelFrame.Core\bin\Release\net10.0\LabelFrame.Core.dll
+    LabelFrame.Updates -> C:\work\OpenCode\LabelFrame\src\LabelFrame.Updates\bin\Release\net10.0\LabelFrame.Updates.dll
+    LabelFrame.Rendering -> C:\work\OpenCode\LabelFrame\src\LabelFrame.Rendering\bin\Release\net10.0\LabelFrame.Rendering.dll
+    LabelFrame.Api -> C:\work\OpenCode\LabelFrame\src\LabelFrame.Api\bin\Release\net10.0\LabelFrame.Api.dll
+    LabelFrame.WinHost -> C:\work\OpenCode\LabelFrame\src\LabelFrame.WinHost\bin\Release\net10.0-windows10.0.26100\win-x64\LabelFrame.WinHost.dll
+    LabelFrame.WinHost -> C:\work\OpenCode\LabelFrame\artifacts\client\win-x64\
+  done: C:\work\OpenCode\LabelFrame\artifacts\client\win-x64
+  web ui: C:\work\OpenCode\LabelFrame\artifacts\client\win-x64\web\dist
+  文件版本一致：LabelFrame.WinHost.exe 1.6.99.0（安装包版本 1.6.99）
+  generated 53 files -> C:\work\OpenCode\LabelFrame\packaging\files-client.wxs
+  随 MSI 附带官方插件包：labelframe-transport-zebra-1.6.99.lfplugin
+  随 MSI 附带官方插件包：labelframe-transport-tspl-1.6.99.lfplugin
+  C:\work\OpenCode\LabelFrame\packaging\main.wxs(78) : warning WIX1163: VBScript is a deprecated Windows component: https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features. VBScript custom actions might fail on some Windows systems. Rewrite or eliminate VBScript custom actions for best compatibility.
+    SkiaSharp.dll: 3.119.2.0 >= 基线 3.119.2.0 OK
+    Microsoft.Extensions.DependencyModel.dll: 10.0.726.21808 >= 基线 10.0.726.21808 OK
+    libSkiaSharp.dll: 在工件内，无版本基线，按存在断言通过（实测：无版本信息）
+  依赖基线断言通过：3 项关键程序集不低于上一发版基线。
+  MSI 生成完成：C:\work\OpenCode\LabelFrame\artifacts\LabelFrame-Client-1.6.99.msi
+  大小：23.6 MB
+
+注释卫生核查（python scripts/check-comment-hygiene.py origin/master）：
+
+  A. 过程标记扫描（origin/master..HEAD 新增注释行）：命中 0
+
+  结论：干净。

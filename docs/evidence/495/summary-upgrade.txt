@@ -1,0 +1,13 @@
+# 升级回归轮的逐项结论，规则同卸载轮。
+
+PASS G01 official 1.6.1 package installed silently : exit=0 17.3s
+PASS G02 control: the official package leaves exactly 2 rejected-request warnings when it starts the updater service : warnings=2 listed=2
+PASS G03 the old client is running and reports 1.6.1 before the upgrade : product=1.6.1 clientProgram=1.6.1.0 updater=Running winhostProcesses=2 listening53960=1 versionReported=1.6.1
+PASS G04 upgrade to the candidate exits 0 while the client runs : exit=0 7.1s
+PASS G05 the installer ended the client: only the updater service process remains, nothing on 53960 : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=1 listening53960=0 versionReported=
+PASS G06 the new version is in place: product 1.6.99, client program 1.6.99.0 : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=1 listening53960=0 versionReported=
+PASS G07 no rejected-request warning when the candidate starts the updater service : warnings=0 control=2
+PASS G08 the client starts again after the upgrade and answers on 53960 : product=1.6.99 clientProgram=1.6.99.0 updater=Running winhostProcesses=2 listening53960=1 versionReported=1.6.1
+PASS G09 uninstall after the upgrade exits 0 and leaves nothing : exit=0 clean=True
+PASS G10 no rejected-request warning from the upgrade on : warnings=0 control=2 labelFrameEvents=3
+SUMMARY pass=10 fail=0

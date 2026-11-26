@@ -99,7 +99,19 @@ internal static class UpdaterServiceStarter
     }
 
     // 服务一过自检就会被系统记为「运行中」，管道开始监听才算真的可用。
-    private static bool PipeReady() => File.Exists($@"\\.\pipe\{ClientUpdateContract.PipeName}");
+    private static bool PipeReady() => PipeExists(ClientUpdateContract.PipeName);
+
+    /// <summary>按名字判断管道是否已存在，不连接它。</summary>
+    // 平台坑：对管道路径调用 File.Exists 会作为客户端连上管道再断开，服务端读到空连接后按被拒绝的请求记一条警告；
+    // 列举管道目录不产生连接。读不到目录时按不存在处理，由调用方继续轮询直到兜底时限。
+    internal static bool PipeExists(string pipeName)
+    {
+        try
+        {
+            return Directory.EnumerateFiles(@"\\.\pipe\").Any(path => string.Equals(Path.GetFileName(path), pipeName, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return false; }
+    }
 
     /// <summary>判定失败后的收尾：把还活着的服务停下并等到停止；停不下时返回 false。安装回滚要删文件，服务不放开占用就会留下残留。</summary>
     internal static bool Stop(Func<ServiceControllerStatus> status, Action stop, TimeSpan timeout)

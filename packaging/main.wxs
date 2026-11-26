@@ -286,11 +286,11 @@
       </Feature>
     </Feature>
 
-    <!-- 隐藏执行安装前的宿主安全退出预检。
+    <!-- 隐藏执行客户端的安全退出预检：安装、修复、升级与手动卸载共用。
          MSI Formatted 会剥除空花括号并替换方括号引用，内层脚本禁止空块和方括号类型表达式。 -->
     <CustomAction Id="ShutdownWinHost" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="immediate" Return="check" />
     <CustomAction Id="SetShutdownWinHostCommand" Property="WixQuietExecCmdLine"
-      Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command &quot;$ErrorActionPreference='Stop'; $servicePids=@(Get-CimInstance Win32_Service -Filter 'Name=''LabelFrameClientUpdater''' -ErrorAction Stop | Select-Object -ExpandProperty ProcessId); $p=Get-CimInstance Win32_Process -Filter 'Name=''LabelFrame.WinHost.exe''' -ErrorAction Stop | Where-Object { $_.ProcessId -notin $servicePids -and $_.CommandLine -notmatch '(^|\s)--(update-service|restart-wait)(\s|$)' } | Select-Object -First 1; if (!$p) { exit 0 }; $pidToStop=$p.ProcessId; $ports=@(Get-NetTCPConnection -State Listen -OwningProcess $pidToStop -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort -Unique); if (!$ports) { Write-Error 'LabelFrame 正在运行但无法定位本机 API 端口，已中止升级'; exit 1 }; $base=$null; foreach ($port in $ports) { try { $jobs=@(Invoke-RestMethod -TimeoutSec 3 -Uri ('http://127.0.0.1:'+$port+'/api/jobs?limit=500')); $base='http://127.0.0.1:'+$port; break } catch { $null } }; if (!$base) { Write-Error '无法读取 LabelFrame 作业状态，已中止升级'; exit 1 }; $busy=@($jobs | Where-Object { $_.status -eq 'Printing' -or @($_.items | Where-Object { $_.status -eq 'Printing' }).Count -gt 0 }); if ($busy.Count -gt 0) { Write-Error 'LabelFrame 当前有标签正在打印，请等待本张完成后重试升级'; exit 1 }; try { Invoke-WebRequest -UseBasicParsing -Method Post -TimeoutSec 2 -Uri ($base+'/api/host/shutdown') | Out-Null } catch { if ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__ -eq 409) { Write-Error 'LabelFrame 当前有标签正在打印，请等待本张完成后重试升级'; exit 1 }; Write-Error '无法请求 LabelFrame 安全退出，已中止升级'; exit 1 }; $deadline=(Get-Date).AddSeconds(15); do { Start-Sleep -Milliseconds 250; $p=Get-Process -Id $pidToStop -ErrorAction SilentlyContinue } while ($p -and (Get-Date) -lt $deadline); if ($p) { Write-Error 'LabelFrame 未能在 15 秒内安全退出，已中止升级'; exit 1 }&quot;" />
+      Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command &quot;$ErrorActionPreference='Stop'; $servicePids=@(Get-CimInstance Win32_Service -Filter 'Name=''LabelFrameClientUpdater''' -ErrorAction Stop | Select-Object -ExpandProperty ProcessId); $p=Get-CimInstance Win32_Process -Filter 'Name=''LabelFrame.WinHost.exe''' -ErrorAction Stop | Where-Object { $_.ProcessId -notin $servicePids -and $_.CommandLine -notmatch '(^|\s)--(update-service|restart-wait)(\s|$)' } | Select-Object -First 1; if (!$p) { exit 0 }; $pidToStop=$p.ProcessId; $ports=@(Get-NetTCPConnection -State Listen -OwningProcess $pidToStop -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort -Unique); if (!$ports) { Write-Error 'LabelFrame 正在运行但无法定位本机 API 端口，已中止安装或卸载'; exit 1 }; $base=$null; foreach ($port in $ports) { try { $jobs=@(Invoke-RestMethod -TimeoutSec 3 -Uri ('http://127.0.0.1:'+$port+'/api/jobs?limit=500')); $base='http://127.0.0.1:'+$port; break } catch { $null } }; if (!$base) { Write-Error '无法读取 LabelFrame 作业状态，已中止安装或卸载'; exit 1 }; $busy=@($jobs | Where-Object { $_.status -eq 'Printing' -or @($_.items | Where-Object { $_.status -eq 'Printing' }).Count -gt 0 }); if ($busy.Count -gt 0) { Write-Error 'LabelFrame 当前有标签正在打印，请等待本张完成后重试'; exit 1 }; try { Invoke-WebRequest -UseBasicParsing -Method Post -TimeoutSec 2 -Uri ($base+'/api/host/shutdown') | Out-Null } catch { if ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__ -eq 409) { Write-Error 'LabelFrame 当前有标签正在打印，请等待本张完成后重试'; exit 1 }; Write-Error '无法请求 LabelFrame 安全退出，已中止安装或卸载'; exit 1 }; $deadline=(Get-Date).AddSeconds(15); do { Start-Sleep -Milliseconds 250; $p=Get-Process -Id $pidToStop -ErrorAction SilentlyContinue } while ($p -and (Get-Date) -lt $deadline); if ($p) { Write-Error 'LabelFrame 未能在 15 秒内安全退出，已中止安装或卸载'; exit 1 }&quot;" />
     <!-- 更新服务由本包自己启动并等到就绪，不走 Windows Installer 内建的服务启动动作：
          平台坑：内建动作在服务启动失败时会按固定间隔反复重试（实测约 4 分钟才报错），也不会把服务侧的失败原因写进安装日志。
          本动作以 SYSTEM 身份运行刚装好的程序文件：服务一报告停止即判失败，超时只作兜底。
@@ -318,9 +318,11 @@
     <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramFiles%\LabelFrame\Client\appsettings.json&quot;" />
     <InstallExecuteSequence>
-      <!-- CostFinalize 后、InstallValidate 前停止宿主，避免文件占用检查先弹出 Restart Manager 对话框。 -->
-      <Custom Action="ShutdownWinHost" Before="InstallValidate" Condition="NOT REMOVE~=&quot;ALL&quot;" />
-      <Custom Action="SetShutdownWinHostCommand" Before="ShutdownWinHost" Condition="NOT REMOVE~=&quot;ALL&quot;" />
+      <!-- CostFinalize 后、InstallValidate 前停止宿主，避免文件占用检查先弹出 Restart Manager 对话框。
+           防回归警示：Restart Manager 关不掉托盘里的客户端，手动卸载不能交给它，必须走同一预检。
+           升级过程中旧产品的卸载子会话跳过：新产品的会话已经让客户端退出。 -->
+      <Custom Action="ShutdownWinHost" Before="InstallValidate" Condition="NOT (REMOVE~=&quot;ALL&quot; AND UPGRADINGPRODUCTCODE)" />
+      <Custom Action="SetShutdownWinHostCommand" Before="ShutdownWinHost" Condition="NOT (REMOVE~=&quot;ALL&quot; AND UPGRADINGPRODUCTCODE)" />
       <!-- 服务注册（InstallServices）之后、提交（InstallFinalize）之前启动更新服务：失败时整笔安装连同服务注册一起回滚 -->
       <Custom Action="StartUpdaterService" After="InstallServices" Condition="NOT REMOVE" />
       <Custom Action="StopUpdaterServiceOnRollback" Before="SetStartUpdaterService" Condition="NOT REMOVE" />

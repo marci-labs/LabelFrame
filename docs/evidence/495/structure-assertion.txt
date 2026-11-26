@@ -1,0 +1,31 @@
+# 客户端 MSI 结构断言：scripts/verify-msi-ui.ps1，取提交 c2fcea8 里的版本
+#
+assertion script sha256: f0f1556a836c5eeffe4cccb587c26fc32b7f9a11f674dc02d608e79bd0df042b
+run at: 2026-11-26 19:23:24
+#
+每个包的输出只留与本次改动有关的后半部分（从「受控升级」起到结束）；前面的对话框表、界面顺序、品牌二进制、ARP 属性、选项页与链路从略。
+
+msi: LabelFrame-Client-1.6.99.msi（候选包：本分支的产品源码本地构建，未签名）
+sha256: 760d7722bb65cdb733f0a4f9c1fe149b80880c20840bf441dc78c645df3f4c01
+verdict: PASS（PowerShell 7 与 Windows PowerShell 5.1 各一次，输出相同；CI 用的是 PowerShell 7）
+
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+运行中升级进程角色：真实 MSI 格式化脚本排除更新服务与等待器，保留打印客户端；无客户端时返回空。
+运行中客户端的安全退出：同步动作 ShutdownWinHost(1399) 位于 CostFinalize 后、InstallValidate 前；全新安装、修复、升级与手动卸载都执行，只有升级过程中旧产品的卸载子会话跳过；命令含作业预检与 15 秒退出等待，经引擎 Formatted 转换后仍可解析。
+运行时检测（ASP.NET Core + Desktop 双项、三段缺失说明）、安装位置固定（只读页旁路 + INSTALLFOLDER 拦截 + 组件挂载）、安装日志与失败提示、更新服务启动动作：OK
+断言通过：向导齐全，运行时检查（.NET 1150 / WebView2 1160）先于欢迎页（1297）。
+
+msi: LabelFrame-Client-1.6.1.msi（已发布的包，对照，应当被拒）
+sha256: a8f8c0c1eea34ad8988a6cf3a44bd83deacce44f48c98c09dabf497ddeb2b982
+verdict: REJECT（Windows PowerShell 5.1）
+reason: 安全退出动作在「手动卸载」时应当执行，当前条件不是这样：NOT REMOVE~="ALL"
+
+--- 被拒时的输出（从「受控升级」起）---
+受控升级：服务身份、启动与卸载行为、兼容属性、发布者证书与组件打包 OK
+安全退出动作在「手动卸载」时应当执行，当前条件不是这样：NOT REMOVE~="ALL"
+所在位置 C:\work\OpenCode\LabelFrame\scripts\verify-msi-ui.ps1:205 字符: 17
++ ...             throw "安全退出动作在「$($state.Name)」时应当$(if ($state.Runs) { '执行 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (安全退出动作在「手动卸载」时应...T REMOVE~="ALL":String) [], RuntimeEx
+ception
+    + FullyQualifiedErrorId : 安全退出动作在「手动卸载」时应当执行，当前条件不是这样：NOT REMOVE~="ALL"

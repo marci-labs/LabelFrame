@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Pipes;
 using System.ServiceProcess;
 using LabelFrame.WinHost.Updates;
 using Xunit;
@@ -120,6 +121,35 @@ public sealed class UpdaterServiceStarterTests
 
         Assert.Equal("[00:29:00 事件 1] 更新服务启动失败，停在阶段「安装目录自检」：自动安装仅支持管理员部署在 Program Files 下的客户端。 | [00:28:58 事件 0] Service cannot be started.", quoted);
         Assert.Equal("（本次启动期间服务没有留下记录）", UpdaterServiceStarter.ServiceEvents(42, entries));
+    }
+
+    [Fact]
+    public async Task Request_pipe_is_reported_ready_without_connecting_to_it()
+    {
+        var name = "LabelFrame.Tests." + Guid.NewGuid().ToString("N");
+        using var pipe = new NamedPipeServerStream(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+        using var cancellation = new CancellationTokenSource();
+        var connection = pipe.WaitForConnectionAsync(cancellation.Token);
+        try
+        {
+            Assert.True(UpdaterServiceStarter.PipeExists(name));
+            Assert.False(UpdaterServiceStarter.PipeExists(name + ".missing"));
+
+            // 安装器在成功路径上会探测两次：任何一次连上管道，更新服务都会记一条「请求被拒绝」的警告
+            Assert.True(UpdaterServiceStarter.PipeExists(name));
+            Assert.False(connection.IsCompleted);
+
+            // 对照：真实客户端连上时，同一种观察方式看得到，上面「没有连上」不是因为观察不到
+            using var client = new NamedPipeClientStream(".", name, PipeDirection.Out);
+            client.Connect(5000);
+            await connection;
+            Assert.True(pipe.IsConnected);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            try { await connection; } catch (OperationCanceledException) { }
+        }
     }
 
     [Fact]

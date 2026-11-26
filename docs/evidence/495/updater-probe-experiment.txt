@@ -1,0 +1,104 @@
+# 就绪探测的实验（2026-11-26，开发机，PowerShell 7，其运行时是 .NET 10）。两个实验各建一个随机名字的管道并停在等待连接上，不涉及任何 LabelFrame 进程。
+# 第一个：用 File.Exists 探管道路径——它作为客户端连了上来，服务端按读取请求帧的做法读，得到「Unable to read beyond the end of the stream.」，
+# 与已发布版本在事件日志里留下的警告文字相同。
+# 第二个：列举管道目录后按名字判断——能找到这个管道，且没有产生连接；随后真实客户端连接的对照能被观察到，说明「有没有连上」看得到。
+# 文件末尾附两个实验脚本原文。
+
+# Readiness probe experiments, run again on the development machine on 2026-11-26 to keep their output.
+# Shell: PowerShell 7 (pwsh). Each experiment creates pipes of its own (random names) and touches no LabelFrame process.
+# The same scripts do not run under Windows PowerShell 5.1 (.NET Framework has no NamedPipeServerStreamAcl); that output is left out.
+
+=== pipe-probe3.ps1 ===
+runtime: .NET 10.0.13
+pipe path probed: \\.\pipe\lf161-probe-2d7827ddd7fb418f9a7b5f39253f7850
+round 1 probe -> File.Exists = True ; client connected = True
+round 1 server: MethodInvocationException: Exception calling "ReadInt32" with "0" argument(s): "Unable to read beyond the end of the stream."
+round 2 probe -> File.Exists = True ; client connected = True
+round 2 server: MethodInvocationException: Exception calling "ReadInt32" with "0" argument(s): "Unable to read beyond the end of the stream."
+exit=0
+
+=== pipe-probe4.ps1 ===
+runtime: .NET 10.0.13
+round 1 listing: pipes=661 found=1 took=7 ms ; sample entry=\\.\pipe\InitShutdown
+round 1 after listing: client connected = False
+round 1 control: client connected = True
+round 2 listing: pipes=661 found=1 took=2 ms ; sample entry=\\.\pipe\InitShutdown
+round 2 after listing: client connected = False
+round 2 control: client connected = True
+exit=0
+
+# ---- Appendix: the two experiment scripts, in the order they were run ----
+
+## pipe-probe3.ps1
+# Experiment on the installer's readiness probe ([IO.File]::Exists on a pipe path), against a pipe of its own.
+# For each of two rounds, a pipe instance is created the way the updater service creates its request pipe and left
+# waiting for a connection; then the same probe the installer's service starter uses is called. If a client connected,
+# one length-prefixed frame is read, as the service does for an install request, and the outcome is printed.
+# Touches no LabelFrame process.
+$ErrorActionPreference = 'Continue'
+Add-Type -AssemblyName System.IO.Pipes.AccessControl
+$name = 'lf161-probe-' + [Guid]::NewGuid().ToString('N')
+$path = '\\.\pipe\' + $name
+$security = New-Object System.IO.Pipes.PipeSecurity
+$systemSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::LocalSystemSid, $null)
+$userSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::AuthenticatedUserSid, $null)
+$security.AddAccessRule((New-Object System.IO.Pipes.PipeAccessRule($systemSid, [System.IO.Pipes.PipeAccessRights]::FullControl, [System.Security.AccessControl.AccessControlType]::Allow)))
+$security.AddAccessRule((New-Object System.IO.Pipes.PipeAccessRule($userSid, [System.IO.Pipes.PipeAccessRights]::ReadWrite, [System.Security.AccessControl.AccessControlType]::Allow)))
+
+"runtime: $([System.Runtime.InteropServices.RuntimeInformation]::FrameworkDescription)"
+"pipe path probed: $path"
+foreach ($round in 1, 2) {
+    $options = [System.IO.Pipes.PipeOptions]::Asynchronous
+    if ($round -eq 1) { $options = $options -bor [System.IO.Pipes.PipeOptions]::FirstPipeInstance }
+    $pipe = [System.IO.Pipes.NamedPipeServerStreamAcl]::Create($name, [System.IO.Pipes.PipeDirection]::InOut, 1, [System.IO.Pipes.PipeTransmissionMode]::Byte, $options, 65536, 65536, $security)
+    $pending = $pipe.WaitForConnectionAsync()
+    Start-Sleep -Milliseconds 300
+    $exists = [IO.File]::Exists($path)
+    $connected = $pending.Wait(2500)
+    "round $round probe -> File.Exists = $exists ; client connected = $connected"
+    if ($connected) {
+        try {
+            $reader = New-Object System.IO.BinaryReader($pipe)
+            $length = $reader.ReadInt32()
+            "round $round server: read a frame of $length bytes"
+        }
+        catch { "round $round server: $($_.Exception.GetType().Name): $($_.Exception.Message)" }
+    }
+    $pipe.Dispose()
+}
+
+## pipe-probe4.ps1
+# Experiment for the fix of the installer's readiness probe: does listing the pipe directory report a waiting pipe,
+# without connecting to it? For each of two rounds a pipe of its own is created and left waiting for a connection,
+# then the pipe directory is listed and checked for the name; afterwards a real client connects, as a control that the
+# "did a client connect" observation can come out true at all. Touches no LabelFrame process.
+$ErrorActionPreference = 'Continue'
+Add-Type -AssemblyName System.IO.Pipes.AccessControl
+$name = 'lf-probe-' + [Guid]::NewGuid().ToString('N')
+$path = '\\.\pipe\' + $name
+$security = New-Object System.IO.Pipes.PipeSecurity
+$systemSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::LocalSystemSid, $null)
+$userSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::AuthenticatedUserSid, $null)
+$security.AddAccessRule((New-Object System.IO.Pipes.PipeAccessRule($systemSid, [System.IO.Pipes.PipeAccessRights]::FullControl, [System.Security.AccessControl.AccessControlType]::Allow)))
+$security.AddAccessRule((New-Object System.IO.Pipes.PipeAccessRule($userSid, [System.IO.Pipes.PipeAccessRights]::ReadWrite, [System.Security.AccessControl.AccessControlType]::Allow)))
+
+"runtime: $([System.Runtime.InteropServices.RuntimeInformation]::FrameworkDescription)"
+foreach ($round in 1, 2) {
+    $options = [System.IO.Pipes.PipeOptions]::Asynchronous
+    if ($round -eq 1) { $options = $options -bor [System.IO.Pipes.PipeOptions]::FirstPipeInstance }
+    $pipe = [System.IO.Pipes.NamedPipeServerStreamAcl]::Create($name, [System.IO.Pipes.PipeDirection]::InOut, 1, [System.IO.Pipes.PipeTransmissionMode]::Byte, $options, 65536, 65536, $security)
+    $pending = $pipe.WaitForConnectionAsync()
+    Start-Sleep -Milliseconds 300
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $entries = @([IO.Directory]::EnumerateFiles('\\.\pipe\'))
+    $clock.Stop()
+    $found = @($entries | Where-Object { [IO.Path]::GetFileName($_) -eq $name }).Count
+    "round $round listing: pipes=$($entries.Count) found=$found took=$([math]::Round($clock.Elapsed.TotalMilliseconds)) ms ; sample entry=$($entries[0])"
+    "round $round after listing: client connected = $($pending.Wait(800))"
+    # Control: a real client connects, and the server observes it.
+    $client = New-Object System.IO.Pipes.NamedPipeClientStream('.', $name, [System.IO.Pipes.PipeDirection]::Out)
+    $client.Connect(2000)
+    "round $round control: client connected = $($pending.Wait(2000))"
+    $client.Dispose()
+    $pipe.Dispose()
+}

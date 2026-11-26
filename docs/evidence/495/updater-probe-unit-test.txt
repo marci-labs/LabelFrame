@@ -1,0 +1,66 @@
+# 就绪探测的单元测试（test/LabelFrame.WinHost.Tests，.NET SDK 10.0.402，2026-11-26）。
+
+## 一、提交 c2fcea8 的实现：新增的一条与同文件其余用例
+
+C:\work\OpenCode\LabelFrame\test\LabelFrame.WinHost.Tests\bin\Debug\net10.0-windows10.0.26100\LabelFrame.WinHost.Tests.dll (.NETCoreApp,Version=v10.0)的测试运行
+总共 1 个测试文件与指定模式相匹配。
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.5.3.1+6b60a9e56a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.08]   Discovering: LabelFrame.WinHost.Tests
+[xUnit.net 00:00:00.17]   Discovered:  LabelFrame.WinHost.Tests
+[xUnit.net 00:00:00.18]   Starting:    LabelFrame.WinHost.Tests
+  已通过 LabelFrame.WinHost.Tests.UpdaterStartupTests.Self_check_rejects_an_unprotected_install_location_before_anything_is_created [11 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterStartupTests.Failure_arriving_first_is_returned_with_its_stage_and_reported_once [11 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterStartupTests.Stopping_before_ready_is_a_failure_that_names_the_last_stage [< 1 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterStartupTests.Ready_completes_startup_without_failure_or_report [2 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterStartupTests.Backstop_timeout_is_returned_when_neither_ready_nor_failure_arrives [206 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.After_a_failed_verdict_a_service_that_is_still_alive_is_stopped_and_waited_for [411 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Stopping_is_skipped_when_the_service_is_already_stopped_and_tolerates_a_rejected_stop_request [205 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Service_already_pending_or_running_is_not_started_again [2 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Detail_log_follows_the_install_log_or_falls_back_to_the_account_temp_folder [< 1 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Service_that_never_becomes_ready_ends_with_the_backstop_timeout [409 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Running_state_without_the_request_pipe_is_not_treated_as_ready [409 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Request_pipe_is_reported_ready_without_connecting_to_it [6 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Service_that_stops_right_after_reaching_running_is_reported_stopped [< 1 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Service_that_reports_stopped_fails_at_once_without_waiting_for_the_backstop [417 ms]
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Only_events_written_by_the_service_after_the_start_request_are_quoted_newest_first [1 ms]
+[xUnit.net 00:00:02.49]   Finished:    LabelFrame.WinHost.Tests
+  已通过 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Service_that_reaches_running_and_stays_is_reported_running [411 ms]
+
+测试运行成功。
+测试总数: 16
+     通过数: 16
+总时间: 2.8871 秒
+
+## 二、反向对照：把 PipeExists 的函数体临时改回 File.Exists，只跑新增的这一条
+它在「没有客户端连上来」的断言上失败（UpdaterServiceStarterTests.cs 第 140 行：预期 False，实际 True），说明这条测试观察得到连接。
+这处改动只用于对照，没有提交。
+
+C:\work\OpenCode\LabelFrame\test\LabelFrame.WinHost.Tests\bin\Debug\net10.0-windows10.0.26100\LabelFrame.WinHost.Tests.dll (.NETCoreApp,Version=v10.0)的测试运行
+总共 1 个测试文件与指定模式相匹配。
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.5.3.1+6b60a9e56a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.09]   Discovering: LabelFrame.WinHost.Tests
+[xUnit.net 00:00:00.20]   Discovered:  LabelFrame.WinHost.Tests
+[xUnit.net 00:00:00.21]   Starting:    LabelFrame.WinHost.Tests
+[xUnit.net 00:00:00.28]     LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Request_pipe_is_reported_ready_without_connecting_to_it [FAIL]
+[xUnit.net 00:00:00.28]       Assert.False() Failure
+[xUnit.net 00:00:00.28]       Expected: False
+[xUnit.net 00:00:00.28]       Actual:   True
+[xUnit.net 00:00:00.28]       Stack Trace:
+[xUnit.net 00:00:00.28]         C:\work\OpenCode\LabelFrame\test\LabelFrame.WinHost.Tests\UpdaterServiceStarterTests.cs(140,0): at LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Request_pipe_is_reported_ready_without_connecting_to_it()
+[xUnit.net 00:00:00.28]         C:\work\OpenCode\LabelFrame\test\LabelFrame.WinHost.Tests\UpdaterServiceStarterTests.cs(152,0): at LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Request_pipe_is_reported_ready_without_connecting_to_it()
+[xUnit.net 00:00:00.28]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.28]   Finished:    LabelFrame.WinHost.Tests
+  失败 LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Request_pipe_is_reported_ready_without_connecting_to_it [9 ms]
+  错误消息:
+   Assert.False() Failure
+Expected: False
+Actual:   True
+  堆栈跟踪:
+     at LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Request_pipe_is_reported_ready_without_connecting_to_it() in C:\work\OpenCode\LabelFrame\test\LabelFrame.WinHost.Tests\UpdaterServiceStarterTests.cs:line 140
+   at LabelFrame.WinHost.Tests.UpdaterServiceStarterTests.Request_pipe_is_reported_ready_without_connecting_to_it() in C:\work\OpenCode\LabelFrame\test\LabelFrame.WinHost.Tests\UpdaterServiceStarterTests.cs:line 152
+--- End of stack trace from previous location ---
+
+测试运行失败。
+测试总数: 1
+     失败数: 1
+总时间: 0.8053 秒

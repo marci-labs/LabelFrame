@@ -37,7 +37,7 @@ Client MSI 安装 `LabelFrameClientUpdater` Windows 服务，入口只运行更�
 
 Client MSI 不用 Windows Installer 内建的服务启动动作：内建动作在服务启动失败时按固定间隔反复重试（实测约 4 分钟后才报错），也不记录服务侧原因。安装包在服务注册之后、提交之前运行延迟动作 `StartUpdaterService`，以 SYSTEM 身份执行 `LabelFrame.WinHost.exe --start-update-service --log <明细日志路径>`（`UpdaterServiceStarter`）：
 
-- 轮询服务状态：服务在运行且升级请求管道已存在并保持 1 秒即成功；服务报告停止即判失败，75 秒未就绪按兜底超时判失败（略长于服务自身的看门狗，让服务先报出停在哪个阶段）。
+- 轮询服务状态：服务在运行且升级请求管道已存在并保持 1 秒即成功；服务报告停止即判失败，75 秒未就绪按兜底超时判失败（略长于服务自身的看门狗，让服务先报出停在哪个阶段）。「管道已存在」靠列举管道目录后按名字判断，不连接管道：对管道路径调用 `File.Exists` 会让调用方作为客户端连上管道又断开（.NET 10 实测），服务读到空连接后按被拒绝的请求记一条警告，每次安装、升级都会在应用程序日志里留下两条。
 - 判失败后先把还活着的服务停下并等到停止（上限 90 秒）再返回非零：安装回滚要删文件，服务不放开占用就会留下残留。
 - 输出分两处。安装日志里只有一行 ASCII 结论（安装器按 UTF-8 记录子进程输出，而安装日志文件是系统代码页，混排会乱码；安装器可能只保留最后一行，结论与位置必须同在一行）。中文详情写到安装日志旁边的明细日志（`<安装日志>.updater-service.log`，UTF-8 带 BOM，路径经 `[MsiLogFileLocation]` 传入），内容是本次启动期间服务写到事件日志的条目。非零退出码使安装中止，服务注册随事务一并撤回。
 - 服务起来之后安装若回滚（启动步骤之后的动作失败或用户取消）：回滚动作 `StopUpdaterServiceOnRollback` 先用系统 PowerShell `Stop-Service` 等到服务停止，再轮到删文件；它失败不影响回滚继续。
@@ -62,9 +62,13 @@ Client MSI 不用 Windows Installer 内建的服务启动动作：内建动作�
 
 可信 MSI 附带的官方插件在启动扫描前比较真实版本、更新已激活/已安装官方插件；第三方目录和手动 DLL 不覆盖。单个插件失败需显示，不能清除异常冒充成功。数据、模板、配置和请求幂等键保留。
 
-MSI 的运行中升级预检先读取 `Win32_Service` 中 `LabelFrameClientUpdater` 的进程 ID，并从候选宿主中排除，再按命令行排除 `--update-service` 与 `--restart-wait`。普通权限启动安装时可能读不到 LocalSystem 进程命令行，不能仅依赖命令行识别服务；服务由 Windows Installer 的 ServiceControl 停止。未知角色但非服务的进程不因命令行缺失被跳过，仍执行原有 API 安全退出预检。服务查询失败阻断安装，不降级到不安全的仅进程名选择。
+MSI 的运行中客户端退出预检（安装、修复、升级与手动卸载共用）先读取 `Win32_Service` 中 `LabelFrameClientUpdater` 的进程 ID，并从候选宿主中排除，再按命令行排除 `--update-service` 与 `--restart-wait`。普通权限启动安装时可能读不到 LocalSystem 进程命令行，不能仅依赖命令行识别服务；服务由 Windows Installer 的 ServiceControl 停止。未知角色但非服务的进程不因命令行缺失被跳过，仍执行原有 API 安全退出预检。服务查询失败阻断安装，不降级到不安全的仅进程名选择。
 
-安装预检由 WiX Util 的 x64 `WixQuietExec` DLL 同步运行，命令通过前置属性动作设置，仍位于 CostFinalize 后、InstallValidate 前。QuietExec 从创建进程时隐藏控制台并将输出写入 MSI 日志，非零退出码继续阻断安装；固定使用 System64Folder 下 Windows PowerShell，避免 PATH 解析。安装向导与正常 UAC 保持可见，不能用异步启动或忽略返回码达到隐藏效果。依据：[WiX Quiet execution 官方文档](https://docs.firegiant.com/wix/tools/wixext/quietexec/)。
+安装预检由 WiX Util 的 x64 `WixQuietExec` DLL 同步运行，命令通过前置属性动作设置，仍位于 CostFinalize 后、InstallValidate 前。QuietExec 从创建进程时隐藏控制台并将输出写入 MSI 日志，非零退出码阻断本次安装或卸载；固定使用 System64Folder 下 Windows PowerShell，避免 PATH 解析。安装向导与正常 UAC 保持可见，不能用异步启动或忽略返回码达到隐藏效果。依据：[WiX Quiet execution 官方文档](https://docs.firegiant.com/wix/tools/wixext/quietexec/)。
+
+预检的执行范围由条件 `NOT (REMOVE~="ALL" AND UPGRADINGPRODUCTCODE)` 决定：全新安装、修复、升级（新产品的会话）与手动卸载都执行，只有升级过程中旧产品的卸载子会话跳过——客户端已由新产品的会话结束。手动卸载不能交给 Restart Manager：它关不掉托盘里的客户端，静默卸载会以成功收场而客户端继续运行。
+
+预检先读本机作业状态，再请求安全退出并最多等 15 秒。客户端正在打印、读不到本机作业状态或没有在时限内退出时，本次安装或卸载被拒绝，不强杀客户端；预检排在 InstallValidate 之前，被拒绝时不开启安装事务，已安装的产品与更新服务保持原样。被拒绝时安装器给出的是通用错误对话框，原因写在安装日志里。引导程序卸载客户端时以 `msiexec /x` 调用同一个 MSI 执行序列，按调用形式等价。
 
 ## 状态与契约
 
