@@ -12,7 +12,7 @@
 | 候选包 | `LabelFrame-Client-1.6.99.msi`，SHA256 `760d7722bb65cdb733f0a4f9c1fe149b80880c20840bf441dc78c645df3f4c01`，由本分支提交 `c2fcea8` 的产品源码本地构建（`scripts/build-msi.ps1 -Version 1.6.99`，未签名；构建之后到提交之间 `src/`、`packaging/` 没有改动）。版本号 1.6.99 只为高于已发布的 1.6.1。包内程序的文件版本是 1.6.99.0；客户端自己报告的版本仍是源码里的常量 `1.6.1`，升级轮里的「报告版本 1.6.1」指的是它 |
 | 调用形式 | 全部静默：`msiexec /i` 或 `/x <msi> /qn /norestart /l*v <日志>` |
 | 客户端的运行方式 | 静默安装不启动打印客户端。需要客户端运行的场景由取证脚本从 PowerShell Direct 会话里启动它（`LABELFRAME_OPEN_BROWSER=0`、`LABELFRAME_TRAY=0`：无窗口、无托盘），等它在 53960 端口应答后再继续 |
-| 「正在打印」的造法 | 开启批次暂停（每张标签前等 1 秒），向模拟打印机提交一张 75 张标签的作业。每张标签先被领取（状态 Printing）再等，所以安装包的预检看得到进行中的作业；整批约一分钟打完 |
+| 「正在打印」的造法 | 开启批次暂停（从第二张起每张前等 1 秒），向模拟打印机提交一张 75 张标签的作业。每张标签先被领取（状态 Printing）再等，所以安装包的预检看得到进行中的作业；整批约一分钟打完 |
 | 「读不到作业状态」的造法 | 让客户端只监听测试机自己的地址，不监听 127.0.0.1。客户端在运行，安装包的预检从 127.0.0.1 读不到作业状态 |
 | 未覆盖 | Windows 11；带界面的卸载（向导、「应用和功能」）在客户端运行时没有单独走查；引导程序的完整卸载链路（见下文） |
 
@@ -38,7 +38,7 @@
 | `summary-uninstall.txt`、`summary-upgrade.txt` | 两轮的逐项结论。汇总脚本只读客机输出，逐项给出 PASS / FAIL；只认存在的证据 |
 | `summary-controls.txt` | 汇总脚本的对照：编造的完整证据、空的证据目录、第一次运行的证据 |
 | `installer-log-excerpts-uninstall.txt`、`installer-log-excerpts-upgrade.txt` | 从测试机取回的 Windows Installer 日志的关键行（带行号），以及逐份日志的判定 |
-| `installer-log-checks-controls.txt` | 日志判定的对照：按已发布行为判定、日志缺失、8 种各只改坏一个依据的篡改 |
+| `installer-log-checks-controls.txt` | 日志判定的对照：按已发布行为判定候选包的日志；日志缺失；7 种各只改坏一个依据的篡改 |
 | `updater-probe-unit-test.txt` | 就绪探测的单元测试通过；把探测改回 `File.Exists` 的反向对照失败 |
 | `updater-probe-experiment.txt` | 就绪探测的实验输出与脚本原文 |
 | `structure-assertion.txt` | MSI 结构断言对候选包与已发布 1.6.1 包的结论 |
