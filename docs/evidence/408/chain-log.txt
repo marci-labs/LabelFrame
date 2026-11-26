@@ -1,0 +1,82 @@
+## Run 2: client round, server round
+22:40:46 [chain] preconditions passed (room rule self-test, syntax, parameter names, installers, local rehearsal of every installer walk, after-boot helpers)
+22:40:47 [chain] host free memory: 15253 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+22:41:18 [chain] host free memory: 16329 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+22:41:50 [chain] start client (attempt 1)
+23:02:10 STATE_BEFORE=Running
+23:02:14 RESTORE ok
+23:02:27 STATE_AFTER_RESTORE_SETTLED=Saved
+23:02:38 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+23:02:38 [chain] client attempt=1 exit=0 roundDone=yes
+23:02:40 [chain] host free memory: 16904 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+23:03:42 [chain] start server (attempt 1)
+23:16:33 STATE_BEFORE=Running
+23:16:38 RESTORE ok
+23:16:50 STATE_AFTER_RESTORE_SETTLED=Saved
+23:17:01 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+23:17:02 [chain] server attempt=1 exit=0 roundDone=yes
+23:17:02 STATE_BEFORE=Off
+23:17:03 RESTORE ok
+23:17:16 STATE_AFTER_RESTORE_SETTLED=Saved
+23:17:27 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+23:17:27 [chain] CHAIN_DONE
+
+## Supplementary round
+23:25:49 [chain] preconditions passed (room rule self-test, syntax, parameter names, installers, local rehearsal of every installer walk, after-boot helpers)
+23:25:51 [chain] host free memory: 16648 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+23:26:53 [chain] start all (attempt 1)
+23:48:38 STATE_BEFORE=Running
+23:48:42 RESTORE ok
+23:48:55 STATE_AFTER_RESTORE_SETTLED=Saved
+23:49:06 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+23:49:06 [chain] all attempt=1 exit=0 roundDone=yes
+23:49:07 STATE_BEFORE=Off
+23:49:08 RESTORE ok
+23:49:20 STATE_AFTER_RESTORE_SETTLED=Saved
+23:49:32 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+23:49:32 [chain] CHAIN_DONE
+
+## Overlay-upgrade round
+00:00:42 [chain] preconditions passed (room rule self-test, syntax, parameter names, installers, local rehearsal of every installer walk, after-boot helpers)
+00:00:43 [chain] host free memory: 15700 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+00:01:46 [chain] start upgrade (attempt 1)
+00:21:40 STATE_BEFORE=Running
+00:21:45 RESTORE ok
+00:21:57 STATE_AFTER_RESTORE_SETTLED=Saved
+00:22:08 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+00:22:08 [chain] upgrade attempt=1 exit=0 roundDone=yes
+00:22:09 STATE_BEFORE=Off
+00:22:10 RESTORE ok
+00:22:23 STATE_AFTER_RESTORE_SETTLED=Saved
+00:22:34 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+00:22:34 [chain] CHAIN_DONE
+
+## Link round
+00:28:54 [chain] preconditions passed (room rule self-test, syntax, parameter names, installers, local rehearsal of every installer walk, after-boot helpers)
+00:28:55 [chain] host free memory: 15632 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+00:29:58 [chain] start link (attempt 1)
+00:39:24 STATE_BEFORE=Running
+00:39:29 RESTORE ok
+00:39:41 STATE_AFTER_RESTORE_SETTLED=Saved
+00:39:52 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+00:39:53 [chain] link attempt=1 exit=0 roundDone=yes
+00:39:53 STATE_BEFORE=Off
+00:39:55 RESTORE ok
+00:40:07 STATE_AFTER_RESTORE_SETTLED=Saved
+00:40:18 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+00:40:18 [chain] CHAIN_DONE
+
+## Click round (the link clicked twice)
+00:46:39 [chain] preconditions passed (room rule self-test, syntax, parameter names, installers, local rehearsal of every installer walk, after-boot helpers)
+00:46:41 [chain] host free memory: 15751 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+00:47:43 [chain] start click (attempt 1)
+00:58:29 STATE_BEFORE=Running
+00:58:34 RESTORE ok
+00:58:46 STATE_AFTER_RESTORE_SETTLED=Saved
+00:58:57 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+00:58:57 [chain] click attempt=1 exit=0 roundDone=yes
+00:58:58 STATE_BEFORE=Off
+00:58:59 RESTORE ok
+00:59:12 STATE_AFTER_RESTORE_SETTLED=Saved
+00:59:23 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+00:59:23 [chain] CHAIN_DONE

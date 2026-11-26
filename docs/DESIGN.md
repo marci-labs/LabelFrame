@@ -1219,8 +1219,9 @@ Docker Builder 按 `serverImage.digest` 拉取并校验实际 RepoDigest 后 `do
 
 - 前端 lint 新诊断（迭代 162，#447）：oxlint 1.89.0 在既有业务代码额外报告 27 条 React refs / effect / immutability 警告，原 24 条 Hooks / Fast Refresh 警告仍在；本轮零错误且不禁用规则。此轮仅升级工具链，业务行为重构留待触及相关模块时逐项处理，不能用 lint 退出码 0 宣称无警告。
 
+- 安装包缺陷待排期（2026-11-27，[#408](https://github.com/marci-labs/LabelFrame/issues/408) 补验发现，均未修复）：客户端向导完成页勾选「立即打开 LabelFrame」后客户端不启动，启动动作 `LaunchClientOnExit` 返回 1631（[#498](https://github.com/marci-labs/LabelFrame/issues/498)）；用户走得到的两种卸载（「应用和功能」、重跑安装包的维护向导）都不出现「清除用户数据」的询问，数据总是保留——询问页排在界面序列里、条件是 `REMOVE~="ALL"`，只有命令行 `REMOVE=ALL` 才满足，且其后仍是安装措辞的页面（[#499](https://github.com/marci-labs/LabelFrame/issues/499)）；缺运行时对话框的下载链接鼠标点击不打开、键盘回车可以（[#500](https://github.com/marci-labs/LabelFrame/issues/500)，点击由脚本注入，待真人确认）；已安装的服务端静默重跑 MSI 后服务停止不再启动——`StopServerService` 无条件执行，标准动作 `StartServices` 在没有组件变更的维护运行里不启动服务（[#501](https://github.com/marci-labs/LabelFrame/issues/501)）；勾选清除数据卸载客户端后 `logs` 子目录的两个日志文件残留（[#502](https://github.com/marci-labs/LabelFrame/issues/502)）。是否修复、先后与 #408 的关闭由用户决定；证据见 [evidence/408](evidence/408/README.md)。
 
-**真机 / 联调待确认**（欠账由打 `待验收` 标签的 Issue 追踪——PDA 蓝牙 / USB 真机 [#407](https://github.com/marci-labs/LabelFrame/issues/407)、安装链人工面 [#408](https://github.com/marci-labs/LabelFrame/issues/408)；历史清欠清单存档于 [archive/ACCEPTANCE-BACKLOG.md](archive/ACCEPTANCE-BACKLOG.md)）：
+**真机 / 联调待确认**（欠账由打 `待验收` 标签的 Issue 追踪——PDA 蓝牙 / USB 真机 [#407](https://github.com/marci-labs/LabelFrame/issues/407)、安装链人工面 [#408](https://github.com/marci-labs/LabelFrame/issues/408)（2026-11-27 已补验，发现的缺陷见上一条）；历史清欠清单存档于 [archive/ACCEPTANCE-BACKLOG.md](archive/ACCEPTANCE-BACKLOG.md)）：
 
 - Zebra 状态映射真机实证（迭代 55 起实现已按官方规范修正，决策 #109，转**待验收**）：TCP 9100 `~HS` 解析按官方 ZPL 指南字段表（三行逗号分隔，缺纸 = 首行第 2 字段、暂停 = 首行第 3 字段），「无响应 / 超时 / 响应不完整」为一等异常态（官方声明缺纸 / 耗材用尽 / 打印头打开 / 回卷器满 / 打印头过热时可能完全不响应 `~HS`）；WinHost SDK 路径改 `GetCurrentStatus()`（官方布尔属性）。模拟报文单测矩阵已合入；三场景（正常 / 人工缺纸 / 人工暂停）真机取证待验收阶段用户配合（192.168.2.121:9100，Issue #45）。
 - TCP 9100 打印**发送路径**无法实时感知缺纸 / 卡纸：以「发送异常 → 作业挂起」近似（与状态查询 `~HS` 路径相互独立）；缺纸时发送链路的真实行为待上述真机取证一并观察。

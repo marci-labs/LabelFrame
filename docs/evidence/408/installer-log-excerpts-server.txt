@@ -1,0 +1,108 @@
+# Windows Installer log excerpts (server round). Line numbers refer to the pulled log of the same name.
+
+## server package on a machine without the runtime  [walk-server-runtime.log]
+L9: ******* Product: C:\Probe\LabelFrame-Server-1.6.1.msi
+L41: MSI (c) (58:BC) [23:08:07:477]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7512
+L207: MSI (c) (58:BC) [23:08:08:664]: Doing action: RuntimeMissingDlg
+L336: Property(C): UILevel = 5
+L359: MSI (c) (58:BC) [23:09:12:164]: MainEngineThread is returning 1602
+FACTS command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7512] uilevel= exit=1602 sessions=1 upgrading= showed=['RuntimeMissingDlg'] questionSkipped=[] clearDone=[] clearSkipped=[] launchReturn=[] feature=()
+
+## client package on a machine without the runtime  [walk-client-runtime.log]
+L9: ******* Product: C:\Probe\LabelFrame-Client-1.6.1.msi
+L41: MSI (c) (94:E8) [23:09:43:898]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8084
+L229: MSI (c) (94:E8) [23:09:44:164]: Doing action: RuntimeMissingDlg
+L371: Property(C): UILevel = 5
+L394: MSI (c) (94:E8) [23:10:49:310]: MainEngineThread is returning 1602
+FACTS command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8084] uilevel= exit=1602 sessions=1 upgrading= showed=['RuntimeMissingDlg'] questionSkipped=[] clearDone=[] clearSkipped=[] launchReturn=[] feature=()
+
+## msiexec /x answered Yes  [walk-server-remove-arp.log]
+L9: ******* Product: {9E0433E6-D433-4F08-A367-9FA58EFABE3F}
+L22: ******* Product: {9E0433E6-D433-4F08-A367-9FA58EFABE3F}
+L56: MSI (s) (28:44) [23:12:12:881]: Command Line: REMOVE=ALL CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=4288
+L225: MSI (s) (28:44) [23:12:13:413]: Feature: MainFeature; Installed: Local; Request: Absent; Action: Absent
+L282: MSI (s) (28:44) [23:12:13:631]: Doing action: RemoveExistingProducts
+L287: MSI (s) (28:44) [23:12:13:631]: Doing action: InstallInitialize
+L315: MSI (s) (28:44) [23:12:13:647]: Doing action: StopServerService
+L327: MSI (s) (28:44) [23:12:13:663]: Doing action: StopServices
+L331: MSI (s) (28:44) [23:12:13:678]: Doing action: DeleteServices
+L335: MSI (s) (28:44) [23:12:13:678]: Doing action: RemoveFiles
+L341: MSI (s) (28:44) [23:12:13:678]: Skipping action: ClearDataDelServerDir (condition is false)
+L342: MSI (s) (28:44) [23:12:13:678]: Skipping action: ClearDataDelServerDb (condition is false)
+L343: MSI (s) (28:44) [23:12:13:678]: Skipping action: ClearDataDelAppSettings (condition is false)
+L364: MSI (s) (28:44) [23:12:13:694]: Doing action: InstallServices
+L368: MSI (s) (28:44) [23:12:13:694]: Doing action: StartServices
+L388: MSI (s) (28:44) [23:12:13:694]: Doing action: InstallFinalize
+L422: MSI (s) (28:44) [23:12:13:710]: Executing op: CustomActionSchedule(Action=StopServerService,ActionType=3170,Source=C:\Windows\SysWOW64\,Target=sc.exe stop LabelFrameServer,)
+L735: Property(S): UILevel = 3
+L757: MSI (s) (28:44) [23:12:15:147]: MainEngineThread is returning 0
+L775: MSI (c) (C0:78) [23:12:15:178]: MainEngineThread is returning 0
+FACTS command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=4288] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+
+## running the package again and choosing Remove  [walk-server-remove-rerun.log]
+L9: ******* Product: C:\Probe\LabelFrame-Server-1.6.1.msi
+L38: MSI (c) (C4:14) [23:15:52:567]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1988
+L228: MSI (c) (C4:14) [23:15:52:848]: Skipping action: ClearDataDlg (condition is false)
+L231: MSI (c) (C4:14) [23:15:52:848]: Doing action: MaintenanceWelcomeDlg
+L298: MSI (c) (C4:14) [23:15:56:833]: Doing action: ExecuteAction
+L311: ******* Product: C:\Probe\LabelFrame-Server-1.6.1.msi
+L341: MSI (s) (28:28) [23:15:56:864]: Command Line: DOTNET10_PRESENT=0 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1988 PRODUCTLANGUAGE=2052 USERNAME=<account> ACTION=INSTALL EXECUTEACTION=INSTALL ROOTDRIVE=C:\ INSTALLLEVE
+L536: MSI (s) (28:28) [23:15:57:083]: Feature: MainFeature; Installed: Local; Request: Absent; Action: Absent
+L594: MSI (s) (28:28) [23:15:57:098]: Doing action: RemoveExistingProducts
+L600: MSI (s) (28:28) [23:15:57:114]: Doing action: InstallInitialize
+L631: MSI (s) (28:28) [23:15:57:255]: Doing action: StopServerService
+L649: MSI (s) (28:28) [23:15:57:286]: Doing action: StopServices
+L655: MSI (s) (28:28) [23:15:57:286]: Doing action: DeleteServices
+L661: MSI (s) (28:28) [23:15:57:286]: Doing action: RemoveFiles
+L669: MSI (s) (28:28) [23:15:57:301]: Skipping action: ClearDataDelServerDir (condition is false)
+L670: MSI (s) (28:28) [23:15:57:301]: Skipping action: ClearDataDelServerDb (condition is false)
+L671: MSI (s) (28:28) [23:15:57:301]: Skipping action: ClearDataDelAppSettings (condition is false)
+L695: MSI (s) (28:28) [23:15:57:301]: Doing action: InstallServices
+L700: MSI (s) (28:28) [23:15:57:317]: Doing action: StartServices
+L726: MSI (s) (28:28) [23:15:57:333]: Doing action: InstallFinalize
+L765: MSI (s) (28:28) [23:15:57:364]: Executing op: CustomActionSchedule(Action=StopServerService,ActionType=3170,Source=C:\Windows\SysWOW64\,Target=sc.exe stop LabelFrameServer,)
+L1183: Property(S): UILevel = 5
+L1192: MSI (s) (28:28) [23:15:57:630]: MainEngineThread is returning 0
+L1320: Property(C): UILevel = 5
+L1344: MSI (c) (C4:14) [23:15:58:426]: MainEngineThread is returning 0
+FACTS command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1988] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'MaintenanceWelcomeDlg', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[228] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+
+## the package run again silently over the installed server  [50-install-silent.log]
+L5: ******* Product: C:\Probe\LabelFrame-Server-1.6.1.msi
+L18: ******* Product: C:\Probe\LabelFrame-Server-1.6.1.msi
+L41: MSI (s) (28:7C) [23:13:51:377]: Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=7172
+L310: MSI (s) (28:7C) [23:13:51:549]: Feature: MainFeature; Installed: Local; Request: Null; Action: Null
+L366: MSI (s) (28:7C) [23:13:51:565]: Doing action: RemoveExistingProducts
+L371: MSI (s) (28:7C) [23:13:51:565]: Doing action: InstallInitialize
+L382: MSI (s) (28:7C) [23:13:51:565]: Doing action: StopServerService
+L409: MSI (s) (28:7C) [23:13:51:612]: Doing action: StopServices
+L413: MSI (s) (28:7C) [23:13:51:612]: Doing action: DeleteServices
+L417: MSI (s) (28:7C) [23:13:51:612]: Doing action: RemoveFiles
+L423: MSI (s) (28:7C) [23:13:51:612]: Skipping action: ClearDataDelServerDir (condition is false)
+L424: MSI (s) (28:7C) [23:13:51:612]: Skipping action: ClearDataDelServerDb (condition is false)
+L425: MSI (s) (28:7C) [23:13:51:612]: Skipping action: ClearDataDelAppSettings (condition is false)
+L446: MSI (s) (28:7C) [23:13:51:627]: Doing action: InstallServices
+L450: MSI (s) (28:7C) [23:13:51:627]: Doing action: StartServices
+L476: MSI (s) (28:7C) [23:13:51:627]: Doing action: InstallFinalize
+L495: MSI (s) (28:7C) [23:13:51:643]: Executing op: CustomActionSchedule(Action=StopServerService,ActionType=3170,Source=C:\Windows\SysWOW64\,Target=sc.exe stop LabelFrameServer,)
+L622: Property(S): UILevel = 2
+L644: MSI (s) (28:7C) [23:13:51:737]: MainEngineThread is returning 0
+L658: MSI (c) (04:9C) [23:13:51:752]: MainEngineThread is returning 0
+FACTS command=[REBOOT=ReallySuppress  dir=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=7172] uilevel=2 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Null', 'Null')
+
+# Judgements
+PASS server package on a machine without the runtime: the missing-runtime dialog is shown : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7512] uilevel= exit=1602 sessions=1 upgrading= showed=['RuntimeMissingDlg'] questionSkipped=[] clearDone=[] clearSkipped=[] launchReturn=[] feature=()
+PASS server package on a machine without the runtime: the user leaves it with Exit (the installation was cancelled) : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=7512] uilevel= exit=1602 sessions=1 upgrading= showed=['RuntimeMissingDlg'] questionSkipped=[] clearDone=[] clearSkipped=[] launchReturn=[] feature=()
+PASS client package on a machine without the runtime: the missing-runtime dialog is shown : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8084] uilevel= exit=1602 sessions=1 upgrading= showed=['RuntimeMissingDlg'] questionSkipped=[] clearDone=[] clearSkipped=[] launchReturn=[] feature=()
+PASS client package on a machine without the runtime: the user leaves it with Exit (the installation was cancelled) : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8084] uilevel= exit=1602 sessions=1 upgrading= showed=['RuntimeMissingDlg'] questionSkipped=[] clearDone=[] clearSkipped=[] launchReturn=[] feature=()
+PASS msiexec /x answered Yes: the basic interface (what "Apps and features" starts) : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=4288] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /x answered Yes: nothing asks about the user data : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=4288] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /x answered Yes: the package shows none of its wizard pages : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=4288] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /x answered Yes: every clear action is skipped : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=4288] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS msiexec /x answered Yes: the removal succeeds : command=[REMOVE=ALL  dir=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=4288] uilevel=3 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS running the package again and choosing Remove: the maintenance wizard ran : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1988] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'MaintenanceWelcomeDlg', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[228] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS running the package again and choosing Remove: the data question is skipped : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1988] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'MaintenanceWelcomeDlg', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[228] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS running the package again and choosing Remove: every clear action is skipped : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1988] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'MaintenanceWelcomeDlg', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[228] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS running the package again and choosing Remove: the removal succeeds : command=[ dir=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1988] uilevel=5 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'ExitDialog', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'MaintenanceWelcomeDlg', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[228] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Absent', 'Absent')
+PASS the package run again silently over the installed server: no feature requests any change (a maintenance run that changes nothing) : command=[REBOOT=ReallySuppress  dir=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=7172] uilevel=2 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Null', 'Null')
+PASS the package run again silently over the installed server: the service is stopped by the package action : command=[REBOOT=ReallySuppress  dir=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=7172] uilevel=2 exit=0 sessions=2 upgrading= showed=['DeleteServices', 'InstallFinalize', 'InstallInitialize', 'InstallServices', 'RemoveExistingProducts', 'RemoveFiles', 'StartServices', 'StopServerService', 'StopServices'] questionSkipped=[] clearDone=[] clearSkipped=['ClearDataDelAppSettings', 'ClearDataDelServerDb', 'ClearDataDelServerDir'] launchReturn=[] feature=('MainFeature', 'Local', 'Null', 'Null')
