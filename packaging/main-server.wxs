@@ -8,9 +8,9 @@
     <MajorUpgrade DowngradeErrorMessage="已安装的 LabelFrame 版本更新，无法降级。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <!-- 安装向导 UI（欢迎 / 许可 / 目录 / 进度 / 完成）+ 品牌资产（assets/ 静态文件，源出 assets/brand/ 母版库）+ 控制面板元数据 -->
+    <!-- 安装向导 UI（欢迎 / 许可 / 安装目录（只读）/ 进度 / 完成）+ 品牌资产（assets/ 静态文件，源出 assets/brand/ 母版库）+ 控制面板元数据 -->
     <ui:WixUI Id="WixUI_InstallDir" />
-    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Property Id="WIXUI_INSTALLDIR" Value="ServerInstallDir" />
     <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)/installer-dialog.bmp" />
     <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)/installer-banner.bmp" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
@@ -34,6 +34,11 @@
                                     RollForward="latestMajor" />
     <Launch Condition="DOTNET10_PRESENT = &quot;0&quot; OR UILevel = 5 OR REMOVE"
       Message="本机未检测到 ASP.NET Core Runtime，请先安装后重新运行安装程序。下载：https://dotnet.microsoft.com/download/dotnet/10.0" />
+
+    <!-- 安装位置固定：目录标识含小写字母，不是公开属性，命令行传入 INSTALLFOLDER 改不了安装位置；
+         显式传入时直接拦下并说明，而不是静默装到别处 -->
+    <Launch Condition="NOT INSTALLFOLDER"
+      Message="LabelFrame 服务端固定安装到 [ProgramFiles64Folder]LabelFrame\Server，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。" />
 
     <!-- 运行时缺失对话框：可点击官方下载链接（MSI Hyperlink 控件） -->
     <UI Id="RuntimeCheckUI">
@@ -67,6 +72,33 @@
           <Publish Event="EndDialog" Value="Return" Condition="1" />
         </Control>
       </Dialog>
+      <!-- 安装目录页（只读）：服务端固定装在 Program Files 下，不提供修改入口；页面上只有「安装目录」和路径，不加解释。
+           防回归警示：WiX 自带向导组里可改目录的那一页不能单独替换（重复定义，编译失败），它仍留在包里；
+           这里靠「同一按钮上登记顺序靠后的跳转生效」把它旁路，接法由结构断言脚本守住 -->
+      <Dialog Id="InstallLocationDlg" Width="370" Height="270" Title="[ProductName] 安装">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="yes" Text="WixUI_Bmp_Banner" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" TabSkip="yes"
+                 Text="{\WixUI_Font_Title}安装目录" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="InstallLocationText" Type="Text" X="20" Y="75" Width="330" Height="40" NoPrefix="yes" Text="[ServerInstallDir]" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="上一步(&amp;B)">
+          <Publish Event="NewDialog" Value="LicenseAgreementDlg" />
+        </Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="下一步(&amp;N)">
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="取消">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+      <!-- 向导链路：许可页 Next 进只读的安装目录页 → 确认页；确认页 Back（仅全新安装）回安装目录页。
+           ControlEvent 重复发布时后执行者生效，Order 越大越后执行：许可页 Next 与确认页 Back 上自带向导组的
+           默认目标仍是那一页可改目录的旧页，这里的登记顺序必须更大 -->
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="InstallLocationDlg" Order="10"
+               Condition="NOT Installed" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstallLocationDlg" Order="10"
+               Condition="NOT Installed AND NOT REMOVE" />
     </UI>
     <InstallUISequence>
       <Show Dialog="RuntimeMissingDlg" Sequence="1150"
@@ -75,10 +107,10 @@
             Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
     </InstallUISequence>
 
-    <!-- 安装目录：Program Files\LabelFrame（64 位） -->
+    <!-- 安装目录：Program Files\LabelFrame\Server（64 位）。目录标识含小写字母 = 非公开属性，安装位置无法从外部改写 -->
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="LABELFRAMEROOT" Name="LabelFrame">
-      <Directory Id="INSTALLFOLDER" Name="Server">
+      <Directory Id="ServerInstallDir" Name="Server">
       <!-- 用户配置 appsettings.json：独立组件、GUID 固定；NeverOverwrite 升级/修复不覆盖，
            Permanent 卸载不删除，保留用户数据（新装仍写入默认配置） -->
       <Component Id="AppSettingsFile" Guid="D0FDEC55-A5BD-4DF7-BA0A-1B33AB2B8A80" NeverOverwrite="yes" Permanent="yes">

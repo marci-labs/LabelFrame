@@ -29,7 +29,8 @@ Copy-Item (Join-Path $root 'packaging\appsettings-server.json') (Join-Path $publ
 
 # 3) 生成 WiX 文件清单（GUID 加盐 server，避免与 Client 包组件 GUID 冲突）
 $filesWxs = Join-Path $root 'packaging\files-server.wxs'
-& (Join-Path $root 'packaging\generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs -GuidSalt 'server' -ServerServiceName 'LabelFrameServer' -ServerServiceDisplayName 'LabelFrame 服务端'
+# 防回归警示：-InstallDirId 必须与 main-server.wxs 里的安装目录标识一致；保持默认的 INSTALLFOLDER 时它是公开属性，安装位置又能从命令行改写
+& (Join-Path $root 'packaging\generate-files.ps1') -PublishDir $publishDir -OutFile $filesWxs -GuidSalt 'server' -InstallDirId 'ServerInstallDir' -ServerServiceName 'LabelFrameServer' -ServerServiceDisplayName 'LabelFrame 服务端'
 
 # 4) wix build
 $msi = Join-Path $root "artifacts\LabelFrame-Server-$Version.msi"
