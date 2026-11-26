@@ -11,7 +11,7 @@
 
 ### 验收边界
 
-- **安装链人工验收已补做，发现 5 项尚未修复的安装包问题**（[#408](https://github.com/marci-labs/LabelFrame/issues/408)）：用正式发布的 1.6.1 安装包在纯净 Windows 10 上补验。覆盖升级保留用户配置、开机自启与托盘、缺少运行时时的提示先于向导出现，都通过。以下问题已记录、尚未修复：安装向导完成页勾选「立即打开 LabelFrame」后客户端不启动（[#498](https://github.com/marci-labs/LabelFrame/issues/498)）；卸载时不会询问是否清除用户数据，数据总是保留（[#499](https://github.com/marci-labs/LabelFrame/issues/499)）；缺少运行时对话框里的下载链接用鼠标点击不打开，把焦点放到链接上按回车可以（[#500](https://github.com/marci-labs/LabelFrame/issues/500)，点击是用脚本模拟的，待真人确认）；对已安装的服务端再次运行安装包会停掉服务，需要手动启动服务或重启（[#501](https://github.com/marci-labs/LabelFrame/issues/501)）；清除数据卸载客户端后会留下两个日志文件（[#502](https://github.com/marci-labs/LabelFrame/issues/502)）。证据见 `docs/evidence/408/`。
+- **安装链人工验收已补做，发现 5 项尚未修复的安装包问题**（[#408](https://github.com/marci-labs/LabelFrame/issues/408)）：用正式发布的 1.6.1 安装包在纯净 Windows 10 上补验。覆盖升级保留用户配置、开机自启与托盘、缺少运行时时的提示先于向导出现，都通过。以下问题已记录、尚未修复：安装向导完成页勾选「立即打开 LabelFrame」后客户端不启动（[#498](https://github.com/marci-labs/LabelFrame/issues/498)）；卸载时不会询问是否清除用户数据，数据总是保留（[#499](https://github.com/marci-labs/LabelFrame/issues/499)）；缺少运行时对话框里的下载链接用鼠标点击不打开，把焦点放到链接上按回车可以（[#500](https://github.com/marci-labs/LabelFrame/issues/500)，点击是用脚本模拟的，待真人确认）；对已安装的服务端再次静默运行安装包（`msiexec /i … /qn`，不做修复）会停掉服务，需要手动启动服务或重启（[#501](https://github.com/marci-labs/LabelFrame/issues/501)）；勾选清除数据卸载客户端后会留下两个日志文件（[#502](https://github.com/marci-labs/LabelFrame/issues/502)）。证据见 `docs/evidence/408/`。
 
 ## [1.6.1] - 2026-11-26
 
