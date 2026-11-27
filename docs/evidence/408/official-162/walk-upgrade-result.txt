@@ -1,0 +1,87 @@
+# 升级走查的结果文件：向导从欢迎页走到进度页。走查脚本在进度页停下（那一页的状态栏显示「正在删除快捷方式」），
+# 安装本身继续进行；完成页由续走脚本走完（walk-finish-result.txt）。账户目录、安全标识、计算机名与网络地址已替换为占位符。
+=== installer walk 'walk-host-upgrade': mode=install  [17:18:01] ===
+arguments: /i "C:\work\OpenCode\itenv\lf-host-walk-162-20261127\materials\LabelFrame-Client-1.6.2.msi" /l*v "C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-upgrade.log"
+identity=<machine>\<user> elevated=False
+TOKEN sid=<sid> linkedToken=available
+SETUP_PAGE present=False
+before: product=1.6.0 | Run key="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart | user files=715 | printing client processes=1
+--- page Welcome (actual Welcome, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [213] Button 下一步(&N)
+  [215] Button 取消
+  [203] Static WixUI_Bmp_Dialog
+  [212] Button 上一步(&B)   (disabled)
+  [58] Static 安装向导将在计算机上安装 LabelFrame Client。单击“下一步”继续，或单击“取消”退出安装向导。
+  [205] Static 欢迎使用 LabelFrame Client 安装向导
+  screenshot -> C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-upgrade-01-Welcome.png (PrintWindow, 517x401)
+--- page License (actual License, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [202] Static WixUI_Bmp_Banner
+  [389] Button 我接受许可协议中的条款(&A)
+  [394] Button 打印(&P)
+  [212] Button 上一步(&B)
+  [213] Button 下一步(&N)   (disabled)
+  [215] Button 取消
+  [58] Static 请认真阅读以下许可协议
+  [205] Static 最终用户许可协议
+  screenshot -> C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-upgrade-02-License.png (PrintWindow, 517x401)
+--- page Location (actual Location, class MsiDialogCloseClass): 'LabelFrame Client 安装' ---
+  [212] Button 上一步(&B)
+  [213] Button 下一步(&N)
+  [215] Button 取消
+  [202] Static WixUI_Bmp_Banner
+  [205] Static 安装目录
+  [209] Static C:\Program Files\LabelFrame\Client\
+  screenshot -> C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-upgrade-03-Location.png (PrintWindow, 517x401)
+--- page Options (actual Options, class MsiDialogCloseClass): 'LabelFrame Client 安装' ---
+  [218] Button 开机自动启动 LabelFrame
+  [212] Button 上一步(&B)
+  [213] Button 下一步(&N)
+  [215] Button 取消
+  [202] Static WixUI_Bmp_Banner
+  [205] Static 安装选项
+  [220] Static 开机自启以托盘方式常驻运行，不自动打开界面窗口；可随时从托盘图标打开界面或退出。
+  screenshot -> C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-upgrade-04-Options.png (PrintWindow, 517x401)
+AUTOSTART_CHECKBOX initial=1
+  check ok: the auto-start box is ticked by default on the options page
+--- page Verify (actual Verify, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [257] Button 安装(&I)
+  [215] Button 取消
+  [212] Button 上一步(&B)
+  [202] Static WixUI_Bmp_Banner
+  [270] Static 已准备好安装 LabelFrame Client
+  [272] Static 单击“安装”开始安装。单击“上一步”查看或更改任何安装设置。单击“取消”退出向导。
+  screenshot -> C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-upgrade-05-Verify.png (PrintWindow, 517x401)
+  install button pressed: the UAC consent prompt (if any) is for the user to answer; waiting up to 15 minutes
+INSTALL_STEP_SECONDS=1.2 (from clicking the install button to the next window)
+--- page Installing (actual Installing, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [215] Button 取消
+  [202] Static WixUI_Bmp_Banner
+  [212] Button 上一步(&B)   (disabled)
+  [213] Button 下一步(&N)   (disabled)
+  [341] Static 安装向导正在安装 LabelFrame Client，请稍候。
+  [343] Static 正在安装 LabelFrame Client
+  [363] Static 状态:
+  screenshot -> C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-upgrade-06-Installing.png (PrintWindow, 517x401)
+INSTALL_PROGRESS_SECONDS=18.2 (progress page until the next window)
+--- page Removing (actual Removing, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [215] Button 取消
+  [202] Static WixUI_Bmp_Banner
+  [212] Button 上一步(&B)   (disabled)
+  [213] Button 下一步(&N)   (disabled)
+  [339] Static 正在删除快捷方式
+  [341] Static 安装向导正在安装 LabelFrame Client，请稍候。
+  [343] Static 正在安装 LabelFrame Client
+  [363] Static 状态:
+  screenshot -> C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-upgrade-07-Removing.png (PrintWindow, 517x401)
+last unrecognised installer window: 
+WINDOWS_IN_ORDER=Prepare -> Welcome -> License -> Location -> Options -> Verify -> Installing -> Removing
+windows seen: Installing, License, Location, Options, Prepare, Removing, Verify, Welcome
+  installer exited=False (nothing is closed or ended by force on this computer)
+exit code=n/a (still running)
+after: product=none | Run key=absent | user files=709 | printing client processes=0
+OUTCOME=unexpected window 'Removing'
+WIZARD_PATH=Welcome -> License -> Location -> Options -> Verify -> Installing
+CLICKS=下一步(&N) [213], 我接受许可协议中的条款(&A) [389], 下一步(&N) [213], 下一步(&N) [213], 下一步(&N) [213], 安装(&I) [257]
+CHECK_FAILURES=1 unexpected window 'Removing' after the install step
+=== end 'walk-host-upgrade'  [17:18:31] ===
+

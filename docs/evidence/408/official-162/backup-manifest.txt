@@ -1,0 +1,12 @@
+# 走查之前复制的客户端数据与配置文件（副本留在本机工作区，不入库）。
+TIME 2026-11-27 17:18:01
+TARGET C:\work\OpenCode\itenv\lf-host-walk-162-20261127\backup
+COPIED logs.db bytes=16384 sha256=631eb317e15272e93757948fcbcc9c5ff40cf1a3f09c1fd2a47e0abb489a65d5
+COPIED print-settings.json bytes=67 sha256=b4d6f1689bd24e496f806a82d20c300ff4c51e653b29b7974848c21b5d7396bd
+COPIED connection.json bytes=378 sha256=2bdccae070d23ec15e58f5f6e791d32fb77091eb8071f217cc7f879f5d01d47b
+COPIED server.db bytes=32768 sha256=322fa5e9c3ace847629bf0d6d6002e18cc35a77a7feeafe097d74f092929f7ca
+COPIED jobs.db bytes=52338688 sha256=52fd901c9ba317a8fde741e688fc91455d17389086033bdaf057f87c7397362b
+COPIED templates.db bytes=45056 sha256=6513464a2c28685a047585eae77a306e0fb31fd3fe56519fc8b135bdda07ce3a
+COPIED machine-settings.json bytes=42 sha256=e0fd9c98f851b6ec2658b2fb6a46eb42d72378330e6992585fafe47518559fa9
+COPIED client-appsettings.json bytes=246 sha256=4c5344bd34a434fe1f22b82686875be8d965db8c39dbb5d2bc0c02174558b4ae
+

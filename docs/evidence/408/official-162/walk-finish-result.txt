@@ -1,0 +1,41 @@
+# 续走脚本的结果文件：找到完成页，读「立即打开」复选框，点「完成」，观察客户端启动。
+=== installer walk 'walk-host-finish': mode=install  [17:20:27] ===
+arguments: /i "C:\work\OpenCode\itenv\lf-host-walk-162-20261127\materials\LabelFrame-Client-1.6.2.msi" /l*v "C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-finish.log"
+identity=<machine>\<user> elevated=False
+TOKEN sid=<sid> linkedToken=available
+SETUP_PAGE present=False
+CONTINUATION: the walk ended on the progress page (its status line said 正在删除快捷方式 while the old version was removed); the installation went on
+INSTALLER_PAGES_SEEN=Exit
+--- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [315] Button 完成(&F)
+  [215] Button 取消   (disabled)
+  [203] Static WixUI_Bmp_Dialog
+  [212] Button 上一步(&B)   (disabled)
+  [378] Button 立即打开 LabelFrame
+  [58] Static 单击“完成”按钮退出安装向导。
+  [205] Static LabelFrame Client 安装向导已完成
+  screenshot -> C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-finish-21-Exit.png (PrintWindow, 517x401)
+LAUNCH_CHECKBOX initial=1
+  check ok: the "open LabelFrame now" box is ticked by default on the completion page
+LAUNCH_PROCESS name=LabelFrame.WinHost.exe pid=37556 session=1 started=17:20:27 commandLine="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" 
+LAUNCH_PROCESSES=1
+  check ok: the client starts after Finish while "open LabelFrame now" is ticked
+LAUNCH_WINDOW class=WindowsForms10.Window.8.app.0.27e9722_r3_ad1 title=[LabelFrame] rect=(632,270)-(1928,1109)
+  check ok: the started client shows its window
+  screenshot -> C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-finish-22-client-window.png (PrintWindow, 1296x839)
+  screen shot -> C:\work\OpenCode\itenv\lf-host-walk-162-20261127\evidence\walk-host-finish-23-desktop-after-launch.png (1707x960)
+LAUNCH_TOKEN pid=37556 not elevated
+LAUNCH_TRAY_WINDOW present=True owner=37556 ofClient=True
+  check ok: the started client registers its tray icon
+LAUNCH_BROWSERS=0
+LAUNCH_BROWSERS_OPENED=0
+  check ok: no system browser is opened for the client window
+LAUNCH_WEBVIEW2_CHILDREN=1
+LAUNCH_API code=200
+after: product=1.6.2 | Run key="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart | user files=717 | printing client processes=1
+OUTCOME=completed
+WIZARD_PATH=
+CLICKS=完成(&F) [315]
+CHECK_FAILURES=0 
+=== end 'walk-host-finish'  [17:20:38] ===
+
