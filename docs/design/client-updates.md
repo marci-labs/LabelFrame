@@ -96,6 +96,21 @@ MSI 的运行中客户端退出预检（安装、修复、升级与手动卸载�
 
 客户端更新端点只允许本机同源管理；服务端保留原下载 API，新更新端点是加法，不修改模板包、打印 API、作业模型。PDA/Linux 自动升级、Server 自更新、差分更新、购买证书、CI/流程治理和发版 tag 均不在本轮。
 
+## 安装向导：完成页启动、缺运行时对话框、卸载询问
+
+两个安装包（Client、Server）的向导由 WiX 界面库（`WixToolset.UI.wixext`）提供；下面三处的共同点是：界面库的页面与条件只覆盖标准流程，产品自己的接线靠「同一按钮上登记顺序更大的事件生效」「替换界面库某页的显示条件（override）」两种办法，全部由结构断言脚本守住（Client：`scripts/verify-msi-ui.ps1`；Server：`scripts/assert-server-msi-structure.ps1`）。
+
+- **完成页「立即打开 LabelFrame」**：勾选后点「完成」，客户端由桌面外壳启动。动作用安装器扩展库（`WixToolset.Util.wixext`，服务端包构建时同样接入）的 `WixUnelevatedShellExec`（经桌面外壳的 `ShellExecute` 不提权启动），目标是同步、失败不阻断的立即动作；目标程序经属性 `WixUnelevatedShellExecTarget` 交给它，按钮上先登记赋值动作、后登记启动动作。安装程序以管理员身份运行时，客户端仍以当前登录用户的不提权身份启动。平台坑：不能用「不等结果」的异步 EXE 动作——向导最后一步触发它时安装会话随即结束，动作起不来（安装日志里返回 1631）。
+- **缺运行时对话框**（Server 的 ASP.NET Core、Client 的 .NET 与 WebView2 共三个）：网址用普通文字显示，打开靠「打开下载页」按钮，按钮同样走 `WixUnelevatedShellExec`，浏览器由桌面外壳以不提权身份打开。平台坑：安装器的 Hyperlink 控件对鼠标点击没有反应，只有焦点在链接上时按回车才打开。
+- **卸载时「是否同时清除用户数据」**：询问页有两个入口，都会先问、再进界面库的「确认删除」页。
+  - 重跑安装包、在维护向导里选「删除」：界面库的「删除」默认直接跳确认页、不经过界面序列，只把询问页排在界面序列里时这条用户走得到的路径永远不会问。接法是在「删除」按钮上追加一条登记顺序更大的跳转；询问页的「上一步」只在维护向导入口显示（命令行入口的功能是预选的，回到维护向导再选别的操作会与 `REMOVE=ALL` 叠加），「取消」在向导入口走标准的取消确认。
+  - 命令行带 `REMOVE=ALL`（或 `msiexec /x` 再要求完整界面）：询问页由界面序列显示，本来之后是界面库的「继续安装」页（安装措辞）。现在替换（override）「继续安装」页的显示条件，让它不在手动卸载时出现；询问页的「继续」先把界面库的安装模式 `WixUI_InstallMode` 置为 `Remove`（确认页与进度页据此显示卸载的文字），再进确认页。
+  - 平台坑：同一路径上，界面库的进度页按「命令行预选了功能」（`Preselected`）把「正在安装」的两段文字也显示出来，和「正在删除」叠在一起。预选标记只出现在这两页的显示条件里：询问页之后用赋值动作把它清掉，并同样替换维护欢迎页的显示条件（它的条件看的是这个标记的反面）。
+  - 平台坑：控制面板「程序和功能」里的卸载以基础界面级运行：系统先问自己的「确实要卸载 … 吗?」，答「是」后 Windows Installer 以基础界面直接卸载，安装包自己的对话框一个都不出现，用户数据保留。把登记的卸载命令（`UninstallString`）改成完整界面的写法也不管用——系统不按登记的命令执行（纯净 Windows 10 上三种写法实测，结果与默认相同）。所以这条路径不问；要清除数据得重新运行安装包、在向导里选「删除」。
+  - 防回归警示：勾选属性 `CLEAR_USER_DATA` 必须声明为安全属性（`Secure="yes"`）。以普通方式启动安装程序再进维护向导时，提权的执行会话忽略不是安全属性的属性（安装日志：`Ignoring disallowed property CLEAR_USER_DATA`），勾选等于没勾。
+- **清除范围**：客户端删除整个用户数据目录 `%LOCALAPPDATA%\LabelFrame`（作业、模板、日志、模拟打印出图、连接与打印设置、界面缓存都在里面；按文件名逐个列总会漏），再删机器级 `settings.json`（其所在目录空了则一并删，同目录的插件目录不是用户数据）和安装目录下的 `appsettings.json`；服务端删除 `%ProgramData%\LabelFrame\server`、`server.db` 和安装目录下的 `appsettings.json`。清除动作是失败不阻断的延迟动作，条件 `REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA="1"`，升级过程中旧产品的卸载子会话不触发。
+- 平台坑：清除动作分两种身份。用户数据目录以用户身份删（`%LOCALAPPDATA%` 要按当前用户的目录展开，用户对自己的文件本来就有全部权限）；机器级的几条（机器级设置、安装目录下的 `appsettings.json`，以及服务端的全部）以安装自己的提权身份执行、不模拟用户。以普通方式启动安装程序再进维护向导时，模拟用户的延迟动作拿不到管理员权限——动作照常「成功」，ProgramData 与 Program Files 下的文件一个都没删。
+
 ## 平台依据与验证
 
 - [Microsoft：CryptSIPGetSignedDataMsg](https://learn.microsoft.com/en-us/windows/win32/api/mssip/nf-mssip-cryptsipgetsigneddatamsg)、[CryptSIPVerifyIndirectData](https://learn.microsoft.com/en-us/windows/win32/api/mssip/nf-mssip-cryptsipverifyindirectdata)：取签名与验证包摘要分开执行。

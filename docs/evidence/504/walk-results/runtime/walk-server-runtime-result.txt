@@ -1,0 +1,97 @@
+=== installer walk 'walk-server-runtime': mode=runtime  [14:23:17] ===
+arguments: /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /l*v "C:\Probe\logs\walk-server-runtime.log"
+identity=DESKTOP-D65DJ5S\<account> elevated=False
+TOKEN sid=<sid> linkedToken=available
+SETUP_PAGE present=True rect=(0, 0)-(1024, 768): its 'remind me in 3 days' link is clicked at (82, 676)
+SETUP_PAGE dismissed=True
+before: product=none | Run key=absent | user files=0 | printing client processes=0
+--- page RuntimeMissing (actual RuntimeMissing, class MsiDialogCloseClass): 'LabelFrame 安装 - 缺少 ASP.NET Core Runtime' ---
+  [86] Button 打开下载页(&O)
+  [89] Button 退出
+  [80] Static 本机未检测到 ASP.NET Core 10 Runtime，请先安装后再运行本安装程序。
+  [82] Static 微软官方下载页：
+  [84] Static https://dotnet.microsoft.com/download/dotnet/10.0
+  screenshot -> C:\Probe\logs\walk-server-runtime-01-RuntimeMissing.png (PrintWindow, 499x269)
+  check ok: the first window is the RuntimeMissing dialog (actual RuntimeMissing)
+RUNTIME_ADDRESS text=https://dotnet.microsoft.com/download/dotnet/10.0 shownAs=Static
+  check ok: the dialog shows the official download address as text (https://dotnet.microsoft.com/download/dotnet/10.0)
+RUNTIME_BUTTON open=True caption=打开下载页(&O)
+  check ok: the dialog has an "open download page" button
+  screen shot -> C:\Probe\logs\walk-server-runtime-02-desktop-runtime-missing.png (1024x768)
+SETUP_PAGE present=False
+  the dialog is the foreground window before the click: True
+BUTTON_CLICK pointer at (552, 458), the button occupying (485, 441)-(618, 474)
+BUTTON_AFTER_CLICK dialogStillThere=True
+TITLED_WINDOW[download-button, after 3 s] pid=9132 process=msiexec class=MsiDialogCloseClass title=[LabelFrame 安装 - 缺少 ASP.NET Core Runtime]
+TITLED_WINDOW[download-button, after 3 s] pid=8220 process=msedge class=Chrome_WidgetWin_1 title=[下载 .NET 10.0 (Linux、macOS 和 Windows) | .NET - 用户配置 1 - Microsoft​ Edge]
+TITLED_WINDOW[download-button, after 3 s] pid=9164 process=TextInputHost class=Windows.UI.Core.CoreWindow title=[Microsoft Text Input Application]
+TITLED_WINDOW[download-button, after 3 s] pid=5576 process=explorer class=Progman title=[Program Manager]
+TITLED_WINDOWS[download-button, after 3 s] count=4
+  screen shot -> C:\Probe\logs\walk-server-runtime-03-desktop-after-download-button-3s.png (1024x768)
+TITLED_WINDOW[download-button, after 10 s] pid=9132 process=msiexec class=MsiDialogCloseClass title=[LabelFrame 安装 - 缺少 ASP.NET Core Runtime]
+TITLED_WINDOW[download-button, after 10 s] pid=8220 process=msedge class=Chrome_WidgetWin_1 title=[下载 .NET 10.0 (Linux、macOS 和 Windows) | .NET - 用户配置 1 - Microsoft​ Edge]
+TITLED_WINDOW[download-button, after 10 s] pid=9164 process=TextInputHost class=Windows.UI.Core.CoreWindow title=[Microsoft Text Input Application]
+TITLED_WINDOW[download-button, after 10 s] pid=5576 process=explorer class=Progman title=[Program Manager]
+TITLED_WINDOWS[download-button, after 10 s] count=4
+  screen shot -> C:\Probe\logs\walk-server-runtime-04-desktop-after-download-button-10s.png (1024x768)
+BROWSER_PROCESS name=msedge.exe pid=1060 session=1 started=14:23:27 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2404,i,6876454286419454955,11414179860517199708,524288 --field-trial-handle=2300,i,11897192701128013785,14556474689276260578,262144 --variations-seed-version --pseudonymization-salt-handle=2304,i,15309500841965407126,3334103009692327227,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2920 /prefetch:8
+BROWSER_PROCESS name=msedge.exe pid=1120 session=1 started=14:23:27 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,18252701814449066239,9347811374661210420,262144 --field-trial-handle=2300,i,11897192701128013785,14556474689276260578,262144 --variations-seed-version --pseudonymization-salt-handle=2304,i,15309500841965407126,3334103009692327227,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2292 /prefetch:2
+BROWSER_PROCESS name=msedge.exe pid=1168 session=1 started=14:23:27 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1956,i,811948877991444755,12427270478050864604,524288 --field-trial-handle=2300,i,11897192701128013785,14556474689276260578,262144 --variations-seed-version --pseudonymization-salt-handle=2304,i,15309500841965407126,3334103009692327227,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2356 /prefetch:3
+BROWSER_PROCESS name=msedge.exe pid=2656 session=1 started=14:23:27 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --extension-process --renderer-sub-type=extension --pdf-upsell-enabled --video-capture-use-gpu-memory-buffer --lang=zh-CN --js-flags --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=8 --launch-time-ticks=142272408 --skip-read-main-dll --metrics-shmem-handle=4604,i,6429904769903590031,10780231108763078470,1048576 --field-trial-handle=2300,i,11897192701128013785,14556474689276260578,262144 --variations-seed-version --pseudonymization-salt-handle=2304,i,15309500841965407126,3334103009692327227,4 --trace-process-track-uuid=3190708993808206286 --mojo-platform-channel-handle=4556 /prefetch:2
+BROWSER_PROCESS name=msedge.exe pid=4544 session=1 started=14:23:27 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --pdf-upsell-enabled --video-capture-use-gpu-memory-buffer --lang=zh-CN --js-flags --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=7 --launch-time-ticks=142194640 --skip-read-main-dll --metrics-shmem-handle=3792,i,1869679472346484512,15371801876490899611,1048576 --field-trial-handle=2300,i,11897192701128013785,14556474689276260578,262144 --variations-seed-version --pseudonymization-salt-handle=2304,i,15309500841965407126,3334103009692327227,4 --trace-process-track-uuid=3190708992871164437 --mojo-platform-channel-handle=3816 /prefetch:1
+BROWSER_PROCESS name=msedge.exe pid=4564 session=1 started=14:23:27 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --pdf-upsell-enabled --video-capture-use-gpu-memory-buffer --lang=zh-CN --js-flags --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=5 --launch-time-ticks=142130686 --skip-read-main-dll --metrics-shmem-handle=3472,i,14560164116175178911,1168069099883955944,1048576 --field-trial-handle=2300,i,11897192701128013785,14556474689276260578,262144 --variations-seed-version --pseudonymization-salt-handle=2304,i,15309500841965407126,3334103009692327227,4 --trace-process-track-uuid=3190708990997080739 --mojo-platform-channel-handle=3508 /prefetch:1
+NEW_PROCESS name=mobsync.exe pid=4944 session=1 started=14:23:22 commandLine=C:\Windows\System32\mobsync.exe -Embedding
+BROWSER_PROCESS name=msedge.exe pid=5056 session=1 started=14:23:27 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x2d4,0x2d8,0x2dc,0x2d0,0x2e4,0x7ffe520e3360,0x7ffe520e3370,0x7ffe520e3380
+NEW_PROCESS name=svchost.exe pid=5436 session=0 started=14:23:20 commandLine=
+BROWSER_PROCESS name=msedge.exe pid=5552 session=1 started=14:23:27 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --pdf-upsell-enabled --video-capture-use-gpu-memory-buffer --lang=zh-CN --js-flags --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=6 --launch-time-ticks=142125451 --ram-no-pressure-read-main-dll --metrics-shmem-handle=3432,i,8202381200885205994,10648553673477612988,1048576 --field-trial-handle=2300,i,11897192701128013785,14556474689276260578,262144 --variations-seed-version --pseudonymization-salt-handle=2304,i,15309500841965407126,3334103009692327227,4 --trace-process-track-uuid=3190708991934122588 --mojo-platform-channel-handle=3452 /prefetch:1
+NEW_PROCESS name=msiexec.exe pid=6664 session=1 started=14:23:22 commandLine=
+NEW_PROCESS name=msiexec.exe pid=6684 session=0 started=14:23:22 commandLine=
+BROWSER_PROCESS name=msedge.exe pid=8220 session=1 started=14:23:27 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --single-argument https://dotnet.microsoft.com/download/dotnet/10.0
+NEW_PROCESS name=rundll32.exe pid=9120 session=1 started=14:23:21 commandLine=rundll32.exe AppXDeploymentExtensions.OneCore.dll,ShellRefresh
+NEW_PROCESS name=msiexec.exe pid=9132 session=1 started=14:23:21 commandLine="C:\Windows\system32\msiexec.exe" /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /l*v "C:\Probe\logs\walk-server-runtime.log" 
+NEW_PROCESS name=TextInputHost.exe pid=9164 session=1 started=14:23:21 commandLine="C:\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\TextInputHost.exe" -ServerName:InputApp.AppXjd5de1g66v206tj52m9d0dtpppx4cgpn.mca
+BROWSER_PROCESS name=msedge.exe pid=7320 session=1 started=14:23:29 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=entity_extraction_service.mojom.Extractor --lang=zh-CN --service-sandbox-type=entity_extraction --onnx-enabled-for-ee --skip-read-main-dll --metrics-shmem-handle=5640,i,11329563707912682017,6690401911089952940,524288 --field-trial-handle=2300,i,11897192701128013785,14556474689276260578,262144 --variations-seed-version --pseudonymization-salt-handle=2304,i,15309500841965407126,3334103009692327227,4 --trace-process-track-uuid=3190708994745248135 --mojo-platform-channel-handle=5668 /prefetch:8
+NEW_PROCESS name=svchost.exe pid=6536 session=0 started=14:23:30 commandLine=
+NEW_PROCESS name=identity_helper.exe pid=7128 session=1 started=14:23:30 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\153.0.4234.32\identity_helper.exe" --type=utility --utility-sub-type=winrt_app_id.mojom.WinrtAppIdService --lang=zh-CN --service-sandbox-type=windows_package_identity --skip-read-main-dll --metrics-shmem-handle=6372,i,17605340015673954809,9969627314609092860,524288 --field-trial-handle=2300,i,11897192701128013785,14556474689276260578,262144 --variations-seed-version --pseudonymization-salt-handle=2304,i,15309500841965407126,3334103009692327227,4 --trace-process-track-uuid=3190708995682289984 --mojo-platform-channel-handle=6392 /prefetch:8
+NEW_PROCESS name=SecurityHealthSystray.exe pid=7188 session=1 started=14:23:30 commandLine="C:\Windows\System32\SecurityHealthSystray.exe" 
+NEW_PROCESS name=OneDrive.exe pid=6736 session=1 started=14:23:30 commandLine="C:\Users\<account>\AppData\Local\Microsoft\OneDrive\OneDrive.exe" /background
+NEW_PROCESS name=FileCoAuth.exe pid=1736 session=1 started=14:23:32 commandLine="C:\Users\<account>\AppData\Local\Microsoft\OneDrive\26.163.0823.0004\FileCoAuth.exe" -Embedding
+NEW_PROCESS name=SecurityHealthService.exe pid=6160 session=0 started=14:23:31 commandLine=
+NEW_PROCESS name=svchost.exe pid=7140 session=0 started=14:23:31 commandLine=
+NEW_PROCESS name=dllhost.exe pid=2036 session=1 started=14:23:33 commandLine=C:\Windows\system32\DllHost.exe /Processid:{AB8902B4-09CA-4BB6-B78D-A8F59079A8D5}
+NEW_PROCESS name=svchost.exe pid=2096 session=0 started=14:23:37 commandLine=
+BROWSER_PAGE_LOADED=True seconds=0
+TITLED_WINDOW[download-button, at the end] pid=9132 process=msiexec class=MsiDialogCloseClass title=[LabelFrame 安装 - 缺少 ASP.NET Core Runtime]
+TITLED_WINDOW[download-button, at the end] pid=8220 process=msedge class=Chrome_WidgetWin_1 title=[下载 .NET 10.0 (Linux、macOS 和 Windows) | .NET - 用户配置 1 - Microsoft​ Edge]
+TITLED_WINDOW[download-button, at the end] pid=9164 process=TextInputHost class=Windows.UI.Core.CoreWindow title=[Microsoft Text Input Application]
+TITLED_WINDOW[download-button, at the end] pid=5576 process=explorer class=Progman title=[Program Manager]
+TITLED_WINDOWS[download-button, at the end] count=4
+BROWSER_PROCESSES=10
+BROWSERS_WITH_ADDRESS=1
+BROWSER_PROCESSES_RUNNING=10
+BROWSER_WINDOWS=1 下载 .NET 10.0 (Linux、macOS 和 Windows) | .NET - 用户配置 1 - Microsoft​ Edge [Chrome_WidgetWin_1]
+  screen shot -> C:\Probe\logs\walk-server-runtime-05-desktop-after-download-button.png (1024x768)
+  screenshot -> C:\Probe\logs\walk-server-runtime-06-browser.png (PrintWindow, 1040x744)
+  check ok: clicking "open download page" starts a browser with the download address (on its command line, or in the caption of its window)
+BROWSER_PAGE_SHOWN=True
+APPLICATION_LOG not read: 找不到任何与指定的选择条件匹配的事件。
+--- page UserExit (actual UserExit, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [212] Button 完成(&F)
+  [118] Button 取消   (disabled)
+  [106] Static WixUI_Bmp_Dialog
+  [115] Button 上一步(&B)   (disabled)
+  [46] Static LabelFrame Server 安装程序已中断。您的系统尚未修改。若要稍后安装此程序，请再次运行安装程序。 单击“完成”按钮退出安装向导。
+  [108] Static LabelFrame Server 安装向导中断
+  screenshot -> C:\Probe\logs\walk-server-runtime-07-UserExit.png (PrintWindow, 499x389)
+last unrecognised installer window: 
+WINDOWS_IN_ORDER=Prepare -> RuntimeMissing -> UserExit
+windows seen: Prepare, RuntimeMissing, UserExit
+WIZARD_PAGES_BEFORE_THE_DIALOG=0 
+  check ok: no wizard page comes before the RuntimeMissing dialog
+exit code=1602
+after: product=none | Run key=absent | user files=0 | printing client processes=0
+OUTCOME=runtime missing
+WIZARD_PATH=RuntimeMissing -> UserExit
+CLICKS=open download page (pointer), 退出 [89], 完成(&F) [212]
+CHECK_FAILURES=0 
+=== end 'walk-server-runtime'  [14:23:53] ===

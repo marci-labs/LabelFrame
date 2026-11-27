@@ -1,0 +1,64 @@
+=== installer walk 'walk-client-remove-all-keep': mode=remove  [13:10:48] ===
+product code: {C193BDF9-28E3-4F67-84CA-21562BB681BB}  way of starting: i-all
+arguments: /i {C193BDF9-28E3-4F67-84CA-21562BB681BB} REMOVE=ALL /l*v "C:\Probe\logs\walk-client-remove-all-keep.log"
+identity=DESKTOP-D65DJ5S\<account> elevated=False
+TOKEN sid=<sid> linkedToken=available
+SETUP_PAGE present=False
+before: product=1.6.99 | Run key="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart | user files=12 | printing client processes=0
+--- page ClearData (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Client 卸载' ---
+  [191] Button 清除用户数据
+  [197] Button 取消
+  [199] Button 继续
+  [171] Static 是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？
+  [180] Static 卸载 LabelFrame Client。
+  screenshot -> C:\Probe\logs\walk-client-remove-all-keep-01-ClearData.png (PrintWindow, 499x255)
+QUESTION_BUTTONS back=False next=True cancel=True
+  check ok: the question page shown first (the removal requested from the start) offers no way back to the maintenance wizard
+CLEAR_CHECKBOX initial=0
+  check ok: the clear-user-data box is not ticked by default
+CLEAR_QUESTION_SHOWN=True
+  check ok: with the full interface and the removal requested from the start, the user data is asked about first
+  check ok: the page after the user data question is the ready-to-remove page with the removal wording (actual VerifyRemove)
+--- page ClearData-again (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Client 卸载' ---
+  [191] Button 清除用户数据
+  [197] Button 取消
+  [199] Button 继续
+  [171] Static 是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？
+  [180] Static 卸载 LabelFrame Client。
+  screenshot -> C:\Probe\logs\walk-client-remove-all-keep-02-ClearData.png (PrintWindow, 499x255)
+--- page VerifyRemove (actual VerifyRemove, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [59] Button 删除(&R)
+  [215] Button 取消
+  [212] Button 上一步(&B)
+  [202] Static WixUI_Bmp_Banner
+  [282] Static 已准备好删除 LabelFrame Client
+  [284] Static 单击“删除”可从计算机上删除 LabelFrame Client。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+  screenshot -> C:\Probe\logs\walk-client-remove-all-keep-03-VerifyRemove.png (PrintWindow, 499x389)
+REMOVE_STEP_SECONDS=1.2 (from clicking Remove to the next window)
+--- page Removing (actual Removing, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [215] Button 取消
+  [202] Static WixUI_Bmp_Banner
+  [212] Button 上一步(&B)   (disabled)
+  [213] Button 下一步(&N)   (disabled)
+  [353] Static 安装向导正在删除 LabelFrame Client，请稍候。
+  [355] Static 正在删除 LabelFrame Client
+  [363] Static 状态:
+  screenshot -> C:\Probe\logs\walk-client-remove-all-keep-04-Removing.png (PrintWindow, 499x389)
+--- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [315] Button 完成(&F)
+  [215] Button 取消   (disabled)
+  [203] Static WixUI_Bmp_Dialog
+  [212] Button 上一步(&B)   (disabled)
+  [58] Static 单击“完成”按钮退出安装向导。
+  [205] Static LabelFrame Client 安装向导已完成
+  screenshot -> C:\Probe\logs\walk-client-remove-all-keep-05-Exit.png (PrintWindow, 499x389)
+last unrecognised installer window: 
+WINDOWS_IN_ORDER=MessageBox -> ClearData -> VerifyRemove -> Removing -> Exit
+windows seen: ClearData, Exit, MessageBox, Removing, VerifyRemove
+exit code=0
+after: product=none | Run key=absent | user files=12 | printing client processes=0
+OUTCOME=removed
+WIZARD_PATH=ClearData -> Back -> ClearData -> VerifyRemove -> Removing -> Exit
+CLICKS=继续 [199], 上一步(&B) [212], 继续 [199], 删除(&R) [59], 完成(&F) [315]
+CHECK_FAILURES=0 
+=== end 'walk-client-remove-all-keep'  [13:10:58] ===

@@ -1,0 +1,51 @@
+=== after-boot 'after-boot-yes': auto-start expected=yes  [14:05:57] ===
+identity=DESKTOP-D65DJ5S\<account> elevated=False session=1
+BOOT_TIME=2026-11-27 14:05:11
+EXPLORER_SESSION1=1
+RUN_KEY="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart
+AUTOSTART_PROCESS name=LabelFrame.WinHost.exe pid=8096 session=1 started=14:05:13 commandLine="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart
+AUTOSTART_PROCESSES=1
+  check ok: the client is started at logon (its command line carries --autostart)
+OTHER_CLIENT_PROCESSES=0
+UPDATER_SERVICE_RUNNING=1
+AUTOSTART_SESSIONS=1
+  check ok: the client runs in the interactive session, the desktop of the logged-on user
+AUTOSTART_CAPTIONED_WINDOWS=0 
+  check ok: the client started at logon shows no window: it sits in the tray only
+AUTOSTART_WEBVIEW2_CHILDREN=0
+AUTOSTART_API code=200
+HOST_LOG [2026-11-27 14:03:25] 托盘就绪（TaskbarCreated 消息号 = 49284）。
+HOST_LOG [2026-11-27 14:04:04] 执行退出清理（移除托盘图标、释放界面壳）…
+HOST_LOG [2026-11-27 14:04:04] 托盘清理：向托盘消息循环线程（1768）投递 WM_QUIT，等待循环退出（≤2 秒）。
+HOST_LOG [2026-11-27 14:05:14] LabelFrame 启动：监听 http://127.0.0.1:53960，DPI 203，OpenBrowser=False，ServerUrl=http://127.0.0.1:53961
+HOST_LOG [2026-11-27 14:05:35] 系统托盘已启用（双击或右键托盘图标可打开界面，退出请用托盘菜单）。
+HOST_LOG [2026-11-27 14:05:35] 托盘就绪（TaskbarCreated 消息号 = 49259）。
+BROWSER_BACKGROUND name=msedge.exe pid=5228 session=1 started=14:05:39 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+BROWSER_BACKGROUND name=msedge.exe pid=6132 session=1 started=14:05:39 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x25c,0x7ffff91f3360,0x7ffff91f3370,0x7ffff91f3380
+BROWSER_BACKGROUND name=msedge.exe pid=7832 session=1 started=14:05:39 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1880,i,10439834673046188363,14711180017935290646,262144 --field-trial-handle=2184,i,15218527966822484905,17033720858464890403,262144 --variations-seed-version --pseudonymization-salt-handle=2212,i,3550507695400386193,6148822038475690295,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2176 /prefetch:2
+BROWSER_BACKGROUND name=msedge.exe pid=7836 session=1 started=14:05:39 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=2036,i,3754522749173357174,11239176347963270000,524288 --field-trial-handle=2184,i,15218527966822484905,17033720858464890403,262144 --variations-seed-version --pseudonymization-salt-handle=2212,i,3550507695400386193,6148822038475690295,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2408 /prefetch:3
+BROWSER_BACKGROUND name=msedge.exe pid=6044 session=1 started=14:05:39 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2516,i,14319365068420007931,6347780030583062853,524288 --field-trial-handle=2184,i,15218527966822484905,17033720858464890403,262144 --variations-seed-version --pseudonymization-salt-handle=2212,i,3550507695400386193,6148822038475690295,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=3028 /prefetch:8
+BROWSERS_STARTED_SINCE_BOOT=5
+BROWSER_FOREGROUND_PROCESSES=0
+BROWSER_WINDOWS=0 
+  check ok: no browser window is opened at logon
+  check ok: the notification area can be read (it holds the system icons)
+  check ok: every button of the notification area was read
+  screen shot -> C:\Probe\logs\after-boot-yes-01-desktop.png (1024x768)
+TRAY_CHEVRON present=True
+TRAY_OVERFLOW_WINDOW present=True visible=True
+  screen shot -> C:\Probe\logs\after-boot-yes-02-tray-overflow.png (1024x768)
+TRAY_VISIBLE count=3 buttons=0:7388:OneDrive / 未登录 | 1:4880:网络 2 / 无法连接到 Internet | 2:4880:未安装任何音频输出设备。
+TRAY_VISIBLE_RAW count=3 ; 0¦7388¦OneDrive / 未登录 ; 1¦4880¦网络 2 / 无法连接到 Internet ; 2¦4880¦未安装任何音频输出设备。
+TRAY_VISIBLE_UNREADABLE 0 
+TRAY_HIDDEN_CLOSED count=2 buttons=0:7904:Windows 安全中心 - 建议执行操作。 | 1:8096:LabelFrame 标签打印
+TRAY_HIDDEN_CLOSED_RAW count=2 ; 0¦7904¦Windows 安全中心 - 建议执行操作。 ; 1¦8096¦LabelFrame 标签打印
+TRAY_HIDDEN_CLOSED_UNREADABLE 0 
+TRAY_HIDDEN count=2 buttons=0:7904:Windows 安全中心 - 建议执行操作。 | 1:8096:LabelFrame 标签打印
+TRAY_HIDDEN_RAW count=2 ; 0¦7904¦Windows 安全中心 - 建议执行操作。 ; 1¦8096¦LabelFrame 标签打印
+TRAY_HIDDEN_UNREADABLE 0 
+TRAY_WINDOW present=True process=8096 ofClient=True
+TRAY_ICON_FOUND=True place=hidden
+  check ok: the tray icon is there exactly when auto-start was left ticked
+AFTER_BOOT_FAILURES=0 
+=== end 'after-boot-yes'  [14:06:24] ===

@@ -1,0 +1,72 @@
+=== installer walk 'walk-server-install': mode=install  [13:44:48] ===
+arguments: /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /l*v "C:\Probe\logs\walk-server-install.log"
+identity=DESKTOP-D65DJ5S\<account> elevated=False
+TOKEN sid=<sid> linkedToken=available
+SETUP_PAGE present=True rect=(0, 0)-(1024, 768): its 'remind me in 3 days' link is clicked at (82, 676)
+SETUP_PAGE dismissed=True
+before: product=none | Run key=absent | user files=0 | printing client processes=0
+--- page Welcome (actual Welcome, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [116] Button 下一步(&N)
+  [118] Button 取消
+  [106] Static WixUI_Bmp_Dialog
+  [115] Button 上一步(&B)   (disabled)
+  [46] Static 安装向导将在计算机上安装 LabelFrame Server。单击“下一步”继续，或单击“取消”退出安装向导。
+  [108] Static 欢迎使用 LabelFrame Server 安装向导
+  screenshot -> C:\Probe\logs\walk-server-install-01-Welcome.png (PrintWindow, 499x389)
+--- page License (actual License, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [105] Static WixUI_Bmp_Banner
+  [287] Button 我接受许可协议中的条款(&A)
+  [292] Button 打印(&P)
+  [115] Button 上一步(&B)
+  [116] Button 下一步(&N)   (disabled)
+  [118] Button 取消
+  [46] Static 请认真阅读以下许可协议
+  [108] Static 最终用户许可协议
+  screenshot -> C:\Probe\logs\walk-server-install-02-License.png (PrintWindow, 499x389)
+--- page Location (actual Location, class MsiDialogCloseClass): 'LabelFrame Server 安装' ---
+  [115] Button 上一步(&B)
+  [116] Button 下一步(&N)
+  [118] Button 取消
+  [105] Static WixUI_Bmp_Banner
+  [108] Static 安装目录
+  [112] Static C:\Program Files\LabelFrame\Server\
+  screenshot -> C:\Probe\logs\walk-server-install-03-Location.png (PrintWindow, 499x389)
+--- page Verify (actual Verify, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [154] Button 安装(&I)
+  [118] Button 取消
+  [115] Button 上一步(&B)
+  [105] Static WixUI_Bmp_Banner
+  [167] Static 已准备好安装 LabelFrame Server
+  [169] Static 单击“安装”开始安装。单击“上一步”查看或更改任何安装设置。单击“取消”退出向导。
+  screenshot -> C:\Probe\logs\walk-server-install-04-Verify.png (PrintWindow, 499x389)
+INSTALL_STEP_SECONDS=1.6 (from clicking the install button to the next window)
+--- page Installing (actual Installing, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [118] Button 取消
+  [105] Static WixUI_Bmp_Banner
+  [115] Button 上一步(&B)   (disabled)
+  [116] Button 下一步(&N)   (disabled)
+  [236] Static 正在复制新文件
+  [238] Static 安装向导正在安装 LabelFrame Server，请稍候。
+  [240] Static 正在安装 LabelFrame Server
+  [260] Static 状态:
+  screenshot -> C:\Probe\logs\walk-server-install-05-Installing.png (PrintWindow, 499x389)
+INSTALL_PROGRESS_SECONDS=2.2 (progress page until the next window)
+--- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [212] Button 完成(&F)
+  [118] Button 取消   (disabled)
+  [106] Static WixUI_Bmp_Dialog
+  [115] Button 上一步(&B)   (disabled)
+  [46] Static 单击“完成”按钮退出安装向导。
+  [108] Static LabelFrame Server 安装向导已完成
+  screenshot -> C:\Probe\logs\walk-server-install-06-Exit.png (PrintWindow, 499x389)
+  check ok: the server completion page offers no "open LabelFrame now" box
+last unrecognised installer window: 
+WINDOWS_IN_ORDER=Prepare -> Welcome -> License -> Location -> Verify -> Installing -> Exit
+windows seen: Exit, Installing, License, Location, Prepare, Verify, Welcome
+exit code=0
+after: product=1.6.99 | Run key=absent | user files=0 | printing client processes=0
+OUTCOME=completed
+WIZARD_PATH=Welcome -> License -> Location -> Verify -> Installing -> Exit
+CLICKS=下一步(&N) [116], 我接受许可协议中的条款(&A) [287], 下一步(&N) [116], 下一步(&N) [116], 安装(&I) [154], 完成(&F) [212]
+CHECK_FAILURES=0 
+=== end 'walk-server-install'  [13:45:04] ===

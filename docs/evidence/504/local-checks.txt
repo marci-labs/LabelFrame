@@ -1,0 +1,38 @@
+# 本地检查（开发机，2026-11-27）。
+
+## 工作分支：dotnet build / dotnet test（命令与必需检查相同：Release 配置，排除 Perf / Soak）
+    checkout=C:/work/OpenCode/LabelFrame commit=3f3680e configuration=Release filter=FullyQualifiedName!~Perf&FullyQualifiedName!~Soak
+        0 个警告
+        0 个错误
+    BUILD_EXIT=0
+    已通过! - 失败:     0，通过:   282，已跳过:     0，总计:   282，持续时间: 995 ms - LabelFrame.Bootstrapper.Tests.dll (net10.0)
+    已通过! - 失败:     0，通过:     3，已跳过:     0，总计:     3，持续时间: 2 s - LabelFrame.ClientHost.Tests.dll (net10.0)
+    已通过! - 失败:     0，通过:   133，已跳过:     0，总计:   133，持续时间: 4 s - LabelFrame.AndroidHost.Tests.dll (net10.0)
+    已通过! - 失败:     0，通过:    36，已跳过:     0，总计:    36，持续时间: 7 s - LabelFrame.Api.Tests.dll (net10.0)
+    已通过! - 失败:     0，通过:   225，已跳过:     1，总计:   226，持续时间: 21 s - LabelFrame.Server.Tests.dll (net10.0)
+    已通过! - 失败:     0，通过:   329，已跳过:     0，总计:   329，持续时间: 39 s - LabelFrame.Core.Tests.dll (net10.0)
+    已通过! - 失败:     0，通过:   616，已跳过:     0，总计:   616，持续时间: 47 s - LabelFrame.WinHost.Tests.dll (net10.0)
+    TEST_EXIT=0
+    --- failed tests
+
+## 一条时过时不过的用例（UpdateSupervisorTests.Relauncher_waits_exact_parent_exit_and_keeps_original_user）
+    同一台机器、同一条命令（只跑这一条），按时间顺序：
+    master 检出 3f3680e，第一次：已通过! - 失败:     0，通过:     1，已跳过:     0，总计:     1，持续时间: 20 s
+    工作分支，第一次：失败!  - 失败:     1，通过:     0，已跳过:     0，总计:     1，持续时间: 40 s
+    master 检出，第二次：失败!  - 失败:     1，通过:     0，已跳过:     0，总计:     1，持续时间: 40 s
+    再早一些，工作分支上只跑这一条时连续四次不通过（Debug 与 Release 配置都有）；上面那次完整运行里它通过了。
+    工作分支相对 master 没有改 src、test 下的任何文件（git diff origin/master -- src test 为空），两个检出上表现相同，与改动无关。
+    失败的表现：用例等待辅助进程写出结果，40 秒后超时。在测试运行器之外照原样重放它的进程链可以复现：
+    不带窗口启动的 powershell.exe -EncodedCommand 在创建阶段被挂住约 30 秒后以 -1 退出，辅助进程写不出就绪文件。
+    这与开发机上安全软件拦截这类启动的已知现象一致。没有改安全软件的设置，也没有从测试里排除这条用例；以必需检查的结果为准。
+
+## 结构断言的变异包（每个变异包是候选包的副本，只改坏一处）
+    合计：38 个变异包，38 个被拒绝，其中 38 个是被为该改动准备的那条断言拒绝的。
+    合计：31 个变异包，31 个被拒绝，其中 31 个是被为该改动准备的那条断言拒绝的。
+
+## 注释卫生：新增注释行里没有过程标记（迭代号 / 决策号 / Issue 与 PR 引用 / AC 编号 / 返修轮次）
+    CHANGELOG.md:19: 裸 Issue 号: - **安装链人工验收已补做**（[#408](https://github.com/marci-labs/LabelFrame/issues/408)）：用正式发布的 1.6.1 安装包在纯净 Windows 10 上补验。覆盖升级保留用户配置、开机自启与托盘、缺少运行时时的提示先于向导出现，都通过。补验发现的 5
+    docs/DESIGN.md:1223: 决策号: - 安装包缺陷已修复（2026-11-27，[#504](https://github.com/marci-labs/LabelFrame/issues/504)，决策 #245；来源 = [#408](https://github.com/marci-labs/LabelFrame/issues/408) 补验发现）
+    docs/DESIGN.md:1223: 裸 Issue 号: - 安装包缺陷已修复（2026-11-27，[#504](https://github.com/marci-labs/LabelFrame/issues/504)，决策 #245；来源 = [#408](https://github.com/marci-labs/LabelFrame/issues/408) 补验发现）
+    added comment lines checked: 109; markers found: 3
+    命中文中的三行都在 Markdown 文档里（CHANGELOG 与设计文档按约定引用 Issue 与决策号），打包源文件与脚本的新增注释行没有命中。

@@ -1,0 +1,134 @@
+# 轮次链的记录：每一轮的开始、结束、还原与关机。10:03 到 11:53 之间是卸载入口探查与它的过程记录（probe、arp、arp2、entry 的前几次尝试），
+# 不是最终证据；最终取证是 12:50 的 rerun、12:55 的 clear 两轮，以及 13:17 之后的 wizard、runtime（14:16 开始的那一遍）、server、data 四轮（见 README「轮次」）。
+10:03:30 [round] host free memory: 12957 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:04:33 [round] start probe (attempt 1)
+10:22:19 STATE_BEFORE=Running
+10:22:24 RESTORE ok
+10:22:36 STATE_AFTER_RESTORE_SETTLED=Saved
+10:22:47 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:22:47 [round] probe attempt=1 exit=0 roundDone=yes
+10:23:01 [round] host free memory: 11868 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:24:03 [round] start arp (attempt 1)
+10:39:08 STATE_BEFORE=Running
+10:39:12 RESTORE ok
+10:39:24 STATE_AFTER_RESTORE_SETTLED=Saved
+10:39:36 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:39:36 [round] arp attempt=1 exit=0 roundDone=yes
+10:39:43 [round] host free memory: 13350 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:40:45 [round] start arp2 (attempt 1)
+10:53:52 STATE_BEFORE=Running
+10:53:57 RESTORE ok
+10:54:09 STATE_AFTER_RESTORE_SETTLED=Saved
+10:54:20 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+10:54:21 [round] arp2 attempt=1 exit=0 roundDone=yes
+10:56:11 [round] host free memory: 14468 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+10:57:13 [round] start entry (attempt 1)
+11:09:23 [round] host free memory: 11631 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+11:10:26 [round] start entry (attempt 1)
+11:19:44 [round] host free memory: 11790 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+11:20:46 [round] start entry (attempt 1)
+11:32:41 STATE_BEFORE=Running
+11:32:45 RESTORE ok
+11:32:57 STATE_AFTER_RESTORE_SETTLED=Saved
+11:33:09 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+11:33:09 [round] entry attempt=1 exit=0 roundDone=yes
+11:33:11 [round] host free memory: 13711 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+11:34:13 [round] start entry2 (attempt 1)
+11:52:17 STATE_BEFORE=Running
+11:52:21 RESTORE ok
+11:52:33 STATE_AFTER_RESTORE_SETTLED=Saved
+11:52:45 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+11:52:45 [round] entry2 attempt=1 exit=0 roundDone=yes
+11:52:51 [round] host free memory: 14095 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+11:53:53 [round] start wizard (attempt 1)
+12:06:40 STATE_BEFORE=Running
+12:06:44 RESTORE ok
+12:06:57 STATE_AFTER_RESTORE_SETTLED=Saved
+12:07:08 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+12:07:08 [round] wizard attempt=1 exit=0 roundDone=yes
+12:07:09 [round] host free memory: 12753 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+12:08:11 [round] start runtime (attempt 1)
+12:15:26 STATE_BEFORE=Running
+12:15:30 RESTORE ok
+12:15:44 STATE_AFTER_RESTORE_SETTLED=Saved
+12:15:56 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+12:15:56 [round] runtime attempt=1 exit=0 roundDone=yes
+12:15:57 [round] host free memory: 12076 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+12:16:59 [round] host free memory: 13540 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+12:16:59 [round] start server (attempt 1)
+12:27:43 STATE_BEFORE=Running
+12:27:47 RESTORE ok
+12:27:59 STATE_AFTER_RESTORE_SETTLED=Saved
+12:28:11 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+12:28:11 [round] server attempt=1 exit=0 roundDone=yes
+12:28:12 [round] host free memory: 14374 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+12:29:14 [round] start data (attempt 1)
+12:41:27 STATE_BEFORE=Running
+12:41:31 RESTORE ok
+12:41:43 STATE_AFTER_RESTORE_SETTLED=Saved
+12:41:55 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+12:41:55 [round] data attempt=1 exit=0 roundDone=yes
+12:41:55 [plan] ALL_ROUNDS_DONE: h-data data
+12:42:08 [round] host free memory: 13775 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+12:43:10 [round] start webview2 (attempt 1)
+12:49:16 STATE_BEFORE=Running
+12:49:20 RESTORE ok
+12:49:32 STATE_AFTER_RESTORE_SETTLED=Saved
+12:49:44 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+12:49:44 [round] webview2 attempt=1 exit=0 roundDone=yes
+12:49:50 [round] host free memory: 13716 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+12:50:22 [round] host free memory: 11136 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+12:50:53 [round] host free memory: 12550 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+12:50:53 [round] start rerun (attempt 1)
+12:54:05 STATE_BEFORE=Running
+12:54:09 RESTORE ok
+12:54:22 STATE_AFTER_RESTORE_SETTLED=Saved
+12:54:33 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+12:54:33 [round] rerun attempt=1 exit=0 roundDone=yes
+12:54:43 [round] host free memory: 13352 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+12:55:14 [round] host free memory: 14229 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+12:55:45 [round] start clear (attempt 1)
+13:11:31 STATE_BEFORE=Running
+13:11:36 RESTORE ok
+13:11:48 STATE_AFTER_RESTORE_SETTLED=Saved
+13:11:59 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+13:11:59 [round] clear attempt=1 exit=0 roundDone=yes
+13:16:02 [round] host free memory: 12253 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+13:16:33 [round] host free memory: 11475 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+13:17:04 [round] host free memory: 11879 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+13:17:04 [round] start wizard (attempt 1)
+13:29:11 STATE_BEFORE=Running
+13:29:16 RESTORE ok
+13:29:28 STATE_AFTER_RESTORE_SETTLED=Saved
+13:29:39 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+13:29:39 [round] wizard attempt=1 exit=0 roundDone=yes
+13:29:40 [round] host free memory: 12291 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+13:30:42 [round] start runtime (attempt 1)
+13:38:33 STATE_BEFORE=Running
+13:38:37 RESTORE ok
+13:38:51 STATE_AFTER_RESTORE_SETTLED=Saved
+13:39:02 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+13:39:03 [round] runtime attempt=1 exit=0 roundDone=yes
+13:39:04 [round] host free memory: 10872 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+13:40:06 [round] start server (attempt 1)
+13:51:34 STATE_BEFORE=Running
+13:51:39 RESTORE ok
+13:51:51 STATE_AFTER_RESTORE_SETTLED=Saved
+13:52:03 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+13:52:03 [round] server attempt=1 exit=0 roundDone=yes
+13:52:05 [round] host free memory: 9719 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+13:53:07 [round] host free memory: 10138 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+13:53:07 [round] start data (attempt 1)
+14:07:07 STATE_BEFORE=Running
+14:07:12 RESTORE ok
+14:07:24 STATE_AFTER_RESTORE_SETTLED=Saved
+14:07:35 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+14:07:35 [round] data attempt=1 exit=0 roundDone=yes
+14:07:35 [plan] ALL_ROUNDS_DONE: h-data data
+14:16:36 [round] host free memory: 10155 MB, other VMs running: 0, test VM running: False (holding 0 of 4096 MB), room: yes (a round starts when the test VM runs at full size, or when 5600 MB are free and no other VM runs, three polls in a row)
+14:17:38 [round] start runtime (attempt 1)
+14:27:23 STATE_BEFORE=Running
+14:27:28 RESTORE ok
+14:27:40 STATE_AFTER_RESTORE_SETTLED=Saved
+14:27:51 FINAL_STATE=Off off=True parentSnapshot=baseline-clean-winrm checkpoints=baseline-clean-winrm
+14:27:51 [round] runtime attempt=1 exit=0 roundDone=yes

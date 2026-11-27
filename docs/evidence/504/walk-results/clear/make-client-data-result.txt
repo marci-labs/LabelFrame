@@ -1,0 +1,37 @@
+CLIENT_STARTED pid=5812 exitedWithin4s=False
+CLIENT_LISTENING_53960=1
+CLIENT_SHUTDOWN requested through the client interface
+CLIENT_LISTENING_AFTER_SHUTDOWN=0
+CLIENT_CONNECTION a log-mode connection file was put next to the client user files
+CLIENT_STARTED pid=5656 exitedWithin4s=False
+CLIENT_LISTENING_53960=1
+CLIENT_SERVER_ADDRESS saved through the client interface -> {"serverUrl":"http://127.0.0.1:53961","deviceId":"DESKTOP-D65DJ5S","deviceName":"DESKTOP-D65DJ5S","ips":["172.17.234.240"],"version":"1.6.1"}
+CLIENT_PRINT_SETTINGS saved through the client interface -> {"batchEnabled":false,"batchSize":10,"batchIntervalMs":500,"dpi":300}
+CLIENT_TEST_PAGE printed through the client interface -> {"sent":true,"bytes":27903}
+CLIENT_JOB accepted through the client interface -> {"jobId":"2ba900a7a3cc44889c5fde654c26a61a","requestId":"probe-8844","status":"Pending","totalItems":1,"completedItems":0,"items":[{"index":0,"status":"Pending","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\2ba900a7a3cc44889c5fde654c26a61a","printImageCount":1,"createdAt":"2026-11-27T05:09:49.3149596+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null}
+CLIENT_JOBS [{"jobId":"2ba900a7a3cc44889c5fde654c26a61a","requestId":"probe-8844","status":"Completed","totalItems":1,"completedItems":1,"items":[{"index":0,"status":"Completed","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\2ba900a7a3cc44889c5fde654c26a61a","printImageCount":1,"createdAt":"2026-11-27T05:09:49.3149596+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null},{"jobId":"b52572e5f38f4cbf84b7396c2d1351c9","requestId":"probe-6368","status":"Completed","totalItems":1,"completedItems":1,"items":[{"index":0,"status":"Completed","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\b52572e5f38f4cbf84b7396c2d1351c9","printImageCount":1,"createdAt":"2026-11-27T05:07:58.8614978+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null}]
+PRINT_IMAGE_FILES=4
+PRINT_IMAGE_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\.<account>-print-v1 bytes=32
+PRINT_IMAGE_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\label-1.png bytes=2673
+PRINT_IMAGE_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\.<account>-print-v1 bytes=32
+PRINT_IMAGE_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\label-1.png bytes=2673
+USER_FILES=18
+USER_FILE name=connection.json bytes=30
+USER_FILE name=host-20261127.log bytes=5688
+USER_FILE name=jobs.db bytes=81920
+USER_FILE name=jobs.db-shm bytes=32768
+USER_FILE name=jobs.db-wal bytes=98912
+USER_FILE name=logs.db bytes=16384
+USER_FILE name=logs.db-shm bytes=32768
+USER_FILE name=logs.db-wal bytes=0
+USER_FILE name=logs\app-20261127.log bytes=27309
+USER_FILE name=logs\serilog-self.log bytes=0
+USER_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\.<account>-print-v1 bytes=32
+USER_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\label-1.png bytes=2673
+USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\.<account>-print-v1 bytes=32
+USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\label-1.png bytes=2673
+USER_FILE name=print-settings.json bytes=69
+USER_FILE name=templates.db bytes=28672
+USER_FILE name=templates.db-shm bytes=32768
+USER_FILE name=templates.db-wal bytes=0
+USER_FILES_WEBVIEW2=0

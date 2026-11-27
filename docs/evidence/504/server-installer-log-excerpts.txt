@@ -1,0 +1,397 @@
+# Windows Installer 日志摘录：server 轮。行号指向拉回的同名日志。
+
+## 20-rerun-silent.log
+L5: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L18: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L41: MSI (s) (24:F8) [13:45:34:651]: Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=8332
+L383: MSI (s) (24:F8) [13:45:34:761]: Skipping action: StopServerService (condition is false)
+L392: MSI (s) (24:F8) [13:45:34:776]: Doing action: StopServices
+L398: 操作结束 13:45:34: StopServices。返回值 1。
+L400: MSI (s) (24:F8) [13:45:34:776]: Doing action: RemoveFiles
+L406: MSI (s) (24:F8) [13:45:34:776]: Skipping action: ClearDataDelServerDir (condition is false)
+L407: MSI (s) (24:F8) [13:45:34:776]: Skipping action: ClearDataDelServerDb (condition is false)
+L408: MSI (s) (24:F8) [13:45:34:776]: Skipping action: ClearDataDelAppSettings (condition is false)
+L411: 操作结束 13:45:34: RemoveFiles。返回值 0。
+L433: MSI (s) (24:F8) [13:45:34:776]: Doing action: StartServices
+L439: 操作结束 13:45:34: StartServices。返回值 1。
+L474: MSI (s) (24:F8) [13:45:34:808]: Doing action: InstallFinalize
+L516: 操作结束 13:45:34: InstallFinalize。返回值 1。
+L619: Property(S): UILevel = 2
+L641: MSI (s) (24:F8) [13:45:34:839]: MainEngineThread is returning 0
+L655: MSI (c) (8C:94) [13:45:34:855]: MainEngineThread is returning 0
+
+## 30-repair-fa.log
+L5: ******* Product: {4F465CA0-749C-4E1C-86FA-F470051324AB}
+L18: ******* Product: {4F465CA0-749C-4E1C-86FA-F470051324AB}
+L41: MSI (s) (24:2C) [13:45:44:230]: Command Line: REINSTALL=ALL REINSTALLMODE=a CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=8008
+L382: MSI (s) (24:2C) [13:45:44:683]: Doing action: StopServerService
+L410: 操作结束 13:45:44: StopServerService。返回值 1。
+L416: MSI (s) (24:2C) [13:45:44:730]: Doing action: StopServices
+L422: 操作结束 13:45:44: StopServices。返回值 1。
+L424: MSI (s) (24:2C) [13:45:44:730]: Doing action: RemoveFiles
+L430: MSI (s) (24:2C) [13:45:44:730]: Skipping action: ClearDataDelServerDir (condition is false)
+L431: MSI (s) (24:2C) [13:45:44:730]: Skipping action: ClearDataDelServerDb (condition is false)
+L432: MSI (s) (24:2C) [13:45:44:730]: Skipping action: ClearDataDelAppSettings (condition is false)
+L435: 操作结束 13:45:44: RemoveFiles。返回值 0。
+L502: MSI (s) (24:2C) [13:45:44:761]: Doing action: StartServices
+L508: 操作结束 13:45:44: StartServices。返回值 1。
+L522: MSI (s) (24:2C) [13:45:44:761]: Doing action: InstallFinalize
+L845: 操作结束 13:45:48: InstallFinalize。返回值 1。
+L949: Property(S): UILevel = 2
+L972: MSI (s) (24:2C) [13:45:48:417]: MainEngineThread is returning 0
+L986: MSI (c) (48:A0) [13:45:48:433]: MainEngineThread is returning 0
+
+## 60-install-silent.log
+L5: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L18: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L47: MSI (s) (24:00) [13:47:18:808]: Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=9184
+L386: MSI (s) (24:00) [13:47:18:948]: Doing action: StopServerService
+L416: 操作结束 13:47:18: StopServerService。返回值 1。
+L422: MSI (s) (24:00) [13:47:18:995]: Doing action: StopServices
+L428: 操作结束 13:47:18: StopServices。返回值 1。
+L430: MSI (s) (24:00) [13:47:18:995]: Doing action: RemoveFiles
+L436: MSI (s) (24:00) [13:47:18:995]: Skipping action: ClearDataDelServerDir (condition is false)
+L437: MSI (s) (24:00) [13:47:18:995]: Skipping action: ClearDataDelServerDb (condition is false)
+L438: MSI (s) (24:00) [13:47:18:995]: Skipping action: ClearDataDelAppSettings (condition is false)
+L441: 操作结束 13:47:18: RemoveFiles。返回值 0。
+L466: MSI (s) (24:00) [13:47:18:995]: Doing action: StartServices
+L472: 操作结束 13:47:18: StartServices。返回值 1。
+L489: MSI (s) (24:00) [13:47:19:011]: Doing action: InstallFinalize
+L695: 操作结束 13:47:21: InstallFinalize。返回值 1。
+L796: Property(S): UILevel = 2
+L819: MSI (s) (24:00) [13:47:21:323]: MainEngineThread is returning 0
+L833: MSI (c) (E0:AC) [13:47:21:339]: MainEngineThread is returning 0
+
+## 70-install-silent.log
+L5: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L18: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L47: MSI (s) (24:44) [13:48:18:499]: Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=2184
+L385: MSI (s) (24:44) [13:48:18:671]: Doing action: StopServerService
+L415: 操作结束 13:48:18: StopServerService。返回值 1。
+L421: MSI (s) (24:44) [13:48:18:718]: Doing action: StopServices
+L427: 操作结束 13:48:18: StopServices。返回值 1。
+L429: MSI (s) (24:44) [13:48:18:718]: Doing action: RemoveFiles
+L435: MSI (s) (24:44) [13:48:18:718]: Skipping action: ClearDataDelServerDir (condition is false)
+L436: MSI (s) (24:44) [13:48:18:718]: Skipping action: ClearDataDelServerDb (condition is false)
+L437: MSI (s) (24:44) [13:48:18:718]: Skipping action: ClearDataDelAppSettings (condition is false)
+L440: 操作结束 13:48:18: RemoveFiles。返回值 0。
+L465: MSI (s) (24:44) [13:48:18:718]: Doing action: StartServices
+L471: 操作结束 13:48:18: StartServices。返回值 1。
+L488: MSI (s) (24:44) [13:48:18:733]: Doing action: InstallFinalize
+L697: 操作结束 13:48:22: InstallFinalize。返回值 1。
+L798: Property(S): UILevel = 2
+L821: MSI (s) (24:44) [13:48:22:358]: MainEngineThread is returning 0
+L835: MSI (c) (88:B4) [13:48:22:374]: MainEngineThread is returning 0
+
+## 80-install-silent.log
+L5: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L18: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L47: MSI (s) (24:64) [13:49:16:582]: Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=4128
+L386: MSI (s) (24:64) [13:49:16:691]: Doing action: StopServerService
+L416: 操作结束 13:49:16: StopServerService。返回值 1。
+L422: MSI (s) (24:64) [13:49:16:738]: Doing action: StopServices
+L428: 操作结束 13:49:16: StopServices。返回值 1。
+L430: MSI (s) (24:64) [13:49:16:738]: Doing action: RemoveFiles
+L436: MSI (s) (24:64) [13:49:16:738]: Skipping action: ClearDataDelServerDir (condition is false)
+L437: MSI (s) (24:64) [13:49:16:738]: Skipping action: ClearDataDelServerDb (condition is false)
+L438: MSI (s) (24:64) [13:49:16:738]: Skipping action: ClearDataDelAppSettings (condition is false)
+L441: 操作结束 13:49:16: RemoveFiles。返回值 0。
+L466: MSI (s) (24:64) [13:49:16:738]: Doing action: StartServices
+L472: 操作结束 13:49:16: StartServices。返回值 1。
+L489: MSI (s) (24:64) [13:49:16:754]: Doing action: InstallFinalize
+L695: 操作结束 13:49:18: InstallFinalize。返回值 1。
+L796: Property(S): UILevel = 2
+L819: MSI (s) (24:64) [13:49:19:004]: MainEngineThread is returning 0
+L833: MSI (c) (20:14) [13:49:19:004]: MainEngineThread is returning 0
+
+## 90-install-160-silent.log
+L5: ******* Product: C:\Probe\prev\LabelFrame-Server-1.6.0.msi
+L18: ******* Product: C:\Probe\prev\LabelFrame-Server-1.6.0.msi
+L46: MSI (s) (24:50) [13:50:04:101]: Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=6708
+L384: MSI (s) (24:50) [13:50:04:257]: Doing action: StopServerService
+L414: 操作结束 13:50:04: StopServerService。返回值 1。
+L420: MSI (s) (24:50) [13:50:04:304]: Doing action: StopServices
+L426: 操作结束 13:50:04: StopServices。返回值 1。
+L428: MSI (s) (24:50) [13:50:04:304]: Doing action: RemoveFiles
+L434: MSI (s) (24:50) [13:50:04:304]: Skipping action: ClearDataDelServerDir (condition is false)
+L435: MSI (s) (24:50) [13:50:04:304]: Skipping action: ClearDataDelServerDb (condition is false)
+L436: MSI (s) (24:50) [13:50:04:304]: Skipping action: ClearDataDelAppSettings (condition is false)
+L439: 操作结束 13:50:04: RemoveFiles。返回值 0。
+L464: MSI (s) (24:50) [13:50:04:320]: Doing action: StartServices
+L470: 操作结束 13:50:04: StartServices。返回值 1。
+L487: MSI (s) (24:50) [13:50:04:320]: Doing action: InstallFinalize
+L696: 操作结束 13:50:06: InstallFinalize。返回值 1。
+L797: Property(S): UILevel = 2
+L820: MSI (s) (24:50) [13:50:06:632]: MainEngineThread is returning 0
+L834: MSI (c) (34:48) [13:50:06:632]: MainEngineThread is returning 0
+
+## 94-upgrade-160-to-candidate.log
+L5: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L18: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L47: MSI (s) (24:C8) [13:50:27:753]: Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=8868
+L380: ******* Product: {83350132-BE4F-476D-9D37-EF3D0D444365}
+L400: MSI (s) (24:20) [13:50:28:175]: Command Line: UPGRADINGPRODUCTCODE={4F465CA0-749C-4E1C-86FA-F470051324AB} CLIENTPROCESSID=8868 CLIENTUILEVEL=3 REMOVE=ALL
+L646: MSI (s) (24:20) [13:50:28:362]: Doing action: StopServerService
+L652: 操作结束 13:50:28: StopServerService。返回值 1。
+L658: MSI (s) (24:20) [13:50:28:362]: Doing action: StopServices
+L664: 操作结束 13:50:28: StopServices。返回值 1。
+L666: MSI (s) (24:20) [13:50:28:362]: Doing action: RemoveFiles
+L672: MSI (s) (24:20) [13:50:28:378]: Skipping action: ClearDataDelServerDir (condition is false)
+L673: MSI (s) (24:20) [13:50:28:378]: Skipping action: ClearDataDelServerDb (condition is false)
+L674: MSI (s) (24:20) [13:50:28:378]: Skipping action: ClearDataDelAppSettings (condition is false)
+L677: 操作结束 13:50:28: RemoveFiles。返回值 0。
+L699: MSI (s) (24:20) [13:50:28:378]: Doing action: StartServices
+L705: 操作结束 13:50:28: StartServices。返回值 1。
+L719: MSI (s) (24:20) [13:50:28:378]: Doing action: InstallFinalize
+L962: 操作结束 13:50:28: InstallFinalize。返回值 1。
+L1061: Property(N): UILevel = 2
+L1088: MSI (s) (24:C8) [13:50:28:565]: Doing action: StopServerService
+L1118: 操作结束 13:50:28: StopServerService。返回值 1。
+L1124: MSI (s) (24:C8) [13:50:28:612]: Doing action: StopServices
+L1130: 操作结束 13:50:28: StopServices。返回值 1。
+L1132: MSI (s) (24:C8) [13:50:28:612]: Doing action: RemoveFiles
+L1138: MSI (s) (24:C8) [13:50:28:612]: Skipping action: ClearDataDelServerDir (condition is false)
+L1139: MSI (s) (24:C8) [13:50:28:612]: Skipping action: ClearDataDelServerDb (condition is false)
+L1140: MSI (s) (24:C8) [13:50:28:612]: Skipping action: ClearDataDelAppSettings (condition is false)
+L1143: 操作结束 13:50:28: RemoveFiles。返回值 0。
+L1168: MSI (s) (24:C8) [13:50:28:628]: Doing action: StartServices
+L1174: 操作结束 13:50:28: StartServices。返回值 1。
+L1191: MSI (s) (24:C8) [13:50:28:628]: Doing action: InstallFinalize
+L1398: 操作结束 13:50:30: InstallFinalize。返回值 1。
+L1500: Property(S): UILevel = 2
+L1524: MSI (s) (24:C8) [13:50:30:862]: MainEngineThread is returning 0
+L1543: MSI (c) (A4:48) [13:50:30:878]: MainEngineThread is returning 0
+
+## walk-server-install.log
+L9: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L42: MSI (c) (A0:6C) [13:44:53:339]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=6304
+L215: MSI (c) (A0:6C) [13:44:53:667]: Skipping action: ClearDataDlg (condition is false)
+L216: MSI (c) (A0:6C) [13:44:53:667]: Skipping action: ClearPreselectedAfterQuestion (condition is false)
+L217: MSI (c) (A0:6C) [13:44:53:667]: Skipping action: ResumeDlg (condition is false)
+L218: MSI (c) (A0:6C) [13:44:53:667]: Skipping action: MaintenanceWelcomeDlg (condition is false)
+L294: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L332: MSI (s) (24:5C) [13:44:59:261]: Command Line: DOTNET10_PRESENT=0 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=6304 USERNAME=<account> SOURCEDIR=C:\Probe\ ACTION=INSTALL EXECUTEACTION=INSTALL ROOTDRIVE=C:\ INSTALLLEVEL=1 SECONDSEQUENCE=1 ADDLOCAL=MainFeature ACTION=INSTALL
+L596: MSI (s) (24:5C) [13:44:59:636]: Doing action: StopServerService
+L627: 操作结束 13:44:59: StopServerService。返回值 1。
+L639: MSI (s) (24:5C) [13:44:59:730]: Doing action: StopServices
+L644: 操作结束 13:44:59: StopServices。返回值 1。
+L650: MSI (s) (24:5C) [13:44:59:745]: Doing action: RemoveFiles
+L656: 操作结束 13:44:59: RemoveFiles。返回值 0。
+L657: MSI (s) (24:5C) [13:44:59:745]: Skipping action: ClearDataDelServerDir (condition is false)
+L658: MSI (s) (24:5C) [13:44:59:745]: Skipping action: ClearDataDelServerDb (condition is false)
+L659: MSI (s) (24:5C) [13:44:59:745]: Skipping action: ClearDataDelAppSettings (condition is false)
+L693: MSI (s) (24:5C) [13:44:59:808]: Doing action: StartServices
+L698: 操作结束 13:44:59: StartServices。返回值 1。
+L725: MSI (s) (24:5C) [13:44:59:839]: Doing action: InstallFinalize
+L1012: 操作结束 13:45:03: InstallFinalize。返回值 1。
+L1118: Property(S): UILevel = 5
+L1128: MSI (s) (24:5C) [13:45:03:698]: MainEngineThread is returning 0
+L1256: Property(C): UILevel = 5
+L1279: MSI (c) (A0:6C) [13:45:04:495]: MainEngineThread is returning 0
+
+## walk-server-remove-all-clear.log
+L9: ******* Product: {4F465CA0-749C-4E1C-86FA-F470051324AB}
+L38: MSI (c) (DC:B0) [13:49:33:738]: Command Line: REMOVE=ALL CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8668
+L57: MSI (c) (DC:B0) [13:49:33:738]: PROPERTY CHANGE: Adding RestrictedUserControl property. Its value is '1'.
+L221: MSI (c) (DC:B0) [13:49:33:941]: Doing action: ClearDataDlg
+L240: MSI (c) (DC:A8) [13:49:35:566]: Doing action: SetRemoveInstallMode
+L245: 操作结束 13:49:35: SetRemoveInstallMode。返回值 1。
+L274: 操作结束 13:49:39: ClearDataDlg。返回值 1。
+L275: MSI (c) (DC:B0) [13:49:39:910]: Doing action: ClearPreselectedAfterQuestion
+L280: 操作结束 13:49:39: ClearPreselectedAfterQuestion。返回值 1。
+L281: MSI (c) (DC:B0) [13:49:39:910]: Skipping action: ResumeDlg (condition is false)
+L282: MSI (c) (DC:B0) [13:49:39:910]: Skipping action: MaintenanceWelcomeDlg (condition is false)
+L311: ******* Product: C:\Windows\Installer\14c36.msi
+L345: MSI (s) (24:7C) [13:49:39:942]: Command Line: DOTNET10_PRESENT=0 CLEAR_USER_DATA=1 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8668 PRODUCTLANGUAGE=2052 USERNAME=<account> ACTION=INSTALL EXECUTEACTION=INSTALL ROOTDRIVE=C:\ INSTALLLEVEL=1 SECONDSEQUENCE=1 REMOVE=ALL ACTION=INSTALL
+L619: MSI (s) (24:7C) [13:49:40:332]: Doing action: StopServerService
+L624: 操作结束 13:49:40: StopServerService。返回值 1。
+L637: MSI (s) (24:7C) [13:49:40:363]: Doing action: StopServices
+L642: 操作结束 13:49:40: StopServices。返回值 1。
+L649: MSI (s) (24:7C) [13:49:40:363]: Doing action: RemoveFiles
+L656: 操作结束 13:49:40: RemoveFiles。返回值 0。
+L657: MSI (s) (24:7C) [13:49:40:379]: Doing action: ClearDataDelServerDir
+L662: 操作结束 13:49:40: ClearDataDelServerDir。返回值 1。
+L663: MSI (s) (24:7C) [13:49:40:379]: Doing action: ClearDataDelServerDb
+L668: 操作结束 13:49:40: ClearDataDelServerDb。返回值 1。
+L669: MSI (s) (24:7C) [13:49:40:379]: Doing action: ClearDataDelAppSettings
+L674: 操作结束 13:49:40: ClearDataDelAppSettings。返回值 1。
+L703: MSI (s) (24:7C) [13:49:40:379]: Doing action: StartServices
+L707: 操作结束 13:49:40: StartServices。返回值 1。
+L729: MSI (s) (24:7C) [13:49:40:395]: Doing action: InstallFinalize
+L1093: 操作结束 13:49:41: InstallFinalize。返回值 1。
+L1199: Property(S): UILevel = 5
+L1207: MSI (s) (24:7C) [13:49:41:816]: MainEngineThread is returning 0
+L1339: Property(C): UILevel = 5
+L1362: MSI (c) (DC:B0) [13:49:42:535]: MainEngineThread is returning 0
+
+## walk-server-remove-all-keep.log
+L9: ******* Product: {4F465CA0-749C-4E1C-86FA-F470051324AB}
+L38: MSI (c) (F4:A4) [13:48:44:671]: Command Line: REMOVE=ALL CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=5108
+L57: MSI (c) (F4:A4) [13:48:44:671]: PROPERTY CHANGE: Adding RestrictedUserControl property. Its value is '1'.
+L221: MSI (c) (F4:A4) [13:48:45:030]: Doing action: ClearDataDlg
+L239: MSI (c) (F4:BC) [13:48:46:437]: Doing action: SetRemoveInstallMode
+L244: 操作结束 13:48:46: SetRemoveInstallMode。返回值 1。
+L274: 操作结束 13:48:50: ClearDataDlg。返回值 1。
+L275: MSI (c) (F4:A4) [13:48:50:890]: Doing action: ClearPreselectedAfterQuestion
+L280: 操作结束 13:48:50: ClearPreselectedAfterQuestion。返回值 1。
+L281: MSI (c) (F4:A4) [13:48:50:890]: Skipping action: ResumeDlg (condition is false)
+L282: MSI (c) (F4:A4) [13:48:50:890]: Skipping action: MaintenanceWelcomeDlg (condition is false)
+L311: ******* Product: C:\Windows\Installer\14c14.msi
+L345: MSI (s) (24:D4) [13:48:50:999]: Command Line: DOTNET10_PRESENT=0 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=5108 PRODUCTLANGUAGE=2052 USERNAME=<account> ACTION=INSTALL EXECUTEACTION=INSTALL ROOTDRIVE=C:\ INSTALLLEVEL=1 SECONDSEQUENCE=1 REMOVE=ALL ACTION=INSTALL
+L618: MSI (s) (24:D4) [13:48:51:562]: Doing action: StopServerService
+L623: 操作结束 13:48:51: StopServerService。返回值 1。
+L636: MSI (s) (24:D4) [13:48:51:593]: Doing action: StopServices
+L641: 操作结束 13:48:51: StopServices。返回值 1。
+L648: MSI (s) (24:D4) [13:48:51:593]: Doing action: RemoveFiles
+L655: 操作结束 13:48:51: RemoveFiles。返回值 0。
+L656: MSI (s) (24:D4) [13:48:51:608]: Skipping action: ClearDataDelServerDir (condition is false)
+L657: MSI (s) (24:D4) [13:48:51:608]: Skipping action: ClearDataDelServerDb (condition is false)
+L658: MSI (s) (24:D4) [13:48:51:608]: Skipping action: ClearDataDelAppSettings (condition is false)
+L687: MSI (s) (24:D4) [13:48:51:624]: Doing action: StartServices
+L691: 操作结束 13:48:51: StartServices。返回值 1。
+L713: MSI (s) (24:D4) [13:48:51:640]: Doing action: InstallFinalize
+L1065: 操作结束 13:48:52: InstallFinalize。返回值 1。
+L1170: Property(S): UILevel = 5
+L1178: MSI (s) (24:D4) [13:48:52:999]: MainEngineThread is returning 0
+L1309: Property(C): UILevel = 5
+L1332: MSI (c) (F4:A4) [13:48:53:687]: MainEngineThread is returning 0
+
+## walk-server-remove-rerun-clear.log
+L9: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L38: MSI (c) (84:98) [13:47:36:040]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=3460
+L68: MSI (c) (84:98) [13:47:36:040]: PROPERTY CHANGE: Adding RestrictedUserControl property. Its value is '1'.
+L229: MSI (c) (84:98) [13:47:36:243]: Skipping action: ClearDataDlg (condition is false)
+L230: MSI (c) (84:98) [13:47:36:243]: Skipping action: ClearPreselectedAfterQuestion (condition is false)
+L231: MSI (c) (84:98) [13:47:36:243]: Skipping action: ResumeDlg (condition is false)
+L232: MSI (c) (84:98) [13:47:36:243]: Doing action: MaintenanceWelcomeDlg
+L300: 操作结束 13:47:45: MaintenanceWelcomeDlg。返回值 1。
+L329: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L359: MSI (s) (24:8C) [13:47:45:118]: Command Line: DOTNET10_PRESENT=0 CLEAR_USER_DATA=1 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=3460 PRODUCTLANGUAGE=2052 USERNAME=<account> ACTION=INSTALL EXECUTEACTION=INSTALL ROOTDRIVE=C:\ INSTALLLEVEL=1 SECONDSEQUENCE=1 REMOVE=MainFeature ACTION=INSTALL
+L395: MSI (s) (24:8C) [13:47:45:118]: PROPERTY CHANGE: Adding RestrictedUserControl property. Its value is '1'.
+L651: MSI (s) (24:8C) [13:47:45:524]: Doing action: StopServerService
+L656: 操作结束 13:47:45: StopServerService。返回值 1。
+L669: MSI (s) (24:8C) [13:47:45:540]: Doing action: StopServices
+L674: 操作结束 13:47:45: StopServices。返回值 1。
+L681: MSI (s) (24:8C) [13:47:45:555]: Doing action: RemoveFiles
+L688: 操作结束 13:47:45: RemoveFiles。返回值 0。
+L689: MSI (s) (24:8C) [13:47:45:555]: Doing action: ClearDataDelServerDir
+L694: 操作结束 13:47:45: ClearDataDelServerDir。返回值 1。
+L695: MSI (s) (24:8C) [13:47:45:571]: Doing action: ClearDataDelServerDb
+L700: 操作结束 13:47:45: ClearDataDelServerDb。返回值 1。
+L701: MSI (s) (24:8C) [13:47:45:571]: Doing action: ClearDataDelAppSettings
+L706: 操作结束 13:47:45: ClearDataDelAppSettings。返回值 1。
+L735: MSI (s) (24:8C) [13:47:45:571]: Doing action: StartServices
+L739: 操作结束 13:47:45: StartServices。返回值 1。
+L761: MSI (s) (24:8C) [13:47:45:586]: Doing action: InstallFinalize
+L1125: 操作结束 13:47:46: InstallFinalize。返回值 1。
+L1232: Property(S): UILevel = 5
+L1240: MSI (s) (24:8C) [13:47:47:008]: MainEngineThread is returning 0
+L1371: Property(C): UILevel = 5
+L1394: MSI (c) (84:98) [13:47:47:758]: MainEngineThread is returning 0
+
+## walk-server-remove-rerun-keep.log
+L9: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L38: MSI (c) (C4:50) [13:46:45:995]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4548
+L68: MSI (c) (C4:50) [13:46:45:995]: PROPERTY CHANGE: Adding RestrictedUserControl property. Its value is '1'.
+L229: MSI (c) (C4:50) [13:46:46:214]: Skipping action: ClearDataDlg (condition is false)
+L230: MSI (c) (C4:50) [13:46:46:214]: Skipping action: ClearPreselectedAfterQuestion (condition is false)
+L231: MSI (c) (C4:50) [13:46:46:214]: Skipping action: ResumeDlg (condition is false)
+L232: MSI (c) (C4:50) [13:46:46:214]: Doing action: MaintenanceWelcomeDlg
+L299: 操作结束 13:46:54: MaintenanceWelcomeDlg。返回值 1。
+L328: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L358: MSI (s) (24:7C) [13:46:54:995]: Command Line: DOTNET10_PRESENT=0 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=4548 PRODUCTLANGUAGE=2052 USERNAME=<account> ACTION=INSTALL EXECUTEACTION=INSTALL ROOTDRIVE=C:\ INSTALLLEVEL=1 SECONDSEQUENCE=1 REMOVE=MainFeature ACTION=INSTALL
+L394: MSI (s) (24:7C) [13:46:54:995]: PROPERTY CHANGE: Adding RestrictedUserControl property. Its value is '1'.
+L649: MSI (s) (24:7C) [13:46:55:417]: Doing action: StopServerService
+L654: 操作结束 13:46:55: StopServerService。返回值 1。
+L667: MSI (s) (24:7C) [13:46:55:433]: Doing action: StopServices
+L672: 操作结束 13:46:55: StopServices。返回值 1。
+L679: MSI (s) (24:7C) [13:46:55:433]: Doing action: RemoveFiles
+L686: 操作结束 13:46:55: RemoveFiles。返回值 0。
+L687: MSI (s) (24:7C) [13:46:55:448]: Skipping action: ClearDataDelServerDir (condition is false)
+L688: MSI (s) (24:7C) [13:46:55:448]: Skipping action: ClearDataDelServerDb (condition is false)
+L689: MSI (s) (24:7C) [13:46:55:448]: Skipping action: ClearDataDelAppSettings (condition is false)
+L718: MSI (s) (24:7C) [13:46:55:448]: Doing action: StartServices
+L722: 操作结束 13:46:55: StartServices。返回值 1。
+L744: MSI (s) (24:7C) [13:46:55:464]: Doing action: InstallFinalize
+L1096: 操作结束 13:46:56: InstallFinalize。返回值 1。
+L1202: Property(S): UILevel = 5
+L1210: MSI (s) (24:7C) [13:46:56:698]: MainEngineThread is returning 0
+L1340: Property(C): UILevel = 5
+L1363: MSI (c) (C4:50) [13:46:57:636]: MainEngineThread is returning 0
+
+## walk-server-remove-x-yes.log
+L9: ******* Product: {4F465CA0-749C-4E1C-86FA-F470051324AB}
+L22: ******* Product: {4F465CA0-749C-4E1C-86FA-F470051324AB}
+L56: MSI (s) (24:B4) [13:50:56:487]: Command Line: REMOVE=ALL CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=2 CLIENTPROCESSID=5300
+L316: MSI (s) (24:B4) [13:50:56:972]: Doing action: StopServerService
+L322: 操作结束 13:50:56: StopServerService。返回值 1。
+L328: MSI (s) (24:B4) [13:50:56:987]: Doing action: StopServices
+L334: 操作结束 13:50:56: StopServices。返回值 1。
+L336: MSI (s) (24:B4) [13:50:56:987]: Doing action: RemoveFiles
+L342: MSI (s) (24:B4) [13:50:56:987]: Skipping action: ClearDataDelServerDir (condition is false)
+L343: MSI (s) (24:B4) [13:50:56:987]: Skipping action: ClearDataDelServerDb (condition is false)
+L344: MSI (s) (24:B4) [13:50:56:987]: Skipping action: ClearDataDelAppSettings (condition is false)
+L347: 操作结束 13:50:56: RemoveFiles。返回值 0。
+L369: MSI (s) (24:B4) [13:50:57:003]: Doing action: StartServices
+L375: 操作结束 13:50:57: StartServices。返回值 1。
+L389: MSI (s) (24:B4) [13:50:57:003]: Doing action: InstallFinalize
+L638: 操作结束 13:50:57: InstallFinalize。返回值 1。
+L738: Property(S): UILevel = 3
+L759: MSI (s) (24:B4) [13:50:57:237]: MainEngineThread is returning 0
+L777: MSI (c) (B4:68) [13:50:57:253]: MainEngineThread is returning 0
+
+## walk-server-repair.log
+L9: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L38: MSI (c) (10:78) [13:46:05:323]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1808
+L68: MSI (c) (10:78) [13:46:05:323]: PROPERTY CHANGE: Adding RestrictedUserControl property. Its value is '1'.
+L229: MSI (c) (10:78) [13:46:05:558]: Skipping action: ClearDataDlg (condition is false)
+L230: MSI (c) (10:78) [13:46:05:558]: Skipping action: ClearPreselectedAfterQuestion (condition is false)
+L231: MSI (c) (10:78) [13:46:05:558]: Skipping action: ResumeDlg (condition is false)
+L232: MSI (c) (10:78) [13:46:05:558]: Doing action: MaintenanceWelcomeDlg
+L285: 操作结束 13:46:10: MaintenanceWelcomeDlg。返回值 1。
+L314: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L344: MSI (s) (24:CC) [13:46:10:120]: Command Line: DOTNET10_PRESENT=0 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=C:\ CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=1808 PRODUCTLANGUAGE=2052 USERNAME=<account> ACTION=INSTALL EXECUTEACTION=INSTALL ROOTDRIVE=C:\ INSTALLLEVEL=1 REINSTALLMODE=ecmus SECONDSEQUENCE=1 REINSTALL=MainFeature ACTION=INSTALL
+L380: MSI (s) (24:CC) [13:46:10:120]: PROPERTY CHANGE: Adding RestrictedUserControl property. Its value is '1'.
+L616: MSI (s) (24:CC) [13:46:10:667]: Doing action: StopServerService
+L637: 操作结束 13:46:10: StopServerService。返回值 1。
+L649: MSI (s) (24:CC) [13:46:10:714]: Doing action: StopServices
+L654: 操作结束 13:46:10: StopServices。返回值 1。
+L660: MSI (s) (24:CC) [13:46:10:730]: Doing action: RemoveFiles
+L666: 操作结束 13:46:10: RemoveFiles。返回值 0。
+L667: MSI (s) (24:CC) [13:46:10:730]: Skipping action: ClearDataDelServerDir (condition is false)
+L668: MSI (s) (24:CC) [13:46:10:730]: Skipping action: ClearDataDelServerDb (condition is false)
+L669: MSI (s) (24:CC) [13:46:10:730]: Skipping action: ClearDataDelAppSettings (condition is false)
+L745: MSI (s) (24:CC) [13:46:10:761]: Doing action: StartServices
+L750: 操作结束 13:46:10: StartServices。返回值 1。
+L780: MSI (s) (24:CC) [13:46:10:776]: Doing action: InstallFinalize
+L1216: 操作结束 13:46:14: InstallFinalize。返回值 1。
+L1325: Property(S): UILevel = 5
+L1335: MSI (s) (24:CC) [13:46:14:448]: MainEngineThread is returning 0
+L1465: Property(C): UILevel = 5
+L1489: MSI (c) (10:78) [13:46:15:370]: MainEngineThread is returning 0
+
+# 判定
+PASS 20-rerun-silent.log: 什么都不改的重跑不停服务（StopServerService 执行 0 次，跳过 1 次）
+PASS walk-server-remove-all-clear.log: 清除动作执行（执行的：ClearDataDelAppSettings,ClearDataDelServerDb,ClearDataDelServerDir）
+PASS walk-server-remove-all-clear.log: 勾选属性传进了提权的执行会话（日志里没有 Ignoring disallowed property）
+PASS walk-server-remove-all-clear.log: 服务端卸载时先停服务（StopServerService 执行 1 次）
+PASS walk-server-remove-all-clear.log: 卸载时不显示「继续安装」页（实际 未显示）
+PASS walk-server-remove-all-keep.log: 清除动作全部跳过（执行的：无）
+PASS walk-server-remove-all-keep.log: 清除动作因条件为假跳过（跳过的：ClearDataDelAppSettings,ClearDataDelServerDb,ClearDataDelServerDir）
+PASS walk-server-remove-all-keep.log: 服务端卸载时先停服务（StopServerService 执行 1 次）
+PASS walk-server-remove-all-keep.log: 卸载时不显示「继续安装」页（实际 未显示）
+PASS walk-server-remove-rerun-clear.log: 清除动作执行（执行的：ClearDataDelAppSettings,ClearDataDelServerDb,ClearDataDelServerDir）
+PASS walk-server-remove-rerun-clear.log: 勾选属性传进了提权的执行会话（日志里没有 Ignoring disallowed property）
+PASS walk-server-remove-rerun-clear.log: 服务端卸载时先停服务（StopServerService 执行 1 次）
+PASS walk-server-remove-rerun-clear.log: 卸载时不显示「继续安装」页（实际 未显示）
+PASS walk-server-remove-rerun-keep.log: 清除动作全部跳过（执行的：无）
+PASS walk-server-remove-rerun-keep.log: 清除动作因条件为假跳过（跳过的：ClearDataDelAppSettings,ClearDataDelServerDb,ClearDataDelServerDir）
+PASS walk-server-remove-rerun-keep.log: 服务端卸载时先停服务（StopServerService 执行 1 次）
+PASS walk-server-remove-rerun-keep.log: 卸载时不显示「继续安装」页（实际 未显示）
+PASS walk-server-remove-x-yes.log: 清除动作全部跳过（执行的：无）
+PASS walk-server-remove-x-yes.log: 清除动作因条件为假跳过（跳过的：ClearDataDelAppSettings,ClearDataDelServerDb,ClearDataDelServerDir）
+PASS walk-server-remove-x-yes.log: 服务端卸载时先停服务（StopServerService 执行 1 次）
+PASS walk-server-remove-x-yes.log: 卸载时不显示「继续安装」页（实际 未显示）
+PASS walk-server-repair.log: 修复时先停服务（执行 1 次）
+
+FAILED=0

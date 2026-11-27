@@ -1,0 +1,1907 @@
+# 清除数据轮的宿主机侧记录（每行前面的时间是宿主机时间；测试账户名已替换为占位符）。
+12:55:46 STATE_BEFORE=Off
+12:55:46 HOST_FREE_MB=14130 VM_NEED_MB=4096
+12:55:47 STATE_AFTER_RESTORE=Off
+12:55:54 STATE_AFTER_START=Running
+12:56:16 PSDIRECT_OK host=DESKTOP-D65DJ5S
+12:56:24 GUEST clockBefore=2026-11-27T12:56:24.2885761+08:00 clockAfter=2026-11-27T12:56:16.6710573+08:00 setDate=ok
+12:56:24 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+12:56:24 VM state=Running uptime=00:00:32.6430000 cpu=8 memAssignedMB=3364
+12:56:24 DONE
+12:56:24 [clear] waiting 90 seconds after boot before touching the guest
+12:57:55 [clear] guest boot time recorded for this round: 2026-11-27 12:15:46
+12:57:55 [clear] service wuauserv: status when the stop request was sent=Running startType=Disabled
+12:57:55 [clear] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+12:57:55 [clear] service WaaSMedicSvc: status when the stop request was sent=Running startType=Manual
+12:57:55 [clear] last boot: 2026-11-27 12:15:46
+12:57:55 [clear] in-progress installer registration exists: False
+12:57:57 [clear] 12:57:57 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 1.6s
+12:58:00 [clear] 12:58:00 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 2.9s
+12:58:02 [clear] 12:58:02 COPIED LabelFrame-Client-1.6.99.msi (24817664 bytes) in 1.8s
+12:58:03 [clear] 12:58:03 COPIED LabelFrame-Server-1.6.99.msi (24727552 bytes) in 1.7s
+12:58:04 [clear] 12:58:04 COPIED probe.msi (32768 bytes) in 0.1s
+12:58:08 [clear] 12:58:08 COPIED windowsdesktop-runtime-10.0.12-win-x64.exe (60032984 bytes) in 4.9s
+12:58:09 [clear] --- guest files: name size sha256 ---
+12:58:09 [clear] aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+12:58:09 [clear] dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+12:58:09 [clear] LabelFrame-Client-1.6.99.msi 24817664 e008e0875347839db8d9fb771ef72bf0a0622ccb690dc4f6a26e2b13366b74e9
+12:58:09 [clear] LabelFrame-Server-1.6.99.msi 24727552 be33672b192a69b4c0bec072bb08044dbd9ddfe16c8a2f7e3cec397a9c049a22
+12:58:09 [clear] probe.msi 32768 ca9111b21750ab3f02d3b3375808e3f811e9e1f56d926aa8e5827dd3c6a2f9e6
+12:58:09 [clear] windowsdesktop-runtime-10.0.12-win-x64.exe 60032984 55a67d8476cde95a9cc43a95803b4f54446e7c9251ed22aa6421d4908174ae84
+12:58:13 [clear] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=4.2s
+12:58:15 [clear]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+12:58:15 [clear]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+12:58:15 [clear]     Microsoft .NET Runtime - 10.0.12 (x64)
+12:58:15 [clear]     Microsoft .NET Runtime - 10.0.12 (x64)
+12:58:18 [clear] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=2.1s
+12:58:20 [clear]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+12:58:20 [clear]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+12:58:20 [clear]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+12:58:20 [clear]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+12:58:20 [clear]     Microsoft .NET Runtime - 10.0.12 (x64)
+12:58:20 [clear]     Microsoft .NET Runtime - 10.0.12 (x64)
+12:58:20 [clear]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+12:58:20 [clear]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+12:58:23 [clear] RUNTIME install windowsdesktop-runtime-10.0.12-win-x64.exe exit=0 elapsed=3.2s
+12:58:25 [clear]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+12:58:25 [clear]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+12:58:25 [clear]   \swidtag\Microsoft Windows Desktop Runtime 10.0.12 (x64).swidtag
+12:58:25 [clear]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+12:58:25 [clear]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+12:58:25 [clear]   runtime: Microsoft.WindowsDesktop.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+12:58:25 [clear]     Microsoft .NET Runtime - 10.0.12 (x64)
+12:58:25 [clear]     Microsoft .NET Runtime - 10.0.12 (x64)
+12:58:25 [clear]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+12:58:25 [clear]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+12:58:34 [clear] 
+12:58:34 [clear] === products  [guest 12:58:26] ===
+12:58:34 [clear] PRODUCT none
+12:58:34 [clear] 
+12:58:34 [clear] === services  [guest 12:58:26] ===
+12:58:34 [clear] SERVICE name=LabelFrameServer none
+12:58:34 [clear] SERVICE name=LabelFrameClientUpdater none
+12:58:34 [clear] 
+12:58:34 [clear] === main programs  [guest 12:58:26] ===
+12:58:34 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+12:58:34 [clear] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+12:58:34 [clear] FILE server appsettings exists=False path=C:\Program Files\LabelFrame\Server\appsettings.json
+12:58:34 [clear] FILE client appsettings exists=False path=C:\Program Files\LabelFrame\Client\appsettings.json
+12:58:34 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+12:58:34 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+12:58:34 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+12:58:34 [clear] 
+12:58:34 [clear] === processes  [guest 12:58:26] ===
+12:58:34 [clear] PROCESS name=explorer.exe pid=11624 parent=11996 session=2 started=12:55:54 sinceBoot=True commandLine="C:\Windows\explorer.exe"
+12:58:34 [clear] PROCESS name=msedge.exe pid=768 parent=6520 session=2 started=11:14:06 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:7 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" "--metrics-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=92.0.4515.131 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 "--annotation=prod=Microsoft Edge" --annotation=ver=92.0.902.67 --initial-client-data=0xfc,0x100,0x104,0xdc,0x108,0x7ff81f2346f8,0x7ff81f234708,0x7ff81f234718
+12:58:34 [clear] PROCESS name=msedge.exe pid=1904 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --disable-client-side-phishing-detection --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=8 --no-v8-untrusted-code-mitigations --mojo-platform-channel-handle=3468 /prefetch:1
+12:58:34 [clear] PROCESS name=msedge.exe pid=5168 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --service-sandbox-type=utility --mojo-platform-channel-handle=2848 /prefetch:8
+12:58:34 [clear] PROCESS name=msedge.exe pid=5712 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --service-sandbox-type=none --mojo-platform-channel-handle=2312 /prefetch:3
+12:58:34 [clear] PROCESS name=msedge.exe pid=5976 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --gpu-preferences=UAAAAAAAAADgAAAQAAAAAAAAAAAAAAAAAABgAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAAAAAAAAeAAAAAAAAAAoAAAABAAAACAAAAAAAAAAKAAAAAAAAAAwAAAAAAAAADgAAAAAAAAAEAAAAAAAAAAAAAAADQAAABAAAAAAAAAAAQAAAA0AAAAQAAAAAAAAAAQAAAANAAAAEAAAAAAAAAAHAAAADQAAAAgAAAAAAAAACAAAAAAAAAA= --mojo-platform-channel-handle=2168 /prefetch:2
+12:58:34 [clear] PROCESS name=msedge.exe pid=6520 parent=6868 session=2 started=11:14:06 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --auto-launch-onlogon --try-edge-again-fre
+12:58:34 [clear] PROCESS name=msiexec.exe pid=1856 parent=724 session=0 started=10:35:51 sinceBoot=False commandLine=C:\Windows\system32\msiexec.exe /V
+12:58:34 [clear] BROWSER_PROCESSES_SINCE_BOOT=0
+12:58:34 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+12:58:34 [clear] 
+12:58:34 [clear] === listeners  [guest 12:58:27] ===
+12:58:34 [clear] LISTEN none
+12:58:34 [clear] 
+12:58:34 [clear] === http  [guest 12:58:27] ===
+12:58:34 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+12:58:34 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+12:58:34 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+12:58:34 [clear] 
+12:58:34 [clear] === client machine settings  [guest 12:58:34] ===
+12:58:34 [clear] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+12:58:34 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+12:58:34 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+12:58:34 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=False
+12:58:34 [clear] 
+12:58:34 [clear] === auto-start entry  [guest 12:58:34] ===
+12:58:34 [clear] RUN_KEY present=False
+12:58:34 [clear] 
+12:58:34 [clear] === user files  [guest 12:58:34] ===
+12:58:34 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+12:58:34 [clear] 
+12:58:34 [clear] === server data  [guest 12:58:34] ===
+12:58:34 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=False
+12:58:34 [clear] FILE server data root exists=False path=C:\ProgramData\LabelFrame
+12:58:34 [clear] IN_PROGRESS_REGISTRATION False
+12:58:34 [clear] guest is restarting; waiting for a new boot
+12:59:42 [clear] guest is back: boot before=2026-11-27 12:15:46 boot now=2026-11-27 12:59:20 (guest clock read 2026-11-27 12:59:40)
+12:59:44 [clear] 12:59:44 GUEST now=2026-11-27 12:59:42 autoLogon=1 desktopUp=True
+12:59:44 [clear] 12:59:44 last probe: reachable, desktopUp=True
+12:59:44 [clear] 12:59:44 sessions: 用户名                会话名             ID  状态    空闲时间   登录时间 |  <account>            console             1  运行中      无     2026/11/27 12:59
+12:59:44 [clear] 12:59:44 DONE
+12:59:47 [clear] service wuauserv: status when the stop request was sent=Running startType=Disabled
+12:59:47 [clear] service UsoSvc: status when the stop request was sent=Stopped startType=Disabled
+12:59:47 [clear] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+12:59:47 [clear] last boot: 2026-11-27 12:59:20
+12:59:47 [clear] in-progress installer registration exists: False
+12:59:49 [clear] SETUP_PAGE_SETTING ScoobeSystemSettingEnabled before=absent after=0
+12:59:51 [clear] ELEVATION_POLICY ConsentPromptBehaviorAdmin before=5 after=0 EnableLUA=1
+12:59:51 [clear] ACCOUNT sid=<sid> inAdministrators=True
+12:59:53 [clear] GUEST_FILE C:\Probe\walk-server-remove-rerun-clear.ps1 74638 bytes sha256=a0653bc5ec02507ee031250d79c022f0204c8f30791ba2147bad60fbdefed9a4
+12:59:54 [clear] GUEST_FILE C:\Probe\walk-server-remove-rerun-keep.ps1 74635 bytes sha256=191c73a5ebe231779e5d2863d5e1cf4c39455a7ca628d396db4ef893f77e86c1
+12:59:56 [clear] GUEST_FILE C:\Probe\walk-server-remove-all-clear.ps1 74638 bytes sha256=a6d39d154cde214aa93d86893fd9b2e4e7c61634def84ab5a18b410316981e30
+12:59:58 [clear] GUEST_FILE C:\Probe\walk-server-remove-all-keep.ps1 74635 bytes sha256=478e2b6138a0722a967b701424342d41d6153cace09f6afdfad575241ca2d263
+13:00:00 [clear] GUEST_FILE C:\Probe\walk-client-remove-rerun-clear.ps1 74638 bytes sha256=c62c0063477e765df44569dad18890f14add17be73738ed1ce3c662ce07290e6
+13:00:02 [clear] GUEST_FILE C:\Probe\walk-client-remove-rerun-keep.ps1 74635 bytes sha256=880aca2c3ce46cd3507f15e9c9e1b12b2639e75cf8ef87ce7e720487a8dcd408
+13:00:04 [clear] GUEST_FILE C:\Probe\walk-client-remove-all-clear.ps1 74638 bytes sha256=28f91db3a8ff0af42a7cac9d63b0f114b659968b3ec5713dac0c3119367ae873
+13:00:06 [clear] GUEST_FILE C:\Probe\walk-client-remove-all-keep.ps1 74635 bytes sha256=eeb9a83e772e25efd045f7e1e6deb662d7c4f0fe572e19d3d4f47cb6f70b90fe
+13:00:07 [clear] GUEST_FILE C:\Probe\make-client-data.ps1 6964 bytes sha256=879eab9e4f6e2a4e653ccfd32cbce076cb1034df290f2a685b11146826e9e33b
+13:00:12 [clear] 13:00:07 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\10-install-silent.log"
+13:00:12 [clear] 13:00:11 MSI mode=install msi=LabelFrame-Server-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+13:00:12 [clear] 13:00:11 LOG bytes=172626
+13:00:20 [clear] WAIT port=53961 restart=False result=ready elapsed=0.5s lastCode=200 stateBefore=Running pidBefore=1604 stateAfter=Running pidAfter=1604 body={"service":"LabelFrame.Server","status":"ok"}
+13:00:20 [clear] WAIT_STABILITY seconds=5 sameProcess=True state=Running pid=1604 healthCode=200
+13:00:22 [clear] MARK server settings: Dpi 203 -> 300
+13:00:22 [clear] USER_CONFIG server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286 userChangeStillThere=True written=13:00:20
+13:00:22 [clear] USER_CONFIG client settings exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:00:22 [clear] USER_CONFIG client connection exists=False path=C:\Users\<account>\AppData\Local\LabelFrame\connection.json
+13:00:45 [clear] === interactive run  [guest 13:00:22] ===
+13:00:45 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:00:45 [clear] script present=True size=74638
+13:00:45 [clear] RUN_LEVEL=Limited
+13:00:45 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:00:45 [clear] === installer walk 'walk-server-remove-rerun-clear': mode=remove  [13:00:27] ===
+13:00:45 [clear] arguments: /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /l*v "C:\Probe\logs\walk-server-remove-rerun-clear.log"
+13:00:45 [clear] identity=DESKTOP-D65DJ5S\<account> elevated=False
+13:00:45 [clear] TOKEN sid=<sid> linkedToken=available
+13:00:45 [clear] SETUP_PAGE present=False
+13:00:45 [clear] before: product=1.6.99 | Run key=absent | user files=0 | printing client processes=0
+13:00:45 [clear] CLEAR_QUESTION_SHOWN=False
+13:00:45 [clear]   check ok: running the package again starts with the maintenance wizard
+13:00:45 [clear] --- page MaintenanceWelcome (actual MaintenanceWelcome, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:00:45 [clear]   [116] Button 下一步(&N)
+13:00:45 [clear]   [118] Button 取消
+13:00:45 [clear]   [106] Static WixUI_Bmp_Dialog
+13:00:45 [clear]   [115] Button 上一步(&B)   (disabled)
+13:00:45 [clear]   [46] Static 通过安装向导可以更改在您的计算机上安装 LabelFrame Server 功能的方式，或将其从您的计算机中删除。单击“下一步”继续，或单击“取消”退出安装向导。
+13:00:45 [clear]   [108] Static 欢迎使用 LabelFrame Server 安装向导
+13:00:45 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-clear-01-MaintenanceWelcome.png (PrintWindow, 499x389)
+13:00:45 [clear] --- page MaintenanceType (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:00:45 [clear]   [298] Button 更改(&C)   (disabled)
+13:00:45 [clear]   [299] Button 修复(&P)
+13:00:45 [clear]   [304] Button 删除(&R)
+13:00:45 [clear]   [115] Button 上一步(&B)
+13:00:45 [clear]   [116] Button 下一步(&N)   (disabled)
+13:00:45 [clear]   [118] Button 取消
+13:00:45 [clear]   [105] Static WixUI_Bmp_Banner
+13:00:45 [clear]   [46] Static 选择希望执行的操作。
+13:00:45 [clear]   [108] Static 更改、修复或删除安装
+13:00:45 [clear]   [177] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+13:00:45 [clear]   [181] Static 从您的计算机中删除 LabelFrame Server。
+13:00:45 [clear]   [302] Static LabelFrame Server 没有单独可选的功能。
+13:00:45 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-clear-02-MaintenanceType.png (PrintWindow, 499x389)
+13:00:45 [clear]   MAINTENANCE_BUTTON caption=[更改(&C)] enabled=False
+13:00:45 [clear]   MAINTENANCE_BUTTON caption=[修复(&P)] enabled=True
+13:00:45 [clear]   MAINTENANCE_BUTTON caption=[删除(&R)] enabled=True
+13:00:45 [clear]   MAINTENANCE_BUTTON caption=[上一步(&B)] enabled=True
+13:00:45 [clear]   MAINTENANCE_BUTTON caption=[下一步(&N)] enabled=False
+13:00:45 [clear]   MAINTENANCE_BUTTON caption=[取消] enabled=True
+13:00:45 [clear] --- page ClearData (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Server 卸载' ---
+13:00:45 [clear]   [94] Button 清除用户数据
+13:00:45 [clear]   [98] Button 上一步(&B)
+13:00:45 [clear]   [100] Button 取消
+13:00:45 [clear]   [102] Button 继续
+13:00:45 [clear]   [80] Static 卸载 LabelFrame Server。
+13:00:45 [clear]   [82] Static 是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？
+13:00:45 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-clear-03-ClearData.png (PrintWindow, 499x255)
+13:00:45 [clear] QUESTION_BUTTONS back=True next=True cancel=True
+13:00:45 [clear]   check ok: the question page reached from the maintenance wizard offers a way back
+13:00:45 [clear] --- page MaintenanceType-again (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:00:45 [clear]   [298] Button 更改(&C)   (disabled)
+13:00:45 [clear]   [299] Button 修复(&P)
+13:00:45 [clear]   [304] Button 删除(&R)
+13:00:45 [clear]   [115] Button 上一步(&B)
+13:00:45 [clear]   [116] Button 下一步(&N)   (disabled)
+13:00:45 [clear]   [118] Button 取消
+13:00:45 [clear]   [105] Static WixUI_Bmp_Banner
+13:00:45 [clear]   [46] Static 选择希望执行的操作。
+13:00:45 [clear]   [108] Static 更改、修复或删除安装
+13:00:45 [clear]   [177] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+13:00:45 [clear]   [181] Static 从您的计算机中删除 LabelFrame Server。
+13:00:45 [clear]   [302] Static LabelFrame Server 没有单独可选的功能。
+13:00:45 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-clear-04-MaintenanceType.png (PrintWindow, 499x389)
+13:00:45 [clear] --- page ClearData-again (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Server 卸载' ---
+13:00:45 [clear]   [94] Button 清除用户数据
+13:00:45 [clear]   [98] Button 上一步(&B)
+13:00:45 [clear]   [100] Button 取消
+13:00:45 [clear]   [102] Button 继续
+13:00:45 [clear]   [80] Static 卸载 LabelFrame Server。
+13:00:45 [clear]   [82] Static 是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？
+13:00:45 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-clear-05-ClearData.png (PrintWindow, 499x255)
+13:00:45 [clear] CLEAR_CHECKBOX initial=0
+13:00:45 [clear]   check ok: the clear-user-data box is not ticked by default
+13:00:45 [clear] CLEAR_CHECKBOX after the click=1
+13:00:45 [clear]   check ok: the clear-user-data box is ticked after the click
+13:00:45 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-clear-06-ClearData-ticked.png (PrintWindow, 499x255)
+13:00:45 [clear] --- page VerifyRemove (actual VerifyRemove, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:00:45 [clear]   [47] Button 删除(&R)
+13:00:45 [clear]   [118] Button 取消
+13:00:45 [clear]   [115] Button 上一步(&B)
+13:00:45 [clear]   [105] Static WixUI_Bmp_Banner
+13:00:45 [clear]   [179] Static 已准备好删除 LabelFrame Server
+13:00:45 [clear]   [181] Static 单击“删除”可从计算机上删除 LabelFrame Server。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+13:00:45 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-clear-07-VerifyRemove.png (PrintWindow, 499x389)
+13:00:45 [clear] REMOVE_STEP_SECONDS=1.7 (from clicking Remove to the next window)
+13:00:45 [clear] --- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:00:45 [clear]   [212] Button 完成(&F)
+13:00:45 [clear]   [118] Button 取消   (disabled)
+13:00:45 [clear]   [106] Static WixUI_Bmp_Dialog
+13:00:45 [clear]   [115] Button 上一步(&B)   (disabled)
+13:00:45 [clear]   [46] Static 单击“完成”按钮退出安装向导。
+13:00:45 [clear]   [108] Static LabelFrame Server 安装向导已完成
+13:00:45 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-clear-08-Exit.png (PrintWindow, 499x389)
+13:00:45 [clear]   check ok: running the package again and choosing Remove asks about the user data before the ready-to-remove page
+13:00:45 [clear] last unrecognised installer window: class=MsiDialogCloseClass hwnd=328512 ::
+13:00:45 [clear] WINDOWS_IN_ORDER=Prepare -> MaintenanceWelcome -> MaintenanceType -> ClearData -> VerifyRemove -> Removing -> Exit
+13:00:45 [clear] windows seen: ClearData, Exit, MaintenanceType, MaintenanceWelcome, Prepare, Removing, VerifyRemove
+13:00:45 [clear] exit code=0
+13:00:45 [clear] after: product=none | Run key=absent | user files=0 | printing client processes=0
+13:00:45 [clear] OUTCOME=removed
+13:00:45 [clear] WIZARD_PATH=MaintenanceWelcome -> MaintenanceType -> ClearData -> Back -> MaintenanceType -> ClearData-again -> VerifyRemove -> Exit
+13:00:45 [clear] CLICKS=下一步(&N) [116], 删除(&R) [304], 上一步(&B) [98], 删除(&R) [304], box [清除用户数据] -> ticked, 继续 [102], 删除(&R) [47], 完成(&F) [212]
+13:00:45 [clear] CHECK_FAILURES=0
+13:00:45 [clear] === end 'walk-server-remove-rerun-clear'  [13:00:39] ===
+13:01:00 [clear] 
+13:01:00 [clear] === products  [guest 13:00:50] ===
+13:01:00 [clear] PRODUCT none
+13:01:00 [clear] 
+13:01:00 [clear] === services  [guest 13:00:50] ===
+13:01:00 [clear] SERVICE name=LabelFrameServer none
+13:01:00 [clear] SERVICE name=LabelFrameClientUpdater none
+13:01:00 [clear] 
+13:01:00 [clear] === main programs  [guest 13:00:51] ===
+13:01:00 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:01:00 [clear] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:01:00 [clear] FILE server appsettings exists=False path=C:\Program Files\LabelFrame\Server\appsettings.json
+13:01:00 [clear] FILE client appsettings exists=False path=C:\Program Files\LabelFrame\Client\appsettings.json
+13:01:00 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:01:00 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:01:00 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:01:00 [clear] 
+13:01:00 [clear] === processes  [guest 13:00:51] ===
+13:01:00 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:01:00 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:01:00 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:01:00 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:01:00 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:01:00 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:01:00 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:01:00 [clear] BROWSER_PROCESSES_SINCE_BOOT=5
+13:01:00 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:01:00 [clear] 
+13:01:00 [clear] === listeners  [guest 13:00:51] ===
+13:01:00 [clear] LISTEN none
+13:01:00 [clear] 
+13:01:00 [clear] === http  [guest 13:00:52] ===
+13:01:00 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:01:00 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:01:00 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:01:00 [clear] 
+13:01:00 [clear] === client machine settings  [guest 13:00:58] ===
+13:01:00 [clear] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:01:00 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:01:00 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:01:00 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=False
+13:01:00 [clear] 
+13:01:00 [clear] === auto-start entry  [guest 13:00:58] ===
+13:01:00 [clear] RUN_KEY present=False
+13:01:00 [clear] 
+13:01:00 [clear] === user files  [guest 13:00:58] ===
+13:01:00 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+13:01:00 [clear] 
+13:01:00 [clear] === server data  [guest 13:00:58] ===
+13:01:00 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=False
+13:01:00 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:01:00 [clear] IN_PROGRESS_REGISTRATION False
+13:01:02 [clear] USER_CONFIG server appsettings exists=False path=C:\Program Files\LabelFrame\Server\appsettings.json
+13:01:02 [clear] USER_CONFIG client settings exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:01:02 [clear] USER_CONFIG client connection exists=False path=C:\Users\<account>\AppData\Local\LabelFrame\connection.json
+13:01:06 [clear] 13:01:01 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\20-install-silent.log"
+13:01:06 [clear] 13:01:04 MSI mode=install msi=LabelFrame-Server-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=3.1s
+13:01:06 [clear] 13:01:04 LOG bytes=172624
+13:01:13 [clear] WAIT port=53961 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=7656 stateAfter=Running pidAfter=7656 body={"service":"LabelFrame.Server","status":"ok"}
+13:01:13 [clear] WAIT_STABILITY seconds=5 sameProcess=True state=Running pid=7656 healthCode=200
+13:01:15 [clear] MARK server settings: Dpi 203 -> 300
+13:01:15 [clear] USER_CONFIG server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286 userChangeStillThere=True written=13:01:13
+13:01:15 [clear] USER_CONFIG client settings exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:01:15 [clear] USER_CONFIG client connection exists=False path=C:\Users\<account>\AppData\Local\LabelFrame\connection.json
+13:01:40 [clear] === interactive run  [guest 13:01:14] ===
+13:01:40 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:01:40 [clear] script present=True size=74638
+13:01:40 [clear] RUN_LEVEL=Limited
+13:01:40 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:01:40 [clear] === installer walk 'walk-server-remove-all-clear': mode=remove  [13:01:22] ===
+13:01:40 [clear] product code: {4F465CA0-749C-4E1C-86FA-F470051324AB}  way of starting: i-all
+13:01:40 [clear] arguments: /i {4F465CA0-749C-4E1C-86FA-F470051324AB} REMOVE=ALL /l*v "C:\Probe\logs\walk-server-remove-all-clear.log"
+13:01:40 [clear] identity=DESKTOP-D65DJ5S\<account> elevated=False
+13:01:40 [clear] TOKEN sid=<sid> linkedToken=available
+13:01:40 [clear] SETUP_PAGE present=False
+13:01:40 [clear] before: product=1.6.99 | Run key=absent | user files=0 | printing client processes=0
+13:01:40 [clear] --- page ClearData (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Server 卸载' ---
+13:01:40 [clear]   [94] Button 清除用户数据
+13:01:40 [clear]   [100] Button 取消
+13:01:40 [clear]   [102] Button 继续
+13:01:40 [clear]   [80] Static 卸载 LabelFrame Server。
+13:01:40 [clear]   [82] Static 是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？
+13:01:40 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-clear-01-ClearData.png (PrintWindow, 499x255)
+13:01:40 [clear] QUESTION_BUTTONS back=False next=True cancel=True
+13:01:40 [clear]   check ok: the question page shown first (the removal requested from the start) offers no way back to the maintenance wizard
+13:01:40 [clear] CLEAR_CHECKBOX initial=0
+13:01:40 [clear]   check ok: the clear-user-data box is not ticked by default
+13:01:40 [clear] CLEAR_CHECKBOX after the click=1
+13:01:40 [clear]   check ok: the clear-user-data box is ticked after the click
+13:01:40 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-clear-02-ClearData-ticked.png (PrintWindow, 499x255)
+13:01:40 [clear] CLEAR_QUESTION_SHOWN=True
+13:01:40 [clear]   check ok: with the full interface and the removal requested from the start, the user data is asked about first
+13:01:40 [clear]   check ok: the page after the user data question is the ready-to-remove page with the removal wording (actual VerifyRemove)
+13:01:40 [clear] --- page ClearData-again (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Server 卸载' ---
+13:01:40 [clear]   [94] Button 清除用户数据
+13:01:40 [clear]   [100] Button 取消
+13:01:40 [clear]   [102] Button 继续
+13:01:40 [clear]   [80] Static 卸载 LabelFrame Server。
+13:01:40 [clear]   [82] Static 是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？
+13:01:40 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-clear-03-ClearData.png (PrintWindow, 499x255)
+13:01:40 [clear] --- page VerifyRemove (actual VerifyRemove, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:01:40 [clear]   [47] Button 删除(&R)
+13:01:40 [clear]   [118] Button 取消
+13:01:40 [clear]   [115] Button 上一步(&B)
+13:01:40 [clear]   [105] Static WixUI_Bmp_Banner
+13:01:40 [clear]   [179] Static 已准备好删除 LabelFrame Server
+13:01:40 [clear]   [181] Static 单击“删除”可从计算机上删除 LabelFrame Server。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+13:01:40 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-clear-04-VerifyRemove.png (PrintWindow, 499x389)
+13:01:40 [clear] REMOVE_STEP_SECONDS=1.8 (from clicking Remove to the next window)
+13:01:40 [clear] --- page Removing (actual Removing, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:01:40 [clear]   [118] Button 取消
+13:01:40 [clear]   [105] Static WixUI_Bmp_Banner
+13:01:40 [clear]   [115] Button 上一步(&B)   (disabled)
+13:01:40 [clear]   [116] Button 下一步(&N)   (disabled)
+13:01:40 [clear]   [236] Static 正在停止服务
+13:01:40 [clear]   [250] Static 安装向导正在删除 LabelFrame Server，请稍候。
+13:01:40 [clear]   [252] Static 正在删除 LabelFrame Server
+13:01:40 [clear]   [260] Static 状态:
+13:01:40 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-clear-05-Removing.png (PrintWindow, 499x389)
+13:01:40 [clear] --- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:01:40 [clear]   [212] Button 完成(&F)
+13:01:40 [clear]   [118] Button 取消   (disabled)
+13:01:40 [clear]   [106] Static WixUI_Bmp_Dialog
+13:01:40 [clear]   [115] Button 上一步(&B)   (disabled)
+13:01:40 [clear]   [46] Static 单击“完成”按钮退出安装向导。
+13:01:40 [clear]   [108] Static LabelFrame Server 安装向导已完成
+13:01:40 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-clear-06-Exit.png (PrintWindow, 499x389)
+13:01:40 [clear] last unrecognised installer window:
+13:01:40 [clear] WINDOWS_IN_ORDER=ClearData -> VerifyRemove -> Removing -> Exit
+13:01:40 [clear] windows seen: ClearData, Exit, Removing, VerifyRemove
+13:01:40 [clear] exit code=0
+13:01:40 [clear] after: product=none | Run key=absent | user files=0 | printing client processes=0
+13:01:40 [clear] OUTCOME=removed
+13:01:40 [clear] WIZARD_PATH=ClearData -> Back -> ClearData -> VerifyRemove -> Removing -> Exit
+13:01:40 [clear] CLICKS=box [清除用户数据] -> ticked, 继续 [102], 上一步(&B) [115], 继续 [102], 删除(&R) [47], 完成(&F) [212]
+13:01:40 [clear] CHECK_FAILURES=0
+13:01:40 [clear] === end 'walk-server-remove-all-clear'  [13:01:34] ===
+13:01:54 [clear] 
+13:01:54 [clear] === products  [guest 13:01:44] ===
+13:01:54 [clear] PRODUCT none
+13:01:54 [clear] 
+13:01:54 [clear] === services  [guest 13:01:44] ===
+13:01:54 [clear] SERVICE name=LabelFrameServer none
+13:01:54 [clear] SERVICE name=LabelFrameClientUpdater none
+13:01:54 [clear] 
+13:01:54 [clear] === main programs  [guest 13:01:45] ===
+13:01:54 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:01:54 [clear] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:01:54 [clear] FILE server appsettings exists=False path=C:\Program Files\LabelFrame\Server\appsettings.json
+13:01:54 [clear] FILE client appsettings exists=False path=C:\Program Files\LabelFrame\Client\appsettings.json
+13:01:54 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:01:54 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:01:54 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:01:54 [clear] 
+13:01:54 [clear] === processes  [guest 13:01:45] ===
+13:01:54 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:01:54 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:01:54 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:01:54 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:01:54 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:01:54 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:01:54 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:01:54 [clear] BROWSER_PROCESSES_SINCE_BOOT=5
+13:01:54 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:01:54 [clear] 
+13:01:54 [clear] === listeners  [guest 13:01:45] ===
+13:01:54 [clear] LISTEN none
+13:01:54 [clear] 
+13:01:54 [clear] === http  [guest 13:01:46] ===
+13:01:54 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:01:54 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:01:54 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:01:54 [clear] 
+13:01:54 [clear] === client machine settings  [guest 13:01:52] ===
+13:01:54 [clear] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:01:54 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:01:54 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:01:54 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=False
+13:01:54 [clear] 
+13:01:54 [clear] === auto-start entry  [guest 13:01:52] ===
+13:01:54 [clear] RUN_KEY present=False
+13:01:54 [clear] 
+13:01:54 [clear] === user files  [guest 13:01:52] ===
+13:01:54 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+13:01:54 [clear] 
+13:01:54 [clear] === server data  [guest 13:01:52] ===
+13:01:54 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=False
+13:01:54 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:01:54 [clear] IN_PROGRESS_REGISTRATION False
+13:01:55 [clear] USER_CONFIG server appsettings exists=False path=C:\Program Files\LabelFrame\Server\appsettings.json
+13:01:55 [clear] USER_CONFIG client settings exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:01:55 [clear] USER_CONFIG client connection exists=False path=C:\Users\<account>\AppData\Local\LabelFrame\connection.json
+13:01:59 [clear] 13:01:54 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\30-install-silent.log"
+13:01:59 [clear] 13:01:58 MSI mode=install msi=LabelFrame-Server-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=3.1s
+13:01:59 [clear] 13:01:58 LOG bytes=172624
+13:02:06 [clear] WAIT port=53961 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=2960 stateAfter=Running pidAfter=2960 body={"service":"LabelFrame.Server","status":"ok"}
+13:02:06 [clear] WAIT_STABILITY seconds=5 sameProcess=True state=Running pid=2960 healthCode=200
+13:02:07 [clear] MARK server settings: Dpi 203 -> 300
+13:02:07 [clear] USER_CONFIG server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286 userChangeStillThere=True written=13:02:06
+13:02:07 [clear] USER_CONFIG client settings exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:02:07 [clear] USER_CONFIG client connection exists=False path=C:\Users\<account>\AppData\Local\LabelFrame\connection.json
+13:02:32 [clear] === interactive run  [guest 13:02:07] ===
+13:02:32 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:02:32 [clear] script present=True size=74635
+13:02:32 [clear] RUN_LEVEL=Limited
+13:02:32 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:02:32 [clear] === installer walk 'walk-server-remove-rerun-keep': mode=remove  [13:02:13] ===
+13:02:32 [clear] arguments: /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /l*v "C:\Probe\logs\walk-server-remove-rerun-keep.log"
+13:02:32 [clear] identity=DESKTOP-D65DJ5S\<account> elevated=False
+13:02:32 [clear] TOKEN sid=<sid> linkedToken=available
+13:02:32 [clear] SETUP_PAGE present=False
+13:02:32 [clear] before: product=1.6.99 | Run key=absent | user files=0 | printing client processes=0
+13:02:32 [clear] CLEAR_QUESTION_SHOWN=False
+13:02:32 [clear]   check ok: running the package again starts with the maintenance wizard
+13:02:32 [clear] --- page MaintenanceWelcome (actual MaintenanceWelcome, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:02:32 [clear]   [116] Button 下一步(&N)
+13:02:32 [clear]   [118] Button 取消
+13:02:32 [clear]   [106] Static WixUI_Bmp_Dialog
+13:02:32 [clear]   [115] Button 上一步(&B)   (disabled)
+13:02:32 [clear]   [46] Static 通过安装向导可以更改在您的计算机上安装 LabelFrame Server 功能的方式，或将其从您的计算机中删除。单击“下一步”继续，或单击“取消”退出安装向导。
+13:02:32 [clear]   [108] Static 欢迎使用 LabelFrame Server 安装向导
+13:02:32 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-01-MaintenanceWelcome.png (PrintWindow, 499x389)
+13:02:32 [clear] --- page MaintenanceType (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:02:32 [clear]   [298] Button 更改(&C)   (disabled)
+13:02:32 [clear]   [299] Button 修复(&P)
+13:02:32 [clear]   [304] Button 删除(&R)
+13:02:32 [clear]   [115] Button 上一步(&B)
+13:02:32 [clear]   [116] Button 下一步(&N)   (disabled)
+13:02:32 [clear]   [118] Button 取消
+13:02:32 [clear]   [105] Static WixUI_Bmp_Banner
+13:02:32 [clear]   [46] Static 选择希望执行的操作。
+13:02:32 [clear]   [108] Static 更改、修复或删除安装
+13:02:32 [clear]   [177] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+13:02:32 [clear]   [181] Static 从您的计算机中删除 LabelFrame Server。
+13:02:32 [clear]   [302] Static LabelFrame Server 没有单独可选的功能。
+13:02:32 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-02-MaintenanceType.png (PrintWindow, 499x389)
+13:02:32 [clear]   MAINTENANCE_BUTTON caption=[更改(&C)] enabled=False
+13:02:32 [clear]   MAINTENANCE_BUTTON caption=[修复(&P)] enabled=True
+13:02:32 [clear]   MAINTENANCE_BUTTON caption=[删除(&R)] enabled=True
+13:02:32 [clear]   MAINTENANCE_BUTTON caption=[上一步(&B)] enabled=True
+13:02:32 [clear]   MAINTENANCE_BUTTON caption=[下一步(&N)] enabled=False
+13:02:32 [clear]   MAINTENANCE_BUTTON caption=[取消] enabled=True
+13:02:32 [clear] --- page ClearData (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Server 卸载' ---
+13:02:32 [clear]   [94] Button 清除用户数据
+13:02:32 [clear]   [98] Button 上一步(&B)
+13:02:32 [clear]   [100] Button 取消
+13:02:32 [clear]   [102] Button 继续
+13:02:32 [clear]   [80] Static 卸载 LabelFrame Server。
+13:02:32 [clear]   [82] Static 是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？
+13:02:32 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-03-ClearData.png (PrintWindow, 499x255)
+13:02:32 [clear] QUESTION_BUTTONS back=True next=True cancel=True
+13:02:32 [clear]   check ok: the question page reached from the maintenance wizard offers a way back
+13:02:32 [clear] --- page MaintenanceType-again (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:02:32 [clear]   [298] Button 更改(&C)   (disabled)
+13:02:32 [clear]   [299] Button 修复(&P)
+13:02:32 [clear]   [304] Button 删除(&R)
+13:02:32 [clear]   [115] Button 上一步(&B)
+13:02:32 [clear]   [116] Button 下一步(&N)   (disabled)
+13:02:32 [clear]   [118] Button 取消
+13:02:32 [clear]   [105] Static WixUI_Bmp_Banner
+13:02:32 [clear]   [46] Static 选择希望执行的操作。
+13:02:32 [clear]   [108] Static 更改、修复或删除安装
+13:02:32 [clear]   [177] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+13:02:32 [clear]   [181] Static 从您的计算机中删除 LabelFrame Server。
+13:02:32 [clear]   [302] Static LabelFrame Server 没有单独可选的功能。
+13:02:32 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-04-MaintenanceType.png (PrintWindow, 499x389)
+13:02:32 [clear] --- page ClearData-again (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Server 卸载' ---
+13:02:32 [clear]   [94] Button 清除用户数据
+13:02:32 [clear]   [98] Button 上一步(&B)
+13:02:32 [clear]   [100] Button 取消
+13:02:32 [clear]   [102] Button 继续
+13:02:32 [clear]   [80] Static 卸载 LabelFrame Server。
+13:02:32 [clear]   [82] Static 是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？
+13:02:32 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-05-ClearData.png (PrintWindow, 499x255)
+13:02:32 [clear] CLEAR_CHECKBOX initial=0
+13:02:32 [clear]   check ok: the clear-user-data box is not ticked by default
+13:02:32 [clear] --- page VerifyRemove (actual VerifyRemove, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:02:32 [clear]   [47] Button 删除(&R)
+13:02:32 [clear]   [118] Button 取消
+13:02:32 [clear]   [115] Button 上一步(&B)
+13:02:32 [clear]   [105] Static WixUI_Bmp_Banner
+13:02:32 [clear]   [179] Static 已准备好删除 LabelFrame Server
+13:02:32 [clear]   [181] Static 单击“删除”可从计算机上删除 LabelFrame Server。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+13:02:32 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-06-VerifyRemove.png (PrintWindow, 499x389)
+13:02:32 [clear] REMOVE_STEP_SECONDS=1.1 (from clicking Remove to the next window)
+13:02:32 [clear] --- page Removing (actual Removing, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:02:32 [clear]   [118] Button 取消
+13:02:32 [clear]   [105] Static WixUI_Bmp_Banner
+13:02:32 [clear]   [115] Button 上一步(&B)   (disabled)
+13:02:32 [clear]   [116] Button 下一步(&N)   (disabled)
+13:02:32 [clear]   [236] Static 正在停止服务
+13:02:32 [clear]   [250] Static 安装向导正在删除 LabelFrame Server，请稍候。
+13:02:32 [clear]   [252] Static 正在删除 LabelFrame Server
+13:02:32 [clear]   [260] Static 状态:
+13:02:32 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-07-Removing.png (PrintWindow, 499x389)
+13:02:32 [clear] --- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:02:32 [clear]   [212] Button 完成(&F)
+13:02:32 [clear]   [118] Button 取消   (disabled)
+13:02:32 [clear]   [106] Static WixUI_Bmp_Dialog
+13:02:32 [clear]   [115] Button 上一步(&B)   (disabled)
+13:02:32 [clear]   [46] Static 单击“完成”按钮退出安装向导。
+13:02:32 [clear]   [108] Static LabelFrame Server 安装向导已完成
+13:02:32 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-08-Exit.png (PrintWindow, 499x389)
+13:02:32 [clear]   check ok: running the package again and choosing Remove asks about the user data before the ready-to-remove page
+13:02:32 [clear] last unrecognised installer window:
+13:02:32 [clear] WINDOWS_IN_ORDER=Prepare -> MaintenanceWelcome -> MaintenanceType -> ClearData -> VerifyRemove -> Removing -> Exit
+13:02:32 [clear] windows seen: ClearData, Exit, MaintenanceType, MaintenanceWelcome, Prepare, Removing, VerifyRemove
+13:02:32 [clear] exit code=0
+13:02:32 [clear] after: product=none | Run key=absent | user files=0 | printing client processes=0
+13:02:32 [clear] OUTCOME=removed
+13:02:32 [clear] WIZARD_PATH=MaintenanceWelcome -> MaintenanceType -> ClearData -> Back -> MaintenanceType -> ClearData-again -> VerifyRemove -> Removing -> Exit
+13:02:32 [clear] CLICKS=下一步(&N) [116], 删除(&R) [304], 上一步(&B) [98], 删除(&R) [304], 继续 [102], 删除(&R) [47], 完成(&F) [212]
+13:02:32 [clear] CHECK_FAILURES=0
+13:02:32 [clear] === end 'walk-server-remove-rerun-keep'  [13:02:25] ===
+13:02:46 [clear] 
+13:02:46 [clear] === products  [guest 13:02:36] ===
+13:02:46 [clear] PRODUCT none
+13:02:46 [clear] 
+13:02:46 [clear] === services  [guest 13:02:36] ===
+13:02:46 [clear] SERVICE name=LabelFrameServer none
+13:02:46 [clear] SERVICE name=LabelFrameClientUpdater none
+13:02:46 [clear] 
+13:02:46 [clear] === main programs  [guest 13:02:37] ===
+13:02:46 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:02:46 [clear] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:02:46 [clear] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286
+13:02:46 [clear] FILE client appsettings exists=False path=C:\Program Files\LabelFrame\Client\appsettings.json
+13:02:46 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:02:46 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:02:46 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:02:46 [clear] 
+13:02:46 [clear] === processes  [guest 13:02:37] ===
+13:02:46 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:02:46 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:02:46 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:02:46 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:02:46 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:02:46 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:02:46 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:02:46 [clear] BROWSER_PROCESSES_SINCE_BOOT=5
+13:02:46 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:02:46 [clear] 
+13:02:46 [clear] === listeners  [guest 13:02:37] ===
+13:02:46 [clear] LISTEN none
+13:02:46 [clear] 
+13:02:46 [clear] === http  [guest 13:02:38] ===
+13:02:46 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:02:46 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:02:46 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:02:46 [clear] 
+13:02:46 [clear] === client machine settings  [guest 13:02:44] ===
+13:02:46 [clear] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:02:46 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:02:46 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:02:46 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=False
+13:02:46 [clear] 
+13:02:46 [clear] === auto-start entry  [guest 13:02:44] ===
+13:02:46 [clear] RUN_KEY present=False
+13:02:46 [clear] 
+13:02:46 [clear] === user files  [guest 13:02:44] ===
+13:02:46 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+13:02:46 [clear] 
+13:02:46 [clear] === server data  [guest 13:02:44] ===
+13:02:46 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3 bytes=90112
+13:02:46 [clear] SERVER_DATA_TOP client-packages | logs.db | pda-packages | plugin-packages | plugins | server.db | templates.db
+13:02:46 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:02:46 [clear] IN_PROGRESS_REGISTRATION False
+13:02:47 [clear] USER_CONFIG server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286 userChangeStillThere=True written=13:02:06
+13:02:47 [clear] USER_CONFIG client settings exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:02:47 [clear] USER_CONFIG client connection exists=False path=C:\Users\<account>\AppData\Local\LabelFrame\connection.json
+13:02:51 [clear] 13:02:46 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\40-install-silent.log"
+13:02:51 [clear] 13:02:49 MSI mode=install msi=LabelFrame-Server-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=3.1s
+13:02:51 [clear] 13:02:49 LOG bytes=171896
+13:02:58 [clear] WAIT port=53961 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=2744 stateAfter=Running pidAfter=2744 body={"service":"LabelFrame.Server","status":"ok"}
+13:02:58 [clear] WAIT_STABILITY seconds=5 sameProcess=True state=Running pid=2744 healthCode=200
+13:02:59 [clear] MARK server settings: the default value was not found, nothing changed
+13:02:59 [clear] USER_CONFIG server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286 userChangeStillThere=True written=13:02:06
+13:02:59 [clear] USER_CONFIG client settings exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:02:59 [clear] USER_CONFIG client connection exists=False path=C:\Users\<account>\AppData\Local\LabelFrame\connection.json
+13:03:20 [clear] === interactive run  [guest 13:02:59] ===
+13:03:20 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:03:20 [clear] script present=True size=74635
+13:03:20 [clear] RUN_LEVEL=Limited
+13:03:20 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:03:20 [clear] === installer walk 'walk-server-remove-all-keep': mode=remove  [13:03:04] ===
+13:03:20 [clear] product code: {4F465CA0-749C-4E1C-86FA-F470051324AB}  way of starting: i-all
+13:03:20 [clear] arguments: /i {4F465CA0-749C-4E1C-86FA-F470051324AB} REMOVE=ALL /l*v "C:\Probe\logs\walk-server-remove-all-keep.log"
+13:03:20 [clear] identity=DESKTOP-D65DJ5S\<account> elevated=False
+13:03:20 [clear] TOKEN sid=<sid> linkedToken=available
+13:03:20 [clear] SETUP_PAGE present=False
+13:03:20 [clear] before: product=1.6.99 | Run key=absent | user files=0 | printing client processes=0
+13:03:20 [clear] --- page ClearData (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Server 卸载' ---
+13:03:20 [clear]   [94] Button 清除用户数据
+13:03:20 [clear]   [100] Button 取消
+13:03:20 [clear]   [102] Button 继续
+13:03:20 [clear]   [80] Static 卸载 LabelFrame Server。
+13:03:20 [clear]   [82] Static 是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？
+13:03:20 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-keep-01-ClearData.png (PrintWindow, 499x255)
+13:03:20 [clear] QUESTION_BUTTONS back=False next=True cancel=True
+13:03:20 [clear]   check ok: the question page shown first (the removal requested from the start) offers no way back to the maintenance wizard
+13:03:20 [clear] CLEAR_CHECKBOX initial=0
+13:03:20 [clear]   check ok: the clear-user-data box is not ticked by default
+13:03:20 [clear] CLEAR_QUESTION_SHOWN=True
+13:03:20 [clear]   check ok: with the full interface and the removal requested from the start, the user data is asked about first
+13:03:20 [clear]   check ok: the page after the user data question is the ready-to-remove page with the removal wording (actual VerifyRemove)
+13:03:20 [clear] --- page ClearData-again (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Server 卸载' ---
+13:03:20 [clear]   [94] Button 清除用户数据
+13:03:20 [clear]   [100] Button 取消
+13:03:20 [clear]   [102] Button 继续
+13:03:20 [clear]   [80] Static 卸载 LabelFrame Server。
+13:03:20 [clear]   [82] Static 是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？
+13:03:20 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-keep-02-ClearData.png (PrintWindow, 499x255)
+13:03:20 [clear] --- page VerifyRemove (actual VerifyRemove, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:03:20 [clear]   [47] Button 删除(&R)
+13:03:20 [clear]   [118] Button 取消
+13:03:20 [clear]   [115] Button 上一步(&B)
+13:03:20 [clear]   [105] Static WixUI_Bmp_Banner
+13:03:20 [clear]   [179] Static 已准备好删除 LabelFrame Server
+13:03:20 [clear]   [181] Static 单击“删除”可从计算机上删除 LabelFrame Server。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+13:03:20 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-keep-03-VerifyRemove.png (PrintWindow, 499x389)
+13:03:20 [clear] REMOVE_STEP_SECONDS=1 (from clicking Remove to the next window)
+13:03:20 [clear] --- page Removing (actual Removing, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:03:20 [clear]   [118] Button 取消
+13:03:20 [clear]   [105] Static WixUI_Bmp_Banner
+13:03:20 [clear]   [115] Button 上一步(&B)   (disabled)
+13:03:20 [clear]   [116] Button 下一步(&N)   (disabled)
+13:03:20 [clear]   [236] Static 正在停止服务
+13:03:20 [clear]   [250] Static 安装向导正在删除 LabelFrame Server，请稍候。
+13:03:20 [clear]   [252] Static 正在删除 LabelFrame Server
+13:03:20 [clear]   [260] Static 状态:
+13:03:20 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-keep-04-Removing.png (PrintWindow, 499x389)
+13:03:20 [clear] --- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+13:03:20 [clear]   [212] Button 完成(&F)
+13:03:20 [clear]   [118] Button 取消   (disabled)
+13:03:20 [clear]   [106] Static WixUI_Bmp_Dialog
+13:03:20 [clear]   [115] Button 上一步(&B)   (disabled)
+13:03:20 [clear]   [46] Static 单击“完成”按钮退出安装向导。
+13:03:20 [clear]   [108] Static LabelFrame Server 安装向导已完成
+13:03:20 [clear]   screenshot -> C:\Probe\logs\walk-server-remove-all-keep-05-Exit.png (PrintWindow, 499x389)
+13:03:20 [clear] last unrecognised installer window:
+13:03:20 [clear] WINDOWS_IN_ORDER=MessageBox -> ClearData -> VerifyRemove -> Removing -> Exit
+13:03:20 [clear] windows seen: ClearData, Exit, MessageBox, Removing, VerifyRemove
+13:03:20 [clear] exit code=0
+13:03:20 [clear] after: product=none | Run key=absent | user files=0 | printing client processes=0
+13:03:20 [clear] OUTCOME=removed
+13:03:20 [clear] WIZARD_PATH=ClearData -> Back -> ClearData -> VerifyRemove -> Removing -> Exit
+13:03:20 [clear] CLICKS=继续 [102], 上一步(&B) [115], 继续 [102], 删除(&R) [47], 完成(&F) [212]
+13:03:20 [clear] CHECK_FAILURES=0
+13:03:20 [clear] === end 'walk-server-remove-all-keep'  [13:03:13] ===
+13:03:34 [clear] 
+13:03:34 [clear] === products  [guest 13:03:24] ===
+13:03:34 [clear] PRODUCT none
+13:03:34 [clear] 
+13:03:34 [clear] === services  [guest 13:03:25] ===
+13:03:34 [clear] SERVICE name=LabelFrameServer none
+13:03:34 [clear] SERVICE name=LabelFrameClientUpdater none
+13:03:34 [clear] 
+13:03:34 [clear] === main programs  [guest 13:03:25] ===
+13:03:34 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:03:34 [clear] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:03:34 [clear] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286
+13:03:34 [clear] FILE client appsettings exists=False path=C:\Program Files\LabelFrame\Client\appsettings.json
+13:03:34 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:03:34 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:03:34 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:03:34 [clear] 
+13:03:34 [clear] === processes  [guest 13:03:25] ===
+13:03:34 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:03:34 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:03:34 [clear] PROCESS name=msedge.exe pid=7072 parent=7988 session=1 started=13:03:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=on_device_model.mojom.OnDeviceModelService --lang=zh-CN --service-sandbox-type=on_device_model_execution --skip-read-main-dll --metrics-shmem-handle=4420,i,6722685519565358225,13750307844796977981,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190709005052708474 --mojo-platform-channel-handle=4164 /prefetch:8
+13:03:34 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:03:34 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:03:34 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:03:34 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:03:34 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:03:34 [clear] BROWSER_PROCESSES_SINCE_BOOT=6
+13:03:34 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:03:34 [clear] 
+13:03:34 [clear] === listeners  [guest 13:03:26] ===
+13:03:34 [clear] LISTEN none
+13:03:34 [clear] 
+13:03:34 [clear] === http  [guest 13:03:26] ===
+13:03:34 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:03:34 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:03:34 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:03:34 [clear] 
+13:03:34 [clear] === client machine settings  [guest 13:03:32] ===
+13:03:34 [clear] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:03:34 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:03:34 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:03:34 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=False
+13:03:34 [clear] 
+13:03:34 [clear] === auto-start entry  [guest 13:03:32] ===
+13:03:34 [clear] RUN_KEY present=False
+13:03:34 [clear] 
+13:03:34 [clear] === user files  [guest 13:03:32] ===
+13:03:34 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+13:03:34 [clear] 
+13:03:34 [clear] === server data  [guest 13:03:32] ===
+13:03:34 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3 bytes=90112
+13:03:34 [clear] SERVER_DATA_TOP client-packages | logs.db | pda-packages | plugin-packages | plugins | server.db | templates.db
+13:03:34 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:03:34 [clear] IN_PROGRESS_REGISTRATION False
+13:03:35 [clear] USER_CONFIG server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286 userChangeStillThere=True written=13:02:06
+13:03:35 [clear] USER_CONFIG client settings exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:03:35 [clear] USER_CONFIG client connection exists=False path=C:\Users\<account>\AppData\Local\LabelFrame\connection.json
+13:03:40 [clear] 13:03:34 ARGUMENTS /i "C:\Probe\LabelFrame-Client-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\50-install-silent.log"
+13:03:40 [clear] 13:03:38 MSI mode=install msi=LabelFrame-Client-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+13:03:40 [clear] 13:03:38 LOG bytes=253886
+13:04:32 [clear] === interactive run  [guest 13:03:40] ===
+13:04:32 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:04:32 [clear] script present=True size=6964
+13:04:32 [clear] RUN_LEVEL=Limited
+13:04:32 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:04:32 [clear] CLIENT_STARTED pid=4036 exitedWithin4s=False
+13:04:32 [clear] CLIENT_LISTENING_53960=1
+13:04:32 [clear] CLIENT_SHUTDOWN requested through the client interface
+13:04:32 [clear] CLIENT_LISTENING_AFTER_SHUTDOWN=0
+13:04:32 [clear] CLIENT_CONNECTION a log-mode connection file was put next to the client user files
+13:04:32 [clear] CLIENT_STARTED pid=1352 exitedWithin4s=False
+13:04:32 [clear] CLIENT_LISTENING_53960=1
+13:04:32 [clear] CLIENT_SERVER_ADDRESS saved through the client interface -> {"serverUrl":"http://127.0.0.1:53961","deviceId":"DESKTOP-D65DJ5S","deviceName":"DESKTOP-D65DJ5S","ips":["172.17.234.240"],"version":"1.6.1"}
+13:04:32 [clear] CLIENT_PRINT_SETTINGS saved through the client interface -> {"batchEnabled":false,"batchSize":10,"batchIntervalMs":500,"dpi":300}
+13:04:32 [clear] CLIENT_TEST_PAGE printed through the client interface -> {"sent":true,"bytes":27903}
+13:04:32 [clear] CLIENT_JOB accepted through the client interface -> {"jobId":"049d2dc2556e46aeb8920d057d004ca1","requestId":"probe-2484","status":"Pending","totalItems":1,"completedItems":0,"items":[{"index":0,"status":"Pending","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\049d2dc2556e46aeb8920d057d004ca1","printImageCount":1,"createdAt":"2026-11-27T05:04:11.5174861+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null}
+13:04:32 [clear] CLIENT_JOBS {"jobId":"049d2dc2556e46aeb8920d057d004ca1","requestId":"probe-2484","status":"Completed","totalItems":1,"completedItems":1,"items":[{"index":0,"status":"Completed","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\049d2dc2556e46aeb8920d057d004ca1","printImageCount":1,"createdAt":"2026-11-27T05:04:11.5174861+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null}
+13:04:32 [clear] PRINT_IMAGE_FILES=2
+13:04:32 [clear] PRINT_IMAGE_FILE name=print\049d2dc2556e46aeb8920d057d004ca1\.<account>-print-v1 bytes=32
+13:04:32 [clear] PRINT_IMAGE_FILE name=print\049d2dc2556e46aeb8920d057d004ca1\label-1.png bytes=2673
+13:04:32 [clear] USER_FILES=16
+13:04:32 [clear] USER_FILE name=connection.json bytes=30
+13:04:32 [clear] USER_FILE name=host-20261127.log bytes=1646
+13:04:32 [clear] USER_FILE name=jobs.db bytes=40960
+13:04:32 [clear] USER_FILE name=jobs.db-shm bytes=32768
+13:04:32 [clear] USER_FILE name=jobs.db-wal bytes=98912
+13:04:32 [clear] USER_FILE name=logs.db bytes=16384
+13:04:32 [clear] USER_FILE name=logs.db-shm bytes=32768
+13:04:32 [clear] USER_FILE name=logs.db-wal bytes=0
+13:04:32 [clear] USER_FILE name=logs\app-20261127.log bytes=5848
+13:04:32 [clear] USER_FILE name=logs\serilog-self.log bytes=0
+13:04:32 [clear] USER_FILE name=print\049d2dc2556e46aeb8920d057d004ca1\.<account>-print-v1 bytes=32
+13:04:32 [clear] USER_FILE name=print\049d2dc2556e46aeb8920d057d004ca1\label-1.png bytes=2673
+13:04:32 [clear] USER_FILE name=print-settings.json bytes=69
+13:04:32 [clear] USER_FILE name=templates.db bytes=28672
+13:04:32 [clear] USER_FILE name=templates.db-shm bytes=32768
+13:04:32 [clear] USER_FILE name=templates.db-wal bytes=0
+13:04:32 [clear] USER_FILES_WEBVIEW2=0
+13:04:41 [clear] HOST_SHUTDOWN pid=1352 port=53960 result=left-by-itself
+13:04:41 [clear] HOST_SHUTDOWN_SUMMARY targets=1 leftByItself=1 endedByForce=0 printingHostsLeft=0 listening53960=0 updaterServiceRunning=1
+13:04:49 [clear] 
+13:04:49 [clear] === products  [guest 13:04:40] ===
+13:04:49 [clear] PRODUCT name=LabelFrame Client version=1.6.99 location= key={C193BDF9-28E3-4F67-84CA-21562BB681BB}
+13:04:49 [clear] UNINSTALL_STRING name=LabelFrame Client command=MsiExec.exe /X{C193BDF9-28E3-4F67-84CA-21562BB681BB}
+13:04:49 [clear] 
+13:04:49 [clear] === services  [guest 13:04:41] ===
+13:04:49 [clear] SERVICE name=LabelFrameServer none
+13:04:49 [clear] SERVICE name=LabelFrameClientUpdater state=Running startMode=Auto startName=LocalSystem pid=1236 path="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+13:04:49 [clear] 
+13:04:49 [clear] === main programs  [guest 13:04:41] ===
+13:04:49 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:04:49 [clear] PROGRAM role=client fileVersion=1.6.99.0 productVersion=1.6.99+3f3680ec450a8fbbec61155ac9c927dc075f321d bytes=310272 sha256=fbf9f121578aa3f2de43b916fcd322475f8b1cd790d59cd7c11d1869e7a36580 path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:04:49 [clear] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286
+13:04:49 [clear] FILE client appsettings exists=True path=C:\Program Files\LabelFrame\Client\appsettings.json bytes=246 sha256=4c5344bd34a434fe1f22b82686875be8d965db8c39dbb5d2bc0c02174558b4ae
+13:04:49 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:04:49 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:04:49 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:04:49 [clear] 
+13:04:49 [clear] === processes  [guest 13:04:41] ===
+13:04:49 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:04:49 [clear] PROCESS name=LabelFrame.WinHost.exe pid=1236 parent=728 session=0 started=13:03:37 sinceBoot=True commandLine="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+13:04:49 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:04:49 [clear] PROCESS name=msedge.exe pid=7072 parent=7988 session=1 started=13:03:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=on_device_model.mojom.OnDeviceModelService --lang=zh-CN --service-sandbox-type=on_device_model_execution --skip-read-main-dll --metrics-shmem-handle=4420,i,6722685519565358225,13750307844796977981,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190709005052708474 --mojo-platform-channel-handle=4164 /prefetch:8
+13:04:49 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:04:49 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:04:49 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:04:49 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:04:49 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:04:49 [clear] BROWSER_PROCESSES_SINCE_BOOT=6
+13:04:49 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:04:49 [clear] PROCESS_TOKEN pid=1236 session=0 elevated
+13:04:49 [clear] 
+13:04:49 [clear] === listeners  [guest 13:04:41] ===
+13:04:49 [clear] LISTEN none
+13:04:49 [clear] 
+13:04:49 [clear] === http  [guest 13:04:42] ===
+13:04:49 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:04:49 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:04:49 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:04:49 [clear] 
+13:04:49 [clear] === client machine settings  [guest 13:04:48] ===
+13:04:49 [clear] CLIENT_SETTINGS path=C:\ProgramData\LabelFrame\Client\settings.json bytes=38 sha256=c2e7b36db25694e5bb93179ca13b4568db972582779cd5af3e908a67bd1735a1 text={"serverUrl":"http://127.0.0.1:53961"}
+13:04:49 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:04:49 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:04:49 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=True entries=settings.json
+13:04:49 [clear] 
+13:04:49 [clear] === auto-start entry  [guest 13:04:48] ===
+13:04:49 [clear] RUN_KEY present=True value="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart
+13:04:49 [clear] 
+13:04:49 [clear] === user files  [guest 13:04:48] ===
+13:04:49 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=10
+13:04:49 [clear] USER_FILE name=connection.json bytes=30 sha256=b77280232b78b65d970d1ce66c5a4e7d352c2aa6e21b2a7602f952fe90a74736
+13:04:49 [clear] USER_FILE name=host-20261127.log bytes=4042 sha256=c9ea163722e999064645076ef91914d9aa47664102c3384c2741f54dd6ad4814
+13:04:49 [clear] USER_FILE name=jobs.db bytes=81920 sha256=908bece857e4f137fef536a3bf1f0b8749b7730a14115364f5fe2a8297a9da94
+13:04:49 [clear] USER_FILE name=logs.db bytes=16384 sha256=da4132138b3049c7e6ebd9c490407d456ae725ecf47ada4a723344d7a37d2ae8
+13:04:49 [clear] USER_FILE name=logs\app-20261127.log bytes=23697 sha256=f7bad96667b97bf1524d332b3e29812ddf3c24872fe655410bcf44079312834a
+13:04:49 [clear] USER_FILE name=logs\serilog-self.log bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+13:04:49 [clear] USER_FILE name=print\049d2dc2556e46aeb8920d057d004ca1\.<account>-print-v1 bytes=32 sha256=367a76ab66c7048d1fa87bd6750b4f9e2b7ccbc8ba50cbdd72d7c8bd50ed3af8
+13:04:49 [clear] USER_FILE name=print\049d2dc2556e46aeb8920d057d004ca1\label-1.png bytes=2673 sha256=b3d2c6e385037aa8e6d94e4749aae9d4b5aebd4225284d23f022cf9e1e5ef050
+13:04:49 [clear] USER_FILE name=print-settings.json bytes=69 sha256=51ab2f6c98c3e04428b01b602ca1b0f2a70032a2a3a33ea13dcc59e17866292d
+13:04:49 [clear] USER_FILE name=templates.db bytes=28672 sha256=1f533df3563b63cc5975ab88f08a8dda254cf1bb7860b898649bdf9abea1f43a
+13:04:49 [clear] USER_SUBDIRS logs | print | print\049d2dc2556e46aeb8920d057d004ca1 | updates
+13:04:49 [clear] 
+13:04:49 [clear] === server data  [guest 13:04:48] ===
+13:04:49 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3 bytes=90112
+13:04:49 [clear] SERVER_DATA_TOP client-packages | logs.db | pda-packages | plugin-packages | plugins | server.db | templates.db
+13:04:49 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:04:49 [clear] IN_PROGRESS_REGISTRATION False
+13:05:17 [clear] === interactive run  [guest 13:04:49] ===
+13:05:17 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:05:17 [clear] script present=True size=74638
+13:05:17 [clear] RUN_LEVEL=Limited
+13:05:17 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:05:17 [clear] === installer walk 'walk-client-remove-rerun-clear': mode=remove  [13:04:53] ===
+13:05:17 [clear] arguments: /i "C:\Probe\LabelFrame-Client-1.6.99.msi" /l*v "C:\Probe\logs\walk-client-remove-rerun-clear.log"
+13:05:17 [clear] identity=DESKTOP-D65DJ5S\<account> elevated=False
+13:05:17 [clear] TOKEN sid=<sid> linkedToken=available
+13:05:17 [clear] SETUP_PAGE present=False
+13:05:17 [clear] before: product=1.6.99 | Run key="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart | user files=10 | printing client processes=0
+13:05:17 [clear] CLEAR_QUESTION_SHOWN=False
+13:05:17 [clear]   check ok: running the package again starts with the maintenance wizard
+13:05:17 [clear] --- page MaintenanceWelcome (actual MaintenanceWelcome, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:05:17 [clear]   [213] Button 下一步(&N)
+13:05:17 [clear]   [215] Button 取消
+13:05:17 [clear]   [203] Static WixUI_Bmp_Dialog
+13:05:17 [clear]   [212] Button 上一步(&B)   (disabled)
+13:05:17 [clear]   [58] Static 通过安装向导可以更改在您的计算机上安装 LabelFrame Client 功能的方式，或将其从您的计算机中删除。单击“下一步”继续，或单击“取消”退出安装向导。
+13:05:17 [clear]   [205] Static 欢迎使用 LabelFrame Client 安装向导
+13:05:17 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-clear-01-MaintenanceWelcome.png (PrintWindow, 499x389)
+13:05:17 [clear] --- page MaintenanceType (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:05:17 [clear]   [400] Button 更改(&C)   (disabled)
+13:05:17 [clear]   [401] Button 修复(&P)
+13:05:17 [clear]   [406] Button 删除(&R)
+13:05:17 [clear]   [212] Button 上一步(&B)
+13:05:17 [clear]   [213] Button 下一步(&N)   (disabled)
+13:05:17 [clear]   [215] Button 取消
+13:05:17 [clear]   [202] Static WixUI_Bmp_Banner
+13:05:17 [clear]   [58] Static 选择希望执行的操作。
+13:05:17 [clear]   [205] Static 更改、修复或删除安装
+13:05:17 [clear]   [280] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+13:05:17 [clear]   [284] Static 从您的计算机中删除 LabelFrame Client。
+13:05:17 [clear]   [404] Static LabelFrame Client 没有单独可选的功能。
+13:05:17 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-clear-02-MaintenanceType.png (PrintWindow, 499x389)
+13:05:17 [clear]   MAINTENANCE_BUTTON caption=[更改(&C)] enabled=False
+13:05:17 [clear]   MAINTENANCE_BUTTON caption=[修复(&P)] enabled=True
+13:05:17 [clear]   MAINTENANCE_BUTTON caption=[删除(&R)] enabled=True
+13:05:17 [clear]   MAINTENANCE_BUTTON caption=[上一步(&B)] enabled=True
+13:05:17 [clear]   MAINTENANCE_BUTTON caption=[下一步(&N)] enabled=False
+13:05:17 [clear]   MAINTENANCE_BUTTON caption=[取消] enabled=True
+13:05:17 [clear] --- page ClearData (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Client 卸载' ---
+13:05:17 [clear]   [191] Button 清除用户数据
+13:05:17 [clear]   [195] Button 上一步(&B)
+13:05:17 [clear]   [197] Button 取消
+13:05:17 [clear]   [199] Button 继续
+13:05:17 [clear]   [171] Static 是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？
+13:05:17 [clear]   [180] Static 卸载 LabelFrame Client。
+13:05:17 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-clear-03-ClearData.png (PrintWindow, 499x255)
+13:05:17 [clear] QUESTION_BUTTONS back=True next=True cancel=True
+13:05:17 [clear]   check ok: the question page reached from the maintenance wizard offers a way back
+13:05:17 [clear] --- page MaintenanceType-again (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:05:17 [clear]   [400] Button 更改(&C)   (disabled)
+13:05:17 [clear]   [401] Button 修复(&P)
+13:05:17 [clear]   [406] Button 删除(&R)
+13:05:17 [clear]   [212] Button 上一步(&B)
+13:05:17 [clear]   [213] Button 下一步(&N)   (disabled)
+13:05:17 [clear]   [215] Button 取消
+13:05:17 [clear]   [202] Static WixUI_Bmp_Banner
+13:05:17 [clear]   [58] Static 选择希望执行的操作。
+13:05:17 [clear]   [205] Static 更改、修复或删除安装
+13:05:17 [clear]   [280] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+13:05:17 [clear]   [284] Static 从您的计算机中删除 LabelFrame Client。
+13:05:17 [clear]   [404] Static LabelFrame Client 没有单独可选的功能。
+13:05:17 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-clear-04-MaintenanceType.png (PrintWindow, 499x389)
+13:05:17 [clear] --- page ClearData-again (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Client 卸载' ---
+13:05:17 [clear]   [191] Button 清除用户数据
+13:05:17 [clear]   [195] Button 上一步(&B)
+13:05:17 [clear]   [197] Button 取消
+13:05:17 [clear]   [199] Button 继续
+13:05:17 [clear]   [171] Static 是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？
+13:05:17 [clear]   [180] Static 卸载 LabelFrame Client。
+13:05:17 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-clear-05-ClearData.png (PrintWindow, 499x255)
+13:05:17 [clear] CLEAR_CHECKBOX initial=0
+13:05:17 [clear]   check ok: the clear-user-data box is not ticked by default
+13:05:17 [clear] CLEAR_CHECKBOX after the click=1
+13:05:17 [clear]   check ok: the clear-user-data box is ticked after the click
+13:05:17 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-clear-06-ClearData-ticked.png (PrintWindow, 499x255)
+13:05:17 [clear] --- page VerifyRemove (actual VerifyRemove, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:05:17 [clear]   [59] Button 删除(&R)
+13:05:17 [clear]   [215] Button 取消
+13:05:17 [clear]   [212] Button 上一步(&B)
+13:05:17 [clear]   [202] Static WixUI_Bmp_Banner
+13:05:17 [clear]   [282] Static 已准备好删除 LabelFrame Client
+13:05:17 [clear]   [284] Static 单击“删除”可从计算机上删除 LabelFrame Client。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+13:05:17 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-clear-07-VerifyRemove.png (PrintWindow, 499x389)
+13:05:17 [clear] REMOVE_STEP_SECONDS=1.5 (from clicking Remove to the next window)
+13:05:17 [clear] --- page Removing (actual Removing, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:05:17 [clear]   [215] Button 取消
+13:05:17 [clear]   [202] Static WixUI_Bmp_Banner
+13:05:17 [clear]   [212] Button 上一步(&B)   (disabled)
+13:05:17 [clear]   [213] Button 下一步(&N)   (disabled)
+13:05:17 [clear]   [353] Static 安装向导正在删除 LabelFrame Client，请稍候。
+13:05:17 [clear]   [355] Static 正在删除 LabelFrame Client
+13:05:17 [clear]   [363] Static 状态:
+13:05:17 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-clear-08-Removing.png (PrintWindow, 499x389)
+13:05:17 [clear] --- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:05:17 [clear]   [315] Button 完成(&F)
+13:05:17 [clear]   [215] Button 取消   (disabled)
+13:05:17 [clear]   [203] Static WixUI_Bmp_Dialog
+13:05:17 [clear]   [212] Button 上一步(&B)   (disabled)
+13:05:17 [clear]   [58] Static 单击“完成”按钮退出安装向导。
+13:05:17 [clear]   [205] Static LabelFrame Client 安装向导已完成
+13:05:17 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-clear-09-Exit.png (PrintWindow, 499x389)
+13:05:17 [clear]   check ok: running the package again and choosing Remove asks about the user data before the ready-to-remove page
+13:05:17 [clear] last unrecognised installer window:
+13:05:17 [clear] WINDOWS_IN_ORDER=Prepare -> MaintenanceWelcome -> MaintenanceType -> ClearData -> VerifyRemove -> Removing -> Exit
+13:05:17 [clear] windows seen: ClearData, Exit, MaintenanceType, MaintenanceWelcome, Prepare, Removing, VerifyRemove
+13:05:17 [clear] exit code=0
+13:05:17 [clear] after: product=none | Run key=absent | user files=0 | printing client processes=0
+13:05:17 [clear] OUTCOME=removed
+13:05:17 [clear] WIZARD_PATH=MaintenanceWelcome -> MaintenanceType -> ClearData -> Back -> MaintenanceType -> ClearData-again -> VerifyRemove -> Removing -> Exit
+13:05:17 [clear] CLICKS=下一步(&N) [213], 删除(&R) [406], 上一步(&B) [195], 删除(&R) [406], box [清除用户数据] -> ticked, 继续 [199], 删除(&R) [59], 完成(&F) [315]
+13:05:17 [clear] CHECK_FAILURES=0
+13:05:17 [clear] === end 'walk-client-remove-rerun-clear'  [13:05:09] ===
+13:05:31 [clear] 
+13:05:31 [clear] === products  [guest 13:05:22] ===
+13:05:31 [clear] PRODUCT none
+13:05:31 [clear] 
+13:05:31 [clear] === services  [guest 13:05:22] ===
+13:05:31 [clear] SERVICE name=LabelFrameServer none
+13:05:31 [clear] SERVICE name=LabelFrameClientUpdater none
+13:05:31 [clear] 
+13:05:31 [clear] === main programs  [guest 13:05:23] ===
+13:05:31 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:05:31 [clear] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:05:31 [clear] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286
+13:05:31 [clear] FILE client appsettings exists=False path=C:\Program Files\LabelFrame\Client\appsettings.json
+13:05:31 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:05:31 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:05:31 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:05:31 [clear] 
+13:05:31 [clear] === processes  [guest 13:05:23] ===
+13:05:31 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:05:31 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:05:31 [clear] PROCESS name=msedge.exe pid=7072 parent=7988 session=1 started=13:03:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=on_device_model.mojom.OnDeviceModelService --lang=zh-CN --service-sandbox-type=on_device_model_execution --skip-read-main-dll --metrics-shmem-handle=4420,i,6722685519565358225,13750307844796977981,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190709005052708474 --mojo-platform-channel-handle=4164 /prefetch:8
+13:05:31 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:05:31 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:05:31 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:05:31 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:05:31 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:05:31 [clear] BROWSER_PROCESSES_SINCE_BOOT=6
+13:05:31 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:05:31 [clear] 
+13:05:31 [clear] === listeners  [guest 13:05:23] ===
+13:05:31 [clear] LISTEN none
+13:05:31 [clear] 
+13:05:31 [clear] === http  [guest 13:05:23] ===
+13:05:31 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:05:31 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:05:31 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:05:31 [clear] 
+13:05:31 [clear] === client machine settings  [guest 13:05:30] ===
+13:05:31 [clear] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:05:31 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:05:31 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:05:31 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=False
+13:05:31 [clear] 
+13:05:31 [clear] === auto-start entry  [guest 13:05:30] ===
+13:05:31 [clear] RUN_KEY present=False
+13:05:31 [clear] 
+13:05:31 [clear] === user files  [guest 13:05:30] ===
+13:05:31 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+13:05:31 [clear] 
+13:05:31 [clear] === server data  [guest 13:05:30] ===
+13:05:31 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3 bytes=90112
+13:05:31 [clear] SERVER_DATA_TOP client-packages | logs.db | pda-packages | plugin-packages | plugins | server.db | templates.db
+13:05:31 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:05:31 [clear] IN_PROGRESS_REGISTRATION False
+13:05:37 [clear] 13:05:31 ARGUMENTS /i "C:\Probe\LabelFrame-Client-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\60-install-silent.log"
+13:05:37 [clear] 13:05:35 MSI mode=install msi=LabelFrame-Client-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.2s
+13:05:37 [clear] 13:05:35 LOG bytes=253884
+13:06:28 [clear] === interactive run  [guest 13:05:37] ===
+13:06:28 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:06:28 [clear] script present=True size=6964
+13:06:28 [clear] RUN_LEVEL=Limited
+13:06:28 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:06:28 [clear] CLIENT_STARTED pid=5820 exitedWithin4s=False
+13:06:28 [clear] CLIENT_LISTENING_53960=1
+13:06:28 [clear] CLIENT_SHUTDOWN requested through the client interface
+13:06:28 [clear] CLIENT_LISTENING_AFTER_SHUTDOWN=0
+13:06:28 [clear] CLIENT_CONNECTION a log-mode connection file was put next to the client user files
+13:06:28 [clear] CLIENT_STARTED pid=4564 exitedWithin4s=False
+13:06:28 [clear] CLIENT_LISTENING_53960=1
+13:06:28 [clear] CLIENT_SERVER_ADDRESS saved through the client interface -> {"serverUrl":"http://127.0.0.1:53961","deviceId":"DESKTOP-D65DJ5S","deviceName":"DESKTOP-D65DJ5S","ips":["172.17.234.240"],"version":"1.6.1"}
+13:06:28 [clear] CLIENT_PRINT_SETTINGS saved through the client interface -> {"batchEnabled":false,"batchSize":10,"batchIntervalMs":500,"dpi":300}
+13:06:28 [clear] CLIENT_TEST_PAGE printed through the client interface -> {"sent":true,"bytes":27903}
+13:06:28 [clear] CLIENT_JOB accepted through the client interface -> {"jobId":"af91f940ddb5414bb1c15d221dd0d0c4","requestId":"probe-2392","status":"Pending","totalItems":1,"completedItems":0,"items":[{"index":0,"status":"Pending","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\af91f940ddb5414bb1c15d221dd0d0c4","printImageCount":1,"createdAt":"2026-11-27T05:06:08.6943047+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null}
+13:06:28 [clear] CLIENT_JOBS {"jobId":"af91f940ddb5414bb1c15d221dd0d0c4","requestId":"probe-2392","status":"Completed","totalItems":1,"completedItems":1,"items":[{"index":0,"status":"Completed","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\af91f940ddb5414bb1c15d221dd0d0c4","printImageCount":1,"createdAt":"2026-11-27T05:06:08.6943047+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null}
+13:06:28 [clear] PRINT_IMAGE_FILES=2
+13:06:28 [clear] PRINT_IMAGE_FILE name=print\af91f940ddb5414bb1c15d221dd0d0c4\.<account>-print-v1 bytes=32
+13:06:28 [clear] PRINT_IMAGE_FILE name=print\af91f940ddb5414bb1c15d221dd0d0c4\label-1.png bytes=2673
+13:06:28 [clear] USER_FILES=16
+13:06:28 [clear] USER_FILE name=connection.json bytes=30
+13:06:28 [clear] USER_FILE name=host-20261127.log bytes=1646
+13:06:28 [clear] USER_FILE name=jobs.db bytes=40960
+13:06:28 [clear] USER_FILE name=jobs.db-shm bytes=32768
+13:06:28 [clear] USER_FILE name=jobs.db-wal bytes=98912
+13:06:28 [clear] USER_FILE name=logs.db bytes=16384
+13:06:28 [clear] USER_FILE name=logs.db-shm bytes=32768
+13:06:28 [clear] USER_FILE name=logs.db-wal bytes=0
+13:06:28 [clear] USER_FILE name=logs\app-20261127.log bytes=5848
+13:06:28 [clear] USER_FILE name=logs\serilog-self.log bytes=0
+13:06:28 [clear] USER_FILE name=print\af91f940ddb5414bb1c15d221dd0d0c4\.<account>-print-v1 bytes=32
+13:06:28 [clear] USER_FILE name=print\af91f940ddb5414bb1c15d221dd0d0c4\label-1.png bytes=2673
+13:06:28 [clear] USER_FILE name=print-settings.json bytes=69
+13:06:28 [clear] USER_FILE name=templates.db bytes=28672
+13:06:28 [clear] USER_FILE name=templates.db-shm bytes=32768
+13:06:28 [clear] USER_FILE name=templates.db-wal bytes=0
+13:06:28 [clear] USER_FILES_WEBVIEW2=0
+13:06:37 [clear] HOST_SHUTDOWN pid=4564 port=53960 result=left-by-itself
+13:06:37 [clear] HOST_SHUTDOWN_SUMMARY targets=1 leftByItself=1 endedByForce=0 printingHostsLeft=0 listening53960=0 updaterServiceRunning=1
+13:06:45 [clear] 
+13:06:45 [clear] === products  [guest 13:06:36] ===
+13:06:45 [clear] PRODUCT name=LabelFrame Client version=1.6.99 location= key={C193BDF9-28E3-4F67-84CA-21562BB681BB}
+13:06:45 [clear] UNINSTALL_STRING name=LabelFrame Client command=MsiExec.exe /X{C193BDF9-28E3-4F67-84CA-21562BB681BB}
+13:06:45 [clear] 
+13:06:45 [clear] === services  [guest 13:06:36] ===
+13:06:45 [clear] SERVICE name=LabelFrameServer none
+13:06:45 [clear] SERVICE name=LabelFrameClientUpdater state=Running startMode=Auto startName=LocalSystem pid=1712 path="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+13:06:45 [clear] 
+13:06:45 [clear] === main programs  [guest 13:06:37] ===
+13:06:45 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:06:45 [clear] PROGRAM role=client fileVersion=1.6.99.0 productVersion=1.6.99+3f3680ec450a8fbbec61155ac9c927dc075f321d bytes=310272 sha256=fbf9f121578aa3f2de43b916fcd322475f8b1cd790d59cd7c11d1869e7a36580 path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:06:45 [clear] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286
+13:06:45 [clear] FILE client appsettings exists=True path=C:\Program Files\LabelFrame\Client\appsettings.json bytes=246 sha256=4c5344bd34a434fe1f22b82686875be8d965db8c39dbb5d2bc0c02174558b4ae
+13:06:45 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:06:45 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:06:45 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:06:45 [clear] 
+13:06:45 [clear] === processes  [guest 13:06:37] ===
+13:06:45 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:06:45 [clear] PROCESS name=LabelFrame.WinHost.exe pid=1712 parent=728 session=0 started=13:05:34 sinceBoot=True commandLine="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+13:06:45 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:06:45 [clear] PROCESS name=msedge.exe pid=7072 parent=7988 session=1 started=13:03:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=on_device_model.mojom.OnDeviceModelService --lang=zh-CN --service-sandbox-type=on_device_model_execution --skip-read-main-dll --metrics-shmem-handle=4420,i,6722685519565358225,13750307844796977981,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190709005052708474 --mojo-platform-channel-handle=4164 /prefetch:8
+13:06:45 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:06:45 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:06:45 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:06:45 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:06:45 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:06:45 [clear] BROWSER_PROCESSES_SINCE_BOOT=6
+13:06:45 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:06:45 [clear] PROCESS_TOKEN pid=1712 session=0 elevated
+13:06:45 [clear] 
+13:06:45 [clear] === listeners  [guest 13:06:37] ===
+13:06:45 [clear] LISTEN none
+13:06:45 [clear] 
+13:06:45 [clear] === http  [guest 13:06:37] ===
+13:06:45 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:06:45 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:06:45 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:06:45 [clear] 
+13:06:45 [clear] === client machine settings  [guest 13:06:43] ===
+13:06:45 [clear] CLIENT_SETTINGS path=C:\ProgramData\LabelFrame\Client\settings.json bytes=38 sha256=c2e7b36db25694e5bb93179ca13b4568db972582779cd5af3e908a67bd1735a1 text={"serverUrl":"http://127.0.0.1:53961"}
+13:06:45 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:06:45 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:06:45 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=True entries=settings.json
+13:06:45 [clear] 
+13:06:45 [clear] === auto-start entry  [guest 13:06:43] ===
+13:06:45 [clear] RUN_KEY present=True value="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart
+13:06:45 [clear] 
+13:06:45 [clear] === user files  [guest 13:06:43] ===
+13:06:45 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=10
+13:06:45 [clear] USER_FILE name=connection.json bytes=30 sha256=b77280232b78b65d970d1ce66c5a4e7d352c2aa6e21b2a7602f952fe90a74736
+13:06:45 [clear] USER_FILE name=host-20261127.log bytes=4042 sha256=1d8d58ebe6bc372257296ce3d5fa6da0fd1383680e222db96a18a4a9836bf93e
+13:06:45 [clear] USER_FILE name=jobs.db bytes=81920 sha256=b8b7c1e0c1ed33946d27ca839d32242b199a6a099ee5d67daae1f1c25142ec6b
+13:06:45 [clear] USER_FILE name=logs.db bytes=16384 sha256=da4132138b3049c7e6ebd9c490407d456ae725ecf47ada4a723344d7a37d2ae8
+13:06:45 [clear] USER_FILE name=logs\app-20261127.log bytes=23698 sha256=151942e03701a55071a44c7fc7b452e55d781cdf8692694bb32c21ffdd4fa8cd
+13:06:45 [clear] USER_FILE name=logs\serilog-self.log bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+13:06:45 [clear] USER_FILE name=print\af91f940ddb5414bb1c15d221dd0d0c4\.<account>-print-v1 bytes=32 sha256=dad9829f423de1e4ddb6c8c1ec3b737a6f42e7d9917f8bc40b08aee5a1a5fe5d
+13:06:45 [clear] USER_FILE name=print\af91f940ddb5414bb1c15d221dd0d0c4\label-1.png bytes=2673 sha256=b3d2c6e385037aa8e6d94e4749aae9d4b5aebd4225284d23f022cf9e1e5ef050
+13:06:45 [clear] USER_FILE name=print-settings.json bytes=69 sha256=51ab2f6c98c3e04428b01b602ca1b0f2a70032a2a3a33ea13dcc59e17866292d
+13:06:45 [clear] USER_FILE name=templates.db bytes=28672 sha256=1f533df3563b63cc5975ab88f08a8dda254cf1bb7860b898649bdf9abea1f43a
+13:06:45 [clear] USER_SUBDIRS logs | print | print\af91f940ddb5414bb1c15d221dd0d0c4 | updates
+13:06:45 [clear] 
+13:06:45 [clear] === server data  [guest 13:06:43] ===
+13:06:45 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3 bytes=90112
+13:06:45 [clear] SERVER_DATA_TOP client-packages | logs.db | pda-packages | plugin-packages | plugins | server.db | templates.db
+13:06:45 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:06:45 [clear] IN_PROGRESS_REGISTRATION False
+13:07:06 [clear] === interactive run  [guest 13:06:45] ===
+13:07:06 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:07:06 [clear] script present=True size=74638
+13:07:06 [clear] RUN_LEVEL=Limited
+13:07:06 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:07:06 [clear] === installer walk 'walk-client-remove-all-clear': mode=remove  [13:06:49] ===
+13:07:06 [clear] product code: {C193BDF9-28E3-4F67-84CA-21562BB681BB}  way of starting: i-all
+13:07:06 [clear] arguments: /i {C193BDF9-28E3-4F67-84CA-21562BB681BB} REMOVE=ALL /l*v "C:\Probe\logs\walk-client-remove-all-clear.log"
+13:07:06 [clear] identity=DESKTOP-D65DJ5S\<account> elevated=False
+13:07:06 [clear] TOKEN sid=<sid> linkedToken=available
+13:07:06 [clear] SETUP_PAGE present=False
+13:07:06 [clear] before: product=1.6.99 | Run key="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart | user files=10 | printing client processes=0
+13:07:06 [clear] --- page ClearData (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Client 卸载' ---
+13:07:06 [clear]   [191] Button 清除用户数据
+13:07:06 [clear]   [197] Button 取消
+13:07:06 [clear]   [199] Button 继续
+13:07:06 [clear]   [171] Static 是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？
+13:07:06 [clear]   [180] Static 卸载 LabelFrame Client。
+13:07:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-clear-01-ClearData.png (PrintWindow, 499x255)
+13:07:06 [clear] QUESTION_BUTTONS back=False next=True cancel=True
+13:07:06 [clear]   check ok: the question page shown first (the removal requested from the start) offers no way back to the maintenance wizard
+13:07:06 [clear] CLEAR_CHECKBOX initial=0
+13:07:06 [clear]   check ok: the clear-user-data box is not ticked by default
+13:07:06 [clear] CLEAR_CHECKBOX after the click=1
+13:07:06 [clear]   check ok: the clear-user-data box is ticked after the click
+13:07:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-clear-02-ClearData-ticked.png (PrintWindow, 499x255)
+13:07:06 [clear] CLEAR_QUESTION_SHOWN=True
+13:07:06 [clear]   check ok: with the full interface and the removal requested from the start, the user data is asked about first
+13:07:06 [clear]   check ok: the page after the user data question is the ready-to-remove page with the removal wording (actual VerifyRemove)
+13:07:06 [clear] --- page ClearData-again (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Client 卸载' ---
+13:07:06 [clear]   [191] Button 清除用户数据
+13:07:06 [clear]   [197] Button 取消
+13:07:06 [clear]   [199] Button 继续
+13:07:06 [clear]   [171] Static 是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？
+13:07:06 [clear]   [180] Static 卸载 LabelFrame Client。
+13:07:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-clear-03-ClearData.png (PrintWindow, 499x255)
+13:07:06 [clear] --- page VerifyRemove (actual VerifyRemove, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:07:06 [clear]   [59] Button 删除(&R)
+13:07:06 [clear]   [215] Button 取消
+13:07:06 [clear]   [212] Button 上一步(&B)
+13:07:06 [clear]   [202] Static WixUI_Bmp_Banner
+13:07:06 [clear]   [282] Static 已准备好删除 LabelFrame Client
+13:07:06 [clear]   [284] Static 单击“删除”可从计算机上删除 LabelFrame Client。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+13:07:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-clear-04-VerifyRemove.png (PrintWindow, 499x389)
+13:07:06 [clear] REMOVE_STEP_SECONDS=1.4 (from clicking Remove to the next window)
+13:07:06 [clear] --- page Removing (actual Removing, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:07:06 [clear]   [215] Button 取消
+13:07:06 [clear]   [202] Static WixUI_Bmp_Banner
+13:07:06 [clear]   [212] Button 上一步(&B)   (disabled)
+13:07:06 [clear]   [213] Button 下一步(&N)   (disabled)
+13:07:06 [clear]   [353] Static 安装向导正在删除 LabelFrame Client，请稍候。
+13:07:06 [clear]   [355] Static 正在删除 LabelFrame Client
+13:07:06 [clear]   [363] Static 状态:
+13:07:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-clear-05-Removing.png (PrintWindow, 499x389)
+13:07:06 [clear] --- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:07:06 [clear]   [315] Button 完成(&F)
+13:07:06 [clear]   [215] Button 取消   (disabled)
+13:07:06 [clear]   [203] Static WixUI_Bmp_Dialog
+13:07:06 [clear]   [212] Button 上一步(&B)   (disabled)
+13:07:06 [clear]   [58] Static 单击“完成”按钮退出安装向导。
+13:07:06 [clear]   [205] Static LabelFrame Client 安装向导已完成
+13:07:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-clear-06-Exit.png (PrintWindow, 499x389)
+13:07:06 [clear] last unrecognised installer window:
+13:07:06 [clear] WINDOWS_IN_ORDER=MessageBox -> ClearData -> VerifyRemove -> Removing -> Exit
+13:07:06 [clear] windows seen: ClearData, Exit, MessageBox, Removing, VerifyRemove
+13:07:06 [clear] exit code=0
+13:07:06 [clear] after: product=none | Run key=absent | user files=0 | printing client processes=0
+13:07:06 [clear] OUTCOME=removed
+13:07:06 [clear] WIZARD_PATH=ClearData -> Back -> ClearData -> VerifyRemove -> Removing -> Exit
+13:07:06 [clear] CLICKS=box [清除用户数据] -> ticked, 继续 [199], 上一步(&B) [212], 继续 [199], 删除(&R) [59], 完成(&F) [315]
+13:07:06 [clear] CHECK_FAILURES=0
+13:07:06 [clear] === end 'walk-client-remove-all-clear'  [13:07:00] ===
+13:07:19 [clear] 
+13:07:19 [clear] === products  [guest 13:07:10] ===
+13:07:19 [clear] PRODUCT none
+13:07:19 [clear] 
+13:07:19 [clear] === services  [guest 13:07:10] ===
+13:07:19 [clear] SERVICE name=LabelFrameServer none
+13:07:19 [clear] SERVICE name=LabelFrameClientUpdater none
+13:07:19 [clear] 
+13:07:19 [clear] === main programs  [guest 13:07:10] ===
+13:07:19 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:07:19 [clear] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:07:19 [clear] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286
+13:07:19 [clear] FILE client appsettings exists=False path=C:\Program Files\LabelFrame\Client\appsettings.json
+13:07:19 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:07:19 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:07:19 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:07:19 [clear] 
+13:07:19 [clear] === processes  [guest 13:07:11] ===
+13:07:19 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:07:19 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:07:19 [clear] PROCESS name=msedge.exe pid=7072 parent=7988 session=1 started=13:03:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=on_device_model.mojom.OnDeviceModelService --lang=zh-CN --service-sandbox-type=on_device_model_execution --skip-read-main-dll --metrics-shmem-handle=4420,i,6722685519565358225,13750307844796977981,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190709005052708474 --mojo-platform-channel-handle=4164 /prefetch:8
+13:07:19 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:07:19 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:07:19 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:07:19 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:07:19 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:07:19 [clear] BROWSER_PROCESSES_SINCE_BOOT=6
+13:07:19 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:07:19 [clear] 
+13:07:19 [clear] === listeners  [guest 13:07:11] ===
+13:07:19 [clear] LISTEN none
+13:07:19 [clear] 
+13:07:19 [clear] === http  [guest 13:07:11] ===
+13:07:19 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:07:19 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:07:19 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:07:19 [clear] 
+13:07:19 [clear] === client machine settings  [guest 13:07:17] ===
+13:07:19 [clear] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+13:07:19 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:07:19 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:07:19 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=False
+13:07:19 [clear] 
+13:07:19 [clear] === auto-start entry  [guest 13:07:17] ===
+13:07:19 [clear] RUN_KEY present=False
+13:07:19 [clear] 
+13:07:19 [clear] === user files  [guest 13:07:17] ===
+13:07:19 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+13:07:19 [clear] 
+13:07:19 [clear] === server data  [guest 13:07:17] ===
+13:07:19 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3 bytes=90112
+13:07:19 [clear] SERVER_DATA_TOP client-packages | logs.db | pda-packages | plugin-packages | plugins | server.db | templates.db
+13:07:19 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:07:19 [clear] IN_PROGRESS_REGISTRATION False
+13:07:24 [clear] 13:07:18 ARGUMENTS /i "C:\Probe\LabelFrame-Client-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\70-install-silent.log"
+13:07:24 [clear] 13:07:22 MSI mode=install msi=LabelFrame-Client-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+13:07:24 [clear] 13:07:22 LOG bytes=253882
+13:08:18 [clear] === interactive run  [guest 13:07:23] ===
+13:08:18 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:08:18 [clear] script present=True size=6964
+13:08:18 [clear] RUN_LEVEL=Limited
+13:08:18 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:08:18 [clear] CLIENT_STARTED pid=6332 exitedWithin4s=False
+13:08:18 [clear] CLIENT_LISTENING_53960=1
+13:08:18 [clear] CLIENT_SHUTDOWN requested through the client interface
+13:08:18 [clear] CLIENT_LISTENING_AFTER_SHUTDOWN=0
+13:08:18 [clear] CLIENT_CONNECTION a log-mode connection file was put next to the client user files
+13:08:18 [clear] CLIENT_STARTED pid=3680 exitedWithin4s=False
+13:08:18 [clear] CLIENT_LISTENING_53960=1
+13:08:18 [clear] CLIENT_SERVER_ADDRESS saved through the client interface -> {"serverUrl":"http://127.0.0.1:53961","deviceId":"DESKTOP-D65DJ5S","deviceName":"DESKTOP-D65DJ5S","ips":["172.17.234.240"],"version":"1.6.1"}
+13:08:18 [clear] CLIENT_PRINT_SETTINGS saved through the client interface -> {"batchEnabled":false,"batchSize":10,"batchIntervalMs":500,"dpi":300}
+13:08:18 [clear] CLIENT_TEST_PAGE printed through the client interface -> {"sent":true,"bytes":27903}
+13:08:18 [clear] CLIENT_JOB accepted through the client interface -> {"jobId":"b52572e5f38f4cbf84b7396c2d1351c9","requestId":"probe-6368","status":"Pending","totalItems":1,"completedItems":0,"items":[{"index":0,"status":"Pending","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\b52572e5f38f4cbf84b7396c2d1351c9","printImageCount":1,"createdAt":"2026-11-27T05:07:58.8614978+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null}
+13:08:18 [clear] CLIENT_JOBS {"jobId":"b52572e5f38f4cbf84b7396c2d1351c9","requestId":"probe-6368","status":"Completed","totalItems":1,"completedItems":1,"items":[{"index":0,"status":"Completed","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\b52572e5f38f4cbf84b7396c2d1351c9","printImageCount":1,"createdAt":"2026-11-27T05:07:58.8614978+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null}
+13:08:18 [clear] PRINT_IMAGE_FILES=2
+13:08:18 [clear] PRINT_IMAGE_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\.<account>-print-v1 bytes=32
+13:08:18 [clear] PRINT_IMAGE_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\label-1.png bytes=2673
+13:08:18 [clear] USER_FILES=16
+13:08:18 [clear] USER_FILE name=connection.json bytes=30
+13:08:18 [clear] USER_FILE name=host-20261127.log bytes=1646
+13:08:18 [clear] USER_FILE name=jobs.db bytes=40960
+13:08:18 [clear] USER_FILE name=jobs.db-shm bytes=32768
+13:08:18 [clear] USER_FILE name=jobs.db-wal bytes=98912
+13:08:18 [clear] USER_FILE name=logs.db bytes=16384
+13:08:18 [clear] USER_FILE name=logs.db-shm bytes=32768
+13:08:18 [clear] USER_FILE name=logs.db-wal bytes=0
+13:08:18 [clear] USER_FILE name=logs\app-20261127.log bytes=5848
+13:08:18 [clear] USER_FILE name=logs\serilog-self.log bytes=0
+13:08:18 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\.<account>-print-v1 bytes=32
+13:08:18 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\label-1.png bytes=2673
+13:08:18 [clear] USER_FILE name=print-settings.json bytes=69
+13:08:18 [clear] USER_FILE name=templates.db bytes=28672
+13:08:18 [clear] USER_FILE name=templates.db-shm bytes=32768
+13:08:18 [clear] USER_FILE name=templates.db-wal bytes=0
+13:08:18 [clear] USER_FILES_WEBVIEW2=0
+13:08:27 [clear] HOST_SHUTDOWN pid=3680 port=53960 result=left-by-itself
+13:08:27 [clear] HOST_SHUTDOWN_SUMMARY targets=1 leftByItself=1 endedByForce=0 printingHostsLeft=0 listening53960=0 updaterServiceRunning=1
+13:08:35 [clear] 
+13:08:35 [clear] === products  [guest 13:08:26] ===
+13:08:35 [clear] PRODUCT name=LabelFrame Client version=1.6.99 location= key={C193BDF9-28E3-4F67-84CA-21562BB681BB}
+13:08:35 [clear] UNINSTALL_STRING name=LabelFrame Client command=MsiExec.exe /X{C193BDF9-28E3-4F67-84CA-21562BB681BB}
+13:08:35 [clear] 
+13:08:35 [clear] === services  [guest 13:08:26] ===
+13:08:35 [clear] SERVICE name=LabelFrameServer none
+13:08:35 [clear] SERVICE name=LabelFrameClientUpdater state=Running startMode=Auto startName=LocalSystem pid=3052 path="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+13:08:35 [clear] 
+13:08:35 [clear] === main programs  [guest 13:08:27] ===
+13:08:35 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:08:35 [clear] PROGRAM role=client fileVersion=1.6.99.0 productVersion=1.6.99+3f3680ec450a8fbbec61155ac9c927dc075f321d bytes=310272 sha256=fbf9f121578aa3f2de43b916fcd322475f8b1cd790d59cd7c11d1869e7a36580 path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:08:35 [clear] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286
+13:08:35 [clear] FILE client appsettings exists=True path=C:\Program Files\LabelFrame\Client\appsettings.json bytes=246 sha256=4c5344bd34a434fe1f22b82686875be8d965db8c39dbb5d2bc0c02174558b4ae
+13:08:35 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:08:35 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:08:35 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:08:35 [clear] 
+13:08:35 [clear] === processes  [guest 13:08:27] ===
+13:08:35 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:08:35 [clear] PROCESS name=LabelFrame.WinHost.exe pid=3052 parent=728 session=0 started=13:07:20 sinceBoot=True commandLine="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+13:08:35 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:08:35 [clear] PROCESS name=msedge.exe pid=7072 parent=7988 session=1 started=13:03:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=on_device_model.mojom.OnDeviceModelService --lang=zh-CN --service-sandbox-type=on_device_model_execution --skip-read-main-dll --metrics-shmem-handle=4420,i,6722685519565358225,13750307844796977981,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190709005052708474 --mojo-platform-channel-handle=4164 /prefetch:8
+13:08:35 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:08:35 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:08:35 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:08:35 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:08:35 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:08:35 [clear] BROWSER_PROCESSES_SINCE_BOOT=6
+13:08:35 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:08:35 [clear] PROCESS_TOKEN pid=3052 session=0 elevated
+13:08:35 [clear] 
+13:08:35 [clear] === listeners  [guest 13:08:27] ===
+13:08:35 [clear] LISTEN none
+13:08:35 [clear] 
+13:08:35 [clear] === http  [guest 13:08:27] ===
+13:08:35 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:08:35 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:08:35 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:08:35 [clear] 
+13:08:35 [clear] === client machine settings  [guest 13:08:34] ===
+13:08:35 [clear] CLIENT_SETTINGS path=C:\ProgramData\LabelFrame\Client\settings.json bytes=38 sha256=c2e7b36db25694e5bb93179ca13b4568db972582779cd5af3e908a67bd1735a1 text={"serverUrl":"http://127.0.0.1:53961"}
+13:08:35 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:08:35 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:08:35 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=True entries=settings.json
+13:08:35 [clear] 
+13:08:35 [clear] === auto-start entry  [guest 13:08:34] ===
+13:08:35 [clear] RUN_KEY present=True value="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart
+13:08:35 [clear] 
+13:08:35 [clear] === user files  [guest 13:08:34] ===
+13:08:35 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=10
+13:08:35 [clear] USER_FILE name=connection.json bytes=30 sha256=b77280232b78b65d970d1ce66c5a4e7d352c2aa6e21b2a7602f952fe90a74736
+13:08:35 [clear] USER_FILE name=host-20261127.log bytes=4042 sha256=807e2720e6b1d284f6a00803beb900d38b21ee2c5afa007efb34c24fcd2b6396
+13:08:35 [clear] USER_FILE name=jobs.db bytes=81920 sha256=8f602c2983ee613ec26373ab6f707792eade0ef27ae60529b8b5530ba78180a3
+13:08:35 [clear] USER_FILE name=logs.db bytes=16384 sha256=da4132138b3049c7e6ebd9c490407d456ae725ecf47ada4a723344d7a37d2ae8
+13:08:35 [clear] USER_FILE name=logs\app-20261127.log bytes=21461 sha256=534ead3769668fcc76561d2000eab6b8af86e198be813ecc10eaddbaf44f158a
+13:08:35 [clear] USER_FILE name=logs\serilog-self.log bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+13:08:35 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\.<account>-print-v1 bytes=32 sha256=ea7b3ec1c85d068f34844eb3c7d61afc48597b6126c5a3c19f0fa684e9c53789
+13:08:35 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\label-1.png bytes=2673 sha256=b3d2c6e385037aa8e6d94e4749aae9d4b5aebd4225284d23f022cf9e1e5ef050
+13:08:35 [clear] USER_FILE name=print-settings.json bytes=69 sha256=51ab2f6c98c3e04428b01b602ca1b0f2a70032a2a3a33ea13dcc59e17866292d
+13:08:35 [clear] USER_FILE name=templates.db bytes=28672 sha256=1f533df3563b63cc5975ab88f08a8dda254cf1bb7860b898649bdf9abea1f43a
+13:08:35 [clear] USER_SUBDIRS logs | print | print\b52572e5f38f4cbf84b7396c2d1351c9 | updates
+13:08:35 [clear] 
+13:08:35 [clear] === server data  [guest 13:08:34] ===
+13:08:35 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3 bytes=90112
+13:08:35 [clear] SERVER_DATA_TOP client-packages | logs.db | pda-packages | plugin-packages | plugins | server.db | templates.db
+13:08:35 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:08:35 [clear] IN_PROGRESS_REGISTRATION False
+13:08:59 [clear] === interactive run  [guest 13:08:35] ===
+13:08:59 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:08:59 [clear] script present=True size=74635
+13:08:59 [clear] RUN_LEVEL=Limited
+13:08:59 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:08:59 [clear] === installer walk 'walk-client-remove-rerun-keep': mode=remove  [13:08:39] ===
+13:08:59 [clear] arguments: /i "C:\Probe\LabelFrame-Client-1.6.99.msi" /l*v "C:\Probe\logs\walk-client-remove-rerun-keep.log"
+13:08:59 [clear] identity=DESKTOP-D65DJ5S\<account> elevated=False
+13:08:59 [clear] TOKEN sid=<sid> linkedToken=available
+13:08:59 [clear] SETUP_PAGE present=False
+13:08:59 [clear] before: product=1.6.99 | Run key="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart | user files=10 | printing client processes=0
+13:08:59 [clear] CLEAR_QUESTION_SHOWN=False
+13:08:59 [clear]   check ok: running the package again starts with the maintenance wizard
+13:08:59 [clear] --- page MaintenanceWelcome (actual MaintenanceWelcome, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:08:59 [clear]   [213] Button 下一步(&N)
+13:08:59 [clear]   [215] Button 取消
+13:08:59 [clear]   [203] Static WixUI_Bmp_Dialog
+13:08:59 [clear]   [212] Button 上一步(&B)   (disabled)
+13:08:59 [clear]   [58] Static 通过安装向导可以更改在您的计算机上安装 LabelFrame Client 功能的方式，或将其从您的计算机中删除。单击“下一步”继续，或单击“取消”退出安装向导。
+13:08:59 [clear]   [205] Static 欢迎使用 LabelFrame Client 安装向导
+13:08:59 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-keep-01-MaintenanceWelcome.png (PrintWindow, 499x389)
+13:08:59 [clear] --- page MaintenanceType (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:08:59 [clear]   [400] Button 更改(&C)   (disabled)
+13:08:59 [clear]   [401] Button 修复(&P)
+13:08:59 [clear]   [406] Button 删除(&R)
+13:08:59 [clear]   [212] Button 上一步(&B)
+13:08:59 [clear]   [213] Button 下一步(&N)   (disabled)
+13:08:59 [clear]   [215] Button 取消
+13:08:59 [clear]   [202] Static WixUI_Bmp_Banner
+13:08:59 [clear]   [58] Static 选择希望执行的操作。
+13:08:59 [clear]   [205] Static 更改、修复或删除安装
+13:08:59 [clear]   [280] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+13:08:59 [clear]   [284] Static 从您的计算机中删除 LabelFrame Client。
+13:08:59 [clear]   [404] Static LabelFrame Client 没有单独可选的功能。
+13:08:59 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-keep-02-MaintenanceType.png (PrintWindow, 499x389)
+13:08:59 [clear]   MAINTENANCE_BUTTON caption=[更改(&C)] enabled=False
+13:08:59 [clear]   MAINTENANCE_BUTTON caption=[修复(&P)] enabled=True
+13:08:59 [clear]   MAINTENANCE_BUTTON caption=[删除(&R)] enabled=True
+13:08:59 [clear]   MAINTENANCE_BUTTON caption=[上一步(&B)] enabled=True
+13:08:59 [clear]   MAINTENANCE_BUTTON caption=[下一步(&N)] enabled=False
+13:08:59 [clear]   MAINTENANCE_BUTTON caption=[取消] enabled=True
+13:08:59 [clear] --- page ClearData (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Client 卸载' ---
+13:08:59 [clear]   [191] Button 清除用户数据
+13:08:59 [clear]   [195] Button 上一步(&B)
+13:08:59 [clear]   [197] Button 取消
+13:08:59 [clear]   [199] Button 继续
+13:08:59 [clear]   [171] Static 是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？
+13:08:59 [clear]   [180] Static 卸载 LabelFrame Client。
+13:08:59 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-keep-03-ClearData.png (PrintWindow, 499x255)
+13:08:59 [clear] QUESTION_BUTTONS back=True next=True cancel=True
+13:08:59 [clear]   check ok: the question page reached from the maintenance wizard offers a way back
+13:08:59 [clear] --- page MaintenanceType-again (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:08:59 [clear]   [400] Button 更改(&C)   (disabled)
+13:08:59 [clear]   [401] Button 修复(&P)
+13:08:59 [clear]   [406] Button 删除(&R)
+13:08:59 [clear]   [212] Button 上一步(&B)
+13:08:59 [clear]   [213] Button 下一步(&N)   (disabled)
+13:08:59 [clear]   [215] Button 取消
+13:08:59 [clear]   [202] Static WixUI_Bmp_Banner
+13:08:59 [clear]   [58] Static 选择希望执行的操作。
+13:08:59 [clear]   [205] Static 更改、修复或删除安装
+13:08:59 [clear]   [280] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+13:08:59 [clear]   [284] Static 从您的计算机中删除 LabelFrame Client。
+13:08:59 [clear]   [404] Static LabelFrame Client 没有单独可选的功能。
+13:08:59 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-keep-04-MaintenanceType.png (PrintWindow, 499x389)
+13:08:59 [clear] --- page ClearData-again (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Client 卸载' ---
+13:08:59 [clear]   [191] Button 清除用户数据
+13:08:59 [clear]   [195] Button 上一步(&B)
+13:08:59 [clear]   [197] Button 取消
+13:08:59 [clear]   [199] Button 继续
+13:08:59 [clear]   [171] Static 是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？
+13:08:59 [clear]   [180] Static 卸载 LabelFrame Client。
+13:08:59 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-keep-05-ClearData.png (PrintWindow, 499x255)
+13:08:59 [clear] CLEAR_CHECKBOX initial=0
+13:08:59 [clear]   check ok: the clear-user-data box is not ticked by default
+13:08:59 [clear] --- page VerifyRemove (actual VerifyRemove, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:08:59 [clear]   [59] Button 删除(&R)
+13:08:59 [clear]   [215] Button 取消
+13:08:59 [clear]   [212] Button 上一步(&B)
+13:08:59 [clear]   [202] Static WixUI_Bmp_Banner
+13:08:59 [clear]   [282] Static 已准备好删除 LabelFrame Client
+13:08:59 [clear]   [284] Static 单击“删除”可从计算机上删除 LabelFrame Client。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+13:08:59 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-keep-06-VerifyRemove.png (PrintWindow, 499x389)
+13:08:59 [clear] REMOVE_STEP_SECONDS=1.1 (from clicking Remove to the next window)
+13:08:59 [clear] --- page Removing (actual Removing, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:08:59 [clear]   [215] Button 取消
+13:08:59 [clear]   [202] Static WixUI_Bmp_Banner
+13:08:59 [clear]   [212] Button 上一步(&B)   (disabled)
+13:08:59 [clear]   [213] Button 下一步(&N)   (disabled)
+13:08:59 [clear]   [353] Static 安装向导正在删除 LabelFrame Client，请稍候。
+13:08:59 [clear]   [355] Static 正在删除 LabelFrame Client
+13:08:59 [clear]   [363] Static 状态:
+13:08:59 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-keep-07-Removing.png (PrintWindow, 499x389)
+13:08:59 [clear] --- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:08:59 [clear]   [315] Button 完成(&F)
+13:08:59 [clear]   [215] Button 取消   (disabled)
+13:08:59 [clear]   [203] Static WixUI_Bmp_Dialog
+13:08:59 [clear]   [212] Button 上一步(&B)   (disabled)
+13:08:59 [clear]   [58] Static 单击“完成”按钮退出安装向导。
+13:08:59 [clear]   [205] Static LabelFrame Client 安装向导已完成
+13:08:59 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-rerun-keep-08-Exit.png (PrintWindow, 499x389)
+13:08:59 [clear]   check ok: running the package again and choosing Remove asks about the user data before the ready-to-remove page
+13:08:59 [clear] last unrecognised installer window:
+13:08:59 [clear] WINDOWS_IN_ORDER=Prepare -> MaintenanceWelcome -> MaintenanceType -> ClearData -> VerifyRemove -> Removing -> Exit
+13:08:59 [clear] windows seen: ClearData, Exit, MaintenanceType, MaintenanceWelcome, Prepare, Removing, VerifyRemove
+13:08:59 [clear] exit code=0
+13:08:59 [clear] after: product=none | Run key=absent | user files=10 | printing client processes=0
+13:08:59 [clear] OUTCOME=removed
+13:08:59 [clear] WIZARD_PATH=MaintenanceWelcome -> MaintenanceType -> ClearData -> Back -> MaintenanceType -> ClearData-again -> VerifyRemove -> Removing -> Exit
+13:08:59 [clear] CLICKS=下一步(&N) [213], 删除(&R) [406], 上一步(&B) [195], 删除(&R) [406], 继续 [199], 删除(&R) [59], 完成(&F) [315]
+13:08:59 [clear] CHECK_FAILURES=0
+13:08:59 [clear] === end 'walk-client-remove-rerun-keep'  [13:08:52] ===
+13:09:13 [clear] 
+13:09:13 [clear] === products  [guest 13:09:04] ===
+13:09:13 [clear] PRODUCT none
+13:09:13 [clear] 
+13:09:13 [clear] === services  [guest 13:09:04] ===
+13:09:13 [clear] SERVICE name=LabelFrameServer none
+13:09:13 [clear] SERVICE name=LabelFrameClientUpdater none
+13:09:13 [clear] 
+13:09:13 [clear] === main programs  [guest 13:09:04] ===
+13:09:13 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:09:13 [clear] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:09:13 [clear] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286
+13:09:13 [clear] FILE client appsettings exists=True path=C:\Program Files\LabelFrame\Client\appsettings.json bytes=246 sha256=4c5344bd34a434fe1f22b82686875be8d965db8c39dbb5d2bc0c02174558b4ae
+13:09:13 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:09:13 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:09:13 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:09:13 [clear] 
+13:09:13 [clear] === processes  [guest 13:09:04] ===
+13:09:13 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:09:13 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:09:13 [clear] PROCESS name=msedge.exe pid=7072 parent=7988 session=1 started=13:03:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=on_device_model.mojom.OnDeviceModelService --lang=zh-CN --service-sandbox-type=on_device_model_execution --skip-read-main-dll --metrics-shmem-handle=4420,i,6722685519565358225,13750307844796977981,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190709005052708474 --mojo-platform-channel-handle=4164 /prefetch:8
+13:09:13 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:09:13 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:09:13 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:09:13 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:09:13 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:09:13 [clear] BROWSER_PROCESSES_SINCE_BOOT=6
+13:09:13 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:09:13 [clear] 
+13:09:13 [clear] === listeners  [guest 13:09:04] ===
+13:09:13 [clear] LISTEN none
+13:09:13 [clear] 
+13:09:13 [clear] === http  [guest 13:09:05] ===
+13:09:13 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:09:13 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:09:13 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:09:13 [clear] 
+13:09:13 [clear] === client machine settings  [guest 13:09:11] ===
+13:09:13 [clear] CLIENT_SETTINGS path=C:\ProgramData\LabelFrame\Client\settings.json bytes=38 sha256=c2e7b36db25694e5bb93179ca13b4568db972582779cd5af3e908a67bd1735a1 text={"serverUrl":"http://127.0.0.1:53961"}
+13:09:13 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:09:13 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:09:13 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=True entries=settings.json
+13:09:13 [clear] 
+13:09:13 [clear] === auto-start entry  [guest 13:09:11] ===
+13:09:13 [clear] RUN_KEY present=False
+13:09:13 [clear] 
+13:09:13 [clear] === user files  [guest 13:09:11] ===
+13:09:13 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=10
+13:09:13 [clear] USER_FILE name=connection.json bytes=30 sha256=b77280232b78b65d970d1ce66c5a4e7d352c2aa6e21b2a7602f952fe90a74736
+13:09:13 [clear] USER_FILE name=host-20261127.log bytes=4042 sha256=807e2720e6b1d284f6a00803beb900d38b21ee2c5afa007efb34c24fcd2b6396
+13:09:13 [clear] USER_FILE name=jobs.db bytes=81920 sha256=8f602c2983ee613ec26373ab6f707792eade0ef27ae60529b8b5530ba78180a3
+13:09:13 [clear] USER_FILE name=logs.db bytes=16384 sha256=da4132138b3049c7e6ebd9c490407d456ae725ecf47ada4a723344d7a37d2ae8
+13:09:13 [clear] USER_FILE name=logs\app-20261127.log bytes=21461 sha256=534ead3769668fcc76561d2000eab6b8af86e198be813ecc10eaddbaf44f158a
+13:09:13 [clear] USER_FILE name=logs\serilog-self.log bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+13:09:13 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\.<account>-print-v1 bytes=32 sha256=ea7b3ec1c85d068f34844eb3c7d61afc48597b6126c5a3c19f0fa684e9c53789
+13:09:13 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\label-1.png bytes=2673 sha256=b3d2c6e385037aa8e6d94e4749aae9d4b5aebd4225284d23f022cf9e1e5ef050
+13:09:13 [clear] USER_FILE name=print-settings.json bytes=69 sha256=51ab2f6c98c3e04428b01b602ca1b0f2a70032a2a3a33ea13dcc59e17866292d
+13:09:13 [clear] USER_FILE name=templates.db bytes=28672 sha256=1f533df3563b63cc5975ab88f08a8dda254cf1bb7860b898649bdf9abea1f43a
+13:09:13 [clear] USER_SUBDIRS logs | print | print\b52572e5f38f4cbf84b7396c2d1351c9 | updates
+13:09:13 [clear] 
+13:09:13 [clear] === server data  [guest 13:09:11] ===
+13:09:13 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3 bytes=90112
+13:09:13 [clear] SERVER_DATA_TOP client-packages | logs.db | pda-packages | plugin-packages | plugins | server.db | templates.db
+13:09:13 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:09:13 [clear] IN_PROGRESS_REGISTRATION False
+13:09:18 [clear] 13:09:12 ARGUMENTS /i "C:\Probe\LabelFrame-Client-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\80-install-silent.log"
+13:09:18 [clear] 13:09:16 MSI mode=install msi=LabelFrame-Client-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+13:09:18 [clear] 13:09:16 LOG bytes=253162
+13:10:08 [clear] === interactive run  [guest 13:09:17] ===
+13:10:08 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:10:08 [clear] script present=True size=6964
+13:10:08 [clear] RUN_LEVEL=Limited
+13:10:08 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:10:08 [clear] CLIENT_STARTED pid=5812 exitedWithin4s=False
+13:10:08 [clear] CLIENT_LISTENING_53960=1
+13:10:08 [clear] CLIENT_SHUTDOWN requested through the client interface
+13:10:08 [clear] CLIENT_LISTENING_AFTER_SHUTDOWN=0
+13:10:08 [clear] CLIENT_CONNECTION a log-mode connection file was put next to the client user files
+13:10:08 [clear] CLIENT_STARTED pid=5656 exitedWithin4s=False
+13:10:08 [clear] CLIENT_LISTENING_53960=1
+13:10:08 [clear] CLIENT_SERVER_ADDRESS saved through the client interface -> {"serverUrl":"http://127.0.0.1:53961","deviceId":"DESKTOP-D65DJ5S","deviceName":"DESKTOP-D65DJ5S","ips":["172.17.234.240"],"version":"1.6.1"}
+13:10:08 [clear] CLIENT_PRINT_SETTINGS saved through the client interface -> {"batchEnabled":false,"batchSize":10,"batchIntervalMs":500,"dpi":300}
+13:10:08 [clear] CLIENT_TEST_PAGE printed through the client interface -> {"sent":true,"bytes":27903}
+13:10:08 [clear] CLIENT_JOB accepted through the client interface -> {"jobId":"2ba900a7a3cc44889c5fde654c26a61a","requestId":"probe-8844","status":"Pending","totalItems":1,"completedItems":0,"items":[{"index":0,"status":"Pending","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\2ba900a7a3cc44889c5fde654c26a61a","printImageCount":1,"createdAt":"2026-11-27T05:09:49.3149596+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null}
+13:10:08 [clear] CLIENT_JOBS [{"jobId":"2ba900a7a3cc44889c5fde654c26a61a","requestId":"probe-8844","status":"Completed","totalItems":1,"completedItems":1,"items":[{"index":0,"status":"Completed","errorCode":null,"errorMessage":null}],"printImageDir":"C:\\Users\\<account>\\AppData\\Local\\LabelFrame\\print\\2ba900a7a3cc44889c5fde654c26a61a","printImageCount":1,"createdAt":"2026-11-27T05:09:49.3149596+00:00","failedItems":0,"errorMessage":null,"targetDeviceId":null},{"jobId":"b52572e5f38f4cbf84b7396c2d1351c9","requestId":"probe-6368 ...
+13:10:08 [clear] PRINT_IMAGE_FILES=4
+13:10:08 [clear] PRINT_IMAGE_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\.<account>-print-v1 bytes=32
+13:10:08 [clear] PRINT_IMAGE_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\label-1.png bytes=2673
+13:10:08 [clear] PRINT_IMAGE_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\.<account>-print-v1 bytes=32
+13:10:08 [clear] PRINT_IMAGE_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\label-1.png bytes=2673
+13:10:08 [clear] USER_FILES=18
+13:10:08 [clear] USER_FILE name=connection.json bytes=30
+13:10:08 [clear] USER_FILE name=host-20261127.log bytes=5688
+13:10:08 [clear] USER_FILE name=jobs.db bytes=81920
+13:10:08 [clear] USER_FILE name=jobs.db-shm bytes=32768
+13:10:08 [clear] USER_FILE name=jobs.db-wal bytes=98912
+13:10:08 [clear] USER_FILE name=logs.db bytes=16384
+13:10:08 [clear] USER_FILE name=logs.db-shm bytes=32768
+13:10:08 [clear] USER_FILE name=logs.db-wal bytes=0
+13:10:08 [clear] USER_FILE name=logs\app-20261127.log bytes=27309
+13:10:08 [clear] USER_FILE name=logs\serilog-self.log bytes=0
+13:10:08 [clear] USER_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\.<account>-print-v1 bytes=32
+13:10:08 [clear] USER_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\label-1.png bytes=2673
+13:10:08 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\.<account>-print-v1 bytes=32
+13:10:08 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\label-1.png bytes=2673
+13:10:08 [clear] USER_FILE name=print-settings.json bytes=69
+13:10:08 [clear] USER_FILE name=templates.db bytes=28672
+13:10:08 [clear] USER_FILE name=templates.db-shm bytes=32768
+13:10:08 [clear] USER_FILE name=templates.db-wal bytes=0
+13:10:08 [clear] USER_FILES_WEBVIEW2=0
+13:10:32 [clear] HOST_SHUTDOWN pid=5656 port=53960 result=left-by-itself
+13:10:32 [clear] HOST_SHUTDOWN_SUMMARY targets=1 leftByItself=1 endedByForce=0 printingHostsLeft=0 listening53960=0 updaterServiceRunning=1
+13:10:41 [clear] 
+13:10:41 [clear] === products  [guest 13:10:31] ===
+13:10:41 [clear] PRODUCT name=LabelFrame Client version=1.6.99 location= key={C193BDF9-28E3-4F67-84CA-21562BB681BB}
+13:10:41 [clear] UNINSTALL_STRING name=LabelFrame Client command=MsiExec.exe /X{C193BDF9-28E3-4F67-84CA-21562BB681BB}
+13:10:41 [clear] 
+13:10:41 [clear] === services  [guest 13:10:31] ===
+13:10:41 [clear] SERVICE name=LabelFrameServer none
+13:10:41 [clear] SERVICE name=LabelFrameClientUpdater state=Running startMode=Auto startName=LocalSystem pid=6920 path="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+13:10:41 [clear] 
+13:10:41 [clear] === main programs  [guest 13:10:32] ===
+13:10:41 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:10:41 [clear] PROGRAM role=client fileVersion=1.6.99.0 productVersion=1.6.99+3f3680ec450a8fbbec61155ac9c927dc075f321d bytes=310272 sha256=fbf9f121578aa3f2de43b916fcd322475f8b1cd790d59cd7c11d1869e7a36580 path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:10:41 [clear] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286
+13:10:41 [clear] FILE client appsettings exists=True path=C:\Program Files\LabelFrame\Client\appsettings.json bytes=246 sha256=4c5344bd34a434fe1f22b82686875be8d965db8c39dbb5d2bc0c02174558b4ae
+13:10:41 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:10:41 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:10:41 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:10:41 [clear] 
+13:10:41 [clear] === processes  [guest 13:10:32] ===
+13:10:41 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:10:41 [clear] PROCESS name=LabelFrame.WinHost.exe pid=6920 parent=728 session=0 started=13:09:14 sinceBoot=True commandLine="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+13:10:41 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:10:41 [clear] PROCESS name=msedge.exe pid=7072 parent=7988 session=1 started=13:03:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=on_device_model.mojom.OnDeviceModelService --lang=zh-CN --service-sandbox-type=on_device_model_execution --skip-read-main-dll --metrics-shmem-handle=4420,i,6722685519565358225,13750307844796977981,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190709005052708474 --mojo-platform-channel-handle=4164 /prefetch:8
+13:10:41 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:10:41 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:10:41 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:10:41 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:10:41 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:10:41 [clear] BROWSER_PROCESSES_SINCE_BOOT=6
+13:10:41 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:10:41 [clear] PROCESS_TOKEN pid=6920 session=0 elevated
+13:10:41 [clear] 
+13:10:41 [clear] === listeners  [guest 13:10:32] ===
+13:10:41 [clear] LISTEN none
+13:10:41 [clear] 
+13:10:41 [clear] === http  [guest 13:10:32] ===
+13:10:41 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:10:41 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:10:41 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:10:41 [clear] 
+13:10:41 [clear] === client machine settings  [guest 13:10:39] ===
+13:10:41 [clear] CLIENT_SETTINGS path=C:\ProgramData\LabelFrame\Client\settings.json bytes=38 sha256=c2e7b36db25694e5bb93179ca13b4568db972582779cd5af3e908a67bd1735a1 text={"serverUrl":"http://127.0.0.1:53961"}
+13:10:41 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:10:41 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:10:41 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=True entries=settings.json
+13:10:41 [clear] 
+13:10:41 [clear] === auto-start entry  [guest 13:10:39] ===
+13:10:41 [clear] RUN_KEY present=True value="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart
+13:10:41 [clear] 
+13:10:41 [clear] === user files  [guest 13:10:39] ===
+13:10:41 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=12
+13:10:41 [clear] USER_FILE name=connection.json bytes=30 sha256=b77280232b78b65d970d1ce66c5a4e7d352c2aa6e21b2a7602f952fe90a74736
+13:10:41 [clear] USER_FILE name=host-20261127.log bytes=8084 sha256=c27082e9d48b4bf3f109a0864c6c1bc3cbc60f2997b2ddaaa58ef6ef55c2c16a
+13:10:41 [clear] USER_FILE name=jobs.db bytes=122880 sha256=665dffa22404ffb064099d65ef8d408d42880db7dfb4980b05c37274e3850ab7
+13:10:41 [clear] USER_FILE name=logs.db bytes=16384 sha256=da4132138b3049c7e6ebd9c490407d456ae725ecf47ada4a723344d7a37d2ae8
+13:10:41 [clear] USER_FILE name=logs\app-20261127.log bytes=49759 sha256=5c257e7ff086b67efa71ae269ec66c6ac2481ecbf7420dc063cbdcc54a3dcbea
+13:10:41 [clear] USER_FILE name=logs\serilog-self.log bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+13:10:41 [clear] USER_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\.<account>-print-v1 bytes=32 sha256=2f8c24dab6366ba7a345da5b815f5750fc5e2f272a328dbb82d43afd06ab4fd1
+13:10:41 [clear] USER_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\label-1.png bytes=2673 sha256=b3d2c6e385037aa8e6d94e4749aae9d4b5aebd4225284d23f022cf9e1e5ef050
+13:10:41 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\.<account>-print-v1 bytes=32 sha256=ea7b3ec1c85d068f34844eb3c7d61afc48597b6126c5a3c19f0fa684e9c53789
+13:10:41 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\label-1.png bytes=2673 sha256=b3d2c6e385037aa8e6d94e4749aae9d4b5aebd4225284d23f022cf9e1e5ef050
+13:10:41 [clear] USER_FILE name=print-settings.json bytes=69 sha256=51ab2f6c98c3e04428b01b602ca1b0f2a70032a2a3a33ea13dcc59e17866292d
+13:10:41 [clear] USER_FILE name=templates.db bytes=28672 sha256=1f533df3563b63cc5975ab88f08a8dda254cf1bb7860b898649bdf9abea1f43a
+13:10:41 [clear] USER_SUBDIRS logs | print | print\2ba900a7a3cc44889c5fde654c26a61a | print\b52572e5f38f4cbf84b7396c2d1351c9 | updates
+13:10:41 [clear] 
+13:10:41 [clear] === server data  [guest 13:10:39] ===
+13:10:41 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3 bytes=90112
+13:10:41 [clear] SERVER_DATA_TOP client-packages | logs.db | pda-packages | plugin-packages | plugins | server.db | templates.db
+13:10:41 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:10:41 [clear] IN_PROGRESS_REGISTRATION False
+13:11:06 [clear] === interactive run  [guest 13:10:40] ===
+13:11:06 [clear] 用户名                会话名             ID  状态    空闲时间   登录时间
+ <account>            console             1  运行中      无     2026/11/27 12:59
+13:11:06 [clear] script present=True size=74635
+13:11:06 [clear] RUN_LEVEL=Limited
+13:11:06 [clear] TASK_STATE=Ready resultPresent=True lastResult=0
+13:11:06 [clear] === installer walk 'walk-client-remove-all-keep': mode=remove  [13:10:48] ===
+13:11:06 [clear] product code: {C193BDF9-28E3-4F67-84CA-21562BB681BB}  way of starting: i-all
+13:11:06 [clear] arguments: /i {C193BDF9-28E3-4F67-84CA-21562BB681BB} REMOVE=ALL /l*v "C:\Probe\logs\walk-client-remove-all-keep.log"
+13:11:06 [clear] identity=DESKTOP-D65DJ5S\<account> elevated=False
+13:11:06 [clear] TOKEN sid=<sid> linkedToken=available
+13:11:06 [clear] SETUP_PAGE present=False
+13:11:06 [clear] before: product=1.6.99 | Run key="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart | user files=12 | printing client processes=0
+13:11:06 [clear] --- page ClearData (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Client 卸载' ---
+13:11:06 [clear]   [191] Button 清除用户数据
+13:11:06 [clear]   [197] Button 取消
+13:11:06 [clear]   [199] Button 继续
+13:11:06 [clear]   [171] Static 是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？
+13:11:06 [clear]   [180] Static 卸载 LabelFrame Client。
+13:11:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-keep-01-ClearData.png (PrintWindow, 499x255)
+13:11:06 [clear] QUESTION_BUTTONS back=False next=True cancel=True
+13:11:06 [clear]   check ok: the question page shown first (the removal requested from the start) offers no way back to the maintenance wizard
+13:11:06 [clear] CLEAR_CHECKBOX initial=0
+13:11:06 [clear]   check ok: the clear-user-data box is not ticked by default
+13:11:06 [clear] CLEAR_QUESTION_SHOWN=True
+13:11:06 [clear]   check ok: with the full interface and the removal requested from the start, the user data is asked about first
+13:11:06 [clear]   check ok: the page after the user data question is the ready-to-remove page with the removal wording (actual VerifyRemove)
+13:11:06 [clear] --- page ClearData-again (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Client 卸载' ---
+13:11:06 [clear]   [191] Button 清除用户数据
+13:11:06 [clear]   [197] Button 取消
+13:11:06 [clear]   [199] Button 继续
+13:11:06 [clear]   [171] Static 是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？
+13:11:06 [clear]   [180] Static 卸载 LabelFrame Client。
+13:11:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-keep-02-ClearData.png (PrintWindow, 499x255)
+13:11:06 [clear] --- page VerifyRemove (actual VerifyRemove, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:11:06 [clear]   [59] Button 删除(&R)
+13:11:06 [clear]   [215] Button 取消
+13:11:06 [clear]   [212] Button 上一步(&B)
+13:11:06 [clear]   [202] Static WixUI_Bmp_Banner
+13:11:06 [clear]   [282] Static 已准备好删除 LabelFrame Client
+13:11:06 [clear]   [284] Static 单击“删除”可从计算机上删除 LabelFrame Client。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+13:11:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-keep-03-VerifyRemove.png (PrintWindow, 499x389)
+13:11:06 [clear] REMOVE_STEP_SECONDS=1.2 (from clicking Remove to the next window)
+13:11:06 [clear] --- page Removing (actual Removing, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:11:06 [clear]   [215] Button 取消
+13:11:06 [clear]   [202] Static WixUI_Bmp_Banner
+13:11:06 [clear]   [212] Button 上一步(&B)   (disabled)
+13:11:06 [clear]   [213] Button 下一步(&N)   (disabled)
+13:11:06 [clear]   [353] Static 安装向导正在删除 LabelFrame Client，请稍候。
+13:11:06 [clear]   [355] Static 正在删除 LabelFrame Client
+13:11:06 [clear]   [363] Static 状态:
+13:11:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-keep-04-Removing.png (PrintWindow, 499x389)
+13:11:06 [clear] --- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+13:11:06 [clear]   [315] Button 完成(&F)
+13:11:06 [clear]   [215] Button 取消   (disabled)
+13:11:06 [clear]   [203] Static WixUI_Bmp_Dialog
+13:11:06 [clear]   [212] Button 上一步(&B)   (disabled)
+13:11:06 [clear]   [58] Static 单击“完成”按钮退出安装向导。
+13:11:06 [clear]   [205] Static LabelFrame Client 安装向导已完成
+13:11:06 [clear]   screenshot -> C:\Probe\logs\walk-client-remove-all-keep-05-Exit.png (PrintWindow, 499x389)
+13:11:06 [clear] last unrecognised installer window:
+13:11:06 [clear] WINDOWS_IN_ORDER=MessageBox -> ClearData -> VerifyRemove -> Removing -> Exit
+13:11:06 [clear] windows seen: ClearData, Exit, MessageBox, Removing, VerifyRemove
+13:11:06 [clear] exit code=0
+13:11:06 [clear] after: product=none | Run key=absent | user files=12 | printing client processes=0
+13:11:06 [clear] OUTCOME=removed
+13:11:06 [clear] WIZARD_PATH=ClearData -> Back -> ClearData -> VerifyRemove -> Removing -> Exit
+13:11:06 [clear] CLICKS=继续 [199], 上一步(&B) [212], 继续 [199], 删除(&R) [59], 完成(&F) [315]
+13:11:06 [clear] CHECK_FAILURES=0
+13:11:06 [clear] === end 'walk-client-remove-all-keep'  [13:10:58] ===
+13:11:19 [clear] 
+13:11:19 [clear] === products  [guest 13:11:10] ===
+13:11:19 [clear] PRODUCT none
+13:11:19 [clear] 
+13:11:19 [clear] === services  [guest 13:11:10] ===
+13:11:19 [clear] SERVICE name=LabelFrameServer none
+13:11:19 [clear] SERVICE name=LabelFrameClientUpdater none
+13:11:19 [clear] 
+13:11:19 [clear] === main programs  [guest 13:11:11] ===
+13:11:19 [clear] PROGRAM role=server exists=False path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+13:11:19 [clear] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+13:11:19 [clear] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=79 sha256=8346ac57c5d83a490c72ef36ac8d2883666ded2506526fc6f119991a6eef3286
+13:11:19 [clear] FILE client appsettings exists=True path=C:\Program Files\LabelFrame\Client\appsettings.json bytes=246 sha256=4c5344bd34a434fe1f22b82686875be8d965db8c39dbb5d2bc0c02174558b4ae
+13:11:19 [clear] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+13:11:19 [clear] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+13:11:19 [clear] RUNTIME name=Microsoft.WindowsDesktop.App version=10.0.12
+13:11:19 [clear] 
+13:11:19 [clear] === processes  [guest 13:11:11] ===
+13:11:19 [clear] PROCESS name=explorer.exe pid=5684 parent=5636 session=1 started=12:59:31 sinceBoot=True commandLine=C:\Windows\Explorer.EXE
+13:11:19 [clear] PROCESS name=msedge.exe pid=5396 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x248,0x24c,0x250,0x244,0x258,0x7ffab5e93360,0x7ffab5e93370,0x7ffab5e93380
+13:11:19 [clear] PROCESS name=msedge.exe pid=7072 parent=7988 session=1 started=13:03:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=on_device_model.mojom.OnDeviceModelService --lang=zh-CN --service-sandbox-type=on_device_model_execution --skip-read-main-dll --metrics-shmem-handle=4420,i,6722685519565358225,13750307844796977981,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190709005052708474 --mojo-platform-channel-handle=4164 /prefetch:8
+13:11:19 [clear] PROCESS name=msedge.exe pid=7232 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1824,i,13539980001140074833,6901616835624027174,262144 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2316 /prefetch:2
+13:11:19 [clear] PROCESS name=msedge.exe pid=7336 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2428,i,16655883829781863260,10473704738318743845,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2392 /prefetch:8
+13:11:19 [clear] PROCESS name=msedge.exe pid=7988 parent=5684 session=1 started=13:00:13 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+13:11:19 [clear] PROCESS name=msedge.exe pid=9008 parent=7988 session=1 started=13:00:15 sinceBoot=True commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,7190222432950667259,11962193489186237483,524288 --field-trial-handle=2320,i,405537682571011791,15700655813501175090,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,14140499807450548898,17945294131305068087,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2376 /prefetch:3
+13:11:19 [clear] PROCESS name=msiexec.exe pid=8296 parent=728 session=0 started=13:00:07 sinceBoot=True commandLine=C:\Windows\system32\msiexec.exe /V
+13:11:19 [clear] BROWSER_PROCESSES_SINCE_BOOT=6
+13:11:19 [clear] BROWSER_FOREGROUND_SINCE_BOOT=0
+13:11:19 [clear] 
+13:11:19 [clear] === listeners  [guest 13:11:11] ===
+13:11:19 [clear] LISTEN none
+13:11:19 [clear] 
+13:11:19 [clear] === http  [guest 13:11:11] ===
+13:11:19 [clear] HTTP server healthz port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:11:19 [clear] HTTP server info port=53961 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:11:19 [clear] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+13:11:19 [clear] 
+13:11:19 [clear] === client machine settings  [guest 13:11:18] ===
+13:11:19 [clear] CLIENT_SETTINGS path=C:\ProgramData\LabelFrame\Client\settings.json bytes=38 sha256=c2e7b36db25694e5bb93179ca13b4568db972582779cd5af3e908a67bd1735a1 text={"serverUrl":"http://127.0.0.1:53961"}
+13:11:19 [clear] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+13:11:19 [clear] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+13:11:19 [clear] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=True entries=settings.json
+13:11:19 [clear] 
+13:11:19 [clear] === auto-start entry  [guest 13:11:18] ===
+13:11:19 [clear] RUN_KEY present=False
+13:11:19 [clear] 
+13:11:19 [clear] === user files  [guest 13:11:18] ===
+13:11:19 [clear] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=True files=12
+13:11:19 [clear] USER_FILE name=connection.json bytes=30 sha256=b77280232b78b65d970d1ce66c5a4e7d352c2aa6e21b2a7602f952fe90a74736
+13:11:19 [clear] USER_FILE name=host-20261127.log bytes=8084 sha256=c27082e9d48b4bf3f109a0864c6c1bc3cbc60f2997b2ddaaa58ef6ef55c2c16a
+13:11:19 [clear] USER_FILE name=jobs.db bytes=122880 sha256=665dffa22404ffb064099d65ef8d408d42880db7dfb4980b05c37274e3850ab7
+13:11:19 [clear] USER_FILE name=logs.db bytes=16384 sha256=da4132138b3049c7e6ebd9c490407d456ae725ecf47ada4a723344d7a37d2ae8
+13:11:19 [clear] USER_FILE name=logs\app-20261127.log bytes=49759 sha256=5c257e7ff086b67efa71ae269ec66c6ac2481ecbf7420dc063cbdcc54a3dcbea
+13:11:19 [clear] USER_FILE name=logs\serilog-self.log bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+13:11:19 [clear] USER_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\.<account>-print-v1 bytes=32 sha256=2f8c24dab6366ba7a345da5b815f5750fc5e2f272a328dbb82d43afd06ab4fd1
+13:11:19 [clear] USER_FILE name=print\2ba900a7a3cc44889c5fde654c26a61a\label-1.png bytes=2673 sha256=b3d2c6e385037aa8e6d94e4749aae9d4b5aebd4225284d23f022cf9e1e5ef050
+13:11:19 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\.<account>-print-v1 bytes=32 sha256=ea7b3ec1c85d068f34844eb3c7d61afc48597b6126c5a3c19f0fa684e9c53789
+13:11:19 [clear] USER_FILE name=print\b52572e5f38f4cbf84b7396c2d1351c9\label-1.png bytes=2673 sha256=b3d2c6e385037aa8e6d94e4749aae9d4b5aebd4225284d23f022cf9e1e5ef050
+13:11:19 [clear] USER_FILE name=print-settings.json bytes=69 sha256=51ab2f6c98c3e04428b01b602ca1b0f2a70032a2a3a33ea13dcc59e17866292d
+13:11:19 [clear] USER_FILE name=templates.db bytes=28672 sha256=1f533df3563b63cc5975ab88f08a8dda254cf1bb7860b898649bdf9abea1f43a
+13:11:19 [clear] USER_SUBDIRS logs | print | print\2ba900a7a3cc44889c5fde654c26a61a | print\b52572e5f38f4cbf84b7396c2d1351c9 | updates
+13:11:19 [clear] 
+13:11:19 [clear] === server data  [guest 13:11:18] ===
+13:11:19 [clear] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=3 bytes=90112
+13:11:19 [clear] SERVER_DATA_TOP client-packages | logs.db | pda-packages | plugin-packages | plugins | server.db | templates.db
+13:11:19 [clear] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+13:11:19 [clear] IN_PROGRESS_REGISTRATION False
+13:11:21 [clear] PULLED C:\Probe\logs\10-install-silent.log (172626 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\20-install-silent.log (172624 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\30-install-silent.log (172624 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\40-install-silent.log (171896 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\50-install-silent.log (253886 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\50-install-silent.log.updater-service.log (174 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\60-install-silent.log (253884 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\60-install-silent.log.updater-service.log (174 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\70-install-silent.log (253882 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\70-install-silent.log.updater-service.log (174 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\80-install-silent.log (253162 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\80-install-silent.log.updater-service.log (174 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\walk-client-remove-all-clear.log (312060 bytes)
+13:11:22 [clear] PULLED C:\Probe\logs\walk-client-remove-all-keep.log (307602 bytes)
+13:11:23 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear.log (318620 bytes)
+13:11:23 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-keep.log (314182 bytes)
+13:11:23 [clear] PULLED C:\Probe\logs\walk-server-remove-all-clear.log (218136 bytes)
+13:11:23 [clear] PULLED C:\Probe\logs\walk-server-remove-all-keep.log (213936 bytes)
+13:11:23 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-clear.log (224558 bytes)
+13:11:23 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-keep.log (220250 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-clear-01-ClearData.png (5866 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-clear-02-ClearData-ticked.png (5969 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-clear-03-ClearData.png (5969 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-clear-04-VerifyRemove.png (8547 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-clear-05-Removing.png (6796 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-clear-06-Exit.png (10146 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-keep-01-ClearData.png (5866 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-keep-02-ClearData.png (5866 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-keep-03-VerifyRemove.png (8547 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-keep-04-Removing.png (6796 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-all-keep-05-Exit.png (10146 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear-01-MaintenanceWelcome.png (12864 bytes)
+13:11:25 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear-02-MaintenanceType.png (10464 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear-03-ClearData.png (6190 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear-04-MaintenanceType.png (10464 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear-05-ClearData.png (6190 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear-06-ClearData-ticked.png (6295 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear-07-VerifyRemove.png (8547 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear-08-Removing.png (6796 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear-09-Exit.png (10146 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-keep-01-MaintenanceWelcome.png (12864 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-keep-02-MaintenanceType.png (10464 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-keep-03-ClearData.png (6190 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-keep-04-MaintenanceType.png (10464 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-keep-05-ClearData.png (6190 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-keep-06-VerifyRemove.png (8547 bytes)
+13:11:26 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-keep-07-Removing.png (6796 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-keep-08-Exit.png (10146 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-clear-01-ClearData.png (5646 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-clear-02-ClearData-ticked.png (5749 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-clear-03-ClearData.png (5749 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-clear-04-VerifyRemove.png (8552 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-clear-05-Removing.png (7130 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-clear-06-Exit.png (10155 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-keep-01-ClearData.png (5646 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-keep-02-ClearData.png (5646 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-keep-03-VerifyRemove.png (8552 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-keep-04-Removing.png (7133 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-all-keep-05-Exit.png (10155 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-clear-01-MaintenanceWelcome.png (12888 bytes)
+13:11:27 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-clear-02-MaintenanceType.png (10433 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-clear-03-ClearData.png (5970 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-clear-04-MaintenanceType.png (10433 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-clear-05-ClearData.png (5970 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-clear-06-ClearData-ticked.png (6074 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-clear-07-VerifyRemove.png (8552 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-clear-08-Exit.png (10155 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-keep-01-MaintenanceWelcome.png (12888 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-keep-02-MaintenanceType.png (10433 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-keep-03-ClearData.png (5970 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-keep-04-MaintenanceType.png (10433 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-keep-05-ClearData.png (5970 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-keep-06-VerifyRemove.png (8552 bytes)
+13:11:28 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-keep-07-Removing.png (7134 bytes)
+13:11:29 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-keep-08-Exit.png (10155 bytes)
+13:11:30 [clear] PULLED C:\Probe\logs\make-client-data-result.txt (3447 bytes)
+13:11:30 [clear] PULLED C:\Probe\logs\walk-client-remove-all-clear-result.txt (4347 bytes)
+13:11:30 [clear] PULLED C:\Probe\logs\walk-client-remove-all-keep-result.txt (4100 bytes)
+13:11:30 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-clear-result.txt (7011 bytes)
+13:11:30 [clear] PULLED C:\Probe\logs\walk-client-remove-rerun-keep-result.txt (6759 bytes)
+13:11:30 [clear] PULLED C:\Probe\logs\walk-server-remove-all-clear-result.txt (4260 bytes)
+13:11:31 [clear] PULLED C:\Probe\logs\walk-server-remove-all-keep-result.txt (4036 bytes)
+13:11:31 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-clear-result.txt (6451 bytes)
+13:11:31 [clear] PULLED C:\Probe\logs\walk-server-remove-rerun-keep-result.txt (6694 bytes)
+13:11:31 [clear] ROUND_DONE

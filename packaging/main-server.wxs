@@ -18,6 +18,10 @@
     <Property Id="ARPPRODUCTICON" Value="LabelframeAppIco" />
     <Property Id="ARPHELPLINK" Value="https://github.com/marci-labs/LabelFrame" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/marci-labs/LabelFrame/releases" />
+    <!-- 卸载询问页的勾选要传进提权的执行会话。
+         防回归警示：必须声明为安全属性——以普通方式启动安装程序再进维护向导时，执行会话会忽略不是安全属性的属性
+         （安装日志里是 Ignoring disallowed property），勾选「清除用户数据」等于没勾 -->
+    <Property Id="CLEAR_USER_DATA" Secure="yes" />
 
 
     <!-- 检测 ASP.NET Core Runtime：改用 .NET 官方 NetCoreCheck 自检（属性值 0=满足；12289=未安装；12290=版本不足；13=平台不兼容） -->
@@ -40,22 +44,31 @@
     <Launch Condition="NOT INSTALLFOLDER"
       Message="LabelFrame 服务端固定安装到 [ProgramFiles64Folder]LabelFrame\Server，不支持通过 INSTALLFOLDER 指定安装目录。请去掉该参数后重新运行安装程序。" />
 
-    <!-- 运行时缺失对话框：可点击官方下载链接（MSI Hyperlink 控件） -->
+    <!-- 运行时缺失对话框：显示官方下载页的网址，由「打开下载页」按钮在默认浏览器里打开。
+         平台坑：网址不能用安装器的 Hyperlink 控件——它对鼠标点击没有反应，只有焦点在链接上时按回车才打开 -->
     <UI Id="RuntimeCheckUI">
       <Dialog Id="RuntimeMissingDlg" X="50" Y="50" Width="370" Height="180"
               Title="LabelFrame 安装 - 缺少 ASP.NET Core Runtime" NoMinimize="yes">
         <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="30"
                  Text="本机未检测到 ASP.NET Core 10 Runtime，请先安装后再运行本安装程序。" />
         <Control Id="HintText" Type="Text" X="15" Y="50" Width="340" Height="20"
-                 Text="点击下方链接打开微软官方下载页：" />
-        <Control Id="RuntimeLink" Type="Hyperlink" X="15" Y="75" Width="340" Height="25"
-                 Text="&lt;a href=&quot;https://dotnet.microsoft.com/download/dotnet/10.0&quot;&gt;https://dotnet.microsoft.com/download/dotnet/10.0&lt;/a&gt;" />
+                 Text="微软官方下载页：" />
+        <Control Id="RuntimeDownloadUrl" Type="Text" X="15" Y="75" Width="340" Height="25"
+                 Text="https://dotnet.microsoft.com/download/dotnet/10.0" />
+        <Control Id="OpenDownloadButton" Type="PushButton" X="165" Y="140" Width="100" Height="25" Text="打开下载页(&amp;O)">
+          <!-- 两条事件按登记顺序执行：先把目标网址交给打开动作，再打开 -->
+          <Publish Event="DoAction" Value="SetDownloadPageTarget" Order="1" Condition="1" />
+          <Publish Event="DoAction" Value="OpenDownloadPage" Order="2" Condition="1" />
+        </Control>
         <Control Id="ExitButton" Type="PushButton" X="280" Y="140" Width="75" Height="25"
                  Text="退出" Default="yes" Cancel="yes">
           <Publish Event="EndDialog" Value="Exit" Condition="1" />
         </Control>
       </Dialog>
-      <!-- 卸载时询问是否清除用户数据（默认不勾选；仅手动卸载，不适用于升级） -->
+      <!-- 卸载时询问是否清除用户数据（默认不勾选；仅手动卸载，不适用于升级）。
+           平台坑：询问页必须排在执行之前，而 Windows Installer 在卸载时按「是不是已经装了、是不是命令行预选了功能」
+           决定显示哪一页——命令行带 REMOVE=ALL 时显示界面库的「继续安装」页，维护向导里选「删除」时不经过界面序列；
+           所以两个入口都要接：界面序列里的显示条件（下方）只覆盖命令行入口，向导入口靠维护向导「删除」按钮的跳转 -->
       <Dialog Id="ClearDataDlg" X="50" Y="50" Width="370" Height="170"
               Title="LabelFrame Server 卸载" NoMinimize="yes">
         <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="25" Text="卸载 LabelFrame Server。" />
@@ -63,13 +76,24 @@
                  Text="是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？" />
         <Control Id="ClearDataCheck" Type="CheckBox" X="15" Y="85" Width="340" Height="18"
                  Property="CLEAR_USER_DATA" CheckBoxValue="1" Text="清除用户数据" />
+        <!-- 「上一步」只在维护向导入口显示：命令行入口的功能是预选的，回到维护向导再选别的操作会与 REMOVE=ALL 叠加 -->
+        <Control Id="BackButton" Type="PushButton" X="120" Y="135" Width="75" Height="25"
+                 Text="上一步(&amp;B)" Hidden="yes"
+                 ShowCondition="WixUI_InstallMode = &quot;Remove&quot; AND NOT Preselected">
+          <Publish Event="NewDialog" Value="MaintenanceTypeDlg" />
+        </Control>
         <Control Id="CancelButton" Type="PushButton" X="200" Y="135" Width="75" Height="25"
                  Text="取消" Cancel="yes">
-          <Publish Event="EndDialog" Value="Exit" Condition="1" />
+          <!-- 命令行入口直接退出；向导入口与其他向导页一致，先确认再退出 -->
+          <Publish Event="SpawnDialog" Value="CancelDlg" Condition="WixUI_InstallMode = &quot;Remove&quot;" />
+          <Publish Event="EndDialog" Value="Exit" Condition="NOT WixUI_InstallMode" />
         </Control>
+        <!-- 防回归警示：界面库按「安装模式」属性决定确认页与进度页用哪套文字，命令行入口没有「删除」按钮替它赋值，
+             必须先把属性置为 Remove 再进确认页 -->
         <Control Id="NextButton" Type="PushButton" X="280" Y="135" Width="75" Height="25"
                  Text="继续" Default="yes">
-          <Publish Event="EndDialog" Value="Return" Condition="1" />
+          <Publish Event="DoAction" Value="SetRemoveInstallMode" Order="1" Condition="NOT WixUI_InstallMode" />
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" Order="2" Condition="WixUI_InstallMode = &quot;Remove&quot;" />
         </Control>
       </Dialog>
       <!-- 安装目录页（只读）：服务端固定装在 Program Files 下，不提供修改入口；页面上只有「安装目录」和路径，不加解释。
@@ -99,12 +123,27 @@
                Condition="NOT Installed" />
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstallLocationDlg" Order="10"
                Condition="NOT Installed AND NOT REMOVE" />
+      <!-- 卸载链路：维护向导的「删除」先经询问页；「确认删除」页的「上一步」回询问页（界面库默认回维护向导的类型页） -->
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="ClearDataDlg" Order="10" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="ClearDataDlg" Order="10"
+               Condition="WixUI_InstallMode = &quot;Remove&quot;" />
     </UI>
     <InstallUISequence>
       <Show Dialog="RuntimeMissingDlg" Sequence="1150"
             Condition="NOT DOTNET10_PRESENT = &quot;0&quot; AND NOT REMOVE" />
       <Show Dialog="ClearDataDlg" Sequence="1290"
             Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <!-- 命令行带 REMOVE=ALL 时，询问页之后不再显示界面库的「继续安装」页：它按安装措辞写成，卸载时文不对题；
+           询问页自己进入「确认删除」页。这一行替换界面库里同一页的显示条件 -->
+      <Show Dialog="override ResumeDlg" Before="ProgressDlg"
+            Condition="Installed AND (RESUME OR Preselected) AND NOT (REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE)" />
+      <!-- 同一条路径上，界面库的进度页会按「命令行预选了功能」把「正在安装」的两段文字也显示出来，和「正在删除」叠在一起。
+           预选标记只在这两条显示条件里用到：询问页之后把它清掉，再让维护欢迎页（它的条件看的是同一个标记的反面）不在这一路径上显示。
+           这一行替换界面库里维护欢迎页的显示条件 -->
+      <Custom Action="ClearPreselectedAfterQuestion" Before="ResumeDlg"
+              Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Show Dialog="override MaintenanceWelcomeDlg" Before="ProgressDlg"
+            Condition="Installed AND NOT RESUME AND NOT Preselected AND NOT PATCH AND NOT (REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE)" />
     </InstallUISequence>
 
     <!-- 安装目录：Program Files\LabelFrame\Server（64 位）。目录标识含小写字母 = 非公开属性，安装位置无法从外部改写 -->
@@ -126,19 +165,32 @@
       <ComponentRef Id="AppSettingsFile" />
     </Feature>
 
-    <!-- 卸载 / 覆盖安装前停止服务（先停再删，避免服务残留运行态导致卸载后仍显示运行） -->
+    <!-- 「打开下载页」：安装器扩展库的「请桌面外壳启动」动作。桌面外壳以当前登录用户的不提权身份打开网址，
+         安装程序以管理员身份运行时浏览器也不会跟着提权；外壳接手后动作就返回。打不开不影响向导，所以失败不阻断。
+         目标网址经属性交给动作，由按钮事件按登记顺序紧挨在打开之前赋值 -->
+    <CustomAction Id="OpenDownloadPage" BinaryRef="Wix4UtilCA_X64" DllEntry="WixUnelevatedShellExec" Execute="immediate" Return="ignore" Impersonate="yes" />
+    <CustomAction Id="SetDownloadPageTarget" Property="WixUnelevatedShellExecTarget" Value="https://dotnet.microsoft.com/download/dotnet/10.0" />
+    <!-- 卸载询问页的「继续」把界面库的安装模式置为「删除」：确认页与进度页据此显示卸载的文字 -->
+    <CustomAction Id="SetRemoveInstallMode" Property="WixUI_InstallMode" Value="Remove" />
+    <CustomAction Id="ClearPreselectedAfterQuestion" Property="Preselected" Value="" />
+    <!-- 卸载 / 覆盖安装前停止服务（先停再删，避免服务残留运行态导致卸载后仍显示运行）。
+         只在会改动服务程序文件的运行里停：全新安装、升级、修复、补丁、卸载。
+         防回归警示：停掉的服务靠 Windows Installer 的标准启动动作启动，它只启动本次运行里有变更的服务——
+         什么都不改的维护运行（对已安装的服务端重跑一遍安装包）不能停，否则服务停了没人启动 -->
     <CustomAction Id="StopServerService" Directory="SystemFolder" Execute="deferred" Impersonate="no" Return="ignore"
       ExeCommand="sc.exe stop LabelFrameServer" />
-    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；路径为 ProgramData） -->
-    <CustomAction Id="ClearDataDelServerDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
+    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；路径为 ProgramData）。
+         平台坑：以普通方式启动安装程序再进维护向导时，模拟用户的延迟动作拿不到管理员权限，删不掉 ProgramData 与 Program Files 下的文件
+         （动作照常「成功」，什么都没删）；服务端的数据与配置都是机器级的，所以以安装自己的提权身份执行 -->
+    <CustomAction Id="ClearDataDelServerDir" Directory="SystemFolder" Execute="deferred" Impersonate="no" Return="ignore"
       ExeCommand="cmd.exe /c rmdir /s /q &quot;%ProgramData%\LabelFrame\server&quot;" />
-    <CustomAction Id="ClearDataDelServerDb" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
+    <CustomAction Id="ClearDataDelServerDb" Directory="SystemFolder" Execute="deferred" Impersonate="no" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramData%\LabelFrame\server.db&quot;" />
-    <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
+    <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="no" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramFiles%\LabelFrame\Server\appsettings.json&quot;" />
     <InstallExecuteSequence>
-      <!-- 先停服务，再执行 MSI 自带的 StopServices / DeleteServices（安装 / 卸载均生效） -->
-      <Custom Action="StopServerService" After="InstallInitialize" />
+      <!-- 先停服务，再执行 MSI 自带的 StopServices / DeleteServices；升级过程中旧产品的卸载子会话同样要停 -->
+      <Custom Action="StopServerService" After="InstallInitialize" Condition="NOT Installed OR REMOVE OR REINSTALL OR PATCH" />
       <Custom Action="ClearDataDelServerDir" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelServerDb" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelAppSettings" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />

@@ -1,0 +1,15 @@
+# 结构断言：候选包（本地构建的 1.6.99，未签名）。脚本 scripts\assert-server-msi-structure.ps1，Windows PowerShell 5.1，2026-11-27 14:17:10。
+候选包：LabelFrame-Server-1.6.99.msi  sha256=be33672b192a69b4c0bec072bb08044dbd9ddfe16c8a2f7e3cec397a9c049a22
+=== C:\work\OpenCode\LabelFrame\artifacts\LabelFrame-Server-1.6.99.msi ===
+安装目录：ServerInstallDir（非公开属性，固定为 Program Files\LabelFrame\Server）；INSTALLFOLDER 拦截；程序文件与用户配置挂载在该目录：OK
+安装目录页：只读展示安装目录；向导链路：许可页 -> 安装目录页 -> 确认页；维护流程的上一步不受影响；可改目录的自带页面没有入口：OK
+卸载询问：维护向导的「删除」先经询问页；询问页的「继续」先置安装模式再进「确认删除」页，上一步回询问页；命令行 REMOVE=ALL 时询问之后不再显示「继续安装」页，进度页只显示「正在删除」：OK
+清除用户数据：删除的是安装目录下的 appsettings.json，且只在手动卸载并勾选时执行：OK
+停服务：全新安装、升级、卸载、修复、补丁时先停服务，什么都不改的维护运行不动服务：OK
+缺少运行时的对话框：网址是文字，「打开下载页」按钮经扩展库「请桌面外壳启动」动作以不提权身份打开浏览器，包里没有 Hyperlink 控件：OK
+断言通过：Server MSI 安装位置契约。
+
+
+# 同一脚本对正式发布的 1.6.1 包（#408 取证用的那两个）：必须被新断言拒绝
+正式包：LabelFrame-Server-1.6.1.msi  sha256=eb1d754ff01edbcb2da5b9728a9f3f02bd8bd4b6802f0caae3b0f2de7d466530
+结论：exit=1；首条报错：ERROR: 「卸载：确认删除页」时确认页的上一步应到 ClearDataDlg，实际会到 MaintenanceTypeDlg

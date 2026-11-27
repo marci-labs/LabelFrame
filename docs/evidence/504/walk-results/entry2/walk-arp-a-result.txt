@@ -1,0 +1,93 @@
+=== programs-and-features uninstall probe 'walk-arp-a' [LabelFrame Client]  [11:40:13] ===
+identity=DESKTOP-D65DJ5S\<account> elevated=False session=1
+REGISTRATION code={93206D07-6E13-41DD-9DDD-E034AEB7C9DE} UninstallString=[MsiExec.exe /X{93206D07-6E13-41DD-9DDD-E034AEB7C9DE}] ModifyPath=[MsiExec.exe /X{93206D07-6E13-41DD-9DDD-E034AEB7C9DE}] QuietUninstallString=[] WindowsInstaller=[1] NoModify=[1] NoRepair=[]
+PRODUCT_STATE_BEFORE=5
+PROCESSES_BEFORE msiexec/consent=0
+CONTROL pid=6316
+PROGRAMS_WINDOW class=CabinetWClass title=[程序和功能] process=8160
+  screenshot -> C:\Probe\logs\walk-arp-a-01-programs-opened.png (PrintWindow, 800x600)
+MSAA_ELEMENTS dumped=460
+MSAA depth=0 role=10 name=[程序和功能] where=130,105,784,561 children=2
+MSAA depth=1 role=9 name=[] where=130,105,784,35 children=7
+MSAA depth=2 role=2 name=[系统] where=0,0,0,0 children=0
+MSAA depth=2 role=1 name=[] where=0,0,0,0 children=5
+MSAA depth=3 simple role=43 name=[输入法] where=0,0,0,0 state=32768 action=[]
+MSAA depth=3 simple role=43 name=[最小化] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[最大化] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[上下文帮助] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[关闭] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=2 role=2 name=[应用程序] where=0,0,0,0 children=0
+MSAA depth=2 role=10 name=[] where=130,105,784,35 children=1
+MSAA depth=3 role=9 name=[] where=130,105,784,35 children=7
+MSAA depth=8 role=22 name=[导航按钮] where=134,107,77,30 children=3
+MSAA depth=8 role=22 name=[向上一级区段工具栏] where=211,110,24,29 children=1
+MSAA depth=2 role=3 name=[垂直滚动条] where=0,0,0,0 children=5
+MSAA depth=3 simple role=43 name=[上一行] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[向上翻页] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=39 name=[位置] where=0,0,0,0 state=32768 action=[]
+MSAA depth=3 simple role=43 name=[向下翻页] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[下一行] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=2 role=3 name=[水平滚动条] where=0,0,0,0 children=5
+MSAA depth=3 simple role=43 name=[左移一列] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[向左翻页] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=39 name=[位置] where=0,0,0,0 state=32768 action=[]
+MSAA depth=3 simple role=43 name=[向右翻页] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[右移一列] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=2 role=4 name=[] where=0,0,0,0 children=0
+MSAA depth=1 role=9 name=[程序和功能] where=130,140,784,526 children=7
+MSAA depth=2 role=2 name=[系统] where=0,0,0,0 children=0
+MSAA depth=2 role=1 name=[] where=0,0,0,0 children=5
+MSAA depth=3 simple role=43 name=[输入法] where=0,0,0,0 state=32768 action=[]
+MSAA depth=3 simple role=43 name=[最小化] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[最大化] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[上下文帮助] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[关闭] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=2 role=2 name=[应用程序] where=130,140,784,0 children=4
+MSAA depth=3 role=12 name=[文件] where=132,140,54,23 children=1
+MSAA depth=3 role=12 name=[编辑] where=186,140,55,23 children=1
+MSAA depth=3 role=12 name=[查看] where=241,140,56,23 children=1
+MSAA depth=3 role=12 name=[工具] where=297,140,55,23 children=1
+MSAA depth=2 role=10 name=[程序和功能] where=130,140,784,526 children=3
+MSAA depth=3 role=9 name=[] where=130,140,784,526 children=7
+MSAA depth=3 role=9 name=[] where=130,140,784,0 children=7
+MSAA depth=3 role=9 name=[] where=130,118,0,22 children=7
+MSAA depth=2 role=3 name=[垂直滚动条] where=0,0,0,0 children=5
+MSAA depth=3 simple role=43 name=[上一行] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[向上翻页] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=39 name=[位置] where=0,0,0,0 state=32768 action=[]
+MSAA depth=3 simple role=43 name=[向下翻页] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[下一行] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=2 role=3 name=[水平滚动条] where=0,0,0,0 children=5
+MSAA depth=3 simple role=43 name=[左移一列] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[向左翻页] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=39 name=[位置] where=0,0,0,0 state=32768 action=[]
+MSAA depth=3 simple role=43 name=[向右翻页] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=3 simple role=43 name=[右移一列] where=0,0,0,0 state=32768 action=[按]
+MSAA depth=2 role=4 name=[] where=0,0,0,0 children=0
+MSAA_PRODUCT_ROW found=False role= where= state=
+  clicked into the list at (762, 374) to give it the focus
+ROW_SELECTED after typing the name=UIA_ROW not handed out (rows off the screen are not exposed) False
+  screenshot -> C:\Probe\logs\walk-arp-a-02-programs-selected.png (PrintWindow, 800x600)
+INSTALLER_WINDOW after=7.8s class=#32770 process=8160 title=[程序和功能] texts=
+  screenshot -> C:\Probe\logs\walk-arp-a-03-installer-1.png (PrintWindow, 366x134)
+SHELL_QUESTION 确实要卸载 LabelFrame Client 吗? (answer button [是] at 527,358,68,25)
+ANSWER after=14.6s the question of the entry (确实要卸载 LabelFrame Client 吗?): Yes (pointer click)
+INSTALLER_WINDOW after=15.7s class=#32770 process=8160 title=[LabelFrame Client] texts=Windows 正在配置 LabelFrame Client，请稍候。 | 取消
+  screenshot -> C:\Probe\logs\walk-arp-a-04-installer-2.png (PrintWindow, 408x161)
+--- processes that started after Uninstall was clicked ---
+NEW_PROCESS name=msiexec.exe pid=4592 session=0 parent=728 started=11:40:35 commandLine=
+NEW_PROCESS name=msiexec.exe pid=6596 session=1 parent=4592 started=11:40:36 commandLine=
+--- windows that appeared (process | class | caption) ---
+NEW_WINDOW 8160|#32770|程序和功能
+NEW_WINDOW 8160|CabinetWClass|程序和功能
+NEW_WINDOW 8160|#32770|LabelFrame Client
+NEW_WINDOW 8812|Windows.UI.Core.CoreWindow|Microsoft Store
+NEW_WINDOW 7632|ApplicationFrameWindow|Microsoft Store
+UNINSTALL_PROCESSES=2
+PACKAGE_WINDOWS=0
+SYSTEM_QUESTION=2
+CLICKS=Uninstall (command bar, InvokePattern), Yes (pointer click) (the entry's own question)
+INSTALLER_PROCESSES_LEFT=1
+PRODUCT_REGISTERED_AFTER=False
+PRODUCT_STATE_AFTER=-1
+=== end 'walk-arp-a'  [11:43:29] ===

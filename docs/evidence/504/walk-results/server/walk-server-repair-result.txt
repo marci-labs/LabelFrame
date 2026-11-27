@@ -1,0 +1,65 @@
+=== installer walk 'walk-server-repair': mode=repair  [13:46:04] ===
+arguments: /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /l*v "C:\Probe\logs\walk-server-repair.log"
+identity=DESKTOP-D65DJ5S\<account> elevated=False
+TOKEN sid=<sid> linkedToken=available
+SETUP_PAGE present=False
+before: product=1.6.99 | Run key=absent | user files=0 | printing client processes=0
+--- page MaintenanceWelcome (actual MaintenanceWelcome, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [116] Button 下一步(&N)
+  [118] Button 取消
+  [106] Static WixUI_Bmp_Dialog
+  [115] Button 上一步(&B)   (disabled)
+  [46] Static 通过安装向导可以更改在您的计算机上安装 LabelFrame Server 功能的方式，或将其从您的计算机中删除。单击“下一步”继续，或单击“取消”退出安装向导。
+  [108] Static 欢迎使用 LabelFrame Server 安装向导
+  screenshot -> C:\Probe\logs\walk-server-repair-01-MaintenanceWelcome.png (PrintWindow, 499x389)
+--- page MaintenanceType (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [298] Button 更改(&C)   (disabled)
+  [299] Button 修复(&P)
+  [304] Button 删除(&R)
+  [115] Button 上一步(&B)
+  [116] Button 下一步(&N)   (disabled)
+  [118] Button 取消
+  [105] Static WixUI_Bmp_Banner
+  [46] Static 选择希望执行的操作。
+  [108] Static 更改、修复或删除安装
+  [177] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+  [181] Static 从您的计算机中删除 LabelFrame Server。
+  [302] Static LabelFrame Server 没有单独可选的功能。
+  screenshot -> C:\Probe\logs\walk-server-repair-02-MaintenanceType.png (PrintWindow, 499x389)
+--- page VerifyRepair (actual VerifyRepair, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [160] Button 修复(&P)
+  [118] Button 取消
+  [115] Button 上一步(&B)
+  [105] Static WixUI_Bmp_Banner
+  [175] Static 已准备好修复 LabelFrame Server
+  [177] Static 单击“修复”修复 LabelFrame Server 的安装。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+  screenshot -> C:\Probe\logs\walk-server-repair-03-VerifyRepair.png (PrintWindow, 499x389)
+REPAIR_STEP_SECONDS=1.6 (from clicking Repair to the next window)
+--- page Repairing (actual Repairing, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [118] Button 取消
+  [105] Static WixUI_Bmp_Banner
+  [115] Button 上一步(&B)   (disabled)
+  [116] Button 下一步(&N)   (disabled)
+  [236] Static 正在停止服务
+  [246] Static 安装向导正在修复 LabelFrame Server，请稍候。
+  [248] Static 正在修复 LabelFrame Server
+  [260] Static 状态:
+  screenshot -> C:\Probe\logs\walk-server-repair-04-Repairing.png (PrintWindow, 499x389)
+--- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [212] Button 完成(&F)
+  [118] Button 取消   (disabled)
+  [106] Static WixUI_Bmp_Dialog
+  [115] Button 上一步(&B)   (disabled)
+  [46] Static 单击“完成”按钮退出安装向导。
+  [108] Static LabelFrame Server 安装向导已完成
+  screenshot -> C:\Probe\logs\walk-server-repair-05-Exit.png (PrintWindow, 499x389)
+last unrecognised installer window: 
+WINDOWS_IN_ORDER=Prepare -> MaintenanceWelcome -> MaintenanceType -> VerifyRepair -> Repairing -> Exit
+windows seen: Exit, MaintenanceType, MaintenanceWelcome, Prepare, Repairing, VerifyRepair
+exit code=0
+after: product=1.6.99 | Run key=absent | user files=0 | printing client processes=0
+OUTCOME=repaired
+WIZARD_PATH=MaintenanceWelcome -> MaintenanceType -> VerifyRepair -> Repairing -> Exit
+CLICKS=下一步(&N) [116], 修复(&P) [299], 修复(&P) [160], 完成(&F) [212]
+CHECK_FAILURES=0 
+=== end 'walk-server-repair'  [13:46:15] ===

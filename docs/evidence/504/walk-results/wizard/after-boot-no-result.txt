@@ -1,0 +1,38 @@
+=== after-boot 'after-boot-no': auto-start expected=no  [13:27:39] ===
+identity=DESKTOP-D65DJ5S\<account> elevated=False session=1
+BOOT_TIME=2026-11-27 13:26:09
+EXPLORER_SESSION1=1
+RUN_KEY=absent
+AUTOSTART_PROCESSES=0
+  check ok: no client is started at logon
+OTHER_CLIENT_PROCESSES=0
+UPDATER_SERVICE_RUNNING=1
+BROWSER_BACKGROUND name=msedge.exe pid=7496 session=1 started=13:26:31 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+BROWSER_BACKGROUND name=msedge.exe pid=600 session=1 started=13:26:31 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x258,0x25c,0x260,0x254,0x280,0x7ffd0a363360,0x7ffd0a363370,0x7ffd0a363380
+BROWSER_BACKGROUND name=msedge.exe pid=6940 session=1 started=13:26:31 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=1960,i,1460236488857111684,866605759586105404,524288 --field-trial-handle=2372,i,7747905318500199815,4118927774792776139,262144 --variations-seed-version --pseudonymization-salt-handle=2376,i,8188937722921201979,14829195788807604050,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2424 /prefetch:3
+BROWSER_BACKGROUND name=msedge.exe pid=5936 session=1 started=13:26:31 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1856,i,15271683345616924574,7444012119207219477,262144 --field-trial-handle=2372,i,7747905318500199815,4118927774792776139,262144 --variations-seed-version --pseudonymization-salt-handle=2376,i,8188937722921201979,14829195788807604050,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2368 /prefetch:2
+BROWSER_BACKGROUND name=msedge.exe pid=3860 session=1 started=13:26:31 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2452,i,4374337314851586704,15114031851376957560,524288 --field-trial-handle=2372,i,7747905318500199815,4118927774792776139,262144 --variations-seed-version --pseudonymization-salt-handle=2376,i,8188937722921201979,14829195788807604050,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=3340 /prefetch:8
+BROWSERS_STARTED_SINCE_BOOT=5
+BROWSER_FOREGROUND_PROCESSES=0
+BROWSER_WINDOWS=0 
+  check ok: no browser window is opened at logon
+  check ok: the notification area can be read (it holds the system icons)
+  check ok: every button of the notification area was read
+  screen shot -> C:\Probe\logs\after-boot-no-01-desktop.png (1024x768)
+TRAY_CHEVRON present=True
+TRAY_OVERFLOW_WINDOW present=True visible=True
+  screen shot -> C:\Probe\logs\after-boot-no-02-tray-overflow.png (1024x768)
+TRAY_VISIBLE count=3 buttons=0:8000:OneDrive / 正在更新 | 1:4800:网络 2 / Internet 访问 | 2:4800:未安装任何音频输出设备。
+TRAY_VISIBLE_RAW count=3 ; 0¦8000¦OneDrive / 正在更新 ; 1¦4800¦网络 2 / Internet 访问 ; 2¦4800¦未安装任何音频输出设备。
+TRAY_VISIBLE_UNREADABLE 0 
+TRAY_HIDDEN_CLOSED count=1 buttons=0:7892:Windows 安全中心 - 建议执行操作。
+TRAY_HIDDEN_CLOSED_RAW count=1 ; 0¦7892¦Windows 安全中心 - 建议执行操作。
+TRAY_HIDDEN_CLOSED_UNREADABLE 0 
+TRAY_HIDDEN count=1 buttons=0:7892:Windows 安全中心 - 建议执行操作。
+TRAY_HIDDEN_RAW count=1 ; 0¦7892¦Windows 安全中心 - 建议执行操作。
+TRAY_HIDDEN_UNREADABLE 0 
+TRAY_WINDOW present=False process=0 ofClient=False
+TRAY_ICON_FOUND=False place=
+  check ok: the tray icon is there exactly when auto-start was left ticked
+AFTER_BOOT_FAILURES=0 
+=== end 'after-boot-no'  [13:28:46] ===

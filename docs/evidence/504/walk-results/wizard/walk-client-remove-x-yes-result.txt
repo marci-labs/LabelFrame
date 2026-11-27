@@ -1,0 +1,26 @@
+=== installer walk 'walk-client-remove-x-yes': mode=remove  [13:24:33] ===
+product code: {C193BDF9-28E3-4F67-84CA-21562BB681BB}  way of starting: x
+arguments: /x {C193BDF9-28E3-4F67-84CA-21562BB681BB} /l*v "C:\Probe\logs\walk-client-remove-x-yes.log"
+identity=DESKTOP-D65DJ5S\<account> elevated=False
+TOKEN sid=<sid> linkedToken=available
+SETUP_PAGE present=False
+before: product=1.6.99 | Run key="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart | user files=201 | printing client processes=0
+  check ok: msiexec /x starts with the system question ("are you sure you want to uninstall this product?")
+--- page UninstallConfirm (actual UninstallConfirm, class #32770): 'Windows Installer' ---
+  [3001] Button 是(&Y)
+  [3002] Button 否(&N)
+  [3000] Static 你确定要卸载此产品吗?
+  screenshot -> C:\Probe\logs\walk-client-remove-x-yes-01-UninstallConfirm.png (PrintWindow, 314x141)
+UNINSTALL_PROMPT text=是(&Y) | 否(&N) | 你确定要卸载此产品吗?
+SYSTEM_PROMPT_PACKAGE_DIALOGS=0
+  check ok: after the system question the package shows none of its own dialogs
+last unrecognised installer window: 
+WINDOWS_IN_ORDER=UninstallConfirm
+windows seen: UninstallConfirm
+exit code=0
+after: product=none | Run key=absent | user files=201 | printing client processes=0
+OUTCOME=removed after the system prompt
+WIZARD_PATH=UninstallConfirm
+CLICKS=是(&Y) [3001]
+CHECK_FAILURES=0 
+=== end 'walk-client-remove-x-yes'  [13:24:38] ===

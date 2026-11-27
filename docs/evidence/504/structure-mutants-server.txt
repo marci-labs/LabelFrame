@@ -1,0 +1,129 @@
+# 结构断言对变异包的结论（server）。变异包是候选包的副本，只改坏一处；每个都被对应该处改动的断言拒绝。
+# 结构断言对变异包的结论：每个变异包是候选包的副本，只改坏一处（经 Windows Installer 数据库接口改一张表里的一行或几行）。
+# 断言脚本：scripts\assert-server-msi-structure.ps1；在 Windows PowerShell 5.1 下执行，2026-11-27 12:33:52。
+
+question-not-after-remove
+  改了什么：维护向导「删除」上跳到询问页的登记不再有（删除该行）
+  被拒原因：维护向导的「删除」应跳到询问页 ClearDataDlg；自带向导组在它上面的登记（直接跳确认页、置安装模式）变了，请复核询问页的接法
+
+question-order-too-small
+  改了什么：维护向导「删除」上跳到询问页的登记顺序从 10 改成 1（与自带向导组相同）
+  被拒原因：维护向导「删除」上跳到询问页的登记顺序必须大于自带向导组的登记（1）：否则要么不显示询问页，要么显示时安装模式还没置好
+
+question-continue-closes-dialog
+  改了什么：询问页「继续」上多出一条直接关窗的登记（EndDialog Return）
+  被拒原因：询问页上出现了预期之外的事件登记（共 6 条，应为 5 条）：BackButton.NewDialog MaintenanceTypeDlg；CancelButton.EndDialog Exit；CancelButton.SpawnDi
+
+question-continue-condition
+  改了什么：询问页「继续」跳确认页的条件从安装模式为删除改成恒真
+  被拒原因：询问页的「NextButton」应以登记顺序 2 触发 NewDialog VerifyReadyDlg（条件 WixUI_InstallMode = "Remove"）
+
+question-set-mode-wrong
+  改了什么：赋值动作把安装模式置为 Change 而不是 Remove
+  被拒原因：SetRemoveInstallMode 应把界面库的安装模式 WixUI_InstallMode 置为 Remove：确认页与进度页据此显示卸载的文字
+
+question-back-visible
+  改了什么：询问页「上一步」默认可见（控件属性去掉隐藏位）
+  被拒原因：询问页的「上一步」必须默认隐藏：显示条件为假时不会隐藏，默认可见会让命令行卸载多出一个回到维护向导的入口
+
+question-back-condition
+  改了什么：询问页「上一步」显示条件去掉「不是命令行预选」一段
+  被拒原因：询问页的「上一步」应只有一条显示条件：WixUI_InstallMode = "Remove" AND NOT Preselected
+
+question-cancel-always-exits
+  改了什么：询问页「取消」直接退出的条件从命令行入口改成恒真
+  被拒原因：询问页的「CancelButton」应以登记顺序 2 触发 EndDialog Exit（条件 NOT WixUI_InstallMode）
+
+ready-back-target-missing
+  改了什么：「确认删除」页上一步回询问页的登记不再有（删除该行）
+  被拒原因：「卸载：确认删除页」时确认页的上一步应到 ClearDataDlg，实际会到 MaintenanceTypeDlg
+
+resume-page-back
+  改了什么：「继续安装」页的显示条件改回界面库原样（手动卸载时又会显示）
+  被拒原因：界面库的「继续安装」页在「手动卸载（命令行 REMOVE=ALL 或 msiexec /x）」时应当不显示，当前条件不是这样：Installed AND (RESUME OR Preselected)
+
+question-shown-in-upgrade
+  改了什么：询问页的显示条件去掉「不是升级」一段
+  被拒原因：升级过程中旧产品的卸载子会话不得显示询问页：REMOVE~="ALL"
+
+question-never-shown
+  改了什么：询问页的显示条件改成恒假
+  被拒原因：询问页在「手动卸载（命令行 REMOVE=ALL 或 msiexec /x）」时应当显示，当前条件不是这样：0
+
+preselection-kept
+  改了什么：询问页之后清掉「命令行预选」标记的动作从界面序列里去掉（进度页上「正在安装」与「正在删除」又会叠在一起）
+  被拒原因：ClearPreselectedAfterQuestion 应只在手动卸载（命令行 REMOVE=ALL）时执行，实际：
+
+preselection-cleared-too-early
+  改了什么：清掉预选标记的动作排到询问页之前
+  被拒原因：ClearPreselectedAfterQuestion 应排在询问页之后、「继续安装」页之前
+
+preselection-cleared-always
+  改了什么：清掉预选标记的条件清空（任何运行都清）
+  被拒原因：ClearPreselectedAfterQuestion 应只在手动卸载（命令行 REMOVE=ALL）时执行，实际：
+
+preselection-action-wrong
+  改了什么：赋值动作把预选标记置为 1 而不是清空
+  被拒原因：ClearPreselectedAfterQuestion 应是只把 Preselected 置空的赋值动作（否则命令行卸载的进度页上「正在安装」与「正在删除」叠在一起）
+
+maintenance-welcome-back
+  改了什么：维护欢迎页的显示条件改回界面库原样（命令行卸载里又会显示）
+  被拒原因：维护欢迎页在「命令行 REMOVE=ALL 的手动卸载（预选标记已清掉）」时应当不显示，当前条件不是这样：Installed AND NOT RESUME AND NOT Preselected AND NOT PATCH
+
+clear-property-not-secure
+  改了什么：勾选属性不再是安全属性（从 SecureCustomProperties 里去掉）：维护向导里的勾选传不进提权的执行会话
+  被拒原因：CLEAR_USER_DATA 必须声明为安全属性（出现在 SecureCustomProperties 里），否则维护向导里的勾选传不进提权的执行会话
+
+download-hyperlink
+  改了什么：缺运行时对话框的网址改回 Hyperlink 控件
+  被拒原因：包里不得再有 Hyperlink 控件：鼠标点击没有反应。网址用文字显示，打开动作放在「打开下载页」按钮上
+
+download-url-wrong
+  改了什么：缺运行时对话框显示的网址改错
+  被拒原因：缺少运行时的对话框应把官方下载页的网址显示为文字（https://dotnet.microsoft.com/download/dotnet/10.0）
+
+download-button-setter-missing
+  改了什么：「打开下载页」按钮上先赋目标的登记不再有
+  被拒原因：RuntimeMissingDlg 的 OpenDownloadButton 应按登记顺序 1 触发 SetDownloadPageTarget，先赋目标后打开缺一不可
+
+download-target-wrong
+  改了什么：赋值动作交给打开动作的网址改错
+  被拒原因：SetDownloadPageTarget 应把官方下载页（https://dotnet.microsoft.com/download/dotnet/10.0）经属性 WixUnelevatedShellExecTarget 交给打开动作
+
+download-action-blocking
+  改了什么：打开下载页动作改成失败阻断（Type 1）
+  被拒原因：OpenDownloadPage 必须是同步、失败不阻断的 x64「请桌面外壳启动」动作（Wix4UtilCA_X64 / WixUnelevatedShellExec）
+
+stop-always
+  改了什么：停服务的条件清空（任何运行都先停服务，旧包的写法）
+  被拒原因：停服务动作在「什么都不改的维护运行」时应当跳过，当前条件不是这样：
+
+stop-never-on-uninstall
+  改了什么：停服务的条件改成 NOT Installed（手动卸载时不停）
+  被拒原因：停服务动作在「手动卸载」时应当执行，当前条件不是这样：NOT Installed
+
+stop-never-on-fresh-install
+  改了什么：停服务的条件改成 REMOVE OR REINSTALL（全新安装时不停）
+  被拒原因：停服务动作在「全新安装」时应当执行，当前条件不是这样：REMOVE OR REINSTALL
+
+stop-type-changed
+  改了什么：停服务动作改成同步且失败阻断（Type 3074）
+  被拒原因：StopServerService 应是不模拟用户、失败不阻断的延迟动作，执行 sc.exe stop LabelFrameServer
+
+clear-data-impersonated
+  改了什么：服务端数据目录的清除动作改回模拟用户（维护向导里拿不到管理员权限，删不掉）
+  被拒原因：清除动作 ClearDataDelServerDir 应是不模拟用户的延迟动作，失败不阻断（Type 3170），实际 Type 1122
+
+clear-db-impersonated
+  改了什么：服务端数据库文件的清除动作改回模拟用户
+  被拒原因：清除动作 ClearDataDelServerDb 应是不模拟用户的延迟动作，失败不阻断（Type 3170），实际 Type 1122
+
+clear-app-settings-impersonated
+  改了什么：服务端配置文件的清除动作改回模拟用户
+  被拒原因：清除动作 ClearDataDelAppSettings 应是不模拟用户的延迟动作，失败不阻断（Type 3170），实际 Type 1122
+
+stop-command-wrong
+  改了什么：停服务动作执行的命令改错
+  被拒原因：StopServerService 应是不模拟用户、失败不阻断的延迟动作，执行 sc.exe stop LabelFrameServer
+
+合计：31 个变异包，31 个被拒绝，其中 31 个是被为该改动准备的那条断言拒绝的。
