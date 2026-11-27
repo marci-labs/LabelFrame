@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [1.6.2] - 2026-11-27
+
 ### 修复
 
 - **卸载时结束运行中的客户端**：卸载客户端时，安装包先让正在运行的客户端安全退出，再继续卸载；此前卸载不会结束它，卸载完成后客户端可能仍在运行。客户端正在打印时卸载会被拒绝（与升级一致），等这一张打印完成后重试；安装包不会强制结束客户端。
@@ -16,7 +18,9 @@
 
 ### 验收边界
 
-- **安装链人工验收已补做**（[#408](https://github.com/marci-labs/LabelFrame/issues/408)）：用正式发布的 1.6.1 安装包在纯净 Windows 10 上补验。覆盖升级保留用户配置、开机自启与托盘、缺少运行时时的提示先于向导出现，都通过。补验发现的 5 项安装包问题（[#498](https://github.com/marci-labs/LabelFrame/issues/498)、[#499](https://github.com/marci-labs/LabelFrame/issues/499)、[#500](https://github.com/marci-labs/LabelFrame/issues/500)、[#501](https://github.com/marci-labs/LabelFrame/issues/501)、[#502](https://github.com/marci-labs/LabelFrame/issues/502)）已在未发布版本修复，见上面的「修复」；其中从「程序和功能」卸载不询问清除数据这一项受系统限制没有改（见该条说明）。证据见 `docs/evidence/408/`，修复的验证见 `docs/evidence/504/`。
+- **安装链人工验收已补做**（[#408](https://github.com/marci-labs/LabelFrame/issues/408)）：用正式发布的 1.6.1 安装包在纯净 Windows 10 上补验。覆盖升级保留用户配置、开机自启与托盘、缺少运行时时的提示先于向导出现，都通过。补验发现的 5 项安装包问题（[#498](https://github.com/marci-labs/LabelFrame/issues/498)、[#499](https://github.com/marci-labs/LabelFrame/issues/499)、[#500](https://github.com/marci-labs/LabelFrame/issues/500)、[#501](https://github.com/marci-labs/LabelFrame/issues/501)、[#502](https://github.com/marci-labs/LabelFrame/issues/502)）已在本版修复，见上面的「修复」；其中从「程序和功能」卸载不询问清除数据这一项受系统限制没有改（见该条说明）。证据见 `docs/evidence/408/`，修复的验证见 `docs/evidence/504/`。
+- **安装包修复的验证范围**：本版安装包的七项修复，是在纯净 Windows 10 测试机上用本地构建的候选包验证的，界面上的点击由脚本完成；正式发布包还没有做同等的逐项验证，用正式包重走安装向导属于 MSI 人工验收欠账 [#408](https://github.com/marci-labs/LabelFrame/issues/408)（保持待验收）。未覆盖：Windows 11；安装引导程序与离线包的完整安装链路（它们静默调用安装包，不经过向导）；「设置 → 应用」里的卸载按钮。
+- 既有欠账继续原状态，不因发版关闭：PDA 真机验收 [#480](https://github.com/marci-labs/LabelFrame/issues/480)、[Android 更新矩阵 #474](https://github.com/marci-labs/LabelFrame/issues/474)、性能 / 平台长测 [#462](https://github.com/marci-labs/LabelFrame/issues/462)、蓝牙 / USB [#407](https://github.com/marci-labs/LabelFrame/issues/407)、MSI 人工验收 [#408](https://github.com/marci-labs/LabelFrame/issues/408) 与观察项 [#144](https://github.com/marci-labs/LabelFrame/issues/144)。
 
 ## [1.6.1] - 2026-11-26
 
