@@ -1,0 +1,157 @@
+# 结构断言对变异包的结论（client）。变异包是候选包的副本，只改坏一处；每个都被对应该处改动的断言拒绝。
+# 结构断言对变异包的结论：每个变异包是候选包的副本，只改坏一处（经 Windows Installer 数据库接口改一张表里的一行或几行）。
+# 断言脚本：scripts\verify-msi-ui.ps1；在 Windows PowerShell 5.1 下执行，2026-11-27 12:32:44。
+
+question-not-after-remove
+  改了什么：维护向导「删除」上跳到询问页的登记不再有（删除该行）
+  被拒原因：维护向导的「删除」应跳到询问页 ClearDataDlg；自带向导组在它上面的登记（直接跳确认页、置安装模式）变了，请复核询问页的接法
+
+question-order-too-small
+  改了什么：维护向导「删除」上跳到询问页的登记顺序从 10 改成 1（与自带向导组相同）
+  被拒原因：维护向导「删除」上跳到询问页的登记顺序必须大于自带向导组的登记（1）：否则要么不显示询问页，要么显示时安装模式还没置好
+
+question-continue-closes-dialog
+  改了什么：询问页「继续」上多出一条直接关窗的登记（EndDialog Return）
+  被拒原因：询问页上出现了预期之外的事件登记（共 6 条，应为 5 条）：BackButton.NewDialog MaintenanceTypeDlg；CancelButton.EndDialog Exit；CancelButton.SpawnDi
+
+question-continue-condition
+  改了什么：询问页「继续」跳确认页的条件从安装模式为删除改成恒真
+  被拒原因：询问页的「NextButton」应以登记顺序 2 触发 NewDialog VerifyReadyDlg（条件 WixUI_InstallMode = "Remove"）
+
+question-set-mode-wrong
+  改了什么：赋值动作把安装模式置为 Change 而不是 Remove
+  被拒原因：SetRemoveInstallMode 应把界面库的安装模式 WixUI_InstallMode 置为 Remove：确认页与进度页据此显示卸载的文字
+
+question-back-visible
+  改了什么：询问页「上一步」默认可见（控件属性去掉隐藏位）
+  被拒原因：询问页的「上一步」必须默认隐藏：显示条件为假时不会隐藏，默认可见会让命令行卸载多出一个回到维护向导的入口
+
+question-back-condition
+  改了什么：询问页「上一步」显示条件去掉「不是命令行预选」一段
+  被拒原因：询问页的「上一步」应只有一条显示条件：WixUI_InstallMode = "Remove" AND NOT Preselected
+
+question-cancel-always-exits
+  改了什么：询问页「取消」直接退出的条件从命令行入口改成恒真
+  被拒原因：询问页的「CancelButton」应以登记顺序 2 触发 EndDialog Exit（条件 NOT WixUI_InstallMode）
+
+ready-back-target-missing
+  改了什么：「确认删除」页上一步回询问页的登记不再有（删除该行）
+  被拒原因：「确认删除」页的上一步应回询问页（WixUI_InstallMode = "Remove"）
+
+resume-page-back
+  改了什么：「继续安装」页的显示条件改回界面库原样（手动卸载时又会显示）
+  被拒原因：界面库的「继续安装」页在「手动卸载（命令行 REMOVE=ALL 或 msiexec /x）」时应当不显示，当前条件不是这样：Installed AND (RESUME OR Preselected)
+
+question-shown-in-upgrade
+  改了什么：询问页的显示条件去掉「不是升级」一段
+  被拒原因：询问页在「升级过程中旧产品的卸载子会话」时应当不显示，当前条件不是这样：REMOVE~="ALL"
+
+question-never-shown
+  改了什么：询问页的显示条件改成恒假
+  被拒原因：询问页在「手动卸载（命令行 REMOVE=ALL 或 msiexec /x）」时应当显示，当前条件不是这样：0
+
+preselection-kept
+  改了什么：询问页之后清掉「命令行预选」标记的动作从界面序列里去掉（进度页上「正在安装」与「正在删除」又会叠在一起）
+  被拒原因：ClearPreselectedAfterQuestion 应只在手动卸载（命令行 REMOVE=ALL）时执行，实际：
+
+preselection-cleared-too-early
+  改了什么：清掉预选标记的动作排到询问页之前
+  被拒原因：ClearPreselectedAfterQuestion 应排在询问页之后、「继续安装」页之前
+
+preselection-cleared-always
+  改了什么：清掉预选标记的条件清空（任何运行都清）
+  被拒原因：ClearPreselectedAfterQuestion 应只在手动卸载（命令行 REMOVE=ALL）时执行，实际：
+
+preselection-action-wrong
+  改了什么：赋值动作把预选标记置为 1 而不是清空
+  被拒原因：ClearPreselectedAfterQuestion 应是只把 Preselected 置空的赋值动作（否则命令行卸载的进度页上「正在安装」与「正在删除」叠在一起）
+
+maintenance-welcome-back
+  改了什么：维护欢迎页的显示条件改回界面库原样（命令行卸载里又会显示）
+  被拒原因：维护欢迎页在「命令行 REMOVE=ALL 的手动卸载（预选标记已清掉）」时应当不显示，当前条件不是这样：Installed AND NOT RESUME AND NOT Preselected AND NOT PATCH
+
+clear-property-not-secure
+  改了什么：勾选属性不再是安全属性（从 SecureCustomProperties 里去掉）：维护向导里的勾选传不进提权的执行会话
+  被拒原因：CLEAR_USER_DATA 必须声明为安全属性（出现在 SecureCustomProperties 里），否则维护向导里的勾选传不进提权的执行会话
+
+download-hyperlink
+  改了什么：缺运行时对话框的网址改回 Hyperlink 控件
+  被拒原因：包里不得再有 Hyperlink 控件：鼠标点击没有反应。网址用文字显示，打开动作放在「打开下载页」按钮上
+
+download-url-wrong
+  改了什么：缺运行时对话框显示的网址改错
+  被拒原因：「RuntimeMissingDlg」应把官方下载页的网址显示为文字（https://dotnet.microsoft.com/download/dotnet/10.0）
+
+download-button-setter-missing
+  改了什么：「打开下载页」按钮上先赋目标的登记不再有
+  被拒原因：RuntimeMissingDlg 的 OpenDownloadButton 应按登记顺序 1 触发 SetDownloadPageTarget（条件 1），先赋目标后启动缺一不可
+
+download-target-wrong
+  改了什么：赋值动作交给打开动作的网址改错
+  被拒原因：SetDownloadPageTarget 应把目标（https://dotnet.microsoft.com/download/dotnet/10.0）经属性 WixUnelevatedShellExecTarget 交给启动动作
+
+download-action-blocking
+  改了什么：打开下载页动作改成失败阻断（Type 1）
+  被拒原因：OpenDownloadPage 必须是同步、失败不阻断的 x64「请桌面外壳启动」动作（Wix4UtilCA_X64 / WixUnelevatedShellExec）
+
+launch-async-exe
+  改了什么：完成页启动改回「不等结果」的异步 EXE 动作（Type 226，旧包的写法）
+  被拒原因：LaunchClientOnExit 必须是同步、失败不阻断的 x64「请桌面外壳启动」动作（Wix4UtilCA_X64 / WixUnelevatedShellExec）
+
+other-async-exe
+  改了什么：清除动作里混进一个「不等结果」的异步 EXE 动作
+  被拒原因：动作 ClearDataDelAppSettings 是「不等结果」的异步 EXE 动作，在安装会话结束前起不来
+
+launch-target-wrong
+  改了什么：交给启动动作的程序改错
+  被拒原因：SetLaunchClientTarget 应把目标（[#WinHostExe]）经属性 WixUnelevatedShellExecTarget 交给启动动作
+
+launch-order-swapped
+  改了什么：完成页「完成」上先赋目标后启动的顺序对调
+  被拒原因：ExitDialog 的 Finish 应按登记顺序 1 触发 SetLaunchClientTarget（条件 WIXUI_EXITDIALOGOPTIONALCHECKBOX = "1" AND NOT Installed），先赋目标
+
+launch-after-close
+  改了什么：完成页的关窗事件排到启动动作之前
+  被拒原因：ExitDialog 的关窗事件必须排在启动动作之后（登记顺序大于 2），否则启动动作来不及执行
+
+launch-condition-weakened
+  改了什么：完成页启动的条件去掉勾选要求
+  被拒原因：ExitDialog 的 Finish 应按登记顺序 1 触发 SetLaunchClientTarget（条件 WIXUI_EXITDIALOGOPTIONALCHECKBOX = "1" AND NOT Installed），先赋目标
+
+webview2-hyperlink
+  改了什么：缺 WebView2 对话框的网址改回 Hyperlink 控件
+  被拒原因：包里不得再有 Hyperlink 控件：鼠标点击没有反应。网址用文字显示，打开动作放在「打开下载页」按钮上
+
+clear-user-dir-not-impersonated
+  改了什么：用户数据目录的清除动作改成不模拟用户（%LOCALAPPDATA% 不再按当前用户展开）
+  被拒原因：清除动作 ClearDataDelUserDir 应是失败不阻断的延迟动作（Type 1122：模拟用户），实际 Type 3170
+
+clear-machine-config-impersonated
+  改了什么：机器级设置的清除动作改回模拟用户（维护向导里拿不到管理员权限，删不掉）
+  被拒原因：清除动作 ClearDataDelMachineConfig 应是失败不阻断的延迟动作（Type 3170：不模拟用户），实际 Type 1122
+
+clear-app-settings-impersonated
+  改了什么：安装目录下客户端配置的清除动作改回模拟用户
+  被拒原因：清除动作 ClearDataDelAppSettings 应是失败不阻断的延迟动作（Type 3170：不模拟用户），实际 Type 1122
+
+clear-not-recursive
+  改了什么：清除用户目录的命令不带 /s（子目录删不掉，旧包的问题）
+  被拒原因：清除动作 ClearDataDelUserDir 的命令应包含：rmdir /s /q "%LOCALAPPDATA%\LabelFrame"；实际：cmd.exe /c rmdir /q "%LOCALAPPDATA%\LabelFra
+
+clear-machine-dir-recursive
+  改了什么：机器级设置目录整个带 /s 删除（会连插件目录一起删）
+  被拒原因：清除动作 ClearDataDelMachineConfig 的命令应包含：del /q "%ProgramData%\LabelFrame\Client\settings.json" & rmdir /q "%ProgramData%\
+
+clear-condition-no-upgrade-guard
+  改了什么：清除动作的条件去掉「不是升级」一段
+  被拒原因：清除动作 ClearDataDelUserDir 应只在手动卸载且勾选清除时执行（REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA="1"），实际条件：REMOV
+
+clear-old-action-back
+  改了什么：按文件名逐个删的旧动作 ClearDataDelFiles 又回到包里
+  被拒原因：清除动作 ClearDataDelFiles 已由删除整个用户数据目录的 ClearDataDelUserDir 取代，不得保留
+
+clear-missing
+  改了什么：清除机器级设置的动作从执行序列里去掉
+  被拒原因：清除动作 ClearDataDelMachineConfig 应在安装执行序列里出现一次，实际 0 次
+
+合计：38 个变异包，38 个被拒绝，其中 38 个是被为该改动准备的那条断言拒绝的。

@@ -28,6 +28,10 @@
     <Property Id="ARPPRODUCTICON" Value="LabelframeAppIco" />
     <Property Id="ARPHELPLINK" Value="https://github.com/marci-labs/LabelFrame" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/marci-labs/LabelFrame/releases" />
+    <!-- 卸载询问页的勾选要传进提权的执行会话。
+         防回归警示：必须声明为安全属性——以普通方式启动安装程序再进维护向导时，执行会话会忽略不是安全属性的属性
+         （安装日志里是 Ignoring disallowed property），勾选「清除用户数据」等于没勾 -->
+    <Property Id="CLEAR_USER_DATA" Secure="yes" />
 
 
     <!-- 运行时检测：.NET 官方 NetCoreCheck 自检（属性值 0 = 满足；其余为未安装 / 版本不足 / 平台不兼容）。
@@ -79,11 +83,13 @@
     <Launch Condition="WEBVIEW2_HKLM OR WEBVIEW2_HKCU OR UILevel = 5 OR REMOVE"
       Message="本机未检测到 Microsoft Edge WebView2 运行时（LabelFrame 界面窗口依赖），请先安装后重新运行安装程序。下载：https://go.microsoft.com/fwlink/p/?LinkId=2124703" />
 
-    <!-- 运行时缺失对话框：可点击官方下载链接（MSI Hyperlink 控件） -->
-    <!-- 向导以失败收场时显示界面库的标准「提前结束」页，其说明文字由 packaging\wixui-zh-cn-override.wxl 补上安装日志的位置 -->
+    <!-- 运行时缺失对话框：显示官方下载页的网址，由「打开下载页」按钮在默认浏览器里打开。
+         向导以失败收场时显示界面库的标准「提前结束」页，其说明文字由 packaging\wixui-zh-cn-override.wxl 补上安装日志的位置 -->
     <UI Id="RuntimeCheckUI">
       <!-- 运行时缺失对话框：按实际缺的那一项说明，三段说明共用一个位置，由控件显示条件择一。
-           平台坑：显示条件为真时才显示，为假时并不隐藏，所以三段必须默认隐藏，否则全部叠在一起、最后一段盖住其余 -->
+           平台坑：显示条件为真时才显示，为假时并不隐藏，所以三段必须默认隐藏，否则全部叠在一起、最后一段盖住其余。
+           平台坑：网址不能用安装器的 Hyperlink 控件——它对鼠标点击没有反应，只有焦点在链接上时按回车才打开。
+           网址用普通文字显示，打开动作放在按钮上 -->
       <Dialog Id="RuntimeMissingDlg" X="50" Y="50" Width="370" Height="230"
               Title="LabelFrame 安装 - 缺少 .NET 运行时" NoMinimize="yes">
         <Control Id="NoRuntimeText" Type="Text" X="15" Y="15" Width="340" Height="48" Hidden="yes"
@@ -97,24 +103,33 @@
                  ShowCondition="DOTNET10_DESKTOP_PRESENT = &quot;0&quot; AND NOT DOTNET10_PRESENT = &quot;0&quot;" />
         <Control Id="HintText" Type="Text" X="15" Y="75" Width="340" Height="20"
                  Text="微软官方下载页（两项都在这里，都选 x64）：" />
-        <Control Id="RuntimeLink" Type="Hyperlink" X="15" Y="100" Width="340" Height="25"
-                 Text="&lt;a href=&quot;https://dotnet.microsoft.com/download/dotnet/10.0&quot;&gt;https://dotnet.microsoft.com/download/dotnet/10.0&lt;/a&gt;" />
+        <Control Id="RuntimeDownloadUrl" Type="Text" X="15" Y="100" Width="340" Height="25"
+                 Text="https://dotnet.microsoft.com/download/dotnet/10.0" />
+        <Control Id="OpenDownloadButton" Type="PushButton" X="165" Y="190" Width="100" Height="25" Text="打开下载页(&amp;O)">
+          <!-- 两条事件按登记顺序执行：先把目标网址交给打开动作，再打开 -->
+          <Publish Event="DoAction" Value="SetDownloadPageTarget" Order="1" Condition="1" />
+          <Publish Event="DoAction" Value="OpenDownloadPage" Order="2" Condition="1" />
+        </Control>
         <Control Id="ExitButton" Type="PushButton" X="280" Y="190" Width="75" Height="25"
                  Text="退出" Default="yes" Cancel="yes">
           <Publish Event="EndDialog" Value="Exit" Condition="1" />
         </Control>
       </Dialog>
-      <!-- WebView2 运行时缺失（全 UI）：官方下载链接 + 重新检测（注册表键随运行时安装即写入，装完点重新检测即可继续，无需重启安装程序） -->
+      <!-- WebView2 运行时缺失（全 UI）：官方下载页按钮 + 重新检测（注册表键随运行时安装即写入，装完点重新检测即可继续，无需重启安装程序） -->
       <Dialog Id="WebView2MissingDlg" X="50" Y="50" Width="370" Height="200"
               Title="LabelFrame 安装 - 缺少 WebView2 运行时" NoMinimize="yes">
         <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="40"
                  Text="本机未检测到 Microsoft Edge WebView2 运行时（LabelFrame 界面窗口需要），请先安装。" />
         <Control Id="HintText" Type="Text" X="15" Y="62" Width="340" Height="20"
-                 Text="点击下方链接打开微软官方下载页（Evergreen 版本）：" />
-        <Control Id="WebView2Link" Type="Hyperlink" X="15" Y="87" Width="340" Height="25"
-                 Text="&lt;a href=&quot;https://go.microsoft.com/fwlink/p/?LinkId=2124703&quot;&gt;https://go.microsoft.com/fwlink/p/?LinkId=2124703&lt;/a&gt;" />
+                 Text="微软官方下载页（Evergreen 版本）：" />
+        <Control Id="WebView2DownloadUrl" Type="Text" X="15" Y="87" Width="340" Height="25"
+                 Text="https://go.microsoft.com/fwlink/p/?LinkId=2124703" />
         <Control Id="HintText2" Type="Text" X="15" Y="118" Width="340" Height="20"
                  Text="安装完成后点击「重新检测」继续本安装程序。" />
+        <Control Id="OpenDownloadButton" Type="PushButton" X="75" Y="160" Width="90" Height="25" Text="打开下载页(&amp;O)">
+          <Publish Event="DoAction" Value="SetWebView2DownloadPageTarget" Order="1" Condition="1" />
+          <Publish Event="DoAction" Value="OpenDownloadPage" Order="2" Condition="1" />
+        </Control>
         <Control Id="RetryButton" Type="PushButton" X="177" Y="160" Width="90" Height="25" Text="重新检测">
           <Publish Event="DoAction" Value="RecheckWebView2" />
           <Publish Event="EndDialog" Value="Return" Condition="WEBVIEW2_OK = &quot;1&quot;" />
@@ -124,7 +139,10 @@
           <Publish Event="EndDialog" Value="Exit" />
         </Control>
       </Dialog>
-      <!-- 卸载时询问是否清除用户数据（默认不勾选；仅手动卸载，不适用于升级） -->
+      <!-- 卸载时询问是否清除用户数据（默认不勾选；仅手动卸载，不适用于升级）。
+           平台坑：询问页必须排在执行之前，而 Windows Installer 在卸载时按「是不是已经装了、是不是命令行预选了功能」
+           决定显示哪一页——命令行带 REMOVE=ALL 时显示界面库的「继续安装」页，维护向导里选「删除」时不经过界面序列；
+           所以两个入口都要接：界面序列里的显示条件（下方）只覆盖命令行入口，向导入口靠维护向导「删除」按钮的跳转 -->
       <Dialog Id="ClearDataDlg" X="50" Y="50" Width="370" Height="170"
               Title="LabelFrame Client 卸载" NoMinimize="yes">
         <Control Id="TitleText" Type="Text" X="15" Y="15" Width="340" Height="25" Text="卸载 LabelFrame Client。" />
@@ -132,13 +150,24 @@
                  Text="是否同时清除本程序产生的用户数据（模板 / 作业 / 日志 / 连接与打印配置）？" />
         <Control Id="ClearDataCheck" Type="CheckBox" X="15" Y="85" Width="340" Height="18"
                  Property="CLEAR_USER_DATA" CheckBoxValue="1" Text="清除用户数据" />
+        <!-- 「上一步」只在维护向导入口显示：命令行入口的功能是预选的，回到维护向导再选别的操作会与 REMOVE=ALL 叠加 -->
+        <Control Id="BackButton" Type="PushButton" X="120" Y="135" Width="75" Height="25"
+                 Text="上一步(&amp;B)" Hidden="yes"
+                 ShowCondition="WixUI_InstallMode = &quot;Remove&quot; AND NOT Preselected">
+          <Publish Event="NewDialog" Value="MaintenanceTypeDlg" />
+        </Control>
         <Control Id="CancelButton" Type="PushButton" X="200" Y="135" Width="75" Height="25"
                  Text="取消" Cancel="yes">
-          <Publish Event="EndDialog" Value="Exit" Condition="1" />
+          <!-- 命令行入口直接退出；向导入口与其他向导页一致，先确认再退出 -->
+          <Publish Event="SpawnDialog" Value="CancelDlg" Condition="WixUI_InstallMode = &quot;Remove&quot;" />
+          <Publish Event="EndDialog" Value="Exit" Condition="NOT WixUI_InstallMode" />
         </Control>
+        <!-- 防回归警示：界面库按「安装模式」属性决定确认页与进度页用哪套文字，命令行入口没有「删除」按钮替它赋值，
+             必须先把属性置为 Remove 再进确认页 -->
         <Control Id="NextButton" Type="PushButton" X="280" Y="135" Width="75" Height="25"
                  Text="继续" Default="yes">
-          <Publish Event="EndDialog" Value="Return" Condition="1" />
+          <Publish Event="DoAction" Value="SetRemoveInstallMode" Order="1" Condition="NOT WixUI_InstallMode" />
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" Order="2" Condition="WixUI_InstallMode = &quot;Remove&quot;" />
         </Control>
       </Dialog>
       <!-- 安装目录页（只读）：更新服务只接受 Program Files 下的安装目录，所以不提供修改入口；页面上只有「安装目录」和路径，不加解释。
@@ -188,8 +217,15 @@
                Condition="NOT Installed" />
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OptionsDlg" Order="10"
                Condition="NOT Installed AND NOT REMOVE" />
-      <!-- 向导完成页启动：对 UI 扩展库的 ExitDialog 追加控件事件（勾选 + 全新安装才启动） -->
-      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchClientOnExit"
+      <!-- 卸载链路：维护向导的「删除」先经询问页；「确认删除」页的「上一步」回询问页（界面库默认回维护向导的类型页） -->
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="ClearDataDlg" Order="10" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="ClearDataDlg" Order="10"
+               Condition="WixUI_InstallMode = &quot;Remove&quot;" />
+      <!-- 向导完成页启动：对 UI 扩展库的 ExitDialog 追加控件事件（勾选 + 全新安装才启动）。
+           两条事件按登记顺序执行：先把目标程序交给启动动作，再启动。界面库在这一页的「完成」上另有登记顺序为 999 的关窗事件，排在它们之后 -->
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="SetLaunchClientTarget" Order="1"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = &quot;1&quot; AND NOT Installed" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchClientOnExit" Order="2"
                Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = &quot;1&quot; AND NOT Installed" />
     </UI>
     <InstallUISequence>
@@ -200,6 +236,17 @@
             Condition="NOT WEBVIEW2_HKLM AND NOT WEBVIEW2_HKCU AND DOTNET10_PRESENT = &quot;0&quot; AND DOTNET10_DESKTOP_PRESENT = &quot;0&quot; AND NOT REMOVE" />
       <Show Dialog="ClearDataDlg" Sequence="1290"
             Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <!-- 命令行带 REMOVE=ALL 时，询问页之后不再显示界面库的「继续安装」页：它按安装措辞写成，卸载时文不对题；
+           询问页自己进入「确认删除」页。这一行替换界面库里同一页的显示条件 -->
+      <Show Dialog="override ResumeDlg" Before="ProgressDlg"
+            Condition="Installed AND (RESUME OR Preselected) AND NOT (REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE)" />
+      <!-- 同一条路径上，界面库的进度页会按「命令行预选了功能」把「正在安装」的两段文字也显示出来，和「正在删除」叠在一起。
+           预选标记只在这两条显示条件里用到：询问页之后把它清掉，再让维护欢迎页（它的条件看的是同一个标记的反面）不在这一路径上显示。
+           这一行替换界面库里维护欢迎页的显示条件 -->
+      <Custom Action="ClearPreselectedAfterQuestion" Before="ResumeDlg"
+              Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Show Dialog="override MaintenanceWelcomeDlg" Before="ProgressDlg"
+            Condition="Installed AND NOT RESUME AND NOT Preselected AND NOT PATCH AND NOT (REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE)" />
     </InstallUISequence>
 
     <!-- 安装目录：Program Files\LabelFrame\Client（64 位）。目录标识含小写字母 = 非公开属性，安装位置无法从外部改写 -->
@@ -304,18 +351,31 @@
     <SetProperty Id="StopUpdaterServiceOnRollback"
       Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -Command &quot;Stop-Service -Name LabelFrameClientUpdater -Force -ErrorAction SilentlyContinue&quot;"
       Before="StopUpdaterServiceOnRollback" Sequence="execute" />
-    <!-- 完成页「立即打开」：Finish 按钮在勾选时触发（见 Publish），异步启动不阻塞向导关闭 -->
-    <CustomAction Id="LaunchClientOnExit" Directory="ClientInstallDir" Execute="immediate" Return="asyncNoWait"
-                  ExeCommand="&quot;[#WinHostExe]&quot;" />
-    <!-- 卸载清理用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发；新增机器级配置 settings.json）。
-         host 日志按日轮转（host-yyyyMMdd.log），清理一并覆盖单名历史文件与轮转文件 -->
-    <CustomAction Id="ClearDataDelFiles" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
-      ExeCommand="cmd.exe /c del /q &quot;%LOCALAPPDATA%\LabelFrame\jobs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\templates.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\logs.db&quot; &quot;%LOCALAPPDATA%\LabelFrame\host.log&quot; &quot;%LOCALAPPDATA%\LabelFrame\host-*.log&quot; &quot;%LOCALAPPDATA%\LabelFrame\connection.json&quot;" />
-    <CustomAction Id="ClearDataDelPrintDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
-      ExeCommand="cmd.exe /c rmdir /s /q &quot;%LOCALAPPDATA%\LabelFrame\print&quot;" />
-    <CustomAction Id="ClearDataDelMachineConfig" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
-      ExeCommand="cmd.exe /c del /q &quot;%ProgramData%\LabelFrame\Client\settings.json&quot;" />
-    <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
+    <!-- 完成页「立即打开」与各对话框的「打开下载页」：安装器扩展库的「请桌面外壳启动」动作。
+         桌面外壳以当前登录用户的不提权身份启动目标，安装程序以管理员身份运行时，客户端和浏览器也不会跟着提权；
+         外壳接手后动作就返回，向导照常结束。启动不了（没有桌面外壳）不影响已经完成的安装，所以失败不阻断。
+         防回归警示：不能改成「不等结果」的异步 EXE 动作——向导最后一步触发它时安装会话随即结束，动作起不来。
+         目标经属性交给动作，每个目标各用一条赋值动作，由按钮事件按登记顺序紧挨在启动之前执行 -->
+    <CustomAction Id="LaunchClientOnExit" BinaryRef="Wix4UtilCA_X64" DllEntry="WixUnelevatedShellExec" Execute="immediate" Return="ignore" Impersonate="yes" />
+    <CustomAction Id="OpenDownloadPage" BinaryRef="Wix4UtilCA_X64" DllEntry="WixUnelevatedShellExec" Execute="immediate" Return="ignore" Impersonate="yes" />
+    <CustomAction Id="SetLaunchClientTarget" Property="WixUnelevatedShellExecTarget" Value="[#WinHostExe]" />
+    <CustomAction Id="SetDownloadPageTarget" Property="WixUnelevatedShellExecTarget" Value="https://dotnet.microsoft.com/download/dotnet/10.0" />
+    <CustomAction Id="SetWebView2DownloadPageTarget" Property="WixUnelevatedShellExecTarget" Value="https://go.microsoft.com/fwlink/p/?LinkId=2124703" />
+    <!-- 卸载询问页的「继续」把界面库的安装模式置为「删除」：确认页与进度页据此显示卸载的文字 -->
+    <CustomAction Id="SetRemoveInstallMode" Property="WixUI_InstallMode" Value="Remove" />
+    <CustomAction Id="ClearPreselectedAfterQuestion" Property="Preselected" Value="" />
+    <!-- 清除用户数据（勾选 CLEAR_USER_DATA 且为手动卸载时执行；升级不触发）：删除整个用户数据目录。
+         作业、模板、日志、模拟打印出图、连接与打印设置、界面缓存都在这个目录里，按文件名逐个列总会漏。
+         用户数据目录以用户身份删：%LOCALAPPDATA% 要按当前用户的目录展开，用户对自己的文件本来就有全部权限。
+         机器级设置删除后目录空了则一并删除；同一目录下的插件目录不是用户数据，所以这条不带 /s。
+         客户端自己的 appsettings.json 是用户配置，一并删除。
+         平台坑：机器级的两条以安装自己的提权身份执行——以普通方式启动安装程序再进维护向导时，
+         模拟用户的延迟动作拿不到管理员权限，删不掉 ProgramData 与 Program Files 下的文件（动作照常「成功」，什么都没删） -->
+    <CustomAction Id="ClearDataDelUserDir" Directory="SystemFolder" Execute="deferred" Impersonate="yes" Return="ignore"
+      ExeCommand="cmd.exe /c rmdir /s /q &quot;%LOCALAPPDATA%\LabelFrame&quot;" />
+    <CustomAction Id="ClearDataDelMachineConfig" Directory="SystemFolder" Execute="deferred" Impersonate="no" Return="ignore"
+      ExeCommand="cmd.exe /c del /q &quot;%ProgramData%\LabelFrame\Client\settings.json&quot; &amp; rmdir /q &quot;%ProgramData%\LabelFrame\Client&quot;" />
+    <CustomAction Id="ClearDataDelAppSettings" Directory="SystemFolder" Execute="deferred" Impersonate="no" Return="ignore"
       ExeCommand="cmd.exe /c del /q &quot;%ProgramFiles%\LabelFrame\Client\appsettings.json&quot;" />
     <InstallExecuteSequence>
       <!-- CostFinalize 后、InstallValidate 前停止宿主，避免文件占用检查先弹出 Restart Manager 对话框。
@@ -326,8 +386,7 @@
       <!-- 服务注册（InstallServices）之后、提交（InstallFinalize）之前启动更新服务：失败时整笔安装连同服务注册一起回滚 -->
       <Custom Action="StartUpdaterService" After="InstallServices" Condition="NOT REMOVE" />
       <Custom Action="StopUpdaterServiceOnRollback" Before="SetStartUpdaterService" Condition="NOT REMOVE" />
-      <Custom Action="ClearDataDelFiles" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
-      <Custom Action="ClearDataDelPrintDir" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
+      <Custom Action="ClearDataDelUserDir" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelMachineConfig" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
       <Custom Action="ClearDataDelAppSettings" After="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA=&quot;1&quot;" />
     </InstallExecuteSequence>

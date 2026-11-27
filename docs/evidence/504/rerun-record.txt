@@ -1,0 +1,235 @@
+# 重跑轮的宿主机侧记录（每行前面的时间是宿主机时间；测试账户名已替换为占位符）。
+12:50:53 STATE_BEFORE=Off
+12:50:54 HOST_FREE_MB=12413 VM_NEED_MB=4096
+12:50:55 STATE_AFTER_RESTORE=Off
+12:51:05 STATE_AFTER_START=Running
+12:51:20 PSDIRECT_OK host=DESKTOP-D65DJ5S
+12:51:27 GUEST clockBefore=2026-11-27T12:51:27.8823381+08:00 clockAfter=2026-11-27T12:51:20.4183651+08:00 setDate=ok
+12:51:27 GUEST identity=DESKTOP-D65DJ5S\<account> elevated=True
+12:51:27 VM state=Running uptime=00:00:25.5880000 cpu=12 memAssignedMB=3920
+12:51:27 DONE
+12:51:27 [rerun] waiting 90 seconds after boot before touching the guest
+12:52:59 [rerun] guest boot time recorded for this round: 2026-11-27 12:10:56
+12:52:59 [rerun] service wuauserv: status when the stop request was sent=Running startType=Disabled
+12:52:59 [rerun] service UsoSvc: status when the stop request was sent=Running startType=Disabled
+12:52:59 [rerun] service WaaSMedicSvc: status when the stop request was sent=Stopped startType=Manual
+12:52:59 [rerun] last boot: 2026-11-27 12:10:56
+12:52:59 [rerun] in-progress installer registration exists: False
+12:53:01 [rerun] 12:53:01 COPIED aspnetcore-runtime-10.0.12-win-x64.exe (11262864 bytes) in 1.7s
+12:53:04 [rerun] 12:53:04 COPIED dotnet-runtime-10.0.12-win-x64.exe (30663104 bytes) in 2.8s
+12:53:06 [rerun] 12:53:06 COPIED LabelFrame-Client-1.6.99.msi (24817664 bytes) in 1.8s
+12:53:08 [rerun] 12:53:08 COPIED LabelFrame-Server-1.6.99.msi (24727552 bytes) in 1.9s
+12:53:08 [rerun] 12:53:08 COPIED probe.msi (32768 bytes) in 0.1s
+12:53:13 [rerun] 12:53:13 COPIED windowsdesktop-runtime-10.0.12-win-x64.exe (60032984 bytes) in 5.7s
+12:53:14 [rerun] --- guest files: name size sha256 ---
+12:53:14 [rerun] aspnetcore-runtime-10.0.12-win-x64.exe 11262864 e5d20698ea8cdda55bcf8d6151d5b65097761506a1d8ed9af39910cfc956e5ad
+12:53:14 [rerun] dotnet-runtime-10.0.12-win-x64.exe 30663104 02ea072c08f890f9dc0d3ac71b5fd4c2bfcdced4e1133e2d917ce5422b025585
+12:53:14 [rerun] LabelFrame-Client-1.6.99.msi 24817664 e008e0875347839db8d9fb771ef72bf0a0622ccb690dc4f6a26e2b13366b74e9
+12:53:14 [rerun] LabelFrame-Server-1.6.99.msi 24727552 be33672b192a69b4c0bec072bb08044dbd9ddfe16c8a2f7e3cec397a9c049a22
+12:53:14 [rerun] probe.msi 32768 ca9111b21750ab3f02d3b3375808e3f811e9e1f56d926aa8e5827dd3c6a2f9e6
+12:53:14 [rerun] windowsdesktop-runtime-10.0.12-win-x64.exe 60032984 55a67d8476cde95a9cc43a95803b4f54446e7c9251ed22aa6421d4908174ae84
+12:53:18 [rerun] RUNTIME install dotnet-runtime-10.0.12-win-x64.exe exit=0 elapsed=4.2s
+12:53:20 [rerun]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+12:53:20 [rerun]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+12:53:20 [rerun]     Microsoft .NET Runtime - 10.0.12 (x64)
+12:53:20 [rerun]     Microsoft .NET Runtime - 10.0.12 (x64)
+12:53:23 [rerun] RUNTIME install aspnetcore-runtime-10.0.12-win-x64.exe exit=0 elapsed=2.2s
+12:53:25 [rerun]   \swidtag\Microsoft .NET Runtime - 10.0.12 (x64).swidtag
+12:53:25 [rerun]   \swidtag\Microsoft ASP.NET Core Runtime - 10.0.12 (x64).swidtag
+12:53:25 [rerun]   runtime: Microsoft.AspNetCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+12:53:25 [rerun]   runtime: Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+12:53:25 [rerun]     Microsoft .NET Runtime - 10.0.12 (x64)
+12:53:25 [rerun]     Microsoft .NET Runtime - 10.0.12 (x64)
+12:53:25 [rerun]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+12:53:25 [rerun]     Microsoft ASP.NET Core Runtime - 10.0.12 (x64)
+12:53:29 [rerun] 12:53:25 ARGUMENTS /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /qn /norestart /l*v "C:\Probe\logs\10-install-silent.log"
+12:53:29 [rerun] 12:53:29 MSI mode=install msi=LabelFrame-Server-1.6.99.msi INSTALLFOLDER=[] extra=[] exit=0 elapsed=4.1s
+12:53:29 [rerun] 12:53:29 LOG bytes=172716
+12:53:40 [rerun] WAIT port=53961 restart=False result=ready elapsed=0.4s lastCode=200 stateBefore=Running pidBefore=4724 stateAfter=Running pidAfter=4724 body={"service":"LabelFrame.Server","status":"ok"}
+12:53:40 [rerun] WAIT_STABILITY seconds=10 sameProcess=True state=Running pid=4724 healthCode=200
+12:53:45 [rerun] 
+12:53:45 [rerun] === products  [guest 12:53:41] ===
+12:53:45 [rerun] PRODUCT name=LabelFrame Server version=1.6.99 location= key={4F465CA0-749C-4E1C-86FA-F470051324AB}
+12:53:45 [rerun] UNINSTALL_STRING name=LabelFrame Server command=MsiExec.exe /X{4F465CA0-749C-4E1C-86FA-F470051324AB}
+12:53:45 [rerun] 
+12:53:45 [rerun] === services  [guest 12:53:41] ===
+12:53:45 [rerun] SERVICE name=LabelFrameServer state=Running startMode=Auto startName=LocalSystem pid=4724 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+12:53:45 [rerun] SERVICE name=LabelFrameClientUpdater none
+12:53:45 [rerun] 
+12:53:45 [rerun] === main programs  [guest 12:53:41] ===
+12:53:45 [rerun] PROGRAM role=server fileVersion=1.6.99.0 productVersion=1.6.99+3f3680ec450a8fbbec61155ac9c927dc075f321d bytes=310272 sha256=c588ead6a2987b59548b72cf3ccc1187237d219c1810d0b9b509e7116e2ef052 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+12:53:45 [rerun] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+12:53:45 [rerun] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=82 sha256=bd2baf291aab5a15982aa6862552ca51b88702f9d042b2555ffb784ed34a545e
+12:53:45 [rerun] FILE client appsettings exists=False path=C:\Program Files\LabelFrame\Client\appsettings.json
+12:53:45 [rerun] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+12:53:45 [rerun] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+12:53:45 [rerun] 
+12:53:45 [rerun] === processes  [guest 12:53:41] ===
+12:53:45 [rerun] PROCESS name=explorer.exe pid=7952 parent=11996 session=2 started=12:51:04 sinceBoot=True commandLine="C:\Windows\explorer.exe"
+12:53:45 [rerun] PROCESS name=LabelFrame.Server.exe pid=4724 parent=724 session=0 started=12:53:26 sinceBoot=True commandLine="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+12:53:45 [rerun] PROCESS name=msedge.exe pid=768 parent=6520 session=2 started=11:14:06 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:7 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" "--metrics-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=92.0.4515.131 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 "--annotation=prod=Microsoft Edge" --annotation=ver=92.0.902.67 --initial-client-data=0xfc,0x100,0x104,0xdc,0x108,0x7ff81f2346f8,0x7ff81f234708,0x7ff81f234718
+12:53:45 [rerun] PROCESS name=msedge.exe pid=1904 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --disable-client-side-phishing-detection --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=8 --no-v8-untrusted-code-mitigations --mojo-platform-channel-handle=3468 /prefetch:1
+12:53:45 [rerun] PROCESS name=msedge.exe pid=5168 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --service-sandbox-type=utility --mojo-platform-channel-handle=2848 /prefetch:8
+12:53:45 [rerun] PROCESS name=msedge.exe pid=5712 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --service-sandbox-type=none --mojo-platform-channel-handle=2312 /prefetch:3
+12:53:45 [rerun] PROCESS name=msedge.exe pid=5976 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --gpu-preferences=UAAAAAAAAADgAAAQAAAAAAAAAAAAAAAAAABgAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAAAAAAAAeAAAAAAAAAAoAAAABAAAACAAAAAAAAAAKAAAAAAAAAAwAAAAAAAAADgAAAAAAAAAEAAAAAAAAAAAAAAADQAAABAAAAAAAAAAAQAAAA0AAAAQAAAAAAAAAAQAAAANAAAAEAAAAAAAAAAHAAAADQAAAAgAAAAAAAAACAAAAAAAAAA= --mojo-platform-channel-handle=2168 /prefetch:2
+12:53:45 [rerun] PROCESS name=msedge.exe pid=6520 parent=6868 session=2 started=11:14:06 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --auto-launch-onlogon --try-edge-again-fre
+12:53:45 [rerun] PROCESS name=msiexec.exe pid=1856 parent=724 session=0 started=10:35:51 sinceBoot=False commandLine=C:\Windows\system32\msiexec.exe /V
+12:53:45 [rerun] BROWSER_PROCESSES_SINCE_BOOT=0
+12:53:45 [rerun] BROWSER_FOREGROUND_SINCE_BOOT=0
+12:53:45 [rerun] 
+12:53:45 [rerun] === listeners  [guest 12:53:42] ===
+12:53:45 [rerun] LISTEN address=0.0.0.0 port=53961 pid=4724
+12:53:45 [rerun] 
+12:53:45 [rerun] === http  [guest 12:53:42] ===
+12:53:45 [rerun] HTTP server healthz port=53961 code=200 body={"service":"LabelFrame.Server","status":"ok"}
+12:53:45 [rerun] HTTP server info port=53961 code=200 body={"listenUrl":"http://0.0.0.0:53961","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.1"}
+12:53:45 [rerun] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+12:53:45 [rerun] 
+12:53:45 [rerun] === client machine settings  [guest 12:53:45] ===
+12:53:45 [rerun] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+12:53:45 [rerun] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+12:53:45 [rerun] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+12:53:45 [rerun] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=False
+12:53:45 [rerun] 
+12:53:45 [rerun] === auto-start entry  [guest 12:53:45] ===
+12:53:45 [rerun] RUN_KEY present=False
+12:53:45 [rerun] 
+12:53:45 [rerun] === user files  [guest 12:53:45] ===
+12:53:45 [rerun] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+12:53:45 [rerun] 
+12:53:45 [rerun] === server data  [guest 12:53:45] ===
+12:53:45 [rerun] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=9 bytes=238408
+12:53:45 [rerun] SERVER_DATA_TOP client-packages | logs.db | logs.db-shm | logs.db-wal | pda-packages | plugin-packages | plugins | server.db | server.db-shm | server.db-wal | templates.db | templates.db-shm | templates.db-wal
+12:53:45 [rerun] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+12:53:45 [rerun] IN_PROGRESS_REGISTRATION False
+12:53:48 [rerun] 12:53:45 WATCH_BEFORE state=Running pid=4724 health=200
+12:53:48 [rerun] 12:53:48 WATCH_STEP mode=install msi=LabelFrame-Server-1.6.99.msi exit=0 elapsed=0.5s
+12:53:48 [rerun] 12:53:48 WATCH_AFTER state=Running pid=4724 health=200
+12:53:48 [rerun] 12:53:48 WATCH_SAMPLES count=13
+12:53:48 [rerun] 12:53:48 WATCH_HEALTH probes=13 failed=0 firstFailureAt=- lastFailureAt=-
+12:53:48 [rerun] 12:53:48 WATCH_SERVICE states=Running pids=
+12:53:48 [rerun] 12:53:48 WATCH_CHANGES 0.07s:Running/
+12:53:48 [rerun] 12:53:48 WATCH_SUMMARY sameProcess=True stateBefore=Running stateAfter=Running probesFailed=0
+12:53:52 [rerun] 
+12:53:52 [rerun] === products  [guest 12:53:49] ===
+12:53:52 [rerun] PRODUCT name=LabelFrame Server version=1.6.99 location= key={4F465CA0-749C-4E1C-86FA-F470051324AB}
+12:53:52 [rerun] UNINSTALL_STRING name=LabelFrame Server command=MsiExec.exe /X{4F465CA0-749C-4E1C-86FA-F470051324AB}
+12:53:52 [rerun] 
+12:53:52 [rerun] === services  [guest 12:53:49] ===
+12:53:52 [rerun] SERVICE name=LabelFrameServer state=Running startMode=Auto startName=LocalSystem pid=4724 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+12:53:52 [rerun] SERVICE name=LabelFrameClientUpdater none
+12:53:52 [rerun] 
+12:53:52 [rerun] === main programs  [guest 12:53:49] ===
+12:53:52 [rerun] PROGRAM role=server fileVersion=1.6.99.0 productVersion=1.6.99+3f3680ec450a8fbbec61155ac9c927dc075f321d bytes=310272 sha256=c588ead6a2987b59548b72cf3ccc1187237d219c1810d0b9b509e7116e2ef052 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+12:53:52 [rerun] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+12:53:52 [rerun] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=82 sha256=bd2baf291aab5a15982aa6862552ca51b88702f9d042b2555ffb784ed34a545e
+12:53:52 [rerun] FILE client appsettings exists=False path=C:\Program Files\LabelFrame\Client\appsettings.json
+12:53:52 [rerun] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+12:53:52 [rerun] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+12:53:52 [rerun] 
+12:53:52 [rerun] === processes  [guest 12:53:49] ===
+12:53:52 [rerun] PROCESS name=explorer.exe pid=7952 parent=11996 session=2 started=12:51:04 sinceBoot=True commandLine="C:\Windows\explorer.exe"
+12:53:52 [rerun] PROCESS name=LabelFrame.Server.exe pid=4724 parent=724 session=0 started=12:53:26 sinceBoot=True commandLine="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+12:53:52 [rerun] PROCESS name=msedge.exe pid=768 parent=6520 session=2 started=11:14:06 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:7 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" "--metrics-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=92.0.4515.131 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 "--annotation=prod=Microsoft Edge" --annotation=ver=92.0.902.67 --initial-client-data=0xfc,0x100,0x104,0xdc,0x108,0x7ff81f2346f8,0x7ff81f234708,0x7ff81f234718
+12:53:52 [rerun] PROCESS name=msedge.exe pid=1904 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --disable-client-side-phishing-detection --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=8 --no-v8-untrusted-code-mitigations --mojo-platform-channel-handle=3468 /prefetch:1
+12:53:52 [rerun] PROCESS name=msedge.exe pid=5168 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --service-sandbox-type=utility --mojo-platform-channel-handle=2848 /prefetch:8
+12:53:52 [rerun] PROCESS name=msedge.exe pid=5712 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --service-sandbox-type=none --mojo-platform-channel-handle=2312 /prefetch:3
+12:53:52 [rerun] PROCESS name=msedge.exe pid=5976 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --gpu-preferences=UAAAAAAAAADgAAAQAAAAAAAAAAAAAAAAAABgAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAAAAAAAAeAAAAAAAAAAoAAAABAAAACAAAAAAAAAAKAAAAAAAAAAwAAAAAAAAADgAAAAAAAAAEAAAAAAAAAAAAAAADQAAABAAAAAAAAAAAQAAAA0AAAAQAAAAAAAAAAQAAAANAAAAEAAAAAAAAAAHAAAADQAAAAgAAAAAAAAACAAAAAAAAAA= --mojo-platform-channel-handle=2168 /prefetch:2
+12:53:52 [rerun] PROCESS name=msedge.exe pid=6520 parent=6868 session=2 started=11:14:06 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --auto-launch-onlogon --try-edge-again-fre
+12:53:52 [rerun] PROCESS name=msiexec.exe pid=1856 parent=724 session=0 started=10:35:51 sinceBoot=False commandLine=C:\Windows\system32\msiexec.exe /V
+12:53:52 [rerun] BROWSER_PROCESSES_SINCE_BOOT=0
+12:53:52 [rerun] BROWSER_FOREGROUND_SINCE_BOOT=0
+12:53:52 [rerun] 
+12:53:52 [rerun] === listeners  [guest 12:53:49] ===
+12:53:52 [rerun] LISTEN address=0.0.0.0 port=53961 pid=4724
+12:53:52 [rerun] 
+12:53:52 [rerun] === http  [guest 12:53:50] ===
+12:53:52 [rerun] HTTP server healthz port=53961 code=200 body={"service":"LabelFrame.Server","status":"ok"}
+12:53:52 [rerun] HTTP server info port=53961 code=200 body={"listenUrl":"http://0.0.0.0:53961","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.1"}
+12:53:52 [rerun] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+12:53:52 [rerun] 
+12:53:52 [rerun] === client machine settings  [guest 12:53:52] ===
+12:53:52 [rerun] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+12:53:52 [rerun] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+12:53:52 [rerun] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+12:53:52 [rerun] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=False
+12:53:52 [rerun] 
+12:53:52 [rerun] === auto-start entry  [guest 12:53:52] ===
+12:53:52 [rerun] RUN_KEY present=False
+12:53:52 [rerun] 
+12:53:52 [rerun] === user files  [guest 12:53:52] ===
+12:53:52 [rerun] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+12:53:52 [rerun] 
+12:53:52 [rerun] === server data  [guest 12:53:52] ===
+12:53:52 [rerun] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=9 bytes=238408
+12:53:52 [rerun] SERVER_DATA_TOP client-packages | logs.db | logs.db-shm | logs.db-wal | pda-packages | plugin-packages | plugins | server.db | server.db-shm | server.db-wal | templates.db | templates.db-shm | templates.db-wal
+12:53:52 [rerun] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+12:53:52 [rerun] IN_PROGRESS_REGISTRATION False
+12:54:00 [rerun] 12:53:53 WATCH_BEFORE state=Running pid=4724 health=200
+12:54:00 [rerun] 12:54:00 WATCH_STEP mode=repair msi=LabelFrame-Server-1.6.99.msi exit=0 elapsed=4.9s
+12:54:00 [rerun] 12:54:00 WATCH_AFTER state=Running pid=7996 health=200
+12:54:00 [rerun] 12:54:00 WATCH_SAMPLES count=20
+12:54:00 [rerun] 12:54:00 WATCH_HEALTH probes=20 failed=1 firstFailureAt=0.83 lastFailureAt=0.83
+12:54:00 [rerun] 12:54:00 WATCH_SERVICE states=Running,StopPending pids=
+12:54:00 [rerun] 12:54:00 WATCH_FAILED at=0.83s code=0 originalProcessAlive=True state=StopPending
+12:54:00 [rerun] 12:54:00 WATCH_CHANGES 0.04s:Running/ | 0.83s:StopPending/ | 4.08s:Running/
+12:54:00 [rerun] 12:54:00 WATCH_SUMMARY sameProcess=False stateBefore=Running stateAfter=Running probesFailed=1
+12:54:04 [rerun] 
+12:54:04 [rerun] === products  [guest 12:54:00] ===
+12:54:04 [rerun] PRODUCT name=LabelFrame Server version=1.6.99 location= key={4F465CA0-749C-4E1C-86FA-F470051324AB}
+12:54:04 [rerun] UNINSTALL_STRING name=LabelFrame Server command=MsiExec.exe /X{4F465CA0-749C-4E1C-86FA-F470051324AB}
+12:54:04 [rerun] 
+12:54:04 [rerun] === services  [guest 12:54:00] ===
+12:54:04 [rerun] SERVICE name=LabelFrameServer state=Running startMode=Auto startName=LocalSystem pid=7996 path="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+12:54:04 [rerun] SERVICE name=LabelFrameClientUpdater none
+12:54:04 [rerun] 
+12:54:04 [rerun] === main programs  [guest 12:54:01] ===
+12:54:04 [rerun] PROGRAM role=server fileVersion=1.6.99.0 productVersion=1.6.99+3f3680ec450a8fbbec61155ac9c927dc075f321d bytes=310272 sha256=c588ead6a2987b59548b72cf3ccc1187237d219c1810d0b9b509e7116e2ef052 path=C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe
+12:54:04 [rerun] PROGRAM role=client exists=False path=C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe
+12:54:04 [rerun] FILE server appsettings exists=True path=C:\Program Files\LabelFrame\Server\appsettings.json bytes=82 sha256=bd2baf291aab5a15982aa6862552ca51b88702f9d042b2555ffb784ed34a545e
+12:54:04 [rerun] FILE client appsettings exists=False path=C:\Program Files\LabelFrame\Client\appsettings.json
+12:54:04 [rerun] RUNTIME name=Microsoft.AspNetCore.App version=10.0.12
+12:54:04 [rerun] RUNTIME name=Microsoft.NETCore.App version=10.0.12
+12:54:04 [rerun] 
+12:54:04 [rerun] === processes  [guest 12:54:01] ===
+12:54:04 [rerun] PROCESS name=explorer.exe pid=7952 parent=11996 session=2 started=12:51:04 sinceBoot=True commandLine="C:\Windows\explorer.exe"
+12:54:04 [rerun] PROCESS name=LabelFrame.Server.exe pid=7996 parent=724 session=0 started=12:53:56 sinceBoot=True commandLine="C:\Program Files\LabelFrame\Server\LabelFrame.Server.exe"
+12:54:04 [rerun] PROCESS name=msedge.exe pid=768 parent=6520 session=2 started=11:14:06 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:7 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" "--metrics-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=92.0.4515.131 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 "--annotation=prod=Microsoft Edge" --annotation=ver=92.0.902.67 --initial-client-data=0xfc,0x100,0x104,0xdc,0x108,0x7ff81f2346f8,0x7ff81f234708,0x7ff81f234718
+12:54:04 [rerun] PROCESS name=msedge.exe pid=1904 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --disable-client-side-phishing-detection --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=8 --no-v8-untrusted-code-mitigations --mojo-platform-channel-handle=3468 /prefetch:1
+12:54:04 [rerun] PROCESS name=msedge.exe pid=5168 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --service-sandbox-type=utility --mojo-platform-channel-handle=2848 /prefetch:8
+12:54:04 [rerun] PROCESS name=msedge.exe pid=5712 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --lang=zh-CN --service-sandbox-type=none --mojo-platform-channel-handle=2312 /prefetch:3
+12:54:04 [rerun] PROCESS name=msedge.exe pid=5976 parent=6520 session=2 started=11:14:07 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --field-trial-handle=2136,7291833930882846572,14166111893418704720,131072 --gpu-preferences=UAAAAAAAAADgAAAQAAAAAAAAAAAAAAAAAABgAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAAAAAAAAeAAAAAAAAAAoAAAABAAAACAAAAAAAAAAKAAAAAAAAAAwAAAAAAAAADgAAAAAAAAAEAAAAAAAAAAAAAAADQAAABAAAAAAAAAAAQAAAA0AAAAQAAAAAAAAAAQAAAANAAAAEAAAAAAAAAAHAAAADQAAAAgAAAAAAAAACAAAAAAAAAA= --mojo-platform-channel-handle=2168 /prefetch:2
+12:54:04 [rerun] PROCESS name=msedge.exe pid=6520 parent=6868 session=2 started=11:14:06 sinceBoot=False commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --auto-launch-onlogon --try-edge-again-fre
+12:54:04 [rerun] PROCESS name=msiexec.exe pid=1856 parent=724 session=0 started=10:35:51 sinceBoot=False commandLine=C:\Windows\system32\msiexec.exe /V
+12:54:04 [rerun] BROWSER_PROCESSES_SINCE_BOOT=0
+12:54:04 [rerun] BROWSER_FOREGROUND_SINCE_BOOT=0
+12:54:04 [rerun] 
+12:54:04 [rerun] === listeners  [guest 12:54:01] ===
+12:54:04 [rerun] LISTEN address=0.0.0.0 port=53961 pid=7996
+12:54:04 [rerun] 
+12:54:04 [rerun] === http  [guest 12:54:01] ===
+12:54:04 [rerun] HTTP server healthz port=53961 code=200 body={"service":"LabelFrame.Server","status":"ok"}
+12:54:04 [rerun] HTTP server info port=53961 code=200 body={"listenUrl":"http://0.0.0.0:53961","publicBaseUrl":null,"trustedProxies":null,"uiEnabled":false,"version":"1.6.1"}
+12:54:04 [rerun] HTTP client config port=53960 code=0 error=使用“0”个参数调用“GetResponse”时发生异常:“无法连接到远程服务器”
+12:54:04 [rerun] 
+12:54:04 [rerun] === client machine settings  [guest 12:54:03] ===
+12:54:04 [rerun] CLIENT_SETTINGS exists=False path=C:\ProgramData\LabelFrame\Client\settings.json
+12:54:04 [rerun] CLIENT_MACHINE_DIR kind=plugins path=C:\ProgramData\LabelFrame\Client\plugins exists=False
+12:54:04 [rerun] CLIENT_MACHINE_DIR kind=print dir path=C:\ProgramData\LabelFrame\Client\print exists=False
+12:54:04 [rerun] CLIENT_MACHINE_DIR kind=client data root path=C:\ProgramData\LabelFrame\Client exists=False
+12:54:04 [rerun] 
+12:54:04 [rerun] === auto-start entry  [guest 12:54:03] ===
+12:54:04 [rerun] RUN_KEY present=False
+12:54:04 [rerun] 
+12:54:04 [rerun] === user files  [guest 12:54:03] ===
+12:54:04 [rerun] USER_DIR path=C:\Users\<account>\AppData\Local\LabelFrame exists=False
+12:54:04 [rerun] 
+12:54:04 [rerun] === server data  [guest 12:54:03] ===
+12:54:04 [rerun] SERVER_DATA path=C:\ProgramData\LabelFrame\server exists=True files=9 bytes=188416
+12:54:04 [rerun] SERVER_DATA_TOP client-packages | logs.db | logs.db-shm | logs.db-wal | pda-packages | plugin-packages | plugins | server.db | server.db-shm | server.db-wal | templates.db | templates.db-shm | templates.db-wal
+12:54:04 [rerun] FILE server data root exists=True path=C:\ProgramData\LabelFrame bytes=1 sha256=unreadable
+12:54:04 [rerun] IN_PROGRESS_REGISTRATION False
+12:54:04 [rerun] PULLED C:\Probe\logs\10-install-silent.log (172716 bytes)
+12:54:04 [rerun] PULLED C:\Probe\logs\20-rerun-silent.log (111832 bytes)
+12:54:05 [rerun] PULLED C:\Probe\logs\30-repair-fa.log (211424 bytes)
+12:54:05 [rerun] ROUND_DONE

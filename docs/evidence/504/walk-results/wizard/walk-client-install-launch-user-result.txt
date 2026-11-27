@@ -1,0 +1,98 @@
+=== installer walk 'walk-client-install-launch-user': mode=install  [13:23:23] ===
+arguments: /i "C:\Probe\LabelFrame-Client-1.6.99.msi" /l*v "C:\Probe\logs\walk-client-install-launch-user.log"
+identity=DESKTOP-D65DJ5S\<account> elevated=False
+TOKEN sid=<sid> linkedToken=available
+SETUP_PAGE present=False
+before: product=none | Run key=absent | user files=181 | printing client processes=0
+--- page Welcome (actual Welcome, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [213] Button 下一步(&N)
+  [215] Button 取消
+  [203] Static WixUI_Bmp_Dialog
+  [212] Button 上一步(&B)   (disabled)
+  [58] Static 安装向导将在计算机上安装 LabelFrame Client。单击“下一步”继续，或单击“取消”退出安装向导。
+  [205] Static 欢迎使用 LabelFrame Client 安装向导
+  screenshot -> C:\Probe\logs\walk-client-install-launch-user-01-Welcome.png (PrintWindow, 499x389)
+--- page License (actual License, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [202] Static WixUI_Bmp_Banner
+  [389] Button 我接受许可协议中的条款(&A)
+  [394] Button 打印(&P)
+  [212] Button 上一步(&B)
+  [213] Button 下一步(&N)   (disabled)
+  [215] Button 取消
+  [58] Static 请认真阅读以下许可协议
+  [205] Static 最终用户许可协议
+  screenshot -> C:\Probe\logs\walk-client-install-launch-user-02-License.png (PrintWindow, 499x389)
+--- page Location (actual Location, class MsiDialogCloseClass): 'LabelFrame Client 安装' ---
+  [212] Button 上一步(&B)
+  [213] Button 下一步(&N)
+  [215] Button 取消
+  [202] Static WixUI_Bmp_Banner
+  [205] Static 安装目录
+  [209] Static C:\Program Files\LabelFrame\Client\
+  screenshot -> C:\Probe\logs\walk-client-install-launch-user-03-Location.png (PrintWindow, 499x389)
+--- page Options (actual Options, class MsiDialogCloseClass): 'LabelFrame Client 安装' ---
+  [218] Button 开机自动启动 LabelFrame
+  [212] Button 上一步(&B)
+  [213] Button 下一步(&N)
+  [215] Button 取消
+  [202] Static WixUI_Bmp_Banner
+  [205] Static 安装选项
+  [220] Static 开机自启以托盘方式常驻运行，不自动打开界面窗口；可随时从托盘图标打开界面或退出。
+  screenshot -> C:\Probe\logs\walk-client-install-launch-user-04-Options.png (PrintWindow, 499x389)
+AUTOSTART_CHECKBOX initial=1
+  check ok: the auto-start box is ticked by default on the options page
+--- page Verify (actual Verify, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [257] Button 安装(&I)
+  [215] Button 取消
+  [212] Button 上一步(&B)
+  [202] Static WixUI_Bmp_Banner
+  [270] Static 已准备好安装 LabelFrame Client
+  [272] Static 单击“安装”开始安装。单击“上一步”查看或更改任何安装设置。单击“取消”退出向导。
+  screenshot -> C:\Probe\logs\walk-client-install-launch-user-05-Verify.png (PrintWindow, 499x389)
+INSTALL_STEP_SECONDS=2.2 (from clicking the install button to the next window)
+--- page Installing (actual Installing, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [215] Button 取消
+  [202] Static WixUI_Bmp_Banner
+  [212] Button 上一步(&B)   (disabled)
+  [213] Button 下一步(&N)   (disabled)
+  [341] Static 安装向导正在安装 LabelFrame Client，请稍候。
+  [343] Static 正在安装 LabelFrame Client
+  [363] Static 状态:
+  screenshot -> C:\Probe\logs\walk-client-install-launch-user-06-Installing.png (PrintWindow, 499x389)
+INSTALL_PROGRESS_SECONDS=3.2 (progress page until the next window)
+--- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [315] Button 完成(&F)
+  [215] Button 取消   (disabled)
+  [203] Static WixUI_Bmp_Dialog
+  [212] Button 上一步(&B)   (disabled)
+  [378] Button 立即打开 LabelFrame
+  [58] Static 单击“完成”按钮退出安装向导。
+  [205] Static LabelFrame Client 安装向导已完成
+  screenshot -> C:\Probe\logs\walk-client-install-launch-user-07-Exit.png (PrintWindow, 499x389)
+LAUNCH_CHECKBOX initial=1
+  check ok: the "open LabelFrame now" box is ticked by default on the completion page
+last unrecognised installer window: 
+WINDOWS_IN_ORDER=Welcome -> License -> Location -> Options -> Verify -> Installing -> Exit
+windows seen: Exit, Installing, License, Location, Options, Verify, Welcome
+exit code=0
+LAUNCH_PROCESS name=LabelFrame.WinHost.exe pid=3952 session=1 started=13:23:36 commandLine="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" 
+LAUNCH_PROCESSES=1
+  check ok: the client starts after Finish while "open LabelFrame now" is ticked
+LAUNCH_WINDOW class=WindowsForms10.Window.8.app.0.f4eaed_r3_ad1 title=[LabelFrame] rect=(0,0)-(1044,788)
+  check ok: the started client shows its window
+  screenshot -> C:\Probe\logs\walk-client-install-launch-user-08-client-window.png (PrintWindow, 1044x788)
+  screen shot -> C:\Probe\logs\walk-client-install-launch-user-09-desktop-after-launch.png (1024x768)
+LAUNCH_TOKEN pid=3952 not elevated
+LAUNCH_TRAY_WINDOW present=True owner=3952 ofClient=True
+  check ok: the started client registers its tray icon
+LAUNCH_BROWSERS=0
+LAUNCH_BROWSERS_OPENED=0
+  check ok: no system browser is opened for the client window
+LAUNCH_WEBVIEW2_CHILDREN=1
+LAUNCH_API code=200
+after: product=1.6.99 | Run key="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart | user files=209 | printing client processes=1
+OUTCOME=completed
+WIZARD_PATH=Welcome -> License -> Location -> Options -> Verify -> Installing -> Exit
+CLICKS=下一步(&N) [213], 我接受许可协议中的条款(&A) [389], 下一步(&N) [213], 下一步(&N) [213], 下一步(&N) [213], 安装(&I) [257], 完成(&F) [315]
+CHECK_FAILURES=0 
+=== end 'walk-client-install-launch-user'  [13:23:46] ===

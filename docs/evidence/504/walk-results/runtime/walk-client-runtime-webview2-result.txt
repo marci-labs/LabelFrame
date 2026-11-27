@@ -1,0 +1,106 @@
+=== installer walk 'walk-client-runtime-webview2': mode=runtime  [14:25:35] ===
+arguments: /i "C:\Probe\LabelFrame-Client-1.6.99.msi" /l*v "C:\Probe\logs\walk-client-runtime-webview2.log"
+identity=DESKTOP-D65DJ5S\<account> elevated=False
+TOKEN sid=<sid> linkedToken=available
+SETUP_PAGE present=False
+before: product=none | Run key=absent | user files=0 | printing client processes=0
+--- page WebView2Missing (actual WebView2Missing, class MsiDialogCloseClass): 'LabelFrame 安装 - 缺少 WebView2 运行时' ---
+  [174] Button 打开下载页(&O)
+  [186] Button 重新检测
+  [177] Button 退出
+  [171] Static 微软官方下载页（Evergreen 版本）：
+  [180] Static 本机未检测到 Microsoft Edge WebView2 运行时（LabelFrame 界面窗口需要），请先安装。
+  [183] Static https://go.microsoft.com/fwlink/p/?LinkId=2124703
+  [184] Static 安装完成后点击「重新检测」继续本安装程序。
+  screenshot -> C:\Probe\logs\walk-client-runtime-webview2-01-WebView2Missing.png (PrintWindow, 499x295)
+  check ok: the first window is the WebView2Missing dialog (actual WebView2Missing)
+RUNTIME_ADDRESS text=https://go.microsoft.com/fwlink/p/?LinkId=2124703 shownAs=Static
+  check ok: the dialog shows the official download address as text (https://go.microsoft.com/fwlink/p/?LinkId=2124703)
+RUNTIME_BUTTON open=True caption=打开下载页(&O)
+  check ok: the dialog has an "open download page" button
+  screen shot -> C:\Probe\logs\walk-client-runtime-webview2-02-desktop-runtime-missing.png (1024x768)
+SETUP_PAGE present=False
+  the dialog is the foreground window before the click: True
+BUTTON_CLICK pointer at (425, 472), the button occupying (365, 455)-(485, 488)
+BUTTON_AFTER_CLICK dialogStillThere=True
+TITLED_WINDOW[download-button, after 3 s] pid=8016 process=msedge class=Chrome_WidgetWin_1 title=[还原页面]
+TITLED_WINDOW[download-button, after 3 s] pid=8016 process=msedge class=Chrome_WidgetWin_1 title=[无标题 - 用户配置 1 - Microsoft​ Edge]
+TITLED_WINDOW[download-button, after 3 s] pid=8428 process=msiexec class=MsiDialogCloseClass title=[LabelFrame 安装 - 缺少 WebView2 运行时]
+TITLED_WINDOW[download-button, after 3 s] pid=2700 process=WinStore.App class=Windows.UI.Core.CoreWindow title=[Microsoft Store]
+TITLED_WINDOW[download-button, after 3 s] pid=6688 process=ApplicationFrameHost class=ApplicationFrameWindow title=[Microsoft Store]
+TITLED_WINDOW[download-button, after 3 s] pid=9164 process=TextInputHost class=Windows.UI.Core.CoreWindow title=[Microsoft Text Input Application]
+TITLED_WINDOW[download-button, after 3 s] pid=5576 process=explorer class=Progman title=[Program Manager]
+TITLED_WINDOWS[download-button, after 3 s] count=7
+  screen shot -> C:\Probe\logs\walk-client-runtime-webview2-03-desktop-after-download-button-3s.png (1024x768)
+TITLED_WINDOW[download-button, after 10 s] pid=8016 process=msedge class=Chrome_WidgetWin_1 title=[还原页面]
+TITLED_WINDOW[download-button, after 10 s] pid=8016 process=msedge class=Chrome_WidgetWin_1 title=[无标题 - 用户配置 1 - Microsoft​ Edge]
+TITLED_WINDOW[download-button, after 10 s] pid=8428 process=msiexec class=MsiDialogCloseClass title=[LabelFrame 安装 - 缺少 WebView2 运行时]
+TITLED_WINDOW[download-button, after 10 s] pid=2700 process=WinStore.App class=Windows.UI.Core.CoreWindow title=[Microsoft Store]
+TITLED_WINDOW[download-button, after 10 s] pid=6688 process=ApplicationFrameHost class=ApplicationFrameWindow title=[Microsoft Store]
+TITLED_WINDOW[download-button, after 10 s] pid=9164 process=TextInputHost class=Windows.UI.Core.CoreWindow title=[Microsoft Text Input Application]
+TITLED_WINDOW[download-button, after 10 s] pid=5576 process=explorer class=Progman title=[Program Manager]
+TITLED_WINDOWS[download-button, after 10 s] count=7
+  screen shot -> C:\Probe\logs\walk-client-runtime-webview2-04-desktop-after-download-button-10s.png (1024x768)
+BROWSER_PROCESS name=msedge.exe pid=420 session=1 started=14:25:40 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=2828,i,696402814680803722,3636493602848506455,524288 --field-trial-handle=2072,i,9215984728854811205,14386079545601598023,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,13234276364590630896,13167941897131128095,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=3000 /prefetch:8
+BROWSER_PROCESS name=msedge.exe pid=684 session=1 started=14:25:40 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --pdf-upsell-enabled --video-capture-use-gpu-memory-buffer --lang=zh-CN --js-flags --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=5 --launch-time-ticks=275219310 --skip-read-main-dll --metrics-shmem-handle=3756,i,16170774728215091990,11551331060329138502,1048576 --field-trial-handle=2072,i,9215984728854811205,14386079545601598023,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,13234276364590630896,13167941897131128095,4 --trace-process-track-uuid=3190708990997080739 --mojo-platform-channel-handle=3844 /prefetch:1
+BROWSER_PROCESS name=msedge.exe pid=3512 session=1 started=14:25:40 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --pdf-upsell-enabled --video-capture-use-gpu-memory-buffer --lang=zh-CN --js-flags --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=6 --launch-time-ticks=275216301 --ram-no-pressure-read-main-dll --metrics-shmem-handle=3720,i,1207172714437958801,17459660699610978770,1048576 --field-trial-handle=2072,i,9215984728854811205,14386079545601598023,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,13234276364590630896,13167941897131128095,4 --trace-process-track-uuid=3190708991934122588 --mojo-platform-channel-handle=3732 /prefetch:1
+BROWSER_PROCESS name=msedge.exe pid=5472 session=1 started=14:25:40 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=2368,i,955787099378289843,14875439512131128862,524288 --field-trial-handle=2072,i,9215984728854811205,14386079545601598023,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,13234276364590630896,13167941897131128095,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2576 /prefetch:3
+BROWSER_PROCESS name=msedge.exe pid=5640 session=1 started=14:25:40 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=gpu-process --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=2112,i,3890724684726919710,11246888964696717525,262144 --field-trial-handle=2072,i,9215984728854811205,14386079545601598023,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,13234276364590630896,13167941897131128095,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2244 /prefetch:2
+BROWSER_PROCESS name=msedge.exe pid=7184 session=1 started=14:25:40 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=crashpad-handler "--user-data-dir=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\<account>\AppData\Local\Microsoft\Edge\User Data\Crashpad" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=153.0.8010.37 "--annotation=exe=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=153.0.4234.32 --initial-client-data=0x2e8,0x2ec,0x2f0,0x2e4,0x2c0,0x7ffe55c93360,0x7ffe55c93370,0x7ffe55c93380
+NEW_PROCESS name=msiexec.exe pid=7280 session=1 started=14:25:36 commandLine=
+BROWSER_PROCESS name=msedge.exe pid=8016 session=1 started=14:25:39 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --single-argument https://go.microsoft.com/fwlink/p/?LinkId=2124703
+NEW_PROCESS name=msiexec.exe pid=8428 session=1 started=14:25:36 commandLine="C:\Windows\system32\msiexec.exe" /i "C:\Probe\LabelFrame-Client-1.6.99.msi" /l*v "C:\Probe\logs\walk-client-runtime-webview2.log" 
+BROWSER_PROCESS name=msedge.exe pid=6356 session=1 started=14:25:42 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=entity_extraction_service.mojom.Extractor --lang=zh-CN --service-sandbox-type=entity_extraction --onnx-enabled-for-ee --skip-read-main-dll --metrics-shmem-handle=3956,i,7109550161311897497,1717868225286460092,524288 --field-trial-handle=2072,i,9215984728854811205,14386079545601598023,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,13234276364590630896,13167941897131128095,4 --trace-process-track-uuid=3190708992871164437 --mojo-platform-channel-handle=5304 /prefetch:8
+NEW_PROCESS name=backgroundTaskHost.exe pid=2684 session=1 started=14:25:42 commandLine="C:\Windows\system32\backgroundTaskHost.exe" -ServerName:App.AppXmtcan0h2tfbfy7k9kn8hbxb6dmzz1zh0.mca
+NEW_PROCESS name=RuntimeBroker.exe pid=3132 session=1 started=14:25:43 commandLine=C:\Windows\System32\RuntimeBroker.exe -Embedding
+NEW_PROCESS name=identity_helper.exe pid=4420 session=1 started=14:25:42 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\153.0.4234.32\identity_helper.exe" --type=utility --utility-sub-type=winrt_app_id.mojom.WinrtAppIdService --lang=zh-CN --service-sandbox-type=windows_package_identity --skip-read-main-dll --metrics-shmem-handle=5724,i,15186628492122152945,8538801166358048623,524288 --field-trial-handle=2072,i,9215984728854811205,14386079545601598023,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,13234276364590630896,13167941897131128095,4 --trace-process-track-uuid=3190708993808206286 --mojo-platform-channel-handle=5892 /prefetch:8
+NEW_PROCESS name=backgroundTaskHost.exe pid=4584 session=1 started=14:25:43 commandLine="C:\Windows\system32\BackgroundTaskHost.exe" -ServerName:BackgroundTaskHost.WebAccountProvider
+NEW_PROCESS name=SearchProtocolHost.exe pid=512 session=0 started=14:25:43 commandLine=
+BROWSER_PROCESS name=msedge.exe pid=1396 session=1 started=14:25:43 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=edge_collections.mojom.CollectionsDataManager --lang=zh-CN --service-sandbox-type=collections --skip-read-main-dll --metrics-shmem-handle=6344,i,3913603508139785047,15946322557749643551,524288 --field-trial-handle=2072,i,9215984728854811205,14386079545601598023,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,13234276364590630896,13167941897131128095,4 --trace-process-track-uuid=3190708994745248135 --mojo-platform-channel-handle=6284 /prefetch:8
+NEW_PROCESS name=RuntimeBroker.exe pid=4512 session=1 started=14:25:43 commandLine=C:\Windows\System32\RuntimeBroker.exe -Embedding
+BROWSER_PROCESS name=msedge.exe pid=7100 session=1 started=14:25:43 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=utility --utility-sub-type=quarantine.mojom.Quarantine --lang=zh-CN --service-sandbox-type=none --skip-read-main-dll --metrics-shmem-handle=7276,i,7833104522076076254,5051294155503154425,524288 --field-trial-handle=2072,i,9215984728854811205,14386079545601598023,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,13234276364590630896,13167941897131128095,4 --trace-process-track-uuid=3190708996619331833 --mojo-platform-channel-handle=7416 /prefetch:8
+BROWSER_PROCESS name=msedge.exe pid=7224 session=1 started=14:25:43 commandLine="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --type=renderer --pdf-upsell-enabled --disable-gpu-compositing --video-capture-use-gpu-memory-buffer --lang=zh-CN --js-flags --device-scale-factor=1 --num-raster-threads=1 --renderer-client-id=10 --launch-time-ticks=278091974 --skip-read-main-dll --metrics-shmem-handle=6280,i,5991284877883378264,13697343131674700165,1048576 --field-trial-handle=2072,i,9215984728854811205,14386079545601598023,262144 --variations-seed-version --pseudonymization-salt-handle=2324,i,13234276364590630896,13167941897131128095,4 --trace-process-track-uuid=3190708995682289984 --mojo-platform-channel-handle=6428 /prefetch:1
+NEW_PROCESS name=SearchFilterHost.exe pid=8624 session=0 started=14:25:43 commandLine=
+BROWSER_PAGE_LOADED=False seconds=41
+TITLED_WINDOW[download-button, at the end] pid=8016 process=msedge class=Chrome_WidgetWin_1 title=[还原页面]
+TITLED_WINDOW[download-button, at the end] pid=8016 process=msedge class=Chrome_WidgetWin_1 title=[无标题 - 用户配置 1 - Microsoft​ Edge]
+TITLED_WINDOW[download-button, at the end] pid=8428 process=msiexec class=MsiDialogCloseClass title=[LabelFrame 安装 - 缺少 WebView2 运行时]
+TITLED_WINDOW[download-button, at the end] pid=2700 process=WinStore.App class=Windows.UI.Core.CoreWindow title=[Microsoft Store]
+TITLED_WINDOW[download-button, at the end] pid=6688 process=ApplicationFrameHost class=ApplicationFrameWindow title=[Microsoft Store]
+TITLED_WINDOW[download-button, at the end] pid=9164 process=TextInputHost class=Windows.UI.Core.CoreWindow title=[Microsoft Text Input Application]
+TITLED_WINDOW[download-button, at the end] pid=5576 process=explorer class=Progman title=[Program Manager]
+TITLED_WINDOWS[download-button, at the end] count=7
+BROWSER_PROCESSES=8
+BROWSERS_WITH_ADDRESS=1
+BROWSER_PROCESSES_RUNNING=8
+BROWSER_WINDOWS=2 还原页面 [Chrome_WidgetWin_1] | 无标题 - 用户配置 1 - Microsoft​ Edge [Chrome_WidgetWin_1]
+  screen shot -> C:\Probe\logs\walk-client-runtime-webview2-05-desktop-after-download-button.png (1024x768)
+  screenshot -> C:\Probe\logs\walk-client-runtime-webview2-06-browser.png (PrintWindow, 344x166)
+  check ok: clicking "open download page" starts a browser with the download address (on its command line, or in the caption of its window)
+BROWSER_PAGE_SHOWN=False
+APPLICATION_LOG id=1001 time=14:26:43 provider=Windows Error Reporting 故障存储段 1651932726725071877，类型 5 事件名称: StoreAgentAcquireLicenseFailure1 响应: 不可用 Cab ID: 0 问题签名: P1: Update;ScanForUpdates P2: 8007045b P3: 19045 P4: 3803 P5: Windows.Desktop P6: V P7: P8: P9: P10: 附加文件: \\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER6AB9.tmp.WERInternalMetadata.xml 可在此处获取这些文件: \\?\C:\ProgramData\Microsoft\Windows\WER\ReportArchive\NonCritical_Update;ScanForUp_7f3f4125381346b3ce984 ...
+APPLICATION_LOG id=1001 time=14:26:41 provider=Windows Error Reporting 故障存储段 1389487708614523172，类型 5 事件名称: StoreAgentAcquireLicenseFailure1 响应: 不可用 Cab ID: 0 问题签名: P1: Update;ScanForUpdates P2: 8007045b P3: 19045 P4: 3803 P5: Windows.Desktop P6: L P7: P8: P9: P10: 附加文件: \\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER6A98.tmp.WERInternalMetadata.xml 可在此处获取这些文件: \\?\C:\ProgramData\Microsoft\Windows\WER\ReportArchive\NonCritical_Update;ScanForUp_1411647de8b1e49b1effd ...
+APPLICATION_LOG id=1001 time=14:26:40 provider=Windows Error Reporting 故障存储段 1988899189031081504，类型 5 事件名称: StoreAgentAcquireLicenseFailure1 响应: 不可用 Cab ID: 0 问题签名: P1: Update;ScanForUpdates P2: 8007045b P3: 19045 P4: 3803 P5: Windows.Desktop P6: T P7: P8: P9: P10: 附加文件: \\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER6A78.tmp.WERInternalMetadata.xml 可在此处获取这些文件: \\?\C:\ProgramData\Microsoft\Windows\WER\ReportArchive\NonCritical_Update;ScanForUp_b275482214c06ca51a17a ...
+APPLICATION_LOG id=1001 time=14:26:38 provider=Windows Error Reporting 故障存储段 1756351697835959903，类型 5 事件名称: StoreAgentAcquireLicenseFailure1 响应: 不可用 Cab ID: 0 问题签名: P1: Update;ScanForUpdates P2: 8007045b P3: 19045 P4: 3803 P5: Windows.Desktop P6: P P7: P8: P9: P10: 附加文件: \\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER6A58.tmp.WERInternalMetadata.xml 可在此处获取这些文件: \\?\C:\ProgramData\Microsoft\Windows\WER\ReportArchive\NonCritical_Update;ScanForUp_acd02e46e63c368b6bec0 ...
+APPLICATION_LOG id=1001 time=14:26:37 provider=Windows Error Reporting 故障存储段 1593666152149309730，类型 5 事件名称: StoreAgentAcquireLicenseFailure1 响应: 不可用 Cab ID: 0 问题签名: P1: Update;ScanForUpdates P2: 8007045b P3: 19045 P4: 3803 P5: Windows.Desktop P6: N P7: P8: P9: P10: 附加文件: \\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER6A38.tmp.WERInternalMetadata.xml 可在此处获取这些文件: \\?\C:\ProgramData\Microsoft\Windows\WER\ReportArchive\NonCritical_Update;ScanForUp_62dd565a15259ee483a22 ...
+APPLICATION_LOG id=1001 time=14:26:35 provider=Windows Error Reporting 故障存储段 1766164614217045406，类型 5 事件名称: StoreAgentAcquireLicenseFailure1 响应: 不可用 Cab ID: 0 问题签名: P1: Update;ScanForUpdates P2: 8007045b P3: 19045 P4: 3803 P5: Windows.Desktop P6: 9 P7: P8: P9: P10: 附加文件: \\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER6A08.tmp.WERInternalMetadata.xml 可在此处获取这些文件: \\?\C:\ProgramData\Microsoft\Windows\WER\ReportArchive\NonCritical_Update;ScanForUp_421876d19ec4937cb1a7e ...
+--- page UserExit (actual UserExit, class MsiDialogCloseClass): 'LabelFrame Client 安装程序' ---
+  [315] Button 完成(&F)
+  [215] Button 取消   (disabled)
+  [203] Static WixUI_Bmp_Dialog
+  [212] Button 上一步(&B)   (disabled)
+  [58] Static LabelFrame Client 安装程序已中断。您的系统尚未修改。若要稍后安装此程序，请再次运行安装程序。 单击“完成”按钮退出安装向导。
+  [205] Static LabelFrame Client 安装向导中断
+  screenshot -> C:\Probe\logs\walk-client-runtime-webview2-07-UserExit.png (PrintWindow, 499x389)
+last unrecognised installer window: 
+WINDOWS_IN_ORDER=Prepare -> WebView2Missing -> UserExit
+windows seen: Prepare, UserExit, WebView2Missing
+WIZARD_PAGES_BEFORE_THE_DIALOG=0 
+  check ok: no wizard page comes before the WebView2Missing dialog
+exit code=1602
+after: product=none | Run key=absent | user files=0 | printing client processes=0
+OUTCOME=runtime missing
+WIZARD_PATH=WebView2Missing -> UserExit
+CLICKS=open download page (pointer), 退出 [177], 完成(&F) [315]
+CHECK_FAILURES=0 
+=== end 'walk-client-runtime-webview2'  [14:26:47] ===

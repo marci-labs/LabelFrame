@@ -167,3 +167,6 @@ Android 受控发布由 `AndroidUpdatesService` 与 `Api/AndroidUpdatesApi` 提�
     - 显式传入 `INSTALLFOLDER` 由启动条件拦下并说明原因；「清除用户数据」删除的配置写的是同一个固定目录，改目录名时两处要一起改。
 
     组件 GUID 只由文件路径加盐生成，与目录标识无关，改目录标识不得改变它（原地升级依赖组件身份不变）。将来若恢复可选目录，须连同「升级时沿用原安装目录」一起做，不能只恢复目录页。
+16. **Server MSI 只在会改动服务程序文件的运行里先停服务**：停服务动作 `StopServerService` 的条件是 `NOT Installed OR REMOVE OR REINSTALL OR PATCH`（全新安装、升级、修复、补丁、卸载）。防回归警示：停掉的服务靠 Windows Installer 的标准启动动作启动，它只启动本次运行里有变更的服务——什么都不改的维护运行（对已安装的服务端重跑一遍安装包）不能停，否则服务停了没人启动。条件由 `scripts/assert-server-msi-structure.ps1` 按七种安装状态逐个求值守住。
+17. **卸载时「是否同时清除用户数据」的询问**：两个入口（重跑安装包选「删除」、命令行带 `REMOVE=ALL`）都先问、再进「确认删除」页；勾选属性 `CLEAR_USER_DATA` 声明为安全属性，否则以普通方式启动安装程序时提权的执行会话忽略它。接线、平台坑与断言同客户端安装包，见 [client-updates.md](client-updates.md)「安装向导」一节。清除范围：`%ProgramData%\LabelFrame\server`、`server.db` 和安装目录下的 `appsettings.json`，条件 `REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA="1"`；三条清除动作都不模拟用户（以安装自己的提权身份执行）——以普通方式启动安装程序再进维护向导时，模拟用户的延迟动作拿不到管理员权限，动作照常「成功」却什么都没删。
+18. **缺少 ASP.NET Core Runtime 的对话框**：官方下载页的网址用文字显示，打开靠「打开下载页」按钮（安装器扩展库的「请桌面外壳启动」动作，浏览器不随安装程序提权）。防回归警示：安装器的 Hyperlink 控件对鼠标点击没有反应，包里不得再出现。

@@ -14,6 +14,10 @@ if (-not $wix) { $wix = $env:WIX_PATH }
 if (-not $wix) { $wix = 'C:\Program Files\WiX Toolset v7.0\bin\wix.exe' }
 if (-not (Test-Path $wix)) { throw "未找到 WiX（$wix），请安装 WiX Toolset v7 或通过 -WixPath 指定 wix.exe。" }
 
+# 对话框「打开下载页」用的动作在安装器扩展库（Util）的二进制里；版本与 build-msi.ps1 的客户端包保持一致
+& $wix extension add -g WixToolset.Util.wixext/7.0.0
+if ($LASTEXITCODE -ne 0) { throw 'WiX Util 扩展准备失败' }
+
 # 1) 发布 Server（framework-dependent，无 Web UI）
 $publishDir = Join-Path $root "artifacts\server\$Runtime"
 # 清理旧发布目录，避免残留旧 web/dist 被打包
@@ -39,7 +43,7 @@ $filesWxs = Join-Path $root 'packaging\files-server.wxs'
 $msi = Join-Path $root "artifacts\LabelFrame-Server-$Version.msi"
 $global:LASTEXITCODE = 0
 & $wix eula accept wix7 2>$null | Out-Null
-& $wix build (Join-Path $root 'packaging\main-server.wxs') $filesWxs -d PublishDir=$publishDir -d Version=$Version -d AssetsDir=$(Join-Path $root 'assets') -d LicenseRtf=$(Join-Path $root 'packaging\license.rtf') -o $msi -arch x64 -ext WixToolset.NetFx.wixext -ext WixToolset.UI.wixext -culture zh-cn 2>&1 | Write-Host
+& $wix build (Join-Path $root 'packaging\main-server.wxs') $filesWxs -d PublishDir=$publishDir -d Version=$Version -d AssetsDir=$(Join-Path $root 'assets') -d LicenseRtf=$(Join-Path $root 'packaging\license.rtf') -o $msi -arch x64 -ext WixToolset.NetFx.wixext -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext/7.0.0 -culture zh-cn 2>&1 | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
 
 # 5) 代码签名（可选：-Sign，与 Client 同证书）

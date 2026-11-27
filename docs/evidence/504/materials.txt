@@ -1,0 +1,10 @@
+# 取证用的安装包
+
+两个候选包都是本地构建的 1.6.99（未签名），区别只在清除用户数据的几条机器级动作改为不模拟用户（见 README「取证过程本身的问题」第一条）。
+
+候选包 B（最终）客户端：LabelFrame-Client-1.6.99.msi  24817664 字节  sha256 e008e0875347839db8d9fb771ef72bf0a0622ccb690dc4f6a26e2b13366b74e9
+候选包 B（最终）服务端：LabelFrame-Server-1.6.99.msi  24727552 字节  sha256 be33672b192a69b4c0bec072bb08044dbd9ddfe16c8a2f7e3cec397a9c049a22
+上一个正式发布的客户端包（覆盖升级用）：LabelFrame-Client-1.6.0.msi  25153536 字节  sha256 e905ffd2cad6efcf01a8cad5e46b726a4ff2013d941b8943698b664b398c315c
+上一个正式发布的服务端包（覆盖升级用）：LabelFrame-Server-1.6.0.msi  24326144 字节  sha256 6c398c3dbd2f1e294cb26ed0dcc618631434284ec0226a14f5a4ec4bd69e930c
+候选包 A（清除动作还模拟用户）：客户端 sha256 ae50d1f1806700bda30e07462aba743f5d324e52e3228fb1d31c466e2badc7c5（24817664 字节），服务端 sha256 9d1935bab0fab7e7c2a18b57cf290feae4c101b9e6f8a0214d5d48c1a8ddf8bf（24727552 字节）；摘录取自各轮记录里的客机文件清单。
+正式发布的 1.6.1 两个包（#408 取证用的那两个）与用 master 源码构建的客户端包，被结构断言脚本拒绝的结论见 structure-client.txt / structure-server.txt。

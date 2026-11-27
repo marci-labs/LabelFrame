@@ -1,0 +1,112 @@
+=== programs-and-features uninstall probe 'walk-arp-s' [LabelFrame Client]  [11:44:03] ===
+identity=DESKTOP-D65DJ5S\<account> elevated=False session=1
+REGISTRATION code={93206D07-6E13-41DD-9DDD-E034AEB7C9DE} UninstallString=[MsiExec.exe /X{93206D07-6E13-41DD-9DDD-E034AEB7C9DE}] ModifyPath=[MsiExec.exe /X{93206D07-6E13-41DD-9DDD-E034AEB7C9DE}] QuietUninstallString=[] WindowsInstaller=[1] NoModify=[1] NoRepair=[]
+PRODUCT_STATE_BEFORE=5
+PROCESSES_BEFORE msiexec/consent=1
+CONTROL settings (explorer) pid=5884
+SETTINGS_WINDOW class=ApplicationFrameWindow title=[设置] process=7632
+  screenshot -> C:\Probe\logs\walk-arp-s-01-settings-opened.png (PrintWindow, 1040x744)
+UIA_ELEMENTS count=263
+UIA type=ControlType.Button class= name=[最小化 设置] id=Minimize offscreen=False
+UIA type=ControlType.Button class= name=[还原 设置] id=Maximize offscreen=False
+UIA type=ControlType.Button class= name=[关闭 设置] id=Close offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[设置] id=SettingsLabel offscreen=False
+UIA type=ControlType.Button class=Button name=[主页] id=HomeButton offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[主页] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[查找设置] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[应用] id= offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[应用和功能] id=SettingsPageAppsSizes offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[应用和功能] id=Text offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[默认应用] id=SettingsPageAppsDefaults offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[默认应用] id=Text offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[离线地图] id=SettingsPageMaps offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[离线地图] id=Text offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[可打开网站的应用] id=SettingsPageAppsForWebsites offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[可打开网站的应用] id=Text offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[视频播放] id=SettingsPageVideo offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[视频播放] id=Text offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[启动] id=SettingsPageStartup offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[启动] id=Text offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[应用和功能] id= offscreen=False
+UIA type=ControlType.Group class=GroupItem name=[选择获取应用的位置] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[选择获取应用的位置] id=SettingsGroupAppControl_GroupTitleTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[仅安装 Microsoft Store 中的应用有助于保护你的设备。] id=SystemSettings_AppsFeatures_AppControl_TextBlock offscreen=False
+UIA type=ControlType.ListItem class=ComboBoxItem name=[任何来源] id=ContentPresenter offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[任何来源] id= offscreen=False
+UIA type=ControlType.Group class=GroupItem name=[应用和功能] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[应用和功能] id=SettingsGroupAppSizesList_GroupTitleTextBlock offscreen=False
+UIA type=ControlType.Hyperlink class=Hyperlink name=[应用执行别名] id=SystemSettings_Apps_AppExecutionAliasLink_HyperlinkButton offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[应用执行别名] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[按驱动器搜索、排序和筛选。如果想要卸载或移动某个应用，请从列表中选择它。] id=SystemSettings_StorageSense_AppSizesListFilter_AppListFilterDescriptionText offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[搜索此列表] id= offscreen=False
+UIA type=ControlType.Button class=SortFilterControl name=[排序依据: 名称] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[排序依据: 名称] id=Label offscreen=False
+UIA type=ControlType.Button class=SortFilterControl name=[筛选条件: 所有驱动器] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[筛选条件: 所有驱动器] id=Label offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[找到 40 个应用] id=SystemSettings_StorageSense_AppSizesList_AppSizesListTotalAppsVisibleText offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[3D 查看器 Microsoft Corporation 8.00 KB ‎2026/‎9/‎15] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[3D 查看器] id=Microsoft.Microsoft3DViewer_6.1908.2042.0_x64__8wekyb3d8bbwe_TitleTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[Microsoft Corporation] id=Microsoft.Microsoft3DViewer_6.1908.2042.0_x64__8wekyb3d8bbwe_DescriptionTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[8.00 KB] id=Microsoft.Microsoft3DViewer_6.1908.2042.0_x64__8wekyb3d8bbwe_TitleDetailsTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎9/‎15] id=Microsoft.Microsoft3DViewer_6.1908.2042.0_x64__8wekyb3d8bbwe_DescriptionDetailsTextBlock offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[Cortana Microsoft Corporation 16.0 KB ‎2026/‎11/‎27] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[Cortana] id=Microsoft.549981C3F5F10_4.2308.1005.0_x64__8wekyb3d8bbwe_TitleTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[Microsoft Corporation] id=Microsoft.549981C3F5F10_4.2308.1005.0_x64__8wekyb3d8bbwe_DescriptionTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[16.0 KB] id=Microsoft.549981C3F5F10_4.2308.1005.0_x64__8wekyb3d8bbwe_TitleDetailsTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎11/‎27] id=Microsoft.549981C3F5F10_4.2308.1005.0_x64__8wekyb3d8bbwe_DescriptionDetailsTextBlock offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[Groove 音乐 Microsoft Corporation 8.00 KB ‎2026/‎9/‎15] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[Groove 音乐] id=Microsoft.ZuneMusic_10.19071.19011.0_x64__8wekyb3d8bbwe_TitleTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[Microsoft Corporation] id=Microsoft.ZuneMusic_10.19071.19011.0_x64__8wekyb3d8bbwe_DescriptionTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[8.00 KB] id=Microsoft.ZuneMusic_10.19071.19011.0_x64__8wekyb3d8bbwe_TitleDetailsTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎9/‎15] id=Microsoft.ZuneMusic_10.19071.19011.0_x64__8wekyb3d8bbwe_DescriptionDetailsTextBlock offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[HEIF 图像扩展 Microsoft Corporation 8.00 KB ‎2026/‎9/‎15] id= offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[HEIF 图像扩展] id=Microsoft.HEIFImageExtension_1.0.22742.0_x64__8wekyb3d8bbwe_TitleTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[Microsoft Corporation] id=Microsoft.HEIFImageExtension_1.0.22742.0_x64__8wekyb3d8bbwe_DescriptionTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[8.00 KB] id=Microsoft.HEIFImageExtension_1.0.22742.0_x64__8wekyb3d8bbwe_TitleDetailsTextBlock offscreen=False
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎9/‎15] id=Microsoft.HEIFImageExtension_1.0.22742.0_x64__8wekyb3d8bbwe_DescriptionDetailsTextBlock offscreen=False
+UIA type=ControlType.ListItem class=ListViewItem name=[LabelFrame Client 62.6 MB ‎2026/‎11/‎27] id= offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[LabelFrame Client] id={93206D07-6E13-41DD-9DDD-E034AEB7C9DE}_TitleTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[62.6 MB] id={93206D07-6E13-41DD-9DDD-E034AEB7C9DE}_TitleDetailsTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎11/‎27] id={93206D07-6E13-41DD-9DDD-E034AEB7C9DE}_DescriptionDetailsTextBlock offscreen=True
+UIA type=ControlType.ListItem class=ListViewItem name=[Microsoft .NET Runtime - 10.0.12 (x64) 136 MB ‎2026/‎11/‎27] id= offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[Microsoft .NET Runtime - 10.0.12 (x64)] id={4CBA08D2-07D1-4B4F-B8E1-8C5424CCA5A0}_TitleTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[136 MB] id={4CBA08D2-07D1-4B4F-B8E1-8C5424CCA5A0}_TitleDetailsTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎11/‎27] id={4CBA08D2-07D1-4B4F-B8E1-8C5424CCA5A0}_DescriptionDetailsTextBlock offscreen=True
+UIA type=ControlType.ListItem class=ListViewItem name=[Microsoft ASP.NET Core Runtime - 10.0.12 (x64) 49.5 MB ‎2026] id= offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[Microsoft ASP.NET Core Runtime - 10.0.12 (x64)] id={1B94A34C-14A5-4CE8-B14F-B12FFB78A528}_TitleTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[49.5 MB] id={1B94A34C-14A5-4CE8-B14F-B12FFB78A528}_TitleDetailsTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎11/‎27] id={1B94A34C-14A5-4CE8-B14F-B12FFB78A528}_DescriptionDetailsTextBlock offscreen=True
+UIA type=ControlType.ListItem class=ListViewItem name=[Microsoft Edge 710 MB ‎2026/‎9/‎20] id= offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[Microsoft Edge] id=Microsoft Edge_TitleTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[710 MB] id=Microsoft Edge_TitleDetailsTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎9/‎20] id=Microsoft Edge_DescriptionDetailsTextBlock offscreen=True
+UIA type=ControlType.ListItem class=ListViewItem name=[Microsoft OneDrive 556 MB ‎2026/‎9/‎20] id= offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[Microsoft OneDrive] id=OneDriveSetup.exe_TitleTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[556 MB] id=OneDriveSetup.exe_TitleDetailsTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎9/‎20] id=OneDriveSetup.exe_DescriptionDetailsTextBlock offscreen=True
+UIA type=ControlType.ListItem class=ListViewItem name=[Microsoft Solitaire Collection Microsoft Studios 8.00 KB ‎20] id= offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[Microsoft Solitaire Collection] id=Microsoft.MicrosoftSolitaireCollection_4.4.8204.0_x64__8wekyb3d8bbwe_TitleTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[Microsoft Studios] id=Microsoft.MicrosoftSolitaireCollection_4.4.8204.0_x64__8wekyb3d8bbwe_DescriptionTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[8.00 KB] id=Microsoft.MicrosoftSolitaireCollection_4.4.8204.0_x64__8wekyb3d8bbwe_TitleDetailsTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎9/‎15] id=Microsoft.MicrosoftSolitaireCollection_4.4.8204.0_x64__8wekyb3d8bbwe_DescriptionDetailsTextBlock offscreen=True
+UIA type=ControlType.ListItem class=ListViewItem name=[Microsoft Update Health Tools 1.03 MB ‎2026/‎9/‎20] id= offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[Microsoft Update Health Tools] id={1FC1A6C2-576E-489A-9B4A-92D21F542136}_TitleTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[1.03 MB] id={1FC1A6C2-576E-489A-9B4A-92D21F542136}_TitleDetailsTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎9/‎20] id={1FC1A6C2-576E-489A-9B4A-92D21F542136}_DescriptionDetailsTextBlock offscreen=True
+UIA type=ControlType.ListItem class=ListViewItem name=[Microsoft Windows Desktop Runtime 10.0.12 (x64) 287 MB ‎2026] id= offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[Microsoft Windows Desktop Runtime 10.0.12 (x64)] id={F81499EB-06B3-470A-A4DB-D4B58AE6AEC2}_TitleTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[287 MB] id={F81499EB-06B3-470A-A4DB-D4B58AE6AEC2}_TitleDetailsTextBlock offscreen=True
+UIA type=ControlType.Text class=TextBlock name=[‎2026/‎11/‎27] id={F81499EB-06B3-470A-A4DB-D4B58AE6AEC2}_DescriptionDetailsTextBlock offscreen=True
+UIA_PRODUCT_ENTRY found=True
+  screenshot -> C:\Probe\logs\walk-arp-s-02-settings-selected.png (PrintWindow, 1040x744)
+--- processes that started after Uninstall was clicked ---
+--- windows that appeared (process | class | caption) ---
+NEW_WINDOW 7632|ApplicationFrameWindow|设置
+UNINSTALL_PROCESSES=0
+PACKAGE_WINDOWS=0
+SYSTEM_QUESTION=0
+CLICKS=卸载 (InvokePattern)
+INSTALLER_PROCESSES_LEFT=0
+PRODUCT_REGISTERED_AFTER=True
+PRODUCT_STATE_AFTER=5
+=== end 'walk-arp-s'  [11:45:18] ===

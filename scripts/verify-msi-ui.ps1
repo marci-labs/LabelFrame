@@ -1,4 +1,5 @@
-﻿# 验证 MSI 内部结构：向导对话框表、UI 序列、品牌二进制、ARP 属性
+﻿# 验证 MSI 内部结构：向导对话框表、UI 序列、品牌二进制、ARP 属性；Client 包另验更新服务、运行中升级、运行时检测、
+# 完成页启动与下载页按钮、清除用户数据、卸载时询问清除用户数据的链路。
 # 用法：powershell -File scripts/verify-msi-ui.ps1 <msi 路径> [...]
 param([Parameter(Mandatory = $true)][string[]]$MsiPaths)
 
@@ -381,6 +382,206 @@ foreach ($path in $MsiPaths) {
         # 向导以失败收场时没有错误对话框，只有界面库的标准「提前结束」页：安装日志的位置必须写在这一页的说明里
         $earlyEnd = Get-MsiRows $db "SELECT Text FROM Control WHERE Dialog_ = 'FatalError' AND Control = 'Description'"
         if ($earlyEnd.Count -ne 1 -or $earlyEnd[0][0] -notlike '*安装日志*' -or $earlyEnd[0][0] -notlike '*[[]MsiLogFileLocation]*') { throw '向导的「提前结束」页应写明安装日志位置（界面库本地化覆盖 FatalErrorDescription2）' }
+
+        # 完成页「立即打开」与各对话框的「打开下载页」：安装器扩展库的「请桌面外壳启动」动作。
+        # 客户端和浏览器由桌面外壳以当前登录用户的不提权身份启动，安装程序以管理员身份运行时也不跟着提权；
+        # 启动不了不影响已经完成的安装。Type 65 = Binary 表里的 DLL（1）+ 忽略返回值（64）
+        $shellActions = Get-MsiRows $db "SELECT Action, Type, Source, Target FROM CustomAction WHERE Action = 'LaunchClientOnExit' OR Action = 'OpenDownloadPage'"
+        foreach ($name in 'LaunchClientOnExit', 'OpenDownloadPage') {
+            $row = @($shellActions | Where-Object { $_[0] -ceq $name })
+            if ($row.Count -ne 1 -or $row[0][1] -ne '65' -or $row[0][2] -cne 'Wix4UtilCA_X64' -or $row[0][3] -cne 'WixUnelevatedShellExec') {
+                throw "$name 必须是同步、失败不阻断的 x64「请桌面外壳启动」动作（Wix4UtilCA_X64 / WixUnelevatedShellExec）"
+            }
+        }
+        # 防回归警示：向导最后一步触发的动作不能是「不等结果」的异步 EXE 动作——安装会话随即结束，动作起不来（返回 1631）。
+        # EXE 类型是 34（目录 + 命令行）或 18（属性 + 命令行）；异步且不等待是 0x80 + 0x40
+        foreach ($row in (Get-MsiRows $db 'SELECT Action, Type FROM CustomAction')) {
+            $type = [int]::Parse($row[1])
+            $base = $type -band 0x3F
+            if ((($base -eq 34) -or ($base -eq 18)) -and (($type -band 0xC0) -eq 0xC0)) { throw "动作 $($row[0]) 是「不等结果」的异步 EXE 动作，在安装会话结束前起不来" }
+        }
+        # 目标经属性交给动作，每个目标一条赋值动作
+        $shellTargets = @{
+            SetLaunchClientTarget = '[#WinHostExe]'
+            SetDownloadPageTarget = 'https://dotnet.microsoft.com/download/dotnet/10.0'
+            SetWebView2DownloadPageTarget = 'https://go.microsoft.com/fwlink/p/?LinkId=2124703'
+        }
+        foreach ($name in $shellTargets.Keys) {
+            $row = Get-MsiRows $db "SELECT Type, Source, Target FROM CustomAction WHERE Action = '$name'"
+            if ($row.Count -ne 1 -or $row[0][0] -ne '51' -or $row[0][1] -cne 'WixUnelevatedShellExecTarget' -or $row[0][2] -cne $shellTargets[$name]) {
+                throw "$name 应把目标（$($shellTargets[$name])）经属性 WixUnelevatedShellExecTarget 交给启动动作"
+            }
+        }
+        # 按钮上的两条事件按登记顺序执行：先赋目标（1），再启动（2）；完成页上界面库的关窗事件登记顺序是 999，排在它们之后
+        $launchCondition = 'WIXUI_EXITDIALOGOPTIONALCHECKBOX = "1" AND NOT Installed'
+        $shellButtons = @(
+            @{ Dialog = 'ExitDialog'; Control = 'Finish'; Set = 'SetLaunchClientTarget'; Run = 'LaunchClientOnExit'; Condition = $launchCondition; EndAfter = 2 },
+            @{ Dialog = 'RuntimeMissingDlg'; Control = 'OpenDownloadButton'; Set = 'SetDownloadPageTarget'; Run = 'OpenDownloadPage'; Condition = '1'; EndAfter = 0 },
+            @{ Dialog = 'WebView2MissingDlg'; Control = 'OpenDownloadButton'; Set = 'SetWebView2DownloadPageTarget'; Run = 'OpenDownloadPage'; Condition = '1'; EndAfter = 0 }
+        )
+        foreach ($button in $shellButtons) {
+            foreach ($step in @(@($button.Set, 1), @($button.Run, 2))) {
+                $row = @($events | Where-Object { $_[0] -ceq $button.Dialog -and $_[1] -ceq $button.Control -and $_[2] -ceq 'DoAction' -and $_[3] -ceq $step[0] })
+                if ($row.Count -ne 1 -or $row[0][4] -cne $button.Condition -or [int]::Parse($row[0][5]) -ne $step[1]) {
+                    throw "$($button.Dialog) 的 $($button.Control) 应按登记顺序 $($step[1]) 触发 $($step[0])（条件 $($button.Condition)），先赋目标后启动缺一不可"
+                }
+            }
+            if ($button.EndAfter -gt 0) {
+                $end = @($events | Where-Object { $_[0] -ceq $button.Dialog -and $_[1] -ceq $button.Control -and $_[2] -ceq 'EndDialog' })
+                if ($end.Count -ne 1 -or [int]::Parse($end[0][5]) -le $button.EndAfter) { throw "$($button.Dialog) 的关窗事件必须排在启动动作之后（登记顺序大于 $($button.EndAfter)），否则启动动作来不及执行" }
+            }
+        }
+        # 对话框上的网址是文字，打开靠按钮。
+        # 防回归警示：安装器的 Hyperlink 控件对鼠标点击没有反应，只有焦点在链接上时按回车才打开
+        $controls = Get-MsiRows $db 'SELECT Dialog_, Control, Type, Text FROM Control'
+        if (@($controls | Where-Object { $_[2] -ceq 'Hyperlink' }).Count -ne 0) { throw '包里不得再有 Hyperlink 控件：鼠标点击没有反应。网址用文字显示，打开动作放在「打开下载页」按钮上' }
+        $downloadDialogs = @(
+            @{ Dialog = 'RuntimeMissingDlg'; UrlControl = 'RuntimeDownloadUrl'; Url = 'https://dotnet.microsoft.com/download/dotnet/10.0' },
+            @{ Dialog = 'WebView2MissingDlg'; UrlControl = 'WebView2DownloadUrl'; Url = 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' }
+        )
+        foreach ($dialog in $downloadDialogs) {
+            $url = @($controls | Where-Object { $_[0] -ceq $dialog.Dialog -and $_[1] -ceq $dialog.UrlControl })
+            if ($url.Count -ne 1 -or $url[0][2] -cne 'Text' -or $url[0][3] -cne $dialog.Url) { throw "「$($dialog.Dialog)」应把官方下载页的网址显示为文字（$($dialog.Url)）" }
+            $open = @($controls | Where-Object { $_[0] -ceq $dialog.Dialog -and $_[1] -ceq 'OpenDownloadButton' })
+            if ($open.Count -ne 1 -or $open[0][2] -cne 'PushButton' -or -not $open[0][3].Contains('打开下载页')) { throw "「$($dialog.Dialog)」应有「打开下载页」按钮 OpenDownloadButton" }
+        }
+        Write-Host '完成页启动与下载页：扩展库「请桌面外壳启动」动作（同步、失败不阻断）、目标赋值与按钮事件的先后顺序、对话框上不再有 Hyperlink 控件：OK'
+
+        # 清除用户数据：删除整个用户数据目录（作业、模板、日志、打印出图、连接与打印设置、界面缓存都在里面）；
+        # 机器级设置删文件后目录空了才删——不带 /s，同一目录下的插件目录不是用户数据。
+        # Type 1122 = EXE（34）+ 延迟执行（0x400）+ 忽略返回值（0x40），模拟用户；3170 再加「不模拟用户」位（0x800）。
+        # 防回归警示：机器级的两条必须不模拟用户——以普通方式启动安装程序再进维护向导时，模拟用户的延迟动作拿不到管理员权限，
+        # 删不掉 ProgramData 与 Program Files 下的文件；用户数据目录必须模拟用户——%LOCALAPPDATA% 要按当前用户的目录展开
+        $clearCondition = 'REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE AND CLEAR_USER_DATA="1"'
+        $clearActions = @{
+            ClearDataDelUserDir = @(1122, 'rmdir /s /q "%LOCALAPPDATA%\LabelFrame"')
+            ClearDataDelMachineConfig = @(3170, 'del /q "%ProgramData%\LabelFrame\Client\settings.json" & rmdir /q "%ProgramData%\LabelFrame\Client"')
+            ClearDataDelAppSettings = @(3170, 'del /q "%ProgramFiles%\LabelFrame\Client\appsettings.json"')
+        }
+        $allActions = Get-MsiRows $db 'SELECT Action, Type, Target FROM CustomAction'
+        $clearRows = Get-MsiRows $db 'SELECT Action, Condition FROM InstallExecuteSequence'
+        foreach ($name in $clearActions.Keys) {
+            $action = @($allActions | Where-Object { $_[0] -ceq $name })
+            if ($action.Count -ne 1) { throw "缺少清除用户数据的动作 $name" }
+            $type = [int]::Parse($action[0][1])
+            $expectedType = $clearActions[$name][0]
+            if ($type -ne $expectedType -or (($type -band 0x400) -eq 0) -or (($type -band 0x40) -eq 0)) {
+                throw "清除动作 $name 应是失败不阻断的延迟动作（Type $expectedType：$(if ($expectedType -eq 3170) { '不模拟用户' } else { '模拟用户' })），实际 Type $($action[0][1])"
+            }
+            if (-not $action[0][2].Contains($clearActions[$name][1])) { throw "清除动作 $name 的命令应包含：$($clearActions[$name][1])；实际：$($action[0][2])" }
+            if ($name -ceq 'ClearDataDelMachineConfig' -and $action[0][2].Contains('rmdir /s')) { throw '机器级设置目录里还有插件目录，不能用 /s 整个删除' }
+            $row = @($clearRows | Where-Object { $_[0] -ceq $name })
+            if ($row.Count -ne 1) { throw "清除动作 $name 应在安装执行序列里出现一次，实际 $($row.Count) 次" }
+            if ($row[0][1] -cne $clearCondition) { throw "清除动作 $name 应只在手动卸载且勾选清除时执行（$clearCondition），实际条件：$($row[0][1])" }
+        }
+        # 按文件名逐个删的两个旧动作被删除整个目录的动作取代，不得回来
+        foreach ($old in 'ClearDataDelFiles', 'ClearDataDelPrintDir') {
+            if (@($allActions | Where-Object { $_[0] -ceq $old }).Count -ne 0) { throw "清除动作 $old 已由删除整个用户数据目录的 ClearDataDelUserDir 取代，不得保留" }
+        }
+        Write-Host '清除用户数据：删除整个用户数据目录，机器级设置与安装目录下的客户端配置一并删除，只在手动卸载并勾选时执行：OK'
+
+        # 卸载时「清除用户数据」的询问：两条入口都接到询问页，询问页再进「确认删除」页。
+        # 防回归警示：自带向导组的「删除」默认直接跳确认页，不经过界面序列——询问页只排在界面序列里时，
+        # 用户走得到的卸载（重跑安装包选删除）永远不会问
+        $removeMode = 'WixUI_InstallMode = "Remove"'
+        $removeButton = @($events | Where-Object { $_[0] -ceq 'MaintenanceTypeDlg' -and $_[1] -ceq 'RemoveButton' })
+        $toQuestion = @($removeButton | Where-Object { $_[2] -ceq 'NewDialog' -and $_[3] -ceq 'ClearDataDlg' })
+        $libraryRows = @($removeButton | Where-Object { ($_[2] -ceq 'NewDialog' -and $_[3] -ceq 'VerifyReadyDlg') -or ($_[2] -ceq '[WixUI_InstallMode]' -and $_[3] -ceq 'Remove') })
+        if ($toQuestion.Count -ne 1 -or $toQuestion[0][4] -cne '1' -or $libraryRows.Count -ne 2) { throw '维护向导的「删除」应跳到询问页 ClearDataDlg；自带向导组在它上面的登记（直接跳确认页、置安装模式）变了，请复核询问页的接法' }
+        foreach ($row in $libraryRows) {
+            if ([int]::Parse($toQuestion[0][5]) -le [int]::Parse($row[5])) { throw "维护向导「删除」上跳到询问页的登记顺序必须大于自带向导组的登记（$($row[5])）：否则要么不显示询问页，要么显示时安装模式还没置好" }
+        }
+        # 询问页上的事件登记一条不多、一条不少：「继续」上多出一条直接关窗的登记，卸载就会跳过确认页立刻开始
+        $questionEvents = @($events | Where-Object { $_[0] -ceq 'ClearDataDlg' })
+        $expectedEvents = @(
+            @{ Control = 'NextButton'; Event = 'DoAction'; Argument = 'SetRemoveInstallMode'; Condition = 'NOT WixUI_InstallMode'; Order = 1 },
+            @{ Control = 'NextButton'; Event = 'NewDialog'; Argument = 'VerifyReadyDlg'; Condition = $removeMode; Order = 2 },
+            @{ Control = 'BackButton'; Event = 'NewDialog'; Argument = 'MaintenanceTypeDlg'; Condition = '1'; Order = 1 },
+            @{ Control = 'CancelButton'; Event = 'SpawnDialog'; Argument = 'CancelDlg'; Condition = $removeMode; Order = 1 },
+            @{ Control = 'CancelButton'; Event = 'EndDialog'; Argument = 'Exit'; Condition = 'NOT WixUI_InstallMode'; Order = 2 }
+        )
+        foreach ($expected in $expectedEvents) {
+            $row = @($questionEvents | Where-Object { $_[1] -ceq $expected.Control -and $_[2] -ceq $expected.Event -and $_[3] -ceq $expected.Argument })
+            if ($row.Count -ne 1 -or $row[0][4] -cne $expected.Condition -or [int]::Parse($row[0][5]) -ne $expected.Order) {
+                throw "询问页的「$($expected.Control)」应以登记顺序 $($expected.Order) 触发 $($expected.Event) $($expected.Argument)（条件 $($expected.Condition)）"
+            }
+        }
+        if ($questionEvents.Count -ne $expectedEvents.Count) { throw "询问页上出现了预期之外的事件登记（共 $($questionEvents.Count) 条，应为 $($expectedEvents.Count) 条）：$(($questionEvents | ForEach-Object { $_[1] + '.' + $_[2] + ' ' + $_[3] }) -join '；')" }
+        $setRemoveMode = Get-MsiRows $db "SELECT Type, Source, Target FROM CustomAction WHERE Action = 'SetRemoveInstallMode'"
+        if ($setRemoveMode.Count -ne 1 -or $setRemoveMode[0][0] -ne '51' -or $setRemoveMode[0][1] -cne 'WixUI_InstallMode' -or $setRemoveMode[0][2] -cne 'Remove') { throw 'SetRemoveInstallMode 应把界面库的安装模式 WixUI_InstallMode 置为 Remove：确认页与进度页据此显示卸载的文字' }
+        # 防回归警示：勾选属性必须声明为安全属性——以普通方式启动安装程序再进维护向导时，提权的执行会话忽略不是安全属性的属性，勾选等于没勾。
+        # 构建工具把没有取值的安全属性列在 SecureCustomProperties 里
+        $secureProperties = @((Get-MsiRows $db "SELECT Value FROM Property WHERE Property = 'SecureCustomProperties'") | ForEach-Object { $_[0] })
+        if (@($secureProperties | Where-Object { (';' + $_ + ';') -like '*;CLEAR_USER_DATA;*' }).Count -ne 1) { throw 'CLEAR_USER_DATA 必须声明为安全属性（出现在 SecureCustomProperties 里），否则维护向导里的勾选传不进提权的执行会话' }
+        # 「上一步」只在维护向导入口显示：默认隐藏，显示条件同时要求安装模式为删除、且功能不是命令行预选的
+        $backShow = Get-MsiRows $db "SELECT Control_, Action, Condition FROM ControlCondition WHERE Dialog_ = 'ClearDataDlg'"
+        $backControl = Get-MsiRows $db "SELECT Control, Type, Attributes FROM Control WHERE Dialog_ = 'ClearDataDlg' AND Control = 'BackButton'"
+        if ($backShow.Count -ne 1 -or $backShow[0][0] -cne 'BackButton' -or $backShow[0][1] -cne 'Show' -or $backShow[0][2] -cne ($removeMode + ' AND NOT Preselected')) { throw "询问页的「上一步」应只有一条显示条件：$removeMode AND NOT Preselected" }
+        if ($backControl.Count -ne 1 -or $backControl[0][1] -cne 'PushButton' -or (([int]::Parse($backControl[0][2]) -band 1) -ne 0)) { throw '询问页的「上一步」必须默认隐藏：显示条件为假时不会隐藏，默认可见会让命令行卸载多出一个回到维护向导的入口' }
+        $backFromVerify = @($events | Where-Object { $_[0] -ceq 'VerifyReadyDlg' -and $_[1] -ceq 'Back' -and $_[2] -ceq 'NewDialog' -and $_[3] -ceq 'ClearDataDlg' })
+        if ($backFromVerify.Count -ne 1 -or $backFromVerify[0][4] -cne $removeMode) { throw "「确认删除」页的上一步应回询问页（$removeMode）" }
+        foreach ($row in @($events | Where-Object { $_[0] -ceq 'VerifyReadyDlg' -and $_[1] -ceq 'Back' -and $_[2] -ceq 'NewDialog' -and $_[3] -cin 'MaintenanceTypeDlg', 'InstallDirDlg', 'WelcomeDlg' })) {
+            if ([int]::Parse($backFromVerify[0][5]) -le [int]::Parse($row[5])) { throw "「确认删除」页上一步回询问页的登记顺序必须大于自带向导组的登记（$($row[3])，$($row[5])），否则卸载时回的是维护向导的类型页" }
+        }
+        # 界面序列：命令行带 REMOVE=ALL 时先显示询问页，之后不再显示界面库的「继续安装」页（它按安装措辞写成）。
+        # 两行的条件翻译后按状态逐一求值
+        function Test-UninstallUiState([string]$condition, [bool]$removingAll, [bool]$upgrading, [bool]$resume, [bool]$preselected, [bool]$patch = $false) {
+            # Integer literals mean false (0) or true (anything else), as they do for the installer.
+            $expr = [regex]::Replace($condition, '(?<![A-Za-z0-9_])0(?![A-Za-z0-9_])', '($false)')
+            $expr = $expr.Replace('REMOVE~="ALL"', '($removingAll)')
+            $expr = [regex]::Replace($expr, '(?<![A-Za-z0-9_])UPGRADINGPRODUCTCODE(?![A-Za-z0-9_])', '($upgrading)')
+            $expr = [regex]::Replace($expr, '(?<![A-Za-z0-9_])Installed(?![A-Za-z0-9_])', '($true)')
+            $expr = [regex]::Replace($expr, '(?<![A-Za-z0-9_])RESUME(?![A-Za-z0-9_])', '($resume)')
+            $expr = [regex]::Replace($expr, '(?<![A-Za-z0-9_])Preselected(?![A-Za-z0-9_])', '($preselected)')
+            $expr = [regex]::Replace($expr, '(?<![A-Za-z0-9_])PATCH(?![A-Za-z0-9_])', '($patch)')
+            $expr = $expr -creplace '\bAND\b', '-and' -creplace '\bOR\b', '-or' -creplace '\bNOT\b', '-not'
+            $left = $expr -creplace '\$(removingAll|upgrading|resume|preselected|patch|true|false)|-and|-or|-not|[()\s]', ''
+            if ($left.Length -ne 0) { throw "卸载询问链路的显示条件用到了本断言不会求值的语法：$condition" }
+            [bool](Invoke-Expression $expr)
+        }
+        $uiSequence = Get-MsiRows $db "SELECT Action, Condition FROM InstallUISequence WHERE Action = 'ClearDataDlg' OR Action = 'ResumeDlg'"
+        $questionRow = @($uiSequence | Where-Object { $_[0] -ceq 'ClearDataDlg' })
+        $resumeRow = @($uiSequence | Where-Object { $_[0] -ceq 'ResumeDlg' })
+        if ($questionRow.Count -ne 1 -or $resumeRow.Count -ne 1) { throw '界面序列里应有询问页 ClearDataDlg 与 ResumeDlg 各一行' }
+        $uninstallUiStates = @(
+            @{ Name = '手动卸载（命令行 REMOVE=ALL 或 msiexec /x）'; RemovingAll = $true; Upgrading = $false; Resume = $false; Preselected = $true; Question = $true; ResumePage = $false },
+            @{ Name = '升级过程中旧产品的卸载子会话'; RemovingAll = $true; Upgrading = $true; Resume = $false; Preselected = $true; Question = $false; ResumePage = $null },
+            @{ Name = '全新安装、维护运行、修复'; RemovingAll = $false; Upgrading = $false; Resume = $false; Preselected = $false; Question = $false; ResumePage = $false },
+            @{ Name = '继续被中断的安装'; RemovingAll = $false; Upgrading = $false; Resume = $true; Preselected = $false; Question = $false; ResumePage = $true },
+            @{ Name = '命令行预选了功能的其他运行'; RemovingAll = $false; Upgrading = $false; Resume = $false; Preselected = $true; Question = $false; ResumePage = $true }
+        )
+        foreach ($state in $uninstallUiStates) {
+            if ((Test-UninstallUiState $questionRow[0][1] $state.RemovingAll $state.Upgrading $state.Resume $state.Preselected) -ne $state.Question) {
+                throw "询问页在「$($state.Name)」时应当$(if ($state.Question) { '显示' } else { '不显示' })，当前条件不是这样：$($questionRow[0][1])"
+            }
+            # 升级的卸载子会话不带界面，「继续安装」页在那里显示与否不作要求
+            if ($null -ne $state.ResumePage -and (Test-UninstallUiState $resumeRow[0][1] $state.RemovingAll $state.Upgrading $state.Resume $state.Preselected) -ne $state.ResumePage) {
+                throw "界面库的「继续安装」页在「$($state.Name)」时应当$(if ($state.ResumePage) { '显示' } else { '不显示' })，当前条件不是这样：$($resumeRow[0][1])"
+            }
+        }
+        # 命令行卸载的进度页：界面库按「命令行预选了功能」把「正在安装」的两段文字也显示出来，和「正在删除」叠在一起。
+        # 询问页之后清掉预选标记，并让维护欢迎页（界面库的条件看的是这个标记的反面）不在这一路径上显示
+        $clearPreselected = Get-MsiRows $db "SELECT Type, Source, Target FROM CustomAction WHERE Action = 'ClearPreselectedAfterQuestion'"
+        if ($clearPreselected.Count -ne 1 -or $clearPreselected[0][0] -ne '51' -or $clearPreselected[0][1] -cne 'Preselected' -or $clearPreselected[0][2] -cne '') { throw 'ClearPreselectedAfterQuestion 应是只把 Preselected 置空的赋值动作（否则命令行卸载的进度页上「正在安装」与「正在删除」叠在一起）' }
+        $questionSeq = (Get-MsiRows $db "SELECT Sequence FROM InstallUISequence WHERE Action = 'ClearDataDlg'")[0][0]
+        $resumeSeq = (Get-MsiRows $db "SELECT Sequence FROM InstallUISequence WHERE Action = 'ResumeDlg'")[0][0]
+        $clearRow = Get-MsiRows $db "SELECT Condition, Sequence FROM InstallUISequence WHERE Action = 'ClearPreselectedAfterQuestion'"
+        if ($clearRow.Count -ne 1 -or $clearRow[0][0] -cne 'REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE') { throw "ClearPreselectedAfterQuestion 应只在手动卸载（命令行 REMOVE=ALL）时执行，实际：$($clearRow | ForEach-Object { $_[0] })" }
+        if ([int]::Parse($clearRow[0][1]) -le [int]::Parse($questionSeq) -or [int]::Parse($clearRow[0][1]) -ge [int]::Parse($resumeSeq)) { throw 'ClearPreselectedAfterQuestion 应排在询问页之后、「继续安装」页之前' }
+        # Get-MsiRows returns the rows as one array: it must not be wrapped in @() again (the indexing would shift by one level)
+        $maintenanceRow = Get-MsiRows $db "SELECT Action, Condition FROM InstallUISequence WHERE Action = 'MaintenanceWelcomeDlg'"
+        if ($maintenanceRow.Count -ne 1) { throw '界面序列里应有维护欢迎页 MaintenanceWelcomeDlg 一行' }
+        # 预选标记已清掉之后的状态（均已安装）：维护欢迎页只在重跑安装包时显示
+        $maintenanceStates = @(
+            @{ Name = '重跑安装包'; RemovingAll = $false; Upgrading = $false; Resume = $false; Preselected = $false; Shows = $true },
+            @{ Name = '命令行 REMOVE=ALL 的手动卸载（预选标记已清掉）'; RemovingAll = $true; Upgrading = $false; Resume = $false; Preselected = $false; Shows = $false },
+            @{ Name = '继续被中断的安装'; RemovingAll = $false; Upgrading = $false; Resume = $true; Preselected = $false; Shows = $false }
+        )
+        foreach ($state in $maintenanceStates) {
+            $shows = Test-UninstallUiState $maintenanceRow[0][1] $state.RemovingAll $state.Upgrading $state.Resume $state.Preselected
+            if ($shows -ne $state.Shows) { throw "维护欢迎页在「$($state.Name)」时应当$(if ($state.Shows) { '显示' } else { '不显示' })，当前条件不是这样：$($maintenanceRow[0][1])" }
+        }
+        Write-Host '卸载询问：维护向导的「删除」先经询问页；询问页的「继续」先置安装模式再进「确认删除」页，上一步回询问页；命令行 REMOVE=ALL 时询问之后不再显示「继续安装」页，进度页只显示「正在删除」：OK'
         Write-Host '运行时检测（ASP.NET Core + Desktop 双项、三段缺失说明）、安装位置固定（只读页旁路 + INSTALLFOLDER 拦截 + 组件挂载）、安装日志与失败提示、更新服务启动动作：OK'
     }
 

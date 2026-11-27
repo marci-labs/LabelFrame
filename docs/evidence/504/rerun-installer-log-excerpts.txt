@@ -1,0 +1,67 @@
+# Windows Installer 日志摘录：rerun 轮。行号指向拉回的同名日志。
+
+## 10-install-silent.log
+L5: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L18: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L47: MSI (s) (40:80) [12:53:25:757]: Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=7308
+L385: MSI (s) (40:80) [12:53:25:945]: Doing action: StopServerService
+L415: 操作结束 12:53:25: StopServerService。返回值 1。
+L421: MSI (s) (40:80) [12:53:25:992]: Doing action: StopServices
+L427: 操作结束 12:53:25: StopServices。返回值 1。
+L429: MSI (s) (40:80) [12:53:25:992]: Doing action: RemoveFiles
+L435: MSI (s) (40:80) [12:53:25:992]: Skipping action: ClearDataDelServerDir (condition is false)
+L436: MSI (s) (40:80) [12:53:25:992]: Skipping action: ClearDataDelServerDb (condition is false)
+L437: MSI (s) (40:80) [12:53:25:992]: Skipping action: ClearDataDelAppSettings (condition is false)
+L440: 操作结束 12:53:25: RemoveFiles。返回值 0。
+L465: MSI (s) (40:80) [12:53:26:007]: Doing action: StartServices
+L471: 操作结束 12:53:26: StartServices。返回值 1。
+L488: MSI (s) (40:80) [12:53:26:007]: Doing action: InstallFinalize
+L697: 操作结束 12:53:28: InstallFinalize。返回值 1。
+L799: Property(S): UILevel = 2
+L822: MSI (s) (40:80) [12:53:28:960]: MainEngineThread is returning 0
+L836: MSI (c) (8C:1C) [12:53:28:960]: MainEngineThread is returning 0
+
+## 20-rerun-silent.log
+L5: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L18: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L41: MSI (s) (40:F8) [12:53:45:992]: Command Line: REBOOT=ReallySuppress CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=9616
+L383: MSI (s) (40:F8) [12:53:46:179]: Skipping action: StopServerService (condition is false)
+L392: MSI (s) (40:F8) [12:53:46:179]: Doing action: StopServices
+L398: 操作结束 12:53:46: StopServices。返回值 1。
+L400: MSI (s) (40:F8) [12:53:46:179]: Doing action: RemoveFiles
+L406: MSI (s) (40:F8) [12:53:46:179]: Skipping action: ClearDataDelServerDir (condition is false)
+L407: MSI (s) (40:F8) [12:53:46:179]: Skipping action: ClearDataDelServerDb (condition is false)
+L408: MSI (s) (40:F8) [12:53:46:179]: Skipping action: ClearDataDelAppSettings (condition is false)
+L411: 操作结束 12:53:46: RemoveFiles。返回值 0。
+L433: MSI (s) (40:F8) [12:53:46:179]: Doing action: StartServices
+L439: 操作结束 12:53:46: StartServices。返回值 1。
+L474: MSI (s) (40:F8) [12:53:46:273]: Doing action: InstallFinalize
+L516: 操作结束 12:53:46: InstallFinalize。返回值 1。
+L620: Property(S): UILevel = 2
+L642: MSI (s) (40:F8) [12:53:46:320]: MainEngineThread is returning 0
+L656: MSI (c) (90:24) [12:53:46:335]: MainEngineThread is returning 0
+
+## 30-repair-fa.log
+L5: ******* Product: {4F465CA0-749C-4E1C-86FA-F470051324AB}
+L18: ******* Product: {4F465CA0-749C-4E1C-86FA-F470051324AB}
+L41: MSI (s) (40:94) [12:53:53:429]: Command Line: REINSTALL=ALL REINSTALLMODE=a CURRENTDIRECTORY=C:\Users\<account>\Documents CLIENTUILEVEL=3 CLIENTPROCESSID=11964
+L382: MSI (s) (40:94) [12:53:54:070]: Doing action: StopServerService
+L410: 操作结束 12:53:54: StopServerService。返回值 1。
+L416: MSI (s) (40:94) [12:53:54:101]: Doing action: StopServices
+L422: 操作结束 12:53:54: StopServices。返回值 1。
+L424: MSI (s) (40:94) [12:53:54:101]: Doing action: RemoveFiles
+L430: MSI (s) (40:94) [12:53:54:101]: Skipping action: ClearDataDelServerDir (condition is false)
+L431: MSI (s) (40:94) [12:53:54:101]: Skipping action: ClearDataDelServerDb (condition is false)
+L432: MSI (s) (40:94) [12:53:54:101]: Skipping action: ClearDataDelAppSettings (condition is false)
+L435: 操作结束 12:53:54: RemoveFiles。返回值 0。
+L502: MSI (s) (40:94) [12:53:54:132]: Doing action: StartServices
+L508: 操作结束 12:53:54: StartServices。返回值 1。
+L522: MSI (s) (40:94) [12:53:54:148]: Doing action: InstallFinalize
+L845: 操作结束 12:53:58: InstallFinalize。返回值 1。
+L951: Property(S): UILevel = 2
+L973: MSI (s) (40:94) [12:53:58:195]: MainEngineThread is returning 0
+L987: MSI (c) (BC:E8) [12:53:58:210]: MainEngineThread is returning 0
+
+# 判定
+
+FAILED=0

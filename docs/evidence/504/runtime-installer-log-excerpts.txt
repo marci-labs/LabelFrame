@@ -1,0 +1,41 @@
+# Windows Installer 日志摘录：runtime 轮。行号指向拉回的同名日志。
+
+## walk-client-runtime-webview2.log
+L9: ******* Product: C:\Probe\LabelFrame-Client-1.6.99.msi
+L42: MSI (c) (EC:78) [14:25:36:381]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=8428
+L248: MSI (c) (EC:6C) [14:25:39:929]: Doing action: SetWebView2DownloadPageTarget
+L253: 操作结束 14:25:39: SetWebView2DownloadPageTarget。返回值 1。
+L254: MSI (c) (EC:6C) [14:25:39:929]: Doing action: OpenDownloadPage
+L259: 操作结束 14:25:39: OpenDownloadPage。返回值 1。
+L387: Property(C): UILevel = 5
+L410: MSI (c) (EC:78) [14:26:47:364]: MainEngineThread is returning 1602
+
+## walk-client-runtime.log
+L9: ******* Product: C:\Probe\LabelFrame-Client-1.6.99.msi
+L42: MSI (c) (F8:64) [14:24:16:025]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=2040
+L247: MSI (c) (F8:B4) [14:24:19:478]: Doing action: SetDownloadPageTarget
+L252: 操作结束 14:24:19: SetDownloadPageTarget。返回值 1。
+L253: MSI (c) (F8:B4) [14:24:19:478]: Doing action: OpenDownloadPage
+L258: 操作结束 14:24:19: OpenDownloadPage。返回值 1。
+L387: Property(C): UILevel = 5
+L410: MSI (c) (F8:64) [14:24:45:522]: MainEngineThread is returning 1602
+
+## walk-server-runtime.log
+L9: ******* Product: C:\Probe\LabelFrame-Server-1.6.99.msi
+L42: MSI (c) (AC:C8) [14:23:22:209]: Command Line: CURRENTDIRECTORY=C:\Windows\system32 CLIENTUILEVEL=0 CLIENTPROCESSID=9132
+L227: MSI (c) (AC:DC) [14:23:27:235]: Doing action: SetDownloadPageTarget
+L232: 操作结束 14:23:27: SetDownloadPageTarget。返回值 1。
+L233: MSI (c) (AC:DC) [14:23:27:235]: Doing action: OpenDownloadPage
+L238: 操作结束 14:23:27: OpenDownloadPage。返回值 1。
+L352: Property(C): UILevel = 5
+L375: MSI (c) (AC:C8) [14:23:53:552]: MainEngineThread is returning 1602
+
+# 判定
+PASS walk-client-runtime-webview2.log: 打开下载页动作 OpenDownloadPage 执行一次（实际 1）
+PASS walk-client-runtime-webview2.log: 打开下载页动作返回值 1（实际 [1]）
+PASS walk-client-runtime.log: 打开下载页动作 OpenDownloadPage 执行一次（实际 1）
+PASS walk-client-runtime.log: 打开下载页动作返回值 1（实际 [1]）
+PASS walk-server-runtime.log: 打开下载页动作 OpenDownloadPage 执行一次（实际 1）
+PASS walk-server-runtime.log: 打开下载页动作返回值 1（实际 [1]）
+
+FAILED=0

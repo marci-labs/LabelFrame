@@ -1,0 +1,25 @@
+== 缺运行时对话框轮（两个候选包，基线没有 .NET；WebView2 的登记临时去掉） ==
+PASS R1-a : RuntimeMissing 对话框是第一个窗口、之前没有任何向导页
+PASS R1-b : RuntimeMissing 对话框把官方网址显示为文字
+PASS R1-c : RuntimeMissing 对话框有「打开下载页」按钮，走查用鼠标点了它
+PASS R1-d : RuntimeMissing：点按钮后默认浏览器带着官方网址打开（带网址的浏览器进程 1 个，窗口标题匹配 True）
+PASS R1-e : RuntimeMissing：走查自带检查全部通过，点「退出」后正常结束
+NOTE R1-f : 浏览器最后的窗口标题：1 下载 .NET 10.0 (Linux、macOS 和 Windows) | .NET - 用户配置 1 - Microsoft​ Edge [Chrome_WidgetWin_1]；页面加载出来（窗口标题是页面自己的标题）：True（等了 0 秒）
+PASS R2-a : RuntimeMissing 对话框是第一个窗口、之前没有任何向导页
+PASS R2-b : RuntimeMissing 对话框把官方网址显示为文字
+PASS R2-c : RuntimeMissing 对话框有「打开下载页」按钮，走查用鼠标点了它
+PASS R2-d : RuntimeMissing：点按钮后默认浏览器带着官方网址打开（带网址的浏览器进程 1 个，窗口标题匹配 True）
+PASS R2-e : RuntimeMissing：走查自带检查全部通过，点「退出」后正常结束
+NOTE R2-f : 浏览器最后的窗口标题：1 下载 .NET 10.0 (Linux、macOS 和 Windows) | .NET 和另外 1 个页面 - 用户配置 1 - Microsoft​ Edge [Chrome_WidgetWin_1]；页面加载出来（窗口标题是页面自己的标题）：True（等了 0 秒）
+PASS R0 : 走查之前测试机的名称解析已就绪（等了 37 秒；dotnet.microsoft.com、go.microsoft.com）
+PASS R3-g : WebView2 的登记已临时去掉（先导出备份）
+PASS R3-a : WebView2Missing 对话框是第一个窗口、之前没有任何向导页
+PASS R3-b : WebView2Missing 对话框把官方网址显示为文字
+PASS R3-c : WebView2Missing 对话框有「打开下载页」按钮，走查用鼠标点了它
+PASS R3-d : WebView2Missing：点按钮后默认浏览器带着官方网址打开（带网址的浏览器进程 1 个，窗口标题匹配 False）
+PASS R3-e : WebView2Missing：走查自带检查全部通过，点「退出」后正常结束
+NOTE R3-f : 浏览器最后的窗口标题：2 还原页面 [Chrome_WidgetWin_1] | 无标题 - 用户配置 1 - Microsoft​ Edge [Chrome_WidgetWin_1]；页面加载出来（窗口标题是页面自己的标题）：False
+PASS R3-h : WebView2 的登记已恢复（导入之后两处登记都在）
+PASS R4 : 三个对话框之后没有安装任何东西
+
+SUMMARY round=runtime pass=19 fail=0

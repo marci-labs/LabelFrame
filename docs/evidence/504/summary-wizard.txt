@@ -1,0 +1,29 @@
+== 向导轮（客户端候选包）：完成页启动、取消勾选、系统卸载命令 ==
+PASS W1-a : 安装程序以管理员身份启动（AC-02）：向导走完到完成页（结果 completed）
+PASS W1-b : 安装程序以管理员身份启动（AC-02）：点「完成」后 60 秒内客户端进程出现（1 个）
+PASS W1-c : 安装程序以管理员身份启动（AC-02）：走查读到的客户端进程身份都是不提权（not elevated）
+PASS W1-d : 安装程序以管理员身份启动（AC-02）：提权会话里读到的客户端进程身份也是不提权（PROCESS_TOKEN pid=4684 session=1 not-elevated | PROCESS_TOKEN pid=7164 session=0 elevated）
+PASS W1-e : 安装程序以管理员身份启动（AC-02）：客户端窗口出现（窗口类 WindowsForms10.Window.8.app.0.f4eaed_r3_ad1）
+PASS W1-f : 安装程序以管理员身份启动（AC-02）：本机接口 53960 应答（HTTP 200）
+PASS W1-g : 安装程序以管理员身份启动（AC-02）：托盘图标由客户端注册（present=True owner=4684 ofClient=True）
+PASS W1-h : 安装程序以管理员身份启动（AC-02）：走查自带检查全部通过（0 项失败）
+PASS W1-i : 安装程序以管理员身份启动（AC-02）：走查没有中途出错
+PASS W2-a : 安装程序以普通方式启动（AC-01）：向导走完到完成页（结果 completed）
+PASS W2-b : 安装程序以普通方式启动（AC-01）：点「完成」后 60 秒内客户端进程出现（1 个）
+PASS W2-c : 安装程序以普通方式启动（AC-01）：走查读到的客户端进程身份都是不提权（not elevated）
+PASS W2-d : 安装程序以普通方式启动（AC-01）：提权会话里读到的客户端进程身份也是不提权（PROCESS_TOKEN pid=3952 session=1 not-elevated | PROCESS_TOKEN pid=7164 session=0 elevated）
+PASS W2-e : 安装程序以普通方式启动（AC-01）：客户端窗口出现（窗口类 WindowsForms10.Window.8.app.0.f4eaed_r3_ad1）
+PASS W2-f : 安装程序以普通方式启动（AC-01）：本机接口 53960 应答（HTTP 200）
+PASS W2-g : 安装程序以普通方式启动（AC-01）：托盘图标由客户端注册（present=True owner=3952 ofClient=True）
+PASS W2-h : 安装程序以普通方式启动（AC-01）：走查自带检查全部通过（0 项失败）
+PASS W2-i : 安装程序以普通方式启动（AC-01）：走查没有中途出错
+PASS W3-a : 取消勾选「立即打开」后点「完成」：没有客户端启动（AC-03）
+PASS W3-b : 两个复选框都取消了勾选
+PASS W3-c : 走查自带检查全部通过、向导走完
+PASS W3-d : 开机自启项没有写入
+PASS W3-e : 重启后没有客户端自启、没有托盘图标
+PASS W4-a : 系统卸载命令答「否」：产品还在
+PASS W5-a : 系统卸载命令答「是」：直接卸载，安装包自己的对话框一个都不出现
+PASS W5-b : 卸载后产品没了、用户数据保留
+
+SUMMARY round=wizard pass=26 fail=0

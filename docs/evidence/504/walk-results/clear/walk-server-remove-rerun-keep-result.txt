@@ -1,0 +1,108 @@
+=== installer walk 'walk-server-remove-rerun-keep': mode=remove  [13:02:13] ===
+arguments: /i "C:\Probe\LabelFrame-Server-1.6.99.msi" /l*v "C:\Probe\logs\walk-server-remove-rerun-keep.log"
+identity=DESKTOP-D65DJ5S\<account> elevated=False
+TOKEN sid=<sid> linkedToken=available
+SETUP_PAGE present=False
+before: product=1.6.99 | Run key=absent | user files=0 | printing client processes=0
+CLEAR_QUESTION_SHOWN=False
+  check ok: running the package again starts with the maintenance wizard
+--- page MaintenanceWelcome (actual MaintenanceWelcome, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [116] Button 下一步(&N)
+  [118] Button 取消
+  [106] Static WixUI_Bmp_Dialog
+  [115] Button 上一步(&B)   (disabled)
+  [46] Static 通过安装向导可以更改在您的计算机上安装 LabelFrame Server 功能的方式，或将其从您的计算机中删除。单击“下一步”继续，或单击“取消”退出安装向导。
+  [108] Static 欢迎使用 LabelFrame Server 安装向导
+  screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-01-MaintenanceWelcome.png (PrintWindow, 499x389)
+--- page MaintenanceType (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [298] Button 更改(&C)   (disabled)
+  [299] Button 修复(&P)
+  [304] Button 删除(&R)
+  [115] Button 上一步(&B)
+  [116] Button 下一步(&N)   (disabled)
+  [118] Button 取消
+  [105] Static WixUI_Bmp_Banner
+  [46] Static 选择希望执行的操作。
+  [108] Static 更改、修复或删除安装
+  [177] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+  [181] Static 从您的计算机中删除 LabelFrame Server。
+  [302] Static LabelFrame Server 没有单独可选的功能。
+  screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-02-MaintenanceType.png (PrintWindow, 499x389)
+  MAINTENANCE_BUTTON caption=[更改(&C)] enabled=False
+  MAINTENANCE_BUTTON caption=[修复(&P)] enabled=True
+  MAINTENANCE_BUTTON caption=[删除(&R)] enabled=True
+  MAINTENANCE_BUTTON caption=[上一步(&B)] enabled=True
+  MAINTENANCE_BUTTON caption=[下一步(&N)] enabled=False
+  MAINTENANCE_BUTTON caption=[取消] enabled=True
+--- page ClearData (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Server 卸载' ---
+  [94] Button 清除用户数据
+  [98] Button 上一步(&B)
+  [100] Button 取消
+  [102] Button 继续
+  [80] Static 卸载 LabelFrame Server。
+  [82] Static 是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？
+  screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-03-ClearData.png (PrintWindow, 499x255)
+QUESTION_BUTTONS back=True next=True cancel=True
+  check ok: the question page reached from the maintenance wizard offers a way back
+--- page MaintenanceType-again (actual MaintenanceType, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [298] Button 更改(&C)   (disabled)
+  [299] Button 修复(&P)
+  [304] Button 删除(&R)
+  [115] Button 上一步(&B)
+  [116] Button 下一步(&N)   (disabled)
+  [118] Button 取消
+  [105] Static WixUI_Bmp_Banner
+  [46] Static 选择希望执行的操作。
+  [108] Static 更改、修复或删除安装
+  [177] Static 通过修复丢失和损坏的文件、快捷方式和注册表项，修复最近安装的软件中的错误。
+  [181] Static 从您的计算机中删除 LabelFrame Server。
+  [302] Static LabelFrame Server 没有单独可选的功能。
+  screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-04-MaintenanceType.png (PrintWindow, 499x389)
+--- page ClearData-again (actual ClearData, class MsiDialogCloseClass): 'LabelFrame Server 卸载' ---
+  [94] Button 清除用户数据
+  [98] Button 上一步(&B)
+  [100] Button 取消
+  [102] Button 继续
+  [80] Static 卸载 LabelFrame Server。
+  [82] Static 是否同时清除本程序产生的用户数据（模板库 / 作业 / 日志 / 配置）？
+  screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-05-ClearData.png (PrintWindow, 499x255)
+CLEAR_CHECKBOX initial=0
+  check ok: the clear-user-data box is not ticked by default
+--- page VerifyRemove (actual VerifyRemove, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [47] Button 删除(&R)
+  [118] Button 取消
+  [115] Button 上一步(&B)
+  [105] Static WixUI_Bmp_Banner
+  [179] Static 已准备好删除 LabelFrame Server
+  [181] Static 单击“删除”可从计算机上删除 LabelFrame Server。单击“上一步”检查或更改任何安装设置。单击“取消”退出向导。
+  screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-06-VerifyRemove.png (PrintWindow, 499x389)
+REMOVE_STEP_SECONDS=1.1 (from clicking Remove to the next window)
+--- page Removing (actual Removing, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [118] Button 取消
+  [105] Static WixUI_Bmp_Banner
+  [115] Button 上一步(&B)   (disabled)
+  [116] Button 下一步(&N)   (disabled)
+  [236] Static 正在停止服务
+  [250] Static 安装向导正在删除 LabelFrame Server，请稍候。
+  [252] Static 正在删除 LabelFrame Server
+  [260] Static 状态:
+  screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-07-Removing.png (PrintWindow, 499x389)
+--- page Exit (actual Exit, class MsiDialogCloseClass): 'LabelFrame Server 安装程序' ---
+  [212] Button 完成(&F)
+  [118] Button 取消   (disabled)
+  [106] Static WixUI_Bmp_Dialog
+  [115] Button 上一步(&B)   (disabled)
+  [46] Static 单击“完成”按钮退出安装向导。
+  [108] Static LabelFrame Server 安装向导已完成
+  screenshot -> C:\Probe\logs\walk-server-remove-rerun-keep-08-Exit.png (PrintWindow, 499x389)
+  check ok: running the package again and choosing Remove asks about the user data before the ready-to-remove page
+last unrecognised installer window: 
+WINDOWS_IN_ORDER=Prepare -> MaintenanceWelcome -> MaintenanceType -> ClearData -> VerifyRemove -> Removing -> Exit
+windows seen: ClearData, Exit, MaintenanceType, MaintenanceWelcome, Prepare, Removing, VerifyRemove
+exit code=0
+after: product=none | Run key=absent | user files=0 | printing client processes=0
+OUTCOME=removed
+WIZARD_PATH=MaintenanceWelcome -> MaintenanceType -> ClearData -> Back -> MaintenanceType -> ClearData-again -> VerifyRemove -> Removing -> Exit
+CLICKS=下一步(&N) [116], 删除(&R) [304], 上一步(&B) [98], 删除(&R) [304], 继续 [102], 删除(&R) [47], 完成(&F) [212]
+CHECK_FAILURES=0 
+=== end 'walk-server-remove-rerun-keep'  [13:02:25] ===

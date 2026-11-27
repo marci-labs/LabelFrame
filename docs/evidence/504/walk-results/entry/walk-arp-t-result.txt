@@ -1,0 +1,3 @@
+=== programs-and-features uninstall probe 'walk-arp-t' [LabelFrame Client]  [11:31:47] ===
+identity=DESKTOP-D65DJ5S\<account> elevated=False session=1
+WALK_TERMINATING_ERROR: product 'LabelFrame Client' is not registered, so there is nothing to uninstall (line 333)
