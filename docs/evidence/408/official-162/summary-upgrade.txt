@@ -1,0 +1,39 @@
+PASS H01 : 向导走完到完成页（走查到进度页后由续走脚本接着走完：续走结果 completed，续走自带检查失败 0  项；走查自带的失败项：unexpected window 'Removing' after the install step）
+PASS H02 : 向导各页依次出现：Welcome -> License -> Location -> Options -> Verify -> Installing -> Exit
+Info : 无法将“Info”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正确
+，然后再试一次。
+所在位置 C:\work\OpenCode\itenv\lf-host-walk-162-20261127\scripts\judge-host-walk.ps1:45 字符: 1
++ Info 'H02 观察：升级过程中移除旧版本的那一段，进度页的状态栏显示「正在删除快捷方式」（页面标题仍是「正在安装 LabelFra
+m ...
++ ~~~~
+    + CategoryInfo          : ObjectNotFound: (Info:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+PASS H03 : 「开机自动启动」默认勾选（1）
+PASS H04 : 完成页「立即打开 LabelFrame」默认勾选（1）
+PASS H05 : 点「完成」后 60 秒内客户端进程出现（1 个）
+PASS H06 : 客户端进程是不提权身份（LAUNCH_TOKEN pid=37556 not elevated）
+PASS H07 : 本机接口 53960 应答（HTTP 200）
+PASS H07b : 客户端窗口出现（窗口类 WindowsForms10.Window.8.app.0.27e9722_r3_ad1），托盘图标由客户端注册（LAUNCH_TRAY_WINDOW present=True owner=37556 ofClient=True）
+PASS H08 : 登记的版本 1.6.0 -> 1.6.2（之前 1.6.0，之后 1.6.2）
+PASS H09 : 客户端程序文件版本 1.6.2.0，产品版本 1.6.2+d618e09514c68cb2d23adc9fa286f0695b3dccaa
+PASS H10 : 运行中的客户端自报 1.6.0 -> 1.6.2，设备号不变
+PASS H11 : 作业历史与模板还在（作业 100 -> 100 条，模板 3 -> 3 个且内容一致）
+Info : 无法将“Info”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正确
+，然后再试一次。
+所在位置 C:\work\OpenCode\itenv\lf-host-walk-162-20261127\scripts\judge-host-walk.ps1:79 字符: 1
++ Info ('H11 作业列表：HTTP ' + $jobsCodeBefore + ' -> ' + $jobsCodeAfter +  ...
++ ~~~~
+    + CategoryInfo          : ObjectNotFound: (Info:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+PASS H12 打印机连接文件 : 打印机连接文件逐字节不变（2bdccae070d2…）
+PASS H12 打印设置 : 打印设置逐字节不变（b4d6f1689bd2…）
+PASS H12 机器级设置 : 机器级设置逐字节不变（e0fd9c98f851…）
+PASS H12 安装目录下的配置 : 安装目录下的配置逐字节不变（4c5344bd34a4…）
+PASS H13 : 开机自启项还在（AUTOSTART HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run LabelFrame = "C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart）
+PASS H14 : 更新服务在运行（Running）
+PASS H15 : 安装日志：服务端与客户端的引擎线程都返回 0（MainEngineThread 返回 0/0；status 行 无（完整界面下日志不写这一行）；没有「Return value 3」）
+PASS H16 : 安装日志里启动动作执行并返回 1（操作结束 17:20:27: LaunchClientOnExit。返回值 1。）
+SUMMARY pass=20 fail=0
+

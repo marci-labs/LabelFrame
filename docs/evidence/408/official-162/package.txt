@@ -1,0 +1,4 @@
+# 被测的包：正式 Release 的客户端安装包。
+PACKAGE sha256=ecb634fed2a70d1aabebfb0e7a48521381667065b2a4d1ec46a9945c6ef9df29 expected=ecb634fed2a70d1aabebfb0e7a48521381667065b2a4d1ec46a9945c6ef9df29 equal=True
+SIGNATURE status=UnknownError signer=CN=LabelFrame
+

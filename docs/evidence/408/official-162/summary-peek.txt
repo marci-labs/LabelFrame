@@ -1,0 +1,22 @@
+PASS P01 : 重跑安装包、选「删除」后到询问页，最后取消退出（结果 cancelled at the question，走查自带检查失败 0  项）
+PASS P02 : 页面顺序：MaintenanceWelcome -> MaintenanceType -> ClearData -> Back -> MaintenanceType-again -> ClearData-again -> Cancel -> CancelConfirm -> Yes -> UserExit -> Finish
+PASS P03 : 询问页有「上一步」「继续」「取消」和「清除用户数据」复选框（back=True next=True cancel=True tick=True）
+PASS P04 : 「清除用户数据」默认不勾选（0）
+PASS P05 : 取消后安装程序自行退出
+PASS P06 : 安装日志里只有界面、没有执行序列（执行类动作 0 条）
+PASS P07 PRODUCT : PRODUCT 前后一致（PRODUCT name=LabelFrame Client version=1.6.2 key={8B464E83-7061-41A5-A829-EDDE39261A1E}…）
+PASS P07 SERVICE : SERVICE 前后一致（SERVICE name=LabelFrameClientUpdater state=Running startMode=Auto pid=28492 path="C:\Progr…）
+PASS P07 PROGRAM : PROGRAM 前后一致（PROGRAM role=client fileVersion=1.6.2.0 productVersion=1.6.2+d618e09514c68cb2d23adc9fa286f…）
+PASS P07 AUTOSTART : AUTOSTART 前后一致（AUTOSTART HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Run none ; AUTOSTART…）
+PASS P07 MACHINE_SETTINGS : MACHINE_SETTINGS 前后一致（MACHINE_SETTINGS bytes=42 sha256=e0fd9c98f851b6ec2658b2fb6a46eb42d72378330e6992585fafe4751…）
+PASS P07 FILE client appsettings : FILE client appsettings 前后一致（FILE client appsettings bytes=246 sha256=4c5344bd34a434fe1f22b82686875be8d965db8c39dbb5d2b…）
+PASS P07 USER_DIR : USER_DIR 前后一致（USER_DIR files=716 bytes=10161823033…）
+PASS P07 LISTEN : LISTEN 前后一致（LISTEN port=53960 pid=37556…）
+PASS P08 : 连接文件、打印设置与数据库文件的大小和可读哈希前后一致（4 个文件）
+PASS P09 HOST_CONFIG : 客户端接口 HOST_CONFIG 前后一致（API HOST_CONFIG code=200 count=1 bodySha256=2dbd3dabab498b9d923db4c175…）
+PASS P09 JOBS : 客户端接口 JOBS 前后一致（API JOBS code=200 count=100 bodySha256=4891ae5ec271ba389bffe2d4422e3be…）
+PASS P09 TEMPLATES : 客户端接口 TEMPLATES 前后一致（API TEMPLATES code=200 count=3 bodySha256=c8027c5dc7f7c261995e58b0b7b2…）
+PASS P10 : 运行中的客户端没有被结束或重启（PROCESS name=LabelFrame.WinHost.exe pid=37556 session=1 started=11-27 17:20:27）
+PASS P11 : 登记的版本仍是 1.6.2（PRODUCT name=LabelFrame Client version=1.6.2 key={8B464E83-7061-41A5-A829-EDDE39261A1E}）
+SUMMARY pass=20 fail=0
+

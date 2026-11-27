@@ -1,0 +1,37 @@
+# 这台电脑上 LabelFrame 的状态（只读采集）。
+TIME 2026-11-27 17:21:30
+PRODUCT name=LabelFrame Client version=1.6.2 key={8B464E83-7061-41A5-A829-EDDE39261A1E}
+SERVICE name=LabelFrameClientUpdater state=Running startMode=Auto pid=28492 path="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --update-service
+PROCESS name=LabelFrame.WinHost.exe pid=28492 session=0 started=11-27 17:18:32 command=
+PROCESS name=LabelFrame.WinHost.exe pid=37556 session=1 started=11-27 17:20:27 command="C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" 
+LISTEN port=53960 pid=37556
+HTTP http://127.0.0.1:53960/healthz code=200 body={"service":"LabelFrame.WinHost","status":"ok","platform":"windows","headless":false,"transport":"Log","pluginId":"log","displayText":"模拟打印"}
+HTTP http://127.0.0.1:53960/api/host/config code=200 body={"serverUrl":"http://<ip>:53961","deviceId":"<machine>","deviceName":"<machine>","ips":["<ip>","<ip>","<ip>"],"version":"1.6.2"}
+API HOST_CONFIG code=200 count=1 bodySha256=2dbd3dabab498b9d923db4c175762ae988a278159eb613450e1a831cb2364196 bytes=174 version=1.6.2 deviceId=<machine>
+API JOBS code=200 count=100 bodySha256=4891ae5ec271ba389bffe2d4422e3bed12512f18ee530acf6d30343140e5e420 bytes=66590
+API TEMPLATES code=200 count=3 bodySha256=c8027c5dc7f7c261995e58b0b7b221d93528868c714bc31f0b54a13c27031210 bytes=303
+PROGRAM role=client fileVersion=1.6.2.0 productVersion=1.6.2+d618e09514c68cb2d23adc9fa286f0695b3dccaa
+AUTOSTART HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Run none
+AUTOSTART HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run LabelFrame = "C:\Program Files\LabelFrame\Client\LabelFrame.WinHost.exe" --autostart
+AUTOSTART HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run none
+AUTOSTART scheduled-task none
+USER_DIR files=717 bytes=10160544825
+USER_FILE name=jobs.db bytes=52338688 sha256=unreadable(WriteErrorException)
+USER_FILE name=jobs.db-wal bytes=0 sha256=unreadable(WriteErrorException)
+USER_FILE name=jobs.db-shm bytes=32768 sha256=unreadable(WriteErrorException)
+USER_FILE name=templates.db bytes=45056 sha256=unreadable(WriteErrorException)
+USER_FILE name=logs.db bytes=16384 sha256=unreadable(WriteErrorException)
+USER_FILE name=print-settings.json bytes=67 sha256=b4d6f1689bd24e496f806a82d20c300ff4c51e653b29b7974848c21b5d7396bd
+USER_FILE name=connection.json bytes=378 sha256=2bdccae070d23ec15e58f5f6e791d32fb77091eb8071f217cc7f879f5d01d47b
+USER_FILE name=server.db bytes=32768 sha256=322fa5e9c3ace847629bf0d6d6002e18cc35a77a7feeafe097d74f092929f7ca
+USER_SUBDIR name=logs files=32 bytes=695882012
+USER_SUBDIR name=print files=64 bytes=57171
+USER_SUBDIR name=webview2 files=451 bytes=175712738
+USER_SUBDIR name=AndroidTest files=123 bytes=9209889065
+USER_SUBDIR name=server files=2 bytes=40960
+USER_SUBDIR name=updates files=0 bytes=
+MACHINE_SETTINGS bytes=42 sha256=e0fd9c98f851b6ec2658b2fb6a46eb42d72378330e6992585fafe47518559fa9
+FILE client appsettings bytes=246 sha256=4c5344bd34a434fe1f22b82686875be8d965db8c39dbb5d2bc0c02174558b4ae
+PLUGIN labelframe-transport-zebra
+PLUGIN .uninstalled-labelframe-transport-tspl.state
+

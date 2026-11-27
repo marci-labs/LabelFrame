@@ -1,0 +1,43 @@
+# 两份安装日志（Windows Installer 的详细日志，UTF-16）里的关键行，带原始行号。
+
+## 升级走查（msiexec /i 正式包，完整界面）
+
+  167  MSI (c) (88:60) [17:18:03:636]: Doing action: LaunchConditions
+  249  MSI (c) (88:60) [17:18:03:776]: Doing action: WelcomeDlg
+  296  MSI (c) (88:60) [17:18:10:984]: Doing action: ProgressDlg
+  310  MSI (c) (88:60) [17:18:11:103]: Doing action: ExecuteAction
+  317  MSI (c) (88:60) [17:18:11:106]: Switching to server: WIX_UPGRADE_DETECTED="{C5E74128-79FF-4C4B-9227-781AF07519CD}" DOTNET10_PRESENT="0" DOTNET10_DESKTOP_PRESENT="0" WEBVIEW2_HKLM="158.0.4370.45" LABELFRAMEROOT="C:\Program Files\LabelFrame\" TARGETDIR="D:\" CURRENTDIRECTORY="C:\work\OpenCode\itenv\lf-host-walk-162-20261127" CLIENTUILEVEL="0" CLIENTPROCESSID="35464" USERNAME="<user>" SOURCEDIR="C:\work\OpenCode\itenv\lf-host-walk-162-20261127\materials\" ACTION="INSTALL" EXECUTEACTION="INSTALL" MIGRATE="{C5E74128-79FF-4C4B-9227-781AF07519CD}" ROOTDRIVE="D:\" INSTALLLEVEL="1" SECONDSEQUENCE="1"  ADDLOCAL=AutoStartFeature,MainFeature
+  360  MSI (s) (80:68) [17:18:19:071]: Command Line: WIX_UPGRADE_DETECTED={C5E74128-79FF-4C4B-9227-781AF07519CD} DOTNET10_PRESENT=0 DOTNET10_DESKTOP_PRESENT=0 WEBVIEW2_HKLM=158.0.4370.45 LABELFRAMEROOT=C:\Program Files\LabelFrame\ TARGETDIR=D:\ CURRENTDIRECTORY=C:\work\OpenCode\itenv\lf-host-walk-162-20261127 CLIENTUILEVEL=0 CLIENTPROCESSID=35464 USERNAME=<user> SOURCEDIR=C:\work\OpenCode\itenv\lf-host-walk-162-20261127\materials\ ACTION=INSTALL EXECUTEACTION=INSTALL MIGRATE={C5E74128-79FF-4C4B-9227-781AF07519CD} ROOTDRIVE=D:\ INSTALLLEVEL=1 SECONDSEQUENCE=1 ADDLOCAL=AutoStartFeature,MainFeature ACTION=INSTALL
+  369  MSI (s) (80:68) [17:18:19:071]: MSI_LUA: Elevation required to install product, will prompt for credentials
+  371  MSI (s) (80:68) [17:18:23:672]: MSI_LUA: Elevated credential consent provided. Install will run elevated
+  485  MSI (s) (80:68) [17:18:24:220]: Doing action: LaunchConditions
+  567  MSI (s) (80:68) [17:18:24:263]: Doing action: ShutdownWinHost
+  667  MSI (s) (80:68) [17:18:27:547]: Doing action: RemoveExistingProducts
+  817  MSI (s) (80:3C) [17:18:28:036]: Doing action: LaunchConditions
+  996  MSI (s) (80:3C) [17:18:28:360]: Doing action: RemoveExistingProducts
+ 1038  MSI (s) (80:3C) [17:18:28:404]: Doing action: StopServices
+ 1115  MSI (s) (80:3C) [17:18:28:460]: Doing action: StartServices
+ 1960  MSI (s) (80:68) [17:18:31:356]: Doing action: StopServices
+ 2060  MSI (s) (80:68) [17:18:31:467]: Doing action: StartServices
+ 2712  MSI (s) (80:68) [17:18:34:104]: MainEngineThread is returning 0
+ 2728  MSI (c) (88:60) [17:18:34:143]: Doing action: ExitDialog
+ 2737  MSI (c) (88:F8) [17:20:27:649]: Doing action: SetLaunchClientTarget
+ 2739  操作 17:20:27: SetLaunchClientTarget.
+ 2740  操作开始 17:20:27: SetLaunchClientTarget。
+ 2742  操作结束 17:20:27: SetLaunchClientTarget。返回值 1。
+ 2743  MSI (c) (88:F8) [17:20:27:650]: Doing action: LaunchClientOnExit
+ 2745  操作 17:20:27: LaunchClientOnExit.
+ 2746  操作开始 17:20:27: LaunchClientOnExit。
+ 2748  操作结束 17:20:27: LaunchClientOnExit。返回值 1。
+ 2894  MSI (c) (88:60) [17:20:27:922]: MainEngineThread is returning 0
+
+（整份日志共 2897 行；「操作开始 / 操作结束」之类的本地化行未收录。）
+
+## 询问页走查（重跑安装包，取消退出）
+
+  177  MSI (c) (A8:D8) [17:29:22:020]: Doing action: LaunchConditions
+  259  MSI (c) (A8:D8) [17:29:22:048]: Doing action: MaintenanceWelcomeDlg
+  312  MSI (c) (A8:D8) [17:29:30:863]: Doing action: UserExit
+  465  MSI (c) (A8:D8) [17:29:32:470]: MainEngineThread is returning 1602
+
+（整份日志共 468 行；「操作开始 / 操作结束」之类的本地化行未收录。）
